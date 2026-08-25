@@ -1,6 +1,21 @@
+# Dependencies
 node_modules/
+.pnpm-store/
+
+# Build output
 dist/
 .astro/
+.output/
+
+# Environment — never commit a secret (docs/engineering/ci-cd.md#secrets)
 .env
 .env.*
 !.env.example
+
+# Local
+*.log
+.DS_Store
+coverage/
+
+# WSL alternate-data-stream artifacts
+*:Zone.Identifier
