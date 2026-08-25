@@ -185,12 +185,12 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 **Build:** `infra/compose/docker-compose.yml` bringing up **PostgreSQL 17 with the `valstara_waitlist` database**, the app, and Umami with its own database. **Hard `mem_limit` per service with `memswap_limit` equal to it** — the box has no swap deliberately. No host ports on data services beyond local development.
 
 **Acceptance criteria:**
-- `docker compose up -d` yields a working local stack; the app connects to `valstara_waitlist`
+- `docker compose up -d` yields a working local stack, and **the app's configured `DATABASE_URL` authenticates against `valstara_waitlist`** — proven by an authenticated query using the app container's **actual runtime value**, asserting `current_database()`, with a **red-path test showing invalid credentials fail**. *The application connection pool is E1-03; a container liveness probe does not satisfy this criterion*
 - **Memory limits present on every service with swap disabled** — asserted by inspecting the running config, not by reading the file
 - Umami reachable locally with its own separate database
 - `infra/ENV.md` started, listing every variable with its purpose
 
-**Tests:** A script asserting the memory limits and the database separation.
+**Tests:** A script asserting the memory limits and the database separation, **plus an authenticated query with the app's own connection string and a red-path case proving wrong credentials fail the assertion.**
 **Docs:** `docs/architecture/adr/003-self-hosted-vps.md` · `docs/architecture/adr/004-separate-waitlist-database.md`
 
 ### E1-03 — Data layer, migration runner and the initial schema

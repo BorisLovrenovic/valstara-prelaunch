@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "preview": "astro preview",
     "test": "node --test",
+    "test:stack": "node infra/compose/assert-stack.mjs",
     "typecheck": "astro check"
   },
   "dependencies": {
