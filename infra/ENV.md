@@ -5,19 +5,18 @@ defaults in `infra/compose/docker-compose.yml` are local-development credentials
 only. They are never suitable for production, and local overrides belong in an
 untracked root `.env` file.
 
-| Variable                   | Purpose                                                                          | Used by           | Local default               | Secret                        |
-| -------------------------- | -------------------------------------------------------------------------------- | ----------------- | --------------------------- | ----------------------------- |
-| `VALSTARA_DB_USER`         | PostgreSQL role that owns `valstara_waitlist` and runs migrations                | PostgreSQL        | `valstara`                  | No                            |
-| `VALSTARA_DB_PASSWORD`     | Password for the waitlist owner/migration role; URL-safe characters are required | PostgreSQL        | Local-only value in Compose | Yes outside local development |
-| `VALSTARA_APP_DB_PASSWORD` | Password for the non-owner `valstara_app` role; URL-safe characters are required | PostgreSQL, app   | Local-only value in Compose | Yes outside local development |
-| `UMAMI_DB_USER`            | PostgreSQL role that owns and connects to the separate `umami` database          | PostgreSQL, Umami | `umami`                     | No                            |
-| `UMAMI_DB_PASSWORD`        | Password for the Umami database role; URL-safe characters are required           | PostgreSQL, Umami | Local-only value in Compose | Yes outside local development |
-| `UMAMI_APP_SECRET`         | Signs and encrypts Umami authentication tokens                                   | Umami             | Local-only value in Compose | Yes                           |
-| `POSTGRES_HOST_PORT`       | Loopback-only host port for local PostgreSQL access                              | Docker Compose    | `5434`                      | No                            |
-| `POSTGRES_MEM_LIMIT`       | Hard memory and equal memory-plus-swap limit for PostgreSQL                      | Docker Compose    | `512m`                      | No                            |
-| `APP_MEM_LIMIT`            | Hard memory and equal memory-plus-swap limit for the Astro app                   | Docker Compose    | `768m`                      | No                            |
-| `MIGRATION_MEM_LIMIT`      | Hard memory and equal memory-plus-swap limit for the one-shot migration service  | Docker Compose    | `256m`                      | No                            |
-| `UMAMI_MEM_LIMIT`          | Hard memory and equal memory-plus-swap limit for Umami                           | Docker Compose    | `768m`                      | No                            |
+| Variable               | Purpose                                                                          | Used by           | Local default               | Secret                        |
+| ---------------------- | -------------------------------------------------------------------------------- | ----------------- | --------------------------- | ----------------------------- |
+| `VALSTARA_DB_USER`     | PostgreSQL role that owns, connects to, and migrates `valstara_waitlist`         | PostgreSQL, app   | `valstara`                  | No                            |
+| `VALSTARA_DB_PASSWORD` | Password for the waitlist owner/migration role; URL-safe characters are required | PostgreSQL, app   | Local-only value in Compose | Yes outside local development |
+| `UMAMI_DB_USER`        | PostgreSQL role that owns and connects to the separate `umami` database          | PostgreSQL, Umami | `umami`                     | No                            |
+| `UMAMI_DB_PASSWORD`    | Password for the Umami database role; URL-safe characters are required           | PostgreSQL, Umami | Local-only value in Compose | Yes outside local development |
+| `UMAMI_APP_SECRET`     | Signs and encrypts Umami authentication tokens                                   | Umami             | Local-only value in Compose | Yes                           |
+| `POSTGRES_HOST_PORT`   | Loopback-only host port for local PostgreSQL access                              | Docker Compose    | `5434`                      | No                            |
+| `POSTGRES_MEM_LIMIT`   | Hard memory and equal memory-plus-swap limit for PostgreSQL                      | Docker Compose    | `512m`                      | No                            |
+| `APP_MEM_LIMIT`        | Hard memory and equal memory-plus-swap limit for the Astro app                   | Docker Compose    | `768m`                      | No                            |
+| `MIGRATION_MEM_LIMIT`  | Hard memory and equal memory-plus-swap limit for the one-shot migration service  | Docker Compose    | `256m`                      | No                            |
+| `UMAMI_MEM_LIMIT`      | Hard memory and equal memory-plus-swap limit for Umami                           | Docker Compose    | `768m`                      | No                            |
 
 Compose derives or fixes the following container variables. They are listed
 separately because developers do not override them directly:
@@ -48,8 +47,7 @@ npm run test:stack
 ```
 
 Compose runs migrations in an isolated one-shot `migrate` service before
-starting the app. The migration-owner credential is not present in the running
-app container.
+starting the app.
 
 The app is available at `http://127.0.0.1:4321` and Umami at
 `http://127.0.0.1:3000`. PostgreSQL is exposed only on the loopback interface at

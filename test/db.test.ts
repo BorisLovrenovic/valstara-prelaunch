@@ -11,17 +11,11 @@ import {
   MigrationChecksumMismatchError,
 } from '../src/server/db/errors.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
-import {
-  createPool,
-  type DatabaseClient,
-  type DatabasePool,
-} from '../src/server/db/pool.ts';
+import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import { withTransaction } from '../src/server/db/transaction.ts';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
-const applicationRole = 'valstara_app';
-
 interface DatabaseFixture {
   readonly database: DatabasePool;
   readonly databaseUrl: string;
@@ -35,6 +29,11 @@ interface ConstraintRow {
 
 interface TableRow {
   readonly table_name: string;
+}
+
+interface ActivityRow {
+  readonly wait_event: string | null;
+  readonly wait_event_type: string | null;
 }
 
 async function createDatabaseFixture(): Promise<DatabaseFixture> {
@@ -81,13 +80,14 @@ async function insertSubscriber(
   database: DatabasePool,
   id: string,
   emailNormalised = `${id}@example.test`,
+  email = emailNormalised,
 ): Promise<void> {
   await database.execute({
     text: `
       INSERT INTO subscriber (id, email, email_normalised, email_domain, status)
       VALUES ($1, $2, $3, 'example.test', 'pending')
     `,
-    values: [id, emailNormalised, emailNormalised],
+    values: [id, email, emailNormalised],
   });
 }
 
@@ -114,6 +114,48 @@ async function assertExactlyOneWriteSucceeds(
     failedWrites[0]?.status === 'rejected' &&
       hasPostgresCode('23505')(failedWrites[0].reason),
     true,
+  );
+}
+
+function databaseUrlWithApplicationName(
+  databaseUrl: string,
+  applicationName: string,
+): string {
+  const url = new URL(databaseUrl);
+  url.searchParams.set('application_name', applicationName);
+  return url.toString();
+}
+
+async function waitForMigrationActivity(
+  database: DatabasePool,
+  applicationName: string,
+  expectedWaitEvent: ActivityRow,
+): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const activity = await database.readOne<ActivityRow>({
+      text: `
+        SELECT wait_event, wait_event_type
+        FROM pg_stat_activity
+        WHERE application_name = $1
+          AND state <> 'idle'
+      `,
+      values: [applicationName],
+    });
+
+    if (
+      activity?.wait_event === expectedWaitEvent.wait_event &&
+      activity.wait_event_type === expectedWaitEvent.wait_event_type
+    ) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+
+  assert.fail(
+    `${applicationName} did not reach ${expectedWaitEvent.wait_event_type}:${expectedWaitEvent.wait_event}`,
   );
 }
 
@@ -149,17 +191,11 @@ test('migrations run once, record checksums, and reproduce the initial schema fr
       20,
     );
 
-    assert.deepEqual(initialRun, [
-      '0001-initial-schema.sql',
-      '0002-application-role-audit-log-permissions.sql',
-    ]);
+    assert.deepEqual(initialRun, ['0001-initial-schema.sql']);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
       ledger.map((row) => row.filename),
-      [
-        '0001-initial-schema.sql',
-        '0002-application-role-audit-log-permissions.sql',
-      ],
+      ['0001-initial-schema.sql'],
     );
     assert.match(ledger[0]?.checksum ?? '', /^[a-f0-9]{64}$/);
     assert.equal(ledger[0]?.applied_by_release, 'test-release');
@@ -282,13 +318,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
           2,
         );
 
-        assert.equal(appliedCount, 2);
+        assert.equal(appliedCount, 1);
         assert.deepEqual(
           ledger.map((row) => row.filename),
-          [
-            '0001-initial-schema.sql',
-            '0002-application-role-audit-log-permissions.sql',
-          ],
+          ['0001-initial-schema.sql'],
         );
       } finally {
         await fixture.database.close();
@@ -297,6 +330,63 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
     }),
     { seed: 20_260_825, numRuns: 5 },
   );
+});
+
+test('concurrent migration runners serialize on the PostgreSQL advisory lock', async () => {
+  const fixture = await createDatabaseFixture();
+  const directory = await mkdtemp(join(tmpdir(), 'valstara-e103-'));
+  const firstRunnerName = 'e103-migration-runner-first';
+  const secondRunnerName = 'e103-migration-runner-second';
+  const firstRunner = createPool(
+    databaseUrlWithApplicationName(fixture.databaseUrl, firstRunnerName),
+  );
+  const secondRunner = createPool(
+    databaseUrlWithApplicationName(fixture.databaseUrl, secondRunnerName),
+  );
+
+  try {
+    await writeFile(
+      join(directory, '0001-concurrency-probe.sql'),
+      'DO $$ BEGIN PERFORM pg_sleep(0.5); END; $$;\nCREATE TABLE migration_concurrency_probe (id integer PRIMARY KEY);\n',
+    );
+
+    const firstRun = runMigrations(firstRunner, {
+      directory,
+      release: 'concurrency-test',
+    });
+    await waitForMigrationActivity(fixture.database, firstRunnerName, {
+      wait_event: 'PgSleep',
+      wait_event_type: 'Timeout',
+    });
+
+    const secondRun = runMigrations(secondRunner, {
+      directory,
+      release: 'concurrency-test',
+    });
+    await waitForMigrationActivity(fixture.database, secondRunnerName, {
+      wait_event: 'advisory',
+      wait_event_type: 'Lock',
+    });
+
+    const [firstApplied, secondApplied] = await Promise.all([
+      firstRun,
+      secondRun,
+    ]);
+    const ledger = await fixture.database.list<{ filename: string }>(
+      { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
+      2,
+    );
+
+    assert.deepEqual(firstApplied, ['0001-concurrency-probe.sql']);
+    assert.deepEqual(secondApplied, []);
+    assert.deepEqual(ledger, [{ filename: '0001-concurrency-probe.sql' }]);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+    await firstRunner.close();
+    await secondRunner.close();
+    await fixture.database.close();
+    await fixture.dispose();
+  }
 });
 
 test('the named database constraints exist in the PostgreSQL catalogue', async () => {
@@ -440,6 +530,28 @@ test('unique keys reject duplicates at the database level', async () => {
   });
 });
 
+test('subscriber rejects distinct raw emails with the same normalised key', async () => {
+  await withDatabase(async (database) => {
+    const emailNormalised = 'alex@example.test';
+
+    await insertSubscriber(
+      database,
+      randomUUID(),
+      emailNormalised,
+      'Alex+launch@example.test',
+    );
+    await assert.rejects(
+      insertSubscriber(
+        database,
+        randomUUID(),
+        emailNormalised,
+        'alex@example.test',
+      ),
+      hasPostgresCode('23505'),
+    );
+  });
+});
+
 test('concurrent database sessions allow exactly one duplicate normalised email and referral edge write', async () => {
   const fixture = await createDatabaseFixture();
   const firstSession = createPool(fixture.databaseUrl);
@@ -480,50 +592,6 @@ test('concurrent database sessions allow exactly one duplicate normalised email 
   } finally {
     await firstSession.close();
     await secondSession.close();
-    await fixture.database.close();
-    await fixture.dispose();
-  }
-});
-
-test('the non-owner application role can insert and select audit records but cannot update or delete them', async () => {
-  const fixture = await createDatabaseFixture();
-  let applicationDatabase: DatabaseClient | undefined;
-  const auditLogId = randomUUID();
-
-  try {
-    await runMigrations(fixture.database, { release: 'test' });
-    applicationDatabase = await fixture.database.connect();
-    await applicationDatabase.execute({ text: `SET ROLE ${applicationRole}` });
-
-    await applicationDatabase.execute({
-      text: `
-        INSERT INTO audit_log (id, actor, action, subject_type, detail)
-        VALUES ($1, 'test-actor', 'test.action', 'subscriber', '{}'::jsonb)
-      `,
-      values: [auditLogId],
-    });
-    const auditRecord = await applicationDatabase.readOne<{ id: string }>({
-      text: 'SELECT id FROM audit_log WHERE id = $1',
-      values: [auditLogId],
-    });
-
-    assert.equal(auditRecord?.id, auditLogId);
-    await assert.rejects(
-      applicationDatabase.execute({
-        text: "UPDATE audit_log SET action = 'changed' WHERE id = $1",
-        values: [auditLogId],
-      }),
-      hasPostgresCode('42501'),
-    );
-    await assert.rejects(
-      applicationDatabase.execute({
-        text: 'DELETE FROM audit_log WHERE id = $1',
-        values: [auditLogId],
-      }),
-      hasPostgresCode('42501'),
-    );
-  } finally {
-    applicationDatabase?.release();
     await fixture.database.close();
     await fixture.dispose();
   }

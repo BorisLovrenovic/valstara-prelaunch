@@ -175,11 +175,6 @@ export async function assertStack() {
     undefined,
     'the long-running app must not receive the migration-owner credential',
   );
-  assert.equal(
-    new URL(appEnvironment.DATABASE_URL).username,
-    'valstara_app',
-    'the long-running app must use the restricted database role',
-  );
   const appDatabase = new URL(appEnvironment.DATABASE_URL).pathname.slice(1);
   const umamiDatabase = new URL(umamiEnvironment.DATABASE_URL).pathname.slice(
     1,
