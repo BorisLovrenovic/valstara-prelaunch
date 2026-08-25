@@ -11,14 +11,20 @@ import {
   MigrationChecksumMismatchError,
 } from '../src/server/db/errors.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
-import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
+import {
+  createPool,
+  type DatabaseClient,
+  type DatabasePool,
+} from '../src/server/db/pool.ts';
 import { withTransaction } from '../src/server/db/transaction.ts';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
+const applicationRole = 'valstara_app';
 
 interface DatabaseFixture {
   readonly database: DatabasePool;
+  readonly databaseUrl: string;
   dispose(): Promise<void>;
 }
 
@@ -42,6 +48,7 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
 
   return {
     database: createPool(databaseUrl.toString()),
+    databaseUrl: databaseUrl.toString(),
     async dispose() {
       await admin.list(
         {
@@ -92,6 +99,24 @@ function hasPostgresCode(code: string): (error: unknown) => boolean {
     error.code === code;
 }
 
+async function assertExactlyOneWriteSucceeds(
+  writes: readonly [Promise<unknown>, Promise<unknown>],
+): Promise<void> {
+  const results = await Promise.allSettled(writes);
+  const successfulWrites = results.filter(
+    (result) => result.status === 'fulfilled',
+  );
+  const failedWrites = results.filter((result) => result.status === 'rejected');
+
+  assert.equal(successfulWrites.length, 1);
+  assert.equal(failedWrites.length, 1);
+  assert.equal(
+    failedWrites[0]?.status === 'rejected' &&
+      hasPostgresCode('23505')(failedWrites[0].reason),
+    true,
+  );
+}
+
 test('migrations run once, record checksums, and reproduce the initial schema from an empty database', async () => {
   const fixture = await createDatabaseFixture();
 
@@ -124,11 +149,17 @@ test('migrations run once, record checksums, and reproduce the initial schema fr
       20,
     );
 
-    assert.deepEqual(initialRun, ['0001-initial-schema.sql']);
+    assert.deepEqual(initialRun, [
+      '0001-initial-schema.sql',
+      '0002-application-role-audit-log-permissions.sql',
+    ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
       ledger.map((row) => row.filename),
-      ['0001-initial-schema.sql'],
+      [
+        '0001-initial-schema.sql',
+        '0002-application-role-audit-log-permissions.sql',
+      ],
     );
     assert.match(ledger[0]?.checksum ?? '', /^[a-f0-9]{64}$/);
     assert.equal(ledger[0]?.applied_by_release, 'test-release');
@@ -201,10 +232,13 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
           2,
         );
 
-        assert.equal(appliedCount, 1);
+        assert.equal(appliedCount, 2);
         assert.deepEqual(
           ledger.map((row) => row.filename),
-          ['0001-initial-schema.sql'],
+          [
+            '0001-initial-schema.sql',
+            '0002-application-role-audit-log-permissions.sql',
+          ],
         );
       } finally {
         await fixture.database.close();
@@ -354,6 +388,95 @@ test('unique keys reject duplicates at the database level', async () => {
       hasPostgresCode('23505'),
     );
   });
+});
+
+test('concurrent database sessions allow exactly one duplicate normalised email and referral edge write', async () => {
+  const fixture = await createDatabaseFixture();
+  const firstSession = createPool(fixture.databaseUrl);
+  const secondSession = createPool(fixture.databaseUrl);
+
+  try {
+    await runMigrations(fixture.database, { release: 'test' });
+
+    const emailNormalised = `${randomUUID()}@example.test`;
+    await assertExactlyOneWriteSucceeds([
+      insertSubscriber(firstSession, randomUUID(), emailNormalised),
+      insertSubscriber(secondSession, randomUUID(), emailNormalised),
+    ]);
+
+    const referrerId = randomUUID();
+    const alternateReferrerId = randomUUID();
+    const referredId = randomUUID();
+    await insertSubscriber(fixture.database, referrerId);
+    await insertSubscriber(fixture.database, alternateReferrerId);
+    await insertSubscriber(fixture.database, referredId);
+
+    await assertExactlyOneWriteSucceeds([
+      firstSession.execute({
+        text: `
+          INSERT INTO referral_edge (id, referrer_id, referred_id, state, reward_state)
+          VALUES ($1, $2, $3, 'attributed', 'none')
+        `,
+        values: [randomUUID(), referrerId, referredId],
+      }),
+      secondSession.execute({
+        text: `
+          INSERT INTO referral_edge (id, referrer_id, referred_id, state, reward_state)
+          VALUES ($1, $2, $3, 'attributed', 'none')
+        `,
+        values: [randomUUID(), alternateReferrerId, referredId],
+      }),
+    ]);
+  } finally {
+    await firstSession.close();
+    await secondSession.close();
+    await fixture.database.close();
+    await fixture.dispose();
+  }
+});
+
+test('the non-owner application role can insert and select audit records but cannot update or delete them', async () => {
+  const fixture = await createDatabaseFixture();
+  let applicationDatabase: DatabaseClient | undefined;
+  const auditLogId = randomUUID();
+
+  try {
+    await runMigrations(fixture.database, { release: 'test' });
+    applicationDatabase = await fixture.database.connect();
+    await applicationDatabase.execute({ text: `SET ROLE ${applicationRole}` });
+
+    await applicationDatabase.execute({
+      text: `
+        INSERT INTO audit_log (id, actor, action, subject_type, detail)
+        VALUES ($1, 'test-actor', 'test.action', 'subscriber', '{}'::jsonb)
+      `,
+      values: [auditLogId],
+    });
+    const auditRecord = await applicationDatabase.readOne<{ id: string }>({
+      text: 'SELECT id FROM audit_log WHERE id = $1',
+      values: [auditLogId],
+    });
+
+    assert.equal(auditRecord?.id, auditLogId);
+    await assert.rejects(
+      applicationDatabase.execute({
+        text: "UPDATE audit_log SET action = 'changed' WHERE id = $1",
+        values: [auditLogId],
+      }),
+      hasPostgresCode('42501'),
+    );
+    await assert.rejects(
+      applicationDatabase.execute({
+        text: 'DELETE FROM audit_log WHERE id = $1',
+        values: [auditLogId],
+      }),
+      hasPostgresCode('42501'),
+    );
+  } finally {
+    applicationDatabase?.release();
+    await fixture.database.close();
+    await fixture.dispose();
+  }
 });
 
 test('all unique constraints and the write-once trigger hold across seeded generated rows', async () => {
