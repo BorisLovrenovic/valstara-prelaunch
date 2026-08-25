@@ -1,0 +1,86 @@
+# CI/CD, Environments and Rollback
+
+Status: authoritative.
+
+## PR pipeline
+
+Checks only, no build artifacts are published.
+
+1. Install with a frozen lockfile
+2. **Lint · format · typecheck**
+3. **Unit, module-contract and integration tests** against a disposable PostgreSQL service container
+4. **The Astro production build** — a build failure is a blocker, and several gates below are build-time assertions
+5. **Coverage gate** — ≥80% changed code; ≥90% in `subscriber`, `verification`, `referral`, `giveaway`, `email`
+6. **Security and privacy gates** (below)
+7. **Migration check** — the ledger's checksums match, and the schema is reproducible from the migration files alone
+8. **Accessibility pass** — automated axe run over the built pages, at both themes
+
+**All are mandatory review gates. Never skip, delete or weaken one to get green.** Docs-only changes (`docs/**`) run nothing.
+
+### The security and privacy stage
+
+Seven scans, each with a **planted red-path fixture committed in-repo** so a scan that silently stops working is caught:
+
+| Scan | Fails on |
+|---|---|
+| **Secret scan** | Any committed credential, or a `.env` path added anywhere in the PR range. `.env.example` is scanned as ordinary content |
+| **Dependency scan** | Any advisory not matched by an allowlist entry carrying a written justification **and a future expiry date** |
+| **Cookie and storage rule** | `document.cookie`, `Set-Cookie`, `localStorage` or `sessionStorage` outside the single permitted theme-preference write |
+| **Fingerprinting rule** | Canvas, font-enumeration, WebGL or timing-entropy APIs anywhere in the codebase |
+| **Third-party request rule** | A network request in a rendered page to any host but the self-hosted collector — the Trustpilot widget is the one allowlisted exception, and only behind its flag |
+| **Vendor-boundary rule** | An email vendor SDK imported outside its own provider module. Runtime `import()` targets must resolve statically; **an unresolved target fails closed** |
+| **Forbidden-copy scan** | A never-use string in `src/copy/`, `src/content/` or any `.astro` file |
+
+**The cookie, fingerprinting and third-party rules are what make "no consent banner" a verified property rather than an intention.** They are the reason it is safe to have no banner at all.
+
+## Main pipeline
+
+Path-filtered. A push to `main` touching `src/**`, `infra/**` or `scripts/**` builds the Docker image and pushes it to GHCR tagged with the commit SHA, with the newest three retained. **It does not deploy.** A `docs/**` change builds nothing.
+
+## Environments
+
+**Two, deliberately: local and production.**
+
+| Env | Purpose |
+|---|---|
+| **Local** | Docker Compose — PostgreSQL, the app, Umami. **Provider sandboxes and test keys only** |
+| **Production** | The existing VPS behind Cloudflare. Not publicly announced until the campaign opens |
+
+There is no staging. The compensating controls are mandatory CI gates, additive migrations, health-gated deploys, campaign flags defaulting off for incomplete work, and a rehearsed rollback.
+
+**One consequence to hold onto:** production carries no visitors before the campaign opens, but **it carries real sending credentials and a real domain reputation the moment email is configured.** From the first live Resend key onward, a mistake in production is a deliverability event. Sandbox keys never reach production; live keys never reach local.
+
+## Deploy and the migration audit
+
+Deploy pulls the SHA-tagged image, runs migrations, and health-gates the restart.
+
+**Every deploy records: the image SHA or tag, the migrations applied, the timestamp, and the outcome** — persisted, not logged. *Which migration ran, when, on which release* must be answerable from data.
+
+A **checksum mismatch on an already-applied migration aborts the deploy** before anything restarts. A failed health check aborts the rollout, leaving the previous version serving.
+
+## Rollback
+
+**Redeploy the previous release identifier — one command, under five minutes, drilled and recorded.** Because migrations are additive-first, the previous image runs against the migrated schema. **A migration that breaks this property is a blocking review finding.**
+
+## Backups
+
+The `valstara_waitlist` database joins the VPS's existing pgBackRest → R2 arrangement: weekly full, daily differential, continuous WAL, repository encryption on with the passphrase stored **off the VPS**.
+
+**A restore into a scratch container is proven in E1-08 and re-drilled before the campaign opens.** A backup that has never been restored is a hypothesis. The restore timing is the RTO — measured, not estimated.
+
+## Secrets
+
+Never committed; the secret scan is a mandatory gate. Every variable documented in `infra/ENV.md` with its purpose and whether it is live. Two have handling procedures of their own because losing or leaking them is expensive:
+
+- **The pgBackRest repository passphrase** — stored off the VPS; losing it makes the backups unreadable.
+- **The IP-prefix hashing pepper** — held outside the database. Rotating it invalidates every existing prefix hash, which is acceptable but must be deliberate and recorded.
+
+A leaked secret means **rotate, then purge**. Committing over it is not remediation.
+
+## Campaign-open sequencing
+
+Three things must be true before the DNS record points at this site publicly, and they are gates rather than checklist items because each is unrecoverable if missed:
+
+1. **The privacy policy names both representatives**, and the build-time assertion for it passes.
+2. **SPF, DKIM and DMARC verify on every sending domain**, and the seed test round-trips.
+3. **The ESP tiers are upgraded past the free caps** before `giveaway.open` is turned on.

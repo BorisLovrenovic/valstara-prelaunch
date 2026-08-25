@@ -1,0 +1,1668 @@
+# Valstara Pre-Launch — Development Plan v1
+
+Date: 2026-08-25 · Source: `prelaunch-stack-decisions.md` v2, the 24 accepted ADRs, 14 feature specs and 10 module docs.
+
+**Scope is the 8–12 week pre-launch waitlist site on `valstara.com`, and nothing else.** Store scope lives in the storefront repository. Where this plan touches the store, it touches only the handoff.
+
+---
+
+## 0. How this plan is governed
+
+**This file is the single source of truth for what gets built.** Not the ADRs, not the feature specs, not the stack decisions document, not any conversation — those are *inputs* the tickets reference. When they disagree, the plan is what an agent builds, and the disagreement is a defect to be fixed here.
+
+Four rules follow, and they are binding:
+
+1. **No ticket is added, removed, resized or reordered without founder authorisation.** An agent that believes a ticket is wrong **stops and asks** — it never edits the plan and never builds around it.
+2. **An agent reads the whole plan before implementing any ticket.** It is then the check on the plan: if a ticket contradicts its epic's goal, the standing rules, what earlier tickets built, or what later tickets assume, that is a `BLOCKED:` output, not a judgement call. **A contradiction caught now costs one question; caught six tickets later it costs a rewrite.**
+3. **Ticket scope is exact.** No scope creep, no unrequested refactors, no scaffolding for future tickets, no drive-by improvements.
+4. **Changes are made here first, then implemented.** Never the reverse.
+
+### Ticket anatomy
+Every ticket carries: **Model** tier and reasoning level · **Priority** · **Flag** · **Area** · why that tier where it is not obvious · **Build** · **Acceptance criteria** (the contract) · **Tests** · **Docs** it must read. Each is sized for **one focused agent run producing one PR.**
+
+### The campaign clock
+This plan is written against a **12-week campaign**, and three of its constraints are calendar constraints rather than engineering ones: the Article 27 appointments, the DNS and email authentication warm-up, and the ESP tier upgrades. They are in §2 as founder prerequisites, not as tickets, because no agent can complete them.
+
+---
+
+## 1. Environment and workflow
+
+**Local → production. No staging** (`docs/engineering/ci-cd.md`). There is no live traffic before the campaign opens, so the risk staging normally guards against does not exist yet.
+
+**One consequence applies from early on:** production carries **real sending credentials and a real domain reputation** the moment email is configured. From the first live Resend key onward, a mistake in production is a deliverability event. Sandbox keys never reach production; live keys never reach local.
+
+**Per-ticket cycle:** implement (fresh session, the ticket's model) → **pre-PR review in a fresh session that has not seen the implementation** → fix blockers → push, PR, squash-merge to `main`. Prompts are in `docs/engineering/prompts/`.
+
+**`main` is the only long-lived branch.** **Merged is not deployed:** before the campaign opens, deploying is a deliberate command; from campaign open, a **release tag** deploys.
+
+**Definition of Done** is `docs/testing/strategy.md#definition-of-done`.
+
+---
+
+## 2. Founder prerequisites — not agent tickets
+
+Five items no agent can complete. Each gates something, and the gate is stated so it is not discovered late.
+
+| # | Item | Nature | Gates | Start by |
+|---|---|---|---|---|
+| **P1** | **DNS records and email authentication** — `send.` and `mail.` subdomains plus `subslush.com`; SPF, DKIM, DMARC `p=none` | Configuration | E8 entirely. **The only item with a hard 12-week clock** — reputation is warmed, not switched on | **Today** |
+| **P2** | **Appoint the EU and UK Article 27 representatives** | Procurement, €200–500/yr each | **The privacy policy, which gates the first signup.** E9-03 asserts their presence at build time and the signup route is unreachable while it fails | **Today** |
+| **P3** | **Brand token values and trust-page prose** | Founder input from the brand and store documentation | E2-01 and E9-02. **A placeholder shipping to production is a blocking finding** | Before E2 |
+| **P4** | **Giveaway prize, entry rules and reviewed rules-page text** | Founder input plus counsel | E7 entirely; `giveaway.open` stays off without it | Before E7 |
+| **P5** | **Upgrade Resend and Brevo past the free tiers** | Purchase — Resend free is 100/day, Brevo 300/day | **Turning `giveaway.open` on.** Upgrade *before* the giveaway opens, not when the limits hit | Before E7 exit |
+
+**A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
+
+---
+
+## 3. Model assignment policy
+
+**Two tiers, bound once, referenced everywhere.**
+
+| Tier | Bound to | Use for |
+|---|---|---|
+| **Tier A** | The founder's fast implementation model | Scaffolding, config, wiring, well-specified CRUD, content and markup, admin screens |
+| **Tier B** | The founder's strongest implementation model | Money-adjacent logic, personal data, privacy properties, concurrency, security, and anything architecture-bearing that later tickets inherit |
+| **Second-model QA** | A model from a **different family** | The dual QA gates only |
+
+> **Binding.** The tier → model binding is carried over from the founder's existing setup and is **the only line to change if the roster changes.** Editing it here changes every ticket at once; editing a ticket's tier does not.
+
+**This policy is reasoned from task characteristics, not from a benchmark.** The principle is conventional and defensible: **route to Tier B where a mistake is expensive, subtle, or hard to detect after the fact.** Revise once real evidence accumulates from actual runs.
+
+Reasoning levels: **Medium** for well-specified work · **High** for multi-file integration or novel design · **Extra High** for the four deepest tickets, marked where they occur.
+
+**Where a ticket sits between Tier A at maximum effort and Tier B at moderate effort, choose Tier B at moderate.** Depth of reasoning is a weaker lever than the model's reliability on work where mistakes are expensive.
+
+**Escalation rule:** on a second failed attempt at the same ticket, bump one step. **A third failure is a signal that the ticket is wrong, not the agent** — stop and revisit the plan entry.
+
+---
+
+## 4. Standing rules for every ticket
+
+These are not restated per ticket. **Violating one fails review.** They are the same rules as `AGENTS.md`, listed here because the plan is what an agent reads first.
+
+1. **No non-essential cookie, no browser-storage identifier, no fingerprinting API, no third-party request from a rendered page.** Three CI gates enforce it (ADR-007, ADR-013).
+2. **Nothing counts an unverified subscriber** — not the leaderboard, a tier, an entry, the broadcast list or the export (ADR-011).
+3. **A high-value referral reward can never settle from a verification alone** (ADR-012).
+4. **Referral attribution is server-side and signed** — no cookie, no client-side path (ADR-008).
+5. **Email is normalised before any uniqueness check.**
+6. **Turnstile is verified server-side on every write route, before any other work** (ADR-006).
+7. **No code path sets `disqualified` without a recorded human actor.**
+8. **One email per business key; suppression re-checked at dispatch.**
+9. **A full IP address is never stored, logged or returned** — truncate, then hash.
+10. **No analytics event property, and no public response, carries personal data.**
+11. **The audit log is append-only, enforced by database permissions.**
+12. **Every sweep, export and bulk operation caps its batch size.**
+13. **Every state that waits on a person has a defined expiry and a defined fallback.**
+14. **Business logic in server modules, not routes. Only `server/db` issues SQL.**
+15. **Every feature behind its registered flag** with a code-level fail-safe default; the flag-off path is tested (ADR-023).
+16. **No literal colour, font, radius, spacing or duration in a component; no prose inline in markup** (ADR-015, ADR-017).
+17. **No forbidden copy string ships** (`docs/brand/copy-rules.md`) — CI-scanned.
+18. **Docs and ADRs update in the same PR.** Doc drift is a review blocker.
+
+---
+
+## 5. Epic dependency graph
+
+```mermaid
+flowchart TD
+  E1[E1 Foundations] --> E2[E2 Design system and shell]
+  E1 --> E3[E3 Signup and double opt-in]
+  E2 --> E3
+  E3 --> E4[E4 Referral engine]
+  E3 --> E5[E5 Fraud and integrity]
+  E4 --> E6[E6 Leaderboard, survey, member area]
+  E5 --> E6
+  E4 --> E7[E7 Giveaway]
+  E5 --> E7
+  E1 --> E8[E8 Email]
+  E3 --> E8
+  E2 --> E9[E9 Content, trust, legal, SEO]
+  E1 --> E10[E10 Analytics and admin]
+  E3 --> E10
+  E6 --> E11[E11 Hardening and campaign launch]
+  E7 --> E11
+  E8 --> E11
+  E9 --> E11
+  E10 --> E11
+```
+
+**E1 proves the whole path end to end before any feature work.** E3 is the spine: E4, E5, E8 and E10 all depend on a verified subscriber existing. **E9 is independent of the mechanics and has the longest founder-input lead time — start its content tickets early, in parallel.** E11 is the campaign gate.
+
+---
+
+## 6. QA gates
+
+A gate runs after the listed epics, in a fresh session on `main`, using the integrated-QA prompt. **No next epic opens on a NO-GO.**
+
+| Gate | After | Runs | Models |
+|---|---|---|---|
+| 1 | E1 | 1 | Tier B |
+| 2 | E2 + E3 | 2 | Tier B + second model |
+| 3 | E4 + E5 | 2 | Tier B + second model |
+| 4 | E6 + E7 | 2 | Tier B + second model |
+| 5 | E8 | 2 | Tier B + second model |
+| 6 | E9 + E10 | 1 | Tier B |
+| 7 | E11 | 2 | Tier B + second model |
+
+**Dual-gate rules, no exceptions:** the two runs are fully independent — fresh sessions, neither model sees the other's report · the deduplicated **union** of blockers is cleared · disagreements are settled **by evidence from the code and docs, never by which model raised it.** The value is a decorrelated blind spot from a different model family, not extra capability.
+
+**Gates 2, 3, 4 and 5 are dual because each covers something unrecoverable**: the privacy properties, the fraud invariants, the prize draw, and the sending reputation.
+
+---
+
+# Epics and tickets
+
+## Epic E1 — Foundations
+
+**Goal:** the repository, the stack, the pipeline, the database, and one thin end-to-end slice — a signup that writes a row, sends a verification mail in sandbox, and verifies — proving the architecture and toolchain before any feature work. *12 tickets.*
+
+**Exit criteria:** a signup made against production-shaped infrastructure produces a verified subscriber, with every CI gate green, backups proven by restore, and a rollback drilled.
+
+### E1-01 — Repository scaffold: Astro, Node adapter, strict TypeScript
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Why this tier:** the layout and the island discipline are inherited by all 87 later tickets; a wrong answer here is expensive to unwind.
+
+**Build:** Scaffold exactly per `docs/architecture/modules.md#repository-layout` — Astro with the **Node adapter in standalone mode**, TypeScript strict, ESLint flat config, Prettier. Create the directory skeleton including empty `src/server/`, `src/copy/`, `src/content/` and `src/styles/`. Add `AGENTS.md` and `docs/` as-is. Pin the Astro major and commit the lockfile.
+
+**Verify, do not assume:** the production build runs and serves from the Node adapter, and a page with no island **ships zero client JavaScript** — measured from the build output, not asserted.
+
+**Acceptance criteria:**
+- `npm install && npm run build` succeeds from a clean clone; the built server starts and serves
+- **A page with no island emits no client JavaScript bundle** — evidenced in the PR from the build output
+- TypeScript strict with **no `any`**; lint and format clean
+- The directory tree matches the layout doc exactly (tree diff in the PR)
+- **`origin/main` exists and is pushed** — the precondition every later ticket assumes. If it does not, **STOP and report**; never seed the trunk
+
+**Tests:** None (scaffold). The zero-JS evidence is the deliverable.
+**Docs:** `docs/architecture/modules.md#repository-layout` · `docs/architecture/adr/001-astro-node-adapter.md` · `docs/engineering/standards.md`
+
+### E1-02 — Local Compose stack: PostgreSQL, the app, Umami
+**Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+
+**Build:** `infra/compose/docker-compose.yml` bringing up **PostgreSQL 17 with the `valstara_waitlist` database**, the app, and Umami with its own database. **Hard `mem_limit` per service with `memswap_limit` equal to it** — the box has no swap deliberately. No host ports on data services beyond local development.
+
+**Acceptance criteria:**
+- `docker compose up -d` yields a working local stack; the app connects to `valstara_waitlist`
+- **Memory limits present on every service with swap disabled** — asserted by inspecting the running config, not by reading the file
+- Umami reachable locally with its own separate database
+- `infra/ENV.md` started, listing every variable with its purpose
+
+**Tests:** A script asserting the memory limits and the database separation.
+**Docs:** `docs/architecture/adr/003-self-hosted-vps.md` · `docs/architecture/adr/004-separate-waitlist-database.md`
+
+### E1-03 — Data layer, migration runner and the initial schema
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this tier:** the schema is designed against the launch-day import, and every later epic writes to it. Getting the constraints wrong here is discovered in E11.
+
+**Build:** `src/server/db` — the connection pool, transaction helper, and a **forward-only migration runner with a `migration_ledger` recording filename, checksum and applied timestamp.** Then the initial schema per `docs/data/model.md`: `subscriber`, `verification_token`, `referral_edge`, `milestone_award`, `survey_response`, `giveaway_entry`, `giveaway_draw`, `fraud_flag`, `email_send`, `suppression`, `campaign_flag`, `audit_log`, `rate_limit_bucket`.
+
+**The constraints are the deliverable, not the columns.** `subscriber.email_normalised` unique · `referral_edge.referred_id` unique · `email_send.business_key` unique · `giveaway_entry (subscriber_id, method, source_edge_id)` unique · `milestone_award (subscriber_id, tier)` unique · `subscriber.referred_by_id` **write-once, enforced by trigger**.
+
+**Acceptance criteria:**
+- Migrations run once each and are recorded with a checksum; **a checksum mismatch on an already-applied migration aborts**
+- Every constraint named above exists **in the database** — asserted by querying the catalogue, not by reading the migration
+- **`referred_by_id` cannot be updated once set** — asserted by an attempted update that fails
+- The schema is reproducible from the migration files alone, into an empty database
+- **No query helper permits an unbounded result set** — every list method takes an explicit limit
+
+**Tests:** Constraint-level tests for each unique key and the write-once trigger · a checksum-mismatch abort · full reproducibility from an empty database.
+**Docs:** `docs/data/model.md` · `docs/modules/platform.md#db` · `docs/engineering/standards.md#data-and-queries`
+
+### E1-04 — CI PR pipeline: lint, typecheck, test, build, coverage
+**Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+
+**Build:** GitHub Actions PR workflow: frozen-lockfile install, lint, typecheck, tests against a disposable PostgreSQL service container, the Astro production build, and a **coverage gate at 80% changed code with the 90% list configured but not yet enforced** (those modules do not exist). Path-filtered so `docs/**`-only changes run nothing.
+
+**Acceptance criteria:**
+- The pipeline is green on `main`; a fixture PR dropping coverage below the bar fails
+- A docs-only change runs **nothing**
+- All jobs are mandatory review gates, named per `docs/engineering/git-workflow.md#review-gate-check-names`
+
+**Tests:** A red-path fixture branch per gate proving each fails.
+**Docs:** `docs/engineering/ci-cd.md#pr-pipeline` · `docs/engineering/git-workflow.md`
+
+### E1-05 — CI security and privacy gates
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this tier:** these gates are what make "no consent banner" a verified property rather than an intention. A gate that silently stops working is worse than no gate.
+
+**Build:** The mandatory security stage, seven scans, **each with a planted red-path fixture committed in-repo**:
+
+1. **Secret scan** — no committed credential; a `.env` path added anywhere in the PR range fails, while `.env.example` is scanned as ordinary content
+2. **Dependency scan** — an allowlist entry requires a written justification **and a future expiry date**
+3. **Cookie and storage rule** — `document.cookie`, `Set-Cookie`, `localStorage`, `sessionStorage` outside the single permitted theme-preference write
+4. **Fingerprinting rule** — canvas, font-enumeration, WebGL and timing-entropy APIs anywhere
+5. **Third-party request rule** — any off-origin request from a rendered page; the flagged Trustpilot widget is the one allowlisted exception
+6. **Vendor-boundary rule** — an email SDK imported outside its provider module. **Runtime `import()` targets must resolve statically; an unresolved target fails closed**
+7. **Forbidden-copy scan** — over `src/copy/`, `src/content/` and every `.astro` file, against a list file that E2-08 populates
+
+**Acceptance criteria:**
+- **Each scan fails on its planted fixture and passes on `main`**
+- **An allowlist entry without an expiry date fails CI**
+- The cookie, fingerprinting and third-party rules each fire on a deliberate violation
+- The vendor-boundary rule fails closed on an unresolvable dynamic import
+- Every fixture is committed in-repo, so a scan that stops working is caught
+
+**Tests:** Planted-violation fixtures per gate in a dedicated job.
+**Docs:** `docs/security/threat-model.md#ci-security-gates` · `docs/architecture/adr/007-cookieless-analytics.md` · `docs/architecture/adr/013-no-fingerprinting.md`
+
+### E1-06 — Image build, GHCR push, production Compose behind Cloudflare
+**Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+
+**Build:** Multi-stage Dockerfile. Main-branch workflow building and pushing to GHCR tagged with the commit SHA, retention last three, path-filtered to `src/**`, `infra/**`, `scripts/**`. Production Compose mirroring local with the same hard memory limits, plus **Caddy terminating TLS on the origin and health-gating the upstream**. Cloudflare proxied in front.
+
+**Acceptance criteria:**
+- A merge to `main` touching application code produces a SHA-tagged GHCR image; a docs-only change builds nothing
+- Production Compose starts the SHA-tagged image and passes health checks
+- **Caddy removes an unhealthy backend and returns it only after recovery** — demonstrated
+- **The origin is not directly reachable except through Cloudflare** — verified
+
+**Tests:** The pipeline is the test; a docs-only commit demonstrably builds nothing.
+**Docs:** `docs/engineering/ci-cd.md#main-pipeline` · `docs/architecture/adr/003-self-hosted-vps.md`
+
+### E1-07 — Deploy with a migration audit, and a drilled rollback
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Why this tier:** a deploy that silently mis-records a migration is exactly the failure this exists to prevent, and it is discovered at the worst moment.
+
+**Build:** `infra/deploy/deploy.sh`: pull the SHA image → run migrations → health-gated restart. **Record for every deploy: the image SHA or tag, the migrations applied, the timestamp and the outcome** — persisted, not just logged. `rollback.sh` redeploys the previous identifier, one command.
+
+**Acceptance criteria:**
+- A deploy writes a **durable record answering *which migration ran, when, on which release***
+- **A checksum mismatch on an already-applied migration aborts before anything restarts**
+- A failed health check aborts the rollout, leaving the previous version serving
+- **Rollback executes in under five minutes — drilled and recorded in the PR**
+- Failed attempts are records too, including migrations committed before a later one failed
+
+**Tests:** A staged bad-image deploy proving the health gate and the rollback; an induced checksum mismatch.
+**Docs:** `docs/engineering/ci-cd.md#deploy-and-the-migration-audit`
+
+### E1-08 — Backups: the waitlist database into pgBackRest, and a proven restore
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Why this tier:** a backup that has never been restored is a hypothesis, and this list is the campaign's only durable asset.
+
+**Build:** Bring `valstara_waitlist` into the VPS's existing pgBackRest → R2 arrangement: weekly full, daily differential, continuous WAL, **repository encryption on with the passphrase stored off the VPS.** Document the passphrase procedure in `infra/ENV.md` without containing it. Script the restore-to-scratch-container drill.
+
+**Acceptance criteria:**
+- Backups run on schedule and land in R2
+- **A restore into a scratch container succeeds and is verified against known rows — evidenced in the PR**
+- **Restore timing recorded — this is the RTO, measured not estimated**
+- The passphrase is absent from the repository and from the VPS; its location is documented
+
+**Tests:** The restore drill is the test.
+**Docs:** `docs/engineering/ci-cd.md#backups`
+
+### E1-09 — Append-only audit log
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this tier:** append-only enforced at the permission layer is a security property that later tickets assume without re-checking.
+
+**Build:** `src/server/audit` per `docs/modules/audit.md`. **The application database role is granted INSERT and SELECT only on `audit_log` — no UPDATE, no DELETE.** `record()` and an admin-only batch-capped `query()`. Register the required action set.
+
+**Acceptance criteria:**
+- **UPDATE and DELETE against `audit_log` are rejected at the database level** — asserted by test, not by convention
+- **`record()` failure on a disqualification, export, draw or DSR fulfilment raises an error**, never a warning
+- **No code path can write a token, secret, raw IP or full email into `detail`** — a redaction test runs over every call site
+- `query()` honours its limit
+
+**Tests:** Permission-level rejection · redaction over every call site · the raise-on-failure cases.
+**Docs:** `docs/modules/audit.md` · `docs/data/model.md#audit_log`
+
+### E1-10 — Campaign flags with code-level fail-safe defaults
+**Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+
+**Build:** `src/server/flags` per `docs/modules/flags.md`. All eight flags registered in code with declared defaults — **`giveaway.open` and `email.broadcast` default off.** In-process cache with a short TTL, invalidated immediately on `set()`. Every change audited with an actor.
+
+**Acceptance criteria:**
+- **An unregistered key throws** — never a silent `false`
+- **Database unavailable returns the code default** — fail-safe, never fail-open
+- **Every registered flag has a declared default** — asserted by a test over the registry
+- `set()` takes effect within the documented TTL, and **the worst-case propagation delay is documented**
+- Every change is audited with an actor
+
+**Tests:** Unregistered key · database-down fallback · registry completeness · propagation within the TTL.
+**Docs:** `docs/modules/flags.md` · `docs/features/README.md#flag-registry` · `docs/architecture/adr/023-campaign-flags.md`
+
+### E1-11 — Thin end-to-end slice: signup → row → verification mail → verified
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this tier:** the first pass through the whole architecture; it shapes the conventions every later epic follows.
+
+**Build:** A deliberately minimal vertical slice: a bare form posting to `/api/signup`, a `subscriber` row, a verification token, a mail through Resend **in test mode**, and `/verify` consuming the token to set `verified`. **No abstraction beyond what this slice needs** — the real modules are E3.
+
+**Acceptance criteria:**
+- A signup produces exactly **one** subscriber, **one** token and **one** queued email
+- **A double submission produces no second row and no second email**
+- `/verify` sets `verified`; **a replayed token returns success, not an error**
+- The slice runs locally against Compose **and on production against the real infrastructure**
+- **No cookie is set anywhere in the flow** — asserted by a rendered-page check
+
+**Tests:** Integration test through the full path, including double submission and token replay.
+**Docs:** `docs/architecture/overview.md#runtime-flow-1--signup-to-verified-subscriber` · `docs/api/README.md`
+
+### E1-12 — Validated configuration and the environment inventory
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** infra
+
+**Build:** `src/server/config.ts` validating every environment variable **at boot, failing fast** on missing or malformed values. Complete `infra/ENV.md` — name, purpose, where used, whether the value is live or sandbox. **No value in the repository.**
+
+**Acceptance criteria:**
+- **A missing or malformed variable fails at boot with a named error**, never at first use
+- **A missing Turnstile secret cannot start the application** — the failure this prevents is a site that silently accepts every bot
+- Every variable is documented in `infra/ENV.md`; **no secret value is in the repository** — verified by the secret scan
+- The passphrase and pepper procedures are documented without containing the secrets
+
+**Tests:** Boot failure per missing required variable; a shape test over the documented inventory versus the validated schema.
+**Docs:** `docs/engineering/ci-cd.md#secrets` · `docs/engineering/standards.md`
+
+---
+
+## Epic E2 — Design system and site shell
+
+**Goal:** the portable token file, the type stack, the three-island discipline, the page shell, and the accessibility and copy baselines every later page inherits. *8 tickets.*
+
+**Exit criteria:** the landing page renders in both themes at every breakpoint with a passing accessibility gate, and the token file is copyable into the storefront verbatim.
+
+### E2-01 — The portable token file
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Why this tier:** this is the single artifact the storefront inherits verbatim (ADR-015), and getting its structure wrong costs 15–25 hours later rather than an hour now.
+
+**Build:** `src/styles/tokens.css` — every token as a CSS custom property, with **no framework coupling of any kind.** Structure per `docs/brand/tokens.md`. **Values transcribed from the brand guidelines**, not invented. Light palette on bare `:root`; dark values redefining the same names in a single `[data-theme="dark"]` block. Start the port checklist.
+
+**BLOCKED if P3 is outstanding.** A placeholder value is not a deliverable.
+
+**Acceptance criteria:**
+- Every token group in `docs/brand/tokens.md` is present with a real transcribed value
+- **The file has no framework coupling and no import** — it is copyable into a Next.js project unchanged
+- **No token's only definition lives inside a media query or a theme block** — the light palette is the base
+- **Every text/background pairing clears WCAG AA in both themes** — asserted by an automated contrast test over the token matrix, not read off the guidelines
+- **`--error` is visibly distinct from `--accent`**
+- The port checklist exists and names the storefront target
+
+**Tests:** Contrast assertion over every declared pairing; a parse test proving no framework syntax.
+**Docs:** `docs/brand/tokens.md` · `docs/architecture/adr/015-portable-design-tokens.md`
+
+### E2-02 — Self-hosted fonts with metric-matched fallbacks
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** Instrument Sans and JetBrains Mono self-hosted as WOFF2, subset to the Latin ranges used, preloaded for above-the-fold faces only. **Metric-matched fallbacks with `size-adjust` and `ascent-override`** so the eventual Söhne swap is one `@font-face` change plus a QA pass.
+
+**Acceptance criteria:**
+- **No request to `fonts.googleapis.com` or `fonts.gstatic.com`** — asserted by the third-party request gate
+- Fallbacks are metric-matched; **measured cumulative layout shift from the font swap is zero** — evidenced
+- Only above-the-fold faces are preloaded
+- Mono is used for every figure that changes, **with tabular figures on**
+
+**Tests:** Third-party request assertion; a layout-shift measurement in the rendered-page checks.
+**Docs:** `docs/brand/tokens.md#type` · `docs/architecture/adr/016-self-hosted-fonts.md`
+
+### E2-03 — Theme toggle island
+**Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** frontend
+**Why this tier:** the no-flash requirement and the single permitted storage write are both easy to get subtly wrong, and the second one is a privacy-gate violation if it is.
+
+**Build:** The theme toggle — one of the three islands. **Light-first; dark is a user toggle, never the default.** Respects `prefers-color-scheme` when no preference is set. **No flash of the wrong theme on load.** The preference is **the single permitted storage write in the codebase** and is documented in the cookie and storage inventory.
+
+**Acceptance criteria:**
+- **No flash on load in either theme** — evidenced, not asserted
+- With no stored preference, `prefers-color-scheme` decides; **with one, the toggle wins in both directions**
+- **The storage write is the only one in the repository** — the cookie/storage gate passes with it explicitly allowlisted and nothing else
+- Keyboard-operable, correctly labelled, and announced on change
+- Works with JavaScript disabled to the extent of rendering the system-preferred theme
+
+**Tests:** No-flash check in the rendered-page suite; the three preference states; the storage-gate allowlist has exactly one entry.
+**Docs:** `docs/brand/tokens.md` · `docs/architecture/adr/007-cookieless-analytics.md`
+
+### E2-04 — Interface primitives
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** Button, input, select, field with error, card, pill, accordion — as **zero-JS Astro components** except where interaction genuinely requires it. Every one references tokens; **no literal values anywhere.**
+
+**Acceptance criteria:**
+- **No literal colour, font, radius, spacing or duration value in any component** — CI-scanned
+- Every interactive primitive is keyboard-operable with a visible focus state that clears contrast requirements
+- Error states are announced to assistive technology, not only coloured
+- **The accordion works without JavaScript** (native disclosure), because the FAQ must be readable and indexable
+- All primitives render correctly in both themes
+
+**Tests:** The literal-value scan; keyboard and focus tests; a no-JS render test for the accordion.
+**Docs:** `docs/brand/tokens.md` · `docs/engineering/standards.md`
+
+### E2-05 — Layout, navigation and footer
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** The base layout: skip link, landmark structure, header with the theme toggle, footer carrying the legal and trust links. Shared metadata slots for E9-06.
+
+**Acceptance criteria:**
+- One `<main>`, correct landmark structure, a working skip link as the first focusable element
+- The footer links to `/legit`, `/guarantee`, `/about`, `/terms`, `/privacy` — **the permanent URLs**
+- Zero client JavaScript beyond the theme toggle island
+- Responsive from 320px up with **no horizontal scroll at any breakpoint**
+
+**Tests:** Landmark and skip-link assertions in the accessibility suite; a horizontal-overflow check across breakpoints.
+**Docs:** `docs/architecture/modules.md` · `docs/features/seo.md`
+
+### E2-06 — The landing page
+**Model:** Tier A — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
+
+**Build:** The landing page sections: hero with the signup form slot, what Valstara is, the trust signals, the FAQ accordion, and the footer. **Fully static except the form island.** All prose from the copy layer.
+
+**Acceptance criteria:**
+- **The page ships one island** — the form — plus the toggle. Measured from the build output
+- **No countdown timer, no scarcity claim, no position display, no exit-intent behaviour** — asserted by the copy scan and by review
+- Every string comes from the copy layer; **none is inline**
+- Renders correctly at every breakpoint in both themes
+- With `signup.enabled` off, **an honest paused message replaces the form** — never a form that fails on submit
+
+**Tests:** Island-count assertion from the build output; the flag-off path; the copy scan.
+**Docs:** `docs/features/signup.md` · `docs/brand/copy-rules.md`
+
+### E2-07 — Accessibility baseline and the CI gate
+**Model:** Tier B — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Why this tier:** retrofitting accessibility is far more expensive than building it, and these components are being ported into the storefront where the standard is a legal one.
+
+**Build:** Wire an automated axe pass over the built pages **in both themes** as a mandatory CI gate. Fix what it finds. Ensure `prefers-reduced-motion` is respected everywhere, focus is never trapped, and no information is conveyed by colour alone.
+
+**Acceptance criteria:**
+- **The axe gate runs over every built page in both themes and is mandatory**
+- Zero violations at WCAG 2.2 AA on the pages that exist
+- **`prefers-reduced-motion` is respected by every animation** — asserted, and not only on decorative elements
+- No focus trap anywhere; tab order matches visual order
+- **A planted violation fails the gate** — a fixture proves it works
+
+**Tests:** The gate itself, plus its planted fixture.
+**Docs:** `docs/testing/strategy.md` · `docs/legal/compliance.md#6-accessibility`
+
+### E2-08 — The copy layer and the forbidden-copy scan
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** `src/copy/` as the single home for interface strings. **Transcribe the never-use vocabulary from the brand guidelines into `scripts/forbidden-copy.json`**, each entry naming its replacement. Wire the scan from E1-05 to the populated list, over `src/copy/`, `src/content/` and every `.astro` file.
+
+**Acceptance criteria:**
+- Every customer-visible string in the codebase lives in the copy layer — **a scan finds no inline prose in `.astro` files**
+- The forbidden list is populated from the brand guidelines, **not invented**, and **every entry names a replacement**
+- **The scan fails on a planted forbidden string** and passes on `main`
+- Failure output tells a developer what to write instead, not only what not to
+
+**Tests:** The planted-string fixture; the inline-prose scan with its own fixture.
+**Docs:** `docs/brand/copy-rules.md` · `docs/architecture/adr/024-no-dark-patterns.md`
+
+---
+
+## Epic E3 — Signup and double opt-in
+
+**Goal:** the spine of the campaign — a real person's address, normalised, challenged, verified, and monitored for the silent failure that would otherwise look like poor conversion. *10 tickets.*
+
+**Exit criteria:** a signup from a real browser produces a verified subscriber, an unverified one expires on schedule, and a collapse in verification rate raises a P1 alert.
+
+### E3-01 — Email normalisation and the uniqueness rule
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this tier:** this single function is the cheapest and highest-value anti-fraud control in the campaign, and every uniqueness guarantee downstream depends on it being right.
+
+**Build:** `normaliseEmail()` in `src/server/subscriber`: lowercase, strip `+tag`, **remove dots for Gmail-family domains only**, validate shape. Store the raw address for display and sending, the normalised address as the unique key, and the domain denormalised.
+
+**Acceptance criteria:**
+- `user+tag@gmail.com`, `u.s.e.r@gmail.com` and `user@gmail.com` **collide on one row**
+- **A non-Gmail domain keeps its dots** — dot-stripping is Gmail-family behaviour, not general
+- `+tag` stripping applies generally; the raw address is preserved unchanged
+- **Normalisation runs before any uniqueness check** — asserted at the call site, not just in the function
+- Unicode and internationalised domains are handled without throwing
+
+**Tests:** Table test over the normalisation cases including the non-Gmail counterexample · a call-site assertion that no uniqueness check precedes normalisation.
+**Docs:** `docs/modules/subscriber.md` · `docs/features/fraud-review.md`
+
+### E3-02 — The signup route
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** backend
+**Why this tier:** the campaign's only write path, publicly exposed, with a documented and load-bearing order of operations.
+
+**Build:** `POST /api/signup` per `docs/api/README.md#post-apisignup`, in **exactly the documented order**: verify Turnstile → rate-limit → validate → normalise → blocklist and MX → upsert subscriber → attribute the referral edge → run fraud signals → decide giveaway eligibility and stamp the rules version → queue the verification mail → respond. Typed errors from the closed code set.
+
+**Acceptance criteria:**
+- **The order of operations matches the documented order** — asserted by test, because doing work before the challenge is the failure mode
+- **The response contains no position, count or rank**
+- Idempotent on `email_normalised`: a repeat for `pending` re-queues subject to its own limit; a repeat for `verified` returns `already_verified` and sends nothing
+- **A double submission produces one subscriber, one edge and one email** — asserted **under genuine concurrency against a real database**
+- Every error maps to a code in the closed set; **an unmapped error fails a test**
+- With the flag off, the route returns an honest paused response
+- **A send failure never rolls back the subscriber row**
+
+**Tests:** Order-of-operations assertion · concurrent double-submit against a real database · the closed-code-set completeness test · flag-off path.
+**Docs:** `docs/api/README.md` · `docs/features/signup.md` · `docs/modules/subscriber.md`
+
+### E3-03 — Turnstile verification
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this tier:** the distinction between "token invalid" and "provider unreachable" is the entire design, and getting it backwards either opens the door or rejects real people.
+
+**Build:** `src/server/turnstile` — server-side verification, the only consumer of the secret. **Fail closed on an invalid or replayed token. On a provider timeout, accept, apply strict rate limits, and flag the row.**
+
+**Acceptance criteria:**
+- Verification happens **server-side, before any other work**, on every write route
+- **An invalid or replayed token is rejected**
+- **A provider timeout accepts-and-flags under strict limits** — asserted, because rejecting real people because Cloudflare is slow is the worse error
+- **The secret appears in no log line** and no response
+- No client code contains the secret
+
+**Tests:** Invalid, replayed and timeout paths · a log-scan assertion for the secret.
+**Docs:** `docs/modules/platform.md#turnstile` · `docs/architecture/adr/006-turnstile.md`
+
+### E3-04 — Country selector with geo prefill
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** `src/server/geo` returning a **suggestion** from `CF-IPCountry`, and the country dropdown prefilled from it. **Always overridable.** The Canada-only region field appears when Canada is selected, because Quebec changes eligibility.
+
+**Acceptance criteria:**
+- **The `geo` module has no method that can decide eligibility** — the interface shape is the guardrail
+- A missing or `XX` header renders the selector **unfilled**, never guessed
+- **Changing the selection submits the changed value** — asserted, because silent detection overriding a person's answer is the failure
+- The region field appears **only for Canada** and is required there
+- The confirmed value, not the detected one, is what is stored as `country`
+
+**Tests:** Header cases including absent and `XX` · an override test · the Canada region path · a scan proving no consumer reads the header directly.
+**Docs:** `docs/modules/platform.md#geo` · `docs/architecture/adr/018-giveaway-jurisdictions.md`
+
+### E3-05 — The signup form island
+**Model:** Tier A — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
+
+**Build:** The form island: inline validation, submission states, error rendering from the closed code set, the signed ref carried as a hidden field, and Turnstile mounted invisibly. **It must work with JavaScript disabled** — the island only adds inline validation.
+
+**Acceptance criteria:**
+- **The form posts and works with JavaScript disabled** — evidenced
+- Inline validation never blocks a submission the server would accept
+- Errors render from the copy layer with the field association assistive technology needs
+- The signed ref is carried through unchanged; **the island never reads or writes the ref itself**
+- **No cookie and no storage write occurs** in the flow
+- Submission is disabled during flight; a double-click cannot double-submit
+
+**Tests:** No-JS submission path · error rendering per code · double-click prevention · the storage-gate check over the rendered page.
+**Docs:** `docs/features/signup.md` · `docs/api/README.md`
+
+### E3-06 — Verification tokens
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this tier:** a token system that leaks, replays incorrectly, or crosses purposes is an account-takeover primitive, even on a waitlist.
+
+**Build:** `src/server/verification` per `docs/modules/verification.md`. Single-use, **stored only as SHA-256**, expiring, with a **purpose discriminator** (`verify` · `status` · `unsubscribe`) and per-purpose expiry.
+
+**Acceptance criteria:**
+- **The plaintext is never persisted** — asserted across every table, log line and audit detail
+- **A replayed token returns `already`**, which the caller renders as success
+- **A token issued for one purpose is invalid for another** — asserted, because a status link that could verify an address would be a takeover primitive
+- **`expired` and `invalid` produce the identical customer-facing response**
+- Expiry is honoured under an injected clock; the purge sweep is batch-capped
+
+**Tests:** Replay · cross-purpose rejection · plaintext-absence scan · clock-injected expiry · purge limit.
+**Docs:** `docs/modules/verification.md` · `docs/architecture/adr/011-double-opt-in.md`
+
+### E3-07 — The verify endpoint and the success page
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this tier:** this route performs five state transitions in one request, and a partial application of them is a corrupt subscriber.
+
+**Build:** `/verify?token=` consuming the token and, **in one transaction**: setting `verified`, confirming referral edges, settling cheap rewards, holding high-value ones, and assigning the access window. Then the success page carrying the referral link, the survey questions and the status link.
+
+**Acceptance criteria:**
+- **All five transitions commit together or none do** — asserted by an induced mid-transaction failure
+- **A high-value reward enters `held`, never `settled`** — the anti-fraud invariant
+- A replayed token renders the **same success page**
+- The referral link, the survey questions and the status link are all present
+- The page is static apart from the survey interaction; **no cookie is set**
+
+**Tests:** Transactional atomicity under induced failure · the held-reward invariant · replay rendering.
+**Docs:** `docs/features/double-opt-in.md` · `docs/modules/referral.md` · `docs/architecture/adr/012-reward-gating.md`
+
+### E3-08 — The reminder ladder and unverified expiry
+**Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** backend
+
+**Build:** The reminder job at **+1h, +24h, +72h**, stopping immediately on verification, deduplicated by business key. Then the expiry sweep moving `pending` rows past the horizon to `expired`. Both batch-capped, both clock-injected.
+
+**Acceptance criteria:**
+- Reminders fire at the documented offsets and **stop on verification** — table-tested with an injected clock
+- **Exactly one reminder per offset per subscriber**, enforced by business key
+- **Expired rows disappear from every count, ranking and export** — asserted against the consuming surfaces, not just the table
+- Both jobs honour their batch caps
+- **If the job stops, no subscriber is lost** — the row still verifies from the original mail
+
+**Tests:** Clock-injected ladder table · deduplication · a consuming-surface assertion for expired rows · batch-cap tests.
+**Docs:** `docs/features/double-opt-in.md` · `docs/architecture/fallbacks.md`
+
+### E3-09 — Resend-verification, without an enumeration oracle
+**Model:** Tier B — Medium · **Priority:** High · **Flag:** — · **Area:** security
+**Why this tier:** the obvious implementation leaks list membership, and it leaks it to anyone.
+
+**Build:** `POST /api/resend-verification` — Turnstile, hard rate limits per address **and** per IP prefix, and **an identical response whether or not the address exists.**
+
+**Acceptance criteria:**
+- **The response, status code and timing are indistinguishable for a known and an unknown address** — asserted including timing
+- Rate-limited per address **and** per IP prefix
+- A verified address receives no new verification mail; the response is unchanged
+- Turnstile is verified first
+
+**Tests:** Known/unknown equivalence including a timing assertion · both rate-limit dimensions.
+**Docs:** `docs/api/README.md` · `docs/security/threat-model.md#t1--the-email-list-leaks`
+
+### E3-10 — Verification-rate monitoring
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this ticket exists:** without it, the campaign's most dangerous failure is indistinguishable from a page that simply is not converting — and it is discovered weeks later, with the list already lost.
+
+**Build:** An hourly job computing the verification rate over a rolling window against a baseline, alerting **P1 on a collapse.** Surface it on the admin health view. Include per-mailbox-provider breakdown so the alert points at a cause.
+
+**Acceptance criteria:**
+- **The alert is on the *rate*, not the count** — a drop in traffic must not fire it, and a drop in conversion must
+- The baseline is rolling and configurable; **the first hours of the campaign do not produce a false alarm**
+- The breakdown is per mailbox provider, because "Gmail only" and "everywhere" are different incidents
+- **The alert fires in a simulated collapse** — drilled, not assumed
+- The metric appears on `GET /api/admin/health`
+
+**Tests:** Simulated collapse · a traffic-drop scenario that must **not** alert · cold-start behaviour.
+**Docs:** `docs/architecture/fallbacks.md#the-two-silent-failures` · `docs/ops/runbook.md`
+
+---
+
+## Epic E4 — Referral engine
+
+**Goal:** the mechanic the campaign's growth depends on, built so its numbers can be defended afterwards. *9 tickets.*
+
+**Exit criteria:** a referral link produces an attributed edge, confirms on verification, settles the cheap reward, holds the valuable one, and the counters recompute idempotently from the edges.
+
+### E4-01 — Referral code generation
+**Model:** Tier A — Medium · **Priority:** Highest · **Flag:** `referral.enabled` · **Area:** backend
+
+**Build:** Unguessable, non-sequential codes from an unambiguous alphabet (no `0`/`O`, `1`/`l`), case-insensitive on lookup, collision-checked on write. Generated at verification.
+
+**Acceptance criteria:**
+- **Codes are unguessable and non-sequential** — asserted by an entropy and distribution test over a large generated sample
+- Collisions are handled by regeneration, and the unique constraint is the backstop
+- Lookup is case-insensitive; the ambiguous characters are absent
+- Generated at verification, **never for a pending row**
+
+**Tests:** Entropy and collision over a large sample; case-insensitive lookup; the pending-row assertion.
+**Docs:** `docs/modules/referral.md`
+
+### E4-02 — Server-side ref capture and the signed field
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** `referral.enabled` · **Area:** backend
+**Why this tier:** this is the decision that keeps the whole site outside ePrivacy (ADR-008). A client-side shortcut here costs the no-banner property.
+
+**Build:** Read `?ref=` **on the server during the rendering request**; sign it with an expiry; render it as a hidden field. `verifyRef()` on submit, **returning `null` rather than throwing** on tamper or expiry.
+
+**Acceptance criteria:**
+- **The ref is read server-side and never touches a cookie or browser storage** — asserted by the storage gate and by a scan for any client-side ref path
+- The field is signed and expiring; **a tampered value returns `null`** and the signup proceeds unattributed
+- **A bad or expired ref never costs a signup** — asserted
+- The signature cannot be forged from public information
+- Also capture UTM parameters server-side on the same request, consistently
+
+**Tests:** Tamper, expiry and absent cases · a repository scan proving no client-side attribution path exists · signature forgery attempt.
+**Docs:** `docs/modules/referral.md` · `docs/architecture/adr/008-server-side-referral-attribution.md`
+
+### E4-03 — Attribution and the edge
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** `referral.enabled` · **Area:** backend
+
+**Build:** On signup with a valid ref, write a `referral_edge` in `attributed`. **Self-referral is rejected and flagged, and the signup still completes.** An existing subscriber keeps their original `referred_by_id`, which is never reassigned.
+
+**Acceptance criteria:**
+- **One edge per referred person, enforced by the database** — asserted under genuine concurrency
+- **Self-referral is rejected with `self_referral`, flagged, and the signup still succeeds**
+- `referred_by_id` is write-once — asserted at the schema level
+- An unknown code produces no edge and no error
+- **Only one referral level exists** — a repository scan finds no code walking a referral chain
+
+**Tests:** Concurrent duplicate-edge attempt · self-referral path · write-once assertion · the single-level scan.
+**Docs:** `docs/modules/referral.md` · `docs/features/referral.md`
+
+### E4-04 — Confirmation on verification
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** `referral.enabled` · **Area:** backend
+
+**Build:** On the referred person's verification, move the edge to `confirmed`, recompute `confirmed_referrals` from the edges, and evaluate milestones. Part of the E3-07 transaction.
+
+**Acceptance criteria:**
+- **An edge confirms only on the referred person's verification** — never on signup, never on the referrer's action
+- `confirmed_referrals` is **recomputed from edges**, never blindly incremented
+- Milestone evaluation is idempotent — re-running produces no second award
+- The whole path is inside the verification transaction
+
+**Tests:** Confirmation timing · counter derivation · idempotent milestone evaluation.
+**Docs:** `docs/modules/referral.md`
+
+### E4-05 — Milestone ladder and tiers
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** `referral.enabled` · **Area:** backend
+
+**Build:** The tier ladder as configuration, evaluated on each confirmation. `milestone_award` unique on `(subscriber_id, tier)`. Tier 1 ships; **the five-referral tier is cut-list item 7 and can be added mid-campaign** without a migration.
+
+**Acceptance criteria:**
+- A tier is awarded **exactly once**, enforced by the unique constraint
+- **The ladder is configuration** — adding a tier mid-campaign requires no migration and no schema change
+- Adding a tier mid-campaign **does not retroactively award it to people who already passed it** unless deliberately backfilled, and the backfill is a separate audited action
+- `referral_tier` is derived from settled awards
+
+**Tests:** Duplicate-award rejection · a mid-campaign tier addition scenario · derivation from awards.
+**Docs:** `docs/modules/referral.md` · `docs/features/README.md#cut-list-in-order`
+
+### E4-06 — Reward gating
+**Model:** Tier B — **Extra High** · **Priority:** Highest · **Flag:** `referral.enabled` · **Area:** backend
+**Why this tier:** this is the campaign's central anti-fraud invariant (ADR-012). Every other fraud control is secondary to it, and a subtle path that settles a high-value reward from a verification undoes all of them at once.
+
+**Build:** The reward state machine: `none` → `settled` for cheap rewards on confirmation; `held` for high-value rewards, settling **only** on a post-launch first order, becoming `void` at campaign close. The classification of cheap versus high-value is configuration.
+
+**Acceptance criteria:**
+- **No code path settles a high-value reward from a verification** — asserted by enumerating every transition into `settled` and proving each one's precondition
+- Cheap rewards settle on confirmation
+- **Held rewards that never qualify become `void` — recorded, never deleted**, because the rule was published and must be checkable
+- The classification is configuration, changeable without a migration
+- **The milestone email plainly states which reward is settled and which is held** — a reward someone believes they have and does not receive is worse than one they knew was conditional
+
+**Tests:** **A generated test over every transition into `settled`, asserting its precondition** · a seeded property test over generated referral graphs asserting no held reward settles without a qualifying order · the void path at campaign close.
+**Docs:** `docs/architecture/adr/012-reward-gating.md` · `docs/modules/referral.md` · `docs/security/threat-model.md#t2--referral-fraud-discredits-the-leaderboard`
+
+### E4-07 — Access-window assignment
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** backend
+
+**Build:** Assign `access_window` (`wave-1`…`wave-4`) at verification from tier and verification order. **The wave is a handoff field** — it becomes a Medusa customer group, so its values are fixed and documented.
+
+**Acceptance criteria:**
+- Assignment is deterministic and recorded at verification
+- **The wave values match exactly what the handoff expects** — asserted against `docs/data/model.md#the-launch-day-handoff-contract`
+- A later tier increase can promote a wave, and the promotion is audited
+- Wave distribution is configuration
+
+**Tests:** Deterministic assignment table · the handoff-value assertion · promotion path.
+**Docs:** `docs/data/model.md` · `docs/ops/launch-cutover.md`
+
+### E4-08 — Referral status in email and on `/me`
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** `referral.enabled` · **Area:** frontend
+
+**Build:** Surface the referral link, confirmed count, tier and **the settled-versus-held reward distinction** in the welcome email, the milestone email and the `/me` page. One shared status computation, three renderings.
+
+**Acceptance criteria:**
+- The referral link is present and correct in all three surfaces
+- **The held-versus-settled distinction is stated plainly**, not implied
+- The count shown is **the count in the database** — no rounding, no inflation
+- One status computation serves all three; **a divergence between email and page is impossible by construction**
+
+**Tests:** Parity across the three surfaces from one computation; the no-inflation assertion.
+**Docs:** `docs/features/member-status.md` · `docs/brand/copy-rules.md`
+
+### E4-09 — The counter repair job
+**Model:** Tier B — Medium · **Priority:** High · **Flag:** — · **Area:** backend
+**Why this ticket exists:** a leaderboard whose counters can drift from their edges is a leaderboard that cannot be defended when someone disputes it — and the drift is invisible until then.
+
+**Build:** A daily job recomputing `confirmed_referrals` and `referral_tier` from the edge and award tables, batch-capped, idempotent. **Alerts on any non-zero correction.**
+
+**Acceptance criteria:**
+- **Idempotent — asserted by a seeded property test over generated referral graphs**
+- **Any non-zero correction raises an alert** — a silently repaired counter hides the bug that caused it
+- Batch-capped, and safe to run while the site is taking signups
+- The correction count is recorded, not just alerted
+
+**Tests:** Seeded property test over generated graphs · a deliberately corrupted counter, restored and alerted · a concurrent-signup run proving safety.
+**Docs:** `docs/modules/referral.md` · `docs/architecture/fallbacks.md`
+
+---
+
+## Epic E5 — Fraud and integrity
+
+**Goal:** make fraud visible and cheap to review, without punishing real people and without collecting anything that would cost the no-banner property. *7 tickets.*
+
+**Exit criteria:** the signals fire on seeded fraud patterns, an operator can clear a false positive in one action, and no code path can disqualify without a human.
+
+### E5-01 — Disposable-domain blocklist and MX check
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** backend
+
+**Build:** A configurable disposable-domain blocklist and an MX lookup at signup, both in `src/server/fraud`. **An MX timeout accepts and flags** rather than rejecting.
+
+**Acceptance criteria:**
+- A blocklisted domain is rejected with `blocked_domain` and plain copy
+- An address with **no MX record** is rejected with `invalid_email`
+- **An MX lookup timeout accepts the signup and flags it** — asserted, because a slow resolver must never cost a real person
+- The blocklist is **configuration, not code**, and an operator can allow a domain, audited
+- The MX lookup has a bounded timeout and is cached per domain
+
+**Tests:** Blocklist hit · no-MX rejection · **the timeout accept-and-flag path** · the domain-allow action.
+**Docs:** `docs/modules/fraud.md` · `docs/features/fraud-review.md`
+
+### E5-02 — Self-referral and duplicate-identity flags
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** backend
+
+**Build:** Flag kinds `self_referral` and `duplicate_identity`, raised at signup. **Flags only — nothing changes the subscriber's status.**
+
+**Acceptance criteria:**
+- Self-referral raises a flag **and rejects the edge**, while the signup completes
+- Duplicate-identity heuristics raise a flag and **nothing else**
+- **No flag path writes to `subscriber.status`** — asserted over every write site
+- Flag detail is structured enough for an operator to decide without opening the database
+
+**Tests:** Both flag kinds · the no-status-write assertion · detail completeness.
+**Docs:** `docs/modules/fraud.md`
+
+### E5-03 — IP velocity flags with truncated, hashed prefixes
+**Model:** Tier B — Medium · **Priority:** High · **Flag:** — · **Area:** security
+**Why this tier:** this is the one place the campaign touches an identifier that is unambiguously personal data, and the retention obligation attaches immediately.
+
+**Build:** `hashIpPrefix()` — **truncate first** (IPv4 /24, IPv6 /64), then hash with a **server-side pepper held outside the database.** A velocity flag over a rolling window. The daily purge job at 90 days.
+
+**Acceptance criteria:**
+- **A full IP address is never stored, logged, returned or passed to another module** — asserted by a scan and by a test over the module's outputs
+- Truncation happens **before** hashing
+- The pepper is not in the database and not in the repository
+- The velocity window and threshold are configuration
+- **The purge runs daily, is batch-capped, and its failure is a compliance alert** — not a hygiene one
+- A velocity flag on a shared network is expected behaviour, not a bug
+
+**Tests:** Truncate-then-hash ordering · full-address absence across outputs and logs · purge honouring retention and its limit · the alert on purge failure.
+**Docs:** `docs/data/model.md#ip-handling` · `docs/legal/compliance.md#2-lawful-basis-and-the-record-of-processing`
+
+### E5-04 — The flag review queue
+**Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** admin
+
+**Build:** `GET /api/admin/fraud` and `POST /api/admin/fraud/:id` — open flags with their evidence, dismiss or uphold. Batch-capped, audited.
+
+**Acceptance criteria:**
+- Open flags list with enough detail to decide **without opening the database**
+- Dismiss and uphold are both audited with an actor
+- The list is batch-capped and ordered by a useful priority, not by insertion
+- **No response contains a raw IP address or a token**
+
+**Tests:** Both outcomes audited · batch cap · the response-content assertion.
+**Docs:** `docs/features/admin.md` · `docs/modules/fraud.md`
+
+### E5-05 — Disqualification, audited, with the published rule
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this tier:** it is irreversible-feeling from the outside, it affects a prize, and it must be defensible afterwards.
+
+**Build:** Upholding a flag sets `disqualified`, rejects the referrer's edges, and voids their referral-derived entries — **all audited.** Reversal is possible and equally audited, and **restores the edges the disqualification rejected.** Publish the disqualification rule on the site.
+
+**Acceptance criteria:**
+- **`disqualified` is reachable only through `review(_, 'upheld')` with an actor** — asserted over every write site
+- Rejecting a referrer's edges **changes no referred subscriber's status** — nobody is punished for their referrer
+- Their referral-derived entries are voided; **the entries of the people they referred are not**
+- Reversal restores the rejected edges and is audited
+- **The rule is published on the site** — an unpublished rule cannot be enforced fairly
+
+**Tests:** The single-path assertion · the referred-subscriber isolation · the entry-voiding scope · reversal restoring edges.
+**Docs:** `docs/features/fraud-review.md` · `docs/modules/fraud.md`
+
+### E5-06 — Leaderboard integrity
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** backend
+
+**Build:** Exclude flagged and disqualified subscribers from the leaderboard snapshot and from prize ranking. **Excluded, not greyed out** — a visibly penalised account invites an argument the campaign does not need.
+
+**Acceptance criteria:**
+- Flagged and disqualified subscribers **do not appear in the snapshot at all**
+- Their exclusion does not leave a gap in the rank sequence
+- The exclusion applies to prize ranking as well as display
+- **No response reveals that a specific account was excluded**
+
+**Tests:** Exclusion from snapshot and ranking; rank contiguity; the no-disclosure assertion.
+**Docs:** `docs/features/leaderboard.md`
+
+### E5-07 — The top-20 review gate
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this tier:** this is the last human checkpoint before real money is given away, and a procedural version of it will be skipped under time pressure.
+
+**Build:** Enforce **server-side** that the top 20 by entries have been reviewed before any prize award can be recorded. Not a checklist — a precondition the award path checks.
+
+**Acceptance criteria:**
+- **An award cannot be recorded until the top 20 are reviewed** — enforced server-side, not by UI order
+- The review records an actor and an outcome per account
+- A change in the top 20 after review **invalidates the review** and requires a re-check
+- The gate is audited
+
+**Tests:** The cannot-award-without-review assertion · review invalidation on a changed top 20.
+**Docs:** `docs/features/giveaway.md` · `docs/security/threat-model.md#t2--referral-fraud-discredits-the-leaderboard`
+
+---
+
+## Epic E6 — Leaderboard, survey and member area
+
+**Goal:** the three surfaces that keep a verified subscriber engaged, each built so it can be switched off without breaking a page. *6 tickets.*
+
+**Exit criteria:** the leaderboard serves from a cached snapshot under load, the survey writes back, `/me` shows only the bearer's data, and every one of them degrades gracefully with its flag off.
+
+### E6-01 — Leaderboard snapshot
+**Model:** Tier B — Medium · **Priority:** High · **Flag:** `leaderboard.public` · **Area:** backend
+**Why this tier:** this is the one route a viral spike can hammer, on a box with hard memory limits and no swap.
+
+**Build:** A job recomputing the ranked, **anonymised** snapshot every five minutes into an in-process cache with an `as_of` timestamp. Deterministic tie-breaking by earliest verification. Flagged and disqualified excluded.
+
+**Acceptance criteria:**
+- **The public route reads only the snapshot** — asserted by a test that fails if the route touches `subscriber`
+- **No email address, country, referral code or exact signup time is in the snapshot**
+- Ties break deterministically; **the board does not shuffle between refreshes**
+- **A stopped job leaves the last good snapshot serving**, with its age visible
+- The snapshot computation is batch-safe and does not hold the full table in memory
+
+**Tests:** The route-isolation assertion · anonymisation over the response shape · tie determinism across repeated computations · stale-snapshot serving.
+**Docs:** `docs/features/leaderboard.md` · `docs/architecture/adr/024-no-dark-patterns.md`
+
+### E6-02 — The leaderboard island and the kill switch
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** `leaderboard.public` · **Area:** frontend
+
+**Build:** The third and final island. Renders the snapshot with its `as_of` timestamp, and the visitor's own rank when they arrive from a status link. **With the flag off, the section is absent from the page** — not broken, not empty-stated.
+
+**Acceptance criteria:**
+- **Flipping the flag off removes the section within the flag TTL, with no deploy** — drilled, not assumed
+- The snapshot age is visible
+- **The count shown is the count in the snapshot** — no inflation, no offset, no "approximately"
+- A short board renders short; **it is never padded**
+- This is the **third** island; the build output confirms no fourth
+
+**Tests:** The flag-off drill · the island-count assertion · the short-board case.
+**Docs:** `docs/features/leaderboard.md` · `docs/modules/flags.md`
+
+### E6-03 — Survey capture and write-back
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** `survey.enabled` · **Area:** backend
+
+**Build:** The two questions on the verification success page, validated against a **versioned** question set, stored as `survey_response`, with `category_preference` denormalised onto the subscriber because that is the handoff field.
+
+**Acceptance criteria:**
+- Answers validate against the versioned set, and **the version is stored**
+- **A version change never rewrites earlier responses**
+- `category_preference` is written to the subscriber
+- **Skipping is a first-class outcome with no follow-up prompt**
+- An unverified subscriber cannot submit
+- A resubmission replaces and is audited
+
+**Tests:** Version handling across a change · the skip path · the unverified rejection · resubmission audit.
+**Docs:** `docs/features/survey.md`
+
+### E6-04 — The signed status link
+**Model:** Tier B — Medium · **Priority:** High · **Flag:** `member.dashboard` · **Area:** security
+**Why this tier:** it is the only route that renders one person's data, with no session behind it.
+
+**Build:** `/me?t=` using the `status` token purpose. **No password, no session, no cookie.** An expired link offers a one-click re-send, rate-limited.
+
+**Acceptance criteria:**
+- **A tampered token and an expired token produce the identical response**
+- **The page renders only the bearer's own data** — asserted
+- **No cookie and no session is created**
+- Re-request is one click and rate-limited
+- **The forwarded-link exposure is documented as accepted** in the feature spec, not discovered in review
+
+**Tests:** Tamper/expiry equivalence · a cross-subject access attempt · the no-cookie assertion.
+**Docs:** `docs/features/member-status.md` · `docs/modules/verification.md`
+
+### E6-05 — The member dashboard
+**Model:** Tier A — Medium · **Priority:** Medium · **Flag:** `member.dashboard` · **Area:** frontend
+
+**Build:** The `/me` content: status, confirmed referrals, tier, wave, entries and eligibility, the referral link with a copy control, the survey re-answer path, and unsubscribe. **With the flag off, the equivalent information is in email** — this is cut-list item 3.
+
+**Acceptance criteria:**
+- Every field comes from the **one shared status computation** used by the emails
+- **The held-versus-settled reward distinction is stated plainly**
+- The copy control works without a permanent island — a minimal inline handler, not a fourth island
+- **With the flag off, the welcome and weekly emails carry the same information** — tested
+- Renders in both themes and passes the accessibility gate
+
+**Tests:** Parity with the email surfaces; the flag-off fallback; accessibility.
+**Docs:** `docs/features/member-status.md`
+
+### E6-06 — Unsubscribe and preferences
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this tier:** a failed unsubscribe is a legal problem and a trust problem in the same moment.
+
+**Build:** One-click unsubscribe (RFC 8058 `List-Unsubscribe-Post`) and a confirmable page, both writing `suppression`. **The dispatch path re-checks suppression**, so a queued send still stops.
+
+**Acceptance criteria:**
+- **One click, no confirmation maze, no retention plea** — the copy rules forbid it and so does the law's spirit
+- **A suppression written after a send is queued still stops that send** — asserted by test
+- Unsubscribing from either provider suppresses for **both**
+- The token is single-use per the verification module's rules
+- Every unsubscribe is recorded with its source template
+
+**Tests:** The queue-then-suppress race · cross-provider suppression · the one-click POST path.
+**Docs:** `docs/modules/email.md` · `docs/legal/compliance.md`
+
+---
+
+## Epic E7 — Giveaway
+
+**Goal:** a prize draw that is legal where it runs, honest in its mechanics, and reproducible when someone asks. *6 tickets.*
+
+**Exit criteria:** eligibility is enforced per jurisdiction at point of entry, entries accrue idempotently with their rules version, and a draw reproduces from its recorded seed.
+
+**BLOCKED on P4 and P5.** Without the reviewed rules text and the ESP upgrades, `giveaway.open` stays off and this epic's exit criteria cannot be met.
+
+### E7-01 — Eligibility at point of entry
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
+**Why this tier:** getting an exclusion wrong is a legal exposure in a named jurisdiction, and the mistake is not visible until someone complains.
+
+**Build:** `eligibility(country, region)` per `docs/legal/compliance.md#4-giveaway--jurisdiction-exclusions`. Excluded: Italy, Poland, Spain, the Nordics, and Quebec. **Decided at signup**, stamped with the `rules_version`, and the reason stated plainly at that point.
+
+**Acceptance criteria:**
+- **A table test covers every excluded jurisdiction**, including the Canada/Quebec case and each Nordic country individually
+- **An excluded visitor still completes the waitlist signup**
+- **A jurisdiction with no published rules page is excluded** — asserted by reconciling the eligibility table against the rules-page set
+- The deciding `rules_version` is stamped on the subscriber
+- Eligibility is decided from the **confirmed** country, never from `country_detected`
+
+**Tests:** The full jurisdiction table · the still-signs-up assertion · the rules-page reconciliation · a `country_detected`-only case that must not decide.
+**Docs:** `docs/legal/compliance.md` · `docs/architecture/adr/018-giveaway-jurisdictions.md`
+
+### E7-02 — Per-jurisdiction rules pages
+**Model:** Tier A — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+
+**Build:** `/giveaway/rules/[jurisdiction]` from content files, each carrying the **seven required sections**: eligibility, entry methods including AMOE, entry period, draw date and method, odds basis, prize description and substitution clause, the disqualification rule, and the promoter's identity.
+
+**BLOCKED if P4 is outstanding.**
+
+**Acceptance criteria:**
+- **Every required section is present on every page** — schema-validated, and a missing section **fails the build**
+- Pages exist at the permanent URLs and are **retained, not redirected**, at store launch
+- **Every eligible jurisdiction has a page, and every page has an eligible jurisdiction** — reconciled by test
+- Prose is in content files, never inline
+- Structured data validates
+
+**Tests:** Section completeness per page · the two-way reconciliation with the eligibility table · the build-failure fixture.
+**Docs:** `docs/features/legal-and-dsr.md` · `docs/ops/launch-cutover.md`
+
+### E7-03 — The entry ledger
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
+
+**Build:** `accrue()` writing `giveaway_entry` with `rules_version` and `source_edge_id`, idempotent via the unique constraint. Base entry on verification, plus entries per confirmed referral.
+
+**Acceptance criteria:**
+- **No entry accrues for an unverified subscriber**
+- **A retry never double-credits** — asserted under genuine concurrency against a real database
+- Every accrual stores its `rules_version`
+- **Entries already accrued keep their rules version when the rules change** — asserted
+- Voiding a referrer's entries **leaves the entries of the people they referred intact**
+
+**Tests:** Concurrent double-accrual · the unverified rejection · a mid-campaign rules-change scenario · the voiding scope.
+**Docs:** `docs/modules/giveaway.md` · `docs/data/model.md#giveaway_entry`
+
+### E7-04 — AMOE
+**Model:** Tier A — Medium · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
+
+**Build:** `POST /api/amoe` — an alternative method of entry with **no referral requirement**, same eligibility rules, Turnstile, rate-limited, recorded with its `rules_version`.
+
+**Acceptance criteria:**
+- **Reachable without a referral and without a purchase**
+- **Carries equal weight to an earned entry** — asserted, because unequal weighting defeats the legal purpose
+- Linked from every rules page that requires it
+- Same eligibility gating as referral entries
+- Rate-limited and challenge-protected like any other write route
+
+**Tests:** Equal-weight assertion · the no-referral path · eligibility parity · the rules-page link check.
+**Docs:** `docs/features/giveaway.md` · `docs/legal/compliance.md`
+
+### E7-05 — The reproducible draw
+**Model:** Tier B — **Extra High** · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
+**Why this tier:** a draw that cannot be reproduced cannot be defended, and this is the moment the campaign hands out real money to real people who will ask how it was decided.
+
+**Build:** `POST /api/admin/draw` — snapshot the entry ledger, hash it, record the seed, select winners deterministically from seed and snapshot. **`reproduceDraw()` must return true before the result can be published.** A second execution is refused.
+
+**Acceptance criteria:**
+- **The draw reproduces exactly from its recorded seed and snapshot hash** — asserted, and the publication path checks it
+- **A result that does not reproduce cannot be published** — enforced in code
+- **A second execution is refused**
+- Selection is proportional to entries and **verifiably so** — tested statistically over a seeded run
+- The top-20 review gate (E5-07) must have passed
+- The whole execution is audited with an actor
+
+**Tests:** Reproduction · the refuse-to-publish path on a mismatch · the second-execution refusal · a seeded statistical proportionality test · the review-gate precondition.
+**Docs:** `docs/modules/giveaway.md` · `docs/features/giveaway.md`
+
+### E7-06 — Winner notification and the award record
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** `giveaway.open` · **Area:** backend
+
+**Build:** Notify winners, record the award against the entry snapshot that produced it, and apply the substitution clause path if a prize is unavailable.
+
+**Acceptance criteria:**
+- **The award record references the entry snapshot that produced it**, not the current state
+- Notification is idempotent on its business key
+- The substitution path is implemented, because the rules pages promise it
+- Every award is audited
+
+**Tests:** Idempotent notification · the snapshot reference · the substitution path.
+**Docs:** `docs/features/giveaway.md`
+
+---
+
+## Epic E8 — Email
+
+**Goal:** verification mail that arrives, campaign mail that cannot damage it, and one unrepeatable migration send done carefully. *9 tickets.*
+
+**Exit criteria:** both domains authenticate, seed tests land in the inbox at all four major providers, the quota projection alerts a week ahead, and the migration send is staged and ready.
+
+**BLOCKED on P1.** Domain authentication has a hard 12-week clock and no ticket can shorten it.
+
+### E8-01 — The email service
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this tier:** two of the campaign's three unrecoverable failures live in this module, and both of them are silent.
+
+**Build:** `src/server/email` per `docs/modules/email.md`: `queue()` with a unique `business_key`, batch-capped `dispatch()` with backoff, suppression **re-checked at dispatch**, and the provider interface. **A send failure never rolls back or blocks the caller's transaction.**
+
+**Acceptance criteria:**
+- **One email per business key** — enforced by the database, asserted under genuine concurrency
+- **A suppression written between queue and dispatch stops the send** — asserted by test
+- **A provider outage leaves the subscriber row committed** and the send queued — asserted
+- Dispatch is batch-capped with bounded backoff, and a permanent failure raises an operator task
+- Every message carries a plain-text alternative and a working one-click unsubscribe
+- **No vendor SDK is imported outside `providers/`** — the boundary gate passes
+
+**Tests:** Concurrent duplicate-key attempt · the queue-then-suppress race · outage isolation · batch cap · backoff bounds.
+**Docs:** `docs/modules/email.md` · `docs/architecture/adr/009-split-email-providers.md`
+
+### E8-02 — The Resend provider and domain authentication
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
+
+**Build:** `providers/resend.ts` on `send.valstara.com`, declaring its capabilities. Verify **SPF, DKIM and DMARC** for the domain as a startup or health check, not as a one-time manual step.
+
+**Acceptance criteria:**
+- **The sending domain is asserted in configuration and tested** — transactional mail cannot go out on the broadcast domain
+- **SPF, DKIM and DMARC verification is a checked condition**, surfaced on the admin health view
+- Capabilities are declared, not assumed
+- The API key is validated at boot (E1-12) and appears in no log
+- **A sandbox key cannot be present in production** — asserted by the config validation
+
+**Tests:** Domain assertion · the authentication check with a deliberately broken record · the sandbox-key rejection.
+**Docs:** `docs/modules/email.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
+
+### E8-03 — The six transactional templates
+**Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+
+**Build:** Verification, verification reminder, welcome, milestone reached, status link, and giveaway entry receipt. One shared layout, tokens where email clients support them, **plain-text alternative for every one.** All copy from the copy layer.
+
+**Acceptance criteria:**
+- All six exist with plain-text alternatives
+- **The verification mail says what it is in the first line** — its only job is one click
+- **The milestone mail plainly states which reward is settled and which is held**
+- **Subject lines are descriptive, not curiosity-baiting** — the copy rules bind here as on the site
+- Every mail carries the status link and a working one-click unsubscribe
+- No forbidden copy string — the scan covers templates
+
+**Tests:** Template rendering with plain-text parity · the copy scan over templates · required-element presence per template.
+**Docs:** `docs/features/email-campaign.md` · `docs/brand/copy-rules.md#email-copy`
+
+### E8-04 — Rendering QA and seed tests
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** A rendering pass across Gmail, Outlook, Apple Mail, GMX and Web.de, evidenced. Then a **weekly automated seed test** into those providers, recording where each lands.
+
+**Acceptance criteria:**
+- Every template renders correctly at all five providers — **evidenced in the PR**, both themes where the client supports it
+- **The weekly seed test runs automatically and records inbox-versus-spam placement per provider**
+- A seed test landing in spam **alerts** — this is one of the two silent-failure guards
+- Results are visible on the admin health view
+
+**Tests:** The seed harness itself; an induced spam-placement alert.
+**Docs:** `docs/architecture/fallbacks.md#the-two-silent-failures` · `docs/ops/runbook.md`
+
+### E8-05 — The Brevo provider and contact sync
+**Model:** Tier A — High · **Priority:** High · **Flag:** `email.broadcast` · **Area:** backend
+
+**Build:** `providers/brevo.ts` on `mail.valstara.com`. **Idempotent, resumable contact sync keyed on `email_normalised`**, syncing only verified, unsuppressed subscribers.
+
+**Acceptance criteria:**
+- **Only verified, unsuppressed subscribers are synced** — asserted
+- The sync is **idempotent and resumable on partial failure** — a retry produces no duplicates
+- **PostgreSQL remains the source of truth**; Brevo state is never read back as authoritative
+- The flag gates all broadcast sending; **transactional mail is unaffected by it**
+- Batch-capped
+
+**Tests:** Idempotent resync · a partial-failure resume · the verified-only assertion · flag isolation from transactional.
+**Docs:** `docs/modules/email.md`
+
+### E8-06 — Bounce and complaint handling
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this tier:** an unhandled complaint stream is how a sending reputation dies, and webhook handling is where signature and idempotency mistakes hide.
+
+**Build:** `/api/webhooks/{provider}` — **signature verified before the payload is parsed**, idempotent on the provider event id, writing hard bounces and complaints into `suppression`. Plus an **hourly reconciliation** against provider state for missed webhooks.
+
+**Acceptance criteria:**
+- **Signature is verified before parsing** — asserted
+- **A replayed webhook is a no-op**
+- A hard bounce and a complaint both write suppression; **a soft bounce does not**
+- **The hourly reconciliation catches a deliberately dropped webhook**
+- **A suppressed address receives nothing from either provider** afterwards
+- The documented one-hour lag is accepted and recorded, not hidden
+
+**Tests:** Signature-before-parse · replay · bounce-type handling · a dropped-webhook reconciliation scenario.
+**Docs:** `docs/modules/email.md` · `docs/architecture/fallbacks.md#email`
+
+### E8-07 — The weekly campaign update
+**Model:** Tier A — Medium · **Priority:** Medium · **Flag:** `email.broadcast` · **Area:** frontend
+
+**Build:** The weekly broadcast composed from a shared layout, **including the top-10 block that is the leaderboard's designed fallback surface** when `leaderboard.public` is off.
+
+**Acceptance criteria:**
+- Composed from the shared layout with a plain-text alternative
+- **The top-10 block renders from the same snapshot the site uses** — one source, no divergence
+- **The counts are real** — no rounding, no inflation
+- Sent only to verified, unsuppressed subscribers
+- With `leaderboard.public` off, **this block is the surface, and it still works**
+
+**Tests:** Snapshot parity with the site · the flag-off scenario · the recipient-set assertion.
+**Docs:** `docs/features/email-campaign.md` · `docs/features/leaderboard.md`
+
+### E8-08 — The SubSlush migration send
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** `email.broadcast` · **Area:** backend
+**Why this tier:** one send, to the most valuable ~100 addresses in the campaign, unrepeatable, and the failure mode is being mistaken for phishing.
+
+**Build:** The staged migration send through Brevo **from `subslush.com`**. Addresses validated first. **Staged by recency in batches, with rates checked between them and an explicit go/no-go before each subsequent batch.** The mail **asks recipients to opt in** rather than assuming it.
+
+**Acceptance criteria:**
+- **The `From` domain is `subslush.com`** — a constant with a test on it
+- `subslush.com` authenticates: SPF, DKIM, DMARC verified before the first batch
+- **Batches are staged by recency and a subsequent batch cannot send without an explicit go decision** — enforced, not procedural
+- Rates per batch are recorded and visible before the next decision
+- **The mail asks for opt-in**; an address that does not opt in is not added to the Valstara list
+- The send is idempotent per recipient — a retry never double-sends
+
+**Tests:** The `From`-domain assertion · the batch-gate enforcement · per-recipient idempotency · the opt-in path.
+**Docs:** `docs/architecture/adr/010-subslush-migration-send.md` · `docs/legal/compliance.md#5-marketing-consent-and-the-subslush-list`
+
+### E8-09 — Quota projection and the free-tier gate
+**Model:** Tier A — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
+
+**Build:** A daily projection of send volume against each provider's cap, **alerting at a week's headroom.** Plus a hard precondition: **`giveaway.open` cannot be turned on while either provider is on its free tier.**
+
+**Acceptance criteria:**
+- **The projection alerts at a week of headroom**, per provider — pre-empted, not handled
+- **`giveaway.open` refuses to turn on while a provider is on a free tier** — enforced in code, because "upgrade before the giveaway opens" is exactly the kind of instruction that gets skipped
+- Resend's 100/day and Brevo's 300/day free caps are configuration, not hard-coded assumptions
+- Current consumption and projection appear on the admin health view
+
+**Tests:** Projection triggering at the threshold · the flag precondition refusing · configuration override.
+**Docs:** `docs/features/email-campaign.md` · `docs/architecture/adr/009-split-email-providers.md`
+
+---
+
+## Epic E9 — Content, trust, legal and SEO
+
+**Goal:** the pages that survive into the storefront, at their permanent URLs, plus the legal machinery that gates the first signup. *8 tickets.*
+
+**Exit criteria:** the trust and legal pages are live at permanent URLs with real prose, the representatives are named, data-subject rights work, and the port checklist is complete.
+
+**Start this epic's content tickets early, in parallel with E3–E5.** It has the longest founder-input lead time and the highest conversion value, and it is on the never-cut list.
+
+### E9-01 — The content pipeline
+**Model:** Tier A — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+
+**Build:** Astro content collections for trust and legal prose, with **schema-validated frontmatter** including the **declared storefront port target** for each file.
+
+**Acceptance criteria:**
+- **A frontmatter validation failure fails the build**
+- **Every content file declares its port target** — this mapping is the port checklist
+- A scan finds **no prose block inline in any `.astro` file**
+- Content renders with **zero client JavaScript**
+
+**Tests:** The validation-failure fixture · the inline-prose scan · the port-target completeness assertion.
+**Docs:** `docs/architecture/adr/017-content-files.md` · `docs/modules/platform.md#content`
+
+### E9-02 — Trust pages at permanent URLs
+**Model:** Tier A — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+
+**Build:** `/legit`, `/guarantee`, `/about` from content files. **BLOCKED if P3 prose is outstanding** — a page shell with placeholder text is not a deliverable.
+
+**Acceptance criteria:**
+- Pages exist at **the exact URLs the storefront will keep**
+- All prose is from content files; **no placeholder text ships** — asserted by a scan for placeholder markers
+- **Every claim is traceable to a source document** — this repository does not author guarantee terms
+- Zero client JavaScript; both themes; accessibility gate passes
+- The port checklist names each file's storefront target
+
+**Tests:** Placeholder scan · the URL assertion · accessibility · zero-JS.
+**Docs:** `docs/features/trust-pages.md` · `docs/brand/copy-rules.md#claims-that-must-stay-true`
+
+### E9-03 — Legal pages and the representative gate
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this tier:** this ticket implements the gate that makes a legal obligation unforgettable, and the gate has to be un-bypassable to be worth anything.
+
+**Build:** `/terms` and `/privacy` from content files. **A build-time assertion that neither the EU nor the UK representative field is a placeholder**, and **the signup route is unreachable while that assertion fails.**
+
+**BLOCKED if P2 is outstanding** — which is the point.
+
+**Acceptance criteria:**
+- **The build fails if either representative field is a placeholder** — fixture-proven
+- **The signup route is unreachable while the assertion fails** — asserted, not documented
+- Every collected field, its purpose, its lawful basis and its retention period appears in the policy — **reconciled against `docs/data/model.md` by a test**
+- The cookie and storage inventory is published and lists **exactly one** entry
+- Pages are at their permanent URLs
+
+**Tests:** The placeholder fixture failing the build · the signup-unreachable assertion · the data-model reconciliation · the inventory count.
+**Docs:** `docs/legal/compliance.md` · `docs/architecture/adr/019-article-27-representatives.md`
+
+### E9-04 — The cookie and storage inventory
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** A published inventory page listing every cookie and storage value — **which is exactly one, the theme preference** — with the reasoning for why no banner is required, and the CI gates that keep it true.
+
+**Acceptance criteria:**
+- **The inventory lists exactly one entry**, and a test reconciles it against the storage-gate allowlist
+- The no-banner reasoning is stated plainly and is checkable
+- **Adding a second storage write fails both the gate and this reconciliation** — a fixture proves it
+- Linked from the privacy policy
+
+**Tests:** The one-entry reconciliation; the planted second-write fixture.
+**Docs:** `docs/legal/compliance.md#3-eprivacy--why-there-is-no-banner`
+
+### E9-05 — Data-subject rights
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this tier:** erasure that corrupts referral edges, or export that returns someone else's data, are both serious and both easy to get wrong.
+
+**Build:** `POST /api/dsr/export` and `POST /api/dsr/delete`, each gated by a signed link sent to the address, each audited. **Erasure anonymises referral edges rather than dropping them.**
+
+**Acceptance criteria:**
+- Both require a signed link sent to the address; **an unknown address gets the same response as a known one**
+- **Export returns the subject's complete data** — reconciled against `docs/data/model.md` by test, so a new column cannot be silently omitted
+- **Erasure leaves no personal data and leaves referral counts intact** — asserted on both halves
+- **Erasure mid-campaign voids the subject's entries** and the draw snapshot records the void
+- Both are audited, request and fulfilment
+
+**Tests:** Export completeness against the model · erasure leaving counts correct and data absent · the mid-campaign entry void · the known/unknown equivalence.
+**Docs:** `docs/legal/compliance.md#2-lawful-basis-and-the-record-of-processing` · `docs/features/legal-and-dsr.md`
+
+### E9-06 — SEO foundations
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** Per-page title, description and canonical, **enforced at build time.** Sitemap **generated from the route set.** `robots.txt` allowing the trust and legal pages and excluding `/me`, `/verify`, `/api` and the admin routes. Organisation structured data.
+
+**Acceptance criteria:**
+- **A page without a unique title or description fails the build**
+- **The sitemap is generated from the route set** — a new route cannot be omitted by forgetting
+- `robots.txt` excludes exactly the routes named above
+- Structured data validates
+- Canonicals point at the permanent URLs
+
+**Tests:** The missing-metadata build fixture · sitemap/route-set reconciliation · structured-data validation.
+**Docs:** `docs/features/seo.md`
+
+### E9-07 — OG images and social cards
+**Model:** Tier A — Medium · **Priority:** Medium · **Flag:** — · **Area:** frontend
+
+**Build:** An OG image per page type, generated at build from tokens and the page's own title, with a typed fallback per page kind.
+
+**Acceptance criteria:**
+- Every page type has an image; **a missing image falls back rather than breaking the card**
+- Images use tokens, so a brand change propagates
+- Correct at the crops the major platforms use — evidenced
+- Generated at build, not requested at runtime from a third party
+
+**Tests:** Per-page-type presence; the fallback path.
+**Docs:** `docs/features/seo.md`
+
+### E9-08 — `llms.txt` and the Trustpilot link
+**Model:** Tier A — Medium · **Priority:** Low · **Flag:** `trustpilot.widget` · **Area:** frontend
+
+**Build:** Ship `llms.txt`. Link the claimed Trustpilot profile. **The widget stays behind its flag, off, and displays no rating until the review count justifies it.**
+
+**Acceptance criteria:**
+- `llms.txt` ships. **Expect nothing from it** — the largest study found no correlation with citation frequency and Google says it does not use it. One hour of cheap insurance, not a channel
+- **No Trustpilot request occurs while the flag is off** — asserted by the third-party request gate
+- **No rating or review count renders below the configured threshold** — "3 reviews" is worse than none
+- The widget loads lazily when it is on, and **the page renders correctly without it**
+
+**Tests:** The no-request assertion with the flag off · the threshold behaviour · the widget-failure render.
+**Docs:** `docs/features/seo.md` · `docs/architecture/adr/007-cookieless-analytics.md`
+
+---
+
+## Epic E10 — Analytics and admin
+
+**Goal:** the numbers the campaign is optimising, and the five screens an operator actually needs. *5 tickets.*
+
+**Exit criteria:** the funnel is computable from server events alone, no event carries personal data, and the admin health view answers "is the campaign silently broken".
+
+### E10-01 — Umami deployment and the cookieless proof
+**Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** infra
+
+**Build:** Umami in production Compose with its own database, behind the proxy, on a first-party path. Wire the client script.
+
+**Acceptance criteria:**
+- Umami runs with **its own database**, never `valstara_waitlist`
+- **No cookie and no storage identifier is set by the tracking script** — asserted by the rendered-page check
+- **The script is served first-party**, so no third-party request occurs
+- Its unavailability affects no response
+- Its own database is included in the backup arrangement or explicitly excluded with a reason
+
+**Tests:** The rendered-page cookie and third-party assertions · a collector-down scenario.
+**Docs:** `docs/features/analytics.md` · `docs/architecture/adr/007-cookieless-analytics.md`
+
+### E10-02 — The event schema and registry
+**Model:** Tier B — Medium · **Priority:** High · **Flag:** — · **Area:** backend
+**Why this tier:** the personal-data assertion over the registry is a privacy control, and it is the kind that decays silently as events are added.
+
+**Build:** `src/server/analytics` with the registered event set from `docs/features/analytics.md#the-event-schema`. **An unregistered event throws in development and is dropped in production.**
+
+**Acceptance criteria:**
+- **No event property can carry an email address, referral code, IP address or any single-person identifier** — asserted **over the whole registry**, so a newly added event is covered automatically
+- Unregistered events throw in development, drop in production
+- **`track()` never blocks a response and is never retried into a failing collector**
+- UTM capture is server-side, consistent with referral capture
+
+**Tests:** The registry-wide personal-data assertion · both unregistered-event behaviours · the non-blocking assertion.
+**Docs:** `docs/modules/analytics.md`
+
+### E10-03 — Server-side funnel events
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** backend
+
+**Build:** Emit the server-side events at their state transitions: `signup_submitted`, `signup_rejected`, `verified`, `referral_confirmed`, `survey_completed`, `giveaway_entered`, `unsubscribed`.
+
+**Acceptance criteria:**
+- **The full funnel — view → submit → verify → refer — is computable from server events alone** — asserted, because ad blockers make client events unusable as a basis
+- Each event fires exactly once per transition
+- Rejection events carry the reason code, so the rejection mix is analysable
+- No event fires for an unverified row where the feature spec says nothing counts it
+
+**Tests:** Funnel reconstruction from server events only · once-per-transition assertions.
+**Docs:** `docs/features/analytics.md`
+
+### E10-04 — The CSV export
+**Model:** Tier B — Medium · **Priority:** High · **Flag:** — · **Area:** admin
+**Why this tier:** it is the one route that emits the entire list, on a box with hard memory limits and no swap.
+
+**Build:** `GET /api/admin/export.csv` — **streamed, batch-capped**, audited with a row count. The export set is exactly *verified, unsuppressed, not disqualified.*
+
+**Acceptance criteria:**
+- **Streamed and batch-capped** — asserted with a large seeded dataset, with memory observed
+- **The export set matches the handoff contract exactly** — asserted against `docs/data/model.md#the-launch-day-handoff-contract`
+- Every run is audited with actor and row count
+- **The export contains no raw IP address and no token**
+- Admin authentication required
+
+**Tests:** Large-dataset streaming with a memory assertion · the export-set reconciliation · the audit record · the forbidden-column assertion.
+**Docs:** `docs/features/admin.md` · `docs/data/model.md`
+
+### E10-05 — Admin authentication and the health view
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this tier:** one credential guards disqualification, export and the draw.
+
+**Build:** Admin authentication — **a single operator credential with MFA**, not a user system. Then `GET /api/admin/health`: verification rate against baseline, snapshot age, email queue depth, quota projection, purge-job status, open flag count.
+
+**Acceptance criteria:**
+- **MFA is active and verified, not assumed**
+- **Every admin route requires authentication** — asserted by a generated test over the registered admin route set, so a new route cannot be added unprotected
+- Admin routes are excluded in `robots.txt` and unlinked from the public site
+- **The health view answers "is the campaign silently broken"** in one screen — it carries both silent-failure guards
+- **No admin response contains a raw IP address or a token**
+- No permission matrix is built — one operator, deliberately
+
+**Tests:** The generated auth assertion over every admin route · the response-content assertion · health-view completeness against the named metrics.
+**Docs:** `docs/features/admin.md` · `docs/security/threat-model.md#t7--admin-compromise`
+
+---
+
+## Epic E11 — Hardening and campaign launch
+
+**Goal:** prove the system does what these documents claim, then open. *8 tickets.*
+
+**Exit criteria:** every drill passed, every claim on the site true, the handoff rehearsed twice, and the launch gate verified line by line.
+
+### E11-01 — Load test at 10× expected peak
+**Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+
+**Build:** Load-test the **signup endpoint at 10× expected peak** against production-shaped infrastructure, plus the leaderboard route at spike volume. Confirm every sweep and export is batch-capped and that no query holds a result set in memory.
+
+**Acceptance criteria:**
+- **The signup endpoint holds at 10× expected peak** with correct behaviour, not just non-zero throughput — no duplicate rows, no dropped emails
+- **The leaderboard route serves from cache under spike load and never touches `subscriber`** — asserted under load, not just in unit tests
+- **No unbounded query or sweep exists** — enumerated and verified
+- Memory headroom is monitored; **a deliberate large export does not take down the box**
+- Rate limits behave correctly under load rather than collapsing
+
+**Tests:** The load exercise is the test; results recorded in the PR.
+**Docs:** `docs/architecture/adr/003-self-hosted-vps.md` · `docs/security/threat-model.md#t8--the-box-goes-down-under-a-viral-spike`
+
+### E11-02 — Chaos drills
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+
+**Build:** Execute and record all eight drills in `docs/architecture/fallbacks.md#chaos-drills`.
+
+**Acceptance criteria:**
+- **Every drill executed against production-shaped infrastructure and its result recorded in the repository**
+- **Any drill that does not behave as the matrix claims is a blocking finding** — fix the system or fix the matrix, never neither
+- The restore timing is recorded — this is the RTO
+- **The `leaderboard.public` kill-switch drill is timed**, because its value is how fast it works
+
+**Tests:** The drills are the tests.
+**Docs:** `docs/architecture/fallbacks.md`
+
+### E11-03 — Accessibility audit
+**Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** A manual audit beyond the automated gate: keyboard-only traversal of the full signup and verification journey, screen-reader passes on the form and its error states, contrast verified in both themes at real sizes, reduced-motion respected.
+
+**Acceptance criteria:**
+- **The whole signup-to-verified journey is completable by keyboard alone**
+- Form errors are announced, associated and understandable without colour
+- **Contrast verified at real rendered sizes**, not just from the token matrix
+- Reduced motion is respected everywhere
+- Findings are fixed, not filed
+
+**Tests:** The audit is the test; evidence recorded.
+**Docs:** `docs/testing/strategy.md` · `docs/legal/compliance.md#6-accessibility`
+
+### E11-04 — Claims and copy audit
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Why this tier:** an unverifiable claim on a trust brand is disproportionately expensive, and this is the last check before anyone sees it.
+
+**Build:** Audit every customer-visible claim: **every giveaway claim matches the rules page for that jurisdiction** · every number shown is the real number · no countdown, no scarcity, no inflated position, no pre-checked box · the guarantee and sourcing statements match the source documents exactly · the data claims describe what actually happens.
+
+**Acceptance criteria:**
+- **Every claim on the site is true and checkable** — enumerated, with its source named
+- **Every giveaway claim reconciles with its jurisdiction's rules page**
+- The forbidden-copy scan is clean across pages, copy layer and email templates
+- **No dark pattern is present anywhere** — enumerated against `docs/brand/copy-rules.md#never-build`
+- No placeholder text remains anywhere
+
+**Tests:** A full-site copy scan; the claim-to-rules reconciliation; a placeholder scan.
+**Docs:** `docs/brand/copy-rules.md` · `docs/architecture/adr/024-no-dark-patterns.md`
+
+### E11-05 — Privacy audit
+**Model:** Tier B — **Extra High** · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this tier:** the no-banner position rests on a property that must hold across every page and every dependency, and a single violation invalidates it retroactively — after data has already been collected.
+
+**Build:** Exhaustively verify, across **every rendered page** including email-linked pages and error pages: **no non-essential cookie, no storage identifier beyond the one, no third-party request, no fingerprinting API, no personal data in any analytics event, no full IP anywhere, and no public response carrying another person's data.** Enumerate every registered route and assert its response shape.
+
+**Acceptance criteria:**
+- **Every rendered page checked** — the inventory is complete, not sampled
+- **Every registered route's response shape enumerated and asserted free of another person's data**, with `/me` the single documented exception for its own bearer
+- **The storage inventory holds exactly one entry** and reconciles with the gate allowlist
+- **No full IP address appears in any table, log line, alert or response** — verified by inspection, not by assertion
+- Every dependency reaching the browser is enumerated with what it loads
+- **Any violation found is a blocking finding**
+
+**Tests:** A generated test over every registered route asserting response-shape safety; the full page inventory check.
+**Docs:** `docs/security/threat-model.md#t4--a-privacy-failure-forces-a-consent-banner` · `docs/legal/compliance.md#3-eprivacy--why-there-is-no-banner`
+
+### E11-06 — The handoff export and two rehearsed imports
+**Model:** Tier B — **Extra High** · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this tier:** this is the campaign's entire output. A non-idempotent import discovered on launch day means duplicate customers in the production commerce database.
+
+**Build:** `scripts/export-handoff.ts` producing the export set and payload per `docs/data/model.md#the-launch-day-handoff-contract`, and `scripts/import-rehearsal.ts` performing the idempotent import keyed on `email_normalised` against a scratch database. **Rehearse twice.**
+
+**Acceptance criteria:**
+- The export set is exactly *verified, unsuppressed, not disqualified* — asserted
+- **Every field in the handoff contract is present and correctly typed**
+- **Running the import twice produces zero additional customers** — the invariant, asserted, and a failure here is blocking
+- **Customer groups `wave-1`…`wave-4` and `subslush-legacy` are assigned**, and their values match what the storefront expects
+- **Both rehearsals are executed against a scratch database and recorded in the repository**
+- Held referral rewards are settled or voided per the published rule, and **every held edge's outcome is recorded**
+- The export is streamed and batch-capped
+
+**Tests:** Double-import idempotency · field completeness against the contract · group assignment · the held-reward settlement pass.
+**Docs:** `docs/data/model.md#the-launch-day-handoff-contract` · `docs/ops/launch-cutover.md`
+
+### E11-07 — Cutover rehearsal and the port checklist
+**Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** docs
+
+**Build:** Complete and verify the port checklist: the token file, every content file with its storefront target, and the font layer. Rehearse the cutover sequence in `docs/ops/launch-cutover.md` end to end, without executing the DNS change.
+
+**Acceptance criteria:**
+- **Every content file has a verified storefront target**, and the mapping is complete in both directions
+- **`tokens.css` is confirmed copyable verbatim** — no framework syntax, no import
+- The cutover sequence is rehearsed and timed
+- **The retained-versus-redirected disposition of every route is recorded**, including the giveaway rules pages
+- **The final-reminder-before-freeze step is in the sequence** — otherwise a live verification token stops working at cutover
+
+**Tests:** The port-checklist reconciliation; the rehearsal is the test.
+**Docs:** `docs/ops/launch-cutover.md` · `docs/brand/tokens.md#port-checklist`
+
+### E11-08 — Campaign launch readiness gate
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** docs
+
+**Build:** A single verified checklist, **every item evidenced rather than asserted**:
+
+- All flags at their intended state — **`giveaway.open` off unless P4 and P5 are complete**
+- **Both Article 27 representatives named**, and the build assertion passing
+- **SPF, DKIM and DMARC verified on all three sending domains**, and a seed test landing in the inbox at all four providers
+- **Both ESP tiers upgraded past the free caps**
+- Every giveaway rules page published, and its jurisdiction reconciling with the eligibility table
+- MFA active on the admin account
+- Backups running and **a restore drilled with its timing recorded**
+- **Live keys in production and no sandbox key present** — verified
+- The privacy audit (E11-05) clean, with no open finding
+- The verification-rate alert **drilled**, not just configured
+- The IP purge job running, with its retention verified
+- **The plan itself reconciled** — every ticket done, or explicitly deferred with founder authorisation
+
+**Acceptance criteria:**
+- **Every item verified with evidence recorded per line**
+- Any open blocker from any QA gate is closed
+- **Any `Proposed` ADR is either resolved or its feature is flag-off**
+- The founder prerequisites P1–P5 are all complete
+
+**Tests:** The checklist is the gate.
+**Docs:** This plan · `docs/architecture/adr/README.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
+
+---
+
+## Summary
+
+| Epic | Tickets | Focus |
+|---|---:|---|
+| E1 Foundations | 12 | Scaffold, Compose, schema, CI, security gates, deploy, backups, audit, flags, thin slice |
+| E2 Design system and shell | 8 | Tokens, fonts, theme toggle, primitives, layout, landing page, a11y, copy layer |
+| E3 Signup and double opt-in | 10 | Normalisation, signup route, Turnstile, geo, form, tokens, verify, reminders, resend, rate monitoring |
+| E4 Referral engine | 9 | Codes, signed capture, edges, confirmation, milestones, **reward gating**, waves, status, repair |
+| E5 Fraud and integrity | 7 | Blocklist, flags, IP handling, review queue, disqualification, board integrity, top-20 gate |
+| E6 Leaderboard, survey, member area | 6 | Snapshot, island, survey, status link, dashboard, unsubscribe |
+| E7 Giveaway | 6 | Eligibility, rules pages, entry ledger, AMOE, **reproducible draw**, awards |
+| E8 Email | 9 | Service, Resend, templates, seed tests, Brevo, bounces, weekly, **migration send**, quotas |
+| E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, **the representative gate**, inventory, DSR, SEO, OG, llms.txt |
+| E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, admin auth and health |
+| E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
+| **Total** | **88** | |
+
+**Tier distribution:** Tier B Extra High 4 · Tier B High 14 · Tier B Medium 24 · Tier A High 15 · Tier A Medium 31.
+
+**Tier B carries the personal data, the privacy properties, the fraud invariants, the prize draw, the sending reputation and the handoff** — the places where a mistake is expensive, subtle, or discovered too late to fix. Tier A carries the well-specified majority.
+
+**The four Extra High tickets** are the ones where a subtle error invalidates a whole class of work: reward gating (E4-06), the reproducible draw (E7-05), the privacy audit (E11-05), and the handoff rehearsal (E11-06).
+
+---
+
+## Effort reconciliation
+
+The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 88 tickets at roughly 1.4 hours each. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
+
+| Cut | Removes | Saves |
+|---|---|---|
+| 2. Admin UI → SQL + export script | E5-04 reduced, E10-05 reduced | ~5 h |
+| 3. Member dashboard → status in email | E6-05, E6-04 reduced | ~8 h |
+| 4. Public leaderboard → top-10 in email | E6-01, E6-02, E5-06 | ~6 h |
+| 6. Advanced fraud checks | E5-03 velocity portion | ~4 h |
+| 7. Milestone ladder beyond tier 1 | E4-05 reduced | ~3 h |
+
+**A cut requires founder authorisation and is recorded here before it is implemented.** Cutting is a legitimate response to schedule pressure; cutting silently is not.
+
+**Never cut:** the signup form · double opt-in deliverability · referral attribution · trust pages · legal and giveaway rules pages · funnel analytics. **If one of these is unfinished, delay the campaign rather than launch without it.**
+
+---
+
+## Reconciliation rule
+
+**When this plan and any other document disagree, the plan is what gets built** — and the disagreement is a defect to be fixed here, with founder authorisation, before implementation continues.
