@@ -16,23 +16,24 @@ untracked root `.env` file.
 | `POSTGRES_HOST_PORT`       | Loopback-only host port for local PostgreSQL access                              | Docker Compose    | `5434`                      | No                            |
 | `POSTGRES_MEM_LIMIT`       | Hard memory and equal memory-plus-swap limit for PostgreSQL                      | Docker Compose    | `512m`                      | No                            |
 | `APP_MEM_LIMIT`            | Hard memory and equal memory-plus-swap limit for the Astro app                   | Docker Compose    | `768m`                      | No                            |
+| `MIGRATION_MEM_LIMIT`      | Hard memory and equal memory-plus-swap limit for the one-shot migration service  | Docker Compose    | `256m`                      | No                            |
 | `UMAMI_MEM_LIMIT`          | Hard memory and equal memory-plus-swap limit for Umami                           | Docker Compose    | `768m`                      | No                            |
 
 Compose derives or fixes the following container variables. They are listed
 separately because developers do not override them directly:
 
-| Variable                   | Purpose                                                                | Used by    | Source                                      | Secret |
-| -------------------------- | ---------------------------------------------------------------------- | ---------- | ------------------------------------------- | ------ |
-| `POSTGRES_DB`              | Names the waitlist database                                            | PostgreSQL | Fixed to `valstara_waitlist`                | No     |
-| `POSTGRES_USER`            | Configures the waitlist database owner                                 | PostgreSQL | `VALSTARA_DB_USER`                          | No     |
-| `POSTGRES_PASSWORD`        | Authenticates the waitlist database owner                              | PostgreSQL | `VALSTARA_DB_PASSWORD`                      | Yes    |
-| `MIGRATION_DATABASE_URL`   | Connects the migration runner as the waitlist database owner           | App        | Constructed from `VALSTARA_DB_*` settings   | Yes    |
-| `UMAMI_DB_NAME`            | Names Umami's separate database                                        | PostgreSQL | Fixed to `umami`                            | No     |
-| `DATABASE_URL`             | Connects each application to its assigned database                     | App, Umami | Constructed from the matching role settings | Yes    |
-| `APP_SECRET`               | Supplies Umami's token-signing and encryption secret                   | Umami      | `UMAMI_APP_SECRET`                          | Yes    |
-| `ASTRO_TELEMETRY_DISABLED` | Prevents optional Astro developer telemetry from the local app service | App        | Fixed to `1`                                | No     |
-| `DISABLE_TELEMETRY`        | Prevents optional Umami telemetry                                      | Umami      | Fixed to `1`                                | No     |
-| `PRIVATE_MODE`             | Prevents Umami from making optional external requests                  | Umami      | Fixed to `1`                                | No     |
+| Variable                   | Purpose                                                                | Used by           | Source                                      | Secret |
+| -------------------------- | ---------------------------------------------------------------------- | ----------------- | ------------------------------------------- | ------ |
+| `POSTGRES_DB`              | Names the waitlist database                                            | PostgreSQL        | Fixed to `valstara_waitlist`                | No     |
+| `POSTGRES_USER`            | Configures the waitlist database owner                                 | PostgreSQL        | `VALSTARA_DB_USER`                          | No     |
+| `POSTGRES_PASSWORD`        | Authenticates the waitlist database owner                              | PostgreSQL        | `VALSTARA_DB_PASSWORD`                      | Yes    |
+| `MIGRATION_DATABASE_URL`   | Connects the one-shot migration runner as the waitlist database owner  | Migration service | Constructed from `VALSTARA_DB_*` settings   | Yes    |
+| `UMAMI_DB_NAME`            | Names Umami's separate database                                        | PostgreSQL        | Fixed to `umami`                            | No     |
+| `DATABASE_URL`             | Connects each long-running application to its assigned database        | App, Umami        | Constructed from the matching role settings | Yes    |
+| `APP_SECRET`               | Supplies Umami's token-signing and encryption secret                   | Umami             | `UMAMI_APP_SECRET`                          | Yes    |
+| `ASTRO_TELEMETRY_DISABLED` | Prevents optional Astro developer telemetry from the local app service | App               | Fixed to `1`                                | No     |
+| `DISABLE_TELEMETRY`        | Prevents optional Umami telemetry                                      | Umami             | Fixed to `1`                                | No     |
+| `PRIVATE_MODE`             | Prevents Umami from making optional external requests                  | Umami             | Fixed to `1`                                | No     |
 
 Generate the Umami application secret for any non-local environment with
 `openssl rand -hex 32`. No generated value belongs in this repository.
@@ -45,6 +46,10 @@ Start and verify the stack from the repository root:
 docker compose -f infra/compose/docker-compose.yml up -d --wait
 npm run test:stack
 ```
+
+Compose runs migrations in an isolated one-shot `migrate` service before
+starting the app. The migration-owner credential is not present in the running
+app container.
 
 The app is available at `http://127.0.0.1:4321` and Umami at
 `http://127.0.0.1:3000`. PostgreSQL is exposed only on the loopback interface at

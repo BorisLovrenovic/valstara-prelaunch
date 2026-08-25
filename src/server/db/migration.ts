@@ -6,6 +6,7 @@ import { MigrationChecksumMismatchError } from './errors';
 import type { DatabaseClient, DatabasePool } from './pool';
 
 const MIGRATION_LOCK_ID = 8_573_439_303;
+const MIGRATION_LEDGER_LIMIT = 10_000;
 const migrationFilename = /^\d{4}-[a-z0-9-]+\.sql$/;
 
 export interface Migration {
@@ -52,6 +53,7 @@ export async function runMigrations(
       values: [MIGRATION_LOCK_ID],
     });
     await initialiseLedger(connection);
+    await assertAppliedHistoryMatchesFiles(connection, migrations);
 
     for (const migration of migrations) {
       const existing = await connection.readOne<{ checksum: string }>({
@@ -116,5 +118,25 @@ async function applyMigration(
   } catch (error) {
     await connection.execute({ text: 'ROLLBACK' });
     throw error;
+  }
+}
+
+async function assertAppliedHistoryMatchesFiles(
+  connection: DatabaseClient,
+  migrations: readonly Migration[],
+): Promise<void> {
+  const appliedMigrations = await connection.list<{ filename: string }>(
+    {
+      text: 'SELECT filename FROM migration_ledger ORDER BY filename',
+    },
+    MIGRATION_LEDGER_LIMIT,
+  );
+
+  for (const [index, appliedMigration] of appliedMigrations.entries()) {
+    if (migrations[index]?.filename !== appliedMigration.filename) {
+      throw new Error(
+        'Applied migration history does not match checked-in files.',
+      );
+    }
   }
 }

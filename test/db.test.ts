@@ -215,6 +215,56 @@ test('an edited applied migration aborts with a checksum mismatch', async () => 
   }
 });
 
+test('an applied migration deleted from disk aborts instead of being silently accepted', async () => {
+  const fixture = await createDatabaseFixture();
+  const directory = await mkdtemp(join(tmpdir(), 'valstara-e103-'));
+
+  try {
+    const migrationPath = join(directory, '0001-probe.sql');
+    await writeFile(
+      migrationPath,
+      'CREATE TABLE deletion_probe (id integer PRIMARY KEY);\n',
+    );
+    await runMigrations(fixture.database, { directory, release: 'test' });
+    await rm(migrationPath);
+
+    await assert.rejects(
+      runMigrations(fixture.database, { directory, release: 'test' }),
+      /Applied migration history does not match checked-in files/,
+    );
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+    await fixture.database.close();
+    await fixture.dispose();
+  }
+});
+
+test('a migration inserted before applied history aborts instead of running retroactively', async () => {
+  const fixture = await createDatabaseFixture();
+  const directory = await mkdtemp(join(tmpdir(), 'valstara-e103-'));
+
+  try {
+    await writeFile(
+      join(directory, '0002-existing.sql'),
+      'CREATE TABLE existing_probe (id integer PRIMARY KEY);\n',
+    );
+    await runMigrations(fixture.database, { directory, release: 'test' });
+    await writeFile(
+      join(directory, '0001-retroactive.sql'),
+      'CREATE TABLE retroactive_probe (id integer PRIMARY KEY);\n',
+    );
+
+    await assert.rejects(
+      runMigrations(fixture.database, { directory, release: 'test' }),
+      /Applied migration history does not match checked-in files/,
+    );
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+    await fixture.database.close();
+    await fixture.dispose();
+  }
+});
+
 test('the migration runner is idempotent across a seeded range of repeat counts', async () => {
   await fc.assert(
     fc.asyncProperty(fc.integer({ min: 1, max: 8 }), async (repeatCount) => {
