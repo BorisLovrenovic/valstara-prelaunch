@@ -6,7 +6,10 @@ import { join } from 'node:path';
 import test from 'node:test';
 import fc from 'fast-check';
 
-import { MigrationChecksumMismatchError } from '../src/server/db/errors.ts';
+import {
+  DatabaseUnavailableError,
+  MigrationChecksumMismatchError,
+} from '../src/server/db/errors.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import { withTransaction } from '../src/server/db/transaction.ts';
@@ -353,6 +356,131 @@ test('unique keys reject duplicates at the database level', async () => {
   });
 });
 
+test('all unique constraints and the write-once trigger hold across seeded generated rows', async () => {
+  await fc.assert(
+    fc.asyncProperty(
+      fc.uniqueArray(fc.uuid(), { minLength: 13, maxLength: 13 }),
+      fc.integer({ min: 0, max: 1_000 }),
+      async (ids, tier) => {
+        await withDatabase(async (database) => {
+          const [
+            subscriberId,
+            duplicateSubscriberId,
+            referrerId,
+            alternateReferrerId,
+            referredId,
+            edgeId,
+            duplicateEdgeId,
+            emailSendId,
+            duplicateEmailSendId,
+            awardId,
+            duplicateAwardId,
+            entryId,
+            duplicateEntryId,
+          ] = ids;
+          const emailNormalised = `${subscriberId}@example.test`;
+          const businessKey = `verification:${subscriberId}`;
+
+          await insertSubscriber(database, subscriberId, emailNormalised);
+          await insertSubscriber(database, referrerId);
+          await insertSubscriber(database, alternateReferrerId);
+          await insertSubscriber(database, referredId);
+
+          await assert.rejects(
+            insertSubscriber(database, duplicateSubscriberId, emailNormalised),
+            hasPostgresCode('23505'),
+          );
+
+          await database.execute({
+            text: `
+              INSERT INTO referral_edge (id, referrer_id, referred_id, state, reward_state)
+              VALUES ($1, $2, $3, 'attributed', 'none')
+            `,
+            values: [edgeId, referrerId, referredId],
+          });
+          await assert.rejects(
+            database.execute({
+              text: `
+                INSERT INTO referral_edge (id, referrer_id, referred_id, state, reward_state)
+                VALUES ($1, $2, $3, 'attributed', 'none')
+              `,
+              values: [duplicateEdgeId, alternateReferrerId, referredId],
+            }),
+            hasPostgresCode('23505'),
+          );
+
+          await database.execute({
+            text: `
+              INSERT INTO email_send (id, subscriber_id, template, provider, business_key, state)
+              VALUES ($1, $2, 'verification', 'resend', $3, 'queued')
+            `,
+            values: [emailSendId, subscriberId, businessKey],
+          });
+          await assert.rejects(
+            database.execute({
+              text: `
+                INSERT INTO email_send (id, subscriber_id, template, provider, business_key, state)
+                VALUES ($1, $2, 'verification', 'resend', $3, 'queued')
+              `,
+              values: [duplicateEmailSendId, subscriberId, businessKey],
+            }),
+            hasPostgresCode('23505'),
+          );
+
+          await database.execute({
+            text: `
+              INSERT INTO milestone_award (id, subscriber_id, tier, reward_kind, state)
+              VALUES ($1, $2, $3, 'entries', 'settled')
+            `,
+            values: [awardId, subscriberId, tier],
+          });
+          await assert.rejects(
+            database.execute({
+              text: `
+                INSERT INTO milestone_award (id, subscriber_id, tier, reward_kind, state)
+                VALUES ($1, $2, $3, 'entries', 'settled')
+              `,
+              values: [duplicateAwardId, subscriberId, tier],
+            }),
+            hasPostgresCode('23505'),
+          );
+
+          await database.execute({
+            text: `
+              INSERT INTO giveaway_entry (id, subscriber_id, method, entries, jurisdiction, rules_version)
+              VALUES ($1, $2, 'base', 1, 'SE', 'v1')
+            `,
+            values: [entryId, subscriberId],
+          });
+          await assert.rejects(
+            database.execute({
+              text: `
+                INSERT INTO giveaway_entry (id, subscriber_id, method, entries, jurisdiction, rules_version)
+                VALUES ($1, $2, 'base', 1, 'SE', 'v1')
+              `,
+              values: [duplicateEntryId, subscriberId],
+            }),
+            hasPostgresCode('23505'),
+          );
+
+          await database.execute({
+            text: 'UPDATE subscriber SET referred_by_id = $1 WHERE id = $2',
+            values: [referrerId, referredId],
+          });
+          await assert.rejects(
+            database.execute({
+              text: 'UPDATE subscriber SET referred_by_id = $1 WHERE id = $2',
+              values: [alternateReferrerId, referredId],
+            }),
+            hasPostgresCode('P0001'),
+          );
+        });
+      },
+    ),
+    { seed: 20_260_825, numRuns: 3 },
+  );
+});
+
 test('subscriber.referred_by_id can be set once but cannot be reassigned', async () => {
   await withDatabase(async (database) => {
     const referrerId = randomUUID();
@@ -408,10 +536,43 @@ test('the transaction helper rolls back and query lists require an explicit posi
       database.execute({ text: 'SELECT generate_series(1, 3)' }),
       /Result-set queries must use readOne\(\) or list\(\) with an explicit limit/,
     );
+    await assert.rejects(
+      database.execute({
+        text: '/* leading comment */ SELECT generate_series(1, 3)',
+      }),
+      /Result-set queries must use readOne\(\) or list\(\) with an explicit limit/,
+    );
+    await assert.doesNotReject(
+      database.execute({
+        text: `
+          /* SELECT inside a comment is not a result query. */
+          INSERT INTO suppression (email_normalised, reason, source)
+          VALUES ('comment@example.test', 'manual', 'test')
+        `,
+      }),
+    );
     assert.equal(suppressed, null);
     assert.deepEqual(
       limited.map((row) => row.value),
       [1, 2],
     );
   });
+});
+
+test('pool exhaustion surfaces as DatabaseUnavailableError', async () => {
+  const database = createPool(
+    process.env.TEST_DATABASE_URL ?? defaultDatabaseUrl,
+  );
+  const connections = await Promise.all(
+    Array.from({ length: 10 }, () => database.connect()),
+  );
+
+  try {
+    await assert.rejects(database.connect(), DatabaseUnavailableError);
+  } finally {
+    for (const connection of connections) {
+      connection.release();
+    }
+    await database.close();
+  }
 });

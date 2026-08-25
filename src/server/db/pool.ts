@@ -77,29 +77,139 @@ function normaliseDatabaseError(error: unknown): Error {
     : new Error('The database returned an unknown error.', { cause: error });
 }
 
+function normalisePoolAcquisitionError(error: unknown): Error {
+  const normalisedError = normaliseDatabaseError(error);
+
+  if (
+    normalisedError instanceof Error &&
+    /timeout exceeded when trying to connect/i.test(normalisedError.message)
+  ) {
+    return new DatabaseUnavailableError(error);
+  }
+
+  return normalisedError;
+}
+
 function toPgValues(
   values: readonly unknown[] | undefined,
 ): never[] | undefined {
   return values ? ([...values] as never[]) : undefined;
 }
 
-function assertCommand(statement: SqlStatement): void {
-  const firstKeyword = statement.text
-    .trimStart()
-    .match(/^[a-z]+/i)?.[0]
-    ?.toUpperCase();
+function sqlTokens(text: string): readonly string[] {
+  const tokens: string[] = [];
+  let index = 0;
 
-  if (
-    firstKeyword === 'EXPLAIN' ||
-    firstKeyword === 'SELECT' ||
-    firstKeyword === 'SHOW' ||
-    firstKeyword === 'VALUES' ||
-    firstKeyword === 'WITH' ||
-    /\bRETURNING\b/i.test(statement.text)
-  ) {
-    throw new TypeError(
-      'Result-set queries must use readOne() or list() with an explicit limit.',
-    );
+  while (index < text.length) {
+    const character = text[index];
+
+    if (character === undefined) {
+      break;
+    }
+
+    if (/\s/.test(character)) {
+      index += 1;
+      continue;
+    }
+
+    if (text.startsWith('--', index)) {
+      const lineEnd = text.indexOf('\n', index + 2);
+      index = lineEnd === -1 ? text.length : lineEnd + 1;
+      continue;
+    }
+
+    if (text.startsWith('/*', index)) {
+      let depth = 1;
+      index += 2;
+
+      while (index < text.length && depth > 0) {
+        if (text.startsWith('/*', index)) {
+          depth += 1;
+          index += 2;
+        } else if (text.startsWith('*/', index)) {
+          depth -= 1;
+          index += 2;
+        } else {
+          index += 1;
+        }
+      }
+      continue;
+    }
+
+    if (character === "'" || character === '"') {
+      const quote = character;
+      index += 1;
+
+      while (index < text.length) {
+        if (text[index] === quote) {
+          index += 1;
+          if (text[index] !== quote) {
+            break;
+          }
+        }
+        index += 1;
+      }
+      continue;
+    }
+
+    if (character === '$') {
+      const tag = text
+        .slice(index)
+        .match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/)?.[0];
+      if (tag !== undefined) {
+        const closingIndex = text.indexOf(tag, index + tag.length);
+        index = closingIndex === -1 ? text.length : closingIndex + tag.length;
+        continue;
+      }
+    }
+
+    if (/[A-Za-z_]/.test(character)) {
+      const keyword = text.slice(index).match(/^[A-Za-z_][A-Za-z0-9_$]*/)?.[0];
+      if (keyword !== undefined) {
+        tokens.push(keyword.toUpperCase());
+        index += keyword.length;
+        continue;
+      }
+    }
+
+    if (character === ';') {
+      tokens.push(character);
+    }
+    index += 1;
+  }
+
+  return tokens;
+}
+
+function assertCommand(statement: SqlStatement): void {
+  const tokens = sqlTokens(statement.text);
+  const statementKeywords = new Set([
+    'EXPLAIN',
+    'FETCH',
+    'SELECT',
+    'SHOW',
+    'TABLE',
+    'VALUES',
+    'WITH',
+  ]);
+  let startsStatement = true;
+
+  for (const token of tokens) {
+    if (token === ';') {
+      startsStatement = true;
+      continue;
+    }
+
+    if (
+      token === 'RETURNING' ||
+      (startsStatement && statementKeywords.has(token))
+    ) {
+      throw new TypeError(
+        'Result-set queries must use readOne() or list() with an explicit limit.',
+      );
+    }
+
+    startsStatement = false;
   }
 }
 
@@ -202,7 +312,7 @@ class PostgresPool implements DatabasePool {
     try {
       return new PostgresConnection(await this.pool.connect());
     } catch (error) {
-      throw normaliseDatabaseError(error);
+      throw normalisePoolAcquisitionError(error);
     }
   }
 
