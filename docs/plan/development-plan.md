@@ -207,8 +207,9 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 - **`referred_by_id` cannot be updated once set** — asserted by an attempted update that fails
 - The schema is reproducible from the migration files alone, into an empty database
 - **No query helper permits an unbounded result set** — every list method takes an explicit limit
+- **`subscriber.referral_code` is nullable** — a `pending` row has no code, because E4-01 generates one only at verification. **Founder-authorised 2026-08-26**, resolving the conflict with this ticket's original `NOT NULL` reading. Recorded here so it is verifiable as a decision rather than an implementation choice
 
-**Tests:** Constraint-level tests for each unique key and the write-once trigger · a checksum-mismatch abort · full reproducibility from an empty database.
+**Tests:** Constraint-level tests for each unique key and the write-once trigger · a checksum-mismatch abort · full reproducibility from an empty database · **a `pending` subscriber inserts with a null `referral_code`, and two null codes do not collide under the unique index.**
 **Docs:** `docs/data/model.md` · `docs/modules/platform.md#db` · `docs/engineering/standards.md#data-and-queries`
 
 ### E1-04 — CI PR pipeline: lint, typecheck, test, build, coverage

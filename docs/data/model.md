@@ -33,7 +33,7 @@ The waitlist row.
 | `category_preference` | text[] | From the survey. Carried into the handoff |
 | `source` | text | Bucketed acquisition source |
 | `utm` | jsonb | `source`, `medium`, `campaign`, `content`, `term`. Capped in size |
-| `referral_code` | text unique | Nullable until verification, when the unguessable, non-sequential code is generated (`docs/modules/referral.md`) |
+| `referral_code` | text unique **nullable** | **Null until verification.** The code is generated when a subscriber verifies, never for a `pending` row — so it cannot be `NOT NULL` (ADR-011, `docs/modules/referral.md`). Founder-authorised 2026-08-26, resolving the E1-03/E4-01 conflict; see E1-03's acceptance criteria |
 | `referred_by_id` | uuid null → `subscriber(id)` | Set once at signup; **never reassigned** |
 | `referral_tier` | int not null default 0 | **Derived** from settled milestones |
 | `confirmed_referrals` | int not null default 0 | **Derived** from `referral_edge`; recomputable |
