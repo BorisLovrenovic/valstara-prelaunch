@@ -81,20 +81,56 @@ function assertHealthy(service, inspection) {
   );
 }
 
-async function assertDatabaseConnection({ database, role }) {
-  const currentDatabase = await compose([
+/**
+ * Authenticate with a service's OWN runtime connection string and report the
+ * database the credentials actually reach.
+ *
+ * The connection string is passed through the environment rather than argv so
+ * the password never appears in the container's process list. `psql` is run
+ * inside the postgres container because it is the only image in the stack that
+ * ships a client; the URL is used verbatim, so its host, role, password and
+ * database are all exercised exactly as the owning service holds them.
+ */
+async function currentDatabaseFor(connectionUrl) {
+  return compose([
     'exec',
     '-T',
+    '-e',
+    `PROBE_DATABASE_URL=${connectionUrl}`,
     'postgres',
     'sh',
     '-c',
-    `PGPASSWORD="$${role === 'valstara' ? 'POSTGRES_PASSWORD' : 'UMAMI_DB_PASSWORD'}" psql --host 127.0.0.1 --username "$${role === 'valstara' ? 'POSTGRES_USER' : 'UMAMI_DB_USER'}" --dbname "$${role === 'valstara' ? 'POSTGRES_DB' : 'UMAMI_DB_NAME'}" --tuples-only --no-align --command 'SELECT current_database()'`,
+    'psql "$PROBE_DATABASE_URL" --tuples-only --no-align --command "SELECT current_database()"',
   ]);
+}
+
+/**
+ * Green path: the service's real credentials reach the database it claims.
+ */
+async function assertDatabaseConnection({ service, connectionUrl, database }) {
+  const currentDatabase = await currentDatabaseFor(connectionUrl);
 
   assert.equal(
     currentDatabase,
     database,
-    `${role} role targets the wrong database`,
+    `${service} credentials did not authenticate against ${database}`,
+  );
+}
+
+/**
+ * Red path: the same probe must FAIL on a wrong password.
+ *
+ * Without this the green path proves nothing — a probe that only opens a TCP
+ * socket passes with any credentials at all, which is precisely the defect this
+ * assertion replaces.
+ */
+async function assertInvalidCredentialsRejected(connectionUrl) {
+  const tampered = new URL(connectionUrl);
+  tampered.password = 'definitely-wrong-password';
+
+  await assert.rejects(
+    () => currentDatabaseFor(tampered.toString()),
+    'the probe accepted an invalid password, so it cannot prove authentication',
   );
 }
 
@@ -148,8 +184,17 @@ export async function assertStack() {
   );
 
   await Promise.all([
-    assertDatabaseConnection({ database: appDatabase, role: 'valstara' }),
-    assertDatabaseConnection({ database: umamiDatabase, role: 'umami' }),
+    assertDatabaseConnection({
+      service: 'app',
+      connectionUrl: appEnvironment.DATABASE_URL,
+      database: appDatabase,
+    }),
+    assertDatabaseConnection({
+      service: 'umami',
+      connectionUrl: umamiEnvironment.DATABASE_URL,
+      database: umamiDatabase,
+    }),
+    assertInvalidCredentialsRejected(appEnvironment.DATABASE_URL),
     assertPostgresVersion(),
   ]);
 
