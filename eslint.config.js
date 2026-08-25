@@ -4,11 +4,19 @@ import tseslint from 'typescript-eslint';
 
 export default [
   {
-    ignores: ['dist/', 'node_modules/'],
+    ignores: ['.astro/', 'dist/', 'node_modules/'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...astro.configs.recommended,
+  {
+    files: ['test/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        URL: 'readonly',
+      },
+    },
+  },
   {
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',

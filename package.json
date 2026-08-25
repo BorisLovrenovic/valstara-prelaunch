@@ -9,6 +9,7 @@
     "format": "prettier --check .",
     "lint": "eslint .",
     "preview": "astro preview",
+    "test": "node --test",
     "typecheck": "astro check"
   },
   "dependencies": {
