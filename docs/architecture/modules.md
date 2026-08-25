@@ -36,6 +36,8 @@ Enforced in CI where possible; binding via `AGENTS.md` where not.
 
 ## Repository layout
 
+**This is the target-state layout — the tree as it stands after all 88 tickets, not after any one of them.** A directory is created by the first ticket that needs it; a file arrives with the ticket that owns it. **No ticket is required to create a path it does not own**, and a path missing because its ticket has not run yet is correct, not a defect. Judge conformance by what a ticket added, never by what the finished tree contains.
+
 ```
 valstara-prelaunch/
   AGENTS.md                        binding rules for coding agents

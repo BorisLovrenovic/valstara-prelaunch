@@ -163,7 +163,9 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
 **Why this tier:** the layout and the island discipline are inherited by all 87 later tickets; a wrong answer here is expensive to unwind.
 
-**Build:** Scaffold exactly per `docs/architecture/modules.md#repository-layout` — Astro with the **Node adapter in standalone mode**, TypeScript strict, ESLint flat config, Prettier. Create the directory skeleton including empty `src/server/`, `src/copy/`, `src/content/` and `src/styles/`. Add `AGENTS.md` and `docs/` as-is. Pin the Astro major and commit the lockfile.
+**Build:** Scaffold the root of the layout in `docs/architecture/modules.md#repository-layout` — which is the **target-state** tree, the shape this repository has after all 88 tickets, not the shape it has now. **This ticket creates the top-level structure only**: Astro with the **Node adapter in standalone mode**, TypeScript strict, ESLint flat config, Prettier, and the empty directories `src/server/`, `src/copy/`, `src/content/` and `src/styles/`. Add `AGENTS.md` and `docs/` as-is. Pin the Astro major and commit the lockfile.
+
+**Create no file that a later ticket owns.** The standing rule against scaffolding for future tickets applies here exactly as it does everywhere else — an empty `src/pages/index.astro` or `src/server/referral/` is a scope violation, not a head start.
 
 **Verify, do not assume:** the production build runs and serves from the Node adapter, and a page with no island **ships zero client JavaScript** — measured from the build output, not asserted.
 
@@ -171,7 +173,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 - `npm install && npm run build` succeeds from a clean clone; the built server starts and serves
 - **A page with no island emits no client JavaScript bundle** — evidenced in the PR from the build output
 - TypeScript strict with **no `any`**; lint and format clean
-- The directory tree matches the layout doc exactly (tree diff in the PR)
+- The top-level tree (`src/`, `infra/`, `scripts/`, `.github/workflows/`, `AGENTS.md`, `docs/`) and **every directory this ticket creates** appear in the layout doc — tree diff in the PR. **Files belonging to later tickets are absent, and their absence is correct**
 - **`origin/main` exists and is pushed** — the precondition every later ticket assumes. If it does not, **STOP and report**; never seed the trunk
 
 **Tests:** None (scaffold). The zero-JS evidence is the deliverable.
