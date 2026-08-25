@@ -1,0 +1,81 @@
+name: valstara-prelaunch
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: valstara_waitlist
+      POSTGRES_USER: ${VALSTARA_DB_USER:-valstara}
+      POSTGRES_PASSWORD: ${VALSTARA_DB_PASSWORD:-valstara-local-only}
+      UMAMI_DB_NAME: umami
+      UMAMI_DB_USER: ${UMAMI_DB_USER:-umami}
+      UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:-umami-local-only}
+    ports:
+      - '127.0.0.1:${POSTGRES_HOST_PORT:-5434}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-umami-db.sh:/docker-entrypoint-initdb.d/init-umami-db.sh:ro
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" && pg_isready -U "$$UMAMI_DB_USER" -d "$$UMAMI_DB_NAME"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    mem_limit: ${POSTGRES_MEM_LIMIT:-512m}
+    memswap_limit: ${POSTGRES_MEM_LIMIT:-512m}
+
+  app:
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /workspace
+    command: ['sh', '/workspace/infra/compose/run-app.sh']
+    environment:
+      DATABASE_URL: postgresql://${VALSTARA_DB_USER:-valstara}:${VALSTARA_DB_PASSWORD:-valstara-local-only}@postgres:5432/valstara_waitlist
+      ASTRO_TELEMETRY_DISABLED: '1'
+    ports:
+      - '127.0.0.1:4321:4321'
+    volumes:
+      - ../..:/workspace
+      - app-node-modules:/workspace/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'node', '/workspace/infra/compose/app-healthcheck.mjs']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 180s
+    mem_limit: ${APP_MEM_LIMIT:-768m}
+    memswap_limit: ${APP_MEM_LIMIT:-768m}
+
+  umami:
+    image: ghcr.io/umami-software/umami:3.3.0
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: postgresql://${UMAMI_DB_USER:-umami}:${UMAMI_DB_PASSWORD:-umami-local-only}@postgres:5432/umami
+      APP_SECRET: ${UMAMI_APP_SECRET:-umami-local-app-secret-change-outside-local-development}
+      DISABLE_TELEMETRY: '1'
+      PRIVATE_MODE: '1'
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl --fail http://localhost:3000/api/heartbeat']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    mem_limit: ${UMAMI_MEM_LIMIT:-768m}
+    memswap_limit: ${UMAMI_MEM_LIMIT:-768m}
+
+volumes:
+  app-node-modules:
+  postgres-data:
