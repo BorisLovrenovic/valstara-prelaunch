@@ -25,6 +25,22 @@ You are fixing an **explicit list of findings** on the Valstara pre-launch branc
 5. **Re-read the doc section each finding cites before fixing it.** Fix to the documented rule, not to the reviewer's paraphrase.
 6. **A finding that is actually a plan defect is not yours to fix.** If the correct fix would require changing a ticket's scope, interfaces or acceptance criteria, mark it **NEEDS-DECISION** — **the plan changes only with founder authorisation.**
 7. **A finding that is blocked on a founder prerequisite is NEEDS-DECISION**, never a placeholder.
+8. **Do not build another ticket's work to close a finding.** If a fix seems to require it, check standing rule 19 first: a constraint belonging to a structure **this** ticket creates is this ticket's, and building it is correct. Anything genuinely owned elsewhere is **NEEDS-DECISION**.
+9. **Do not add tests, fixtures or styles the ticket did not ask for.** The Tests line is the contract. Converting working example tests to generated or property-based ones is not a fix, and it creates new surface for the next review.
+
+## Self-review before you declare done — mandatory
+
+**This is the step that stops the loop.** A fix that closes one blocker and opens another costs a full cycle, and you are the cheapest place to catch it.
+
+When every finding is addressed, **re-review your own diff as an independent reviewer would**, using the three blocker grounds in `docs/engineering/prompts/02-pre-pr-review.md`:
+
+1. **Re-read the ticket's acceptance criteria in full** — not just the ones the findings touched. Confirm your changes did not break one that previously passed.
+2. **Re-read the ticket's Tests line.** Every named test still present and still meaningful.
+3. **Diff your own diff.** For everything you added: is it inside this ticket's scope? Did you introduce a file, migration, dependency, role, service or config another ticket owns? Did you add a test the ticket did not ask for?
+4. **Mutate one behaviour you changed** and confirm a test catches it.
+5. **Check the standing rules your change now touches** — especially rule 19 (constraints ship with their structure) and rule 20 (self-contained).
+
+**If this pass finds a new problem, fix it now and run the pass again.** Do not hand it forward. Report what the pass found under `Self-review` below — including "nothing", which is a real result worth stating.
 
 ## Verify
 
@@ -45,6 +61,14 @@ You are fixing an **explicit list of findings** on the Valstara pre-launch branc
 | # | Finding (short) | Status | Fix (files) | Proof (test/command + failed-before evidence) |
 |---|-----------------|--------|-------------|-----------------------------------------------|
 | 1 | ...             | FIXED / DISPUTED / NEEDS-DECISION | ... | ... |
+
+## Self-review (mandatory)
+- Acceptance criteria re-read in full: <all still met? which, if any, you had to repair>
+- Tests line re-read: <all named tests present and meaningful>
+- Scope check on my own additions: <anything belonging to another ticket — or "none">
+- Mutation run: <what you broke → which test caught it>
+- Standing rules touched: <which, and how they hold>
+- New problems this pass found and fixed: <or "none">
 
 ## Commands run + results
 ## Privacy impact of these fixes (or "None")

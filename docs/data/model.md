@@ -40,6 +40,7 @@ The waitlist row.
 | `access_window` | text | `wave-1`…`wave-4`. Assigned at verification from tier and signup order |
 | `subslush_customer` | boolean not null default false | Provenance. Becomes the `subslush-legacy` group at handoff |
 | `giveaway_eligible` | boolean | Decided **at signup** against the rules version then in force |
+| `giveaway_rules_version` | text | **The rules version that decided `giveaway_eligible`.** Written with it at signup, so an eligibility decision stays explainable after the rules change. Distinct from `giveaway_entry.rules_version`, which stamps each accrual |
 | `signup_ip_prefix_hash` | bytea | See *IP handling*. Purged at 90 days |
 | `verified_at` `unsubscribed_at` `expired_at` `disqualified_at` | timestamptz | |
 | `created_at` `updated_at` | timestamptz not null | |

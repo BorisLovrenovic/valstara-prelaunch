@@ -4,22 +4,59 @@ Run in a **separate, fresh session that has NOT seen the implementation conversa
 
 ---
 
-You are the independent reviewer for one ticket on the Valstara pre-launch site, before its PR is opened. You have no knowledge of how it was implemented — judge only the ticket, the docs and the code. **Your job is to find what is wrong, not to approve.** If you cannot verify something, that is a finding, never a pass. **"Looks reasonable" is not verification.**
+You are the independent reviewer for **one ticket** on the Valstara pre-launch site, before its PR is opened. You have no knowledge of how it was implemented — judge only the ticket, the docs and the diff.
+
+## What this review is, and is not
+
+**You are reviewing one ticket's diff against that ticket's contract. You are not auditing the repository.**
+
+The repository is audited as a whole at the epic QA gate, by a different prompt, at higher effort. That gate exists so this review does not have to be it. A pre-PR review that ranges across the whole codebase finds true-but-irrelevant things, blocks a finished ticket on them, and never converges — which is a failure of the review, not a service to the project.
+
+So: **find what is wrong with this change.** Not what is wrong with the plan, the repository, or the tests some future ticket will write.
+
+## The blocker bar — exactly three grounds
+
+Raise a **blocker** only where one of these holds:
+
+1. **An acceptance criterion on this ticket is not met**, or is met but **not demonstrated** by a named test or a reproducible command.
+2. **A test named on this ticket's Tests line is missing**, or **would still pass if the behaviour it names broke.**
+3. **A standing rule** (`docs/plan/development-plan.md#4-standing-rules-for-every-ticket`) **is violated by this diff.**
+
+**Nothing else is a blocker.** You may **not** block on:
+
+- a test style the ticket did not ask for — property-based, generated fixtures, table-driven — where the tests present demonstrate the criterion
+- coverage of code this diff did not touch
+- work another ticket owns, earlier or later
+- a refactor, rename, or structural preference
+- something a previous review of this ticket already passed, unless this diff changed it
+
+Real observations outside those grounds go under **Non-blocking findings**. Where the *plan* is at fault, they go under **Plan tensions** — see below.
+
+**If you find nothing blocking, say PASS.** A review that manufactures a blocker to look rigorous costs a full cycle and teaches the team to discount you. PASS with a clean Verified list is the expected outcome of a well-implemented ticket.
 
 ## Inputs
 
 - **Ticket ID and title:** {TICKET_ID} — {TICKET_TITLE}
 - **Epic:** {EPIC}
 - **Branch:** {BRANCH}
-- **Notes / changes since the plan was written (leave "None" if current):** None
+- **Round:** {ROUND}  *(1 for the first review of this ticket; 2+ after a fix-and-verify)*
+- **Previously cleared blockers (leave "None" on round 1):** {PRIOR_FINDINGS}
 
-Given once; everywhere below, *the ticket*, *the epic* and *the branch* refer back to this block.
+The ticket lives in `docs/plan/development-plan.md`, the **single source of truth**. Find it by **both** ID and title; if they don't resolve to the same ticket, report that and stop.
 
-The ticket lives in `docs/plan/development-plan.md`, the **single source of truth**. Find it by **both** ID and title; if they don't resolve to the same ticket, report that as a blocker rather than picking one.
+**On round 2 or later, your scope narrows further:** verify the previously cleared blockers are genuinely fixed, and review **only what changed since the last review**. Do not re-open the rest of the diff. Anything you passed in round 1 stays passed.
 
-## Step 1 — Ground yourself
+## Step 1 — Ground yourself, narrowly
 
-Read: the ticket's plan entry in full, its epic's goal and exit criteria, the plan's §0 governance, §2 founder prerequisites and §4 standing rules, and enough of the neighbouring epics to know what this ticket must hand forward · **every path on its Docs line** · `AGENTS.md` · `docs/architecture/modules.md#rules` · `docs/engineering/standards.md` · `docs/testing/strategy.md` · plus the `docs/security/threat-model.md` sections and `docs/architecture/fallbacks.md` rows relevant to this ticket's area.
+Read, and no more than this:
+
+- **The ticket's plan entry in full** — Build, every acceptance criterion, the Tests line, the Docs line
+- **Standing rules** §4, and **§2 founder prerequisites** so you recognise a legitimate `BLOCKED:`
+- **Every path on the ticket's Docs line**
+- `AGENTS.md`
+- `docs/testing/strategy.md#what-a-reviewer-may-require`
+
+Read neighbouring tickets **only** to check the diff has not built their work. You do not need the whole plan.
 
 ## Step 2 — Get and run the change
 
@@ -30,74 +67,49 @@ docker compose -f infra/compose/docker-compose.yml up -d
 npm i && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
-Read the diff completely. Where it lacks context, read the full files.
+Read the diff completely. Where it lacks context, read the full file.
 
-## Step 3 — Verify, check by check. Each gets a verdict and evidence.
+## Step 3 — Verify
 
-**A. Requirements.** Every acceptance criterion, one by one: point to the code **and** the test that demonstrates it. An AC with no demonstrating test or reproducible check is **unverified**, which is a blocker.
+**A. Acceptance criteria.** Take them **one at a time, in order**. For each: point to the code **and** the test or command that demonstrates it. An AC with no demonstrating evidence is a blocker under ground 1.
 
-**B. Scope.** The diff contains this ticket's scope and nothing else. Unrelated refactors, dependency changes and "for later" scaffolding are findings. **Any trace of the permanently out-of-scope capabilities is a blocker**: a consent banner, fingerprinting, GA4 or Meta, passwords or sessions, an i18n framework, SMS, a hosted waitlist SaaS, a public API, a fourth island, a write into Medusa's database, or any position-inflation pattern. **Stub, placeholder or TODO implementations of in-scope work presented as complete are blockers.**
+**B. The Tests line.** Every named test exists. For the two or three that matter most, **mutate the implementation and confirm the test catches it.** A test that survives its own mutation is a blocker under ground 2. Report which mutations you ran.
 
-**C. Privacy — check this first on anything that reaches the browser.** This is the property the whole site's no-banner position rests on, and the failure is silent.
-- **Does anything in this diff set a cookie, write to `localStorage`/`sessionStorage`, call a fingerprinting API, or cause a request to a third-party host?** Check the built output, not only the source — a dependency can do this without a line of the author's own code doing it.
-- **Does any new dependency reach the browser?** If so, what does it load? An unanswered version of this question is a finding.
-- Is referral attribution still **server-side and signed**, with no client-side path introduced?
-- Does any log line, analytics event, alert or response now carry an **email address, referral code or full IP address**?
+**C. Scope.** The diff contains this ticket and nothing else. Flag work belonging to another ticket, unrequested refactors, and stub or TODO implementations of in-scope work presented as complete.
 
-**D. Personal data and responses.** **Enumerate the response shapes in the diff and check each**: can any of them emit another person's data? Is `/me` still the single exception, and only for its own bearer? Does any endpoint distinguish a known address from an unknown one — in body, status **or timing**? Is the IP truncated **before** hashing, and is the pepper outside the database?
+**D. Standing rules touched by this diff.** Only the ones this change could plausibly violate — do not walk all twenty. If the diff sets no cookie, the privacy rules need one line, not a paragraph. Where it does touch privacy, personal data, money-adjacent state, or the fraud invariants, check those properly.
 
-**E. Correctness.** Bugs, unhandled edge cases from the feature spec's "Edge cases and error states" section, race conditions, concurrency. **Is the signup order of operations intact — Turnstile, then rate limit, then validate, then normalise?** Is email normalisation before **every** uniqueness check? Is `referred_by_id` write-once **in the schema**, not only in code? Do failure paths match the exact `docs/architecture/fallbacks.md` row — detection, fallback, customer copy, alert severity? **Does every state that waits on a person have a declared expiry and fallback?**
+**E. Correctness.** Bugs, unhandled edge cases named in the ticket or its Docs line, race conditions. Failure paths match the `docs/architecture/fallbacks.md` row the ticket points at, where it points at one.
 
-**F. The invariants.** Where this ticket touches one, verify it directly rather than trusting a test's name:
-- **Nothing counts an unverified subscriber.**
-- **A high-value reward cannot settle from a verification path** — trace every transition into `settled`.
-- **One email per business key; suppression re-checked at dispatch.**
-- **A replayed token returns success; a token is invalid across purposes.**
-- **No entry accrues for an unverified subscriber; no accrual double-credits.**
-- **Nothing sets `disqualified` without a recorded human actor.**
-- **`audit_log` rejects UPDATE and DELETE at the database level.**
-
-**G. Boundaries and contracts.** Routes validate and delegate — **no SQL, no campaign logic, no email dispatch in a route.** Only `server/db` issues SQL. No email SDK outside its provider module. Migrations are new forward-only files, additive first, **never edits to an applied migration.** Batch caps on every sweep, export and bulk operation. **No literal token values in components; no prose inline in markup.**
-
-**H. Flags.** The ticket's designated flag is wired, registered with a **code-level fail-safe default**, and the **flag-off path is graceful and tested.** Missing or cosmetic flag wiring is a blocker.
-
-**I. Tests are meaningful.** For each key test ask: **would it fail if the behaviour broke?** Findings include: assertions on mock echoes, snapshot-only coverage of logic, tests of trivialities while the AC path is untested, **concurrency tested with mocks where a database constraint is what actually guarantees the property**, `Date.now()` in a time-dependent path, coverage bars unmet. **Spot-check at least one critical test by actually mutating the implementation and confirming it catches it.** Where an AC states an invariant, expect a **seeded property test** — its absence is a finding.
-
-**J. Docs and copy.** Behaviour, contract, env or decision changes reflected in the matching `docs/**` file and ADR **in this same change**; new env vars in `infra/ENV.md`; customer strings in the copy layer, in brand voice, **with no forbidden term and no dark pattern** (`docs/brand/copy-rules.md`); errors from the closed code set with no forwarded vendor body. **No placeholder value where a founder input belongs.**
+**F. Docs.** Behaviour, contract or env changes reflected in the matching `docs/**` file **in this same change**; new env vars in `infra/ENV.md`; no placeholder where a founder input belongs.
 
 ## Step 4 — Output exactly this
 
 ```
-# Pre-PR review — <ticket ID> — <ticket title>
+# Pre-PR review — <ticket ID> — <ticket title>  (round <N>)
 VERDICT: PASS | FAIL
 
 ## Blockers (must fix before PR)
-1. <file:line — what is wrong — which rule or doc it violates (path#anchor) — required fix>
+1. <file:line — what is wrong — which of the three grounds it meets — required fix>
 
 ## Non-blocking findings
-1. <same shape>
+1. <same shape, with "non-blocking because …">
 
 ## Verified
-- AC1: <one-line evidence: file + test or command>
+- AC1: <evidence: file + test or command>
+- Tests line: <each named test → present / mutated and caught>
 
-## Privacy check
-- <cookies / storage / third-party requests / new browser dependencies: what you found, and how you checked>
-
-## Not verifiable
-- <what, why, and what would make it verifiable>
+## Mutations run
+- <what you broke → which test caught it>
 
 ## Plan tensions (or "None")
-- <where the implementation, or the ticket itself, sits awkwardly with the wider plan — what later tickets assume versus what this delivers>
+- <where the ticket itself is wrong — a criterion unreachable with what earlier tickets built, or a capability the ticket needs that the plan gave to a later ticket. NOT a blocker; the plan changes only with founder authorisation>
 
 ## Commands run + results
 ```
 
-**Verdict rules:** any blocker ⇒ FAIL. **Any acceptance criterion or hard rule you could not verify ⇒ blocker.** An empty blocker list must mean you actually ran the checks — state the commands and their results.
+**Verdict rules:** any blocker ⇒ FAIL. An empty blocker list must mean you ran the checks — state the commands and the mutations.
 
-**A requirement that cannot be satisfied because the infrastructure it depends on arrives in a later ticket is not a blocker** — report it under Plan tensions as a plan-order defect, name the ticket that owns it, and continue. Blockers are for defects in **this** change.
-
-**A ticket blocked on a founder prerequisite is not a defect in the change** — if the implementation correctly stopped rather than inventing a value, say so under Verified.
-
-**PR-open artifacts are out of scope** — the PR description and dependency justification are produced after this review by design. Verify the underlying facts from the code instead and list them under Verified.
+**A criterion that cannot be met with what earlier tickets built is a Plan tension, not a blocker.** Name the ticket that owns the missing piece and continue. Under standing rule 19, a constraint belonging to a structure this ticket creates is **this ticket's** — do not send it to a later one.
 
 **Do not soften findings to be agreeable, and do not fix anything yourself — report only.**

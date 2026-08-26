@@ -16,13 +16,26 @@ Two consequences worth internalising:
 | Step | Prompt | Session | Model |
 |---|---|---|---|
 | 1. Implement | `01-implement-ticket.md` | fresh | the ticket's **Model** line |
-| 2. Review | `02-pre-pr-review.md` | **fresh — must not have seen the implementation** | Tier A High; **Tier B High if the ticket was Tier B or the area is security, privacy, fraud or email** |
+| 2. Review | `02-pre-pr-review.md`, `{ROUND}` = 1 | **fresh — must not have seen the implementation** | Tier A High; **Tier B High if the ticket was Tier B or the area is security, privacy, fraud or email** |
 | 3. Fix blockers | `04-fix-and-verify.md` (source = the review) | the implementation session, or fresh on the branch | the ticket's model |
-| 4. Push, open PR, squash-merge to `main` | manual | — | — |
-| 5. CI failed? | `05-ci-triage.md`, then re-run step 2 if the fix changed behaviour | fresh | Tier A Medium |
-| 6. Deploy | Deliberate — **merged is not deployed** | — | — |
+| 4. Re-review **only if** step 3 reported a DISPUTED or NEEDS-DECISION row, or changed behaviour beyond the findings | `02-pre-pr-review.md`, `{ROUND}` = 2, with the cleared blockers pasted into `{PRIOR_FINDINGS}` | fresh | as step 2 |
+| 5. Push, open PR, squash-merge to `main` | manual | — | — |
+| 6. CI failed? | `05-ci-triage.md` | fresh | Tier A Medium |
+| 7. Deploy | Deliberate — **merged is not deployed** | — | — |
 
 Then the next ticket. **Tickets are worked in plan order within an epic**, because later tickets assume what earlier ones built.
+
+### The expected shape of a cycle
+
+**Implement → review → PASS → PR → merge.** That is the normal path, not the lucky one. Where a review does return blockers, **one fix-and-verify run should clear them**, because that prompt now ends with a mandatory self-review against the same three blocker grounds the reviewer uses.
+
+**A third round on the same ticket means something is wrong with the ticket, not the agent.** Stop and read the plan entry. That has been the rule from the start; apply it.
+
+### Why the review is scoped
+
+`02-pre-pr-review.md` reviews **one ticket's diff against that ticket's contract** — its acceptance criteria, its Tests line, and the standing rules. It is deliberately **not** a repository audit; `03-integrated-qa.md` is, at the epic gate, at higher effort.
+
+A review that ranges over the whole codebase always finds something true and irrelevant, blocks a finished ticket on it, and never converges. **The blocker bar is three grounds and nothing else** — they are listed in the prompt and in `docs/testing/strategy.md#what-a-reviewer-may-require`. Everything real but outside them is a non-blocking finding or a plan tension.
 
 ## The per-epic gate
 

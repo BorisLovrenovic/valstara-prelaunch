@@ -19,7 +19,11 @@ Status: authoritative. **The QA gates later are audits, not the safety net.** Th
 
 ## The invariant tests
 
-Each states a property the campaign depends on. **Where an acceptance criterion states an invariant, implement it as a seeded property-based test with a fixed seed and bounded runs, alongside example cases — not instead of them.**
+Each states a property the campaign depends on.
+
+**A seeded property-based test is required where, and only where, a ticket's Tests line names one.** The plan decides; a reviewer may not infer the requirement from an acceptance criterion's wording. Where a ticket does name one, it uses a fixed seed and bounded runs, **alongside** example cases rather than instead of them.
+
+This is deliberate. "Where an AC states an invariant" was the earlier wording and it was undecidable — almost any criterion can be read as stating an invariant, so the requirement was whatever a given reviewer thought it was, and no ticket could be finished. If a property test is worth having, the ticket says so.
 
 | # | Invariant | Where |
 |---|---|---|
@@ -46,8 +50,28 @@ Each states a property the campaign depends on. **Where an acceptance criterion 
 
 - **Time-dependent logic injects a clock. Never `Date.now()` in a test path.** The reminder ladder, token expiry and retention sweeps are all clock-driven and all table-tested.
 - **Concurrency-sensitive behaviour is tested under genuine concurrency against a real database, never mocked.** Duplicate signup and duplicate entry accrual are the canonical cases — both rely on database constraints, and a mocked test proves nothing about a constraint.
-- **Every fixture uses seeded, generated data.** No test depends on a hand-written row that a schema change will silently invalidate.
+- **Fixtures are explicit by default; generated only where the test asserts a property over many inputs.** An example test reads better with literal values a person can check at a glance, and `crypto.randomUUID()` for an identifier nobody asserts on is fine. **A generated fixture must be seeded** — a fixed seed, so a failure reproduces. Do not convert working example fixtures to generated ones; that trades clarity for nothing.
 - **A flake is a finding, not noise.** Fix the nondeterminism; quarantining requires an explicit follow-up.
+
+## What a reviewer may require
+
+**This section exists to make review decidable.** A ticket that can fail review on a rule nobody can bound is a ticket that never finishes, and that is a defect in this document rather than in the branch.
+
+A pre-PR reviewer may raise a blocker on exactly three grounds:
+
+1. **An acceptance criterion on the ticket is not met, or is met but not demonstrated** by a named test or a reproducible command.
+2. **A test named on the ticket's Tests line is missing, or would still pass if the behaviour it names broke.**
+3. **A standing rule in `docs/plan/development-plan.md#4-standing-rules-for-every-ticket` is violated by this diff.**
+
+**Nothing else is a blocker.** Specifically, a reviewer may **not** require:
+
+- a test style the ticket did not ask for — property-based, generated fixtures, table-driven — where example tests demonstrate the criterion
+- coverage of code the ticket did not touch
+- work owned by another ticket, whether earlier or later
+- a refactor, a rename, or a structural preference
+- rework of something a previous review on the same ticket already passed, unless this diff changed it
+
+Anything real but outside those three grounds goes under **Non-blocking findings**, or under **Plan tensions** where the plan itself is at fault. The integrated QA gate is where the repository is audited as a whole.
 
 ## Definition of done
 
