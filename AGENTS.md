@@ -52,10 +52,16 @@ This repository builds the **Valstara pre-launch waitlist site**. You are workin
 16. **Every feature sits behind its registered flag** with a code-level fail-safe default, and the flag-off path is tested.
 17. **No forbidden copy string ships** — CI-scanned.
 18. **Docs and ADRs update in the same PR** as behaviour changes. Doc drift is a review blocker.
+19. **A ticket that creates a structure also creates the constraints that make it correct** — permissions, triggers, indexes, defaults, checks. They ship with the thing they constrain, never in a later ticket. If your ticket creates a table that a standing rule governs, that rule is enforced in your ticket.
+20. **Your ticket is self-contained by construction.** If you cannot meet an acceptance criterion without building something another ticket owns, that is a defect in the plan — **stop and report it**, do not work around it and do not build ahead.
 
 ## Testing
 
-The QA gate later is an **audit, not the safety net.** Every ticket implements the tests on its Tests line, plus unit tests for new logic and integration tests where it wires components together. **Where an acceptance criterion states an invariant, implement a seeded property test alongside example cases.** Concurrency is tested under real concurrency against a real database. **Time-dependent logic injects a clock — never `Date.now()` in a test path.**
+The QA gate later is an **audit, not the safety net.** Every ticket implements **every test named on its Tests line**, plus unit tests for new logic and integration tests where it wires components together.
+
+**The Tests line is the contract.** A seeded property test is required where, and only where, the ticket names one — do not add one speculatively, and do not convert working example tests into generated ones. Fixtures are explicit by default; generate only where a test asserts a property over many inputs, and seed it when you do.
+
+Concurrency is tested under real concurrency against a real database. **Time-dependent logic injects a clock — never `Date.now()` in a test path.**
 
 **A test that would still pass if the feature broke is a defect.**
 

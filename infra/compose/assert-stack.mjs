@@ -170,6 +170,11 @@ export async function assertStack() {
 
   const appEnvironment = environmentOf(inspections.get('app'));
   const umamiEnvironment = environmentOf(inspections.get('umami'));
+  assert.equal(
+    appEnvironment.MIGRATION_DATABASE_URL,
+    undefined,
+    'the long-running app must not receive the migration-owner credential',
+  );
   const appDatabase = new URL(appEnvironment.DATABASE_URL).pathname.slice(1);
   const umamiDatabase = new URL(umamiEnvironment.DATABASE_URL).pathname.slice(
     1,

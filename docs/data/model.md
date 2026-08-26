@@ -33,13 +33,14 @@ The waitlist row.
 | `category_preference` | text[] | From the survey. Carried into the handoff |
 | `source` | text | Bucketed acquisition source |
 | `utm` | jsonb | `source`, `medium`, `campaign`, `content`, `term`. Capped in size |
-| `referral_code` | text not null unique | Unguessable, non-sequential (`docs/modules/referral.md`) |
+| `referral_code` | text unique **nullable** | **Null until verification.** The code is generated when a subscriber verifies, never for a `pending` row — so it cannot be `NOT NULL` (ADR-011, `docs/modules/referral.md`). Founder-authorised 2026-08-26, resolving the E1-03/E4-01 conflict; see E1-03's acceptance criteria |
 | `referred_by_id` | uuid null → `subscriber(id)` | Set once at signup; **never reassigned** |
 | `referral_tier` | int not null default 0 | **Derived** from settled milestones |
 | `confirmed_referrals` | int not null default 0 | **Derived** from `referral_edge`; recomputable |
 | `access_window` | text | `wave-1`…`wave-4`. Assigned at verification from tier and signup order |
 | `subslush_customer` | boolean not null default false | Provenance. Becomes the `subslush-legacy` group at handoff |
 | `giveaway_eligible` | boolean | Decided **at signup** against the rules version then in force |
+| `giveaway_rules_version` | text | **The rules version that decided `giveaway_eligible`.** Written with it at signup, so an eligibility decision stays explainable after the rules change. Distinct from `giveaway_entry.rules_version`, which stamps each accrual |
 | `signup_ip_prefix_hash` | bytea | See *IP handling*. Purged at 90 days |
 | `verified_at` `unsubscribed_at` `expired_at` `disqualified_at` | timestamptz | |
 | `created_at` `updated_at` | timestamptz not null | |
@@ -57,6 +58,7 @@ Indexes: `email_normalised` (unique) · `referral_code` (unique) · `referred_by
 | `id` | uuid pk | |
 | `subscriber_id` | uuid not null → `subscriber` | |
 | `token_hash` | bytea not null unique | **SHA-256 of the token. The plaintext is never stored** — it exists only in the emailed URL |
+| `purpose` | text not null | `verify` · `status` · `unsubscribe` |
 | `expires_at` | timestamptz not null | |
 | `consumed_at` | timestamptz null | Single use. A second consume is a **no-op that reports success** |
 | `created_at` | timestamptz not null | |
@@ -91,7 +93,7 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 ## `giveaway_entry`
 
-`id` · `subscriber_id` · `method` (`base` · `referral` · `amoe`) · `entries` int · `jurisdiction` char(2) · `rules_version` text · `source_edge_id` uuid null · `created_at`. Unique on `(subscriber_id, method, source_edge_id)` so a retry cannot double-credit.
+`id` · `subscriber_id` · `method` (`base` · `referral` · `amoe`) · `entries` int · `jurisdiction` char(2) · `rules_version` text · `source_edge_id` uuid null · `created_at`. Unique with `NULLS NOT DISTINCT` on `(subscriber_id, method, source_edge_id)` so a retry cannot double-credit when `source_edge_id` is null.
 
 **`rules_version` is stamped at accrual.** Entries keep the rules that were in force when they accrued — that is what makes a mid-campaign rules change survivable (`docs/architecture/fallbacks.md`).
 

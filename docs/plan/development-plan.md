@@ -99,6 +99,8 @@ These are not restated per ticket. **Violating one fails review.** They are the 
 16. **No literal colour, font, radius, spacing or duration in a component; no prose inline in markup** (ADR-015, ADR-017).
 17. **No forbidden copy string ships** (`docs/brand/copy-rules.md`) — CI-scanned.
 18. **Docs and ADRs update in the same PR.** Doc drift is a review blocker.
+19. **Constraints ship with the structure they constrain.** A ticket that creates a table also creates its permissions, triggers, indexes, defaults and checks. Never in a later ticket — a structure that violates a standing rule between the ticket that creates it and the ticket that constrains it is a defect in this plan.
+20. **Every ticket is self-contained.** Its acceptance criteria are reachable using only what it builds and what earlier tickets already delivered. If they are not, the plan is wrong: **stop and report**, never build ahead and never work around.
 
 ---
 
@@ -201,14 +203,31 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 
 **The constraints are the deliverable, not the columns.** `subscriber.email_normalised` unique · `referral_edge.referred_id` unique · `email_send.business_key` unique · `giveaway_entry (subscriber_id, method, source_edge_id)` unique · `milestone_award (subscriber_id, tier)` unique · `subscriber.referred_by_id` **write-once, enforced by trigger**.
 
+**Including `audit_log`'s permissions.** This ticket creates `audit_log`, and standing rule 11 says that table is append-only **enforced by database permissions**. So this ticket grants the application role `INSERT` and `SELECT` only — no `UPDATE`, no `DELETE` — and provisions that role with a login and password **in the migration path**, not in a first-boot init hook, so an existing volume upgrades correctly. **E1-09 owns the `audit` service on top of this; it does not own the table or its permissions** (standing rule 19).
+
+**`subscriber.referral_code` is nullable.** E4-01 generates a code only at verification, so a `pending` row has no code. Founder-authorised 2026-08-26.
+
 **Acceptance criteria:**
 - Migrations run once each and are recorded with a checksum; **a checksum mismatch on an already-applied migration aborts**
 - Every constraint named above exists **in the database** — asserted by querying the catalogue, not by reading the migration
 - **`referred_by_id` cannot be updated once set** — asserted by an attempted update that fails
 - The schema is reproducible from the migration files alone, into an empty database
 - **No query helper permits an unbounded result set** — every list method takes an explicit limit
+- **`subscriber.referral_code` is nullable**, and a `pending` subscriber is inserted with a null code
+- **`UPDATE` and `DELETE` against `audit_log` are rejected at the database level** for the application role — asserted by test, not by convention
+- **The application role authenticates with a password provisioned by the migration path** — asserted against a database created before this ticket ran, so an existing volume is proven to upgrade
 
-**Tests:** Constraint-level tests for each unique key and the write-once trigger · a checksum-mismatch abort · full reproducibility from an empty database.
+**Tests:** *(this list is the contract — implement exactly these, plus unit tests for new logic)*
+1. Ledger records filename, checksum and timestamp; a second run applies nothing.
+2. An edited already-applied migration aborts on checksum mismatch.
+3. Each of the five named unique constraints exists **in the PostgreSQL catalogue**, and each rejects a duplicate. **The `email_normalised` case uses two different raw addresses that normalise to the same value** (`user+a@gmail.com` and `u.s.e.r@gmail.com`), so the test fails if the constraint is moved to `email`.
+4. `referred_by_id` accepts its first value and rejects reassignment.
+5. The schema reproduces from the migration files alone into an empty database.
+6. `list()` requires a positive explicit limit; `execute()` rejects result-returning statements.
+7. **A `pending` subscriber inserts with a null `referral_code`, and two null codes coexist** under the unique index.
+8. **`UPDATE` and `DELETE` on `audit_log` are rejected for the application role.**
+9. **The app's real credentials authenticate against a database created before this ticket's migrations ran** (upgrade path).
+10. **`runMigrations()` called concurrently** — genuine parallel calls against one disposable database — applies each migration exactly once.
 **Docs:** `docs/data/model.md` · `docs/modules/platform.md#db` · `docs/engineering/standards.md#data-and-queries`
 
 ### E1-04 — CI PR pipeline: lint, typecheck, test, build, coverage
@@ -236,7 +255,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 4. **Fingerprinting rule** — canvas, font-enumeration, WebGL and timing-entropy APIs anywhere
 5. **Third-party request rule** — any off-origin request from a rendered page; the flagged Trustpilot widget is the one allowlisted exception
 6. **Vendor-boundary rule** — an email SDK imported outside its provider module. **Runtime `import()` targets must resolve statically; an unresolved target fails closed**
-7. **Forbidden-copy scan** — over `src/copy/`, `src/content/` and every `.astro` file, against a list file that E2-08 populates
+7. **Forbidden-copy scan** — over `src/copy/`, `src/content/` and every `.astro` file. **This ticket creates `scripts/forbidden-copy.json` and seeds it from the never-use table in `docs/brand/copy-rules.md`**, so the gate is live the moment it exists. E2-08 later moves copy into the layer the scan already covers; it does not create the list (standing rule 20)
 
 **Acceptance criteria:**
 - **Each scan fails on its planted fixture and passes on `main`**
@@ -297,10 +316,12 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 **Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this tier:** append-only enforced at the permission layer is a security property that later tickets assume without re-checking.
 
-**Build:** `src/server/audit` per `docs/modules/audit.md`. **The application database role is granted INSERT and SELECT only on `audit_log` — no UPDATE, no DELETE.** `record()` and an admin-only batch-capped `query()`. Register the required action set.
+**Build:** `src/server/audit` per `docs/modules/audit.md` — `record()`, an admin-only batch-capped `query()`, and the required action registry.
+
+**The table and its append-only permissions already exist**, created by E1-03 under standing rule 19. This ticket builds the service on top and **must not alter the schema or the grants.**
 
 **Acceptance criteria:**
-- **UPDATE and DELETE against `audit_log` are rejected at the database level** — asserted by test, not by convention
+- **The append-only grants from E1-03 are still in force** — re-asserted here by test, because this is the ticket that starts writing through them
 - **`record()` failure on a disqualification, export, draw or DSR fulfilment raises an error**, never a warning
 - **No code path can write a token, secret, raw IP or full email into `detail`** — a redaction test runs over every call site
 - `query()` honours its limit
@@ -428,7 +449,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 ### E2-05 — Layout, navigation and footer
 **Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
-**Build:** The base layout: skip link, landmark structure, header with the theme toggle, footer carrying the legal and trust links. Shared metadata slots for E9-06.
+**Build:** The base layout: skip link, landmark structure, header with the theme toggle, footer carrying the legal and trust links. **Each page sets its own title and description through the layout's props** — a working mechanism used by the pages that exist now, not an empty slot for later (standing rule 20). E9-06 adds canonical, structured data and the sitemap on top.
 
 **Acceptance criteria:**
 - One `<main>`, correct landmark structure, a working skip link as the first focusable element
@@ -473,7 +494,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 ### E2-08 — The copy layer and the forbidden-copy scan
 **Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
-**Build:** `src/copy/` as the single home for interface strings. **Transcribe the never-use vocabulary from the brand guidelines into `scripts/forbidden-copy.json`**, each entry naming its replacement. Wire the scan from E1-05 to the populated list, over `src/copy/`, `src/content/` and every `.astro` file.
+**Build:** `src/copy/` as the single home for interface strings, and move every existing inline string into it. **`scripts/forbidden-copy.json` already exists and is live from E1-05** — this ticket reviews it against `docs/brand/copy-rules.md`, adds any term the brand guidelines list that is missing, and ensures every entry names its replacement. Add the inline-prose scan over `.astro` files.
 
 **Acceptance criteria:**
 - Every customer-visible string in the codebase lives in the copy layer — **a scan finds no inline prose in `.astro` files**
@@ -1020,13 +1041,13 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 **Model:** Tier B — High · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
 **Why this tier:** getting an exclusion wrong is a legal exposure in a named jurisdiction, and the mistake is not visible until someone complains.
 
-**Build:** `eligibility(country, region)` per `docs/legal/compliance.md#4-giveaway--jurisdiction-exclusions`. Excluded: Italy, Poland, Spain, the Nordics, and Quebec. **Decided at signup**, stamped with the `rules_version`, and the reason stated plainly at that point.
+**Build:** `eligibility(country, region)` per `docs/legal/compliance.md#4-giveaway--jurisdiction-exclusions`. Excluded: Italy, Poland, Spain, the Nordics, and Quebec. **Decided at signup**, writing `giveaway_eligible` and `giveaway_rules_version` together, with the reason stated plainly at that point.
 
 **Acceptance criteria:**
 - **A table test covers every excluded jurisdiction**, including the Canada/Quebec case and each Nordic country individually
 - **An excluded visitor still completes the waitlist signup**
 - **A jurisdiction with no published rules page is excluded** — asserted by reconciling the eligibility table against the rules-page set
-- The deciding `rules_version` is stamped on the subscriber
+- The deciding rules version is written to **`subscriber.giveaway_rules_version`** alongside `giveaway_eligible` — the column exists from E1-03
 - Eligibility is decided from the **confirmed** country, never from `country_detected`
 
 **Tests:** The full jurisdiction table · the still-signs-up assertion · the rules-page reconciliation · a `country_detected`-only case that must not decide.
