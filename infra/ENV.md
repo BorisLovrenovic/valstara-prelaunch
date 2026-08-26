@@ -7,8 +7,9 @@ untracked root `.env` file.
 
 | Variable               | Purpose                                                                          | Used by           | Local default               | Secret                        |
 | ---------------------- | -------------------------------------------------------------------------------- | ----------------- | --------------------------- | ----------------------------- |
-| `VALSTARA_DB_USER`     | PostgreSQL role that owns, connects to, and migrates `valstara_waitlist`         | PostgreSQL, app   | `valstara`                  | No                            |
-| `VALSTARA_DB_PASSWORD` | Password for the waitlist owner/migration role; URL-safe characters are required | PostgreSQL, app   | Local-only value in Compose | Yes outside local development |
+| `VALSTARA_DB_USER`         | PostgreSQL role that owns and migrates `valstara_waitlist`                        | PostgreSQL, migrate | `valstara`                  | No                            |
+| `VALSTARA_DB_PASSWORD`     | Password for the waitlist owner/migration role; URL-safe characters are required | PostgreSQL, migrate | Local-only value in Compose | Yes outside local development |
+| `VALSTARA_APP_DB_PASSWORD` | Password provisioned for the non-owner `valstara_app` login by migrations        | Migrate, app        | Local-only value in Compose | Yes outside local development |
 | `UMAMI_DB_USER`        | PostgreSQL role that owns and connects to the separate `umami` database          | PostgreSQL, Umami | `umami`                     | No                            |
 | `UMAMI_DB_PASSWORD`    | Password for the Umami database role; URL-safe characters are required           | PostgreSQL, Umami | Local-only value in Compose | Yes outside local development |
 | `UMAMI_APP_SECRET`     | Signs and encrypts Umami authentication tokens                                   | Umami             | Local-only value in Compose | Yes                           |

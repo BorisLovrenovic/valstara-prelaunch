@@ -16,9 +16,13 @@ import { withTransaction } from '../src/server/db/transaction.ts';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
+const applicationRole = 'valstara_app';
+const applicationRolePassword =
+  process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 interface DatabaseFixture {
   readonly database: DatabasePool;
   readonly databaseUrl: string;
+  readonly applicationDatabaseUrl: string;
   dispose(): Promise<void>;
 }
 
@@ -41,6 +45,9 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
   const adminUrl = new URL(process.env.TEST_DATABASE_URL ?? defaultDatabaseUrl);
   const databaseUrl = new URL(adminUrl);
   databaseUrl.pathname = `/${databaseName}`;
+  const applicationDatabaseUrl = new URL(databaseUrl);
+  applicationDatabaseUrl.username = applicationRole;
+  applicationDatabaseUrl.password = applicationRolePassword;
   const admin = createPool(adminUrl.toString());
 
   await admin.execute({ text: `CREATE DATABASE "${databaseName}"` });
@@ -48,6 +55,7 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
   return {
     database: createPool(databaseUrl.toString()),
     databaseUrl: databaseUrl.toString(),
+    applicationDatabaseUrl: applicationDatabaseUrl.toString(),
     async dispose() {
       await admin.list(
         {
@@ -62,13 +70,20 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
   };
 }
 
+function migrate(
+  database: DatabasePool,
+  options: Omit<Parameters<typeof runMigrations>[1], 'applicationRolePassword'>,
+): ReturnType<typeof runMigrations> {
+  return runMigrations(database, { ...options, applicationRolePassword });
+}
+
 async function withDatabase(
   operation: (database: DatabasePool) => Promise<void>,
 ): Promise<void> {
   const fixture = await createDatabaseFixture();
 
   try {
-    await runMigrations(fixture.database, { release: 'test' });
+    await migrate(fixture.database, { release: 'test' });
     await operation(fixture.database);
   } finally {
     await fixture.database.close();
@@ -163,10 +178,10 @@ test('migrations run once, record checksums, and reproduce the initial schema fr
   const fixture = await createDatabaseFixture();
 
   try {
-    const initialRun = await runMigrations(fixture.database, {
+    const initialRun = await migrate(fixture.database, {
       release: 'test-release',
     });
-    const repeatedRun = await runMigrations(fixture.database, {
+    const repeatedRun = await migrate(fixture.database, {
       release: 'test-release',
     });
     const ledger = await fixture.database.list<{
@@ -191,11 +206,17 @@ test('migrations run once, record checksums, and reproduce the initial schema fr
       20,
     );
 
-    assert.deepEqual(initialRun, ['0001-initial-schema.sql']);
+    assert.deepEqual(initialRun, [
+      '0001-initial-schema.sql',
+      '0002-application-role-audit-log-permissions.sql',
+    ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
       ledger.map((row) => row.filename),
-      ['0001-initial-schema.sql'],
+      [
+        '0001-initial-schema.sql',
+        '0002-application-role-audit-log-permissions.sql',
+      ],
     );
     assert.match(ledger[0]?.checksum ?? '', /^[a-f0-9]{64}$/);
     assert.equal(ledger[0]?.applied_by_release, 'test-release');
@@ -234,14 +255,14 @@ test('an edited applied migration aborts with a checksum mismatch', async () => 
       migrationPath,
       'CREATE TABLE checksum_test (id integer PRIMARY KEY);\n',
     );
-    await runMigrations(fixture.database, { directory, release: 'test' });
+    await migrate(fixture.database, { directory, release: 'test' });
     await writeFile(
       migrationPath,
       'CREATE TABLE checksum_test (id integer PRIMARY KEY, label text);\n',
     );
 
     await assert.rejects(
-      runMigrations(fixture.database, { directory, release: 'test' }),
+      migrate(fixture.database, { directory, release: 'test' }),
       MigrationChecksumMismatchError,
     );
   } finally {
@@ -261,11 +282,11 @@ test('an applied migration deleted from disk aborts instead of being silently ac
       migrationPath,
       'CREATE TABLE deletion_probe (id integer PRIMARY KEY);\n',
     );
-    await runMigrations(fixture.database, { directory, release: 'test' });
+    await migrate(fixture.database, { directory, release: 'test' });
     await rm(migrationPath);
 
     await assert.rejects(
-      runMigrations(fixture.database, { directory, release: 'test' }),
+      migrate(fixture.database, { directory, release: 'test' }),
       /Applied migration history does not match checked-in files/,
     );
   } finally {
@@ -284,14 +305,14 @@ test('a migration inserted before applied history aborts instead of running retr
       join(directory, '0002-existing.sql'),
       'CREATE TABLE existing_probe (id integer PRIMARY KEY);\n',
     );
-    await runMigrations(fixture.database, { directory, release: 'test' });
+    await migrate(fixture.database, { directory, release: 'test' });
     await writeFile(
       join(directory, '0001-retroactive.sql'),
       'CREATE TABLE retroactive_probe (id integer PRIMARY KEY);\n',
     );
 
     await assert.rejects(
-      runMigrations(fixture.database, { directory, release: 'test' }),
+      migrate(fixture.database, { directory, release: 'test' }),
       /Applied migration history does not match checked-in files/,
     );
   } finally {
@@ -310,7 +331,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         let appliedCount = 0;
         for (let index = 0; index < repeatCount; index += 1) {
           appliedCount += (
-            await runMigrations(fixture.database, { release: 'property-test' })
+            await migrate(fixture.database, { release: 'property-test' })
           ).length;
         }
         const ledger = await fixture.database.list<{ filename: string }>(
@@ -318,10 +339,13 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
           2,
         );
 
-        assert.equal(appliedCount, 1);
+        assert.equal(appliedCount, 2);
         assert.deepEqual(
           ledger.map((row) => row.filename),
-          ['0001-initial-schema.sql'],
+          [
+            '0001-initial-schema.sql',
+            '0002-application-role-audit-log-permissions.sql',
+          ],
         );
       } finally {
         await fixture.database.close();
@@ -350,7 +374,7 @@ test('concurrent migration runners serialize on the PostgreSQL advisory lock', a
       'DO $$ BEGIN PERFORM pg_sleep(0.5); END; $$;\nCREATE TABLE migration_concurrency_probe (id integer PRIMARY KEY);\n',
     );
 
-    const firstRun = runMigrations(firstRunner, {
+    const firstRun = migrate(firstRunner, {
       directory,
       release: 'concurrency-test',
     });
@@ -359,7 +383,7 @@ test('concurrent migration runners serialize on the PostgreSQL advisory lock', a
       wait_event_type: 'Timeout',
     });
 
-    const secondRun = runMigrations(secondRunner, {
+    const secondRun = migrate(secondRunner, {
       directory,
       release: 'concurrency-test',
     });
@@ -552,13 +576,93 @@ test('subscriber rejects distinct raw emails with the same normalised key', asyn
   });
 });
 
+test('pending subscribers have null referral codes and the unique index permits two null codes', async () => {
+  await withDatabase(async (database) => {
+    await insertSubscriber(database, randomUUID());
+    await insertSubscriber(database, randomUUID());
+
+    const pendingSubscribers = await database.list<{
+      referral_code: string | null;
+    }>(
+      {
+        text: `
+          SELECT referral_code
+          FROM subscriber
+          WHERE status = 'pending'
+          ORDER BY created_at, id
+        `,
+      },
+      2,
+    );
+
+    assert.deepEqual(pendingSubscribers, [
+      { referral_code: null },
+      { referral_code: null },
+    ]);
+  });
+});
+
+test('the application role rejects audit-log updates and deletes at the database level', async () => {
+  const fixture = await createDatabaseFixture();
+  const auditLogId = randomUUID();
+  const applicationDatabase = createPool(fixture.applicationDatabaseUrl);
+
+  try {
+    await migrate(fixture.database, { release: 'test' });
+    await applicationDatabase.execute({
+      text: `
+        INSERT INTO audit_log (id, actor, action, subject_type, detail)
+        VALUES ($1, 'test-actor', 'test.action', 'subscriber', '{}'::jsonb)
+      `,
+      values: [auditLogId],
+    });
+
+    await assert.rejects(
+      applicationDatabase.execute({
+        text: "UPDATE audit_log SET action = 'changed' WHERE id = $1",
+        values: [auditLogId],
+      }),
+      hasPostgresCode('42501'),
+    );
+    await assert.rejects(
+      applicationDatabase.execute({
+        text: 'DELETE FROM audit_log WHERE id = $1',
+        values: [auditLogId],
+      }),
+      hasPostgresCode('42501'),
+    );
+  } finally {
+    await applicationDatabase.close();
+    await fixture.database.close();
+    await fixture.dispose();
+  }
+});
+
+test('the application role authenticates after migrations upgrade an existing database', async () => {
+  const fixture = await createDatabaseFixture();
+  const applicationDatabase = createPool(fixture.applicationDatabaseUrl);
+
+  try {
+    await migrate(fixture.database, { release: 'test' });
+    const identity = await applicationDatabase.readOne<{
+      current_user: string;
+    }>({ text: 'SELECT current_user' });
+
+    assert.deepEqual(identity, { current_user: applicationRole });
+  } finally {
+    await applicationDatabase.close();
+    await fixture.database.close();
+    await fixture.dispose();
+  }
+});
+
 test('concurrent database sessions allow exactly one duplicate normalised email and referral edge write', async () => {
   const fixture = await createDatabaseFixture();
   const firstSession = createPool(fixture.databaseUrl);
   const secondSession = createPool(fixture.databaseUrl);
 
   try {
-    await runMigrations(fixture.database, { release: 'test' });
+    await migrate(fixture.database, { release: 'test' });
 
     const emailNormalised = `${randomUUID()}@example.test`;
     await assertExactlyOneWriteSucceeds([

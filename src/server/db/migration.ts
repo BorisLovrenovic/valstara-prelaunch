@@ -16,6 +16,7 @@ export interface Migration {
 }
 
 export interface RunMigrationsOptions {
+  readonly applicationRolePassword: string;
   readonly directory?: string;
   readonly release: string;
 }
@@ -41,8 +42,16 @@ export async function loadMigrations(
 
 export async function runMigrations(
   database: DatabasePool,
-  { directory = defaultMigrationDirectory, release }: RunMigrationsOptions,
+  {
+    applicationRolePassword,
+    directory = defaultMigrationDirectory,
+    release,
+  }: RunMigrationsOptions,
 ): Promise<readonly string[]> {
+  if (applicationRolePassword.length === 0) {
+    throw new Error('The application database password is required.');
+  }
+
   const migrations = await loadMigrations(directory);
   const connection = await database.connect();
   const applied: string[] = [];
@@ -68,7 +77,12 @@ export async function runMigrations(
         continue;
       }
 
-      await applyMigration(connection, migration, release);
+      await applyMigration(
+        connection,
+        migration,
+        release,
+        applicationRolePassword,
+      );
       applied.push(migration.filename);
     }
   } finally {
@@ -103,9 +117,14 @@ async function applyMigration(
   connection: DatabaseClient,
   migration: Migration,
   release: string,
+  applicationRolePassword: string,
 ): Promise<void> {
   try {
     await connection.execute({ text: 'BEGIN' });
+    await connection.readOne({
+      text: "SELECT set_config('valstara.application_role_password', $1, true)",
+      values: [applicationRolePassword],
+    });
     await connection.execute({ text: migration.sql });
     await connection.execute({
       text: `
