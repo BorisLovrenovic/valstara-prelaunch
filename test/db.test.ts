@@ -174,7 +174,7 @@ async function waitForMigrationActivity(
   );
 }
 
-test('migrations run once, record checksums, and reproduce the initial schema from an empty database', async () => {
+test('migrations run once, record checksums, and reproduce the initial schema with the giveaway rules version from an empty database', async () => {
   const fixture = await createDatabaseFixture();
 
   try {
@@ -205,10 +205,23 @@ test('migrations run once, record checksums, and reproduce the initial schema fr
       },
       20,
     );
+    const giveawayRulesVersionColumn = await fixture.database.readOne<{
+      data_type: string;
+      is_nullable: string;
+    }>({
+      text: `
+        SELECT data_type, is_nullable
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'subscriber'
+          AND column_name = 'giveaway_rules_version'
+      `,
+    });
 
     assert.deepEqual(initialRun, [
       '0001-initial-schema.sql',
       '0002-application-role-audit-log-permissions.sql',
+      '0003-subscriber-giveaway-rules-version.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -216,8 +229,13 @@ test('migrations run once, record checksums, and reproduce the initial schema fr
       [
         '0001-initial-schema.sql',
         '0002-application-role-audit-log-permissions.sql',
+        '0003-subscriber-giveaway-rules-version.sql',
       ],
     );
+    assert.deepEqual(giveawayRulesVersionColumn, {
+      data_type: 'text',
+      is_nullable: 'YES',
+    });
     assert.match(ledger[0]?.checksum ?? '', /^[a-f0-9]{64}$/);
     assert.equal(ledger[0]?.applied_by_release, 'test-release');
     assert.deepEqual(
@@ -336,15 +354,16 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger' },
-          2,
+          3,
         );
 
-        assert.equal(appliedCount, 2);
+        assert.equal(appliedCount, 3);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
             '0001-initial-schema.sql',
             '0002-application-role-audit-log-permissions.sql',
+            '0003-subscriber-giveaway-rules-version.sql',
           ],
         );
       } finally {
