@@ -1,0 +1,81 @@
+{
+  "secret": {
+    "path": ".env",
+    "contentParts": [
+      "RESEND_API_KEY=",
+      "ghp_",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "\n"
+    ],
+    "diagnostic": "\\[secret\\]"
+  },
+  "secret-markdown": {
+    "path": "docs/ci-secret-fixture.md",
+    "contentParts": [
+      "Fixture credential: ghp_",
+      "cccccccccccccccccccccccccccccccccccccccc",
+      "\\n"
+    ],
+    "diagnostic": "\\[secret\\]"
+  },
+  "dependency": {
+    "path": "scripts/ci/dependency-allowlist.json",
+    "content": "{\n  \"allowlist\": [\n    {\n      \"package\": \"fixture-package\",\n      \"justification\": \"A fixture proves missing expiry dates fail.\"\n    }\n  ]\n}\n",
+    "diagnostic": "requires a valid expiry date"
+  },
+  "dependency-expired": {
+    "path": "scripts/ci/dependency-allowlist.json",
+    "content": "{\n  \"allowlist\": [\n    {\n      \"package\": \"fixture-package\",\n      \"justification\": \"A fixture proves expired entries fail.\",\n      \"expiresAt\": \"2020-01-01\"\n    }\n  ]\n}\n",
+    "diagnostic": "entry expiry must be in the future"
+  },
+  "dependency-no-justification": {
+    "path": "scripts/ci/dependency-allowlist.json",
+    "content": "{\n  \"allowlist\": [\n    {\n      \"package\": \"fixture-package\",\n      \"justification\": \"\",\n      \"expiresAt\": \"2030-01-01\"\n    }\n  ]\n}\n",
+    "diagnostic": "entry requires a written justification"
+  },
+  "cookie-storage": {
+    "path": "src/pages/ci-cookie-storage-fixture.astro",
+    "content": "<script>document.cookie = 'tracking=1';</script>\n",
+    "diagnostic": "\\[cookie-storage\\]"
+  },
+  "fingerprinting": {
+    "path": "scripts/ci-timing-fixture.ts",
+    "contentParts": ["export const entropy = performance", ".now();\\n"],
+    "diagnostic": "\\[fingerprinting\\]"
+  },
+  "third-party": {
+    "path": "src/pages/ci-third-party-fixture.astro",
+    "content": "<script src=\"https://example.invalid/fixture.js\"></script>\n",
+    "diagnostic": "\\[third-party\\]"
+  },
+  "third-party-template": {
+    "path": "src/pages/ci-template-request-fixture.astro",
+    "content": "<script>fetch(`https://example.invalid/fixture`)</script>\\n",
+    "diagnostic": "\\[third-party\\]"
+  },
+  "unflagged-trustpilot": {
+    "path": "src/components/ci-trustpilot-fixture.astro",
+    "content": "<script src=\"https://widget.trustpilot.com/fixture.js\"></script>\n",
+    "diagnostic": "\\[third-party\\]"
+  },
+  "vendor-boundary": {
+    "path": "src/server/ci-vendor-boundary-fixture.ts",
+    "content": "import { Resend } from 'resend';\nexport const provider = Resend;\n",
+    "diagnostic": "email SDK resend is outside its provider module"
+  },
+  "vendor-dynamic-import": {
+    "path": "src/server/ci-vendor-dynamic-fixture.ts",
+    "content": "const target = 'resend';\nexport const provider = import(target);\n",
+    "diagnostic": "runtime import target is not static"
+  },
+  "vendor-dynamic-static-import": {
+    "path": "scripts/ci-vendor-dynamic-fixture.ts",
+    "content": "export const provider = import('resend');\\n",
+    "diagnostic": "email SDK resend is outside its provider module"
+  },
+  "forbidden-copy": {
+    "path": "src/pages/ci-forbidden-copy-fixture.astro",
+    "content": "<p>instant delivery</p>\n",
+    "diagnostic": "forbidden copy"
+  }
+}
