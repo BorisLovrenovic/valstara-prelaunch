@@ -13,6 +13,10 @@ const composeUrl = new URL(
 );
 const caddyUrl = new URL('../infra/compose/Caddyfile', import.meta.url);
 const dockerfileUrl = new URL('../Dockerfile', import.meta.url);
+const migrationRunnerUrl = new URL(
+  '../src/server/db/run-migrations.ts',
+  import.meta.url,
+);
 const workflowUrl = new URL(
   '../.github/workflows/main-image.yml',
   import.meta.url,
@@ -116,6 +120,23 @@ test('the production image is multi-stage, health-checked, and non-root', async 
   assert.match(dockerfile, /^USER node$/m);
   assert.match(dockerfile, /^HEALTHCHECK /m);
   assert.match(dockerfile, /CMD \["node", "\.\/dist\/server\/entry\.mjs"\]/);
+});
+
+test('the production migration entry point resolves under native Node TypeScript', async () => {
+  const environment = { ...process.env };
+  delete environment.MIGRATION_DATABASE_URL;
+  delete environment.VALSTARA_APP_DB_PASSWORD;
+
+  await assert.rejects(
+    execFileAsync(process.execPath, [migrationRunnerUrl.pathname], {
+      env: environment,
+    }),
+    (error) => {
+      assert.match(error.stderr, /MIGRATION_DATABASE_URL is required/);
+      assert.doesNotMatch(error.stderr, /ERR_MODULE_NOT_FOUND/);
+      return true;
+    },
+  );
 });
 
 test('production Compose uses the SHA image and hard-disables swap', async () => {
