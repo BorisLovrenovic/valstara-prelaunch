@@ -23,7 +23,19 @@ Every hosted waitlist tool sells these as features. LaunchList sells **ranking i
 
 ## Never use — CI-scanned
 
-The never-use vocabulary is defined in the LOCKED brand guidelines and is **transcribed into `scripts/forbidden-copy.json` in E2-08.** The scan runs over `src/copy/`, `src/content/` and every `.astro` file.
+Transcribed from **`docs/brand/identity-guidelines.md` §3.2 — LOCKED**. **E1-05 seeds `scripts/forbidden-copy.json` from this table**, and the scan runs over `src/copy/`, `src/content/` and every `.astro` file.
+
+| Never use | Use instead |
+|---|---|
+| cracked · hacked · leaked | sourced · verified supplier |
+| black market · grey market · underground | regional pricing · promotional pricing |
+| no refunds · all sales final | warranty · replacement · refund |
+| dirt cheap · insane deal · unbeatable | below list price |
+| shared account · stolen · bypass | account · licence · key · credit |
+| **instant delivery · immediate access** | **delivered within 24 hours** |
+| digital products | **digital goods** |
+
+**"Instant delivery" is the one that matters most.** It is what this category's worst actors claim and frequently fail to honour, and the guarantee's first promise exists precisely to say the real number instead. It must never ship.
 
 Three rules govern the list itself, and they apply whatever the transcribed terms turn out to be:
 

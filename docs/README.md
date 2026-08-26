@@ -12,7 +12,7 @@ This repository builds **one thing**: the Valstara pre-launch waitlist site, liv
 |---|---|
 | `prelaunch-stack-decisions.md` (v2, 25 Aug 2026) | The founder's stack and campaign decisions. Every ADR here records one of them or derives from one; none re-litigate them |
 | `valstara-locked-tech-decisions.md` | Main-store decisions. Out of scope here except where the handoff touches them |
-| `Brand Identity Guidelines — Valstara.md` | Palette, type scale, voice and the never-use vocabulary. LOCKED sections are binding; `brand/tokens.md` and `brand/copy-rules.md` transcribe them, they do not invent them |
+| [`brand/identity-guidelines.md`](brand/identity-guidelines.md) | **In this repository.** Palette (§5), type scale (§6), voice and never-use vocabulary (§3), the Triple Guarantee (§2), UI anti-patterns (§7.3). LOCKED sections are binding; `brand/tokens.md` and `brand/copy-rules.md` transcribe them, they do not invent them |
 
 > **The folder `example development plan and prompts/` is reference material from a different project.** Nothing in it is a decision for this campaign. Do not cite it, do not inherit its features, its ADR numbers, its flags or its vocabulary.
 
