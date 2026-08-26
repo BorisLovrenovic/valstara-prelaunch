@@ -108,7 +108,9 @@ app. It appends a fsynced JSON record to `DEPLOY_AUDIT_FILE` (default
 and completion times, target and previous image identifiers, migrations whose
 ledger release is the target release, and the outcome. A migration failure is
 recorded after querying the ledger, so migrations committed before a later
-failure remain visible in the attempt record.
+failure remain visible in the attempt record. Failures before the migration
+service starts record an empty migration list; if the ledger cannot be queried
+after a migration attempt, the record preserves that uncertainty as `null`.
 
 ## Rollback
 

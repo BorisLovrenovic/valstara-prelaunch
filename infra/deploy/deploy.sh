@@ -42,14 +42,13 @@ esac
 export VALSTARA_IMAGE=$target_image
 export VALSTARA_RELEASE=$release
 
+started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+previous_image=''
+migrations='[]'
+
 compose() {
   docker compose -f "$compose_file" "$@"
 }
-
-current_container=$(compose ps -q app)
-[ -n "$current_container" ] || fail 'No currently serving app container was found; deployment aborted.'
-previous_image=$(docker inspect --format '{{.Config.Image}}' "$current_container")
-[ -n "$previous_image" ] || fail 'The current app image could not be identified; deployment aborted.'
 
 health_status() {
   docker inspect --format '{{.State.Health.Status}}' "$1"
@@ -60,7 +59,8 @@ wait_for_healthy() {
   elapsed=0
 
   while [ "$elapsed" -le "$health_timeout" ]; do
-    if [ "$(health_status "$container_id")" = healthy ]; then
+    status=$(health_status "$container_id") || return 1
+    if [ "$status" = healthy ]; then
       return 0
     fi
 
@@ -71,10 +71,6 @@ wait_for_healthy() {
 
   return 1
 }
-
-if ! wait_for_healthy "$current_container"; then
-  fail 'The current app is not healthy; deployment aborted to preserve the serving release.'
-fi
 
 migrations_for_release() {
   compose exec -T postgres psql -X -q -A -t \
@@ -94,7 +90,6 @@ json_string_or_null() {
 
 record() {
   outcome=$1
-  migrations=$(migrations_for_release)
   completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
   umask 077
@@ -105,6 +100,36 @@ record() {
     >>"$audit_file"
   sync "$audit_file"
 }
+
+capture_migrations_for_release() {
+  recorded_migrations=$(migrations_for_release 2>/dev/null) || return 1
+  migrations=$recorded_migrations
+}
+
+if ! current_container=$(compose ps -q app); then
+  record current_container_lookup_failed
+  fail 'The current app container could not be identified; deployment aborted.'
+fi
+
+if [ -z "$current_container" ]; then
+  record no_serving_container
+  fail 'No currently serving app container was found; deployment aborted.'
+fi
+
+if ! previous_image=$(docker inspect --format '{{.Config.Image}}' "$current_container"); then
+  record previous_image_lookup_failed
+  fail 'The current app image could not be identified; deployment aborted.'
+fi
+
+if [ -z "$previous_image" ]; then
+  record previous_image_lookup_failed
+  fail 'The current app image could not be identified; deployment aborted.'
+fi
+
+if ! wait_for_healthy "$current_container"; then
+  record current_health_failed
+  fail 'The current app is not healthy; deployment aborted to preserve the serving release.'
+fi
 
 candidate_name="valstara-deploy-candidate-$(date +%s)"
 candidate_created=false
@@ -118,16 +143,27 @@ cleanup() {
 }
 trap cleanup EXIT
 
-started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-
-compose pull app migrate
+if ! compose pull app migrate; then
+  record image_pull_failed
+  fail 'Image pull failed; the serving app was not restarted.'
+fi
 
 if ! compose run --rm migrate; then
+  capture_migrations_for_release || migrations='null'
   record migration_failed
   fail 'Migration failed; the serving app was not restarted.'
 fi
 
-compose run -d --no-deps --name "$candidate_name" app >/dev/null
+if ! capture_migrations_for_release; then
+  migrations='null'
+  record migration_audit_query_failed
+  fail 'Migration audit query failed; the serving app was not restarted.'
+fi
+
+if ! compose run -d --no-deps --name "$candidate_name" app >/dev/null; then
+  record candidate_start_failed
+  fail 'Candidate could not be started; the serving app was not restarted.'
+fi
 candidate_created=true
 
 if ! wait_for_healthy "$candidate_name"; then
@@ -135,11 +171,32 @@ if ! wait_for_healthy "$candidate_name"; then
   fail 'Candidate health check failed; the previous app remains serving.'
 fi
 
-docker rm -f "$candidate_name" >/dev/null
+if ! docker rm -f "$candidate_name" >/dev/null; then
+  record candidate_cleanup_failed
+  fail 'Candidate cleanup failed; the serving app was not restarted.'
+fi
 candidate_created=false
 
-compose up -d --no-deps --force-recreate app
-current_container=$(compose ps -q app)
+if ! compose up -d --no-deps --force-recreate app; then
+  record restart_command_failed
+  DEPLOY_AUDIT_SUCCESS_OUTCOME=rollback_succeeded \
+    "$project_root/infra/deploy/rollback.sh" || true
+  fail 'App restart command failed; rollback was attempted.'
+fi
+
+if ! current_container=$(compose ps -q app); then
+  record restart_container_lookup_failed
+  DEPLOY_AUDIT_SUCCESS_OUTCOME=rollback_succeeded \
+    "$project_root/infra/deploy/rollback.sh" || true
+  fail 'Restarted app container could not be identified; rollback was attempted.'
+fi
+
+if [ -z "$current_container" ]; then
+  record restart_container_lookup_failed
+  DEPLOY_AUDIT_SUCCESS_OUTCOME=rollback_succeeded \
+    "$project_root/infra/deploy/rollback.sh" || true
+  fail 'Restarted app container could not be identified; rollback was attempted.'
+fi
 
 if ! wait_for_healthy "$current_container"; then
   record restart_health_failed
