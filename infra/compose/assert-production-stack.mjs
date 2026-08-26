@@ -9,6 +9,8 @@ import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 import { promisify } from 'node:util';
 
+import { waitFor } from './wait-for.mjs';
+
 const execFileAsync = promisify(execFile);
 const projectRoot = fileURLToPath(new URL('../..', import.meta.url));
 const composeFile = fileURLToPath(
@@ -58,27 +60,6 @@ async function inspect(service) {
   const id = await compose(['ps', '--all', '--quiet', service]);
   assert.notEqual(id, '', `${service} has no container`);
   return JSON.parse(await run('docker', ['inspect', id])).at(0);
-}
-
-async function waitFor(description, operation, expected, timeoutMs = 30_000) {
-  const attempts = Math.ceil(timeoutMs / 500);
-  let lastValue;
-
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      lastValue = await operation();
-      if (lastValue === expected) {
-        return;
-      }
-    } catch (error) {
-      lastValue = error instanceof Error ? error.message : String(error);
-    }
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 500));
-  }
-
-  assert.fail(
-    `${description}: expected ${expected}, last observed ${lastValue}`,
-  );
 }
 
 async function requestStatus(network, hostname, sourceIp) {

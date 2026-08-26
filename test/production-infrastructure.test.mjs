@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { promisify } from 'node:util';
 
+import { waitFor } from '../infra/compose/wait-for.mjs';
+
 const execFileAsync = promisify(execFile);
 const composeUrl = new URL(
   '../infra/compose/docker-compose.production.yml',
@@ -39,6 +41,53 @@ async function renderedProductionCompose() {
   );
   return JSON.parse(stdout);
 }
+
+test('production-stack waits use an elapsed-time deadline', async () => {
+  let elapsedMs = 0;
+  let operationCalls = 0;
+  let deadline;
+  let deadlineCallback;
+  let deadlineCancelled = false;
+  const advance = (delayMs) => {
+    elapsedMs += delayMs;
+    if (deadlineCallback && elapsedMs >= deadline) {
+      const callback = deadlineCallback;
+      deadlineCallback = undefined;
+      callback();
+    }
+  };
+  const scheduler = {
+    cancel: () => {
+      deadlineCancelled = true;
+      deadlineCallback = undefined;
+    },
+    schedule: (callback, delayMs) => {
+      deadline = elapsedMs + delayMs;
+      deadlineCallback = callback;
+      return 1;
+    },
+    sleep: async (delayMs) => {
+      advance(delayMs);
+    },
+  };
+
+  await assert.rejects(
+    waitFor(
+      'backend did not recover',
+      async () => {
+        operationCalls += 1;
+        advance(700);
+        return 'unhealthy';
+      },
+      'healthy',
+      1_000,
+      scheduler,
+    ),
+    /backend did not recover: expected healthy, last observed unhealthy/,
+  );
+  assert.equal(operationCalls, 1);
+  assert.equal(deadlineCancelled, true);
+});
 
 test('main pushes produce an immutable SHA image and retain three versions', async () => {
   const workflow = await readFile(workflowUrl, 'utf8');
