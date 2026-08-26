@@ -16,7 +16,7 @@ untracked root `.env` file.
 | `POSTGRES_HOST_PORT`       | Loopback-only host port for local PostgreSQL access                              | Docker Compose      | `5434`                      | No                            |
 | `POSTGRES_MEM_LIMIT`       | Hard memory and equal memory-plus-swap limit for PostgreSQL                      | Docker Compose      | `512m`                      | No                            |
 | `APP_MEM_LIMIT`            | Hard memory and equal memory-plus-swap limit for the Astro app                   | Docker Compose      | `768m`                      | No                            |
-| `MIGRATION_MEM_LIMIT`      | Hard memory and equal memory-plus-swap limit for the one-shot migration service  | Docker Compose      | `256m`                      | No                            |
+| `MIGRATION_MEM_LIMIT`      | Hard memory and equal memory-plus-swap limit for the one-shot migration service  | Docker Compose      | `768m`                      | No                            |
 | `UMAMI_MEM_LIMIT`          | Hard memory and equal memory-plus-swap limit for Umami                           | Docker Compose      | `768m`                      | No                            |
 
 Compose derives or fixes the following container variables. They are listed
@@ -64,3 +64,39 @@ GitHub branch protection is unavailable on the current private-repository plan,
 as verified through the repository API on 2026-08-26. The mandatory review gates
 and merge rules in `docs/engineering/git-workflow.md` are therefore enforced
 procedurally, with the CI results retained as required review evidence.
+
+## Why the migration service is sized like the application
+
+`migrate` runs `npm ci` on a cold `app-node-modules` volume before applying
+migrations, so its peak memory is an install, not a migration. It was capped at
+`256m`, which held on a developer machine and was OOM-killed on a CI runner —
+exit 137 — because npm's install concurrency follows the host CPU count. The
+ceiling is now `768m`, matching `app`, which performs the identical install, and
+both services pin `NPM_CONFIG_MAXSOCKETS` so the limit means the same thing on
+every host.
+
+The hard-limit-and-no-swap rule from ADR-003 is unchanged. A limit that is
+correct on one machine and fatal on another is a mis-sized limit, not a
+tighter one.
+
+## Why the containers are Debian rather than Alpine
+
+`app` and `migrate` run `node:22-bookworm-slim`, not `node:22-alpine`. The
+lockfile pins platform-specific native binaries built for glibc —
+`@astrojs/compiler-binding-linux-x64-gnu`, `@rolldown/binding-linux-x64-gnu`,
+`@esbuild/linux-x64` and `sharp`. Alpine is musl and cannot load them, which is
+why the containers previously needed an entirely separate `node_modules` from
+the host.
+
+With both sides on glibc, CI can share one install. `docker-compose.ci.yml`
+replaces the named `app-node-modules` volume with a bind to the runner's own
+`node_modules`, so nothing installs inside a container on CI at all. That
+overlay is **CI-only** — locally the named volume is still correct, because a
+developer's host may not be Linux, and because the containers run as root and
+would leave root-owned files in a host `node_modules`.
+
+The overlay also runs the built server instead of `astro dev`. The dev server
+optimises Vite dependencies on first boot and restarts itself once when it
+does, which races `docker compose up --wait` and fails it intermittently. CI has
+nothing to hot-reload, so both jobs build first and the container runs
+`./dist/server/entry.mjs`.

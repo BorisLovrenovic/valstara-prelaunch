@@ -10,42 +10,59 @@ So the rule is stronger than "use tokens":
 
 1. **One file — `src/styles/tokens.css` — declares every token as a CSS custom property.** No Tailwind config, no JS theme object, no framework coupling of any kind. It must be copyable into the Next.js storefront **verbatim**.
 2. **No component contains a literal colour, font family, radius, spacing or duration value.** CI-scanned. A hex code in a component is a review blocker.
-3. **The values come from `Brand Identity Guidelines — Valstara.md`.** This repository transcribes them; it does not invent them, and it does not "improve" them. Where the guidelines are silent, that is a founder question, not a developer decision.
+3. **The values come from `docs/brand/identity-guidelines.md` §5 (colour) and §6 (typography) — LOCKED.** This repository transcribes them; it does not invent them, and it does not "improve" them. Where the guidelines are silent, that is a founder question, not a developer decision.
 4. **This file is canonical during pre-launch.** When the storefront starts, the token file is copied from here, and any subsequent change is made here first and re-ported.
 
 ## Token groups and their shape
 
-The names below are the contract. **The values are transcribed in E2-01 from the brand guidelines** — a placeholder value shipping to production is a blocking finding.
+**Names and values below are both LOCKED**, transcribed from `docs/brand/identity-guidelines.md` §5 and §6. E2-01 copies them into `src/styles/tokens.css` unchanged.
 
 ```css
 :root {
-  /* colour — semantic roles, not paint names */
-  --paper: …;          /* page background */
-  --surface: …;        /* cards, panels, inputs */
-  --ink: …;            /* primary text */
-  --ink-secondary: …;  /* secondary text */
-  --ink-tertiary: …;   /* placeholders, disabled */
-  --line: …;           /* borders, dividers */
-  --accent: …;         /* primary accent */
-  --accent-tint: …;    /* accent backgrounds */
-  --accent-contrast: …;/* text on accent */
-  --band: …;           /* the dark contrast band */
+  /* colour — LOCKED, identity-guidelines.md §5 */
+  --paper: #FAFAFA;          /* page background — cool neutral, never cream or warm */
+  --surface: #FFFFFF;        /* cards, panels, inputs */
+  --ink: #101014;            /* primary text */
+  --ink-600: #55555E;        /* secondary text, struck-through prices */
+  --ink-300: #A0A0A8;        /* tertiary, placeholders, disabled */
+  --line: #E5E5E5;           /* borders, dividers */
+  --coral: #E8654A;          /* primary accent — buttons, links, badges, the mark */
+  --coral-lift: #FF8A66;     /* gradient terminal; small marks needing brightness */
+  --coral-tint: #FDEEE9;     /* accent backgrounds, subtle highlight fills */
+  --midnight: #171733;       /* dark surfaces — guarantee band, footer */
+  --midnight-deep: #0D0D1F;  /* optional gradient terminal */
 
   /* functional — UI only, never brand surfaces */
-  --error: …; --warning: …; --success: …;
+  --error: #C0392B; --warning: #B7791F; --success: #2E7D57;
 
-  /* type */
-  --font-sans: 'Instrument Sans', …;
-  --font-mono: 'JetBrains Mono', …;
-  --step--1 … --step-5: …;   /* the scale, not literal sizes at call sites */
-  --leading-tight … --leading-loose: …;
+  /* type — LOCKED, §6. Söhne is the eventual primary; pre-launch ships Instrument Sans (ADR-016) */
+  --font-sans: 'Instrument Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  /* space, radius, motion */
-  --space-1 … --space-12: …;
-  --radius-sm/-md/-pill: …;
-  --duration-fast/-base: …;  --ease-out: …;
+  /* scale — §6.1: H1 32/40 · H2 24/32 · H3 20/28 · Body 16/24 · Small 14/20 · Label 13/18 */
+  --step-5: 2rem;    --leading-5: 2.5rem;    /* H1 */
+  --step-4: 1.5rem;  --leading-4: 2rem;      /* H2 */
+  --step-3: 1.25rem; --leading-3: 1.75rem;   /* H3 */
+  --step-2: 1rem;    --leading-2: 1.5rem;    /* Body */
+  --step-1: 0.875rem;--leading-1: 1.25rem;   /* Small */
+  --step-0: 0.8125rem;--leading-0: 1.125rem; /* Label */
+
+  /* radius — §7 */
+  --radius-card: 12px; --radius-control: 8px; --radius-pill: 999px;
+
+  /* motion — §7: 150–200ms ease-out */
+  --duration-fast: 150ms; --duration-base: 200ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='dark'] {
+  --paper: #0F0F1A; --surface: #171733; --ink: #F0F0EE; --coral: #FF8A66;
 }
 ```
+
+**Spacing** follows §7: 24px minimum card padding, 64–80px between sections. Declare a `--space-*` ramp on the same 8px base and reference it everywhere.
+
+**These are the LOCKED names.** Earlier drafts of this file used invented role names (`--accent`, `--band`, `--ink-secondary`); they are gone. The brand document's vocabulary is what the storefront inherits, and ADR-015 requires this file to transfer verbatim.
 
 Dark values are declared in a **single** `[data-theme="dark"]` block that redefines the same names. A token whose only definition lives inside a media query or a theme block is a defect — the light palette is the base, always.
 
@@ -54,7 +71,7 @@ Dark values are declared in a **single** `[data-theme="dark"]` block that redefi
 - **Light-first. Dark mode is a user toggle, never the default**, and the toggle must not flash on load.
 - **Body text clears WCAG AA (4.5:1) in both themes.** Verified per pairing by an automated contrast test over the token matrix, not assumed from the guidelines.
 - **The accent must not carry body text** unless the transcribed value clears AA at body size — verified, not asserted.
-- **`--error` must be visibly distinct from `--accent`.** Never signal an error with the accent colour.
+- **`--error` must be visibly distinct from `--coral`.** Never signal an error with the accent colour.
 - **Prices, counts, codes and any figure that changes use the mono face with tabular figures.** A leaderboard whose numbers jitter between refreshes reads as unstable.
 - Motion is short and eased; **no bounce, no parallax, no auto-advancing anything.** `prefers-reduced-motion` is respected everywhere, not just on decorative elements.
 - **Nothing cramped.** Generous card padding and section rhythm; the visual signal of a legitimate company is space, and the audience is reading for exactly that signal.

@@ -47,7 +47,8 @@ Five items no agent can complete. Each gates something, and the gate is stated s
 |---|---|---|---|---|
 | **P1** | **DNS records and email authentication** — `send.` and `mail.` subdomains plus `subslush.com`; SPF, DKIM, DMARC `p=none` | Configuration | E8 entirely. **The only item with a hard 12-week clock** — reputation is warmed, not switched on | **Today** |
 | **P2** | **Appoint the EU and UK Article 27 representatives** | Procurement, €200–500/yr each | **The privacy policy, which gates the first signup.** E9-03 asserts their presence at build time and the signup route is unreachable while it fails | **Today** |
-| **P3** | **Brand token values and trust-page prose** | Founder input from the brand and store documentation | E2-01 and E9-02. **A placeholder shipping to production is a blocking finding** | Before E2 |
+| **P3a** | ~~Brand token values~~ — **SATISFIED.** In the repository at `docs/brand/identity-guidelines.md` §5 (colour) and §6 (typography), LOCKED | — | Nothing. E2-01 is unblocked | Done |
+| **P3b** | **Trust-page prose** — `/legit`, `/guarantee`, `/about` | Founder input from the brand and store documentation | E9-02. **A page shell with placeholder text is not a deliverable** | Before E9 |
 | **P4** | **Giveaway prize, entry rules and reviewed rules-page text** | Founder input plus counsel | E7 entirely; `giveaway.open` stays off without it | Before E7 |
 | **P5** | **Upgrade Resend and Brevo past the free tiers** | Purchase — Resend free is 100/day, Brevo 300/day | **Turning `giveaway.open` on.** Upgrade *before* the giveaway opens, not when the limits hit | Before E7 exit |
 
@@ -386,16 +387,18 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 **Why this tier:** this is the single artifact the storefront inherits verbatim (ADR-015), and getting its structure wrong costs 15–25 hours later rather than an hour now.
 
-**Build:** `src/styles/tokens.css` — every token as a CSS custom property, with **no framework coupling of any kind.** Structure per `docs/brand/tokens.md`. **Values transcribed from the brand guidelines**, not invented. Light palette on bare `:root`; dark values redefining the same names in a single `[data-theme="dark"]` block. Start the port checklist.
+**Build:** `src/styles/tokens.css` — every token as a CSS custom property, with **no framework coupling of any kind.** Structure and names per `docs/brand/tokens.md`.
 
-**BLOCKED if P3 is outstanding.** A placeholder value is not a deliverable.
+**Transcribe the values from `docs/brand/identity-guidelines.md` §5 and §6 — they are in this repository and LOCKED.** Do not invent, tint, blend or "improve" a value. Light palette on bare `:root`; dark values redefining the same names in a single `[data-theme="dark"]` block. Start the port checklist.
+
+**Use the brand document's own token names** — `--coral`, `--midnight`, `--ink-600` — not invented role names. They are LOCKED vocabulary shared with the storefront, and the file must transfer verbatim (ADR-015).
 
 **Acceptance criteria:**
-- Every token group in `docs/brand/tokens.md` is present with a real transcribed value
+- Every token in `docs/brand/tokens.md` is present with **the exact value from `identity-guidelines.md` §5/§6** — asserted against the source, not eyeballed
 - **The file has no framework coupling and no import** — it is copyable into a Next.js project unchanged
 - **No token's only definition lives inside a media query or a theme block** — the light palette is the base
 - **Every text/background pairing clears WCAG AA in both themes** — asserted by an automated contrast test over the token matrix, not read off the guidelines
-- **`--error` is visibly distinct from `--accent`**
+- **`--error` is visibly distinct from `--coral`**
 - The port checklist exists and names the storefront target
 
 **Tests:** Contrast assertion over every declared pairing; a parse test proving no framework syntax.

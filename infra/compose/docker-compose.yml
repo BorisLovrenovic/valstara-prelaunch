@@ -29,13 +29,17 @@ services:
     memswap_limit: ${POSTGRES_MEM_LIMIT:-512m}
 
   app:
-    image: node:22-alpine
+    image: node:22-bookworm-slim
     restart: unless-stopped
     working_dir: /workspace
     command: ['sh', '/workspace/infra/compose/run-app.sh']
     environment:
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:-valstara-app-local-only}@postgres:5432/valstara_waitlist
       ASTRO_TELEMETRY_DISABLED: '1'
+      # Same install as migrate — pin npm the same way (see the migrate service).
+      NPM_CONFIG_MAXSOCKETS: '4'
+      NPM_CONFIG_AUDIT: 'false'
+      NPM_CONFIG_FUND: 'false'
     ports:
       - '127.0.0.1:4321:4321'
     volumes:
@@ -56,21 +60,27 @@ services:
     memswap_limit: ${APP_MEM_LIMIT:-768m}
 
   migrate:
-    image: node:22-alpine
+    image: node:22-bookworm-slim
     restart: 'no'
     working_dir: /workspace
     command: ['sh', '/workspace/infra/compose/run-migrations.sh']
     environment:
       MIGRATION_DATABASE_URL: postgresql://${VALSTARA_DB_USER:-valstara}:${VALSTARA_DB_PASSWORD:-valstara-local-only}@postgres:5432/valstara_waitlist
       VALSTARA_APP_DB_PASSWORD: ${VALSTARA_APP_DB_PASSWORD:-valstara-app-local-only}
+      # npm's install concurrency follows the host CPU count, so peak memory
+      # differs between a laptop and a CI runner. Pin it so the ceiling below
+      # means the same thing everywhere.
+      NPM_CONFIG_MAXSOCKETS: '4'
+      NPM_CONFIG_AUDIT: 'false'
+      NPM_CONFIG_FUND: 'false'
     volumes:
       - ../..:/workspace
       - app-node-modules:/workspace/node_modules
     depends_on:
       postgres:
         condition: service_healthy
-    mem_limit: ${MIGRATION_MEM_LIMIT:-256m}
-    memswap_limit: ${MIGRATION_MEM_LIMIT:-256m}
+    mem_limit: ${MIGRATION_MEM_LIMIT:-768m}
+    memswap_limit: ${MIGRATION_MEM_LIMIT:-768m}
 
   umami:
     image: ghcr.io/umami-software/umami:3.3.0
