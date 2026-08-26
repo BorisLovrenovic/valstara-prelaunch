@@ -35,6 +35,8 @@ Seven scans, each with a **planted red-path fixture committed in-repo** so a sca
 
 **The cookie, fingerprinting and third-party rules are what make "no consent banner" a verified property rather than an intention.** They are the reason it is safe to have no banner at all.
 
+`npm run security` runs the seven scans. `npm run ci:security-red-paths` materialises the committed fixture definitions and proves each scan fails; it is mandatory beside the production scan. The policy files live in `scripts/ci/`, while `scripts/forbidden-copy.json` is seeded from the LOCKED never-use table.
+
 ## Main pipeline
 
 Path-filtered. A push to `main` touching `src/**`, `infra/**` or `scripts/**` builds the Docker image and pushes it to GHCR tagged with the commit SHA, with the newest three retained. **It does not deploy.** A `docs/**` change builds nothing.

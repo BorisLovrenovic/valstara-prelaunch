@@ -12,7 +12,7 @@ import {
 const workflowUrl = new URL('../.github/workflows/pr.yml', import.meta.url);
 const configUrl = new URL('../coverage.config.json', import.meta.url);
 
-test('the PR workflow exposes the five E1-04 mandatory check names', async () => {
+test('the PR workflow exposes the mandatory E1-04 and E1-05 check names', async () => {
   const workflow = await readFile(workflowUrl, 'utf8');
   const jobNames = [...workflow.matchAll(/^ {2}([a-z]+):$/gm)].map(
     (match) => match[1],
@@ -24,13 +24,16 @@ test('the PR workflow exposes the five E1-04 mandatory check names', async () =>
     'test',
     'build',
     'coverage',
+    'security',
   ]);
-  assert.equal((workflow.match(/- run: npm ci/g) ?? []).length, 5);
+  assert.equal((workflow.match(/- run: npm ci/g) ?? []).length, 6);
   assert.match(workflow, /npm run lint && npm run format/);
   assert.match(workflow, /npm run typecheck/);
   assert.match(workflow, /npm test/);
   assert.match(workflow, /npm run build/);
   assert.match(workflow, /npm run coverage/);
+  assert.match(workflow, /npm run security/);
+  assert.match(workflow, /npm run ci:security-red-paths/);
 });
 
 test('docs-only pull requests are excluded without excluding other changes', async () => {

@@ -1,0 +1,14 @@
+{
+  "themePreference": {
+    "pathPattern": "^src/islands/theme-toggle\\.(?:ts|tsx|js|jsx)$",
+    "storageKey": "valstara-theme"
+  },
+  "thirdPartyRequests": [
+    {
+      "host": "widget.trustpilot.com",
+      "pathPattern": "^src/(?:components|islands)/",
+      "requiredFlag": "trustpilot.widget",
+      "reason": "The flagged Trustpilot widget is the sole approved off-origin rendered-page request."
+    }
+  ]
+}

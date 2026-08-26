@@ -1,0 +1,21 @@
+{
+  "entries": [
+    { "term": "cracked", "replacement": "sourced" },
+    { "term": "hacked", "replacement": "sourced" },
+    { "term": "leaked", "replacement": "verified supplier" },
+    { "term": "black market", "replacement": "regional pricing" },
+    { "term": "grey market", "replacement": "regional pricing" },
+    { "term": "underground", "replacement": "promotional pricing" },
+    { "term": "no refunds", "replacement": "warranty" },
+    { "term": "all sales final", "replacement": "replacement" },
+    { "term": "dirt cheap", "replacement": "below list price" },
+    { "term": "insane deal", "replacement": "below list price" },
+    { "term": "unbeatable", "replacement": "below list price" },
+    { "term": "shared account", "replacement": "account" },
+    { "term": "stolen", "replacement": "licence" },
+    { "term": "bypass", "replacement": "key" },
+    { "term": "instant delivery", "replacement": "delivered within 24 hours" },
+    { "term": "immediate access", "replacement": "delivered within 24 hours" },
+    { "term": "digital products", "replacement": "digital goods" }
+  ]
+}

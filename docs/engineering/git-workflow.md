@@ -60,7 +60,7 @@ Reviewed on every non-docs-only PR; they map one-to-one to `docs/engineering/ci-
 | `test` | Unit, module-contract and integration tests |
 | `build` | The Astro production build |
 | `coverage` | Changed-code and critical-module coverage gates |
-| `security` | Secret, dependency, cookie/storage, fingerprinting, vendor-boundary and forbidden-copy scans |
+| `security` | Secret, dependency, cookie/storage, fingerprinting, third-party request, vendor-boundary and forbidden-copy scans |
 | `migration` | Ledger checksums and schema reproducibility |
 | `a11y` | Automated accessibility pass over the built pages |
 
