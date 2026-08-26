@@ -95,9 +95,35 @@ Deploy pulls the SHA-tagged image, runs migrations, and health-gates the restart
 
 A **checksum mismatch on an already-applied migration aborts the deploy** before anything restarts. A failed health check aborts the rollout, leaving the previous version serving.
 
+Run a production deployment with an immutable image reference:
+
+```sh
+infra/deploy/deploy.sh ghcr.io/borislovrenovic/valstara-prelaunch:<40-character-commit-sha>
+```
+
+The script pulls the image, runs the one-shot migration service, then runs the
+target app as an isolated health-checked candidate before replacing the serving
+app. It appends a fsynced JSON record to `DEPLOY_AUDIT_FILE` (default
+`/var/lib/valstara/deploy-audit.jsonl`). Each final record includes the start
+and completion times, target and previous image identifiers, migrations whose
+ledger release is the target release, and the outcome. A migration failure is
+recorded after querying the ledger, so migrations committed before a later
+failure remain visible in the attempt record.
+
 ## Rollback
 
 **Redeploy the previous release identifier — one command, under five minutes, drilled and recorded.** Because migrations are additive-first, the previous image runs against the migrated schema. **A migration that breaks this property is a blocking review finding.**
+
+```sh
+infra/deploy/rollback.sh
+```
+
+`rollback.sh` selects the most recent successful image in the durable audit
+that differs from the currently serving image, then invokes the same
+health-gated deployment path. Its audit outcome is `rollback_succeeded` or the
+failure outcome from that path. The automated drill stages a failing candidate
+and performs this rollback selection; operators record the timed production
+drill in the PR before release.
 
 ## Backups
 
