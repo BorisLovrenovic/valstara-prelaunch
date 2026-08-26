@@ -1,0 +1,16 @@
+{
+  "changedLinesMinimum": 80,
+  "includedRoots": ["src/"],
+  "includedExtensions": [".ts"],
+  "criticalModules": {
+    "minimum": 90,
+    "enforced": false,
+    "paths": [
+      "src/server/subscriber/",
+      "src/server/verification/",
+      "src/server/referral/",
+      "src/server/giveaway/",
+      "src/server/email/"
+    ]
+  }
+}

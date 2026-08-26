@@ -1,0 +1,22 @@
+{
+  "lint": {
+    "path": "src/server/ci-lint-fixture.ts",
+    "content": "export const lintFixture: any = 'expected failure';\n"
+  },
+  "typecheck": {
+    "path": "src/server/ci-typecheck-fixture.ts",
+    "content": "export const typecheckFixture: string = 1;\n"
+  },
+  "test": {
+    "path": "test/ci-test-fixture.test.mjs",
+    "content": "import assert from 'node:assert/strict';\nimport test from 'node:test';\n\ntest('E1-04 red path', () => {\n  assert.fail('expected test-gate failure');\n});\n"
+  },
+  "build": {
+    "path": "src/pages/ci-build-fixture.astro",
+    "content": "---\nconst = 'expected build-gate failure';\n---\n"
+  },
+  "coverage": {
+    "path": "src/server/ci-coverage-fixture.ts",
+    "content": "export function uncoveredFixture(value: number): number {\n  const first = value + 1;\n  const second = first * 2;\n  const third = second - 3;\n  const fourth = third * 4;\n  const fifth = fourth + 5;\n  const sixth = fifth / 6;\n  return sixth;\n}\n"
+  }
+}

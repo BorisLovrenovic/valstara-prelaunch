@@ -17,6 +17,8 @@ Checks only, no build artifacts are published.
 
 **All are mandatory review gates. Never skip, delete or weaken one to get green.** Docs-only changes (`docs/**`) run nothing.
 
+The five critical-module thresholds are registered in `coverage.config.json` but remain unenforced until those modules exist. E1-04 enforces the 80% changed-line threshold from the first PR pipeline; the owning module tickets activate their 90% thresholds as the modules arrive. The lint, typecheck, test, build and coverage checks each have a committed red-path fixture exercised with `npm run ci:red-paths`.
+
 ### The security and privacy stage
 
 Seven scans, each with a **planted red-path fixture committed in-repo** so a scan that silently stops working is caught:
