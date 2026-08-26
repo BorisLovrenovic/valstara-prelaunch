@@ -9,6 +9,15 @@
     ],
     "diagnostic": "\\[secret\\]"
   },
+  "secret-markdown": {
+    "path": "docs/ci-secret-fixture.md",
+    "contentParts": [
+      "Fixture credential: ghp_",
+      "cccccccccccccccccccccccccccccccccccccccc",
+      "\\n"
+    ],
+    "diagnostic": "\\[secret\\]"
+  },
   "dependency": {
     "path": "scripts/ci/dependency-allowlist.json",
     "content": "{\n  \"allowlist\": [\n    {\n      \"package\": \"fixture-package\",\n      \"justification\": \"A fixture proves missing expiry dates fail.\"\n    }\n  ]\n}\n",
@@ -30,13 +39,21 @@
     "diagnostic": "\\[cookie-storage\\]"
   },
   "fingerprinting": {
-    "path": "src/server/ci-fingerprinting-fixture.ts",
-    "content": "export const entropy = performance.now();\n",
+    "path": "scripts/ci-timing-fixture.ts",
+    "contentParts": [
+      "export const entropy = performance",
+      ".now();\\n"
+    ],
     "diagnostic": "\\[fingerprinting\\]"
   },
   "third-party": {
     "path": "src/pages/ci-third-party-fixture.astro",
     "content": "<script src=\"https://example.invalid/fixture.js\"></script>\n",
+    "diagnostic": "\\[third-party\\]"
+  },
+  "third-party-template": {
+    "path": "src/pages/ci-template-request-fixture.astro",
+    "content": "<script>fetch(`https://example.invalid/fixture`)</script>\\n",
     "diagnostic": "\\[third-party\\]"
   },
   "unflagged-trustpilot": {
@@ -53,6 +70,11 @@
     "path": "src/server/ci-vendor-dynamic-fixture.ts",
     "content": "const target = 'resend';\nexport const provider = import(target);\n",
     "diagnostic": "runtime import target is not static"
+  },
+  "vendor-dynamic-static-import": {
+    "path": "scripts/ci-vendor-dynamic-fixture.ts",
+    "content": "export const provider = import('resend');\\n",
+    "diagnostic": "email SDK resend is outside its provider module"
   },
   "forbidden-copy": {
     "path": "src/pages/ci-forbidden-copy-fixture.astro",

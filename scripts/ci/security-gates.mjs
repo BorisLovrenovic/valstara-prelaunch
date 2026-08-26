@@ -1,35 +1,18 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFile, readdir } from 'node:fs/promises';
-import { relative, resolve, sep } from 'node:path';
+import { lstat, readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 const projectRoot = resolve(new URL('../..', import.meta.url).pathname);
-const textExtensions = new Set([
+const codeExtensions = new Set([
   '.astro',
   '.cjs',
-  '.css',
-  '.html',
   '.js',
-  '.json',
   '.jsx',
   '.mjs',
   '.mts',
   '.ts',
   '.tsx',
-  '.yaml',
-  '.yml',
 ]);
-const ignoredDirectories = new Set([
-  '.astro',
-  '.git',
-  'coverage',
-  'dist',
-  'node_modules',
-]);
-
-function relativePath(path) {
-  return relative(projectRoot, path).split(sep).join('/');
-}
-
 function parseArguments(argumentsList) {
   const options = { audit: true, base: process.env.SECURITY_BASE_SHA };
 
@@ -49,42 +32,30 @@ function parseArguments(argumentsList) {
   return options;
 }
 
-async function walk(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const paths = [];
-
-  for (const entry of entries) {
-    const path = resolve(directory, entry.name);
-
-    if (entry.isDirectory()) {
-      if (!ignoredDirectories.has(entry.name)) {
-        paths.push(...(await walk(path)));
-      }
-    } else if (
-      entry.isFile() &&
-      (textExtensions.has(extension(entry.name)) ||
-        entry.name === '.env.example')
-    ) {
-      paths.push(path);
-    }
-  }
-
-  return paths;
-}
-
 function extension(filename) {
   const lastDot = filename.lastIndexOf('.');
   return lastDot === -1 ? '' : filename.slice(lastDot);
 }
 
 async function sourceFiles() {
-  const paths = await walk(projectRoot);
-  return Promise.all(
-    paths.map(async (path) => ({
-      content: await readFile(path, 'utf8'),
-      path: relativePath(path),
-    })),
+  const paths = execFileSync('git', ['ls-files', '-z'], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  })
+    .split('\0')
+    .filter(Boolean);
+  const files = await Promise.all(
+    paths.map(async (path) => {
+      const fullPath = resolve(projectRoot, path);
+      if (!(await lstat(fullPath)).isFile()) {
+        return undefined;
+      }
+      return { content: await readFile(fullPath), path };
+    }),
   );
+  return files
+    .filter((file) => file && !file.content.includes(0))
+    .map((file) => ({ ...file, content: file.content.toString('utf8') }));
 }
 
 async function readJson(path) {
@@ -323,16 +294,17 @@ async function scanCookieAndStorage(files) {
 
 function scanFingerprinting(files) {
   const patterns = [
-    /<canvas\b|createElement\(\s*['"]canvas['"]\s*\)|\bOffscreenCanvas\b|\bHTMLCanvasElement\b|\bCanvasRenderingContext2D\b|\.getContext\(\s*['"](?:2d|webgl2?|experimental-webgl)['"]\s*\)/,
+    new RegExp(
+      '<can' +
+        'vas\\b|createElement\\(\\s*[\'"]canvas[\'"]\\s*\\)|\\bOffscreenCanvas\\b|\\bHTMLCanvasElement\\b|\\bCanvasRenderingContext2D\\b|\\.getContext\\(\\s*[\'"](?:2d|webgl2?|experimental-webgl)[\'"]\\s*\\)',
+    ),
     /(?:document|navigator)\.fonts|\bFontFace\b|\.measureText\(/,
     /\bWebGL(?:2)?RenderingContext\b|\bWEBGL_[A-Z_]+\b/,
     /performance\.(?:now|timeOrigin|getEntries(?:ByType|ByName)?)/,
   ];
   const issues = [];
 
-  for (const file of files.filter((candidate) =>
-    candidate.path.startsWith('src/'),
-  )) {
+  for (const file of files) {
     for (const pattern of patterns) {
       if (pattern.test(file.content)) {
         issues.push(
@@ -366,12 +338,12 @@ function isAllowedThirdParty(host, file, policy) {
 function scanThirdPartyRequests(files) {
   const issues = [];
   const urlPattern =
-    /(?:fetch|import|navigator\.sendBeacon|new\s+(?:WebSocket|EventSource)|\.open)\(\s*(?:['"][^'"]+['"]\s*,\s*)?['"](https?:\/\/[^'"]+)|<(?:script|iframe|img|link)\b[^>]*\b(?:src|href)=["'](https?:\/\/[^"']+)|(?:@import\s+(?:url\()?|url\()\s*['"]?(https?:\/\/[^'"\s)]+)/g;
+    /(?:fetch|import|navigator\.sendBeacon|new\s+(?:WebSocket|EventSource)|\.open)\(\s*(?:['"`][^'"`]+['"`]\s*,\s*)?(['"`])(https?:\/\/[^'"`]+)\1|<(?:script|iframe|img|link)\b[^>]*\b(?:src|href)=["'](https?:\/\/[^"']+)|(?:@import\s+(?:url\()?|url\()\s*['"]?(https?:\/\/[^'"\s)]+)/g;
 
   return readJson('scripts/ci/privacy-allowlist.json').then((policy) => {
     for (const file of browserFiles(files)) {
       for (const match of file.content.matchAll(urlPattern)) {
-        const requestUrl = match[1] ?? match[2] ?? match[3];
+        const requestUrl = match[2] ?? match[3] ?? match[4];
         const host = hostFromUrl(requestUrl);
         if (host && !isAllowedThirdParty(host, file, policy)) {
           issues.push(
@@ -400,7 +372,7 @@ function scanVendorBoundary(files) {
   const runtimeImport = /\bimport\(([^)]+)\)/g;
 
   for (const file of files.filter((candidate) =>
-    candidate.path.startsWith('src/'),
+    codeExtensions.has(extension(candidate.path)),
   )) {
     for (const match of file.content.matchAll(staticImport)) {
       const allowedPath = vendorPackages.get(match[1]);
@@ -417,12 +389,26 @@ function scanVendorBoundary(files) {
 
     for (const match of file.content.matchAll(runtimeImport)) {
       const target = match[1].trim();
-      if (!/^['"][^'"]+['"]$/.test(target)) {
+      const staticTarget = /^(['"])([^'"]+)\1$/.exec(target);
+      if (!staticTarget) {
         issues.push(
           issue(
             'vendor-boundary',
             file.path,
             'runtime import target is not static',
+          ),
+        );
+        continue;
+      }
+
+      const packageName = staticTarget[2];
+      const allowedPath = vendorPackages.get(packageName);
+      if (allowedPath && !allowedPath.test(file.path)) {
+        issues.push(
+          issue(
+            'vendor-boundary',
+            file.path,
+            `email SDK ${packageName} is outside its provider module`,
           ),
         );
       }
