@@ -1,7 +1,7 @@
 {
   "changedLinesMinimum": 80,
   "includedRoots": ["src/"],
-  "includedExtensions": [".ts"],
+  "includedExtensions": [".ts", ".astro"],
   "criticalModules": {
     "minimum": 90,
     "enforced": false,

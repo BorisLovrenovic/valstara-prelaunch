@@ -39,7 +39,7 @@ run(
   [
     'c8',
     '--all',
-    '--include=src/**/*.ts',
+    '--include=src/**/*.{ts,astro}',
     '--reporter=text',
     '--reporter=lcov',
     '--reports-dir=coverage',

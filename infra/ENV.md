@@ -57,3 +57,10 @@ port 5434 for local development. The app and Umami ports are also loopback-only.
 The initial Umami login is `admin` / `umami`; change it immediately after the
 first login. The Umami service runs with telemetry disabled and private mode on,
 so this local stack makes no optional external requests.
+
+## GitHub repository controls
+
+GitHub branch protection is unavailable on the current private-repository plan,
+as verified through the repository API on 2026-08-26. The mandatory review gates
+and merge rules in `docs/engineering/git-workflow.md` are therefore enforced
+procedurally, with the CI results retained as required review evidence.

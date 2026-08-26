@@ -73,13 +73,38 @@ test('changed-line coverage passes at 80% and fails below it', () => {
   );
   const config = {
     includedRoots: ['src/'],
-    includedExtensions: ['.ts'],
+    includedExtensions: ['.ts', '.astro'],
   };
   const passing = changedCoverage(changed, coverage, config);
 
   assert.equal(passing.percentage, 80);
   assert.doesNotThrow(() => assertCoverage(passing, 80));
   assert.throws(() => assertCoverage(passing, 81), /below 81%/);
+});
+
+test('an uncovered Astro change fails closed without LCOV entries', async () => {
+  const config = JSON.parse(await readFile(configUrl, 'utf8'));
+  const changed = parseChangedLines(
+    '+++ b/src/pages/uncovered.astro\n@@ -0,0 +1,4 @@\n',
+  );
+  const result = changedCoverage(changed, new Map(), config);
+
+  assert.deepEqual(result.filesWithoutCoverage, ['src/pages/uncovered.astro']);
+  assert.throws(
+    () => assertCoverage(result, config.changedLinesMinimum),
+    /no coverage entries: src\/pages\/uncovered\.astro/,
+  );
+});
+
+test('coverage includes every executable source format used under src', async () => {
+  const config = JSON.parse(await readFile(configUrl, 'utf8'));
+  const runner = await readFile(
+    new URL('../scripts/ci/run-coverage.mjs', import.meta.url),
+    'utf8',
+  );
+
+  assert.deepEqual(config.includedExtensions, ['.ts', '.astro']);
+  assert.match(runner, /--include=src\/\*\*\/\*\.\{ts,astro\}/);
 });
 
 test('the 90% critical-module list is complete and deliberately deferred', async () => {

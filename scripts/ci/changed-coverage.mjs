@@ -66,6 +66,7 @@ export function parseLcov(lcov, root = projectRoot) {
 export function changedCoverage(changed, coverage, config) {
   let covered = 0;
   let total = 0;
+  const filesWithoutCoverage = [];
 
   for (const [file, lines] of changed) {
     const isIncluded =
@@ -77,6 +78,14 @@ export function changedCoverage(changed, coverage, config) {
     }
 
     const lineCoverage = coverage.get(file) ?? new Map();
+    const hasChangedLineCoverage = [...lines].some((line) =>
+      lineCoverage.has(line),
+    );
+    if (!hasChangedLineCoverage) {
+      filesWithoutCoverage.push(file);
+      continue;
+    }
+
     for (const line of lines) {
       if (!lineCoverage.has(line)) {
         continue;
@@ -92,11 +101,18 @@ export function changedCoverage(changed, coverage, config) {
   return {
     covered,
     total,
+    filesWithoutCoverage,
     percentage: total === 0 ? 100 : (covered / total) * 100,
   };
 }
 
 export function assertCoverage(result, minimum) {
+  if (result.filesWithoutCoverage.length > 0) {
+    throw new Error(
+      `Changed executable source has no coverage entries: ${result.filesWithoutCoverage.join(', ')}.`,
+    );
+  }
+
   if (result.percentage < minimum) {
     throw new Error(
       `Changed-line coverage ${result.percentage.toFixed(2)}% (${result.covered}/${result.total}) is below ${minimum}%.`,
