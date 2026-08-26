@@ -1,6 +1,6 @@
 import { Pool, type PoolClient, type QueryResultRow } from 'pg';
 
-import { DatabaseUnavailableError } from './errors';
+import { DatabaseUnavailableError } from './errors.ts';
 
 const DEFAULT_CONNECTION_TIMEOUT_MS = 5_000;
 const DEFAULT_IDLE_TIMEOUT_MS = 30_000;

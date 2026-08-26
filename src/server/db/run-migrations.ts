@@ -1,5 +1,5 @@
-import { runMigrations } from './migration';
-import { createPool } from './pool';
+import { runMigrations } from './migration.ts';
+import { createPool } from './pool.ts';
 
 const databaseUrl = process.env.MIGRATION_DATABASE_URL;
 const applicationRolePassword = process.env.VALSTARA_APP_DB_PASSWORD;

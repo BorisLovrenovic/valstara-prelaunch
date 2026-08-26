@@ -18,6 +18,15 @@ untracked root `.env` file.
 | `APP_MEM_LIMIT`            | Hard memory and equal memory-plus-swap limit for the Astro app                   | Docker Compose      | `768m`                      | No                            |
 | `MIGRATION_MEM_LIMIT`      | Hard memory and equal memory-plus-swap limit for the one-shot migration service  | Docker Compose      | `768m`                      | No                            |
 | `UMAMI_MEM_LIMIT`          | Hard memory and equal memory-plus-swap limit for Umami                           | Docker Compose      | `768m`                      | No                            |
+| `CADDY_MEM_LIMIT`          | Hard memory and equal memory-plus-swap limit for the production TLS proxy        | Production Compose  | `128m`                      | No                            |
+| `VALSTARA_IMAGE`           | Exact GHCR image reference, including the 40-character commit-SHA tag            | Production Compose  | None                        | No                            |
+| `VALSTARA_RELEASE`         | Commit SHA recorded by the migration ledger for the production image             | Migration service   | None                        | No                            |
+| `SITE_HOST`                | Hostname on the Cloudflare-proxied DNS record                                    | Caddy               | `valstara.com`              | No                            |
+| `CADDY_ORIGIN_CERT_PATH`   | Host path to the Cloudflare Origin CA certificate mounted read-only into Caddy   | Production Compose  | None                        | No                            |
+| `CADDY_ORIGIN_KEY_PATH`    | Host path to the Cloudflare Origin CA private key mounted read-only into Caddy   | Production Compose  | None                        | Yes                           |
+| `CADDY_BIND_ADDRESS`       | Address on which Caddy publishes the origin HTTP and HTTPS ports                 | Production Compose  | `0.0.0.0`                   | No                            |
+| `CADDY_HTTP_PORT`          | Host HTTP port; override only for a local production-stack drill                 | Production Compose  | `80`                        | No                            |
+| `CADDY_HTTPS_PORT`         | Host HTTPS port; override only for a local production-stack drill                | Production Compose  | `443`                       | No                            |
 
 Compose derives or fixes the following container variables. They are listed
 separately because developers do not override them directly:
@@ -100,3 +109,49 @@ optimises Vite dependencies on first boot and restarts itself once when it
 does, which races `docker compose up --wait` and fails it intermittently. CI has
 nothing to hot-reload, so both jobs build first and the container runs
 `./dist/server/entry.mjs`.
+
+## Production image and origin stack
+
+A push to `main` that changes `src/**`, `infra/**` or `scripts/**` publishes
+`ghcr.io/borislovrenovic/valstara-prelaunch:<40-character-commit-sha>`. The
+workflow retains the newest three package versions. It builds only; deployment
+remains a deliberate operation owned by E1-07.
+
+Production uses `infra/compose/docker-compose.production.yml`. Set
+`VALSTARA_IMAGE` to the complete SHA-tagged reference and set
+`VALSTARA_RELEASE` to the same SHA. Supply every production secret from the
+host environment or its secret manager; Compose intentionally has no
+production credential defaults.
+
+Caddy terminates origin TLS with a Cloudflare Origin CA certificate. Store the
+certificate and key outside the repository and point
+`CADDY_ORIGIN_CERT_PATH` and `CADDY_ORIGIN_KEY_PATH` at those host files. The
+key must be readable only by the account running Compose. The Cloudflare DNS
+record for `SITE_HOST` must remain proxied and Cloudflare SSL/TLS mode must be
+Full (strict).
+
+The Caddy configuration accepts origin requests only when the socket peer is
+in Cloudflare's published IPv4 or IPv6 ranges. Requests from any other peer
+receive `403` before the app is reached, on both HTTP and HTTPS. When
+Cloudflare publishes a range change, update both occurrences in
+`infra/compose/Caddyfile` in one reviewed change before the new range begins
+sending traffic.
+
+Render the production configuration without starting it:
+
+```sh
+docker compose -f infra/compose/docker-compose.production.yml config --quiet
+```
+
+Run the isolated production-image and proxy drill:
+
+```sh
+npm run test:production-stack
+```
+
+The drill builds the image, starts the complete stack with temporary
+credentials and a temporary TLS certificate, verifies hard memory/no-swap
+limits, proves that a non-Cloudflare peer receives `403`, stops the app until
+Caddy returns `503`, then starts it and waits for Caddy to serve it again. The
+drill removes its containers, volumes, test network and temporary certificate
+when it finishes.

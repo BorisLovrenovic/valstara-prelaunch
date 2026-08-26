@@ -15,6 +15,7 @@
     "security": "node scripts/ci/security-gates.mjs",
     "preview": "astro preview",
     "test": "tsx --test",
+    "test:production-stack": "node infra/compose/assert-production-stack.mjs",
     "test:stack": "node infra/compose/assert-stack.mjs",
     "typecheck": "astro check"
   },
