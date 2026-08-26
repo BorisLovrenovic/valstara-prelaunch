@@ -1,4 +1,4 @@
-import type { DatabaseConnection, DatabasePool } from './pool';
+import type { DatabaseConnection, DatabasePool } from './pool.ts';
 
 export async function withTransaction<Result>(
   database: DatabasePool,

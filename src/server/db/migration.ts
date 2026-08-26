@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
-import { MigrationChecksumMismatchError } from './errors';
-import type { DatabaseClient, DatabasePool } from './pool';
+import { MigrationChecksumMismatchError } from './errors.ts';
+import type { DatabaseClient, DatabasePool } from './pool.ts';
 
 const MIGRATION_LOCK_ID = 8_573_439_303;
 const MIGRATION_LEDGER_LIMIT = 10_000;

@@ -41,6 +41,19 @@ Seven scans, each with a **planted red-path fixture committed in-repo** so a sca
 
 Path-filtered. A push to `main` touching `src/**`, `infra/**` or `scripts/**` builds the Docker image and pushes it to GHCR tagged with the commit SHA, with the newest three retained. **It does not deploy.** A `docs/**` change builds nothing.
 
+The image name is normalised to lowercase before it is sent to GHCR, and the
+only published tag is the full 40-character `github.sha`. The workflow uses the
+repository-scoped `GITHUB_TOKEN`; it requires `contents: read` and
+`packages: write`, and no registry credential is stored separately. Build and
+registry actions are pinned to commit SHAs. Package retention runs only after a
+successful push and keeps the newest three versions.
+
+The root multi-stage `Dockerfile` installs from the frozen lockfile once,
+builds the Astro standalone output in one stage and prunes production
+dependencies in another. Its final stage runs as the unprivileged `node` user,
+carries a health check, and includes the existing forward-only migration runner
+and SQL files used by the production Compose migration gate.
+
 ## Environments
 
 **Two, deliberately: local and production.**
@@ -53,6 +66,26 @@ Path-filtered. A push to `main` touching `src/**`, `infra/**` or `scripts/**` bu
 There is no staging. The compensating controls are mandatory CI gates, additive migrations, health-gated deploys, campaign flags defaulting off for incomplete work, and a rehearsed rollback.
 
 **One consequence to hold onto:** production carries no visitors before the campaign opens, but **it carries real sending credentials and a real domain reputation the moment email is configured.** From the first live Resend key onward, a mistake in production is a deliverability event. Sandbox keys never reach production; live keys never reach local.
+
+Production is defined by `infra/compose/docker-compose.production.yml`:
+PostgreSQL, the one-shot migration gate, the SHA-tagged app image, Umami and
+Caddy. Every service has a hard memory limit with its memory-plus-swap limit set
+to the same value. Only Caddy publishes host ports; the app, PostgreSQL and
+Umami remain on an internal Docker network.
+
+Caddy terminates TLS with a mounted Cloudflare Origin CA certificate. It
+matches the immediate socket peer against Cloudflare's published address
+ranges and rejects every other source before proxying. The use of the socket
+peer is deliberate: a direct caller cannot bypass the check with a forged
+`X-Forwarded-For` or `CF-Connecting-IP` header. After that boundary, Caddy
+trusts Cloudflare's forwarding headers and passes the visitor address through
+the normal proxy header path.
+
+The app upstream has active and passive health checks. Two failed active checks
+remove it from service; two successful checks return it. With no healthy app,
+Caddy responds `503` rather than sending traffic to the failed backend. The
+production-stack drill in `infra/compose/assert-production-stack.mjs` proves
+the removal and recovery behavior through the running proxy.
 
 ## Deploy and the migration audit
 
