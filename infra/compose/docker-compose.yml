@@ -29,7 +29,7 @@ services:
     memswap_limit: ${POSTGRES_MEM_LIMIT:-512m}
 
   app:
-    image: node:22-alpine
+    image: node:22-bookworm-slim
     restart: unless-stopped
     working_dir: /workspace
     command: ['sh', '/workspace/infra/compose/run-app.sh']
@@ -60,7 +60,7 @@ services:
     memswap_limit: ${APP_MEM_LIMIT:-768m}
 
   migrate:
-    image: node:22-alpine
+    image: node:22-bookworm-slim
     restart: 'no'
     working_dir: /workspace
     command: ['sh', '/workspace/infra/compose/run-migrations.sh']

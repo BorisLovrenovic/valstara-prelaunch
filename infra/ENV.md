@@ -78,3 +78,25 @@ every host.
 The hard-limit-and-no-swap rule from ADR-003 is unchanged. A limit that is
 correct on one machine and fatal on another is a mis-sized limit, not a
 tighter one.
+
+## Why the containers are Debian rather than Alpine
+
+`app` and `migrate` run `node:22-bookworm-slim`, not `node:22-alpine`. The
+lockfile pins platform-specific native binaries built for glibc —
+`@astrojs/compiler-binding-linux-x64-gnu`, `@rolldown/binding-linux-x64-gnu`,
+`@esbuild/linux-x64` and `sharp`. Alpine is musl and cannot load them, which is
+why the containers previously needed an entirely separate `node_modules` from
+the host.
+
+With both sides on glibc, CI can share one install. `docker-compose.ci.yml`
+replaces the named `app-node-modules` volume with a bind to the runner's own
+`node_modules`, so nothing installs inside a container on CI at all. That
+overlay is **CI-only** — locally the named volume is still correct, because a
+developer's host may not be Linux, and because the containers run as root and
+would leave root-owned files in a host `node_modules`.
+
+The overlay also runs the built server instead of `astro dev`. The dev server
+optimises Vite dependencies on first boot and restarts itself once when it
+does, which races `docker compose up --wait` and fails it intermittently. CI has
+nothing to hot-reload, so both jobs build first and the container runs
+`./dist/server/entry.mjs`.

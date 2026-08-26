@@ -50,14 +50,20 @@ test('test and coverage run against disposable PostgreSQL services', async () =>
 
   assert.equal((workflow.match(/image: postgres:17-alpine/g) ?? []).length, 2);
   assert.equal((workflow.match(/TEST_DATABASE_URL:/g) ?? []).length, 2);
+  // Both jobs start the stack with the CI overlay, which reuses the runner's
+  // install instead of installing again inside a memory-capped container.
   assert.equal(
     (
       workflow.match(
-        /docker compose -f infra\/compose\/docker-compose\.yml up -d --wait/g,
+        /docker compose -f infra\/compose\/docker-compose\.yml -f infra\/compose\/docker-compose\.ci\.yml up -d --wait/g,
       ) ?? []
     ).length,
     2,
   );
+  // The overlay serves the built app rather than the dev server, so both jobs
+  // must build first or the container has nothing to run.
+  assert.equal((workflow.match(/run: npm run build/g) ?? []).length, 3);
+  assert.equal((workflow.match(/\.valstara-lock-checksum/g) ?? []).length, 2);
   assert.match(
     workflow,
     /COVERAGE_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
