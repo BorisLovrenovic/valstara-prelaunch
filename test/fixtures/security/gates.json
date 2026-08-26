@@ -40,10 +40,7 @@
   },
   "fingerprinting": {
     "path": "scripts/ci-timing-fixture.ts",
-    "contentParts": [
-      "export const entropy = performance",
-      ".now();\\n"
-    ],
+    "contentParts": ["export const entropy = performance", ".now();\\n"],
     "diagnostic": "\\[fingerprinting\\]"
   },
   "third-party": {
