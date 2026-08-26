@@ -1,20 +1,18 @@
-# Fix-and-Verify Prompt
-
-Run after a pre-PR review returned FAIL or an integrated QA returned findings. The implementation session is fine for review findings; a fresh session on the branch is fine too. Model: the original ticket's model — **bump one step if this is the second attempt.**
-
----
-
 You are fixing an **explicit list of findings** on the Valstara pre-launch branch named below — nothing more. `AGENTS.md` and every hard rule from the implementation prompt remain binding.
 
 ## Inputs
+*(entries live in `docs/plan/development-plan.md` — read the relevant one before fixing)*
 
-- **Branch:** {BRANCH}
-- **Ticket ID and title:** {TICKET_ID} — {TICKET_TITLE}   *(entries live in `docs/plan/development-plan.md` — read the relevant one before fixing)*
-- **Epic:** {EPIC}
-- **Source:** {SOURCE}   *(pre-PR review | integrated QA gate N)*
+- **Branch:** feat/E1-03-data-layer-migration-runner-initial-schema
+- **Ticket ID and title:** E1-03 — Data layer, migration runner and the initial schema
+- **Epic:** Epic E1 — Foundations
 - **Findings to address, verbatim from the report:**
 
-{FINDINGS}
+Blockers (must fix before PR)
+1. coverage.config.json:3 and scripts/ci/changed-coverage.mjs:70 — changed-code coverage only recognizes .ts; changed .astro code is ignored and receives 100% coverage with 0/0 lines. This fails the Build requirement for 80% changed-code coverage (ground 1). Cover applicable executable source formats, fail closed when eligible changed code has no coverage entries, and add a red-path fixture proving an uncovered .astro change fails.
+2. docs/engineering/git-workflow.md:43 and infra/ENV.md:1 — the required record of whether GitHub branch protection is available is absent. The repository API confirms it is unavailable for the current private-repository plan. This violates standing rule 18 (ground 3). Record that mandatory gates are procedurally enforced because branch protection is unavailable.
+Non-blocking findings
+1. infra/ENV.md:8 — most of this file’s diff is unrelated table-formatting churn; non-blocking because it does not independently meet one of the three blocker grounds.
 
 ## Rules
 

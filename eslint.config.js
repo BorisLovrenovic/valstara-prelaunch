@@ -10,9 +10,11 @@ export default [
   ...tseslint.configs.recommended,
   ...astro.configs.recommended,
   {
-    files: ['test/**/*.mjs'],
+    files: ['scripts/**/*.mjs', 'test/**/*.mjs'],
     languageOptions: {
       globals: {
+        console: 'readonly',
+        process: 'readonly',
         URL: 'readonly',
       },
     },

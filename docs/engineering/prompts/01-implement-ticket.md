@@ -4,7 +4,7 @@ This is a production system that will hold real people's personal data and run a
 
 ## Ticket
 
-- **Ticket ID and title:** E1-01 — Repository scaffold: Astro, Node adapter, strict TypeScript
+- **Ticket ID and title:** E1-03 — Data layer, migration runner and the initial schema
 - **Epic:** Epic E1 — Foundations
 - **Notes / changes since the plan was written (leave "None" if the plan is current):** None
 
