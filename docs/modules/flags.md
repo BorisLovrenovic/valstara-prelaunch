@@ -20,7 +20,7 @@ interface FlagService {
 ## Rules
 - **Every flag is registered in code with a fail-safe default.** An unregistered key **throws** — never a silent `false`.
 - **A lookup failure returns the code default.** A flag-service problem is safe, never fail-open.
-- Reads are cached in-process with a short TTL; **`set()` invalidates immediately**, and the documented worst-case propagation is the TTL. A flag whose effect is invisible for an unknown period is not an incident lever.
+- Reads are cached in-process for **five seconds**; **`set()` invalidates the local process immediately**. Other processes observe the database override on their next read after cache expiry, so the documented worst-case propagation delay is **five seconds**. A flag whose effect is invisible for an unknown period is not an incident lever.
 - **`leaderboard.public` off must remove the section, not break it** — drilled, not assumed.
 - Every change is audited with an actor.
 
