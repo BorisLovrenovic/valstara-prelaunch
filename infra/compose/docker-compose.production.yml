@@ -16,6 +16,14 @@ services:
       UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD is required}
       PGBACKREST_REPO1_CIPHER_PASS: ${PGBACKREST_REPO1_CIPHER_PASS:?PGBACKREST_REPO1_CIPHER_PASS is required}
       PGBACKREST_PG1_USER: ${VALSTARA_DB_USER:?VALSTARA_DB_USER is required}
+      PGBACKREST_REPO1_TYPE: s3
+      PGBACKREST_REPO1_S3_BUCKET: ${PGBACKREST_REPO1_S3_BUCKET:?PGBACKREST_REPO1_S3_BUCKET is required}
+      PGBACKREST_REPO1_S3_ENDPOINT: ${PGBACKREST_REPO1_S3_ENDPOINT:?PGBACKREST_REPO1_S3_ENDPOINT is required}
+      PGBACKREST_REPO1_S3_KEY: ${PGBACKREST_REPO1_S3_KEY:?PGBACKREST_REPO1_S3_KEY is required}
+      PGBACKREST_REPO1_S3_KEY_SECRET: ${PGBACKREST_REPO1_S3_KEY_SECRET:?PGBACKREST_REPO1_S3_KEY_SECRET is required}
+      PGBACKREST_REPO1_S3_REGION: auto
+      PGBACKREST_REPO1_S3_URI_STYLE: path
+      PGBACKREST_SCHEDULE_ENABLED: 'true'
     command:
       [
         'postgres',
@@ -28,7 +36,6 @@ services:
       ]
     volumes:
       - postgres-production-data:/var/lib/postgresql/data
-      - pgbackrest-production-repository:/var/lib/pgbackrest
       - ./init-umami-db.sh:/docker-entrypoint-initdb.d/init-umami-db.sh:ro
     healthcheck:
       test:
@@ -158,4 +165,3 @@ volumes:
   caddy-config:
   caddy-data:
   postgres-production-data:
-  pgbackrest-production-repository:

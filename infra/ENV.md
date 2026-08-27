@@ -5,33 +5,37 @@ defaults in `infra/compose/docker-compose.yml` are local-development credentials
 only. They are never suitable for production, and local overrides belong in an
 untracked root `.env` file.
 
-| Variable                        | Purpose                                                                          | Used by                   | Local default                          | Secret                        |
-| ------------------------------- | -------------------------------------------------------------------------------- | ------------------------- | -------------------------------------- | ----------------------------- |
-| `VALSTARA_DB_USER`              | PostgreSQL role that owns and migrates `valstara_waitlist`                       | PostgreSQL, migrate       | `valstara`                             | No                            |
-| `VALSTARA_DB_PASSWORD`          | Password for the waitlist owner/migration role; URL-safe characters are required | PostgreSQL, migrate       | Local-only value in Compose            | Yes outside local development |
-| `VALSTARA_APP_DB_PASSWORD`      | Password provisioned for the non-owner `valstara_app` login by migrations        | Migrate, app              | Local-only value in Compose            | Yes outside local development |
-| `UMAMI_DB_USER`                 | PostgreSQL role that owns and connects to the separate `umami` database          | PostgreSQL, Umami         | `umami`                                | No                            |
-| `UMAMI_DB_PASSWORD`             | Password for the Umami database role; URL-safe characters are required           | PostgreSQL, Umami         | Local-only value in Compose            | Yes outside local development |
-| `UMAMI_APP_SECRET`              | Signs and encrypts Umami authentication tokens                                   | Umami                     | Local-only value in Compose            | Yes                           |
-| `PGBACKREST_REPO1_CIPHER_PASS`  | Encrypts the pgBackRest repository; supply from the shell or secret manager      | PostgreSQL, restore drill | None                                   | Yes                           |
-| `POSTGRES_HOST_PORT`            | Loopback-only host port for local PostgreSQL access                              | Docker Compose            | `5434`                                 | No                            |
-| `POSTGRES_MEM_LIMIT`            | Hard memory and equal memory-plus-swap limit for PostgreSQL                      | Docker Compose            | `512m`                                 | No                            |
-| `APP_MEM_LIMIT`                 | Hard memory and equal memory-plus-swap limit for the Astro app                   | Docker Compose            | `768m`                                 | No                            |
-| `MIGRATION_MEM_LIMIT`           | Hard memory and equal memory-plus-swap limit for the one-shot migration service  | Docker Compose            | `768m`                                 | No                            |
-| `UMAMI_MEM_LIMIT`               | Hard memory and equal memory-plus-swap limit for Umami                           | Docker Compose            | `768m`                                 | No                            |
-| `CADDY_MEM_LIMIT`               | Hard memory and equal memory-plus-swap limit for the production TLS proxy        | Production Compose        | `128m`                                 | No                            |
-| `VALSTARA_IMAGE`                | Exact GHCR image reference, including the 40-character commit-SHA tag            | Production Compose        | None                                   | No                            |
-| `VALSTARA_RELEASE`              | Commit SHA recorded by the migration ledger for the production image             | Migration service         | None                                   | No                            |
-| `DEPLOY_AUDIT_FILE`             | Host path for the fsynced, append-only deployment and rollback audit records     | Deploy scripts            | `/var/lib/valstara/deploy-audit.jsonl` | No                            |
-| `DEPLOY_COMPOSE_FILE`           | Production Compose file used by deploy and rollback scripts                      | Deploy scripts            | Production Compose path                | No                            |
-| `DEPLOY_HEALTH_TIMEOUT_SECONDS` | Candidate and restarted-app health deadline                                      | Deploy scripts            | `60`                                   | No                            |
-| `DEPLOY_HEALTH_POLL_SECONDS`    | Health polling interval                                                          | Deploy scripts            | `2`                                    | No                            |
-| `SITE_HOST`                     | Hostname on the Cloudflare-proxied DNS record                                    | Caddy                     | `valstara.com`                         | No                            |
-| `CADDY_ORIGIN_CERT_PATH`        | Host path to the Cloudflare Origin CA certificate mounted read-only into Caddy   | Production Compose        | None                                   | No                            |
-| `CADDY_ORIGIN_KEY_PATH`         | Host path to the Cloudflare Origin CA private key mounted read-only into Caddy   | Production Compose        | None                                   | Yes                           |
-| `CADDY_BIND_ADDRESS`            | Address on which Caddy publishes the origin HTTP and HTTPS ports                 | Production Compose        | `0.0.0.0`                              | No                            |
-| `CADDY_HTTP_PORT`               | Host HTTP port; override only for a local production-stack drill                 | Production Compose        | `80`                                   | No                            |
-| `CADDY_HTTPS_PORT`              | Host HTTPS port; override only for a local production-stack drill                | Production Compose        | `443`                                  | No                            |
+| Variable                         | Purpose                                                                          | Used by                   | Local default                          | Secret                        |
+| -------------------------------- | -------------------------------------------------------------------------------- | ------------------------- | -------------------------------------- | ----------------------------- |
+| `VALSTARA_DB_USER`               | PostgreSQL role that owns and migrates `valstara_waitlist`                       | PostgreSQL, migrate       | `valstara`                             | No                            |
+| `VALSTARA_DB_PASSWORD`           | Password for the waitlist owner/migration role; URL-safe characters are required | PostgreSQL, migrate       | Local-only value in Compose            | Yes outside local development |
+| `VALSTARA_APP_DB_PASSWORD`       | Password provisioned for the non-owner `valstara_app` login by migrations        | Migrate, app              | Local-only value in Compose            | Yes outside local development |
+| `UMAMI_DB_USER`                  | PostgreSQL role that owns and connects to the separate `umami` database          | PostgreSQL, Umami         | `umami`                                | No                            |
+| `UMAMI_DB_PASSWORD`              | Password for the Umami database role; URL-safe characters are required           | PostgreSQL, Umami         | Local-only value in Compose            | Yes outside local development |
+| `UMAMI_APP_SECRET`               | Signs and encrypts Umami authentication tokens                                   | Umami                     | Local-only value in Compose            | Yes                           |
+| `PGBACKREST_REPO1_CIPHER_PASS`   | Encrypts the pgBackRest repository; supply from the shell or secret manager      | PostgreSQL, restore drill | None                                   | Yes                           |
+| `PGBACKREST_REPO1_S3_BUCKET`     | R2 bucket holding the encrypted pgBackRest repository                            | Production PostgreSQL     | None                                   | No                            |
+| `PGBACKREST_REPO1_S3_ENDPOINT`   | R2 S3-compatible account endpoint, without a URL scheme                          | Production PostgreSQL     | None                                   | No                            |
+| `PGBACKREST_REPO1_S3_KEY`        | R2 access key limited to the backup bucket                                       | Production PostgreSQL     | None                                   | Yes                           |
+| `PGBACKREST_REPO1_S3_KEY_SECRET` | R2 secret key for the limited backup-bucket access key                           | Production PostgreSQL     | None                                   | Yes                           |
+| `POSTGRES_HOST_PORT`             | Loopback-only host port for local PostgreSQL access                              | Docker Compose            | `5434`                                 | No                            |
+| `POSTGRES_MEM_LIMIT`             | Hard memory and equal memory-plus-swap limit for PostgreSQL                      | Docker Compose            | `512m`                                 | No                            |
+| `APP_MEM_LIMIT`                  | Hard memory and equal memory-plus-swap limit for the Astro app                   | Docker Compose            | `768m`                                 | No                            |
+| `MIGRATION_MEM_LIMIT`            | Hard memory and equal memory-plus-swap limit for the one-shot migration service  | Docker Compose            | `768m`                                 | No                            |
+| `UMAMI_MEM_LIMIT`                | Hard memory and equal memory-plus-swap limit for Umami                           | Docker Compose            | `768m`                                 | No                            |
+| `CADDY_MEM_LIMIT`                | Hard memory and equal memory-plus-swap limit for the production TLS proxy        | Production Compose        | `128m`                                 | No                            |
+| `VALSTARA_IMAGE`                 | Exact GHCR image reference, including the 40-character commit-SHA tag            | Production Compose        | None                                   | No                            |
+| `VALSTARA_RELEASE`               | Commit SHA recorded by the migration ledger for the production image             | Migration service         | None                                   | No                            |
+| `DEPLOY_AUDIT_FILE`              | Host path for the fsynced, append-only deployment and rollback audit records     | Deploy scripts            | `/var/lib/valstara/deploy-audit.jsonl` | No                            |
+| `DEPLOY_COMPOSE_FILE`            | Production Compose file used by deploy and rollback scripts                      | Deploy scripts            | Production Compose path                | No                            |
+| `DEPLOY_HEALTH_TIMEOUT_SECONDS`  | Candidate and restarted-app health deadline                                      | Deploy scripts            | `60`                                   | No                            |
+| `DEPLOY_HEALTH_POLL_SECONDS`     | Health polling interval                                                          | Deploy scripts            | `2`                                    | No                            |
+| `SITE_HOST`                      | Hostname on the Cloudflare-proxied DNS record                                    | Caddy                     | `valstara.com`                         | No                            |
+| `CADDY_ORIGIN_CERT_PATH`         | Host path to the Cloudflare Origin CA certificate mounted read-only into Caddy   | Production Compose        | None                                   | No                            |
+| `CADDY_ORIGIN_KEY_PATH`          | Host path to the Cloudflare Origin CA private key mounted read-only into Caddy   | Production Compose        | None                                   | Yes                           |
+| `CADDY_BIND_ADDRESS`             | Address on which Caddy publishes the origin HTTP and HTTPS ports                 | Production Compose        | `0.0.0.0`                              | No                            |
+| `CADDY_HTTP_PORT`                | Host HTTP port; override only for a local production-stack drill                 | Production Compose        | `80`                                   | No                            |
+| `CADDY_HTTPS_PORT`               | Host HTTPS port; override only for a local production-stack drill                | Production Compose        | `443`                                  | No                            |
 
 Compose derives or fixes the following container variables. They are listed
 separately because developers do not override them directly:
@@ -80,9 +84,35 @@ npm run backup:drill
 
 The drill creates a full backup, forces and verifies WAL archiving, creates a
 differential backup, restores into an isolated scratch container, compares the
-restored migration-ledger rows with the source database, and prints a local
-timing floor. That timing is not a production RTO; E12-04 records the R2
-restore measurement.
+restored migration-ledger rows with the source database, and prints its local
+timing. It also removes only unreadable local stanza metadata left by a changed
+local passphrase before creating the drill's replacement backup.
+
+## Production R2 backups
+
+Set `PGBACKREST_REPO1_S3_BUCKET`, `PGBACKREST_REPO1_S3_ENDPOINT`,
+`PGBACKREST_REPO1_S3_KEY`, and `PGBACKREST_REPO1_S3_KEY_SECRET` from the VPS
+secret manager. The endpoint is the account-specific R2 S3 endpoint; the key
+must be restricted to this bucket. Production uses repository encryption and
+runs a full backup at 02:00 UTC every Sunday and a differential backup at
+02:00 UTC on the other days. Continuous WAL archiving uses the same encrypted
+R2 repository.
+
+The repository passphrase is held outside the VPS and repository. An operator
+retrieves it only from the off-VPS secret store for an authorised restore; no
+copy is written to the VPS. After configuring R2, run the restore drill against
+that repository and record the printed elapsed time as the RTO evidence:
+
+```sh
+export PGBACKREST_REPO1_TYPE='s3'
+export PGBACKREST_RESTORE_COMPOSE_FILE='infra/compose/docker-compose.production.yml'
+npm run backup:drill
+```
+
+The production Compose file requires the listed R2 variables and the usual
+production credentials while it is rendered. The remote drill prints `R2
+restore timing: … ms (RTO measurement)` only after it has independently
+compared the scratch-restored migration ledger with the source database.
 
 The app is available at `http://127.0.0.1:4321` and Umami at
 `http://127.0.0.1:3000`. PostgreSQL is exposed only on the loopback interface at
