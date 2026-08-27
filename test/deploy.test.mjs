@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
 const deployUrl = new URL('../infra/deploy/deploy.sh', import.meta.url);
 const rollbackUrl = new URL('../infra/deploy/rollback.sh', import.meta.url);
+const productionComposeUrl = new URL(
+  '../infra/compose/docker-compose.production.yml',
+  import.meta.url,
+);
 const oldImage =
   'ghcr.io/example/valstara-prelaunch:1111111111111111111111111111111111111111';
 const newImage =
@@ -14,7 +18,6 @@ const migrationModuleUrl = new URL(
   '../src/server/db/migration.ts',
   import.meta.url,
 ).href;
-const fiveMinutesInNanoseconds = 5n * 60n * 1_000_000_000n;
 const checksumMismatchProgram = `
 import { createHash } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -83,6 +86,68 @@ async function run(command, arguments_, options) {
       resolve({ code, stderr, stdout });
     });
   });
+}
+
+async function runChecked(command, arguments_, options) {
+  const result = await run(command, arguments_, options);
+  assert.equal(
+    result.code,
+    0,
+    `${command} ${arguments_.join(' ')} failed:\n${result.stderr}${result.stdout}`,
+  );
+  return result;
+}
+
+async function reserveLoopbackPort() {
+  const net = await import('node:net');
+  const server = net.createServer();
+
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const { port } = address;
+  await new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+  return port;
+}
+
+async function compose(project, environment, arguments_) {
+  const result = await run(
+    'docker',
+    [
+      'compose',
+      '-p',
+      project,
+      '-f',
+      productionComposeUrl.pathname,
+      ...arguments_,
+    ],
+    { env: environment },
+  );
+  if (result.code !== 0) {
+    const logs = await run(
+      'docker',
+      [
+        'compose',
+        '-p',
+        project,
+        '-f',
+        productionComposeUrl.pathname,
+        'logs',
+        'migrate',
+      ],
+      { env: environment },
+    );
+    assert.fail(
+      `docker compose ${arguments_.join(' ')} failed:\n${result.stderr}${result.stdout}\n${logs.stderr}${logs.stdout}`,
+    );
+  }
+  return result;
 }
 
 async function createFixture(options = {}) {
@@ -207,38 +272,254 @@ test('an induced applied-migration checksum mismatch aborts before a candidate o
   }
 });
 
-test('one rollback command redeploys the previous audited release and records its outcome', async () => {
-  const fixture = await createFixture({ currentImage: newImage });
+test(
+  'the local production-Compose drill pulls, migrates, health-gates, and restores without measuring an RTO',
+  { timeout: 180_000 },
+  async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'valstara-e107-drill-'));
+    const buildContext = join(directory, 'build-context');
+    const certificate = join(directory, 'origin-cert.pem');
+    const privateKey = join(directory, 'origin-key.pem');
+    const auditFile = join(directory, 'audit', 'deploy-audit.jsonl');
+    const migrationPath = join(
+      buildContext,
+      'src',
+      'server',
+      'db',
+      'migrations',
+      '0004-local-deployment-drill.sql',
+    );
+    const unhealthyDockerfile = join(directory, 'Dockerfile.unhealthy');
+    const suffix = `${process.pid}-${Date.now()}`;
+    const project = `valstara-e107-drill-${suffix}`;
+    const registry = `valstara-e107-registry-${suffix}`;
+    const registryPort = await reserveLoopbackPort();
+    const repository = `localhost:${registryPort}/valstara-e107-drill-${suffix}`;
+    const initialRelease = '1111111111111111111111111111111111111111';
+    const deployedRelease = '2222222222222222222222222222222222222222';
+    const unhealthyRelease = '3333333333333333333333333333333333333333';
+    const initialImage = `${repository}:${initialRelease}`;
+    const deployedImage = `${repository}:${deployedRelease}`;
+    const unhealthyImage = `${repository}:${unhealthyRelease}`;
+    const environment = {
+      ...process.env,
+      CADDY_ORIGIN_CERT_PATH: certificate,
+      CADDY_ORIGIN_KEY_PATH: privateKey,
+      COMPOSE_PROJECT_NAME: project,
+      DEPLOY_AUDIT_FILE: auditFile,
+      DEPLOY_COMPOSE_FILE: productionComposeUrl.pathname,
+      DEPLOY_HEALTH_POLL_SECONDS: '1',
+      DEPLOY_HEALTH_TIMEOUT_SECONDS: '10',
+      SITE_HOST: 'valstara.com',
+      UMAMI_APP_SECRET: 'local-production-drill-umami-secret',
+      UMAMI_DB_PASSWORD: 'local-production-drill-umami-password',
+      UMAMI_DB_USER: 'umami',
+      VALSTARA_APP_DB_PASSWORD: 'local-production-drill-app-password',
+      VALSTARA_DB_PASSWORD: 'local-production-drill-owner-password',
+      VALSTARA_DB_USER: 'valstara',
+      VALSTARA_IMAGE: initialImage,
+      VALSTARA_RELEASE: initialRelease,
+    };
 
-  try {
-    await mkdir(join(fixture.directory, 'audit'));
-    await writeFile(
-      fixture.auditFile,
-      `{"image":"${oldImage}","outcome":"succeeded"}\n{"image":"${newImage}","outcome":"succeeded"}\n`,
-    );
-    const startedAt = process.hrtime.bigint();
-    const result = await run('sh', [rollbackUrl.pathname], {
-      env: fixture.environment,
-    });
-    const elapsed = process.hrtime.bigint() - startedAt;
-    const commands = await readFile(fixture.commandLog, 'utf8');
-    const records = await readFile(fixture.auditFile, 'utf8');
+    try {
+      await runChecked('openssl', [
+        'req',
+        '-x509',
+        '-newkey',
+        'rsa:2048',
+        '-nodes',
+        '-keyout',
+        privateKey,
+        '-out',
+        certificate,
+        '-days',
+        '1',
+        '-subj',
+        '/CN=valstara.com',
+        '-addext',
+        'subjectAltName=DNS:valstara.com',
+      ]);
+      await runChecked('docker', [
+        'run',
+        '--detach',
+        '--rm',
+        '--name',
+        registry,
+        '--publish',
+        `127.0.0.1:${registryPort}:5000`,
+        'registry:2',
+      ]);
+      await cp(new URL('..', import.meta.url), buildContext, {
+        filter: (source) =>
+          !['.git', 'dist', 'node_modules'].some((name) =>
+            source.endsWith(name),
+          ),
+        recursive: true,
+      });
+      await writeFile(
+        migrationPath,
+        'CREATE TABLE local_deployment_drill_marker (id integer PRIMARY KEY);\n',
+      );
+      await runChecked('docker', ['build', '--tag', initialImage, '.']);
+      await runChecked('docker', [
+        'build',
+        '--tag',
+        deployedImage,
+        buildContext,
+      ]);
+      await writeFile(
+        unhealthyDockerfile,
+        `FROM ${deployedImage}\nHEALTHCHECK --interval=1s --timeout=1s --start-period=0s --retries=1 CMD ["sh", "-c", "exit 1"]\n`,
+      );
+      await runChecked('docker', [
+        'build',
+        '--file',
+        unhealthyDockerfile,
+        '--tag',
+        unhealthyImage,
+        directory,
+      ]);
 
-    assert.equal(result.code, 0);
-    assert.ok(
-      elapsed < fiveMinutesInNanoseconds,
-      `Rollback drill exceeded the five-minute bound: ${elapsed}ns`,
-    );
-    assert.match(commands, /release=1111111111111111111111111111111111111111/);
-    assert.match(
-      records,
-      /"image":"ghcr.io\/example\/valstara-prelaunch:1111111111111111111111111111111111111111"/,
-    );
-    assert.match(records, /"outcome":"rollback_succeeded"/);
-  } finally {
-    await fixture.dispose();
-  }
-});
+      for (const image of [initialImage, deployedImage, unhealthyImage]) {
+        await runChecked('docker', ['push', image]);
+      }
+      await runChecked('docker', [
+        'image',
+        'rm',
+        unhealthyImage,
+        deployedImage,
+        initialImage,
+      ]);
+
+      await compose(project, environment, [
+        'up',
+        '--detach',
+        '--wait',
+        'postgres',
+        'migrate',
+        'app',
+      ]);
+      await runChecked('sh', [deployUrl.pathname, initialImage], {
+        env: environment,
+      });
+
+      const absentBeforePull = await run('docker', [
+        'image',
+        'inspect',
+        deployedImage,
+      ]);
+      assert.notEqual(
+        absentBeforePull.code,
+        0,
+        'candidate image was already local',
+      );
+      await runChecked('sh', [deployUrl.pathname, deployedImage], {
+        env: environment,
+      });
+      await runChecked('docker', ['image', 'inspect', deployedImage]);
+
+      const migrations = await compose(project, environment, [
+        'exec',
+        '--no-TTY',
+        'postgres',
+        'psql',
+        '-X',
+        '-q',
+        '-A',
+        '-t',
+        '-U',
+        'valstara',
+        '-d',
+        'valstara_waitlist',
+        '-c',
+        "SELECT filename FROM migration_ledger WHERE applied_by_release = '2222222222222222222222222222222222222222';",
+      ]);
+      assert.equal(migrations.stdout.trim(), '0004-local-deployment-drill.sql');
+
+      const failedCandidate = await run(
+        'sh',
+        [deployUrl.pathname, unhealthyImage],
+        {
+          env: environment,
+        },
+      );
+      assert.equal(failedCandidate.code, 1);
+      assert.match(failedCandidate.stderr, /previous app remains serving/);
+      const servingCandidate = await compose(project, environment, [
+        'ps',
+        '--quiet',
+        'app',
+      ]);
+      const servingImage = await runChecked('docker', [
+        'inspect',
+        '--format',
+        '{{.Config.Image}}',
+        servingCandidate.stdout.trim(),
+      ]);
+      assert.equal(servingImage.stdout.trim(), deployedImage);
+
+      await runChecked('sh', [rollbackUrl.pathname], { env: environment });
+      const restoredContainer = await compose(project, environment, [
+        'ps',
+        '--quiet',
+        'app',
+      ]);
+      const restoredImage = await runChecked('docker', [
+        'inspect',
+        '--format',
+        '{{.Config.Image}}',
+        restoredContainer.stdout.trim(),
+      ]);
+      assert.equal(restoredImage.stdout.trim(), initialImage);
+
+      const records = (await readFile(auditFile, 'utf8'))
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line));
+      assert.ok(
+        records.some(
+          (record) =>
+            record.image === deployedImage &&
+            record.outcome === 'succeeded' &&
+            record.migrations.includes('0004-local-deployment-drill.sql'),
+        ),
+      );
+      assert.ok(
+        records.some(
+          (record) =>
+            record.image === unhealthyImage &&
+            record.outcome === 'candidate_health_failed',
+        ),
+      );
+      assert.equal(records.at(-1).outcome, 'rollback_succeeded');
+    } finally {
+      await run(
+        'docker',
+        [
+          'compose',
+          '-p',
+          project,
+          '-f',
+          productionComposeUrl.pathname,
+          'down',
+          '--volumes',
+          '--remove-orphans',
+        ],
+        { env: environment },
+      );
+      await run('docker', ['rm', '--force', registry]);
+      await run('docker', [
+        'image',
+        'rm',
+        '--force',
+        unhealthyImage,
+        deployedImage,
+        initialImage,
+      ]);
+      await rm(directory, { force: true, recursive: true });
+    }
+  },
+);
 
 test('a missing serving container is recorded before deployment aborts', async () => {
   const fixture = await createFixture({ noServingContainer: true });

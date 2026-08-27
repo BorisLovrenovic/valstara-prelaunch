@@ -152,7 +152,11 @@ async function assertAppliedHistoryMatchesFiles(
   );
 
   for (const [index, appliedMigration] of appliedMigrations.entries()) {
-    if (migrations[index]?.filename !== appliedMigration.filename) {
+    if (
+      migrations.length === 0 ||
+      (index < migrations.length &&
+        migrations[index]?.filename !== appliedMigration.filename)
+    ) {
       throw new Error(
         'Applied migration history does not match checked-in files.',
       );

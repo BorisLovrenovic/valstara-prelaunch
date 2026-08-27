@@ -75,8 +75,8 @@ wait_for_healthy() {
 migrations_for_release() {
   compose exec -T postgres psql -X -q -A -t \
     -U "$VALSTARA_DB_USER" -d valstara_waitlist \
-    -v ON_ERROR_STOP=1 -v "release=$release" \
-    -c "SELECT COALESCE(json_agg(filename ORDER BY filename), '[]'::json)::text FROM migration_ledger WHERE applied_by_release = :'release';"
+    -v ON_ERROR_STOP=1 \
+    -c "SELECT COALESCE(json_agg(filename ORDER BY filename), '[]'::json)::text FROM migration_ledger WHERE applied_by_release = '$release';"
 }
 
 json_string_or_null() {
