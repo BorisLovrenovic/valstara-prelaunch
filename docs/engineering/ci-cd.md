@@ -114,7 +114,9 @@ after a migration attempt, the record preserves that uncertainty as `null`.
 
 ## Rollback
 
-**Redeploy the previous release identifier — one command, under five minutes, drilled and recorded.** Because migrations are additive-first, the previous image runs against the migrated schema. **A migration that breaks this property is a blocking review finding.**
+**Redeploy the previous release identifier — one command.** Because migrations
+are additive-first, the previous image runs against the migrated schema. **A
+migration that breaks this property is a blocking review finding.**
 
 ```sh
 infra/deploy/rollback.sh
@@ -123,9 +125,31 @@ infra/deploy/rollback.sh
 `rollback.sh` selects the most recent successful image in the durable audit
 that differs from the currently serving image, then invokes the same
 health-gated deployment path. Its audit outcome is `rollback_succeeded` or the
-failure outcome from that path. The automated drill stages a failing candidate
-and performs this rollback selection; operators record the timed production
-drill in the PR before release.
+failure outcome from that path.
+
+### Two drills, and they prove different things
+
+Keeping these apart matters, because one produces a number the campaign relies
+on and the other cannot.
+
+**The logic drill — E1-07, local.** Runs against the production Compose
+definition on a developer machine and proves the *path*: the script pulls,
+applies migrations, health-gates the candidate, and restores the previous
+release when the candidate fails. It is automated and runs unattended.
+
+**It does not produce an RTO.** Its duration is dominated by whatever the local
+image cache already holds, so a local figure must never be recorded as the
+recovery-time objective.
+
+**The timed drill — E12-03, on the host.** Deploys release A, deploys release B,
+rolls back to A, and times it with a monotonic clock from command to the
+previous release verifiably serving through the proxy — warm cache and cold
+cache both. **That measurement is the RTO**, and the five-minute target applies
+to it. A cold-cache figure above five minutes is a blocking finding: fix the
+deploy path or change the documented objective, never neither.
+
+Until E12-03 has run, **this system has no measured RTO**, and no document
+should imply otherwise.
 
 ## Backups
 

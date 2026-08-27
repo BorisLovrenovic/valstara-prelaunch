@@ -89,7 +89,7 @@ Adding a gate there means adding it here in the same change.
 ### Tags and releases
 Semantic tags — `v0.x.y` during the build, `v1.0.0` at campaign open. **A tag is never moved or deleted once deployed.** The deploy record (image SHA, migrations applied, timestamp, outcome) is written against the tag.
 
-**Rollback is redeploying the previous release identifier** — one command, under five minutes, drilled in E1-07. Because migrations are additive-first, the previous image runs against the migrated schema.
+**Rollback is redeploying the previous release identifier** — one command, its logic drilled locally in E1-07 and **timed against the real host in E12-03**, which is where the five-minute objective is measured. Because migrations are additive-first, the previous image runs against the migrated schema.
 
 ## The plan is the source of truth
 
