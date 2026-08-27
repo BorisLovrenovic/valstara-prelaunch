@@ -94,3 +94,7 @@ Executed and recorded before the campaign opens (E11). **A drill that does not b
 6. Flip `leaderboard.public` off; confirm the section disappears within the cache window with no deploy.
 7. Restore the waitlist database into a scratch container and verify against known rows; record the timing.
 8. Replay a verification token, a Turnstile token and an email webhook; confirm each is idempotent.
+9. **Fill the box until a service is OOM-killed**; confirm Compose restarts it, the kill is visible, and recurrence is recorded as a capacity signal rather than tolerated.
+10. **Take Cloudflare out of the path**; confirm the origin refuses a direct connection rather than serving around the proxy.
+
+**Where each runs.** Drills 1–6 and 8 run against the local production-Compose stack in **E11-02**. Drills 7, 9 and 10 need real infrastructure — an R2 remote, real memory limits and a real proxy — and run on the host in **E12-06**. None is optional, and a drill deferred to E12 is named there rather than quietly skipped.

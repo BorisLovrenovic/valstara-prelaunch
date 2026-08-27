@@ -57,7 +57,9 @@ Static pages continue serving from Cloudflare throughout, which means **the trus
 
 If it aborted at the health gate, the previous version is still serving and nothing is required. If it aborted on a **migration checksum mismatch**, a migration file was edited after it ran — restore the file to its applied content and treat the change as a new migration.
 
-**Rollback:** redeploy the previous release identifier. One command, under five minutes. Confirm the release identity through the proxy, not from the deploy script's own claim.
+**Rollback:** redeploy the previous release identifier. One command. Confirm the release identity **through the proxy**, not from the deploy script's own claim.
+
+The five-minute objective is measured in E12-03; until that has run there is no measured RTO, so treat a rollback as taking as long as it takes and watch it.
 
 ---
 
