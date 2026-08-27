@@ -343,13 +343,19 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 ### E1-10 — Campaign flags with code-level fail-safe defaults
 **Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 
-**Build:** `src/server/flags` per `docs/modules/flags.md`. All eight flags registered in code with declared defaults, **matching `docs/features/README.md#flag-registry` exactly**. **Three default off: `giveaway.open`, `email.broadcast` and `trustpilot.widget`**; the other five default on. In-process cache with a short TTL, invalidated immediately on `set()`. Every change audited with an actor.
+**Build:** `src/server/flags` per `docs/modules/flags.md`. All eight flags registered in code with declared defaults, **matching `docs/features/README.md#flag-registry` exactly**.
+
+**Includes a forward-only migration changing `audit_log.subject_id` from `uuid` to `text`.** E1-03 typed it `uuid` because `docs/data/model.md` listed `audit_log`'s columns without types — the one table where it did. The column is **polymorphic by design**: `subject_type` discriminates, a subscriber subject is a UUID, a flag subject is a key like `leaderboard.public`, and an export has no natural subject. Auditing a flag change is impossible until this is corrected, so it is this ticket's. Founder-authorised 2026-08-27.
+
+The change is additive-safe — `USING subject_id::text` preserves every existing value, and text accepts what a previous image would write. **Three default off: `giveaway.open`, `email.broadcast` and `trustpilot.widget`**; the other five default on. In-process cache with a short TTL, invalidated immediately on `set()`. Every change audited with an actor.
 
 **Acceptance criteria:**
 - **An unregistered key throws** — never a silent `false`
 - **Database unavailable returns the code default** — fail-safe, never fail-open
 - **Every registered flag has a declared default** — asserted by a test over the registry
 - **The registry matches `docs/features/README.md#flag-registry` exactly** — same eight keys, same defaults — asserted by a test, so the table and the code cannot drift
+- **`audit_log.subject_id` is `text`**, existing UUID values preserved as strings — asserted against the PostgreSQL catalogue
+- **A flag change writes an audit record whose `subject_id` is the flag key** — the case that was previously impossible
 - `set()` takes effect within the documented TTL, and **the worst-case propagation delay is documented**
 - Every change is audited with an actor
 
