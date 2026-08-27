@@ -14,7 +14,7 @@ services:
       UMAMI_DB_NAME: umami
       UMAMI_DB_USER: ${UMAMI_DB_USER:-umami}
       UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:-umami-local-only}
-      PGBACKREST_REPO1_CIPHER_PASS: ${PGBACKREST_REPO1_CIPHER_PASS:?PGBACKREST_REPO1_CIPHER_PASS is required}
+      PGBACKREST_REPO1_CIPHER_PASS: ${PGBACKREST_REPO1_CIPHER_PASS:-pgbackrest-local-only}
       PGBACKREST_PG1_USER: ${VALSTARA_DB_USER:-valstara}
     command:
       [

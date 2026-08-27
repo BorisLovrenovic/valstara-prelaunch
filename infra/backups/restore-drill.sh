@@ -9,7 +9,11 @@ scratch_volume="valstara-backup-restore-$$-$(date +%s)"
 scratch_container="valstara-backup-restore-$$"
 image='valstara-postgres-pgbackrest:local'
 
-: "${PGBACKREST_REPO1_CIPHER_PASS:?PGBACKREST_REPO1_CIPHER_PASS is required}"
+# Local-only default, identical to the one in infra/compose/docker-compose.yml.
+# The two MUST match or the restore cannot decrypt the repository. Production
+# supplies the real passphrase from outside the host — that is E12-04's.
+PGBACKREST_REPO1_CIPHER_PASS="${PGBACKREST_REPO1_CIPHER_PASS:-pgbackrest-local-only}"
+export PGBACKREST_REPO1_CIPHER_PASS
 
 compose() {
   docker compose -f "$compose_file" "$@"
@@ -25,6 +29,11 @@ cleanup() {
 }
 
 trap cleanup EXIT HUP INT TERM
+
+# A previous run killed with SIGKILL cannot have run its trap, so sweep any
+# scratch containers it left behind before starting.
+docker ps --all --quiet --filter 'name=^valstara-backup-restore-' \
+  | xargs --no-run-if-empty docker rm --force >/dev/null 2>&1 || true
 
 query_ledger() {
   compose exec -T postgres sh -c \
@@ -87,7 +96,12 @@ printf '%s\n' "$backup_info" | grep -F 'wal archive min/max' >/dev/null
 
 docker volume create "$scratch_volume" >/dev/null
 
+# The image is built by Compose, so it carries com.docker.compose.* labels.
+# A container run from it inherits them and looks like a member of the stack,
+# which breaks any query that lists Compose services. Override them explicitly.
 docker run --detach --name "$scratch_container" --network none \
+  --label com.docker.compose.project=valstara-backup-drill \
+  --label com.docker.compose.service=backup-restore-scratch \
   --user postgres \
   --entrypoint sh \
   --env "PGBACKREST_REPO1_CIPHER_PASS=$PGBACKREST_REPO1_CIPHER_PASS" \

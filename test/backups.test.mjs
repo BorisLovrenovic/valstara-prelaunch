@@ -20,16 +20,10 @@ async function composeQuery() {
   return stdout.trim();
 }
 
-
 test(
   'the pgBackRest drill creates encrypted full and differential backups, archives WAL, and restores known rows',
   { timeout: 120_000 },
   async () => {
-    assert.ok(
-      process.env.PGBACKREST_REPO1_CIPHER_PASS,
-      'PGBACKREST_REPO1_CIPHER_PASS must be supplied by the test environment',
-    );
-
     const sourceLedger = await composeQuery();
     const { stdout } = await execFileAsync('npm', ['run', 'backup:drill'], {
       env: {
