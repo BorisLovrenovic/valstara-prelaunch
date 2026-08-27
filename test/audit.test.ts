@@ -134,6 +134,7 @@ test('record redacts token, secret, raw IP, and full email detail for every regi
         },
         rawAddress: 'source 198.51.100.42',
         request: ['harmless', '2001:db8::1'],
+        note: 'source fe80::1',
         secret: 'database-secret',
       },
     });
@@ -148,6 +149,7 @@ test('record redacts token, secret, raw IP, and full email detail for every regi
       },
       rawAddress: redactedAuditDetailValue,
       request: ['harmless', redactedAuditDetailValue],
+      note: redactedAuditDetailValue,
       secret: redactedAuditDetailValue,
     });
   }

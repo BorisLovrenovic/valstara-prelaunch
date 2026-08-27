@@ -9,7 +9,7 @@ const sensitiveKey =
 const emailAddress = /[^\s@]+@[^\s@]+\.[^\s@]+/;
 const ipv4Address =
   /(?:^|[^\d])(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}(?!\d)/;
-const ipv6Address = /(?:^|[^\da-f:])(?:[\da-f]{1,4}:){2,}[\da-f:]*/i;
+const ipAddressCandidate = /[\da-f:.]+/gi;
 
 export function redactAuditDetail(detail: AuditDetail): AuditDetail {
   return Object.fromEntries(
@@ -42,9 +42,16 @@ function containsPersonalAddress(value: string): boolean {
   return (
     emailAddress.test(value) ||
     ipv4Address.test(value) ||
-    ipv6Address.test(value) ||
+    containsIpAddressCandidate(value) ||
     isIP(value) !== 0
   );
+}
+
+function containsIpAddressCandidate(value: string): boolean {
+  return Array.from(value.matchAll(ipAddressCandidate)).some((match) => {
+    const candidate = match[0].replace(/^\.+|\.+$/g, '');
+    return isIP(candidate) !== 0;
+  });
 }
 
 function isAuditDetailObject(
