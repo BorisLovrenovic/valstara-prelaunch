@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { promisify } from 'node:util';
@@ -28,11 +27,6 @@ const composeEnvironment = {
   ...process.env,
   CADDY_ORIGIN_CERT_PATH: '/run/valstara-test-origin-cert.pem',
   CADDY_ORIGIN_KEY_PATH: '/run/valstara-test-origin-key.pem',
-  PGBACKREST_REPO1_CIPHER_PASS: randomBytes(32).toString('hex'),
-  PGBACKREST_REPO1_S3_BUCKET: 'test-pgbackrest-bucket',
-  PGBACKREST_REPO1_S3_ENDPOINT: 'example.invalid',
-  PGBACKREST_REPO1_S3_KEY: 'test-pgbackrest-key',
-  PGBACKREST_REPO1_S3_KEY_SECRET: 'test-pgbackrest-key-secret',
   UMAMI_APP_SECRET: 'test-umami-app-secret',
   UMAMI_DB_PASSWORD: 'test-umami-database-password',
   UMAMI_DB_USER: 'umami',
@@ -171,15 +165,6 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   assert.equal(config.services.umami.ports, undefined);
   assert.equal(config.networks.backend.internal, true);
   assert.deepEqual(Object.keys(config.services.caddy.ports).length, 2);
-  assert.equal(
-    config.services.postgres.environment.PGBACKREST_REPO1_TYPE,
-    's3',
-  );
-  assert.equal(
-    config.services.postgres.environment.PGBACKREST_SCHEDULE_ENABLED,
-    'true',
-  );
-  assert.equal(config.volumes['pgbackrest-production-repository'], undefined);
 });
 
 test('Caddy rejects direct peers and actively health-gates the app', async () => {

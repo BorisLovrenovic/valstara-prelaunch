@@ -153,16 +153,14 @@ should imply otherwise.
 
 ## Backups
 
-The `valstara_waitlist` database uses pgBackRest with weekly full, daily
-differential and continuous WAL backups, with repository encryption enabled.
-The production Compose configuration writes to the VPS's R2 bucket using the
-S3-compatible endpoint and starts the scheduler: a full backup every Sunday at
-02:00 UTC and a differential backup at 02:00 UTC on every other day.
+The E1-08 local stack uses pgBackRest with weekly full, daily differential and
+continuous WAL configuration, with repository encryption enabled. Its
+unattended drill creates a full and a differential backup, verifies WAL
+archiving, and restores known rows into a scratch container.
 
-**A restore into a scratch container is proven in E1-08 and re-drilled before
-the campaign opens.** A backup that has never been restored is a hypothesis.
-The remote restore timing is the measured RTO and must be recorded with the
-drill evidence.
+**The E1-08 restore timing is recorded as a local floor, not the production
+RTO.** R2, the production schedule, the off-host passphrase procedure, and the
+production restore measurement are E12-04.
 
 ## Secrets
 

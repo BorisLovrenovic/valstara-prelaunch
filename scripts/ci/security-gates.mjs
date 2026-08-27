@@ -47,7 +47,13 @@ async function sourceFiles() {
   const files = await Promise.all(
     paths.map(async (path) => {
       const fullPath = resolve(projectRoot, path);
-      if (!(await lstat(fullPath)).isFile()) {
+      const fileStatus = await lstat(fullPath).catch((error) => {
+        if (error.code === 'ENOENT') {
+          return undefined;
+        }
+        throw error;
+      });
+      if (!fileStatus?.isFile()) {
         return undefined;
       }
       return { content: await readFile(fullPath), path };

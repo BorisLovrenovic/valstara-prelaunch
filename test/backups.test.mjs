@@ -1,8 +1,5 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
 
@@ -23,64 +20,6 @@ async function composeQuery() {
   return stdout.trim();
 }
 
-async function runScheduledBackup({ day, stateDirectory }) {
-  const executableDirectory = await mkdtemp(
-    join(tmpdir(), 'valstara-backup-bin-'),
-  );
-  const callsPath = join(executableDirectory, 'calls');
-  const datePath = join(executableDirectory, 'date');
-  const runuserPath = join(executableDirectory, 'runuser');
-  const schedulePath = 'infra/backups/pgbackrest-schedule.sh';
-
-  await writeFile(
-    datePath,
-    `#!/bin/sh\ncase "\${2:-$1}" in\n  '+%F') printf '%s\\n' '2026-08-30' ;;\n  '+%H') printf '%s\\n' '02' ;;\n  '+%u') printf '%s\\n' '${day}' ;;\nesac\n`,
-  );
-  await writeFile(
-    runuserPath,
-    `#!/bin/sh\nprintf '%s\\n' "$*" >>'${callsPath}'\n`,
-  );
-  await chmod(datePath, 0o755);
-  await chmod(runuserPath, 0o755);
-
-  try {
-    await execFileAsync('sh', [schedulePath], {
-      env: {
-        ...process.env,
-        PATH: `${executableDirectory}:${process.env.PATH}`,
-        PGBACKREST_SCHEDULE_ONCE: 'true',
-        PGBACKREST_SCHEDULE_STATE_FILE: join(stateDirectory, 'last-backup'),
-      },
-    });
-    return readFile(callsPath, 'utf8').catch(() => '');
-  } finally {
-    await rm(executableDirectory, { force: true, recursive: true });
-  }
-}
-
-test('the production scheduler runs weekly full and daily differential backups once per UTC date', async () => {
-  const stateDirectory = await mkdtemp(
-    join(tmpdir(), 'valstara-backup-state-'),
-  );
-
-  try {
-    const sundayCall = await runScheduledBackup({ day: 7, stateDirectory });
-    assert.match(sundayCall, /stanza-create/);
-    assert.match(sundayCall, /--type=full/);
-
-    const duplicateSundayCall = await runScheduledBackup({
-      day: 7,
-      stateDirectory,
-    });
-    assert.equal(duplicateSundayCall, '');
-
-    await rm(join(stateDirectory, 'last-backup'));
-    const mondayCall = await runScheduledBackup({ day: 1, stateDirectory });
-    assert.match(mondayCall, /--type=diff/);
-  } finally {
-    await rm(stateDirectory, { force: true, recursive: true });
-  }
-});
 
 test(
   'the pgBackRest drill creates encrypted full and differential backups, archives WAL, and restores known rows',
@@ -101,7 +40,10 @@ test(
     });
 
     assert.match(stdout, /pgBackRest local restore drill passed/);
-    assert.match(stdout, /Local restore timing: \d+ ms/);
+    assert.match(
+      stdout,
+      /Local restore timing: \d+ ms \(floor only; not the production RTO\)\./,
+    );
     const container = stdout.match(/Scratch restore container: (\S+)/)?.[1];
     const volume = stdout.match(/Scratch restore volume: (\S+)/)?.[1];
     const databaseUser = stdout.match(/Restored database user: (\S+)/)?.[1];

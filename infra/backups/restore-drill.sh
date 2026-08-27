@@ -2,13 +2,12 @@
 
 set -eu
 
-compose_file="${PGBACKREST_RESTORE_COMPOSE_FILE:-infra/compose/docker-compose.yml}"
+compose_file='infra/compose/docker-compose.yml'
 stanza='valstara'
 repository_volume='valstara-prelaunch_pgbackrest-repository'
 scratch_volume="valstara-backup-restore-$$-$(date +%s)"
 scratch_container="valstara-backup-restore-$$"
 image='valstara-postgres-pgbackrest:local'
-repository_type="${PGBACKREST_REPO1_TYPE:-posix}"
 
 : "${PGBACKREST_REPO1_CIPHER_PASS:?PGBACKREST_REPO1_CIPHER_PASS is required}"
 
@@ -58,10 +57,6 @@ fi
 if ! repository_check=$(compose exec -T --user postgres postgres pgbackrest --stanza="$stanza" check 2>&1); then
   case "$repository_check" in
     *'unable to load info file'*)
-      if [ "$repository_type" != 'posix' ]; then
-        printf '%s\n' "$repository_check" >&2
-        exit 1
-      fi
       printf '%s\n' 'Removing unreadable local pgBackRest stanza metadata before the drill.' >&2
       compose exec -T --user postgres postgres rm -rf \
         "/var/lib/pgbackrest/archive/$stanza" \
@@ -92,37 +87,15 @@ printf '%s\n' "$backup_info" | grep -F 'wal archive min/max' >/dev/null
 
 docker volume create "$scratch_volume" >/dev/null
 
-if [ "$repository_type" = 's3' ]; then
-  : "${PGBACKREST_REPO1_S3_BUCKET:?PGBACKREST_REPO1_S3_BUCKET is required for an R2 restore}"
-  : "${PGBACKREST_REPO1_S3_ENDPOINT:?PGBACKREST_REPO1_S3_ENDPOINT is required for an R2 restore}"
-  : "${PGBACKREST_REPO1_S3_KEY:?PGBACKREST_REPO1_S3_KEY is required for an R2 restore}"
-  : "${PGBACKREST_REPO1_S3_KEY_SECRET:?PGBACKREST_REPO1_S3_KEY_SECRET is required for an R2 restore}"
-  docker run --detach --name "$scratch_container" --network none \
-    --user postgres \
-    --entrypoint sh \
-    --env "PGBACKREST_REPO1_CIPHER_PASS=$PGBACKREST_REPO1_CIPHER_PASS" \
-    --env 'PGBACKREST_REPO1_TYPE=s3' \
-    --env "PGBACKREST_REPO1_S3_BUCKET=$PGBACKREST_REPO1_S3_BUCKET" \
-    --env "PGBACKREST_REPO1_S3_ENDPOINT=$PGBACKREST_REPO1_S3_ENDPOINT" \
-    --env "PGBACKREST_REPO1_S3_KEY=$PGBACKREST_REPO1_S3_KEY" \
-    --env "PGBACKREST_REPO1_S3_KEY_SECRET=$PGBACKREST_REPO1_S3_KEY_SECRET" \
-    --env 'PGBACKREST_REPO1_S3_REGION=auto' \
-    --env 'PGBACKREST_REPO1_S3_URI_STYLE=path' \
-    --volume "$scratch_volume:/var/lib/postgresql/data" \
-    "$image" \
-    -c "set -eu; pgbackrest --stanza=$stanza restore; exec postgres -D /var/lib/postgresql/data" \
-    >/dev/null
-else
-  docker run --detach --name "$scratch_container" --network none \
-    --user postgres \
-    --entrypoint sh \
-    --env "PGBACKREST_REPO1_CIPHER_PASS=$PGBACKREST_REPO1_CIPHER_PASS" \
-    --volume "$repository_volume:/var/lib/pgbackrest:ro" \
-    --volume "$scratch_volume:/var/lib/postgresql/data" \
-    "$image" \
-    -c "set -eu; pgbackrest --stanza=$stanza restore; exec postgres -D /var/lib/postgresql/data" \
-    >/dev/null
-fi
+docker run --detach --name "$scratch_container" --network none \
+  --user postgres \
+  --entrypoint sh \
+  --env "PGBACKREST_REPO1_CIPHER_PASS=$PGBACKREST_REPO1_CIPHER_PASS" \
+  --volume "$repository_volume:/var/lib/pgbackrest:ro" \
+  --volume "$scratch_volume:/var/lib/postgresql/data" \
+  "$image" \
+  -c "set -eu; pgbackrest --stanza=$stanza restore; exec postgres -D /var/lib/postgresql/data" \
+  >/dev/null
 
 wait_for_scratch_database
 restored_ledger=$(docker exec "$scratch_container" psql --username "$source_db_user" --dbname valstara_waitlist --tuples-only --no-align --field-separator '|' --command 'SELECT filename, checksum FROM migration_ledger ORDER BY filename')
@@ -137,11 +110,7 @@ elapsed_ms=$(( (finished_ns - started_ns) / 1000000 ))
 
 printf '%s\n' 'pgBackRest local restore drill passed.'
 printf '%s\n' 'Verified source and restored migration ledger rows, full and differential backups, and WAL archiving.'
-if [ "$repository_type" = 's3' ]; then
-  printf '%s\n' "R2 restore timing: ${elapsed_ms} ms (RTO measurement)."
-else
-  printf '%s\n' "Local restore timing: ${elapsed_ms} ms."
-fi
+printf '%s\n' "Local restore timing: ${elapsed_ms} ms (floor only; not the production RTO)."
 
 if [ "${RESTORE_DRILL_KEEP_SCRATCH:-0}" = '1' ]; then
   printf '%s\n' "Scratch restore container: ${scratch_container}"

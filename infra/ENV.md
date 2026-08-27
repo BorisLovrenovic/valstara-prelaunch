@@ -14,10 +14,6 @@ untracked root `.env` file.
 | `UMAMI_DB_PASSWORD`              | Password for the Umami database role; URL-safe characters are required           | PostgreSQL, Umami         | Local-only value in Compose            | Yes outside local development |
 | `UMAMI_APP_SECRET`               | Signs and encrypts Umami authentication tokens                                   | Umami                     | Local-only value in Compose            | Yes                           |
 | `PGBACKREST_REPO1_CIPHER_PASS`   | Encrypts the pgBackRest repository; supply from the shell or secret manager      | PostgreSQL, restore drill | None                                   | Yes                           |
-| `PGBACKREST_REPO1_S3_BUCKET`     | R2 bucket holding the encrypted pgBackRest repository                            | Production PostgreSQL     | None                                   | No                            |
-| `PGBACKREST_REPO1_S3_ENDPOINT`   | R2 S3-compatible account endpoint, without a URL scheme                          | Production PostgreSQL     | None                                   | No                            |
-| `PGBACKREST_REPO1_S3_KEY`        | R2 access key limited to the backup bucket                                       | Production PostgreSQL     | None                                   | Yes                           |
-| `PGBACKREST_REPO1_S3_KEY_SECRET` | R2 secret key for the limited backup-bucket access key                           | Production PostgreSQL     | None                                   | Yes                           |
 | `POSTGRES_HOST_PORT`             | Loopback-only host port for local PostgreSQL access                              | Docker Compose            | `5434`                                 | No                            |
 | `POSTGRES_MEM_LIMIT`             | Hard memory and equal memory-plus-swap limit for PostgreSQL                      | Docker Compose            | `512m`                                 | No                            |
 | `APP_MEM_LIMIT`                  | Hard memory and equal memory-plus-swap limit for the Astro app                   | Docker Compose            | `768m`                                 | No                            |
@@ -84,35 +80,11 @@ npm run backup:drill
 
 The drill creates a full backup, forces and verifies WAL archiving, creates a
 differential backup, restores into an isolated scratch container, compares the
-restored migration-ledger rows with the source database, and prints its local
-timing. It also removes only unreadable local stanza metadata left by a changed
-local passphrase before creating the drill's replacement backup.
-
-## Production R2 backups
-
-Set `PGBACKREST_REPO1_S3_BUCKET`, `PGBACKREST_REPO1_S3_ENDPOINT`,
-`PGBACKREST_REPO1_S3_KEY`, and `PGBACKREST_REPO1_S3_KEY_SECRET` from the VPS
-secret manager. The endpoint is the account-specific R2 S3 endpoint; the key
-must be restricted to this bucket. Production uses repository encryption and
-runs a full backup at 02:00 UTC every Sunday and a differential backup at
-02:00 UTC on the other days. Continuous WAL archiving uses the same encrypted
-R2 repository.
-
-The repository passphrase is held outside the VPS and repository. An operator
-retrieves it only from the off-VPS secret store for an authorised restore; no
-copy is written to the VPS. After configuring R2, run the restore drill against
-that repository and record the printed elapsed time as the RTO evidence:
-
-```sh
-export PGBACKREST_REPO1_TYPE='s3'
-export PGBACKREST_RESTORE_COMPOSE_FILE='infra/compose/docker-compose.production.yml'
-npm run backup:drill
-```
-
-The production Compose file requires the listed R2 variables and the usual
-production credentials while it is rendered. The remote drill prints `R2
-restore timing: … ms (RTO measurement)` only after it has independently
-compared the scratch-restored migration ledger with the source database.
+restored migration-ledger rows with the source database, and prints a local
+restore-time floor. That figure is explicitly not the production RTO; E12-04
+owns the remote repository, schedule, and production timing measurement. It
+also removes only unreadable local stanza metadata left by a changed local
+passphrase before creating the drill's replacement backup.
 
 The app is available at `http://127.0.0.1:4321` and Umami at
 `http://127.0.0.1:3000`. PostgreSQL is exposed only on the loopback interface at

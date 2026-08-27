@@ -2,10 +2,7 @@ name: valstara-prelaunch-production
 
 services:
   postgres:
-    build:
-      context: ../backups
-      dockerfile: postgres-pgbackrest.Dockerfile
-    image: valstara-postgres-pgbackrest:local
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: valstara_waitlist
@@ -14,26 +11,6 @@ services:
       UMAMI_DB_NAME: umami
       UMAMI_DB_USER: ${UMAMI_DB_USER:?UMAMI_DB_USER is required}
       UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD is required}
-      PGBACKREST_REPO1_CIPHER_PASS: ${PGBACKREST_REPO1_CIPHER_PASS:?PGBACKREST_REPO1_CIPHER_PASS is required}
-      PGBACKREST_PG1_USER: ${VALSTARA_DB_USER:?VALSTARA_DB_USER is required}
-      PGBACKREST_REPO1_TYPE: s3
-      PGBACKREST_REPO1_S3_BUCKET: ${PGBACKREST_REPO1_S3_BUCKET:?PGBACKREST_REPO1_S3_BUCKET is required}
-      PGBACKREST_REPO1_S3_ENDPOINT: ${PGBACKREST_REPO1_S3_ENDPOINT:?PGBACKREST_REPO1_S3_ENDPOINT is required}
-      PGBACKREST_REPO1_S3_KEY: ${PGBACKREST_REPO1_S3_KEY:?PGBACKREST_REPO1_S3_KEY is required}
-      PGBACKREST_REPO1_S3_KEY_SECRET: ${PGBACKREST_REPO1_S3_KEY_SECRET:?PGBACKREST_REPO1_S3_KEY_SECRET is required}
-      PGBACKREST_REPO1_S3_REGION: auto
-      PGBACKREST_REPO1_S3_URI_STYLE: path
-      PGBACKREST_SCHEDULE_ENABLED: 'true'
-    command:
-      [
-        'postgres',
-        '-c',
-        'archive_mode=on',
-        '-c',
-        'archive_command=pgbackrest --stanza=valstara archive-push %p',
-        '-c',
-        'wal_level=replica',
-      ]
     volumes:
       - postgres-production-data:/var/lib/postgresql/data
       - ./init-umami-db.sh:/docker-entrypoint-initdb.d/init-umami-db.sh:ro
