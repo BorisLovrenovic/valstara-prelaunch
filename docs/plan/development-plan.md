@@ -306,14 +306,17 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
 **Why this tier:** a backup that has never been restored is a hypothesis, and this list is the campaign's only durable asset.
 
-**Build:** The pgBackRest configuration for `valstara_waitlist` — weekly full, daily differential, continuous WAL, **repository encryption on** — and the restore-to-scratch-container drill script. Prove the whole cycle **against the local stack**, backing up to a local repository. Document the passphrase procedure in `infra/ENV.md` without containing it.
+**Build:** The pgBackRest configuration for `valstara_waitlist` — weekly full, daily differential, continuous WAL, **repository encryption on** — and the restore-to-scratch-container drill script. Prove the whole cycle **against the local stack**, backing up to a local repository. Document the passphrase procedure in `infra/ENV.md` without containing the production value.
+
+**Nothing this ticket adds may make an existing command fail.** The local stack is started by earlier tickets' tests and drills; a new required variable breaks all of them.
 
 **The R2 remote, the schedule and the off-host passphrase are E12-04.** What this ticket owns is that the configuration is correct and the restore genuinely works; where the repository lives is a deployment detail.
 
 **Acceptance criteria:**
 - A full backup, a differential and WAL archiving all succeed against the local stack
 - **A restore into a scratch container succeeds and is verified against known rows — evidenced in the PR**
-- Repository encryption is on, and the passphrase is **absent from the repository** and supplied by environment
+- Repository encryption is on, and the passphrase comes from `PGBACKREST_REPO1_CIPHER_PASS` **with a local-only default**, exactly as every other credential in the local stack. **It must not be a required variable** — making it mandatory breaks every command that starts the local stack, including earlier tickets' drills
+- **The real passphrase, held off-host, is E12-04's.** "Absent from the repository" is a production property; a local-only default documented as local-only satisfies this ticket
 - The drill is a script, runnable unattended, not a sequence of documented commands
 - **Local restore timing recorded as a floor, explicitly not the production RTO** — E12-04 measures that
 

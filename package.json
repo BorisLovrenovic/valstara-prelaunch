@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "astro build",
+    "backup:drill": "sh infra/backups/restore-drill.sh",
     "coverage": "node scripts/ci/run-coverage.mjs",
     "ci:red-paths": "node --test test/ci-red-paths.test.mjs",
     "ci:security-red-paths": "node --test test/security-gates.test.mjs",
