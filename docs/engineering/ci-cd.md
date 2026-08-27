@@ -153,9 +153,16 @@ should imply otherwise.
 
 ## Backups
 
-The `valstara_waitlist` database joins the VPS's existing pgBackRest → R2 arrangement: weekly full, daily differential, continuous WAL, repository encryption on with the passphrase stored **off the VPS**.
+The `valstara_waitlist` database uses pgBackRest with weekly full, daily
+differential and continuous WAL backups, with repository encryption enabled.
+E1-08 proves this configuration locally against a local repository; E12-04
+points that same configuration at R2, enables the schedule, and moves the
+passphrase off the VPS.
 
-**A restore into a scratch container is proven in E1-08 and re-drilled before the campaign opens.** A backup that has never been restored is a hypothesis. The restore timing is the RTO — measured, not estimated.
+**A restore into a scratch container is proven in E1-08 and re-drilled before
+the campaign opens.** A backup that has never been restored is a hypothesis.
+The E1-08 local measurement is a restore-timing floor only, not a production
+RTO. E12-04 records the measured remote restore timing.
 
 ## Secrets
 

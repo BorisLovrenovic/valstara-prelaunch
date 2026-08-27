@@ -2,7 +2,10 @@ name: valstara-prelaunch
 
 services:
   postgres:
-    image: postgres:17-alpine
+    build:
+      context: ../backups
+      dockerfile: postgres-pgbackrest.Dockerfile
+    image: valstara-postgres-pgbackrest:local
     restart: unless-stopped
     environment:
       POSTGRES_DB: valstara_waitlist
@@ -11,10 +14,23 @@ services:
       UMAMI_DB_NAME: umami
       UMAMI_DB_USER: ${UMAMI_DB_USER:-umami}
       UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:-umami-local-only}
+      PGBACKREST_REPO1_CIPHER_PASS: ${PGBACKREST_REPO1_CIPHER_PASS:?PGBACKREST_REPO1_CIPHER_PASS is required}
+      PGBACKREST_PG1_USER: ${VALSTARA_DB_USER:-valstara}
+    command:
+      [
+        'postgres',
+        '-c',
+        'archive_mode=on',
+        '-c',
+        'archive_command=pgbackrest --stanza=valstara archive-push %p',
+        '-c',
+        'wal_level=replica',
+      ]
     ports:
       - '127.0.0.1:${POSTGRES_HOST_PORT:-5434}:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - pgbackrest-repository:/var/lib/pgbackrest
       - ./init-umami-db.sh:/docker-entrypoint-initdb.d/init-umami-db.sh:ro
     healthcheck:
       test:
@@ -108,3 +124,4 @@ services:
 volumes:
   app-node-modules:
   postgres-data:
+  pgbackrest-repository:

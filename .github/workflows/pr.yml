@@ -60,6 +60,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Generate an ephemeral pgBackRest repository passphrase
+        run: echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
       - name: Build the app the compose stack serves in CI
         run: npm run build
       - name: Mark the runner's install as current for the compose stack
@@ -107,6 +109,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Generate an ephemeral pgBackRest repository passphrase
+        run: echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
       - name: Build the app the compose stack serves in CI
         run: npm run build
       - name: Mark the runner's install as current for the compose stack

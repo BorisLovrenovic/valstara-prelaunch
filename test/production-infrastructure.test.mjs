@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { promisify } from 'node:util';
@@ -27,6 +28,7 @@ const composeEnvironment = {
   ...process.env,
   CADDY_ORIGIN_CERT_PATH: '/run/valstara-test-origin-cert.pem',
   CADDY_ORIGIN_KEY_PATH: '/run/valstara-test-origin-key.pem',
+  PGBACKREST_REPO1_CIPHER_PASS: randomBytes(32).toString('hex'),
   UMAMI_APP_SECRET: 'test-umami-app-secret',
   UMAMI_DB_PASSWORD: 'test-umami-database-password',
   UMAMI_DB_USER: 'umami',
