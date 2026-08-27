@@ -19,7 +19,9 @@ Flags exist for one reason: **so a mechanic can be switched off during an incide
 | `email.broadcast` | **off** | `email-campaign.md` | **Off until domain authentication is verified end to end.** Transactional mail is unaffected |
 | `trustpilot.widget` | **off** | `seo.md` | Stays off until the review count justifies displaying a rating |
 
-**Two flags default off and are the campaign's two hard gates.** `giveaway.open` and `email.broadcast` each depend on something outside the code — published rules pages and appointed representatives for one, verified DNS authentication and an upgraded ESP tier for the other.
+**Three flags default off.** `trustpilot.widget` is off because a rating below the display threshold is worse than none (ADR-024) — that is a brand decision, and it is turned on by judgement rather than by a gate.
+
+**Two of the three are hard gates**, and this is the distinction that matters: `giveaway.open` and `email.broadcast` each depend on something **outside the code** — published rules pages and appointed representatives for one, verified DNS authentication and an upgraded ESP tier for the other. Neither may be turned on until its prerequisite is complete, and E8-09 enforces the ESP one in code.
 
 ## Not flagged, deliberately
 

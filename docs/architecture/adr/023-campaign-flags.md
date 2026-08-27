@@ -14,7 +14,7 @@ A twelve-week campaign with a public leaderboard, a prize draw and a mail progra
 - **A lookup failure returns the code default** — fail-safe, never fail-open.
 - Reads are cached in-process with a short TTL; `set()` invalidates immediately, and **the worst-case propagation delay is documented**. A lever whose effect is invisible for an unknown period is not a lever.
 
-Eight flags, listed in `docs/features/README.md#flag-registry`. **Two default off** — `giveaway.open` and `email.broadcast` — because each depends on something outside the code.
+Eight flags, listed in `docs/features/README.md#flag-registry`. **Three default off** — `giveaway.open`, `email.broadcast` and `trustpilot.widget`. The first two are **hard gates**, each depending on something outside the code. The third is a brand judgement: a rating below the display threshold is worse than none (ADR-024), so it stays off until the review count justifies it.
 
 ## Alternatives rejected
 - **Environment variables** — changing one means a deploy, which is the thing this exists to avoid.
