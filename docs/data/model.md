@@ -123,7 +123,16 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 ## `audit_log`
 
-`id` · `at` · `actor` · `action` · `subject_type` · `subject_id` · `detail` jsonb · `request_id`.
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid pk | |
+| `at` | timestamptz not null | |
+| `actor` | text not null | |
+| `action` | text not null | From the registered action set below |
+| `subject_type` | text not null | Discriminates what `subject_id` refers to |
+| `subject_id` | **text null** | **Text, not uuid — the subject is polymorphic.** A subscriber is a UUID, a flag is a key like `leaderboard.public`, and an export has no natural subject at all. `subject_type` says which. Nullable for the same reason |
+| `detail` | jsonb | |
+| `request_id` | text | |
 
 **Append-only, enforced by database permissions** — the application role holds `INSERT` and `SELECT` only. Records: disqualifications, flag decisions, exports, draw execution, flag changes, DSR requests and their fulfilment, and the handoff freeze. **`detail` never contains a token, a secret or a full IP address**; a redaction test asserts this over every call site.
 
