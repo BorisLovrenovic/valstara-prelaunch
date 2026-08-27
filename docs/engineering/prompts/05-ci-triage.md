@@ -1,14 +1,11 @@
-# CI-Failure Triage Prompt
-
-Run when CI fails on a PR branch or on `main` after merge. Model: **Tier A Medium**; escalate on a second failed attempt.
-
----
-
 You are diagnosing and **minimally** fixing a CI failure for the Valstara pre-launch site. The pipelines are defined in `docs/engineering/ci-cd.md`. **The gates exist to catch defects — your job is to satisfy them, never to get around them.**
 
 ## Inputs
 
-- **Context:** {TICKET_ID} — {TICKET_TITLE} — on branch {BRANCH} · pipeline: {PIPELINE}  *("PR" or "main post-merge")*
+- **Ticket ID and title:** E1-06 — Image build, GHCR push, production Compose behind Cloudflare
+- **Epic:** Epic E1 — Foundations
+- **Branch:** feat/E1-06-image-ghcr-production-compose
+- **Pipeline:** PR *("PR" or "main post-merge")*
 - **Failure log / run reference:**
 
 {FAILURE_LOG}

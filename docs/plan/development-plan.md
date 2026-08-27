@@ -50,6 +50,7 @@ Five items no agent can complete. Each gates something, and the gate is stated s
 | **P3a** | ~~Brand token values~~ — **SATISFIED.** In the repository at `docs/brand/identity-guidelines.md` §5 (colour) and §6 (typography), LOCKED | — | Nothing. E2-01 is unblocked | Done |
 | **P3b** | **Trust-page prose** — `/legit`, `/guarantee`, `/about` | Founder input from the brand and store documentation | E9-02. **A page shell with placeholder text is not a deliverable** | Before E9 |
 | **P4** | **Giveaway prize, entry rules and reviewed rules-page text** | Founder input plus counsel | E7 entirely; `giveaway.open` stays off without it | Before E7 |
+| **P6** | **Provision the production VPS** | Purchase and provisioning | **E12 entirely.** Nothing before E12 requires it — founder decision, 2026-08-27: the site is built and verified locally first, then the host is provisioned once | Before E12 |
 | **P5** | **Upgrade Resend and Brevo past the free tiers** | Purchase — Resend free is 100/day, Brevo 300/day | **Turning `giveaway.open` on.** Upgrade *before* the giveaway opens, not when the limits hit | Before E7 exit |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
@@ -128,7 +129,10 @@ flowchart TD
   E8 --> E11
   E9 --> E11
   E10 --> E11
+  E11 --> E12[E12 Production bring-up]
 ```
+
+**Everything through E11 is built and verified locally.** The VPS is provisioned once, at the end, and **E12 collects every piece of evidence that needs real infrastructure** — the rollback RTO, a restore from R2, capacity on the actual box (founder decision, 2026-08-27).
 
 **E1 proves the whole path end to end before any feature work.** E3 is the spine: E4, E5, E8 and E10 all depend on a verified subscriber existing. **E9 is independent of the mechanics and has the longest founder-input lead time — start its content tickets early, in parallel.** E11 is the campaign gate.
 
@@ -277,7 +281,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 - A merge to `main` touching application code produces a SHA-tagged GHCR image; a docs-only change builds nothing
 - Production Compose starts the SHA-tagged image and passes health checks
 - **Caddy removes an unhealthy backend and returns it only after recovery** — demonstrated
-- **The origin is not directly reachable except through Cloudflare** — verified
+- Production Compose runs **locally**; it is the same file E12 deploys to the VPS unchanged. **Cloudflare proxying and origin lock-down are E12-05** — there is no origin to lock down yet
 
 **Tests:** The pipeline is the test; a docs-only commit demonstrably builds nothing.
 **Docs:** `docs/engineering/ci-cd.md#main-pipeline` · `docs/architecture/adr/003-self-hosted-vps.md`
@@ -292,7 +296,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 - A deploy writes a **durable record answering *which migration ran, when, on which release***
 - **A checksum mismatch on an already-applied migration aborts before anything restarts**
 - A failed health check aborts the rollout, leaving the previous version serving
-- **Rollback executes in under five minutes — drilled and recorded in the PR**
+- **Rollback logic is drilled and recorded in the PR** — against the production Compose definition running locally, proving the script pulls, migrates, health-gates and restores. **The timed five-minute RTO is E12-03**: the number is dominated by a real registry pull to a real host, so it cannot be measured here and a local figure must not be recorded as the RTO
 - Failed attempts are records too, including migrations committed before a later one failed
 
 **Tests:** A staged bad-image deploy proving the health gate and the rollback; an induced checksum mismatch.
@@ -302,13 +306,16 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
 **Why this tier:** a backup that has never been restored is a hypothesis, and this list is the campaign's only durable asset.
 
-**Build:** Bring `valstara_waitlist` into the VPS's existing pgBackRest → R2 arrangement: weekly full, daily differential, continuous WAL, **repository encryption on with the passphrase stored off the VPS.** Document the passphrase procedure in `infra/ENV.md` without containing it. Script the restore-to-scratch-container drill.
+**Build:** The pgBackRest configuration for `valstara_waitlist` — weekly full, daily differential, continuous WAL, **repository encryption on** — and the restore-to-scratch-container drill script. Prove the whole cycle **against the local stack**, backing up to a local repository. Document the passphrase procedure in `infra/ENV.md` without containing it.
+
+**The R2 remote, the schedule and the off-host passphrase are E12-04.** What this ticket owns is that the configuration is correct and the restore genuinely works; where the repository lives is a deployment detail.
 
 **Acceptance criteria:**
-- Backups run on schedule and land in R2
+- A full backup, a differential and WAL archiving all succeed against the local stack
 - **A restore into a scratch container succeeds and is verified against known rows — evidenced in the PR**
-- **Restore timing recorded — this is the RTO, measured not estimated**
-- The passphrase is absent from the repository and from the VPS; its location is documented
+- Repository encryption is on, and the passphrase is **absent from the repository** and supplied by environment
+- The drill is a script, runnable unattended, not a sequence of documented commands
+- **Local restore timing recorded as a floor, explicitly not the production RTO** — E12-04 measures that
 
 **Tests:** The restore drill is the test.
 **Docs:** `docs/engineering/ci-cd.md#backups`
@@ -355,7 +362,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 - A signup produces exactly **one** subscriber, **one** token and **one** queued email
 - **A double submission produces no second row and no second email**
 - `/verify` sets `verified`; **a replayed token returns success, not an error**
-- The slice runs locally against Compose **and on production against the real infrastructure**
+- The slice runs locally against Compose. **Running it on the real host is E12-02**
 - **No cookie is set anywhere in the flow** — asserted by a rendered-page check
 
 **Tests:** Integration test through the full path, including double submission and token replay.
@@ -1425,7 +1432,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 ### E10-01 — Umami deployment and the cookieless proof
 **Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** infra
 
-**Build:** Umami in production Compose with its own database, behind the proxy, on a first-party path. Wire the client script.
+**Build:** Umami in Compose with its own database, behind the proxy, on a first-party path. Wire the client script. **Deploying it to the VPS is E12-07**; everything this ticket asserts — the cookieless proof — is verifiable locally and is the part that matters.
 
 **Acceptance criteria:**
 - Umami runs with **its own database**, never `valstara_waitlist`
@@ -1510,7 +1517,9 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 ### E11-01 — Load test at 10× expected peak
 **Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** infra
 
-**Build:** Load-test the **signup endpoint at 10× expected peak** against production-shaped infrastructure, plus the leaderboard route at spike volume. Confirm every sweep and export is batch-capped and that no query holds a result set in memory.
+**Build:** Load-test the **signup endpoint at 10× expected peak** against the local production-Compose stack, plus the leaderboard route at spike volume. Confirm every sweep and export is batch-capped and that no query holds a result set in memory.
+
+**This is the correctness run, not the capacity run.** It proves no duplicate rows, no dropped emails, no unbounded query and no cache bypass under load. **Capacity against the real box is E12-06** — a laptop's numbers say nothing about a €15 VPS.
 
 **Acceptance criteria:**
 - **The signup endpoint holds at 10× expected peak** with correct behaviour, not just non-zero throughput — no duplicate rows, no dropped emails
@@ -1528,7 +1537,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 **Build:** Execute and record all eight drills in `docs/architecture/fallbacks.md#chaos-drills`.
 
 **Acceptance criteria:**
-- **Every drill executed against production-shaped infrastructure and its result recorded in the repository**
+- **Drills 1–6 and 8 executed against the local production-Compose stack and recorded in the repository.** Drills 7, 9 and 10 need real infrastructure and are **E12-06**, named there rather than quietly skipped
 - **Any drill that does not behave as the matrix claims is a blocking finding** — fix the system or fix the matrix, never neither
 - The restore timing is recorded — this is the RTO
 - **The `leaderboard.public` kill-switch drill is timed**, because its value is how fast it works
@@ -1629,7 +1638,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 - Every giveaway rules page published, and its jurisdiction reconciling with the eligibility table
 - MFA active on the admin account
 - Backups running and **a restore drilled with its timing recorded**
-- **Live keys in production and no sandbox key present** — verified
+- **No live provider key is present anywhere in the repository or local environment** — verified. **Installing live keys on the host is E12-07**, and the campaign does not open until that ticket's gate passes
 - The privacy audit (E11-05) clean, with no open finding
 - The verification-rate alert **drilled**, not just configured
 - The IP purge job running, with its retention verified
@@ -1643,6 +1652,136 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 
 **Tests:** The checklist is the gate.
 **Docs:** This plan · `docs/architecture/adr/README.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
+
+---
+
+## Epic E12 — Production bring-up
+
+**Goal:** provision the VPS, put the whole system on it, and collect every piece of evidence that could not be gathered locally. *7 tickets.*
+
+**Why this epic exists.** E1-06, E1-07, E1-08, E1-11, E10-01, E11-01, E11-02 and E11-08 each carried an acceptance criterion that needed real infrastructure — a host, a registry pull over the network, R2, Cloudflare, live keys. The founder's decision (2026-08-27) is to build the entire site locally first and provision the VPS once. Rather than let those tickets merge with criteria that read as satisfied but were not, **the production half of each was moved here**, named, and gated.
+
+**This epic is not optional and it is not a formality.** It holds the RTO measurement, the backup that has actually been restored from R2, and the load figure for the box the campaign actually runs on. Every one of those is a number the campaign depends on and none of them can be inferred from a laptop.
+
+**Exit criteria:** the site serves from the VPS behind Cloudflare, a rollback has been timed under five minutes, a restore from R2 has been verified, the drills have run against real limits, and the launch gate passes on the real host.
+
+**Prerequisite: the VPS is provisioned and reachable.** No ticket here starts before it is.
+
+### E12-01 — Provision the host and run the production stack on it
+**Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+
+**Build:** Provision the VPS. Install Docker and Compose. Bring up `infra/compose/docker-compose.production.yml` **unchanged** — it has been running locally since E1-06, and any edit needed here is a defect in that file, to be fixed there and re-verified locally first. Create `infra/ENV.md` entries for the host and every production-only variable.
+
+**Acceptance criteria:**
+- The production Compose file runs on the host **with no modification** — a required change is reported, fixed in the file, and re-verified locally before proceeding
+- Every service starts with its documented hard memory limit and equal swap limit — asserted from the running config on the host
+- **No data service publishes a host port**
+- Every production variable is documented in `infra/ENV.md`; **no value is in the repository**
+- The box's total memory headroom with the full stack running is recorded
+
+**Tests:** `assert-production-stack.mjs` passes against the host.
+**Docs:** `docs/architecture/adr/003-self-hosted-vps.md` · `infra/ENV.md`
+
+### E12-02 — Deploy from GHCR against the real host, with the migration audit
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Why this tier:** the first real pull-migrate-restart against live data paths; a mis-recorded migration here is the failure E1-07 exists to prevent, now with somewhere to actually happen.
+
+**Build:** Run `infra/deploy/deploy.sh` on the host against a real GHCR image. Confirm the migration audit record is written to persistent storage. Then run the E1-11 thin slice end to end against the deployed site.
+
+**Acceptance criteria:**
+- A deploy pulls a SHA-tagged image from GHCR and records **which migrations ran, when, on which release** — durably, on the host
+- A failed health check aborts the rollout, leaving the previous version serving — induced and evidenced
+- **The E1-11 slice completes against the real host**: a signup writes a row and a verification email is queued
+- The audit directory's permissions are as documented; it is not publicly reachable
+
+**Tests:** An induced health-check failure; the recorded audit files.
+**Docs:** `docs/engineering/ci-cd.md#deploy-and-the-migration-audit`
+
+### E12-03 — The timed rollback drill
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Why this ticket exists:** this is the RTO. E1-07 proved the rollback *logic* locally; the number is dominated by a real registry pull to a real host, and an unmeasured RTO is a guess written down.
+
+**Build:** Deploy release A, deploy release B, then roll back to A with `rollback.sh`. Time it with a monotonic clock, from command to the previous release verifiably serving. Repeat from a cold local image cache, which is the honest worst case.
+
+**Acceptance criteria:**
+- **Rollback completes in under five minutes, measured on the host, recorded in the repository** — warm and cold-cache figures both recorded
+- The previous release is confirmed serving **through the proxy by its release identity**, not by the script's own claim
+- Because migrations are additive-first, the previous image runs against the migrated schema — asserted, not assumed
+- **If the cold-cache figure exceeds five minutes, that is a blocking finding** — fix the deploy path or change the documented RTO, never neither
+
+**Tests:** The drill is the test; both timings recorded.
+**Docs:** `docs/engineering/ci-cd.md#rollback`
+
+### E12-04 — Backups to R2, and a restore proven from the remote
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Why this tier:** the waitlist is the campaign's only durable asset, and a backup that has only ever been restored from a local repository has not been tested against the failure that matters — losing the box.
+
+**Build:** Point the E1-08 pgBackRest configuration at Cloudflare R2. Enable the schedule. Move the repository passphrase off the host. Then restore **from R2** into a scratch container and verify against known rows.
+
+**Acceptance criteria:**
+- Backups run on schedule and land in R2 — full, differential and WAL all confirmed present
+- **A restore from R2 into a scratch container succeeds and is verified against known rows — evidenced**
+- **Restore timing recorded — this is the RTO, measured not estimated**
+- **The passphrase is absent from the repository and from the VPS**, and its location is documented
+- A deliberate loss of the local repository still permits a full restore — the case this ticket exists for
+
+**Tests:** The restore drill is the test.
+**Docs:** `docs/engineering/ci-cd.md#backups` · `docs/architecture/adr/003-self-hosted-vps.md`
+
+### E12-05 — Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this tier:** an origin reachable around the proxy defeats the caching the spike plan depends on and exposes the box directly.
+
+**Build:** Put the zone in front of the host, proxied. Restrict the origin to Cloudflare. Move Turnstile and Web Analytics to production keys. Verify the static-asset cache behaviour the spike plan assumes.
+
+**Acceptance criteria:**
+- **The origin is not reachable except through Cloudflare** — verified by attempting a direct connection, from outside
+- TLS terminates correctly; no mixed content; security headers as documented
+- **Turnstile verifies server-side with production keys**, and a failure still fails closed
+- **Static pages are served from Cloudflare's cache** — confirmed by cache-status headers, because the entire spike plan rests on the origin seeing only writes
+- Cloudflare Web Analytics reports, and **still sets no cookie** — the privacy gate re-run against the live site
+
+**Tests:** Direct-origin attempt; cache-status assertions; the rendered-page privacy check against production.
+**Docs:** `docs/architecture/adr/003-self-hosted-vps.md` · `docs/architecture/adr/006-turnstile.md` · `docs/architecture/adr/007-cookieless-analytics.md`
+
+### E12-06 — Chaos drills and the capacity run on the real box
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+
+**Build:** Execute drills 7, 9 and 10 from `docs/architecture/fallbacks.md#chaos-drills` — restore from R2, a host OOM against real limits, and the Cloudflare-absent path — plus drills 1–6 and 8 re-run on the host. Then the capacity run: the signup endpoint at 10× expected peak against the VPS, and the leaderboard under spike load.
+
+**Acceptance criteria:**
+- **Drills 7, 9 and 10 executed on the host and recorded**, and drills 1–6 and 8 re-run there to confirm they behave the same on real infrastructure
+- **Any drill that does not behave as the matrix claims is a blocking finding** — fix the system or fix the matrix, never neither
+- **The signup endpoint holds at 10× expected peak on the real box** with correct behaviour, not just throughput — no duplicate rows, no dropped emails
+- **The leaderboard serves from cache under spike load and never touches `subscriber`** — asserted under load on the host
+- An OOM kill restarts the service and is visible in monitoring; **recurrence is recorded as a capacity signal**
+- Memory headroom under full load is recorded against E12-01's baseline
+
+**Tests:** The drills and the load run are the tests; all figures recorded.
+**Docs:** `docs/architecture/fallbacks.md` · `docs/security/threat-model.md#t8--the-box-goes-down-under-a-viral-spike`
+
+### E12-07 — Production readiness gate
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** docs
+
+**Build:** Install live provider keys on the host. Deploy Umami to production behind the proxy. Then verify a single checklist, **every item evidenced rather than asserted**:
+
+- **Live Resend and Brevo keys on the host; no sandbox key present** — and no live key in the repository or any developer environment
+- **SPF, DKIM and DMARC verify on all three sending domains from the production host**, and a seed test round-trips to the inbox at all four major providers
+- Umami serving first-party through the proxy, **setting no cookie** — the privacy gate re-run against production
+- MFA active on the admin account; admin routes unreachable except as documented
+- Backups running on schedule with the E12-04 restore evidence recorded
+- The E12-03 rollback timing recorded and inside five minutes
+- Every flag at its intended state — **`giveaway.open` and `email.broadcast` off** until P4 and P5 complete
+- **The E11-08 campaign launch gate re-verified on the real host**, not on a laptop
+- Every founder prerequisite P1, P2, P3b, P4, P5 complete
+
+**Acceptance criteria:**
+- **Every item verified with evidence recorded per line**
+- Any open blocker from any QA gate is closed
+- **The plan itself is reconciled** — every ticket done, or explicitly deferred with founder authorisation
+
+**Tests:** The checklist is the gate.
+**Docs:** This plan · `docs/engineering/ci-cd.md#campaign-open-sequencing` · `docs/architecture/adr/README.md`
 
 ---
 
@@ -1661,9 +1800,10 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 | E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, **the representative gate**, inventory, DSR, SEO, OG, llms.txt |
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, admin auth and health |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
-| **Total** | **88** | |
+| E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
+| **Total** | **95** | |
 
-**Tier distribution:** Tier B Extra High 4 · Tier B High 14 · Tier B Medium 24 · Tier A High 15 · Tier A Medium 31.
+**Tier distribution:** Tier B Extra High 4 · Tier B High 16 · Tier B Medium 28 · Tier A High 16 · Tier A Medium 31.
 
 **Tier B carries the personal data, the privacy properties, the fraud invariants, the prize draw, the sending reputation and the handoff** — the places where a mistake is expensive, subtle, or discovered too late to fix. Tier A carries the well-specified majority.
 
