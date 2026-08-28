@@ -29,7 +29,7 @@ function run(command, args, extraEnvironment = {}) {
 await rm(resolve(projectRoot, 'coverage'), { force: true, recursive: true });
 
 const selectedTest = argumentValue('--test');
-const testArguments = ['--test'];
+const testArguments = ['--test', '--test-concurrency=1'];
 if (selectedTest) {
   testArguments.push(selectedTest);
 }

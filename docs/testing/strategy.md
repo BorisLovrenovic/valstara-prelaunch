@@ -50,6 +50,7 @@ This is deliberate. "Where an AC states an invariant" was the earlier wording an
 
 - **Time-dependent logic injects a clock. Never `Date.now()` in a test path.** The reminder ladder, token expiry and retention sweeps are all clock-driven and all table-tested.
 - **Concurrency-sensitive behaviour is tested under genuine concurrency against a real database, never mocked.** Duplicate signup and duplicate entry accrual are the canonical cases — both rely on database constraints, and a mocked test proves nothing about a constraint.
+- **Top-level test files run serially.** Database fixtures create separate databases on one PostgreSQL cluster, but migrations provision the cluster-global `valstara_app` role; parallel files can otherwise race while updating that shared role. Tests that assert concurrency create genuine parallel database sessions inside the test.
 - **Fixtures are explicit by default; generated only where the test asserts a property over many inputs.** An example test reads better with literal values a person can check at a glance, and `crypto.randomUUID()` for an identifier nobody asserts on is fine. **A generated fixture must be seeded** — a fixed seed, so a failure reproduces. Do not convert working example fixtures to generated ones; that trades clarity for nothing.
 - **A flake is a finding, not noise.** Fix the nondeterminism; quarantining requires an explicit follow-up.
 
