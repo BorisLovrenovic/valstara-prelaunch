@@ -21,7 +21,6 @@ import {
 import {
   createFlagService,
   createFlagServiceWithDependencies,
-  flagCacheTtlMilliseconds,
 } from '../src/server/flags/service.ts';
 import type { FlagClock } from '../src/server/flags/types.ts';
 
@@ -87,6 +86,22 @@ function createAuditRecorder(): {
   };
 }
 
+function createTestFlagService(
+  repository: CampaignFlagRepository,
+  audit: ReturnType<typeof createAuditRecorder>,
+  clock?: FlagClock,
+) {
+  const runFlagChange: Parameters<
+    typeof createFlagServiceWithDependencies
+  >[1] = async (operation) => {
+    await operation(repository, audit);
+  };
+
+  return clock === undefined
+    ? createFlagServiceWithDependencies(repository, runFlagChange)
+    : createFlagServiceWithDependencies(repository, runFlagChange, clock);
+}
+
 async function createDatabaseFixture(): Promise<DatabaseFixture> {
   const databaseName = `valstara_e110_${randomUUID().replaceAll('-', '')}`;
   const adminUrl = new URL(process.env.TEST_DATABASE_URL ?? defaultDatabaseUrl);
@@ -144,10 +159,7 @@ test('the code registry declares exactly the eight documented keys and defaults'
 
 test('an unregistered key throws without consulting the database', async () => {
   const repository = createMemoryRepository();
-  const service = createFlagServiceWithDependencies(
-    repository,
-    createAuditRecorder(),
-  );
+  const service = createTestFlagService(repository, createAuditRecorder());
 
   await assert.rejects(
     service.isEnabled('unknown.flag' as FlagKey),
@@ -157,17 +169,15 @@ test('an unregistered key throws without consulting the database', async () => {
 });
 
 test('a database lookup failure returns every code-declared default', async () => {
-  const service = createFlagServiceWithDependencies(
-    {
-      async list() {
-        throw new DatabaseUnavailableError(new Error('database stopped'));
-      },
-      async set() {
-        throw new Error('not used');
-      },
+  const repository: CampaignFlagRepository = {
+    async list() {
+      throw new DatabaseUnavailableError(new Error('database stopped'));
     },
-    createAuditRecorder(),
-  );
+    async set() {
+      throw new Error('not used');
+    },
+  };
+  const service = createTestFlagService(repository, createAuditRecorder());
 
   assert.deepEqual(
     await service.list(),
@@ -181,7 +191,7 @@ test('a database lookup failure returns every code-declared default', async () =
 test('set invalidates the local cache immediately and records the supplied actor', async () => {
   const repository = createMemoryRepository();
   const audit = createAuditRecorder();
-  const service = createFlagServiceWithDependencies(repository, audit);
+  const service = createTestFlagService(repository, audit);
 
   assert.equal(await service.isEnabled('leaderboard.public'), true);
   assert.equal(repository.readCount, 1);
@@ -199,15 +209,15 @@ test('set invalidates the local cache immediately and records the supplied actor
   ]);
 });
 
-test('another service observes a change no later than the five-second TTL', async () => {
+test('another service observes a change no later than the documented five seconds', async () => {
   const repository = createMemoryRepository();
   const clock = new ManualClock();
-  const firstService = createFlagServiceWithDependencies(
+  const firstService = createTestFlagService(
     repository,
     createAuditRecorder(),
     clock,
   );
-  const secondService = createFlagServiceWithDependencies(
+  const secondService = createTestFlagService(
     repository,
     createAuditRecorder(),
     clock,
@@ -217,7 +227,7 @@ test('another service observes a change no later than the five-second TTL', asyn
   await firstService.set('leaderboard.public', false, 'operator-1');
   assert.equal(await firstService.isEnabled('leaderboard.public'), false);
 
-  clock.advance(flagCacheTtlMilliseconds - 1);
+  clock.advance(4_999);
   assert.equal(await secondService.isEnabled('leaderboard.public'), true);
   clock.advance(1);
   assert.equal(await secondService.isEnabled('leaderboard.public'), false);
@@ -226,7 +236,7 @@ test('another service observes a change no later than the five-second TTL', asyn
 test('set rejects a missing actor before writing a flag or audit row', async () => {
   const repository = createMemoryRepository();
   const audit = createAuditRecorder();
-  const service = createFlagServiceWithDependencies(repository, audit);
+  const service = createTestFlagService(repository, audit);
 
   await assert.rejects(
     service.set('signup.enabled', false, '  '),
@@ -367,6 +377,66 @@ test('a persisted flag change records the flag key and actor in the audit log', 
       subject_id: 'leaderboard.public',
       subject_type: 'campaign_flag',
     });
+  } finally {
+    await fixture.applicationDatabase.close();
+    await fixture.dispose();
+  }
+});
+
+test('an audit insertion failure leaves the persisted flag unchanged', async () => {
+  const fixture = await createDatabaseFixture();
+  const service = createFlagService(fixture.applicationDatabase);
+
+  try {
+    await service.set('leaderboard.public', true, 'operator-1');
+    await fixture.database.execute({
+      text: `
+        CREATE FUNCTION reject_flag_audit() RETURNS trigger
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+          IF NEW.action = 'flag.changed' THEN
+            RAISE EXCEPTION 'induced audit insertion failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$;
+
+        CREATE TRIGGER reject_flag_audit
+        BEFORE INSERT ON audit_log
+        FOR EACH ROW EXECUTE FUNCTION reject_flag_audit()
+      `,
+    });
+
+    await assert.rejects(
+      service.set('leaderboard.public', false, 'operator-2'),
+      /induced audit insertion failure/,
+    );
+
+    assert.deepEqual(
+      await fixture.database.readOne<{
+        enabled: boolean;
+        updated_by: string;
+      }>({
+        text: `
+          SELECT enabled, updated_by
+          FROM campaign_flag
+          WHERE key = 'leaderboard.public'
+        `,
+      }),
+      { enabled: true, updated_by: 'operator-1' },
+    );
+    assert.deepEqual(
+      await fixture.database.readOne<{ count: string }>({
+        text: `
+          SELECT COUNT(*)::text AS count
+          FROM audit_log
+          WHERE action = 'flag.changed'
+            AND subject_id = 'leaderboard.public'
+        `,
+      }),
+      { count: '1' },
+    );
   } finally {
     await fixture.applicationDatabase.close();
     await fixture.dispose();

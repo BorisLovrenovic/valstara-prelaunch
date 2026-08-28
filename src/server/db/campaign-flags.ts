@@ -1,4 +1,4 @@
-import type { DatabasePool } from './pool.ts';
+import type { DatabaseConnection } from './pool.ts';
 
 export interface CampaignFlagRow {
   readonly enabled: boolean;
@@ -11,7 +11,7 @@ export interface CampaignFlagRepository {
 }
 
 export function createCampaignFlagRepository(
-  database: DatabasePool,
+  database: DatabaseConnection,
 ): CampaignFlagRepository {
   return {
     async list(keys) {

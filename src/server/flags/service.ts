@@ -4,6 +4,7 @@ import {
   type CampaignFlagRepository,
 } from '../db/campaign-flags.ts';
 import type { DatabasePool } from '../db/pool.ts';
+import { withTransaction } from '../db/transaction.ts';
 
 import {
   campaignFlagKeys,
@@ -22,6 +23,13 @@ interface CacheEntry {
   readonly values: FlagValues;
 }
 
+type FlagChangeOperation = (
+  repository: CampaignFlagRepository,
+  audit: Pick<AuditService, 'record'>,
+) => Promise<void>;
+
+type RunFlagChange = (operation: FlagChangeOperation) => Promise<void>;
+
 const systemClock: FlagClock = {
   now: () => Date.now(),
 };
@@ -29,13 +37,20 @@ const systemClock: FlagClock = {
 export function createFlagService(database: DatabasePool): FlagService {
   return createFlagServiceWithDependencies(
     createCampaignFlagRepository(database),
-    createAuditService(database),
+    async (operation) => {
+      await withTransaction(database, async (connection) => {
+        await operation(
+          createCampaignFlagRepository(connection),
+          createAuditService(connection),
+        );
+      });
+    },
   );
 }
 
 export function createFlagServiceWithDependencies(
   repository: CampaignFlagRepository,
-  audit: Pick<AuditService, 'record'>,
+  runFlagChange: RunFlagChange,
   clock: FlagClock = systemClock,
 ): FlagService {
   let cache: CacheEntry | null = null;
@@ -71,15 +86,17 @@ export function createFlagServiceWithDependencies(
       assertEnabled(enabled);
       assertActor(actor);
 
-      await repository.set(key, enabled, actor);
-      cache = null;
-      await audit.record({
-        action: 'flag.changed',
-        actor,
-        detail: { enabled },
-        subjectId: key,
-        subjectType: 'campaign_flag',
+      await runFlagChange(async (transactionRepository, transactionAudit) => {
+        await transactionRepository.set(key, enabled, actor);
+        await transactionAudit.record({
+          action: 'flag.changed',
+          actor,
+          detail: { enabled },
+          subjectId: key,
+          subjectType: 'campaign_flag',
+        });
       });
+      cache = null;
     },
   };
 }
