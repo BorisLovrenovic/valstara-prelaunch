@@ -4,7 +4,7 @@ import {
   createAuditLogRepository,
   type AuditLogRepository,
 } from '../db/audit-log.ts';
-import type { DatabasePool } from '../db/pool.ts';
+import type { DatabaseConnection } from '../db/pool.ts';
 
 import { isAuditAction } from './actions.ts';
 import { redactAuditDetail } from './redact-detail.ts';
@@ -17,7 +17,7 @@ export interface AuditService {
   record(entry: AuditRecordInput): Promise<void>;
 }
 
-export function createAuditService(database: DatabasePool): AuditService {
+export function createAuditService(database: DatabaseConnection): AuditService {
   return createAuditServiceWithRepository(createAuditLogRepository(database));
 }
 

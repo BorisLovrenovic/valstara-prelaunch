@@ -1,7 +1,7 @@
 import type { AuditAction } from '../audit/actions.ts';
 import type { AuditDetail } from '../audit/types.ts';
 
-import type { DatabasePool, SqlStatement } from './pool.ts';
+import type { DatabaseConnection, SqlStatement } from './pool.ts';
 
 export interface AuditLogInsert {
   readonly action: AuditAction;
@@ -37,7 +37,7 @@ export interface AuditLogRepository {
 }
 
 export function createAuditLogRepository(
-  database: DatabasePool,
+  database: DatabaseConnection,
 ): AuditLogRepository {
   return {
     async insert(entry) {
