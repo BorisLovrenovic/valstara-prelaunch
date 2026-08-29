@@ -368,7 +368,22 @@ The change is additive-safe — `USING subject_id::text` preserves every existin
 
 **Build:** A deliberately minimal vertical slice: a bare form posting to `/api/signup`, **server-side Turnstile verification**, a `subscriber` row, a verification token, a mail through Resend **in test mode**, and `/verify` consuming the token to set `verified`. **No abstraction beyond what this slice needs** — the real modules are E3.
 
-**This ticket owns the minimal Turnstile path**, because it creates the write route and standing rule 19 puts a route's constraints in the ticket that creates it. Minimal means: verify the token server-side **before any other work**, and **fail closed** on an invalid or missing token. That is all. **E3-03 owns the rest** — the `turnstile` module, the provider-timeout accept-and-flag behaviour, and reuse across the other write routes. A walking skeleton that skips the site's own standing rules proves nothing about the architecture.
+**`docs/api/README.md` describes the finished `/api/signup`. This ticket implements the subset below and nothing else** — the list is closed, and a step absent from it is correct rather than missing. Implement what is here **in the documented order**; a step may be absent, it may not be out of sequence.
+
+| Step | E1-11 implements | Completed by |
+|---|---|---|
+| Verify Turnstile server-side, **fail closed** on an invalid or missing token | **Yes** — inline, no module | E3-03: module extraction, provider-timeout accept-and-flag, other routes |
+| Rate-limit per hashed IP prefix | **Yes** — one window, one limit, honest `rate_limited` response | E3-02/E5-03: per-identity limits, tuning, the shared module |
+| Validate the email's shape | **Yes** | E3-02: full schema validation and the closed code set |
+| Lowercase into `email_normalised` | **Yes** — the column is `NOT NULL UNIQUE`, so something must be written | **E3-01: the real rule** — `+tag` stripping, Gmail dots |
+| Insert the subscriber as `pending` | **Yes** | E3-02 |
+| Issue a verification token, queue the mail | **Yes** — Resend in test mode | E3-06/E8-01 |
+| `/verify` consumes the token, sets `verified` | **Yes** | E3-07 |
+| Blocklist and MX · referral attribution · fraud signals · giveaway eligibility · country selector · survey | **No** | E5-01 · E4-02/03 · E5-02 · E7-01 · E3-04 · E6-03 |
+
+**Turnstile and the rate limit are in the subset because they are abuse defence on a public write route**, and standing rule 19 puts a route's protections in the ticket that creates the route. **Normalisation is deliberately not** — lowercasing satisfies the column, and getting the uniqueness rule right is E3-01's whole purpose, worth doing once and properly.
+
+A walking skeleton that skips the site's own standing rules proves nothing about the architecture.
 
 **Acceptance criteria:**
 - A signup produces exactly **one** subscriber, **one** token and **one** queued email
@@ -376,6 +391,9 @@ The change is additive-safe — `USING subject_id::text` preserves every existin
 - `/verify` sets `verified`; **a replayed token returns success, not an error**
 - The slice runs locally against Compose. **Running it on the real host is E12-02**
 - **Turnstile is verified server-side before any other work**, and an invalid or missing token is rejected — asserted by test
+- **The route is rate-limited per hashed IP prefix**, returning `rate_limited` with an honest wait — **never a silent no-op that looks like success**
+- **The implemented steps run in the order `docs/api/README.md` documents** — asserted by test, because a route that does work before its challenge cannot be reordered later without re-auditing what was built on it
+- **No step outside the subset table is implemented** — later tickets own them
 - **No cookie is set anywhere in the flow** — asserted by a rendered-page check
 
 **Tests:** Integration test through the full path, including double submission and token replay.
