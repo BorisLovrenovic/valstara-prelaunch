@@ -51,6 +51,10 @@ services:
     command: ['sh', '/workspace/infra/compose/run-app.sh']
     environment:
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:-valstara-app-local-only}@postgres:5432/valstara_waitlist
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      IP_PREFIX_PEPPER: ${IP_PREFIX_PEPPER:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_TEST_RECIPIENT: ${RESEND_TEST_RECIPIENT:-}
       ASTRO_TELEMETRY_DISABLED: '1'
       # Same install as migrate — pin npm the same way (see the migrate service).
       NPM_CONFIG_MAXSOCKETS: '4'

@@ -1,8 +1,18 @@
+---
+import { thinSliceCopy } from '../copy/e1-11.ts';
+---
+
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
   </head>
-  <body></body>
+  <body>
+    <form action="/api/signup" method="post">
+      <input name="email" type="email" autocomplete="email" required />
+      <input name="turnstile_token" type="hidden" />
+      <button type="submit">{thinSliceCopy.signupSubmit}</button>
+    </form>
+  </body>
 </html>

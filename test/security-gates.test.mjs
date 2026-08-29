@@ -151,6 +151,25 @@ test('a committed .env.example is content-scanned but does not fail the path rul
   }
 });
 
+test('the third-party request rule excludes server-only API routes', async () => {
+  const fixture = {
+    content:
+      "export const POST = () => fetch('https://example.invalid/server-only');\n",
+    path: 'src/pages/api/ci-server-request-fixture.ts',
+  };
+  const { repository, temporaryRoot } = await createFixtureRepository(
+    'api-server-request',
+    fixture,
+  );
+
+  try {
+    const result = runSecurityGate(repository);
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  } finally {
+    await rm(temporaryRoot, { force: true, recursive: true });
+  }
+});
+
 test('a credential in .env.example fails the content scan', async () => {
   const fixture = {
     contentParts: [
