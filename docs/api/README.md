@@ -2,6 +2,13 @@
 
 Status: authoritative. All routes are Astro API routes in `src/pages/api/`, same origin as the site — **no CORS, no separate service** (ADR-005). Changing a route's contract updates this file in the same ticket.
 
+**This document describes the finished routes**, as they stand once every epic has run — not as they stand after any one ticket. A route is built by the ticket that creates it and completed by the tickets that own its later steps; a step missing because its ticket has not run yet is **correct, not a violation**.
+
+Two rules make that safe, and they are what a reviewer checks:
+
+1. **Whatever a ticket does implement, it implements in the documented order.** A step may be absent; it may not be out of sequence. Turnstile is first on every write route from the first line of code, because a route that does work before its challenge cannot be reordered later without re-auditing everything built on it.
+2. **A ticket that creates a route names the subset it implements**, in its plan entry. A subset that is not written down is scope drift, not a subset.
+
 ## Rules that bind every route
 
 1. **Validate, call one server module, shape the response.** No SQL, no business branching, no email dispatch in a route.
