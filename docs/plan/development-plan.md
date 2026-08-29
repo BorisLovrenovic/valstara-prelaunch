@@ -366,13 +366,16 @@ The change is additive-safe — `USING subject_id::text` preserves every existin
 **Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this tier:** the first pass through the whole architecture; it shapes the conventions every later epic follows.
 
-**Build:** A deliberately minimal vertical slice: a bare form posting to `/api/signup`, a `subscriber` row, a verification token, a mail through Resend **in test mode**, and `/verify` consuming the token to set `verified`. **No abstraction beyond what this slice needs** — the real modules are E3.
+**Build:** A deliberately minimal vertical slice: a bare form posting to `/api/signup`, **server-side Turnstile verification**, a `subscriber` row, a verification token, a mail through Resend **in test mode**, and `/verify` consuming the token to set `verified`. **No abstraction beyond what this slice needs** — the real modules are E3.
+
+**This ticket owns the minimal Turnstile path**, because it creates the write route and standing rule 19 puts a route's constraints in the ticket that creates it. Minimal means: verify the token server-side **before any other work**, and **fail closed** on an invalid or missing token. That is all. **E3-03 owns the rest** — the `turnstile` module, the provider-timeout accept-and-flag behaviour, and reuse across the other write routes. A walking skeleton that skips the site's own standing rules proves nothing about the architecture.
 
 **Acceptance criteria:**
 - A signup produces exactly **one** subscriber, **one** token and **one** queued email
 - **A double submission produces no second row and no second email**
 - `/verify` sets `verified`; **a replayed token returns success, not an error**
 - The slice runs locally against Compose. **Running it on the real host is E12-02**
+- **Turnstile is verified server-side before any other work**, and an invalid or missing token is rejected — asserted by test
 - **No cookie is set anywhere in the flow** — asserted by a rendered-page check
 
 **Tests:** Integration test through the full path, including double submission and token replay.
@@ -571,7 +574,7 @@ The change is additive-safe — `USING subject_id::text` preserves every existin
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this tier:** the distinction between "token invalid" and "provider unreachable" is the entire design, and getting it backwards either opens the door or rejects real people.
 
-**Build:** `src/server/turnstile` — server-side verification, the only consumer of the secret. **Fail closed on an invalid or replayed token. On a provider timeout, accept, apply strict rate limits, and flag the row.**
+**Build:** `src/server/turnstile` — server-side verification, the only consumer of the secret. **E1-11 already verifies tokens inline on the signup route and fails closed**; this ticket extracts that into the module, adds the behaviour E1-11 did not need, and applies it to every write route. **Fail closed on an invalid or replayed token. On a provider timeout, accept, apply strict rate limits, and flag the row.**
 
 **Acceptance criteria:**
 - Verification happens **server-side, before any other work**, on every write route
