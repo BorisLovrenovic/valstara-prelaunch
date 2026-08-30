@@ -212,6 +212,61 @@ test('E1-11 rate-limits a hashed IP-prefix window with an honest response', asyn
   }
 });
 
+test('E1-11 runs rate limiting before validation, and validation before normalisation', async () => {
+  const fixture = await createDatabaseFixture();
+  const signup = createThinSignupService(fixture.database, {
+    clock: () => new Date('2026-08-29T12:00:00.000Z'),
+    ipPrefixPepper: 'test-pepper',
+    rateLimitMaximumAttempts: 1,
+    async sendVerificationTestMail() {
+      return undefined;
+    },
+  });
+  const route = createThinSignupRoute({
+    signup,
+    async verifyTurnstile() {
+      return true;
+    },
+  });
+
+  try {
+    const accepted = await route(
+      routeContext(
+        signupRequest('first@example.test'),
+        '198.51.100.7',
+      ) as never,
+    );
+    const rateLimitedBeforeValidation = await route(
+      routeContext(signupRequest('not an email'), '198.51.100.42') as never,
+    );
+    const invalidBeforeNormalisation = await route(
+      routeContext(
+        signupRequest(' spaced@example.test '),
+        '198.51.101.7',
+      ) as never,
+    );
+
+    assert.equal(accepted.status, 200);
+    assert.equal(rateLimitedBeforeValidation.status, 429);
+    assert.deepEqual(await rateLimitedBeforeValidation.json(), {
+      error: {
+        code: 'rate_limited',
+        message: 'Too many attempts — try again in a few minutes.',
+      },
+    });
+    assert.equal(invalidBeforeNormalisation.status, 400);
+    assert.deepEqual(await invalidBeforeNormalisation.json(), {
+      error: {
+        code: 'invalid_input',
+        message: 'Enter a valid email address.',
+      },
+    });
+    assert.equal(await rowCount(fixture.database, 'subscriber'), 1);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
 test('E1-11 reports a post-challenge dependency failure without doing a signup', async () => {
   let signupCalled = false;
   const route = createThinSignupRoute({

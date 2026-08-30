@@ -45,9 +45,12 @@ interface QueuedVerificationMail extends VerificationTestMail {
   readonly subscriberId: string;
 }
 
-function normaliseEmailForThinSlice(email: string): string | null {
-  const normalised = email.trim().toLowerCase();
-  return emailPattern.test(normalised) ? normalised : null;
+function hasValidThinSliceEmailShape(email: string): boolean {
+  return emailPattern.test(email);
+}
+
+function normaliseEmailForThinSlice(email: string): string {
+  return email.toLowerCase();
 }
 
 function emailDomain(email: string): string {
@@ -238,14 +241,14 @@ export function createThinSignupService(
       return { kind: 'rate_limited' };
     }
 
-    const normalisedEmail = normaliseEmailForThinSlice(input.email);
-    if (normalisedEmail === null) {
+    if (!hasValidThinSliceEmailShape(input.email)) {
       return { kind: 'invalid_email' };
     }
+    const normalisedEmail = normaliseEmailForThinSlice(input.email);
 
     const mail = await insertSignup(
       database,
-      input.email.trim(),
+      input.email,
       normalisedEmail,
       input.verificationUrl,
       now,
