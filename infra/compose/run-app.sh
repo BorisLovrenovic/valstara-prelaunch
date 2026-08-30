@@ -13,4 +13,5 @@ if [ "$lock_checksum" != "$installed_checksum" ]; then
   printf '%s\n' "$lock_checksum" >node_modules/.valstara-lock-checksum
 fi
 
+node src/server/config.ts
 exec npm run dev -- --host 0.0.0.0

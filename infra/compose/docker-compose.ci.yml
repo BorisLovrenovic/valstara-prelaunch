@@ -22,7 +22,12 @@ services:
     # what production runs, and there is nothing in CI to hot-reload.
     # The runner builds before starting the stack, so ./dist is already present
     # on the bind mount.
-    command: ['node', './dist/server/entry.mjs']
+    command:
+      [
+        'sh',
+        '-c',
+        'node ./src/server/config.ts && exec node ./dist/server/entry.mjs',
+      ]
     environment:
       HOST: '0.0.0.0'
       PORT: '4321'

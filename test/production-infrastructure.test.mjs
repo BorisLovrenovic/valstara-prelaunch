@@ -27,6 +27,10 @@ const composeEnvironment = {
   ...process.env,
   CADDY_ORIGIN_CERT_PATH: '/run/valstara-test-origin-cert.pem',
   CADDY_ORIGIN_KEY_PATH: '/run/valstara-test-origin-key.pem',
+  IP_PREFIX_PEPPER: 'test-prefix-pepper',
+  RESEND_API_KEY: 'test-resend-key',
+  RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
+  TURNSTILE_SECRET_KEY: 'test-turnstile-secret',
   UMAMI_APP_SECRET: 'test-umami-app-secret',
   UMAMI_DB_PASSWORD: 'test-umami-database-password',
   UMAMI_DB_USER: 'umami',
@@ -119,7 +123,10 @@ test('the production image is multi-stage, health-checked, and non-root', async 
   assert.match(dockerfile, /RUN npm prune --omit=dev/);
   assert.match(dockerfile, /^USER node$/m);
   assert.match(dockerfile, /^HEALTHCHECK /m);
-  assert.match(dockerfile, /CMD \["node", "\.\/dist\/server\/entry\.mjs"\]/);
+  assert.match(
+    dockerfile,
+    /CMD \["sh", "-c", "node \.\/src\/server\/config\.ts && exec node \.\/dist\/server\/entry\.mjs"\]/,
+  );
 });
 
 test('the production migration entry point resolves under native Node TypeScript', async () => {
@@ -149,6 +156,19 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
     `ghcr.io/example/valstara-prelaunch:${sha}`,
   );
   assert.equal(config.services.migrate.image, config.services.app.image);
+  for (const key of [
+    'DATABASE_URL',
+    'IP_PREFIX_PEPPER',
+    'RESEND_API_KEY',
+    'RESEND_TEST_RECIPIENT',
+    'TURNSTILE_SECRET_KEY',
+  ]) {
+    assert.notEqual(
+      config.services.app.environment[key],
+      undefined,
+      `production app is missing ${key}`,
+    );
+  }
 
   for (const service of expectedServices) {
     const definition = config.services[service];

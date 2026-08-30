@@ -31,6 +31,7 @@ ENV ASTRO_TELEMETRY_DISABLED=1 \
 
 COPY --chown=node:node --from=production-dependencies /app/node_modules ./node_modules
 COPY --chown=node:node --from=build /app/dist ./dist
+COPY --chown=node:node --from=build /app/src/server/config.ts ./src/server/config.ts
 COPY --chown=node:node --from=build /app/src/server/db ./src/server/db
 COPY --chown=node:node package.json ./package.json
 
@@ -39,4 +40,4 @@ EXPOSE 4321
 HEALTHCHECK --interval=5s --timeout=3s --start-period=10s --retries=6 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:4321/').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))"]
 
-CMD ["node", "./dist/server/entry.mjs"]
+CMD ["sh", "-c", "node ./src/server/config.ts && exec node ./dist/server/entry.mjs"]

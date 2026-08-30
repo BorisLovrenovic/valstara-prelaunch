@@ -5,6 +5,34 @@ defaults in `infra/compose/docker-compose.yml` are local-development credentials
 only. They are never suitable for production, and local overrides belong in an
 untracked root `.env` file.
 
+## Application boot schema
+
+The Astro application validates this complete schema before it begins serving.
+Required variables have no application fallback. `HOST`, `NODE_ENV`, and `PORT`
+are optional because the Node adapter supplies development defaults; when set,
+their shapes are still validated. The inventory reconciliation test reads this
+table and fails if it differs from `src/server/config.ts`.
+
+| Variable                | Purpose                                                                     | Used by                 | Value class                                                                     |
+| ----------------------- | --------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | Authenticates the long-running application role against `valstara_waitlist` | App boot, database pool | Local credentials locally; live credentials in production                       |
+| `HOST`                  | Selects the Node adapter listen address                                     | App boot, Node adapter  | Runtime setting; neither live nor sandbox                                       |
+| `IP_PREFIX_PEPPER`      | HMAC pepper for E1-11's truncated IP-prefix rate-limit key                  | App boot, signup        | Test-only secret locally; live secret in production                             |
+| `NODE_ENV`              | Selects the Node runtime mode                                               | App boot, Node runtime  | `development` locally; `production` on the host; neither is a credential        |
+| `PORT`                  | Selects the Node adapter listen port                                        | App boot, Node adapter  | Runtime setting; neither live nor sandbox                                       |
+| `RESEND_API_KEY`        | Authenticates E1-11 transactional test-mode mail                            | App boot, signup mail   | Sandbox/test key locally; live key only on the production host after E12-07     |
+| `RESEND_TEST_RECIPIENT` | Fixed test-mode destination; never a subscriber address                     | App boot, signup mail   | Resend sandbox/test address in E1; production mail configuration is owned by E8 |
+| `TURNSTILE_SECRET_KEY`  | Verifies every public write challenge server-side                           | App boot, signup route  | Turnstile test key locally; live key in production                              |
+
+All remaining variables below configure infrastructure, one-shot processes, or
+tooling and therefore are not part of the long-running application's boot
+schema. Provider keys and cryptographic material are **sandbox/test values in
+local development and CI, and live values only on the production host**.
+Operational settings such as ports, memory limits, paths, release identifiers,
+and telemetry switches are neither live nor sandbox credentials.
+
+## Infrastructure and tooling inventory
+
 | Variable                        | Purpose                                                                          | Used by                   | Local default                          | Secret                        |
 | ------------------------------- | -------------------------------------------------------------------------------- | ------------------------- | -------------------------------------- | ----------------------------- |
 | `VALSTARA_DB_USER`              | PostgreSQL role that owns and migrates `valstara_waitlist`                       | PostgreSQL, migrate       | `valstara`                             | No                            |
@@ -75,6 +103,19 @@ your shell or secret manager. It is never written to this repository:
 ```sh
 export PGBACKREST_REPO1_CIPHER_PASS='obtain-this-from-your-secret-manager'
 ```
+
+Generate the IP-prefix hashing pepper with a cryptographically secure secret
+generator and store it in the environment's secret manager, outside both the
+repository and PostgreSQL. Local and CI values are disposable test secrets;
+production uses a separately generated live secret. Rotation invalidates all
+existing prefix hashes, so record and schedule it deliberately. Never print the
+pepper or pass it to logs, database columns, or client code.
+
+The production pgBackRest passphrase is generated separately, stored off-host,
+and recovered through the secret-manager procedure before a restore. Losing it
+makes every encrypted backup unreadable. Rotation therefore requires a verified
+backup-and-restore cycle under the replacement passphrase before retiring the
+old value. Never store either passphrase in this repository or on the VPS.
 
 Run the unattended local backup and restore proof after the stack is healthy:
 
