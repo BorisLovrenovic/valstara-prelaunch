@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 
-import { createThinSignupRoute } from '../src/pages/api/signup.ts';
+import {
+  POST as signupPost,
+  createThinSignupRoute,
+} from '../src/pages/api/signup.ts';
 import {
   createThinSignupService,
   type VerificationTestMail,
@@ -18,6 +21,7 @@ const applicationRolePassword =
 
 interface DatabaseFixture {
   readonly database: DatabasePool;
+  readonly databaseUrl: string;
   dispose(): Promise<void>;
 }
 
@@ -37,6 +41,7 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
 
   return {
     database,
+    databaseUrl: databaseUrl.toString(),
     async dispose() {
       await database.close();
       await admin.list(
@@ -292,4 +297,81 @@ test('E1-11 reports a post-challenge dependency failure without doing a signup',
         'The waitlist is temporarily unavailable. Please try again soon.',
     },
   });
+});
+
+test('E1-11 default route verifies Turnstile and sends through Resend test mode', async () => {
+  const fixture = await createDatabaseFixture();
+  const originalFetch = globalThis.fetch;
+  const originalDatabaseUrl = process.env.DATABASE_URL;
+  const originalIpPrefixPepper = process.env.IP_PREFIX_PEPPER;
+  const originalTurnstileSecretKey = process.env.TURNSTILE_SECRET_KEY;
+  const originalResendApiKey = process.env.RESEND_API_KEY;
+  const originalResendTestRecipient = process.env.RESEND_TEST_RECIPIENT;
+  const requests: Array<{ readonly url: string; readonly init?: RequestInit }> =
+    [];
+
+  process.env.DATABASE_URL = fixture.databaseUrl;
+  process.env.IP_PREFIX_PEPPER = 'test-pepper';
+  process.env.TURNSTILE_SECRET_KEY = 'turnstile-test-secret';
+  process.env.RESEND_API_KEY = 'resend-test-key';
+  process.env.RESEND_TEST_RECIPIENT = 'delivered@resend.dev';
+  globalThis.fetch = async (input, init) => {
+    const url = input instanceof Request ? input.url : input.toString();
+    requests.push({ init, url });
+
+    if (url.includes('challenges.cloudflare.com')) {
+      return Response.json({ success: true });
+    }
+    if (url === 'https://api.resend.com/emails') {
+      return new Response(null, { status: 200 });
+    }
+
+    throw new Error(`Unexpected provider request: ${url}`);
+  };
+
+  try {
+    const response = await signupPost(
+      routeContext(signupRequest('default-route@example.test')) as never,
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(await rowCount(fixture.database, 'subscriber'), 1);
+    assert.equal(await rowCount(fixture.database, 'verification_token'), 1);
+    assert.equal(await rowCount(fixture.database, 'email_send'), 1);
+    assert.deepEqual(
+      requests.map((request) => request.url),
+      [
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+        'https://api.resend.com/emails',
+      ],
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalDatabaseUrl === undefined) {
+      delete process.env.DATABASE_URL;
+    } else {
+      process.env.DATABASE_URL = originalDatabaseUrl;
+    }
+    if (originalIpPrefixPepper === undefined) {
+      delete process.env.IP_PREFIX_PEPPER;
+    } else {
+      process.env.IP_PREFIX_PEPPER = originalIpPrefixPepper;
+    }
+    if (originalTurnstileSecretKey === undefined) {
+      delete process.env.TURNSTILE_SECRET_KEY;
+    } else {
+      process.env.TURNSTILE_SECRET_KEY = originalTurnstileSecretKey;
+    }
+    if (originalResendApiKey === undefined) {
+      delete process.env.RESEND_API_KEY;
+    } else {
+      process.env.RESEND_API_KEY = originalResendApiKey;
+    }
+    if (originalResendTestRecipient === undefined) {
+      delete process.env.RESEND_TEST_RECIPIENT;
+    } else {
+      process.env.RESEND_TEST_RECIPIENT = originalResendTestRecipient;
+    }
+    await fixture.dispose();
+  }
 });
