@@ -40,6 +40,7 @@ run(
     'c8',
     '--all',
     '--include=src/**/*.{ts,astro}',
+    '--include=dist/server/**/*.mjs',
     '--reporter=text',
     '--reporter=lcov',
     '--reports-dir=coverage',
@@ -48,7 +49,7 @@ run(
     'tsx',
     ...testArguments,
   ],
-  { CI_RED_PATH_CHILD: '1' },
+  { CI_RED_PATH_CHILD: '1', COVERAGE_SOURCE_MAPS: '1' },
 );
 
 const base = argumentValue('--base') ?? process.env.COVERAGE_BASE_SHA;

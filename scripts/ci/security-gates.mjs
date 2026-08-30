@@ -256,7 +256,8 @@ async function scanDependencies(skipAudit) {
 function browserFiles(files) {
   return files.filter(
     (file) =>
-      file.path.startsWith('src/pages/') ||
+      (file.path.startsWith('src/pages/') &&
+        !file.path.startsWith('src/pages/api/')) ||
       file.path.startsWith('src/components/') ||
       file.path.startsWith('src/islands/') ||
       file.path.startsWith('src/layouts/'),
