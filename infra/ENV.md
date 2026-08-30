@@ -65,6 +65,32 @@ and telemetry switches are neither live nor sandbox credentials.
 | `CADDY_HTTP_PORT`               | Host HTTP port; override only for a local production-stack drill                 | Production Compose        | `80`                                   | No                            |
 | `CADDY_HTTPS_PORT`              | Host HTTPS port; override only for a local production-stack drill                | Production Compose        | `443`                                  | No                            |
 
+### CI, test, and process environment
+
+These values control repository tooling or are supplied by its execution
+platform. They are part of the complete environment inventory even though they
+do not configure the long-running application. None is a live or sandbox
+provider credential.
+
+| Variable                          | Purpose                                                                                 | Used by                              | Value class                                                   |
+| --------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------- |
+| `CI_RED_PATH_CHILD`               | Prevents the CI gate fixture harness from recursively launching itself                  | CI red-path tests, coverage runner   | Internal test switch; fixed to `1` for child runs             |
+| `CI_SECURITY_RED_PATH_CHILD`      | Prevents the security fixture harness from recursively launching itself                 | Security red-path tests              | Internal test switch; fixed to `1` for child runs             |
+| `COVERAGE_BASE_SHA`               | Selects the pull request base revision for changed-line coverage                        | PR workflow, coverage scripts        | CI revision identifier; neither live nor sandbox              |
+| `COVERAGE_SOURCE_MAPS`            | Enables build source maps while the coverage runner maps built server code to sources   | Coverage runner, Astro configuration | Internal coverage switch; fixed to `1` for coverage runs      |
+| `DEPLOY_AUDIT_SUCCESS_OUTCOME`    | Overrides the successful deploy outcome label so the rollback drill can identify itself | Deploy script, rollback tests        | Internal test override; defaults to `succeeded`               |
+| `GITHUB_ENV`                      | Names GitHub Actions' command file for exporting values to later workflow steps         | PR workflow                          | GitHub Actions-provided file path; neither live nor sandbox   |
+| `GITHUB_OUTPUT`                   | Names GitHub Actions' command file for publishing step outputs                          | Main-image workflow                  | GitHub Actions-provided file path; neither live nor sandbox   |
+| `GITHUB_REPOSITORY`               | Supplies the repository owner and name used to derive the GHCR image name               | Main-image workflow                  | GitHub Actions repository metadata; neither live nor sandbox  |
+| `NPM_CONFIG_AUDIT`                | Disables npm's network audit during deterministic container installs                    | Docker image, local Compose          | Fixed tooling switch set to `false`; neither live nor sandbox |
+| `NPM_CONFIG_FUND`                 | Disables npm's funding output during deterministic container installs                   | Docker image, local Compose          | Fixed tooling switch set to `false`; neither live nor sandbox |
+| `NPM_CONFIG_MAXSOCKETS`           | Caps npm install concurrency so container memory use is repeatable                      | Docker image, local Compose          | Fixed tooling limit set to `4`; neither live nor sandbox      |
+| `PATH`                            | Supplies the host executable search path; tests prepend their fake command directory    | Deploy tests                         | Host process setting; neither live nor sandbox                |
+| `RESTORE_DRILL_KEEP_SCRATCH`      | Retains the scratch restore container and volume for local diagnosis when requested     | Backup restore drill                 | Optional diagnostic switch; defaults to `0`                   |
+| `SECURITY_BASE_SHA`               | Selects the pull request base revision inspected by the secret and security gates       | PR workflow, security scripts        | CI revision identifier; neither live nor sandbox              |
+| `TEST_DATABASE_URL`               | Selects the administrator database used to create disposable integration-test databases | Database integration tests, CI       | Local/CI test credential; never a production application URL  |
+| `VALSTARA_E107_DRILL_DIAGNOSTICS` | Enables per-command timing diagnostics for the local E1-07 deploy drill                 | Deploy tests                         | Optional diagnostic switch; defaults to `0`                   |
+
 Compose derives or fixes the following container variables. They are listed
 separately because developers do not override them directly:
 
@@ -86,6 +112,13 @@ Generate the Umami application secret for any non-local environment with
 `openssl rand -hex 32`. No generated value belongs in this repository.
 
 ## Local stack
+
+Before the first start, create the untracked root `.env` file and populate it
+with local sandbox or test values for `TURNSTILE_SECRET_KEY`,
+`IP_PREFIX_PEPPER`, `RESEND_API_KEY`, and `RESEND_TEST_RECIPIENT`. Obtain the
+provider test values from the matching provider account, and generate the
+disposable local pepper using the procedure below. Do not put live values in
+the local file, and do not commit it.
 
 Start and verify the stack from the repository root:
 

@@ -185,3 +185,68 @@ test('E1-12 documented app inventory exactly matches the validated schema', asyn
     assert.match(section ?? '', new RegExp('^\\| `' + key + '`\\s+\\|', 'mu'));
   }
 });
+
+test('E1-12 complete inventory documents every repository environment variable', async () => {
+  const projectRoot = new URL('..', import.meta.url);
+  const inventory = await readFile(
+    new URL('../infra/ENV.md', import.meta.url),
+    'utf8',
+  );
+  const documentedKeys = new Set(
+    [...inventory.matchAll(/^\| `([A-Z][A-Z0-9_]*)`\s+\|/gmu)]
+      .map((match) => match[1])
+      .filter((key): key is string => key !== undefined),
+  );
+  const { stdout } = await execFileAsync('git', ['ls-files', '-z'], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  });
+  const sourcePaths = stdout
+    .split('\0')
+    .filter(Boolean)
+    .filter(
+      (path) =>
+        path !== 'infra/ENV.md' &&
+        path !== 'test/config.test.ts' &&
+        !path.startsWith('docs/') &&
+        !path.startsWith('test/fixtures/'),
+    );
+  const usedKeys = new Set<string>(appEnvironmentKeys);
+
+  for (const path of sourcePaths) {
+    const source = await readFile(
+      new URL(`../${path}`, import.meta.url),
+      'utf8',
+    );
+    addMatches(
+      usedKeys,
+      source,
+      /process\.env(?:\.([A-Z][A-Z0-9_]*)|\[['"]([A-Z][A-Z0-9_]*)['"]\])/gu,
+    );
+
+    if (/\.(?:sh|ya?ml)$/u.test(path) || path.endsWith('Caddyfile')) {
+      addMatches(usedKeys, source, /\$\{([A-Z][A-Z0-9_]*)/gu);
+      addMatches(usedKeys, source, /\$([A-Z][A-Z0-9_]*)/gu);
+    }
+    if (/\.ya?ml$/u.test(path)) {
+      addMatches(usedKeys, source, /^\s+([A-Z][A-Z0-9_]*):/gmu);
+    }
+    if (path === 'Dockerfile') {
+      addMatches(usedKeys, source, /(?:^ENV\s+|^\s+)([A-Z][A-Z0-9_]*)=/gmu);
+    }
+  }
+
+  const undocumentedKeys = [...usedKeys]
+    .filter((key) => !documentedKeys.has(key))
+    .sort();
+  assert.deepEqual(undocumentedKeys, []);
+});
+
+function addMatches(keys: Set<string>, source: string, pattern: RegExp): void {
+  for (const match of source.matchAll(pattern)) {
+    const key = match[1] ?? match[2];
+    if (key !== undefined) {
+      keys.add(key);
+    }
+  }
+}
