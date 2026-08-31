@@ -113,8 +113,8 @@ Generate the Umami application secret for any non-local environment with
 
 ## Local stack
 
-Before the first start, create the untracked root `.env` file and populate it
-with local sandbox or test values for `TURNSTILE_SECRET_KEY`,
+Before the first start, create the untracked `infra/compose/.env` file and
+populate it with local sandbox or test values for `TURNSTILE_SECRET_KEY`,
 `IP_PREFIX_PEPPER`, `RESEND_API_KEY`, and `RESEND_TEST_RECIPIENT`. Obtain the
 provider test values from the matching provider account, and generate the
 disposable local pepper using the procedure below. Do not put live values in
