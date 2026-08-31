@@ -175,6 +175,24 @@ export async function assertStack() {
     undefined,
     'the long-running app must not receive the migration-owner credential',
   );
+  for (const key of [
+    'DATABASE_URL',
+    'IP_PREFIX_PEPPER',
+    'RESEND_API_KEY',
+    'RESEND_TEST_RECIPIENT',
+    'TURNSTILE_SECRET_KEY',
+  ]) {
+    assert.notEqual(
+      appEnvironment[key],
+      '',
+      `the running app has an empty required variable: ${key}`,
+    );
+    assert.notEqual(
+      appEnvironment[key],
+      undefined,
+      `the running app is missing a required variable: ${key}`,
+    );
+  }
   const appDatabase = new URL(appEnvironment.DATABASE_URL).pathname.slice(1);
   const umamiDatabase = new URL(umamiEnvironment.DATABASE_URL).pathname.slice(
     1,

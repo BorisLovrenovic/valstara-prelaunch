@@ -53,6 +53,10 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:?VALSTARA_APP_DB_PASSWORD is required}@postgres:5432/valstara_waitlist
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY is required}
+      IP_PREFIX_PEPPER: ${IP_PREFIX_PEPPER:?IP_PREFIX_PEPPER is required}
+      RESEND_API_KEY: ${RESEND_API_KEY:?RESEND_API_KEY is required}
+      RESEND_TEST_RECIPIENT: ${RESEND_TEST_RECIPIENT:?RESEND_TEST_RECIPIENT is required}
       ASTRO_TELEMETRY_DISABLED: '1'
       HOST: '0.0.0.0'
       NODE_ENV: production

@@ -61,7 +61,12 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Generate an ephemeral pgBackRest repository passphrase
-        run: echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+        run: |
+          echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "TURNSTILE_SECRET_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "IP_PREFIX_PEPPER=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "RESEND_API_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "RESEND_TEST_RECIPIENT=delivered@resend.dev" >> "$GITHUB_ENV"
       - name: Build the app the compose stack serves in CI
         run: npm run build
       - name: Mark the runner's install as current for the compose stack
@@ -110,7 +115,12 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Generate an ephemeral pgBackRest repository passphrase
-        run: echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+        run: |
+          echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "TURNSTILE_SECRET_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "IP_PREFIX_PEPPER=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "RESEND_API_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "RESEND_TEST_RECIPIENT=delivered@resend.dev" >> "$GITHUB_ENV"
       - name: Build the app the compose stack serves in CI
         run: npm run build
       - name: Mark the runner's install as current for the compose stack

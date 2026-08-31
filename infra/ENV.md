@@ -5,6 +5,34 @@ defaults in `infra/compose/docker-compose.yml` are local-development credentials
 only. They are never suitable for production, and local overrides belong in an
 untracked root `.env` file.
 
+## Application boot schema
+
+The Astro application validates this complete schema before it begins serving.
+Required variables have no application fallback. `HOST`, `NODE_ENV`, and `PORT`
+are optional because the Node adapter supplies development defaults; when set,
+their shapes are still validated. The inventory reconciliation test reads this
+table and fails if it differs from `src/server/config.ts`.
+
+| Variable                | Purpose                                                                     | Used by                 | Value class                                                                     |
+| ----------------------- | --------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | Authenticates the long-running application role against `valstara_waitlist` | App boot, database pool | Local credentials locally; live credentials in production                       |
+| `HOST`                  | Selects the Node adapter listen address                                     | App boot, Node adapter  | Runtime setting; neither live nor sandbox                                       |
+| `IP_PREFIX_PEPPER`      | HMAC pepper for E1-11's truncated IP-prefix rate-limit key                  | App boot, signup        | Test-only secret locally; live secret in production                             |
+| `NODE_ENV`              | Selects the Node runtime mode                                               | App boot, Node runtime  | `development` locally; `production` on the host; neither is a credential        |
+| `PORT`                  | Selects the Node adapter listen port                                        | App boot, Node adapter  | Runtime setting; neither live nor sandbox                                       |
+| `RESEND_API_KEY`        | Authenticates E1-11 transactional test-mode mail                            | App boot, signup mail   | Sandbox/test key locally; live key only on the production host after E12-07     |
+| `RESEND_TEST_RECIPIENT` | Fixed test-mode destination; never a subscriber address                     | App boot, signup mail   | Resend sandbox/test address in E1; production mail configuration is owned by E8 |
+| `TURNSTILE_SECRET_KEY`  | Verifies every public write challenge server-side                           | App boot, signup route  | Turnstile test key locally; live key in production                              |
+
+All remaining variables below configure infrastructure, one-shot processes, or
+tooling and therefore are not part of the long-running application's boot
+schema. Provider keys and cryptographic material are **sandbox/test values in
+local development and CI, and live values only on the production host**.
+Operational settings such as ports, memory limits, paths, release identifiers,
+and telemetry switches are neither live nor sandbox credentials.
+
+## Infrastructure and tooling inventory
+
 | Variable                        | Purpose                                                                          | Used by                   | Local default                          | Secret                        |
 | ------------------------------- | -------------------------------------------------------------------------------- | ------------------------- | -------------------------------------- | ----------------------------- |
 | `VALSTARA_DB_USER`              | PostgreSQL role that owns and migrates `valstara_waitlist`                       | PostgreSQL, migrate       | `valstara`                             | No                            |
@@ -37,6 +65,32 @@ untracked root `.env` file.
 | `CADDY_HTTP_PORT`               | Host HTTP port; override only for a local production-stack drill                 | Production Compose        | `80`                                   | No                            |
 | `CADDY_HTTPS_PORT`              | Host HTTPS port; override only for a local production-stack drill                | Production Compose        | `443`                                  | No                            |
 
+### CI, test, and process environment
+
+These values control repository tooling or are supplied by its execution
+platform. They are part of the complete environment inventory even though they
+do not configure the long-running application. None is a live or sandbox
+provider credential.
+
+| Variable                          | Purpose                                                                                 | Used by                              | Value class                                                   |
+| --------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------- |
+| `CI_RED_PATH_CHILD`               | Prevents the CI gate fixture harness from recursively launching itself                  | CI red-path tests, coverage runner   | Internal test switch; fixed to `1` for child runs             |
+| `CI_SECURITY_RED_PATH_CHILD`      | Prevents the security fixture harness from recursively launching itself                 | Security red-path tests              | Internal test switch; fixed to `1` for child runs             |
+| `COVERAGE_BASE_SHA`               | Selects the pull request base revision for changed-line coverage                        | PR workflow, coverage scripts        | CI revision identifier; neither live nor sandbox              |
+| `COVERAGE_SOURCE_MAPS`            | Enables build source maps while the coverage runner maps built server code to sources   | Coverage runner, Astro configuration | Internal coverage switch; fixed to `1` for coverage runs      |
+| `DEPLOY_AUDIT_SUCCESS_OUTCOME`    | Overrides the successful deploy outcome label so the rollback drill can identify itself | Deploy script, rollback tests        | Internal test override; defaults to `succeeded`               |
+| `GITHUB_ENV`                      | Names GitHub Actions' command file for exporting values to later workflow steps         | PR workflow                          | GitHub Actions-provided file path; neither live nor sandbox   |
+| `GITHUB_OUTPUT`                   | Names GitHub Actions' command file for publishing step outputs                          | Main-image workflow                  | GitHub Actions-provided file path; neither live nor sandbox   |
+| `GITHUB_REPOSITORY`               | Supplies the repository owner and name used to derive the GHCR image name               | Main-image workflow                  | GitHub Actions repository metadata; neither live nor sandbox  |
+| `NPM_CONFIG_AUDIT`                | Disables npm's network audit during deterministic container installs                    | Docker image, local Compose          | Fixed tooling switch set to `false`; neither live nor sandbox |
+| `NPM_CONFIG_FUND`                 | Disables npm's funding output during deterministic container installs                   | Docker image, local Compose          | Fixed tooling switch set to `false`; neither live nor sandbox |
+| `NPM_CONFIG_MAXSOCKETS`           | Caps npm install concurrency so container memory use is repeatable                      | Docker image, local Compose          | Fixed tooling limit set to `4`; neither live nor sandbox      |
+| `PATH`                            | Supplies the host executable search path; tests prepend their fake command directory    | Deploy tests                         | Host process setting; neither live nor sandbox                |
+| `RESTORE_DRILL_KEEP_SCRATCH`      | Retains the scratch restore container and volume for local diagnosis when requested     | Backup restore drill                 | Optional diagnostic switch; defaults to `0`                   |
+| `SECURITY_BASE_SHA`               | Selects the pull request base revision inspected by the secret and security gates       | PR workflow, security scripts        | CI revision identifier; neither live nor sandbox              |
+| `TEST_DATABASE_URL`               | Selects the administrator database used to create disposable integration-test databases | Database integration tests, CI       | Local/CI test credential; never a production application URL  |
+| `VALSTARA_E107_DRILL_DIAGNOSTICS` | Enables per-command timing diagnostics for the local E1-07 deploy drill                 | Deploy tests                         | Optional diagnostic switch; defaults to `0`                   |
+
 Compose derives or fixes the following container variables. They are listed
 separately because developers do not override them directly:
 
@@ -59,6 +113,13 @@ Generate the Umami application secret for any non-local environment with
 
 ## Local stack
 
+Before the first start, create the untracked root `.env` file and populate it
+with local sandbox or test values for `TURNSTILE_SECRET_KEY`,
+`IP_PREFIX_PEPPER`, `RESEND_API_KEY`, and `RESEND_TEST_RECIPIENT`. Obtain the
+provider test values from the matching provider account, and generate the
+disposable local pepper using the procedure below. Do not put live values in
+the local file, and do not commit it.
+
 Start and verify the stack from the repository root:
 
 ```sh
@@ -75,6 +136,19 @@ your shell or secret manager. It is never written to this repository:
 ```sh
 export PGBACKREST_REPO1_CIPHER_PASS='obtain-this-from-your-secret-manager'
 ```
+
+Generate the IP-prefix hashing pepper with a cryptographically secure secret
+generator and store it in the environment's secret manager, outside both the
+repository and PostgreSQL. Local and CI values are disposable test secrets;
+production uses a separately generated live secret. Rotation invalidates all
+existing prefix hashes, so record and schedule it deliberately. Never print the
+pepper or pass it to logs, database columns, or client code.
+
+The production pgBackRest passphrase is generated separately, stored off-host,
+and recovered through the secret-manager procedure before a restore. Losing it
+makes every encrypted backup unreadable. Rotation therefore requires a verified
+backup-and-restore cycle under the replacement passphrase before retiring the
+old value. Never store either passphrase in this repository or on the VPS.
 
 Run the unattended local backup and restore proof after the stack is healthy:
 

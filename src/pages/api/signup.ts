@@ -7,6 +7,7 @@ import {
   type ThinSignupInput,
   type ThinSignupResult,
 } from '../../server/e1-11/signup.ts';
+import { getConfig } from '../../server/config.ts';
 import { createPool, type DatabasePool } from '../../server/db/pool.ts';
 
 interface SignupRouteDependencies {
@@ -39,20 +40,12 @@ function getDatabase(): DatabasePool {
     return database;
   }
 
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL is required for the signup route.');
-  }
-
-  database = createPool(databaseUrl);
+  database = createPool(getConfig().databaseUrl);
   return database;
 }
 
 async function verifyInlineTurnstile(token: string): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (secret === undefined || secret === '') {
-    return false;
-  }
+  const secret = getConfig().turnstileSecretKey;
 
   try {
     const requestBody = new URLSearchParams({ response: token, secret });
@@ -81,18 +74,14 @@ async function verifyInlineTurnstile(token: string): Promise<boolean> {
 }
 
 function defaultDependencies(): SignupRouteDependencies {
+  const config = getConfig();
   return {
     async signup(input) {
-      const ipPrefixPepper = process.env.IP_PREFIX_PEPPER;
-      if (ipPrefixPepper === undefined || ipPrefixPepper === '') {
-        return { kind: 'unavailable' };
-      }
-
       return createThinSignupService(getDatabase(), {
-        ipPrefixPepper,
+        ipPrefixPepper: config.ipPrefixPepper,
         sendVerificationTestMail: createResendTestMailSender(
-          process.env.RESEND_API_KEY,
-          process.env.RESEND_TEST_RECIPIENT,
+          config.resendApiKey,
+          config.resendTestRecipient,
         ),
       })(input);
     },

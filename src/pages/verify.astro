@@ -1,18 +1,16 @@
 ---
 import { thinSliceCopy } from '../copy/e1-11.ts';
+import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
 import { consumeThinVerificationToken } from '../server/e1-11/verify.ts';
 
 const token = Astro.url.searchParams.get('token') ?? '';
-const databaseUrl = process.env.DATABASE_URL;
-let outcome: 'verified' | 'already' | 'invalid' = 'invalid';
-if (databaseUrl) {
-  const database = createPool(databaseUrl);
-  try {
-    outcome = await consumeThinVerificationToken(database, token);
-  } finally {
-    await database.close();
-  }
+const database = createPool(getConfig().databaseUrl);
+let outcome: 'verified' | 'already' | 'invalid';
+try {
+  outcome = await consumeThinVerificationToken(database, token);
+} finally {
+  await database.close();
 }
 const message =
   outcome === 'verified' || outcome === 'already'
