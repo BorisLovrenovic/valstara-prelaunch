@@ -289,6 +289,15 @@ test('native controls follow keyboard order and show contrasting focus indicator
           1,
         );
       }
+
+      if (selector === 'input') {
+        await page.keyboard.type('keyboard@example.com');
+        assert.equal(
+          await page.locator(selector).inputValue(),
+          'keyboard@example.com',
+          `input accepts keyboard entry in ${colorScheme}`,
+        );
+      }
     }
 
     await context.close();
@@ -341,45 +350,120 @@ test('all primitives resolve theme tokens in light and dark modes', async () => 
     const page = await context.newPage();
     await page.goto(browserOrigin);
     renderedThemes.push(
-      await page.evaluate(() => ({
-        accordion: globalThis.getComputedStyle(
-          globalThis.document.querySelector('.accordion'),
-        ).backgroundColor,
-        button: globalThis.getComputedStyle(
-          globalThis.document.querySelector('.button'),
-        ).backgroundColor,
-        card: globalThis.getComputedStyle(
-          globalThis.document.querySelector('.card'),
-        ).backgroundColor,
-        input: globalThis.getComputedStyle(
-          globalThis.document.querySelector('.input'),
-        ).backgroundColor,
-        page: globalThis.getComputedStyle(globalThis.document.body)
-          .backgroundColor,
-        select: globalThis.getComputedStyle(
-          globalThis.document.querySelector('.select'),
-        ).backgroundColor,
-      })),
+      await page.evaluate(() => {
+        const computedTheme = (selector) => {
+          const element = globalThis.document.querySelector(selector);
+          const style = globalThis.getComputedStyle(element);
+          return {
+            background: style.backgroundColor,
+            color: style.color,
+            visible:
+              style.display !== 'none' &&
+              style.visibility !== 'hidden' &&
+              element.getBoundingClientRect().width > 0 &&
+              element.getBoundingClientRect().height > 0,
+          };
+        };
+
+        return {
+          accordion: computedTheme('.accordion'),
+          button: computedTheme('.button'),
+          card: computedTheme('.card'),
+          field: computedTheme('.field'),
+          input: computedTheme('.input'),
+          page: computedTheme('body'),
+          pill: computedTheme('.pill'),
+          select: computedTheme('.select'),
+        };
+      }),
     );
     await context.close();
   }
 
   assert.deepEqual(renderedThemes, [
     {
-      accordion: 'rgb(255, 255, 255)',
-      button: 'rgb(232, 101, 74)',
-      card: 'rgb(255, 255, 255)',
-      input: 'rgb(255, 255, 255)',
-      page: 'rgb(250, 250, 250)',
-      select: 'rgb(255, 255, 255)',
+      accordion: {
+        background: 'rgb(255, 255, 255)',
+        color: 'rgb(16, 16, 20)',
+        visible: true,
+      },
+      button: {
+        background: 'rgb(232, 101, 74)',
+        color: 'rgb(23, 23, 51)',
+        visible: true,
+      },
+      card: {
+        background: 'rgb(255, 255, 255)',
+        color: 'rgb(16, 16, 20)',
+        visible: true,
+      },
+      field: {
+        background: 'rgba(0, 0, 0, 0)',
+        color: 'rgb(16, 16, 20)',
+        visible: true,
+      },
+      input: {
+        background: 'rgb(255, 255, 255)',
+        color: 'rgb(16, 16, 20)',
+        visible: true,
+      },
+      page: {
+        background: 'rgb(250, 250, 250)',
+        color: 'rgb(16, 16, 20)',
+        visible: true,
+      },
+      pill: {
+        background: 'rgb(253, 238, 233)',
+        color: 'rgb(23, 23, 51)',
+        visible: true,
+      },
+      select: {
+        background: 'rgb(255, 255, 255)',
+        color: 'rgb(16, 16, 20)',
+        visible: true,
+      },
     },
     {
-      accordion: 'rgb(23, 23, 51)',
-      button: 'rgb(255, 138, 102)',
-      card: 'rgb(23, 23, 51)',
-      input: 'rgb(23, 23, 51)',
-      page: 'rgb(15, 15, 26)',
-      select: 'rgb(23, 23, 51)',
+      accordion: {
+        background: 'rgb(23, 23, 51)',
+        color: 'rgb(240, 240, 238)',
+        visible: true,
+      },
+      button: {
+        background: 'rgb(255, 138, 102)',
+        color: 'rgb(23, 23, 51)',
+        visible: true,
+      },
+      card: {
+        background: 'rgb(23, 23, 51)',
+        color: 'rgb(240, 240, 238)',
+        visible: true,
+      },
+      field: {
+        background: 'rgba(0, 0, 0, 0)',
+        color: 'rgb(240, 240, 238)',
+        visible: true,
+      },
+      input: {
+        background: 'rgb(23, 23, 51)',
+        color: 'rgb(240, 240, 238)',
+        visible: true,
+      },
+      page: {
+        background: 'rgb(15, 15, 26)',
+        color: 'rgb(240, 240, 238)',
+        visible: true,
+      },
+      pill: {
+        background: 'rgb(253, 238, 233)',
+        color: 'rgb(23, 23, 51)',
+        visible: true,
+      },
+      select: {
+        background: 'rgb(23, 23, 51)',
+        color: 'rgb(240, 240, 238)',
+        visible: true,
+      },
     },
   ]);
 });
