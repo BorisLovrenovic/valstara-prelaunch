@@ -13,6 +13,13 @@ Status: authoritative. **The QA gates later are audits, not the safety net.** Th
 | **Rendered-page checks** | A built page | No cookie, no storage identifier, no third-party request, axe accessibility |
 | **Load** | Production-shaped infrastructure | The signup endpoint at 10× expected peak (E11-01) |
 
+Rendered-page checks drive Chromium in the version-pinned official Playwright
+container. The Node test process and built Astro server remain on the host and
+connect to that isolated browser over loopback. This makes local and CI runs use
+the same browser system libraries without requiring privileged host package
+installation. Docker is therefore a test prerequisite, alongside the disposable
+PostgreSQL and integration stack.
+
 ## Coverage bars
 
 ≥80% changed code. **≥90% in `subscriber`, `verification`, `referral`, `giveaway`, `email`** — the five modules where a defect is either unrecoverable or discredits the campaign.

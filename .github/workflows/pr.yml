@@ -60,7 +60,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
       - name: Generate an ephemeral pgBackRest repository passphrase
         run: |
           echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
@@ -115,7 +114,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
       - name: Generate an ephemeral pgBackRest repository passphrase
         run: |
           echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
