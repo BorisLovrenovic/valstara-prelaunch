@@ -1,0 +1,70 @@
+---
+import Accordion from '../../../../../src/components/accordion.astro';
+import Button from '../../../../../src/components/button.astro';
+import Card from '../../../../../src/components/card.astro';
+import Field from '../../../../../src/components/field.astro';
+import Input from '../../../../../src/components/input.astro';
+import Pill from '../../../../../src/components/pill.astro';
+import Select from '../../../../../src/components/select.astro';
+import '../../../../../src/styles/tokens.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Interface primitive test fixture</title>
+  </head>
+  <body>
+    <main>
+      <Card aria-label="Primitive card">
+        <Pill>Verified</Pill>
+        <Button>Continue</Button>
+        <Field
+          controlId="email"
+          label="Email"
+          description="Use an address you can verify."
+          descriptionId="email-description"
+          error="Enter a valid email address."
+          errorId="email-error"
+        >
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            invalid
+            aria-describedby="email-description email-error"
+          />
+        </Field>
+        <Field controlId="country" label="Country">
+          <Select id="country" name="country">
+            <option value="">Choose a country</option>
+            <option value="SE">Sweden</option>
+          </Select>
+        </Field>
+        <Accordion summary="How does verification work?">
+          We send one verification link.
+        </Accordion>
+      </Card>
+    </main>
+  </body>
+</html>
+
+<style>
+  html,
+  body {
+    color: var(--ink);
+    background-color: var(--paper);
+  }
+
+  main {
+    max-width: var(--space-10);
+    padding: var(--space-3);
+  }
+
+  article {
+    display: grid;
+    gap: var(--space-3);
+  }
+</style>

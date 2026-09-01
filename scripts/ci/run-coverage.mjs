@@ -38,9 +38,7 @@ run(
   'npx',
   [
     'c8',
-    '--all',
-    '--include=src/**/*.{ts,astro}',
-    '--include=dist/server/**/*.mjs',
+    '--config=scripts/ci/c8.config.json',
     '--reporter=text',
     '--reporter=lcov',
     '--reports-dir=coverage',

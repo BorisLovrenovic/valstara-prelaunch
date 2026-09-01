@@ -1,0 +1,25 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'span'>;
+
+const { class: className, ...attributes } = Astro.props;
+---
+
+<span {...attributes} class:list={['pill', className]}>
+  <slot />
+</span>
+
+<style>
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-2);
+    color: var(--midnight);
+    font-family: var(--font-sans);
+    font-size: var(--step-0);
+    line-height: var(--leading-0);
+    background-color: var(--coral-tint);
+    border-radius: var(--radius-pill);
+  }
+</style>

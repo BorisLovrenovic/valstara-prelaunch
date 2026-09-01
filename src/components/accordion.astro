@@ -1,0 +1,44 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'details'> & {
+  summary: string;
+};
+
+const { class: className, summary, ...attributes } = Astro.props;
+---
+
+<details {...attributes} class:list={['accordion', className]}>
+  <summary class="accordion__summary">{summary}</summary>
+  <div class="accordion__content">
+    <slot />
+  </div>
+</details>
+
+<style>
+  .accordion {
+    padding: var(--space-2);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    background-color: var(--surface);
+    border: thin solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  .accordion__summary {
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    cursor: pointer;
+  }
+
+  .accordion__summary:focus-visible {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  .accordion__content {
+    padding-block-start: var(--space-2);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+</style>

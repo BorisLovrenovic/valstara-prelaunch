@@ -108,7 +108,7 @@ test(
       typecheck: /Type 'number' is not assignable to type 'string'/,
       test: /expected test-gate failure/,
       build: /ci-build-fixture\.astro|Expected identifier/,
-      coverage: /no coverage entries: src\/pages\/ci-coverage-fixture\.astro/,
+      coverage: /Changed-line coverage 0\.00% \(0\/5\) is below 80%/,
     };
 
     for (const [name, fixture] of Object.entries(fixtures)) {
