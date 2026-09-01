@@ -1,0 +1,131 @@
+---
+import { themeToggleCopy } from '../copy/theme-toggle.ts';
+---
+
+<valstara-theme-toggle>
+  <button type="button" aria-pressed="false" disabled>
+    <span data-theme-toggle-label>{themeToggleCopy.useDark}</span>
+  </button>
+  <span aria-atomic="true" aria-live="polite" data-theme-toggle-status></span>
+</valstara-theme-toggle>
+
+<script>
+  import { themeToggleCopy } from '../copy/theme-toggle.ts';
+  import {
+    readThemePreference,
+    resolveTheme,
+    writeThemePreference,
+    type Theme,
+  } from './theme-toggle.ts';
+
+  class ValstaraThemeToggle extends HTMLElement {
+    readonly #mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    readonly #systemThemeChanged = (): void => {
+      if (readThemePreference() === null) {
+        this.#render(resolveTheme(null, this.#mediaQuery.matches));
+      }
+    };
+
+    connectedCallback(): void {
+      const button = this.querySelector('button');
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      this.#render(
+        resolveTheme(readThemePreference(), this.#mediaQuery.matches),
+      );
+      button.disabled = false;
+      button.addEventListener('click', this.#toggle);
+      this.#mediaQuery.addEventListener('change', this.#systemThemeChanged);
+    }
+
+    disconnectedCallback(): void {
+      const button = this.querySelector('button');
+      button?.removeEventListener('click', this.#toggle);
+      this.#mediaQuery.removeEventListener('change', this.#systemThemeChanged);
+    }
+
+    readonly #toggle = (): void => {
+      const currentTheme = resolveTheme(
+        readThemePreference(),
+        this.#mediaQuery.matches,
+      );
+      const nextTheme: Theme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = nextTheme;
+      writeThemePreference(nextTheme);
+      this.#render(nextTheme, true);
+    };
+
+    #render(theme: Theme, announce = false): void {
+      const isDark = theme === 'dark';
+      const button = this.querySelector('button');
+      const label = this.querySelector('[data-theme-toggle-label]');
+      const status = this.querySelector('[data-theme-toggle-status]');
+
+      button?.setAttribute('aria-pressed', String(isDark));
+      if (label !== null) {
+        label.textContent = isDark
+          ? themeToggleCopy.useLight
+          : themeToggleCopy.useDark;
+      }
+      if (announce && status !== null) {
+        status.textContent = isDark
+          ? themeToggleCopy.darkSelected
+          : themeToggleCopy.lightSelected;
+      }
+    }
+  }
+
+  if (!customElements.get('valstara-theme-toggle')) {
+    customElements.define('valstara-theme-toggle', ValstaraThemeToggle);
+  }
+</script>
+
+<style>
+  :global(html),
+  :global(body) {
+    background-color: var(--paper);
+    color: var(--ink);
+  }
+
+  :global(html) {
+    color-scheme: light;
+  }
+
+  :global(html[data-theme='dark']) {
+    color-scheme: dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(html:not([data-theme])) {
+      color-scheme: dark;
+    }
+  }
+
+  valstara-theme-toggle {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    font-family: var(--font-sans);
+  }
+
+  button {
+    padding: var(--space-1) var(--space-2);
+    color: var(--ink);
+    font: inherit;
+    background-color: var(--surface);
+    border-color: var(--line);
+    border-radius: var(--radius-control);
+  }
+
+  button:focus-visible {
+    outline-color: var(--coral);
+  }
+
+  [data-theme-toggle-status] {
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+</style>

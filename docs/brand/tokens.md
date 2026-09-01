@@ -64,7 +64,21 @@ So the rule is stronger than "use tokens":
 
 **These are the LOCKED names.** Earlier drafts of this file used invented role names (`--accent`, `--band`, `--ink-secondary`); they are gone. The brand document's vocabulary is what the storefront inherits, and ADR-015 requires this file to transfer verbatim.
 
-Dark values are declared in a **single** `[data-theme="dark"]` block that redefines the same names. A token whose only definition lives inside a media query or a theme block is a defect — the light palette is the base, always.
+**The light palette is the base, always** — every token is defined on bare `:root`. A token whose *only* definition lives inside a media query or a theme block is a defect, because a viewer whose theme resolves neither way then gets nothing.
+
+Dark values redefine those same names in **two** places, and both are required:
+
+```css
+:root { /* light — every token defined here */ }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) { /* dark — for a visitor who has expressed no preference */ }
+}
+:root[data-theme="dark"] { /* dark — for a visitor who has toggled */ }
+```
+
+The media block exists because **the site must render the system-preferred theme with JavaScript disabled**, and nothing can set `data-theme` without JavaScript. The attribute block exists because an explicit choice must beat the system preference. The `:not([data-theme])` guard is what keeps them from fighting: once a visitor has chosen, the media query stops applying.
+
+**The two dark blocks must declare the identical set of token names** — a token redefined in one and not the other is a defect, and E2-01 asserts it rather than leaving it to review.
 
 ## Rules that bind regardless of the palette
 

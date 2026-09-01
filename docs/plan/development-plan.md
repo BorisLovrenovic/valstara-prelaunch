@@ -427,7 +427,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Build:** `src/styles/tokens.css` — every token as a CSS custom property, with **no framework coupling of any kind.** Structure and names per `docs/brand/tokens.md`.
 
-**Transcribe the values from `docs/brand/identity-guidelines.md` §5 and §6 — they are in this repository and LOCKED.** Do not invent, tint, blend or "improve" a value. Light palette on bare `:root`; dark values redefining the same names in a single `[data-theme="dark"]` block. Start the port checklist.
+**Transcribe the values from `docs/brand/identity-guidelines.md` §5 and §6 — they are in this repository and LOCKED.** Do not invent, tint, blend or "improve" a value. Light palette on bare `:root`; dark values redefining the same names in **both** a `@media (prefers-color-scheme: dark) { :root:not([data-theme]) }` block and a `:root[data-theme="dark"]` block, per `docs/brand/tokens.md`. Both are required — the media block is what renders the system theme with JavaScript disabled, the attribute block is what lets an explicit choice win. Start the port checklist.
 
 **Use the brand document's own token names** — `--coral`, `--midnight`, `--ink-600` — not invented role names. They are LOCKED vocabulary shared with the storefront, and the file must transfer verbatim (ADR-015).
 
@@ -435,6 +435,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 - Every token in `docs/brand/tokens.md` is present with **the exact value from `identity-guidelines.md` §5/§6** — asserted against the source, not eyeballed
 - **The file has no framework coupling and no import** — it is copyable into a Next.js project unchanged
 - **No token's only definition lives inside a media query or a theme block** — the light palette is the base
+- **The two dark blocks declare the identical set of token names** — asserted by test, so one cannot gain a token the other lacks
 - **Every text/background pairing clears WCAG AA in both themes** — asserted by an automated contrast test over the token matrix, not read off the guidelines
 - **`--error` is visibly distinct from `--coral`**
 - The port checklist exists and names the storefront target

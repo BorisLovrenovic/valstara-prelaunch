@@ -1,5 +1,8 @@
 ---
 import { thinSliceCopy } from '../copy/e1-11.ts';
+import ThemeToggle from '../islands/ThemeToggle.astro';
+import { themeBootstrapScript } from '../islands/theme-toggle.ts';
+import '../styles/tokens.css';
 ---
 
 <!doctype html>
@@ -7,8 +10,10 @@ import { thinSliceCopy } from '../copy/e1-11.ts';
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline set:html={themeBootstrapScript} />
   </head>
   <body>
+    <ThemeToggle />
     <form action="/api/signup" method="post">
       <input name="email" type="email" autocomplete="email" required />
       <input name="turnstile_token" type="hidden" />
