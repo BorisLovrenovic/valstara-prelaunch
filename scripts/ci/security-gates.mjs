@@ -268,8 +268,9 @@ function themeStorageUse(file, policy, match) {
   const pathMatches = new RegExp(policy.themePreference.pathPattern).test(
     file.path,
   );
+  const storageKey = escapeRegex(policy.themePreference.storageKey);
   const keyPattern = new RegExp(
-    `localStorage\\.setItem\\(\\s*['"]${policy.themePreference.storageKey}['"]`,
+    `^localStorage\\.(?:getItem|setItem)\\(\\s*['"]${storageKey}['"]`,
   );
   const call = file.content.slice(match.index, match.index + 128);
   return pathMatches && keyPattern.test(call);

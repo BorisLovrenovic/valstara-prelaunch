@@ -1,8 +1,11 @@
 ---
 import { thinSliceCopy } from '../copy/e1-11.ts';
+import ThemeToggle from '../islands/ThemeToggle.astro';
+import { themeBootstrapScript } from '../islands/theme-toggle.ts';
 import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
 import { consumeThinVerificationToken } from '../server/e1-11/verify.ts';
+import '../styles/tokens.css';
 
 const token = Astro.url.searchParams.get('token') ?? '';
 const database = createPool(getConfig().databaseUrl);
@@ -23,8 +26,10 @@ const message =
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline set:html={themeBootstrapScript} />
   </head>
   <body>
+    <ThemeToggle />
     <p>{message}</p>
   </body>
 </html>

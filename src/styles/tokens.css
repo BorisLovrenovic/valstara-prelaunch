@@ -56,7 +56,16 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-[data-theme='dark'] {
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --paper: #0f0f1a;
+    --surface: #171733;
+    --ink: #f0f0ee;
+    --coral: #ff8a66;
+  }
+}
+
+:root[data-theme='dark'] {
   --paper: #0f0f1a;
   --surface: #171733;
   --ink: #f0f0ee;

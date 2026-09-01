@@ -38,6 +38,11 @@
     "content": "<script>document.cookie = 'tracking=1';</script>\n",
     "diagnostic": "\\[cookie-storage\\]"
   },
+  "theme-storage-second-key": {
+    "path": "src/islands/theme-toggle.ts",
+    "content": "localStorage.setItem('second-theme-key', 'dark');\n",
+    "diagnostic": "\\[cookie-storage\\]"
+  },
   "fingerprinting": {
     "path": "scripts/ci-timing-fixture.ts",
     "contentParts": ["export const entropy = performance", ".now();\\n"],

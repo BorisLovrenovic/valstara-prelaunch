@@ -174,25 +174,33 @@ test('the port checklist names the storefront target for the verbatim token file
 test('tokens are a framework-free, light-first portable CSS file', async () => {
   const source = await readFile(tokenPath, 'utf8');
   const rootMatch = source.match(/:root\s*\{(?<block>[\s\S]*?)\}/u);
-  const darkMatches = [
-    ...source.matchAll(
-      /\[data-theme=['"]dark['"]\]\s*\{(?<block>[\s\S]*?)\}/gu,
-    ),
-  ];
+  const systemDarkMatch = source.match(
+    /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root:not\(\[data-theme\]\)\s*\{(?<block>[\s\S]*?)\}\s*\}/u,
+  );
+  const explicitDarkMatch = source.match(
+    /:root\[data-theme=['"]dark['"]\]\s*\{(?<block>[\s\S]*?)\}/u,
+  );
 
   assert.ok(rootMatch);
-  assert.equal(darkMatches.length, 1);
+  assert.ok(systemDarkMatch);
+  assert.ok(explicitDarkMatch);
   assert.doesNotMatch(source, /@(?:import|use|tailwind|layer)\b/u);
   assert.doesNotMatch(source, /(?:theme\(|var\(--tw-|styled\.)/u);
-  assert.doesNotMatch(source, /@media\b/u);
 
   const root = declarations(rootMatch.groups.block);
-  const dark = declarations(darkMatches[0].groups.block);
+  const systemDark = declarations(systemDarkMatch.groups.block);
+  const explicitDark = declarations(explicitDarkMatch.groups.block);
+  assert.deepEqual(systemDark, explicitDark);
+
   for (const [name, value] of Object.entries(expectedDarkTokens)) {
-    assert.equal(dark.get(name)?.toUpperCase(), value.toUpperCase(), name);
+    assert.equal(
+      explicitDark.get(name)?.toUpperCase(),
+      value.toUpperCase(),
+      name,
+    );
   }
 
-  for (const name of dark.keys()) {
+  for (const name of explicitDark.keys()) {
     assert.ok(root.has(name), `${name} must have a light base definition`);
   }
 });
@@ -206,16 +214,14 @@ test('declared body-text pairings meet WCAG AA in both themes', async () => {
       ),
     ].filter(([, value]) => value.startsWith('#')),
   );
+  const explicitDarkMatch = source.match(
+    /:root\[data-theme=['"]dark['"]\]\s*\{(?<block>[\s\S]*?)\}/u,
+  );
+  assert.ok(explicitDarkMatch);
   const dark = Object.fromEntries(
-    [
-      ...declarations(
-        [
-          ...source.matchAll(
-            /\[data-theme=['"]dark['"]\]\s*\{(?<block>[\s\S]*?)\}/gu,
-          ),
-        ][0].groups.block,
-      ),
-    ].filter(([, value]) => value.startsWith('#')),
+    [...declarations(explicitDarkMatch.groups.block)].filter(([, value]) =>
+      value.startsWith('#'),
+    ),
   );
   const themes = [
     {
