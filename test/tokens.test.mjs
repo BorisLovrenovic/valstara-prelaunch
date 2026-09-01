@@ -190,6 +190,9 @@ test('tokens are a framework-free, light-first portable CSS file', async () => {
   const dark = declarations(darkMatches[0].groups.block);
   for (const [name, value] of Object.entries(expectedDarkTokens)) {
     assert.equal(dark.get(name)?.toUpperCase(), value.toUpperCase(), name);
+  }
+
+  for (const name of dark.keys()) {
     assert.ok(root.has(name), `${name} must have a light base definition`);
   }
 });
