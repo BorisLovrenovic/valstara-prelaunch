@@ -1,0 +1,64 @@
+:root {
+  /* colour */
+  --paper: #fafafa;
+  --surface: #ffffff;
+  --ink: #101014;
+  --ink-600: #55555e;
+  --ink-300: #a0a0a8;
+  --line: #e5e5e5;
+  --coral: #e8654a;
+  --coral-lift: #ff8a66;
+  --coral-tint: #fdeee9;
+  --midnight: #171733;
+  --midnight-deep: #0d0d1f;
+
+  /* functional */
+  --error: #c0392b;
+  --warning: #b7791f;
+  --success: #2e7d57;
+
+  /* type */
+  --font-sans: 'Instrument Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --step-5: 2rem;
+  --leading-5: 2.5rem;
+  --step-4: 1.5rem;
+  --leading-4: 2rem;
+  --step-3: 1.25rem;
+  --leading-3: 1.75rem;
+  --step-2: 1rem;
+  --leading-2: 1.5rem;
+  --step-1: 0.875rem;
+  --leading-1: 1.25rem;
+  --step-0: 0.8125rem;
+  --leading-0: 1.125rem;
+
+  /* spacing */
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-5: 2.5rem;
+  --space-6: 3rem;
+  --space-7: 3.5rem;
+  --space-8: 4rem;
+  --space-9: 4.5rem;
+  --space-10: 5rem;
+
+  /* radius */
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --radius-pill: 999px;
+
+  /* motion */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='dark'] {
+  --paper: #0f0f1a;
+  --surface: #171733;
+  --ink: #f0f0ee;
+  --coral: #ff8a66;
+}
