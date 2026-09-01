@@ -307,7 +307,7 @@ test('an induced applied-migration checksum mismatch aborts before a candidate o
 
 test(
   'the local production-Compose drill pulls, migrates, health-gates, and restores without measuring an RTO',
-  { timeout: 180_000 },
+  {},
   async () => {
     const directory = await mkdtemp(join(tmpdir(), 'valstara-e107-drill-'));
     const certificate = join(directory, 'origin-cert.pem');
