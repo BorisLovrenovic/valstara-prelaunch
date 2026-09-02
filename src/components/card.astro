@@ -1,0 +1,22 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'article'>;
+
+const { class: className, ...attributes } = Astro.props;
+---
+
+<article {...attributes} class:list={['card', className]}>
+  <slot />
+</article>
+
+<style>
+  .card {
+    padding: var(--space-3);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    background-color: var(--surface);
+    border: thin solid var(--line);
+    border-radius: var(--radius-card);
+  }
+</style>

@@ -1,0 +1,11 @@
+{
+  "all": true,
+  "exclude": ["node_modules/**"],
+  "exclude-after-remap": true,
+  "extension": [".js", ".cjs", ".mjs", ".ts", ".tsx", ".jsx", ".astro"],
+  "include": [
+    "src/**/*.{ts,astro}",
+    "dist/server/**/*.mjs",
+    ".astro/interface-primitives-fixture/server/**/*.mjs"
+  ]
+}

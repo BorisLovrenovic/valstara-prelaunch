@@ -1,0 +1,43 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'input'> & {
+  invalid?: boolean;
+};
+
+const { class: className, invalid = false, ...attributes } = Astro.props;
+---
+
+<input
+  {...attributes}
+  class:list={['input', className]}
+  aria-invalid={invalid ? 'true' : undefined}
+/>
+
+<style>
+  .input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--space-1) var(--space-2);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    background-color: var(--surface);
+    border-color: var(--line);
+    border-radius: var(--radius-control);
+  }
+
+  .input::placeholder {
+    color: var(--ink-600);
+  }
+
+  .input[aria-invalid='true'] {
+    border-color: var(--error);
+  }
+
+  .input:focus-visible {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+</style>

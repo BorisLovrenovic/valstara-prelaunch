@@ -111,9 +111,17 @@ test('coverage includes every executable source format used under src', async ()
     new URL('../scripts/ci/run-coverage.mjs', import.meta.url),
     'utf8',
   );
+  const c8Config = JSON.parse(
+    await readFile(
+      new URL('../scripts/ci/c8.config.json', import.meta.url),
+      'utf8',
+    ),
+  );
 
   assert.deepEqual(config.includedExtensions, ['.ts', '.astro']);
-  assert.match(runner, /--include=src\/\*\*\/\*\.\{ts,astro\}/);
+  assert.match(runner, /--config=scripts\/ci\/c8\.config\.json/);
+  assert.ok(c8Config.include.includes('src/**/*.{ts,astro}'));
+  assert.ok(c8Config.extension.includes('.astro'));
 });
 
 test('the 90% critical-module list is complete and deliberately deferred', async () => {

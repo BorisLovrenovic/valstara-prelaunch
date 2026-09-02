@@ -1,0 +1,78 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'button'> & {
+  variant?: 'primary' | 'secondary';
+};
+
+const {
+  class: className,
+  type = 'button',
+  variant = 'primary',
+  ...attributes
+} = Astro.props;
+---
+
+<button
+  {...attributes}
+  type={type}
+  class:list={['button', `button--${variant}`, className]}
+>
+  <slot />
+</button>
+
+<style>
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    color: var(--midnight);
+    font-family: var(--font-sans);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    background-color: var(--coral);
+    border-color: var(--coral);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+    transition-property: background-color, border-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .button--secondary {
+    color: var(--ink);
+    background-color: var(--surface);
+    border-color: var(--line);
+  }
+
+  .button:hover {
+    background-color: var(--coral-lift);
+    border-color: var(--coral-lift);
+  }
+
+  .button--secondary:hover {
+    background-color: var(--coral-tint);
+    border-color: var(--coral);
+  }
+
+  .button:focus-visible {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  .button:disabled {
+    color: var(--ink-600);
+    background-color: var(--line);
+    border-color: var(--line);
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .button {
+      transition-duration: var(--duration-fast);
+      transition-property: none;
+    }
+  }
+</style>
