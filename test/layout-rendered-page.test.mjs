@@ -172,7 +172,13 @@ test('the shell exposes one main landmark and a skip link as the first focusable
   assert.equal(await skipLink.getAttribute('href'), '#main-content');
 
   // Hidden off-screen by default, it becomes visible within the viewport once
-  // focused, so a keyboard visitor can see and use it.
+  // focused, so a keyboard visitor can see and use it. The reveal is a timed
+  // transition, so wait for it to settle before sampling the box — otherwise
+  // the position is read mid-animation and the assertion races the transition.
+  await page.waitForFunction(() => {
+    const link = globalThis.document.querySelector('a.skip-link');
+    return link !== null && link.getBoundingClientRect().top >= 0;
+  });
   const focusedBox = await skipLink.boundingBox();
   assert.ok(
     focusedBox !== null && focusedBox.y >= 0,
