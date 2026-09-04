@@ -1,5 +1,10 @@
 export const thinSliceCopy = {
   challengeFailed: 'We could not verify this signup. Please try again.',
+  signupTitle: 'Valstara waitlist',
+  signupDescription:
+    'Join the Valstara waitlist and verify your email to confirm your place.',
+  verifyTitle: 'Verify your email',
+  verifyDescription: 'Confirm your Valstara waitlist email address.',
   invalidInput: 'Enter a valid email address.',
   rateLimited: 'Too many attempts — try again in a few minutes.',
   signupComplete: 'Check your inbox for your verification link.',

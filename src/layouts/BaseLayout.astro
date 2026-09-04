@@ -1,0 +1,132 @@
+---
+import { layoutCopy } from '../copy/layout.ts';
+import ThemeToggle from '../islands/ThemeToggle.astro';
+import { themeBootstrapScript } from '../islands/theme-toggle.ts';
+import '../styles/tokens.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <script is:inline set:html={themeBootstrapScript} />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">{layoutCopy.skipToContent}</a>
+    <header class="site-header">
+      <a class="site-name" href="/">{layoutCopy.siteName}</a>
+      <ThemeToggle />
+    </header>
+    <main id="main-content" class="site-main">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <nav aria-label={layoutCopy.footerNavLabel}>
+        <ul class="footer-links">
+          {
+            layoutCopy.footerLinks.map((link) => (
+              <li>
+                <a href={link.href}>{link.label}</a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </footer>
+  </body>
+</html>
+
+<style>
+  .skip-link {
+    position: absolute;
+    inset-block-start: var(--space-1);
+    inset-inline-start: var(--space-1);
+    z-index: 2;
+    padding: var(--space-1) var(--space-2);
+    color: var(--midnight);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    background-color: var(--coral);
+    border-radius: var(--radius-control);
+    transform: translateY(calc(-100% - var(--space-2)));
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .skip-link:focus-visible {
+    transform: translateY(0);
+    outline: medium solid var(--midnight);
+    outline-offset: var(--space-1);
+  }
+
+  .site-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .site-name {
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-3);
+    line-height: var(--leading-3);
+    text-decoration: none;
+  }
+
+  .site-name:focus-visible {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  .site-main {
+    padding-inline: var(--space-3);
+    padding-block: var(--space-4);
+  }
+
+  .site-footer {
+    padding: var(--space-4) var(--space-3);
+    border-block-start: thin solid var(--line);
+  }
+
+  .footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .footer-links a {
+    color: var(--ink-600);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  .footer-links a:focus-visible {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skip-link {
+      transition-property: none;
+    }
+  }
+</style>
