@@ -1,23 +1,15 @@
 ---
 import { thinSliceCopy } from '../copy/e1-11.ts';
-import ThemeToggle from '../islands/ThemeToggle.astro';
-import { themeBootstrapScript } from '../islands/theme-toggle.ts';
-import '../styles/tokens.css';
+import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script is:inline set:html={themeBootstrapScript} />
-  </head>
-  <body>
-    <ThemeToggle />
-    <form action="/api/signup" method="post">
-      <input name="email" type="email" autocomplete="email" required />
-      <input name="turnstile_token" type="hidden" />
-      <button type="submit">{thinSliceCopy.signupSubmit}</button>
-    </form>
-  </body>
-</html>
+<BaseLayout
+  title={thinSliceCopy.signupTitle}
+  description={thinSliceCopy.signupDescription}
+>
+  <form action="/api/signup" method="post">
+    <input name="email" type="email" autocomplete="email" required />
+    <input name="turnstile_token" type="hidden" />
+    <button type="submit">{thinSliceCopy.signupSubmit}</button>
+  </form>
+</BaseLayout>
