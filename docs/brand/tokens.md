@@ -57,6 +57,7 @@ So the rule is stronger than "use tokens":
 
 [data-theme='dark'] {
   --paper: #0F0F1A; --surface: #171733; --ink: #F0F0EE; --coral: #FF8A66;
+  --ink-600: #A0A0A8; /* dark secondary text — see note below */
 }
 ```
 
@@ -79,6 +80,8 @@ Dark values redefine those same names in **two** places, and both are required:
 The media block exists because **the site must render the system-preferred theme with JavaScript disabled**, and nothing can set `data-theme` without JavaScript. The attribute block exists because an explicit choice must beat the system preference. The `:not([data-theme])` guard is what keeps them from fighting: once a visitor has chosen, the media query stops applying.
 
 **The two dark blocks must declare the identical set of token names** — a token redefined in one and not the other is a defect, and E2-01 asserts it rather than leaving it to review.
+
+**`--ink-600` carries a dark override (`#A0A0A8`) beyond the four brand-defined swaps** (founder-authorised 2026-09-05). At its base `#55555E` it renders secondary text at 2.58:1 on the dark `--paper` and 2.36:1 on `--surface`, below AA; `#A0A0A8` — the LOCKED light `--ink-300` value, reused rather than a new colour — clears 7.33:1 and 6.70:1, mirroring its 7.07:1 in light so the muted hierarchy reads identically in both themes. E2-01's contrast test covers the muted pairings in dark so this cannot regress.
 
 ## Rules that bind regardless of the palette
 

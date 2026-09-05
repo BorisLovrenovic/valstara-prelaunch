@@ -296,7 +296,9 @@ Explored and discarded. Do not reintroduce:
 | `midnight` | `#171733` | Dark surfaces — icon container, guarantee band, footer |
 | `midnight-deep` | `#0D0D1F` | Optional gradient terminal within the container |
  
-**Dark mode (toggle):** `paper` `#0F0F1A` · `surface` `#171733` · `ink` `#F0F0EE` · `coral` `#FF8A66`
+**Dark mode (toggle):** `paper` `#0F0F1A` · `surface` `#171733` · `ink` `#F0F0EE` · `coral` `#FF8A66` · `ink-600` `#A0A0A8`
+
+`ink-600`'s dark value (`#A0A0A8`, the `ink-300` grey) is an accessibility override authorised 2026-09-05: secondary text at the base `#55555E` fails WCAG AA on the dark grounds, and reusing the existing `ink-300` grey clears AA while keeping the muted hierarchy identical to light.
  
 **Functional, UI only:** `error` `#C0392B` · `warning` `#B7791F` · `success` `#2E7D57`. These never appear in brand materials. Note that `error` must be visibly distinct from `coral` — never use coral for error states.
  
