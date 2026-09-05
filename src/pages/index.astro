@@ -1,15 +1,250 @@
 ---
-import { thinSliceCopy } from '../copy/e1-11.ts';
+import Accordion from '../components/accordion.astro';
+import Button from '../components/button.astro';
+import Field from '../components/field.astro';
+import Input from '../components/input.astro';
+import { landingCopy } from '../copy/landing.ts';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { getFlagService } from '../server/flags/app-service.ts';
+
+// Fail-safe default: an unreadable flag resolves to the registered default
+// (signup on), so a database blip never silently pauses signups. Only an
+// operator turning the flag off replaces the form with the paused message.
+const signupEnabled = await getFlagService().isEnabled('signup.enabled');
 ---
 
 <BaseLayout
-  title={thinSliceCopy.signupTitle}
-  description={thinSliceCopy.signupDescription}
+  title={landingCopy.meta.title}
+  description={landingCopy.meta.description}
 >
-  <form action="/api/signup" method="post">
-    <input name="email" type="email" autocomplete="email" required />
-    <input name="turnstile_token" type="hidden" />
-    <button type="submit">{thinSliceCopy.signupSubmit}</button>
-  </form>
+  <div class="lp">
+    <section class="lp-hero" aria-labelledby="lp-hero-heading">
+      <p class="lp-hero__eyebrow">{landingCopy.hero.eyebrow}</p>
+      <h1 id="lp-hero-heading" class="lp-hero__heading">
+        {landingCopy.hero.heading}
+      </h1>
+      <p class="lp-hero__body">{landingCopy.hero.body}</p>
+
+      {
+        signupEnabled ? (
+          <form action="/api/signup" method="post">
+            <Field
+              controlId="signup-email"
+              description={landingCopy.form.hint}
+              descriptionId="signup-email-hint"
+              label={landingCopy.form.label}
+            >
+              <Input
+                id="signup-email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                required
+                placeholder={landingCopy.form.placeholder}
+                aria-describedby="signup-email-hint"
+              />
+            </Field>
+            <input name="turnstile_token" type="hidden" />
+            <Button type="submit">{landingCopy.form.submit}</Button>
+          </form>
+        ) : (
+          <div class="lp-paused">
+            <p class="lp-paused__title">{landingCopy.paused.heading}</p>
+            <p class="lp-paused__body">{landingCopy.paused.body}</p>
+          </div>
+        )
+      }
+    </section>
+
+    <section class="lp-section" aria-labelledby="lp-about-heading">
+      <h2 id="lp-about-heading" class="lp-section__heading">
+        {landingCopy.whatIs.heading}
+      </h2>
+      <p class="lp-section__body">{landingCopy.whatIs.body}</p>
+      <p class="lp-tagline">{landingCopy.whatIs.tagline}</p>
+    </section>
+
+    <section class="lp-section" aria-labelledby="lp-trust-heading">
+      <h2 id="lp-trust-heading" class="lp-section__heading">
+        {landingCopy.trust.heading}
+      </h2>
+      <p class="lp-section__body">{landingCopy.trust.intro}</p>
+      <ol class="lp-guarantee">
+        {
+          landingCopy.trust.promises.map((promise) => (
+            <li class="lp-guarantee__item">
+              <span aria-hidden="true" class="lp-guarantee__numeral">
+                {promise.numeral}
+              </span>
+              <span class="lp-guarantee__title">{promise.title}</span>
+            </li>
+          ))
+        }
+      </ol>
+      <p class="lp-note">{landingCopy.trust.note}</p>
+    </section>
+
+    <section class="lp-section" aria-labelledby="lp-faq-heading">
+      <h2 id="lp-faq-heading" class="lp-section__heading">
+        {landingCopy.faq.heading}
+      </h2>
+      <div class="lp-faq">
+        {
+          landingCopy.faq.items.map((item) => (
+            <Accordion summary={item.question}>{item.answer}</Accordion>
+          ))
+        }
+      </div>
+    </section>
+  </div>
 </BaseLayout>
+
+<style is:global>
+  .lp {
+    display: grid;
+    gap: var(--space-7);
+  }
+
+  .lp-hero {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .lp-hero__eyebrow {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  .lp-hero__heading {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-5);
+    line-height: var(--leading-5);
+  }
+
+  .lp-hero__body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-3);
+    line-height: var(--leading-3);
+  }
+
+  .lp-hero form {
+    display: grid;
+    gap: var(--space-2);
+    margin-block-start: var(--space-2);
+  }
+
+  .lp-paused {
+    display: grid;
+    gap: var(--space-1);
+    margin-block-start: var(--space-2);
+    padding: var(--space-3);
+    background-color: var(--surface);
+    border: thin solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  .lp-paused__title {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-3);
+    line-height: var(--leading-3);
+  }
+
+  .lp-paused__body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .lp-section {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .lp-section__heading {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-4);
+    line-height: var(--leading-4);
+  }
+
+  .lp-section__body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .lp-tagline {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-3);
+    line-height: var(--leading-3);
+  }
+
+  .lp-guarantee {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .lp-guarantee__item {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    background-color: var(--surface);
+    border: thin solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  .lp-guarantee__numeral {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--space-4);
+    padding: var(--space-1) var(--space-2);
+    color: var(--midnight);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    background-color: var(--coral);
+    border-radius: var(--radius-pill);
+  }
+
+  .lp-guarantee__title {
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .lp-note {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  .lp-faq {
+    display: grid;
+    gap: var(--space-2);
+  }
+</style>
