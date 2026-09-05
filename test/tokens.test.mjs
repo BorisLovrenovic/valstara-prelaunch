@@ -242,6 +242,14 @@ test('declared body-text pairings meet WCAG AA in both themes', async () => {
       pairings: [
         ['--ink', '--paper'],
         ['--ink', '--surface'],
+        // Muted text must clear AA in dark too. --ink-600 gains a dark override
+        // (#A0A0A8, the light --ink-300 value — founder-authorised 2026-09-05)
+        // because at its light value it fails on the dark grounds. --ink-300 is
+        // tertiary/placeholder text and is checked for parity.
+        ['--ink-600', '--paper'],
+        ['--ink-600', '--surface'],
+        ['--ink-300', '--paper'],
+        ['--ink-300', '--surface'],
       ],
     },
   ];

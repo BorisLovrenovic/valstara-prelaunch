@@ -61,6 +61,7 @@
     --paper: #0f0f1a;
     --surface: #171733;
     --ink: #f0f0ee;
+    --ink-600: #a0a0a8;
     --coral: #ff8a66;
   }
 }
@@ -69,5 +70,6 @@
   --paper: #0f0f1a;
   --surface: #171733;
   --ink: #f0f0ee;
+  --ink-600: #a0a0a8;
   --coral: #ff8a66;
 }
