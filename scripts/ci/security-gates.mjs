@@ -500,11 +500,31 @@ function proseSnippet(value) {
   return value.trim().replace(/\s+/g, ' ').slice(0, 60);
 }
 
-// Walk the Astro template AST collecting literal prose text nodes. A text node
-// is copy that belongs in the copy layer only when it is markup — not JavaScript
-// inside an `{expression}`, and not the body of a <script> or <style>. Elements
+// Attributes whose value is customer-visible prose (rendered to the eye or read
+// out by assistive technology). A literal string in one of these is prose inline
+// in markup exactly as a text node is (standing rule 16), so it belongs in the
+// copy layer too. Attributes that carry ids, tokens, URLs or enumerated states
+// (`class`, `href`, `role`, `aria-pressed`, `content`, …) are not copy and are
+// deliberately absent.
+const proseAttributes = new Set([
+  'alt',
+  'aria-description',
+  'aria-label',
+  'aria-placeholder',
+  'aria-roledescription',
+  'aria-valuetext',
+  'placeholder',
+  'title',
+]);
+
+// Walk the Astro template AST collecting literal inline prose as { text, line }.
+// Prose belongs in the copy layer only when it is markup — not JavaScript inside
+// an `{expression}`, and not the body of a <script> or <style>. This covers two
+// shapes: text nodes, and literal values of the customer-visible attributes
+// above. A value routed through an `{expression}` is the sanctioned copy-layer
+// path and is left alone (attribute kind 'expression', not 'quoted'). Elements
 // nested inside an expression (`{items.map((i) => <li>text</li>)}`) re-enter
-// markup mode, so their own text children are still flagged.
+// markup mode, so their own text and attributes are still flagged.
 function collectProseNodes(node, parentType, insideScriptOrStyle, found) {
   if (node.type === 'text') {
     if (
@@ -512,9 +532,25 @@ function collectProseNodes(node, parentType, insideScriptOrStyle, found) {
       !insideScriptOrStyle &&
       prosePattern.test(node.value)
     ) {
-      found.push(node);
+      found.push({
+        line: node.position?.start?.line,
+        text: proseSnippet(node.value),
+      });
     }
     return;
+  }
+
+  for (const attribute of node.attributes ?? []) {
+    if (
+      attribute.kind === 'quoted' &&
+      proseAttributes.has(attribute.name) &&
+      prosePattern.test(attribute.value)
+    ) {
+      found.push({
+        line: attribute.position?.start?.line,
+        text: `${attribute.name}="${proseSnippet(attribute.value)}"`,
+      });
+    }
   }
 
   const nextInsideScriptOrStyle =
@@ -533,10 +569,7 @@ export async function findInlineProse(source) {
   for (const child of ast.children ?? []) {
     collectProseNodes(child, 'root', false, found);
   }
-  return found.map((node) => ({
-    line: node.position?.start?.line,
-    text: proseSnippet(node.value),
-  }));
+  return found;
 }
 
 async function scanInlineProse(files) {

@@ -28,7 +28,7 @@ Transcribed from **`docs/brand/identity-guidelines.md` §3.2 — LOCKED**. **E1-
 Two CI scans keep copy honest, both in `scripts/ci/security-gates.mjs`:
 
 - **Forbidden-copy scan** — no never-use string ships. Its failure names the replacement to write instead.
-- **Inline-prose scan** (E2-08) — enforces "no customer-visible prose inline in markup". It parses every `src/**/*.astro` component and flags literal template text; the sanctioned path is a string in the copy layer (`src/copy/`, or `src/content/` for prose) rendered through an `{expression}`. Strings inside `<script>` and `<style>` are not copy and are ignored. Its failure tells the developer to move the string into the copy layer.
+- **Inline-prose scan** (E2-08) — enforces "no customer-visible prose inline in markup". It parses every `src/**/*.astro` component and flags literal template text **and literal values of the customer-visible attributes** (`alt`, `title`, `placeholder`, `aria-label`, `aria-description`, `aria-placeholder`, `aria-roledescription`, `aria-valuetext`) — assistive-technology copy is prose inline in markup just as visible text is. The sanctioned path is a string in the copy layer (`src/copy/`, or `src/content/` for prose) rendered through an `{expression}`. Strings inside `<script>` and `<style>` are not copy and are ignored. Its failure tells the developer to move the string into the copy layer.
 
 | Never use | Use instead |
 |---|---|

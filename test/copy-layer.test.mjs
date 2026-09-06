@@ -156,3 +156,42 @@ test('findInlineProse flags markup nested inside an expression', async () => {
   assert.equal(hits.length, 1);
   assert.equal(hits[0].text, 'Static label');
 });
+
+test('findInlineProse flags customer-visible prose in an attribute', async () => {
+  // Copy read out by assistive technology is prose inline in markup just as
+  // visible text is (standing rule 16); a literal aria-label must not ship.
+  const hits = await findInlineProse(
+    '<button aria-label="Close the menu" type="button">{icon}</button>',
+  );
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].text, 'aria-label="Close the menu"');
+  assert.equal(hits[0].line, 1);
+});
+
+test('findInlineProse flags each customer-visible text attribute', async () => {
+  const alt = await findInlineProse(
+    '<img alt="Team at the warehouse" src="/x" />',
+  );
+  assert.equal(alt.length, 1);
+  const title = await findInlineProse('<abbr title="European Union">EU</abbr>');
+  assert.equal(title.length, 2); // the title attribute and the "EU" text node
+  const placeholder = await findInlineProse(
+    '<input placeholder="Your email address" name="email" />',
+  );
+  assert.equal(placeholder.length, 1);
+});
+
+test('findInlineProse ignores an attribute routed through an expression', async () => {
+  // The copy-layer path for an attribute is the sanctioned one and must pass.
+  const hits = await findInlineProse('<div aria-label={layoutCopy.nav} />');
+  assert.deepEqual(hits, []);
+});
+
+test('findInlineProse ignores non-copy attributes', async () => {
+  // ids, tokens, URLs, enumerated ARIA states and meta content are not copy.
+  const hits = await findInlineProse(
+    '<meta name="viewport" content="width=device-width, initial-scale=1" />\n' +
+      '<a class="site-name" href="/" role="button" aria-pressed="false" />',
+  );
+  assert.deepEqual(hits, []);
+});
