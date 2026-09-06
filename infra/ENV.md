@@ -17,10 +17,10 @@ table and fails if it differs from `src/server/config.ts`.
 | ----------------------- | --------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------- |
 | `DATABASE_URL`          | Authenticates the long-running application role against `valstara_waitlist` | App boot, database pool | Local credentials locally; live credentials in production                       |
 | `HOST`                  | Selects the Node adapter listen address                                     | App boot, Node adapter  | Runtime setting; neither live nor sandbox                                       |
-| `IP_PREFIX_PEPPER`      | HMAC pepper for E1-11's truncated IP-prefix rate-limit key                  | App boot, signup        | Test-only secret locally; live secret in production                             |
+| `IP_PREFIX_PEPPER`      | HMAC pepper for the signup route's truncated IP-prefix rate-limit key       | App boot, signup        | Test-only secret locally; live secret in production                             |
 | `NODE_ENV`              | Selects the Node runtime mode                                               | App boot, Node runtime  | `development` locally; `production` on the host; neither is a credential        |
 | `PORT`                  | Selects the Node adapter listen port                                        | App boot, Node adapter  | Runtime setting; neither live nor sandbox                                       |
-| `RESEND_API_KEY`        | Authenticates E1-11 transactional test-mode mail                            | App boot, signup mail   | Sandbox/test key locally; live key only on the production host after E12-07     |
+| `RESEND_API_KEY`        | Authenticates the signup route's transactional test-mode verification mail  | App boot, signup mail   | Sandbox/test key locally; live key only on the production host after E12-07     |
 | `RESEND_TEST_RECIPIENT` | Fixed test-mode destination; never a subscriber address                     | App boot, signup mail   | Resend sandbox/test address in E1; production mail configuration is owned by E8 |
 | `TURNSTILE_SECRET_KEY`  | Verifies every public write challenge server-side                           | App boot, signup route  | Turnstile test key locally; live key in production                              |
 
