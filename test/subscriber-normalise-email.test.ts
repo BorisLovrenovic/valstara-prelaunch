@@ -4,9 +4,16 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
+import type { QueryResultRow } from 'pg';
+
 import { createThinSignupService } from '../src/server/e1-11/signup.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
-import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
+import {
+  createPool,
+  type DatabaseClient,
+  type DatabasePool,
+  type SqlStatement,
+} from '../src/server/db/pool.ts';
 import { normaliseEmail } from '../src/server/subscriber/normalise-email.ts';
 
 const defaultDatabaseUrl =
@@ -138,6 +145,103 @@ test('the signup call site normalises before its uniqueness check', () => {
     flow.slice(0, normaliseCall),
     /ON CONFLICT|email_normalised|findByNormalised/,
     'no uniqueness check may precede normalisation',
+  );
+});
+
+// A recording pool captures the exact statements the signup flow issues, in
+// order, so the call-site ordering can be asserted behaviourally rather than by
+// scanning source text for today's SQL idioms. Every write "succeeds" so the
+// flow proceeds through its uniqueness insert; the rate-limit counter reads as
+// one attempt.
+interface RecordedStatement {
+  readonly text: string;
+  readonly values: readonly unknown[];
+}
+
+function createRecordingPool(recorded: RecordedStatement[]): DatabasePool {
+  const record = (statement: SqlStatement): void => {
+    recorded.push({ text: statement.text, values: statement.values ?? [] });
+  };
+
+  const execute = async (statement: SqlStatement): Promise<number> => {
+    record(statement);
+    return /^\s*(BEGIN|COMMIT|ROLLBACK)/i.test(statement.text) ? 0 : 1;
+  };
+
+  const readOne = async <Row extends QueryResultRow>(
+    statement: SqlStatement,
+  ): Promise<Row | null> => {
+    record(statement);
+    if (/FROM rate_limit_bucket/i.test(statement.text)) {
+      return { count: 1 } as unknown as Row;
+    }
+    return null;
+  };
+
+  const list = async <Row extends QueryResultRow>(
+    statement: SqlStatement,
+  ): Promise<readonly Row[]> => {
+    record(statement);
+    return [];
+  };
+
+  const connection: DatabaseClient = {
+    execute,
+    readOne,
+    list,
+    release: () => undefined,
+  };
+
+  return {
+    execute,
+    readOne,
+    list,
+    connect: async () => connection,
+    close: async () => undefined,
+  };
+}
+
+test('the signup call site binds the normalised key before it touches the uniqueness structure', async () => {
+  const recorded: RecordedStatement[] = [];
+  const signup = createThinSignupService(createRecordingPool(recorded), {
+    clock: () => new Date('2026-09-06T12:00:00.000Z'),
+    ipPrefixPepper: 'test-pepper',
+    rateLimitMaximumAttempts: 10,
+    async sendVerificationTestMail() {
+      return undefined;
+    },
+  });
+
+  // A dotted, +tagged Gmail address: the raw and normalised forms differ, so
+  // the value bound to the uniqueness key reveals whether normalisation ran
+  // first. Raw local part 'u.s.e.r+promo' normalises to 'user'.
+  const result = await signup({
+    email: 'u.s.e.r+promo@gmail.com',
+    ipAddress: '203.0.113.10',
+    verificationUrl: (token) => `http://valstara.test/verify?token=${token}`,
+  });
+  assert.equal(result.kind, 'created');
+
+  // The uniqueness rule is the `subscriber` table's UNIQUE email_normalised.
+  // Find the first statement that touches that table, however the check is
+  // spelled and whichever helper issues it (\bsubscriber\b matches the table
+  // but not the subscriber_id columns of later inserts).
+  const firstSubscriberTouch = recorded.find((statement) =>
+    /\bsubscriber\b/i.test(statement.text),
+  );
+  assert.ok(
+    firstSubscriberTouch,
+    'the flow must reach the subscriber uniqueness structure',
+  );
+
+  // By the time the subscriber table is first touched, the bound values must
+  // already carry the NORMALISED key. A uniqueness read on the raw email before
+  // normalisation would bind 'u.s.e.r+promo@gmail.com' as the lookup here and
+  // fail this assertion — with no dependence on today's SQL idioms or helper
+  // names.
+  assert.ok(
+    firstSubscriberTouch.values.includes('user@gmail.com'),
+    'normalisation must run before the subscriber uniqueness structure is touched',
   );
 });
 
