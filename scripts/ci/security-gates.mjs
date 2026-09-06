@@ -1,3 +1,4 @@
+import { parse, teardown } from '@astrojs/compiler';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { lstat, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -490,6 +491,90 @@ function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// A run of two or more letters is prose; punctuation, whitespace and single
+// glyphs (numerals, separators, entities) are not. Unicode-aware so accented
+// copy is caught too.
+const prosePattern = /\p{L}{2,}/u;
+
+function proseSnippet(value) {
+  return value.trim().replace(/\s+/g, ' ').slice(0, 60);
+}
+
+// Walk the Astro template AST collecting literal prose text nodes. A text node
+// is copy that belongs in the copy layer only when it is markup — not JavaScript
+// inside an `{expression}`, and not the body of a <script> or <style>. Elements
+// nested inside an expression (`{items.map((i) => <li>text</li>)}`) re-enter
+// markup mode, so their own text children are still flagged.
+function collectProseNodes(node, parentType, insideScriptOrStyle, found) {
+  if (node.type === 'text') {
+    if (
+      parentType !== 'expression' &&
+      !insideScriptOrStyle &&
+      prosePattern.test(node.value)
+    ) {
+      found.push(node);
+    }
+    return;
+  }
+
+  const nextInsideScriptOrStyle =
+    insideScriptOrStyle || node.name === 'script' || node.name === 'style';
+  for (const child of node.children ?? []) {
+    collectProseNodes(child, node.type, nextInsideScriptOrStyle, found);
+  }
+}
+
+// Exported for unit tests: given Astro source, return each inline-prose hit as
+// { text, line }. Does not tear the compiler down, so it is safe to call
+// repeatedly in-process.
+export async function findInlineProse(source) {
+  const { ast } = await parse(source, { position: true });
+  const found = [];
+  for (const child of ast.children ?? []) {
+    collectProseNodes(child, 'root', false, found);
+  }
+  return found.map((node) => ({
+    line: node.position?.start?.line,
+    text: proseSnippet(node.value),
+  }));
+}
+
+async function scanInlineProse(files) {
+  const targets = files.filter(
+    (file) => file.path.startsWith('src/') && file.path.endsWith('.astro'),
+  );
+  const issues = [];
+
+  for (const file of targets) {
+    let hits;
+    try {
+      hits = await findInlineProse(file.content);
+    } catch (error) {
+      issues.push(
+        issue(
+          'inline-prose',
+          file.path,
+          `could not parse the component: ${String(error)}`,
+        ),
+      );
+      continue;
+    }
+
+    for (const hit of hits) {
+      const where = hit.line === undefined ? '' : ` (line ${hit.line})`;
+      issues.push(
+        issue(
+          'inline-prose',
+          file.path,
+          `inline prose "${hit.text}"${where}; move this string into src/copy/ and render it from an {expression}`,
+        ),
+      );
+    }
+  }
+
+  return issues;
+}
+
 export async function runSecurityGates(
   options = parseArguments(process.argv.slice(2)),
 ) {
@@ -502,12 +587,14 @@ export async function runSecurityGates(
     scanThirdPartyRequests(files),
     scanVendorBoundary(files),
     scanForbiddenCopy(files),
+    scanInlineProse(files),
   ]);
   return scans.flat();
 }
 
 async function main() {
   const issues = await runSecurityGates();
+  teardown();
   if (issues.length > 0) {
     process.stderr.write(`${formatIssues(issues)}\n`);
     process.exitCode = 1;

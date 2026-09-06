@@ -32,10 +32,11 @@ Seven scans, each with a **planted red-path fixture committed in-repo** so a sca
 | **Third-party request rule** | A network request in a rendered page to any host but the self-hosted collector — the Trustpilot widget is the one allowlisted exception, and only behind its flag |
 | **Vendor-boundary rule** | An email vendor SDK imported outside its own provider module. Runtime `import()` targets must resolve statically; **an unresolved target fails closed** |
 | **Forbidden-copy scan** | A never-use string in `src/copy/`, `src/content/` or any `.astro` file |
+| **Inline-prose scan** | Customer-visible prose inline in an `src/**/*.astro` component instead of in the copy layer |
 
 **The cookie, fingerprinting and third-party rules are what make "no consent banner" a verified property rather than an intention.** They are the reason it is safe to have no banner at all.
 
-`npm run security` runs the seven scans. `npm run ci:security-red-paths` materialises the committed fixture definitions and proves each scan fails; it is mandatory beside the production scan. The policy files live in `scripts/ci/`, while `scripts/forbidden-copy.json` is seeded from the LOCKED never-use table.
+`npm run security` runs the eight scans. `npm run ci:security-red-paths` materialises the committed fixture definitions and proves each scan fails; it is mandatory beside the production scan. The policy files live in `scripts/ci/`, while `scripts/forbidden-copy.json` is seeded from the LOCKED never-use table.
 
 ## Main pipeline
 

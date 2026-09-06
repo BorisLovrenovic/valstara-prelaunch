@@ -83,6 +83,7 @@ Each has a planted red-path fixture; **a gate that cannot be shown to fail is no
 | Third-party request rule | No request off-origin from a rendered page |
 | Vendor-boundary rule | No email SDK outside its provider module |
 | Forbidden-copy scan | No never-use string ships |
+| Inline-prose scan | No customer-visible prose is inline in an `.astro` component; it lives in the copy layer |
 | Response-shape test | No public response carries another person's data |
 
 ## Secret handling
