@@ -90,7 +90,12 @@ export function createSubscriberRepository(
           )
           VALUES ($1, $2, $3, 'verify', $4)
         `,
-        values: [input.id, input.subscriberId, input.tokenHash, input.expiresAt],
+        values: [
+          input.id,
+          input.subscriberId,
+          input.tokenHash,
+          input.expiresAt,
+        ],
       });
     },
     async insertQueuedVerificationEmail(input) {

@@ -52,7 +52,10 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
   };
 }
 
-async function rowCount(database: DatabasePool, table: string): Promise<number> {
+async function rowCount(
+  database: DatabasePool,
+  table: string,
+): Promise<number> {
   const row = await database.readOne<{ count: string }>({
     text: `SELECT count(*)::text AS count FROM ${table}`,
   });
@@ -82,7 +85,9 @@ test('a first signup creates a pending subscriber with country and region, one t
   });
 
   try {
-    const outcome = await signup(inputFor('New.User@Example.test', { region: 'Quebec' }));
+    const outcome = await signup(
+      inputFor('New.User@Example.test', { region: 'Quebec' }),
+    );
     assert.equal(outcome.kind, 'created');
 
     const subscriber = await fixture.database.readOne<{
@@ -148,7 +153,10 @@ test('a pending repeat inside the send window is throttled, and after the window
   });
 
   try {
-    assert.equal((await signup(inputFor('again@example.test'))).kind, 'created');
+    assert.equal(
+      (await signup(inputFor('again@example.test'))).kind,
+      'created',
+    );
 
     // Immediate repeat: same subscriber, no second mail.
     const throttled = await signup(inputFor('again@example.test'));

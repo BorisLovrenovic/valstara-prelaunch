@@ -49,7 +49,10 @@ export function truncatedIpPrefix(ipAddress: string): string | null {
  * is unparseable — the caller treats a `null` as a rate-limit denial rather
  * than letting an unattributable request through.
  */
-export function hashedIpPrefix(ipAddress: string, pepper: string): string | null {
+export function hashedIpPrefix(
+  ipAddress: string,
+  pepper: string,
+): string | null {
   const prefix = truncatedIpPrefix(ipAddress);
   return prefix === null
     ? null

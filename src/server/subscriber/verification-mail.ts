@@ -15,7 +15,9 @@ export interface VerificationTestMail {
   readonly verificationUrl: string;
 }
 
-export type VerificationMailSender = (mail: VerificationTestMail) => Promise<void>;
+export type VerificationMailSender = (
+  mail: VerificationTestMail,
+) => Promise<void>;
 
 export function createResendTestMailSender(
   apiKey: string | undefined,

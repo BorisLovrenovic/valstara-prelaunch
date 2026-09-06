@@ -100,7 +100,9 @@ test('an invalid Turnstile token stops the route before the rate limit or any wo
   );
 
   const response = await route(
-    routeContext(makeRequest({ country: 'GB', email: 'a@b.co', turnstile_token: 'nope' })),
+    routeContext(
+      makeRequest({ country: 'GB', email: 'a@b.co', turnstile_token: 'nope' }),
+    ),
   );
   assert.equal(response.status, 400);
   assert.equal((await response.json()).error.code, 'challenge_failed');
@@ -124,7 +126,12 @@ test('the rate limit runs before validation — a rate-limited request with a ba
   // A body missing its country would fail validation — but the rate limit is
   // checked first, so the honest 429 wins and no signup work happens.
   const response = await route(
-    routeContext(makeRequest({ email: 'no-country@example.test', turnstile_token: 'valid-token' })),
+    routeContext(
+      makeRequest({
+        email: 'no-country@example.test',
+        turnstile_token: 'valid-token',
+      }),
+    ),
   );
   assert.equal(response.status, 429);
   assert.equal((await response.json()).error.code, 'rate_limited');
@@ -143,7 +150,12 @@ test('validation runs before the signup module — a missing country never reach
   );
 
   const response = await route(
-    routeContext(makeRequest({ email: 'person@example.test', turnstile_token: 'valid-token' })),
+    routeContext(
+      makeRequest({
+        email: 'person@example.test',
+        turnstile_token: 'valid-token',
+      }),
+    ),
   );
   assert.equal(response.status, 400);
   assert.equal((await response.json()).error.code, 'invalid_input');
@@ -213,9 +225,7 @@ test('each outcome maps to the documented code and no success response carries a
   assert.equal(verifiedBody.status, 'already_verified');
   assert.deepEqual(Object.keys(verifiedBody).sort(), ['message', 'status']);
 
-  const pending = await createSignupRoute(deps())(
-    routeContext(makeRequest()),
-  );
+  const pending = await createSignupRoute(deps())(routeContext(makeRequest()));
   assert.equal(pending.status, 200);
   const pendingBody = await pending.json();
   assert.equal(pendingBody.status, 'pending');

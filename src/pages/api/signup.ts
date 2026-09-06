@@ -164,7 +164,9 @@ export function createSignupRoute(
     // 2. Rate-limit per hashed IP prefix.
     const now = clock();
     try {
-      if ((await dependencies.consumeIpRateLimit(clientAddress, now)) !== 'ok') {
+      if (
+        (await dependencies.consumeIpRateLimit(clientAddress, now)) !== 'ok'
+      ) {
         return errorResponse('rate_limited');
       }
     } catch (error) {
