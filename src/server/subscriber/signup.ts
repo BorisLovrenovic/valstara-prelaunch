@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import type { DatabasePool } from '../db/pool.ts';
+import { createSubscriberRepository } from '../db/subscriber.ts';
 import { withTransaction } from '../db/transaction.ts';
 import { consumeRateLimit } from '../ratelimit/consume.ts';
 
@@ -75,39 +76,22 @@ async function upsertSubscriber(
   region: string | null,
 ): Promise<SignupSubscriber> {
   return withTransaction(database, async (connection) => {
+    const repository = createSubscriberRepository(connection);
     const subscriberId = randomUUID();
-    const inserted = await connection.execute({
-      text: `
-        INSERT INTO subscriber (
-          id,
-          email,
-          email_normalised,
-          email_domain,
-          country,
-          region,
-          status
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, 'pending')
-        ON CONFLICT (email_normalised) DO NOTHING
-      `,
-      values: [
-        subscriberId,
-        email.raw,
-        email.normalised,
-        email.domain,
-        country,
-        region,
-      ],
+    const inserted = await repository.insertPending({
+      country,
+      email: email.raw,
+      emailDomain: email.domain,
+      emailNormalised: email.normalised,
+      id: subscriberId,
+      region,
     });
 
     if (inserted === 1) {
       return { created: true, id: subscriberId, status: 'pending' };
     }
 
-    const existing = await connection.readOne<{ id: string; status: string }>({
-      text: 'SELECT id, status FROM subscriber WHERE email_normalised = $1',
-      values: [email.normalised],
-    });
+    const existing = await repository.findByNormalised(email.normalised);
 
     if (existing === null) {
       // The conflicting row must exist — the insert reported a conflict.
@@ -125,37 +109,22 @@ async function queueVerificationMail(
   now: Date,
 ): Promise<QueuedVerificationMail> {
   return withTransaction(database, async (connection) => {
+    const repository = createSubscriberRepository(connection);
     const tokenId = randomUUID();
     const token = createVerificationToken();
     const businessKey = `verify:${subscriberId}:${tokenId}`;
     const expiresAt = new Date(now.getTime() + verificationLifetimeMs);
 
-    await connection.execute({
-      text: `
-        INSERT INTO verification_token (
-          id,
-          subscriber_id,
-          token_hash,
-          purpose,
-          expires_at
-        )
-        VALUES ($1, $2, $3, 'verify', $4)
-      `,
-      values: [tokenId, subscriberId, tokenHash(token), expiresAt],
+    await repository.insertVerificationToken({
+      expiresAt,
+      id: tokenId,
+      subscriberId,
+      tokenHash: tokenHash(token),
     });
-    await connection.execute({
-      text: `
-        INSERT INTO email_send (
-          id,
-          subscriber_id,
-          template,
-          provider,
-          business_key,
-          state
-        )
-        VALUES ($1, $2, 'verification_test', 'resend', $3, 'queued')
-      `,
-      values: [randomUUID(), subscriberId, businessKey],
+    await repository.insertQueuedVerificationEmail({
+      businessKey,
+      id: randomUUID(),
+      subscriberId,
     });
 
     return { businessKey, verificationUrl: verificationUrl(token) };
