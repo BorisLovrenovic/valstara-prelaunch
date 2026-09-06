@@ -4,8 +4,11 @@ import { isIP } from 'node:net';
 import { thinSliceCopy } from '../../copy/e1-11.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
+import {
+  normaliseEmail,
+  type NormalisedEmail,
+} from '../subscriber/normalise-email.ts';
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 const rateLimitWindowMs = 15 * 60 * 1_000;
 const verificationLifetimeMs = 7 * 24 * 60 * 60 * 1_000;
 
@@ -43,18 +46,6 @@ export interface ThinSignupDependencies {
 
 interface QueuedVerificationMail extends VerificationTestMail {
   readonly subscriberId: string;
-}
-
-function hasValidThinSliceEmailShape(email: string): boolean {
-  return emailPattern.test(email);
-}
-
-function normaliseEmailForThinSlice(email: string): string {
-  return email.toLowerCase();
-}
-
-function emailDomain(email: string): string {
-  return email.slice(email.lastIndexOf('@') + 1);
 }
 
 function expandedIpv6Parts(address: string): readonly string[] {
@@ -141,8 +132,7 @@ async function incrementRateLimit(
 
 async function insertSignup(
   database: DatabasePool,
-  email: string,
-  emailNormalised: string,
+  email: NormalisedEmail,
   verificationUrl: (token: string) => string,
   now: Date,
 ): Promise<QueuedVerificationMail | null> {
@@ -160,12 +150,7 @@ async function insertSignup(
         VALUES ($1, $2, $3, $4, 'pending')
         ON CONFLICT (email_normalised) DO NOTHING
       `,
-      values: [
-        subscriberId,
-        email,
-        emailNormalised,
-        emailDomain(emailNormalised),
-      ],
+      values: [subscriberId, email.raw, email.normalised, email.domain],
     });
 
     if (insertedSubscribers === 0) {
@@ -241,15 +226,17 @@ export function createThinSignupService(
       return { kind: 'rate_limited' };
     }
 
-    if (!hasValidThinSliceEmailShape(input.email)) {
+    // Normalise before the uniqueness check (the ON CONFLICT inside
+    // insertSignup). E3-01: shape validation is folded into normaliseEmail,
+    // which returns null on a malformed address.
+    const normalised = normaliseEmail(input.email);
+    if (normalised === null) {
       return { kind: 'invalid_email' };
     }
-    const normalisedEmail = normaliseEmailForThinSlice(input.email);
 
     const mail = await insertSignup(
       database,
-      input.email,
-      normalisedEmail,
+      normalised,
       input.verificationUrl,
       now,
     );

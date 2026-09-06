@@ -23,7 +23,7 @@ interface SubscriberService {
 ```
 
 ## Rules
-- **`normaliseEmail()` runs before any uniqueness check.** Lowercase, strip `+tag`, remove dots for Gmail-family domains. The normalised form is the unique key; the raw form is what is displayed and mailed. This one step removes the cheapest referral attack entirely.
+- **`normaliseEmail()` runs before any uniqueness check.** Lowercase, strip `+tag` (all domains), remove dots for **Gmail-family domains only** — `gmail.com` and `googlemail.com`; every other provider keeps its dots. The family is not cross-canonicalised (a `googlemail.com` address is not rewritten to `gmail.com`). The normalised form is the unique key; the raw form is what is displayed and mailed. A malformed address, or one whose local part is emptied by tag/dot removal, is rejected (the function returns `null`); Unicode and internationalised domains never throw. This one step removes the cheapest referral attack entirely.
 - **`signup()` is idempotent on `email_normalised`.** A repeat for a `pending` row re-queues the verification mail subject to its own rate limit; a repeat for a `verified` row does not.
 - **`referred_by_id` is write-once**, enforced in the schema. Reassignment is a defect, not a feature.
 - **`disqualify()` requires an actor and writes an audit record.** There is no code path that sets `disqualified` without one.
