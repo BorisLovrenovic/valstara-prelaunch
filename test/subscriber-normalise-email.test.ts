@@ -63,7 +63,11 @@ test('+tag stripping is general and the raw address is preserved unchanged', () 
   for (const [raw, normalised] of cases) {
     const result = normaliseEmail(raw);
     assert.equal(result?.normalised, normalised);
-    assert.equal(result?.raw, raw, 'the raw address must be preserved verbatim');
+    assert.equal(
+      result?.raw,
+      raw,
+      'the raw address must be preserved verbatim',
+    );
   }
 });
 
@@ -104,7 +108,10 @@ test('Unicode and internationalised domains are handled without throwing', () =>
   for (const raw of internationalised) {
     assert.doesNotThrow(() => normaliseEmail(raw));
     // Non-Gmail domains keep their local part intact apart from lowercasing.
-    assert.equal(normaliseEmail(raw)?.domain, raw.slice(raw.lastIndexOf('@') + 1).toLowerCase());
+    assert.equal(
+      normaliseEmail(raw)?.domain,
+      raw.slice(raw.lastIndexOf('@') + 1).toLowerCase(),
+    );
   }
 });
 
@@ -133,7 +140,11 @@ test('the signup call site normalises before its uniqueness check', () => {
   const normaliseCall = flow.indexOf('normaliseEmail(');
   const uniquenessCall = flow.indexOf('insertSignup(');
   assert.notEqual(normaliseCall, -1, 'the flow must call normaliseEmail');
-  assert.notEqual(uniquenessCall, -1, 'the flow must reach the uniqueness insert');
+  assert.notEqual(
+    uniquenessCall,
+    -1,
+    'the flow must reach the uniqueness insert',
+  );
   assert.ok(
     normaliseCall < uniquenessCall,
     'normalisation must run before the uniqueness check',
@@ -305,7 +316,8 @@ test('the three Gmail variants collide on one subscriber row', async () => {
         await signup({
           email: raw,
           ipAddress: '203.0.113.10',
-          verificationUrl: (token) => `http://valstara.test/verify?token=${token}`,
+          verificationUrl: (token) =>
+            `http://valstara.test/verify?token=${token}`,
         }),
       );
     }
