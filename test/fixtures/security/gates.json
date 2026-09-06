@@ -82,5 +82,10 @@
     "path": "src/pages/ci-forbidden-copy-fixture.astro",
     "content": "<p>instant delivery</p>\n",
     "diagnostic": "forbidden copy"
+  },
+  "inline-prose": {
+    "path": "src/pages/ci-inline-prose-fixture.astro",
+    "content": "<p>Welcome to the Valstara waitlist.</p>\n",
+    "diagnostic": "move this string into src/copy"
   }
 }
