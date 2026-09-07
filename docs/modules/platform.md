@@ -36,13 +36,16 @@ The five small modules, documented together because each is a few hundred lines 
 
 **Responsibility:** server-side verification of Cloudflare Turnstile tokens. The only consumer of the Turnstile secret.
 
+**Interface:** `verify(token, ip): Promise<'verified' | 'rejected' | 'unavailable'>` — the swap seam a future CAPTCHA drops into (ADR-006, `docs/architecture/modules.md`). `ip` is optional and forwarded to the provider as `remoteip` only when given; the signup route omits it so the raw client address stays inside the truncate-then-hash rate-limit path (standing rule 9).
+
 **Rules**
 - **Verified server-side on every write route, before any other work.**
-- **Fail closed on a hard failure** — an invalid token is a rejection.
-- **On a provider timeout, fall through to strict rate limiting and flag the row**, rather than either rejecting real people or opening the door. The distinction between "invalid" and "unreachable" is the whole design.
-- Tokens are single-use; a replay is rejected.
+- **Fail closed on a hard failure** — an invalid or replayed token is a `rejected` verdict, and the caller rejects the request. Only a failure the provider attributes to the token itself rejects; a missing/invalid-secret or internal-error verdict is not the visitor's fault and falls through to `unavailable`.
+- **On a provider timeout, return `unavailable`** — a network error, a timeout, a non-2xx response, or a malformed body. The caller then **falls through to strict rate limiting and flags the row** (`challenge_timeout`), rather than either rejecting real people or opening the door. The distinction between "invalid" and "unreachable" is the whole design.
+- Tokens are single-use; a replay (`timeout-or-duplicate`) is rejected.
+- **The secret is read here and nowhere a route can see it**, and it appears in no log line and no response.
 
-**Contract tests:** invalid token rejected · replayed token rejected · provider timeout accepts-and-flags under strict limits · the secret appears in no log line.
+**Contract tests:** invalid token rejected · replayed token rejected · provider timeout accepts-and-flags under strict limits · the secret appears in no log line · no client-reachable file references the secret.
 
 ---
 

@@ -8,6 +8,8 @@ Signals that make referral fraud visible, and the review workflow that decides w
 ## Data owned
 `fraud_flag`; the disposable-domain blocklist as configuration.
 
+**One `fraud_flag` kind is written outside this module:** `challenge_timeout`, raised by the signup route when Cloudflare Turnstile is unreachable (ADR-006, E3-03). This module owns every other kind and the whole review workflow — it reviews `challenge_timeout` flags like any other, it simply does not raise them.
+
 ## Exposed interface
 ```ts
 interface FraudService {

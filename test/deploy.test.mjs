@@ -313,7 +313,7 @@ test(
     const certificate = join(directory, 'origin-cert.pem');
     const privateKey = join(directory, 'origin-key.pem');
     const auditFile = join(directory, 'audit', 'deploy-audit.jsonl');
-    const migrationPath = join(directory, '0004-local-deployment-drill.sql');
+    const migrationPath = join(directory, '0006-local-deployment-drill.sql');
     const initialDockerfile = join(directory, 'Dockerfile.initial');
     const deployedDockerfile = join(directory, 'Dockerfile.deployed');
     const unhealthyDockerfile = join(directory, 'Dockerfile.unhealthy');
@@ -387,7 +387,7 @@ test(
       );
       await writeFile(
         deployedDockerfile,
-        `FROM ${initialImage}\nUSER root\nCOPY --chown=node:node 0004-local-deployment-drill.sql /app/src/server/db/migrations/0004-local-deployment-drill.sql\nUSER node\n`,
+        `FROM ${initialImage}\nUSER root\nCOPY --chown=node:node 0006-local-deployment-drill.sql /app/src/server/db/migrations/0006-local-deployment-drill.sql\nUSER node\n`,
       );
       await runChecked('docker', ['build', '--tag', sourceImage, '.']);
       await runChecked('docker', [
@@ -474,7 +474,7 @@ test(
         '-c',
         "SELECT filename FROM migration_ledger WHERE applied_by_release = '2222222222222222222222222222222222222222';",
       ]);
-      assert.equal(migrations.stdout.trim(), '0004-local-deployment-drill.sql');
+      assert.equal(migrations.stdout.trim(), '0006-local-deployment-drill.sql');
 
       const failedCandidate = await run(
         'sh',
@@ -521,7 +521,7 @@ test(
           (record) =>
             record.image === deployedImage &&
             record.outcome === 'succeeded' &&
-            record.migrations.includes('0004-local-deployment-drill.sql'),
+            record.migrations.includes('0006-local-deployment-drill.sql'),
         ),
       );
       assert.ok(
