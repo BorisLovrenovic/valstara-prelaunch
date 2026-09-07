@@ -627,6 +627,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Build:** The form island: inline validation, submission states, error rendering from the closed code set, the signed ref carried as a hidden field, and Turnstile mounted invisibly. **It must work with JavaScript disabled** — the island only adds inline validation.
 
+**Turnstile client mount and the no-third-party-request property — founder-authorised 2026-09-08 (Option A).** Mounting Turnstile client-side loads `challenges.cloudflare.com/turnstile/v0/api.js`, an off-origin request that the standing "no third-party request from a rendered page" rule and `docs/legal/compliance.md#3` otherwise forbid (only the flagged Trustpilot widget was allowlisted). The founder authorised treating Turnstile as a second sanctioned rendered-page request: it is consent-free (no cookie, no fingerprinting) and Cloudflare already fronts the whole zone as the site's processor. So this ticket — the first to put Turnstile in the browser — owns the reconciliation under standing rule 19: it extends the third-party-request gate's allowlist to permit an **always-on** (no flag) `challenges.cloudflare.com` entry scoped to the signup island, adds the public `TURNSTILE_SITE_KEY` config (a temporary placeholder until the real Cloudflare key is provisioned; E12-05 swaps it in with the production secret), and updates ADR-006, ADR-007, `docs/legal/compliance.md#3` and the threat model to name Turnstile alongside Trustpilot. The signed ref field itself remains E4-02's to render; the island only carries it through unchanged.
+
 **Acceptance criteria:**
 - **The form posts and works with JavaScript disabled** — evidenced
 - Inline validation never blocks a submission the server would accept

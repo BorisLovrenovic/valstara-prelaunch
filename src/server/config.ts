@@ -7,7 +7,21 @@ const requiredKeys = [
   'RESEND_TEST_RECIPIENT',
   'TURNSTILE_SECRET_KEY',
 ] as const;
-const optionalKeys = ['HOST', 'NODE_ENV', 'PORT'] as const;
+const optionalKeys = [
+  'HOST',
+  'NODE_ENV',
+  'PORT',
+  'TURNSTILE_SITE_KEY',
+] as const;
+
+// The public Turnstile site key is rendered into the signup page so the widget
+// can mount client-side (E3-05, ADR-006). It is public, not a secret, so unlike
+// TURNSTILE_SECRET_KEY it carries a working default and never fails boot. The
+// default is Cloudflare's documented always-passing TEST site key — a temporary
+// placeholder until the founder provisions the real Cloudflare site key, which
+// E12-05 swaps in alongside the production Turnstile secret. Overridable by env
+// today so the founder can drop the real value in without a code change.
+export const turnstileTestSiteKey = '1x00000000000000000000AA';
 
 export const appEnvironmentKeys = [...requiredKeys, ...optionalKeys] as const;
 
@@ -31,6 +45,7 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     resendApiKey: requiredValue(environment, 'RESEND_API_KEY'),
     resendTestRecipient: recipient(environment),
     turnstileSecretKey: requiredValue(environment, 'TURNSTILE_SECRET_KEY'),
+    turnstileSiteKey: turnstileSiteKey(environment),
   };
   return Object.freeze(config);
 }
@@ -123,6 +138,16 @@ function port(environment: NodeJS.ProcessEnv): number | undefined {
     : invalid('PORT', 'must be an integer from 1 to 65535');
 }
 
+function turnstileSiteKey(environment: NodeJS.ProcessEnv): string {
+  const value = environment.TURNSTILE_SITE_KEY;
+  if (value === undefined || value === '') {
+    return turnstileTestSiteKey;
+  }
+  return value === value.trim() && !/\s/u.test(value)
+    ? value
+    : invalid('TURNSTILE_SITE_KEY', 'must be a site key without whitespace');
+}
+
 function host(environment: NodeJS.ProcessEnv): string | undefined {
   const value = environment.HOST;
   if (value === undefined || value === '') {
@@ -146,4 +171,5 @@ export interface AppConfig {
   readonly resendApiKey: string;
   readonly resendTestRecipient: string;
   readonly turnstileSecretKey: string;
+  readonly turnstileSiteKey: string;
 }

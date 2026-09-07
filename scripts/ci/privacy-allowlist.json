@@ -8,7 +8,12 @@
       "host": "widget.trustpilot.com",
       "pathPattern": "^src/(?:components|islands)/",
       "requiredFlag": "trustpilot.widget",
-      "reason": "The flagged Trustpilot widget is the sole approved off-origin rendered-page request."
+      "reason": "The flagged Trustpilot widget is one of two approved off-origin rendered-page requests; it stays behind its flag."
+    },
+    {
+      "host": "challenges.cloudflare.com",
+      "pathPattern": "^src/islands/SignupForm\\.astro$",
+      "reason": "Cloudflare Turnstile bot-defence widget (ADR-006, E3-05). Cloudflare already fronts the whole zone as processor, and the challenge is consent-free — no cookie, no fingerprinting. It is the one always-on off-origin request (no flag), sanctioned under Option A, founder-authorised 2026-09-08."
     }
   ]
 }

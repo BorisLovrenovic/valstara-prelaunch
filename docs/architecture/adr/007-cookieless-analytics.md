@@ -22,4 +22,6 @@ GA4 and a consent-management platform return at store launch, when ads and ecomm
 ## Consequences
 **The banner-free property is a code property**, and one careless dependency reverses it — hence the three gates and the rendered-page checks (`docs/testing/strategy.md`). The funnel is computable from **server-side events alone**, which also makes it robust to ad blockers.
 
+The third-party-request gate permits exactly two off-origin rendered-page requests, both Cloudflare-adjacent and both consent-free: the flagged Trustpilot widget, and the Cloudflare Turnstile challenge on the signup form (ADR-006, Option A, founder-authorised 2026-09-08). Turnstile sets no cookie and runs no fingerprinting API, so it costs nothing of the banner-free property; every other off-origin request still fails the gate.
+
 Reopens at store launch, deliberately, as a different decision for a different site.

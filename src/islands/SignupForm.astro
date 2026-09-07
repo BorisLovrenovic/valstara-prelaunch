@@ -1,0 +1,557 @@
+---
+import Button from '../components/button.astro';
+import Field from '../components/field.astro';
+import Input from '../components/input.astro';
+import Select from '../components/select.astro';
+import {
+  CANADA_COUNTRY_CODE,
+  canadaRegionOptions,
+  countryFieldCopy,
+  countryOptions,
+  regionFieldCopy,
+} from '../copy/country.ts';
+import { landingCopy } from '../copy/landing.ts';
+import { getConfig } from '../server/config.ts';
+
+interface Props {
+  // A geo *suggestion* (E3-04), or null when detection gave nothing to trust.
+  // The island never re-reads a header; it only leaves this server-chosen value
+  // in place, so detection prefills but never decides.
+  suggestedCountry: string | null;
+}
+
+const { suggestedCountry } = Astro.props;
+
+// The public Turnstile site key is rendered into the page so the widget can
+// mount client-side (ADR-006). It is public, not a secret — a temporary
+// placeholder today, swapped for the provisioned key in E12-05.
+const turnstileSiteKey = getConfig().turnstileSiteKey;
+---
+
+<valstara-signup-form data-sitekey={turnstileSiteKey}>
+  <form action="/api/signup" method="post">
+    <Field
+      controlId="signup-email"
+      description={landingCopy.form.hint}
+      descriptionId="signup-email-hint"
+      label={landingCopy.form.label}
+    >
+      <Input
+        id="signup-email"
+        name="email"
+        type="email"
+        autocomplete="email"
+        required
+        placeholder={landingCopy.form.placeholder}
+        aria-describedby="signup-email-hint signup-email-error"
+      />
+    </Field>
+    <p
+      class="signup-error"
+      id="signup-email-error"
+      data-error-for="email"
+      role="alert"
+      aria-atomic="true"
+      hidden
+    >
+    </p>
+
+    <Field controlId="signup-country" label={countryFieldCopy.label}>
+      <Select
+        id="signup-country"
+        name="country"
+        autocomplete="country"
+        required
+        aria-describedby="signup-country-error"
+      >
+        <option value="" disabled selected={suggestedCountry === null}>
+          {countryFieldCopy.placeholder}
+        </option>
+        {
+          countryOptions.map((option) => (
+            <option
+              value={option.code}
+              selected={option.code === suggestedCountry}
+            >
+              {option.name}
+            </option>
+          ))
+        }
+      </Select>
+    </Field>
+    <p
+      class="signup-error"
+      id="signup-country-error"
+      data-error-for="country"
+      role="alert"
+      aria-atomic="true"
+      hidden
+    >
+    </p>
+
+    {
+      /*
+      The region field is collected only for Canada, because Quebec changes
+      giveaway eligibility (ADR-018). It is always in the DOM and revealed by CSS
+      `:has()` when Canada is chosen — no client JavaScript in the reveal, so the
+      country selector stays zero-JS (E3-04). It is *required there* by the
+      server; the island's inline validation mirrors that rule and never accepts
+      what the server would reject.
+    */
+    }
+    <div class="signup-region" data-region-for={CANADA_COUNTRY_CODE}>
+      <Field controlId="signup-region" label={regionFieldCopy.label}>
+        <Select
+          id="signup-region"
+          name="region"
+          autocomplete="address-level1"
+          aria-describedby="signup-region-error"
+        >
+          <option value="">{regionFieldCopy.placeholder}</option>
+          {
+            canadaRegionOptions.map((option) => (
+              <option value={option.code}>{option.name}</option>
+            ))
+          }
+        </Select>
+      </Field>
+      <p
+        class="signup-error"
+        id="signup-region-error"
+        data-error-for="region"
+        role="alert"
+        aria-atomic="true"
+        hidden
+      >
+      </p>
+    </div>
+
+    {
+      /*
+      The signed ref (E4-02) rides through as a hidden field the server renders;
+      the island never reads or writes it — it simply posts the whole form, so
+      whatever hidden fields exist are carried through unchanged.
+    */
+    }
+    <input name="turnstile_token" type="hidden" />
+    <div class="signup-turnstile" data-turnstile-container></div>
+
+    <p
+      class="signup-error"
+      data-form-error
+      role="alert"
+      aria-atomic="true"
+      hidden
+    >
+    </p>
+    <p
+      class="signup-status"
+      data-form-status
+      role="status"
+      aria-live="polite"
+      hidden
+    >
+    </p>
+
+    <Button type="submit" data-submit>{landingCopy.form.submit}</Button>
+  </form>
+
+  <div
+    class="signup-success"
+    data-success
+    role="status"
+    aria-live="polite"
+    hidden
+  >
+  </div>
+</valstara-signup-form>
+
+{
+  /*
+  Cloudflare Turnstile's client widget. This off-origin request is the second
+  sanctioned rendered-page request (after the flagged Trustpilot widget): the
+  challenge is consent-free — no cookie, no fingerprinting — and Cloudflare
+  already fronts the whole zone. It is allowlisted in the third-party gate for
+  this exact file (Option A, founder-authorised 2026-09-08; ADR-006, ADR-007,
+  compliance §3). Loaded with explicit rendering so it does nothing until the
+  island renders it lazily on first interaction, keeping the initial page inert.
+*/
+}
+<script
+  is:inline
+  src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+  async
+  defer></script>
+
+<script>
+  import {
+    collectClientErrors,
+    serverErrorField,
+    type SignupClientError,
+    type SignupFieldName,
+  } from './signup-form.ts';
+  import { signupFormCopy } from '../copy/signup.ts';
+
+  interface TurnstileApi {
+    render(
+      element: HTMLElement,
+      options: Record<string, unknown>,
+    ): string | undefined;
+    reset(widgetId?: string): void;
+    ready(callback: () => void): void;
+  }
+
+  declare global {
+    interface Window {
+      turnstile?: TurnstileApi;
+    }
+  }
+
+  class ValstaraSignupForm extends HTMLElement {
+    #form: HTMLFormElement | null = null;
+    #submit: HTMLButtonElement | null = null;
+    #tokenInput: HTMLInputElement | null = null;
+    #turnstileContainer: HTMLElement | null = null;
+    #widgetId: string | undefined;
+    #turnstileStarted = false;
+    #inFlight = false;
+
+    connectedCallback(): void {
+      const form = this.querySelector('form');
+      if (!(form instanceof HTMLFormElement)) {
+        return;
+      }
+      this.#form = form;
+      this.#submit = form.querySelector('[data-submit]');
+      this.#tokenInput = form.querySelector('input[name="turnstile_token"]');
+      this.#turnstileContainer = form.querySelector(
+        '[data-turnstile-container]',
+      );
+
+      // With the island active, custom validation governs; native constraint
+      // validation would otherwise pop its own UI before the submit handler
+      // runs. With JavaScript disabled this line never runs, so the plain form
+      // keeps its native `required`/`type=email` validation and still posts.
+      form.noValidate = true;
+
+      form.addEventListener('submit', this.#onSubmit);
+      // A real visitor types their address first, so the invisible challenge is
+      // already resolving by the time they submit. Rendering lazily (never on
+      // page load) keeps the initial page free of any widget frame or shift.
+      this.querySelector('#signup-email')?.addEventListener(
+        'input',
+        this.#startTurnstile,
+        { once: true },
+      );
+    }
+
+    disconnectedCallback(): void {
+      this.#form?.removeEventListener('submit', this.#onSubmit);
+    }
+
+    readonly #startTurnstile = (): void => {
+      if (this.#turnstileStarted) {
+        return;
+      }
+      this.#turnstileStarted = true;
+      const container = this.#turnstileContainer;
+      const sitekey = this.dataset.sitekey;
+      if (container === null || sitekey === undefined) {
+        return;
+      }
+
+      let attempts = 0;
+      const tryRender = (): void => {
+        const turnstile = window.turnstile;
+        if (turnstile !== undefined) {
+          turnstile.ready(() => {
+            this.#widgetId = turnstile.render(container, {
+              sitekey,
+              appearance: 'interaction-only',
+              callback: (token: string) => {
+                if (this.#tokenInput !== null) {
+                  this.#tokenInput.value = token;
+                }
+              },
+              'expired-callback': () => {
+                if (this.#tokenInput !== null) {
+                  this.#tokenInput.value = '';
+                }
+              },
+              'error-callback': () => {
+                // Degrade quietly: the server still challenges, and the visitor
+                // can retry. Never block the form because the widget failed.
+                if (this.#tokenInput !== null) {
+                  this.#tokenInput.value = '';
+                }
+                return true;
+              },
+            });
+          });
+          return;
+        }
+        attempts += 1;
+        if (attempts <= 100) {
+          window.setTimeout(tryRender, 50);
+        }
+      };
+      tryRender();
+    };
+
+    readonly #onSubmit = (event: SubmitEvent): void => {
+      event.preventDefault();
+      if (this.#inFlight || this.#form === null) {
+        return;
+      }
+
+      const values = {
+        email: this.#fieldValue('#signup-email'),
+        country: this.#fieldValue('#signup-country'),
+        region: this.#fieldValue('#signup-region'),
+      };
+      const errors = collectClientErrors(values);
+      this.#renderFieldErrors(errors);
+      if (errors.length > 0) {
+        this.#focusField(errors[0]!.field);
+        return;
+      }
+
+      // Make sure the challenge is running even if the visitor never fired an
+      // input event (e.g. autofill straight to submit).
+      this.#startTurnstile();
+      void this.#send();
+    };
+
+    async #send(): Promise<void> {
+      if (this.#form === null) {
+        return;
+      }
+      this.#setInFlight(true);
+      try {
+        const response = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+          body: new FormData(this.#form),
+        });
+        const body: unknown = await response.json().catch(() => null);
+        this.#handleResponse(body);
+      } catch {
+        this.#showFormError(signupFormCopy.connection);
+        this.#setInFlight(false);
+      }
+    }
+
+    #handleResponse(body: unknown): void {
+      if (typeof body !== 'object' || body === null) {
+        this.#showFormError(signupFormCopy.connection);
+        this.#setInFlight(false);
+        return;
+      }
+      const record = body as Record<string, unknown>;
+
+      const status = record.status;
+      if (status === 'pending' || status === 'already_verified') {
+        this.#showSuccess(this.#messageOf(record.message));
+        return;
+      }
+      if (status === 'paused') {
+        this.#showFormError(this.#messageOf(record.message));
+        this.#setInFlight(false);
+        return;
+      }
+
+      const error = record.error;
+      if (typeof error === 'object' && error !== null) {
+        const details = error as Record<string, unknown>;
+        const code = typeof details.code === 'string' ? details.code : '';
+        const message = this.#messageOf(details.message);
+        if (serverErrorField(code) === 'email') {
+          this.#showFieldError('email', message);
+          this.querySelector<HTMLElement>('#signup-email')?.focus();
+        } else {
+          this.#showFormError(message);
+        }
+        if (code === 'challenge_failed' && this.#widgetId !== undefined) {
+          window.turnstile?.reset(this.#widgetId);
+        }
+        this.#setInFlight(false);
+        return;
+      }
+
+      this.#showFormError(signupFormCopy.connection);
+      this.#setInFlight(false);
+    }
+
+    #messageOf(value: unknown): string {
+      return typeof value === 'string' && value !== ''
+        ? value
+        : signupFormCopy.connection;
+    }
+
+    #fieldValue(selector: string): string {
+      const control = this.querySelector(selector);
+      return control instanceof HTMLInputElement ||
+        control instanceof HTMLSelectElement
+        ? control.value
+        : '';
+    }
+
+    #setInFlight(inFlight: boolean): void {
+      this.#inFlight = inFlight;
+      if (this.#submit !== null) {
+        this.#submit.disabled = inFlight;
+      }
+      const status = this.querySelector<HTMLElement>('[data-form-status]');
+      if (status !== null) {
+        status.textContent = inFlight ? signupFormCopy.submitting : '';
+        status.hidden = !inFlight;
+      }
+    }
+
+    #renderFieldErrors(errors: readonly SignupClientError[]): void {
+      const errored = new Set(errors.map((entry) => entry.field));
+      for (const field of ['email', 'country', 'region'] as const) {
+        if (!errored.has(field)) {
+          this.#clearFieldError(field);
+        }
+      }
+      for (const error of errors) {
+        this.#showFieldError(error.field, error.message);
+      }
+    }
+
+    #showFieldError(field: SignupFieldName, message: string): void {
+      const element = this.querySelector<HTMLElement>(
+        `[data-error-for="${field}"]`,
+      );
+      if (element !== null) {
+        element.textContent = message;
+        element.hidden = false;
+      }
+      this.querySelector(`#signup-${field}`)?.setAttribute(
+        'aria-invalid',
+        'true',
+      );
+    }
+
+    #clearFieldError(field: SignupFieldName): void {
+      const element = this.querySelector<HTMLElement>(
+        `[data-error-for="${field}"]`,
+      );
+      if (element !== null) {
+        element.textContent = '';
+        element.hidden = true;
+      }
+      this.querySelector(`#signup-${field}`)?.removeAttribute('aria-invalid');
+    }
+
+    #showFormError(message: string): void {
+      const element = this.querySelector<HTMLElement>('[data-form-error]');
+      if (element !== null) {
+        element.textContent = message;
+        element.hidden = false;
+      }
+    }
+
+    #focusField(field: SignupFieldName): void {
+      this.querySelector<HTMLElement>(`#signup-${field}`)?.focus();
+    }
+
+    #showSuccess(message: string): void {
+      const success = this.querySelector<HTMLElement>('[data-success]');
+      if (success !== null) {
+        success.textContent = message;
+        success.hidden = false;
+      }
+      if (this.#form !== null) {
+        this.#form.hidden = true;
+      }
+    }
+  }
+
+  if (!customElements.get('valstara-signup-form')) {
+    customElements.define('valstara-signup-form', ValstaraSignupForm);
+  }
+</script>
+
+{
+  /*
+    All styles are global and hand-scoped under the custom element. A scoped
+    style block would make Astro stamp a data-astro-cid attribute on every
+    element the component renders — the form, the selects and each option —
+    and the country selector's server-rendered markup (E3-04) is asserted
+    against verbatim, so it must stay attribute-clean. Global-and-hand-scoped
+    keeps that markup clean while confining these rules to the island. Values
+    are tokens only (standing rule 16). This is a template comment, not an HTML
+    one, so its text never reaches the page.
+  */
+}
+<style is:global>
+  valstara-signup-form {
+    display: block;
+  }
+
+  /*
+    `:not([hidden])` so an author `display` never wins over the `hidden`
+    attribute: author rules beat the UA `[hidden] { display: none }` by origin,
+    so a bare `form { display: grid }` would keep a `form.hidden = true` form
+    visible. The island hides the form this way once a signup succeeds.
+  */
+  valstara-signup-form form:not([hidden]) {
+    display: grid;
+    gap: var(--space-2);
+    margin-block-start: var(--space-2);
+  }
+
+  /*
+    The Canada-only region field. Hidden until Canada is the selected country,
+    revealed with `:has()` on the live `:checked` option — no JavaScript, so the
+    reveal itself stays zero-JS (E3-04). The `CA` literal is Canada's ISO 3166-1
+    alpha-2 code (CANADA_COUNTRY_CODE, ADR-018); a stylesheet selector cannot
+    read the constant, so the field also carries it as `data-region-for` for the
+    markup and tests to reconcile against.
+  */
+  .signup-region {
+    display: none;
+  }
+
+  valstara-signup-form
+    form:has(#signup-country option[value='CA']:checked)
+    .signup-region {
+    display: block;
+  }
+
+  valstara-signup-form .signup-error {
+    margin: 0;
+    padding-inline-start: var(--space-1);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    border-inline-start: medium solid var(--error);
+  }
+
+  valstara-signup-form .signup-status {
+    margin: 0;
+    color: var(--ink-600);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  valstara-signup-form .signup-turnstile:empty {
+    display: none;
+  }
+
+  valstara-signup-form .signup-success {
+    margin-block-start: var(--space-2);
+    padding: var(--space-3);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-3);
+    line-height: var(--leading-3);
+    background-color: var(--surface);
+    border: thin solid var(--line);
+    border-radius: var(--radius-card);
+  }
+</style>

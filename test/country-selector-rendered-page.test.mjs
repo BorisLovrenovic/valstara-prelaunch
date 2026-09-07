@@ -188,13 +188,32 @@ test('the Canada-only region field is always in the DOM and revealed by CSS, not
   );
 });
 
-test('adding the country and region fields ships no new script — still only the theme toggle', async () => {
+test('the country and region reveal ships no script of its own — the reveal stays pure CSS', async () => {
   const { body } = await renderLanding({ 'CF-IPCountry': 'CA' });
 
-  const scripts = [...body.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gu)];
-  assert.equal(scripts.length, 2, 'only the two theme-toggle scripts ship');
-  for (const [, content] of scripts) {
-    assert.match(content, /valstara-theme/u);
-  }
+  // The Canada region reveal is pure CSS `:has()` (E3-04): it adds no script.
+  // The only scripts on the page are the two theme-toggle scripts, the one
+  // signup form island (E3-05), and Cloudflare's Turnstile loader.
+  const scripts = [
+    ...body.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gu),
+  ].map(([, attributes, content]) => ({ attributes, content }));
+  const theme = scripts.filter((script) =>
+    script.content.includes('valstara-theme'),
+  );
+  const signupIsland = scripts.filter((script) =>
+    script.content.includes('valstara-signup-form'),
+  );
+  const turnstileLoader = scripts.filter((script) =>
+    script.attributes.includes('challenges.cloudflare.com/turnstile'),
+  );
+
+  assert.equal(theme.length, 2, 'the two theme-toggle scripts ship');
+  assert.equal(signupIsland.length, 1, 'exactly one signup form island ships');
+  assert.equal(turnstileLoader.length, 1, 'the Turnstile loader ships once');
+  assert.equal(
+    scripts.length,
+    theme.length + signupIsland.length + turnstileLoader.length,
+    'the region reveal adds no script and no third island appears',
+  );
   assert.doesNotMatch(body, /client:(?:load|idle|visible|media|only)/u);
 });

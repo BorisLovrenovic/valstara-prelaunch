@@ -34,7 +34,7 @@ The campaign's single unrecoverable technical failure. It has two shapes.
 
 ## T4 — A privacy failure forces a consent banner
 
-The site operates with no banner because it sets no non-essential cookie and makes no third-party request. **One careless dependency reverses that**, and the cost is not a banner — it is the conversion the banner takes and the measurement it corrupts.
+The site operates with no banner because it sets no non-essential cookie and makes no unsanctioned third-party request. The only off-origin requests a rendered page may make are two consent-free, Cloudflare-adjacent exceptions on the third-party gate's allowlist — the flagged Trustpilot widget and the Cloudflare Turnstile challenge (ADR-006, Option A, founder-authorised 2026-09-08) — neither of which sets a cookie or fingerprints. **One careless dependency reverses that**, and the cost is not a banner — it is the conversion the banner takes and the measurement it corrupts.
 
 **Controls:** three CI gates — the cookie/storage rule, the fingerprinting rule and the third-party request rule — each with a planted fixture. Referral attribution is server-side and signed. Analytics is cookieless and its event registry is asserted free of personal data. **A new dependency that reaches the browser requires an explicit note in the PR describing what it loads.**
 
@@ -80,7 +80,7 @@ Each has a planted red-path fixture; **a gate that cannot be shown to fail is no
 | Dependency scan | No unallowlisted advisory; allowlist entries carry justification **and a future expiry** |
 | Cookie and storage rule | No non-essential cookie or storage identifier |
 | Fingerprinting rule | No browser-entropy API anywhere |
-| Third-party request rule | No request off-origin from a rendered page |
+| Third-party request rule | No request off-origin from a rendered page, save the two allowlisted Cloudflare-adjacent exceptions (flagged Trustpilot, always-on Turnstile) |
 | Vendor-boundary rule | No email SDK outside its provider module |
 | Forbidden-copy scan | No never-use string ships |
 | Inline-prose scan | No customer-visible prose is inline in an `.astro` component; it lives in the copy layer |
