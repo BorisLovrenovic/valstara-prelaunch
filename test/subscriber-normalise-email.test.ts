@@ -6,7 +6,7 @@ import test from 'node:test';
 
 import type { QueryResultRow } from 'pg';
 
-import { createThinSignupService } from '../src/server/e1-11/signup.ts';
+import { createSignupService } from '../src/server/subscriber/signup.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
 import {
   createPool,
@@ -119,7 +119,9 @@ test('Unicode and internationalised domains are handled without throwing', () =>
 
 test('the signup call site normalises before its uniqueness check', () => {
   const rawSource = readFileSync(
-    fileURLToPath(new URL('../src/server/e1-11/signup.ts', import.meta.url)),
+    fileURLToPath(
+      new URL('../src/server/subscriber/signup.ts', import.meta.url),
+    ),
     'utf8',
   );
   // Scan code only — comments legitimately mention the uniqueness check.
@@ -129,7 +131,7 @@ test('the signup call site normalises before its uniqueness check', () => {
 
   assert.match(
     signupSource,
-    /from '\.\.\/subscriber\/normalise-email\.ts'/,
+    /from '\.\/normalise-email\.ts'/,
     'signup must use the shared normaliseEmail, not a local normaliser',
   );
 
@@ -138,19 +140,19 @@ test('the signup call site normalises before its uniqueness check', () => {
   const flow = signupSource.slice(flowStart);
 
   const normaliseCall = flow.indexOf('normaliseEmail(');
-  const uniquenessCall = flow.indexOf('insertSignup(');
+  const uniquenessCall = flow.indexOf('upsertSubscriber(');
   assert.notEqual(normaliseCall, -1, 'the flow must call normaliseEmail');
   assert.notEqual(
     uniquenessCall,
     -1,
-    'the flow must reach the uniqueness insert',
+    'the flow must reach the uniqueness upsert',
   );
   assert.ok(
     normaliseCall < uniquenessCall,
     'normalisation must run before the uniqueness check',
   );
 
-  // The uniqueness check lives only inside insertSignup, which receives an
+  // The uniqueness check lives only inside upsertSubscriber, which receives an
   // already-normalised value — no ON CONFLICT / findByNormalised precedes it.
   assert.doesNotMatch(
     flow.slice(0, normaliseCall),
@@ -214,11 +216,9 @@ function createRecordingPool(recorded: RecordedStatement[]): DatabasePool {
 
 test('the signup call site binds the normalised key before it touches the uniqueness structure', async () => {
   const recorded: RecordedStatement[] = [];
-  const signup = createThinSignupService(createRecordingPool(recorded), {
+  const signup = createSignupService(createRecordingPool(recorded), {
     clock: () => new Date('2026-09-06T12:00:00.000Z'),
-    ipPrefixPepper: 'test-pepper',
-    rateLimitMaximumAttempts: 10,
-    async sendVerificationTestMail() {
+    async sendVerificationMail() {
       return undefined;
     },
   });
@@ -228,7 +228,7 @@ test('the signup call site binds the normalised key before it touches the unique
   // first. Raw local part 'u.s.e.r+promo' normalises to 'user'.
   const result = await signup({
     email: 'u.s.e.r+promo@gmail.com',
-    ipAddress: '203.0.113.10',
+    country: 'GB',
     verificationUrl: (token) => `http://valstara.test/verify?token=${token}`,
   });
   assert.equal(result.kind, 'created');
@@ -296,11 +296,9 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
 
 test('the three Gmail variants collide on one subscriber row', async () => {
   const fixture = await createDatabaseFixture();
-  const signup = createThinSignupService(fixture.database, {
+  const signup = createSignupService(fixture.database, {
     clock: () => new Date('2026-09-06T12:00:00.000Z'),
-    ipPrefixPepper: 'test-pepper',
-    rateLimitMaximumAttempts: 10,
-    async sendVerificationTestMail() {
+    async sendVerificationMail() {
       return undefined;
     },
   });
@@ -315,7 +313,7 @@ test('the three Gmail variants collide on one subscriber row', async () => {
       results.push(
         await signup({
           email: raw,
-          ipAddress: '203.0.113.10',
+          country: 'GB',
           verificationUrl: (token) =>
             `http://valstara.test/verify?token=${token}`,
         }),
@@ -323,8 +321,8 @@ test('the three Gmail variants collide on one subscriber row', async () => {
     }
 
     assert.equal(results[0]?.kind, 'created');
-    assert.equal(results[1]?.kind, 'duplicate');
-    assert.equal(results[2]?.kind, 'duplicate');
+    assert.equal(results[1]?.kind, 'existing');
+    assert.equal(results[2]?.kind, 'existing');
 
     const rows = await fixture.database.list<{
       email: string;
@@ -347,11 +345,9 @@ test('the three Gmail variants collide on one subscriber row', async () => {
 
 test('a non-Gmail dotted address is stored as a distinct row', async () => {
   const fixture = await createDatabaseFixture();
-  const signup = createThinSignupService(fixture.database, {
+  const signup = createSignupService(fixture.database, {
     clock: () => new Date('2026-09-06T12:00:00.000Z'),
-    ipPrefixPepper: 'test-pepper',
-    rateLimitMaximumAttempts: 10,
-    async sendVerificationTestMail() {
+    async sendVerificationMail() {
       return undefined;
     },
   });
@@ -359,12 +355,12 @@ test('a non-Gmail dotted address is stored as a distinct row', async () => {
   try {
     const dotted = await signup({
       email: 'u.s.e.r@example.com',
-      ipAddress: '203.0.113.20',
+      country: 'GB',
       verificationUrl: (token) => `http://valstara.test/verify?token=${token}`,
     });
     const undotted = await signup({
       email: 'user@example.com',
-      ipAddress: '203.0.113.20',
+      country: 'GB',
       verificationUrl: (token) => `http://valstara.test/verify?token=${token}`,
     });
 

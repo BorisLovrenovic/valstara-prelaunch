@@ -11,7 +11,8 @@ The waitlist row and its lifecycle: create, normalise, verify, expire, unsubscri
 ## Exposed interface
 ```ts
 interface SubscriberService {
-  signup(input: SignupInput): Promise<{ subscriber: Subscriber; created: boolean }>
+  // Discriminated outcome: created | existing | already_verified | invalid_email
+  signup(input: SignupInput): Promise<SignupOutcome>
   findByNormalised(email: string): Promise<Subscriber | null>
   markVerified(id: string, at: Date): Promise<void>
   assignAccessWindow(id: string): Promise<AccessWindow>
@@ -24,7 +25,7 @@ interface SubscriberService {
 
 ## Rules
 - **`normaliseEmail()` runs before any uniqueness check.** Lowercase, strip `+tag` (all domains), remove dots for **Gmail-family domains only** — `gmail.com` and `googlemail.com`; every other provider keeps its dots. The family is not cross-canonicalised (a `googlemail.com` address is not rewritten to `gmail.com`). The normalised form is the unique key; the raw form is what is displayed and mailed. A malformed address, or one whose local part is emptied by tag/dot removal, is rejected (the function returns `null`); Unicode and internationalised domains never throw. This one step removes the cheapest referral attack entirely.
-- **`signup()` is idempotent on `email_normalised`.** A repeat for a `pending` row re-queues the verification mail subject to its own rate limit; a repeat for a `verified` row does not.
+- **`signup()` is idempotent on `email_normalised`.** A repeat for a `pending` row re-queues the verification mail subject to its own rate limit; a repeat for a `verified` row does not. The outcome it returns — `created`, `existing` (a pending repeat, whether the mail was re-queued or throttled), `already_verified`, or `invalid_email` — is what the signup route maps onto the closed code set. The per-address send window has a limit of one, which is also what makes a concurrent double-submit produce exactly one verification email.
 - **`referred_by_id` is write-once**, enforced in the schema. Reassignment is a defect, not a feature.
 - **`disqualify()` requires an actor and writes an audit record.** There is no code path that sets `disqualified` without one.
 - **`anonymise()` never deletes the row** where referral edges reference it — it nulls the personal fields, so counts stay defensible and no personal data remains.
