@@ -28,7 +28,7 @@ The waitlist row.
 | `email_domain` | text not null | Denormalised for blocklist and analytics queries |
 | `status` | text not null | `pending` · `verified` · `expired` · `unsubscribed` · `bounced` · `disqualified` |
 | `country` | char(2) | ISO 3166-1 alpha-2. **Confirmed by the person**, never by detection |
-| `country_detected` | char(2) | `CF-IPCountry` at signup. Diagnostic only; never drives eligibility |
+| `country_detected` | char(2) | Reserved for the `CF-IPCountry` suggestion at signup — diagnostic only, never drives eligibility. **Unpopulated as of E3-04**: the geo module (`src/server/geo`) returns the suggestion for prefill only, and no ticket yet stamps it onto the row. Column exists from E1-03 so a later ticket can write it additively |
 | `region` | text | Only collected where it changes eligibility — currently Canada, for Quebec (ADR-018) |
 | `category_preference` | text[] | From the survey. Carried into the handoff |
 | `source` | text | Bucketed acquisition source |

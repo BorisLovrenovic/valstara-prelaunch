@@ -331,9 +331,16 @@ test('tab order follows the visual reading order with no focus trap', async () =
   );
   assert.equal(positiveTabindex, 0, 'no element uses a positive tabindex');
 
-  // Tag every focusable in DOM order, and record each one's on-screen box.
+  // Tag every focusable in DOM order, and record each one's on-screen box. A
+  // control that renders no box — a `display:none` element, such as the
+  // Canada-only region select before Canada is chosen — is not in the tab order
+  // and the keyboard walk below never reaches it, so it is excluded here: "tab
+  // order follows reading order" ranges over the controls that are actually
+  // tabbable.
   const layout = await page.evaluate((selector) => {
-    const elements = [...globalThis.document.querySelectorAll(selector)];
+    const elements = [...globalThis.document.querySelectorAll(selector)].filter(
+      (element) => element.getClientRects().length > 0,
+    );
     return elements.map((element, index) => {
       element.setAttribute('data-a11y-order', String(index));
       const rectangle = element.getBoundingClientRect();
