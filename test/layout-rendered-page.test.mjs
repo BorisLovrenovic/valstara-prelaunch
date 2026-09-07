@@ -192,25 +192,39 @@ test('the shell exposes one main landmark and a skip link as the first focusable
   await context.close();
 });
 
-test('the shell ships no client JavaScript beyond the theme toggle island', async () => {
+test('the landing page ships only the theme toggle and signup form islands', async () => {
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(browserOrigin);
 
-  const scripts = await page.locator('script').all();
+  // The shell itself adds only the theme toggle; the landing page adds the one
+  // signup form island (E3-05) plus Cloudflare's Turnstile loader, the sole
+  // always-on off-origin request (ADR-006, Option A). Every script must fall
+  // into one of these three buckets — a stray script or a third island fails.
+  const scripts = await page.locator('script').evaluateAll((elements) =>
+    elements.map((element) => ({
+      content: element.textContent ?? '',
+      src: element.getAttribute('src') ?? '',
+    })),
+  );
+  const theme = scripts.filter((script) =>
+    script.content.includes('valstara-theme'),
+  );
+  const signupIsland = scripts.filter((script) =>
+    script.content.includes('valstara-signup-form'),
+  );
+  const turnstileLoader = scripts.filter((script) =>
+    script.src.includes('challenges.cloudflare.com/turnstile'),
+  );
+
+  assert.equal(theme.length, 2, 'the toggle bootstrap and island scripts ship');
+  assert.equal(signupIsland.length, 1, 'exactly one signup form island ships');
+  assert.equal(turnstileLoader.length, 1, 'the Turnstile loader ships once');
   assert.equal(
     scripts.length,
-    2,
-    'only the toggle bootstrap and island scripts ship',
+    theme.length + signupIsland.length + turnstileLoader.length,
+    'no other script ships (no third island)',
   );
-  for (const script of scripts) {
-    const content = await script.evaluate((element) => element.textContent);
-    assert.match(
-      content,
-      /valstara-theme/u,
-      'every shipped script belongs to the theme toggle island',
-    );
-  }
 
   await context.close();
 });

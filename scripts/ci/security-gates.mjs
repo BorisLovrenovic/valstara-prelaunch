@@ -336,12 +336,18 @@ function hostFromUrl(value) {
 }
 
 function isAllowedThirdParty(host, file, policy) {
-  return policy.thirdPartyRequests.some(
-    (entry) =>
-      entry.host === host &&
-      new RegExp(entry.pathPattern).test(file.path) &&
-      file.content.includes(entry.requiredFlag),
-  );
+  return policy.thirdPartyRequests.some((entry) => {
+    if (entry.host !== host || !new RegExp(entry.pathPattern).test(file.path)) {
+      return false;
+    }
+    // A flag-gated exception (Trustpilot) is only permitted where its flag is
+    // named in the file; an always-on exception (Turnstile — a core security
+    // control, never flag-gated) declares no requiredFlag and needs no marker.
+    return (
+      entry.requiredFlag === undefined ||
+      file.content.includes(entry.requiredFlag)
+    );
+  });
 }
 
 function scanThirdPartyRequests(files) {

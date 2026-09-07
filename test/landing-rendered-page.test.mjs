@@ -179,23 +179,36 @@ test('with signup.enabled off, an honest paused message replaces the form', asyn
   assert.equal(setCookie, null);
 });
 
-test('the landing page ships only the theme toggle island, and no other', async () => {
-  // Measured from the built-and-served output: the one interactive island the
-  // landing page carries is the theme toggle (its inline bootstrap plus its
-  // island script). The signup form is static here; E3-05 adds the SignupForm
-  // island once its Turnstile, signed-ref and validation dependencies exist.
+test('the landing page ships only the theme toggle and signup form islands', async () => {
+  // Measured from the built-and-served output. The landing page carries two
+  // islands — the theme toggle (its inline bootstrap plus its island script) and
+  // the signup form (E3-05) — plus Cloudflare's Turnstile loader, the one
+  // always-on off-origin request (ADR-006, Option A). Every script must fall
+  // into one of these three buckets; a third island or a stray script fails.
   const { body } = await renderLanding(true);
 
-  const scripts = [...body.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gu)];
-  assert.equal(scripts.length, 2, 'only the two theme-toggle scripts ship');
-  for (const [, content] of scripts) {
-    assert.match(
-      content,
-      /valstara-theme/u,
-      'every shipped script belongs to the theme toggle island',
-    );
-  }
+  const scripts = [
+    ...body.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gu),
+  ].map(([, attributes, content]) => ({ attributes, content }));
+  const theme = scripts.filter((script) =>
+    script.content.includes('valstara-theme'),
+  );
+  const signupIsland = scripts.filter((script) =>
+    script.content.includes('valstara-signup-form'),
+  );
+  const turnstileLoader = scripts.filter((script) =>
+    script.attributes.includes('challenges.cloudflare.com/turnstile'),
+  );
 
-  // No third island is introduced, and no client directive leaks into the page.
+  assert.equal(theme.length, 2, 'the two theme-toggle scripts ship');
+  assert.equal(signupIsland.length, 1, 'exactly one signup form island ships');
+  assert.equal(turnstileLoader.length, 1, 'the Turnstile loader ships once');
+  assert.equal(
+    scripts.length,
+    theme.length + signupIsland.length + turnstileLoader.length,
+    'no other script ships (no third island)',
+  );
+
+  // No hydrated framework island is introduced, and no client directive leaks.
   assert.ok(!/client:(?:load|idle|visible|media|only)/u.test(body));
 });

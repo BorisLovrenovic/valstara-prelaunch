@@ -63,6 +63,11 @@
     "content": "<script src=\"https://widget.trustpilot.com/fixture.js\"></script>\n",
     "diagnostic": "\\[third-party\\]"
   },
+  "turnstile-outside-island": {
+    "path": "src/components/ci-turnstile-fixture.astro",
+    "content": "<script src=\"https://challenges.cloudflare.com/turnstile/v0/api.js\"></script>\n",
+    "diagnostic": "\\[third-party\\]"
+  },
   "vendor-boundary": {
     "path": "src/server/ci-vendor-boundary-fixture.ts",
     "content": "import { Resend } from 'resend';\nexport const provider = Resend;\n",

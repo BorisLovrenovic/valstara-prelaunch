@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import {
   appEnvironmentKeys,
   ConfigurationError,
+  turnstileTestSiteKey,
   validateConfig,
 } from '../src/server/config.ts';
 
@@ -72,7 +73,32 @@ test('E1-12 validates and types the complete application environment', () => {
     resendApiKey: 'local-test-resend-key',
     resendTestRecipient: 'delivered@resend.dev',
     turnstileSecretKey: 'local-test-turnstile-secret',
+    turnstileSiteKey: turnstileTestSiteKey,
   });
+});
+
+test('E3-05 defaults the public site key to the placeholder and honours an override', () => {
+  // The public Turnstile site key is not a secret and never fails boot: absent,
+  // it falls back to the temporary Cloudflare test key (swapped for the real one
+  // in E12-05); present, the provided value wins.
+  assert.equal(
+    validateConfig(withVariable('TURNSTILE_SITE_KEY', undefined))
+      .turnstileSiteKey,
+    turnstileTestSiteKey,
+  );
+  assert.equal(
+    validateConfig(withVariable('TURNSTILE_SITE_KEY', '0x4AAAAAAAreal'))
+      .turnstileSiteKey,
+    '0x4AAAAAAAreal',
+  );
+  assert.throws(
+    () => validateConfig(withVariable('TURNSTILE_SITE_KEY', 'has space')),
+    (error) => {
+      assert.ok(error instanceof ConfigurationError);
+      assert.equal(error.variableName, 'TURNSTILE_SITE_KEY');
+      return true;
+    },
+  );
 });
 
 test('E1-12 applies only the documented Node adapter defaults', () => {

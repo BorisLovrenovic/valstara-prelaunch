@@ -13,3 +13,19 @@ export const signupCopy = {
   unavailable: "We can't take signups right now — try again in a few minutes.",
   internal: 'Something went wrong — please try again in a few minutes.',
 } as const;
+
+/**
+ * Copy the signup form *island* (E3-05) renders client-side. Server responses
+ * already carry their own copy-layer message (see `signupCopy` and the route's
+ * error envelope), so these cover only what the island decides on its own:
+ * inline required-field validation before a request is sent, the in-flight
+ * status, and a connection failure where no response comes back at all.
+ */
+export const signupFormCopy = {
+  submitting: 'Adding you to the waitlist…',
+  connection:
+    "We couldn't reach the waitlist just now — check your connection and try again.",
+  emailRequired: 'Enter your email address.',
+  countryRequired: 'Select your country.',
+  regionRequired: 'Select your province or territory.',
+} as const;
