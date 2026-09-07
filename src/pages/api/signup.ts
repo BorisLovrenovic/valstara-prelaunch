@@ -1,8 +1,10 @@
 import type { APIRoute } from 'astro';
+import { randomUUID } from 'node:crypto';
 
 import { signupCopy } from '../../copy/signup.ts';
 import { getConfig } from '../../server/config.ts';
 import { DatabaseUnavailableError } from '../../server/db/errors.ts';
+import { createFraudFlagRepository } from '../../server/db/fraud-flag.ts';
 import { createPool, type DatabasePool } from '../../server/db/pool.ts';
 import { getFlagService } from '../../server/flags/app-service.ts';
 import { consumeRateLimit } from '../../server/ratelimit/consume.ts';
@@ -13,9 +15,18 @@ import {
   type SignupOutcome,
 } from '../../server/subscriber/signup.ts';
 import { createResendTestMailSender } from '../../server/subscriber/verification-mail.ts';
+import {
+  verifyTurnstileToken,
+  type TurnstileOutcome,
+} from '../../server/turnstile/verify.ts';
 
 const ipRateLimitWindowMs = 15 * 60 * 1_000;
 const ipRateLimitMaxAttempts = 5;
+// The Turnstile provider-timeout path cannot confirm the challenge, so it falls
+// through to a stricter per-prefix limit than a confirmed request (ADR-006,
+// fallbacks.md "Turnstile unavailable"). Its own bucket, so it does not share a
+// counter with confirmed signups from the same prefix.
+const strictIpRateLimitMaxAttempts = 2;
 const maxEmailLength = 254;
 const maxRegionLength = 64;
 
@@ -47,12 +58,14 @@ const errorMessages: Record<SignupErrorCode, string> = {
 
 export interface SignupRouteDependencies {
   readonly isSignupEnabled: () => Promise<boolean>;
-  readonly verifyTurnstile: (token: string) => Promise<boolean>;
+  readonly verifyTurnstile: (token: string) => Promise<TurnstileOutcome>;
   readonly consumeIpRateLimit: (
     ipAddress: string,
     now: Date,
+    strict: boolean,
   ) => Promise<'ok' | 'rate_limited'>;
   readonly signup: (input: SignupInput) => Promise<SignupOutcome>;
+  readonly flagChallengeTimeout: (subscriberId: string) => Promise<void>;
   readonly clock?: () => Date;
 }
 
@@ -152,20 +165,30 @@ export function createSignupRoute(
       return errorResponse('invalid_input');
     }
 
-    // 1. Turnstile, server-side, before any other work.
+    // 1. Turnstile, server-side, before any other work. A missing token is a
+    // failed challenge; a rejected verdict fails closed. A provider timeout
+    // does not reject a real person — it accepts under strict limits and flags
+    // the row further down (ADR-006).
     const turnstileToken = formData.get('turnstile_token');
-    if (typeof turnstileToken !== 'string' || turnstileToken === '') {
+    if (typeof turnstileToken !== 'string') {
       return errorResponse('challenge_failed');
     }
-    if (!(await dependencies.verifyTurnstile(turnstileToken))) {
+    const challenge = await dependencies.verifyTurnstile(turnstileToken);
+    if (challenge === 'rejected') {
       return errorResponse('challenge_failed');
     }
+    const challengeTimedOut = challenge === 'unavailable';
 
-    // 2. Rate-limit per hashed IP prefix.
+    // 2. Rate-limit per hashed IP prefix — the strict window when the challenge
+    // could not be confirmed.
     const now = clock();
     try {
       if (
-        (await dependencies.consumeIpRateLimit(clientAddress, now)) !== 'ok'
+        (await dependencies.consumeIpRateLimit(
+          clientAddress,
+          now,
+          challengeTimedOut,
+        )) !== 'ok'
       ) {
         return errorResponse('rate_limited');
       }
@@ -206,6 +229,20 @@ export function createSignupRoute(
       });
     }
 
+    // 5. Flag the row for review when the challenge timed out — the subscriber
+    // now exists (created, or an existing pending row). Best-effort: the row is
+    // already committed and safe, so a failed flag write never turns a real
+    // signup into an error (fallbacks.md — "a signup that reached PostgreSQL is
+    // safe").
+    if (challengeTimedOut) {
+      try {
+        await dependencies.flagChallengeTimeout(outcome.subscriber.id);
+      } catch {
+        // The review flag is metadata; losing it degrades the queue, it never
+        // touches the committed subscriber row.
+      }
+    }
+
     // created or existing pending → the same honest "check your inbox", with
     // no position, count or rank (a pending row has no honest position).
     return jsonResponse(200, {
@@ -215,51 +252,32 @@ export function createSignupRoute(
   };
 }
 
-async function verifyInlineTurnstile(token: string): Promise<boolean> {
-  const secret = getConfig().turnstileSecretKey;
-
-  try {
-    const verification = await fetch(
-      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ response: token, secret }),
-      },
-    );
-    if (!verification.ok) {
-      return false;
-    }
-
-    const result: unknown = await verification.json();
-    return (
-      typeof result === 'object' &&
-      result !== null &&
-      'success' in result &&
-      result.success === true
-    );
-  } catch {
-    return false;
-  }
-}
-
 function defaultDependencies(): SignupRouteDependencies {
   const config = getConfig();
   return {
     isSignupEnabled: () => getFlagService().isEnabled('signup.enabled'),
-    verifyTurnstile: verifyInlineTurnstile,
-    async consumeIpRateLimit(ipAddress, now) {
+    // Server-side verification lives in the turnstile module, the only consumer
+    // of the secret. The raw client address is not forwarded to the provider —
+    // it stays in the truncate-then-hash rate-limit path (standing rule 9).
+    verifyTurnstile: (token) => verifyTurnstileToken(token),
+    async consumeIpRateLimit(ipAddress, now, strict) {
       const prefixHash = hashedIpPrefix(ipAddress, config.ipPrefixPepper);
       if (prefixHash === null) {
         return 'rate_limited';
       }
+      const key = strict
+        ? `signup:ip:strict:${prefixHash}`
+        : `signup:ip:${prefixHash}`;
+      const limit = strict
+        ? strictIpRateLimitMaxAttempts
+        : ipRateLimitMaxAttempts;
       const count = await consumeRateLimit(
         getDatabase(),
-        `signup:ip:${prefixHash}`,
+        key,
         ipRateLimitWindowMs,
         now,
       );
-      return count > ipRateLimitMaxAttempts ? 'rate_limited' : 'ok';
+      return count > limit ? 'rate_limited' : 'ok';
     },
     signup: (input) =>
       createSignupService(getDatabase(), {
@@ -268,6 +286,12 @@ function defaultDependencies(): SignupRouteDependencies {
           config.resendTestRecipient,
         ),
       })(input),
+    async flagChallengeTimeout(subscriberId) {
+      await createFraudFlagRepository(getDatabase()).insertChallengeTimeoutFlag({
+        id: randomUUID(),
+        subscriberId,
+      });
+    },
   };
 }
 

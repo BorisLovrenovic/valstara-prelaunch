@@ -103,9 +103,11 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 ## `fraud_flag`
 
-`id` · `subscriber_id` · `kind` (`disposable_domain` · `no_mx` · `self_referral` · `duplicate_identity` · `ip_velocity` · `manual`) · `detail` jsonb · `state` (`open` · `dismissed` · `upheld`) · `reviewed_by` · `reviewed_at` · `created_at`.
+`id` · `subscriber_id` · `kind` (`disposable_domain` · `no_mx` · `self_referral` · `duplicate_identity` · `ip_velocity` · `manual` · `challenge_timeout`) · `detail` jsonb · `state` (`open` · `dismissed` · `upheld`) · `reviewed_by` · `reviewed_at` · `created_at`.
 
 **A flag never changes `subscriber.status` by itself.** Only a human upholding a flag can produce a `disqualified` subscriber, and that action is audited.
+
+**`challenge_timeout`** is the review flag raised when Cloudflare Turnstile is unreachable at signup: the signup is accepted under strict rate limits and the row is flagged (ADR-006, `fallbacks.md` "Turnstile unavailable" → P2). It is the one `kind` written outside the E5 fraud module — the signup route writes it through a minimal `server/db` path (E3-03, founder-authorised 2026-09-07, added by migration `0005`). The fraud module owns every other kind.
 
 ## `email_send`
 

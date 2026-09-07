@@ -44,12 +44,13 @@ function deps(
 ): SignupRouteDependencies {
   return {
     isSignupEnabled: async () => true,
-    verifyTurnstile: async () => true,
+    verifyTurnstile: async () => 'verified',
     consumeIpRateLimit: async () => 'ok',
     signup: async (): Promise<SignupOutcome> => ({
       kind: 'created',
       subscriber: pendingSubscriber,
     }),
+    flagChallengeTimeout: async () => undefined,
     ...overrides,
   };
 }
@@ -62,7 +63,7 @@ test('the route runs Turnstile, then the rate limit, then the signup module, in 
     deps({
       async verifyTurnstile() {
         order.push('turnstile');
-        return true;
+        return 'verified';
       },
       async consumeIpRateLimit() {
         order.push('rate-limit');
@@ -80,13 +81,13 @@ test('the route runs Turnstile, then the rate limit, then the signup module, in 
   assert.deepEqual(order, ['turnstile', 'rate-limit', 'signup']);
 });
 
-test('an invalid Turnstile token stops the route before the rate limit or any work', async () => {
+test('a rejected Turnstile token stops the route before the rate limit or any work', async () => {
   const order: string[] = [];
   const route = createSignupRoute(
     deps({
       async verifyTurnstile() {
         order.push('turnstile');
-        return false;
+        return 'rejected';
       },
       async consumeIpRateLimit() {
         order.push('rate-limit');
@@ -107,6 +108,126 @@ test('an invalid Turnstile token stops the route before the rate limit or any wo
   assert.equal(response.status, 400);
   assert.equal((await response.json()).error.code, 'challenge_failed');
   assert.deepEqual(order, ['turnstile']);
+});
+
+// --- Provider timeout: accept, strict limits, flag the row -----------------
+
+test('a Turnstile provider timeout accepts the signup, applies the strict limit, and flags the row', async () => {
+  const order: string[] = [];
+  const flagged: string[] = [];
+  let strictArgument: boolean | undefined;
+  const route = createSignupRoute(
+    deps({
+      async verifyTurnstile() {
+        order.push('turnstile');
+        return 'unavailable';
+      },
+      async consumeIpRateLimit(_ip, _now, strict) {
+        order.push('rate-limit');
+        strictArgument = strict;
+        return 'ok';
+      },
+      async signup() {
+        order.push('signup');
+        return { kind: 'created', subscriber: pendingSubscriber };
+      },
+      async flagChallengeTimeout(subscriberId) {
+        order.push('flag');
+        flagged.push(subscriberId);
+      },
+    }),
+  );
+
+  const response = await route(routeContext(makeRequest()));
+  // Accepted — a real person is never rejected because Cloudflare was slow.
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).status, 'pending');
+  // The rate limit ran in strict mode, and the row was flagged after the upsert.
+  assert.equal(strictArgument, true);
+  assert.deepEqual(order, ['turnstile', 'rate-limit', 'signup', 'flag']);
+  assert.deepEqual(flagged, [pendingSubscriber.id]);
+});
+
+test('the strict limit can still reject a timed-out request, and then nothing is signed up or flagged', async () => {
+  let signupCalled = false;
+  let flagCalled = false;
+  const route = createSignupRoute(
+    deps({
+      verifyTurnstile: async () => 'unavailable',
+      consumeIpRateLimit: async () => 'rate_limited',
+      async signup() {
+        signupCalled = true;
+        return { kind: 'created', subscriber: pendingSubscriber };
+      },
+      async flagChallengeTimeout() {
+        flagCalled = true;
+      },
+    }),
+  );
+
+  const response = await route(routeContext(makeRequest()));
+  assert.equal(response.status, 429);
+  assert.equal((await response.json()).error.code, 'rate_limited');
+  assert.equal(signupCalled, false);
+  assert.equal(flagCalled, false);
+});
+
+test('an already-verified repeat during a timeout is not flagged', async () => {
+  let flagCalled = false;
+  const route = createSignupRoute(
+    deps({
+      verifyTurnstile: async () => 'unavailable',
+      signup: async () => ({
+        kind: 'already_verified',
+        subscriber: { created: false, id: 'verified-id', status: 'verified' },
+      }),
+      async flagChallengeTimeout() {
+        flagCalled = true;
+      },
+    }),
+  );
+
+  const response = await route(routeContext(makeRequest()));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).status, 'already_verified');
+  assert.equal(flagCalled, false);
+});
+
+test('a failed flag write never turns a committed signup into an error', async () => {
+  const route = createSignupRoute(
+    deps({
+      verifyTurnstile: async () => 'unavailable',
+      async flagChallengeTimeout() {
+        throw new Error('flag store down');
+      },
+    }),
+  );
+
+  const response = await route(routeContext(makeRequest()));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).status, 'pending');
+});
+
+test('a confirmed challenge uses the normal limit and never flags', async () => {
+  let strictArgument: boolean | undefined;
+  let flagCalled = false;
+  const route = createSignupRoute(
+    deps({
+      verifyTurnstile: async () => 'verified',
+      async consumeIpRateLimit(_ip, _now, strict) {
+        strictArgument = strict;
+        return 'ok';
+      },
+      async flagChallengeTimeout() {
+        flagCalled = true;
+      },
+    }),
+  );
+
+  const response = await route(routeContext(makeRequest()));
+  assert.equal(response.status, 200);
+  assert.equal(strictArgument, false);
+  assert.equal(flagCalled, false);
 });
 
 test('the rate limit runs before validation — a rate-limited request with a bad body is rate_limited, not invalid_input', async () => {
@@ -173,7 +294,7 @@ test('with signup.enabled off the route returns an honest paused response and do
       isSignupEnabled: async () => false,
       async verifyTurnstile() {
         turnstileCalled = true;
-        return true;
+        return 'verified';
       },
       async consumeIpRateLimit() {
         rateLimitCalled = true;

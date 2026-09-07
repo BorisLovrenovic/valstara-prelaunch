@@ -23,3 +23,5 @@ Behaviour on failure is specified, because the two failure modes are different:
 
 ## Consequences
 Bot defence at no cost and no consent exposure. **Double opt-in remains the real filter** — a bot row that never verifies is never counted, never exported, and expires (ADR-011). Turnstile reduces the noise reaching that filter; it is not the filter.
+
+The provider-timeout "accept, strict-limit and flag" path records the flag as a `fraud_flag` of kind `challenge_timeout` (E3-03, founder-authorised 2026-09-07, migration `0005`). It is the one flag kind raised outside the fraud module; the fraud review queue treats it like any other.
