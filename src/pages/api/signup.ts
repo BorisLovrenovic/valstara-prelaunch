@@ -287,10 +287,12 @@ function defaultDependencies(): SignupRouteDependencies {
         ),
       })(input),
     async flagChallengeTimeout(subscriberId) {
-      await createFraudFlagRepository(getDatabase()).insertChallengeTimeoutFlag({
-        id: randomUUID(),
-        subscriberId,
-      });
+      await createFraudFlagRepository(getDatabase()).insertChallengeTimeoutFlag(
+        {
+          id: randomUUID(),
+          subscriberId,
+        },
+      );
     },
   };
 }

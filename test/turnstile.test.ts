@@ -41,7 +41,10 @@ test('a confirmed token verifies', async () => {
 
 test('an invalid token is rejected — the provider blamed the token', async () => {
   assert.equal(
-    await outcomeFor({ success: false, 'error-codes': ['invalid-input-response'] }),
+    await outcomeFor({
+      success: false,
+      'error-codes': ['invalid-input-response'],
+    }),
     'rejected',
   );
 });
@@ -49,7 +52,10 @@ test('an invalid token is rejected — the provider blamed the token', async () 
 test('a replayed (already-redeemed) token is rejected', async () => {
   // `timeout-or-duplicate` is Cloudflare's code for a token redeemed twice.
   assert.equal(
-    await outcomeFor({ success: false, 'error-codes': ['timeout-or-duplicate'] }),
+    await outcomeFor({
+      success: false,
+      'error-codes': ['timeout-or-duplicate'],
+    }),
     'rejected',
   );
 });
@@ -80,8 +86,11 @@ test('an aborted (timed-out) request is unavailable', async () => {
     throw error;
   }) as typeof fetch;
   assert.equal(
-    await createTurnstileVerifier({ fetch: fetchImpl, secret, timeoutMs: 5 })
-      .verify('t'),
+    await createTurnstileVerifier({
+      fetch: fetchImpl,
+      secret,
+      timeoutMs: 5,
+    }).verify('t'),
     'unavailable',
   );
 });
@@ -102,7 +111,10 @@ test('a failure the provider blames on the secret is unavailable, not a rejectio
   // A misconfigured or missing secret is our problem, not the visitor's — do
   // not reject every real person; accept-and-flag under strict limits instead.
   assert.equal(
-    await outcomeFor({ success: false, 'error-codes': ['invalid-input-secret'] }),
+    await outcomeFor({
+      success: false,
+      'error-codes': ['invalid-input-secret'],
+    }),
     'unavailable',
   );
 });
@@ -125,7 +137,9 @@ test('a mixed error set including a non-token code is unavailable', async () => 
 
 test('the secret and the token are sent to the provider; the client IP is only sent when given', async () => {
   const withoutIp = fetchReturning({ success: true });
-  await createTurnstileVerifier({ fetch: withoutIp.fetch, secret }).verify('tok');
+  await createTurnstileVerifier({ fetch: withoutIp.fetch, secret }).verify(
+    'tok',
+  );
   assert.equal(withoutIp.calls[0]?.get('secret'), secret);
   assert.equal(withoutIp.calls[0]?.get('response'), 'tok');
   assert.equal(withoutIp.calls[0]?.has('remoteip'), false);
@@ -154,7 +168,10 @@ test('the secret appears in no log line across every path', async () => {
     }) as typeof fetch;
     await createTurnstileVerifier({ fetch: throwing, secret }).verify('t');
     await outcomeFor({ success: true });
-    await outcomeFor({ success: false, 'error-codes': ['invalid-input-response'] });
+    await outcomeFor({
+      success: false,
+      'error-codes': ['invalid-input-response'],
+    });
     await outcomeFor({}, { status: 500 });
     await outcomeFor('not json');
   } finally {
