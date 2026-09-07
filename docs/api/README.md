@@ -52,6 +52,8 @@ Two rules make that safe, and they are what a reviewer checks:
 ### `POST /api/signup`
 Body: `email`, `country`, `region?`, `ref` (the **signed** hidden field), `turnstile_token`, `utm?`.
 
+`country` is the **confirmed** value the person selects — prefilled from `CF-IPCountry` as a suggestion, always overridable, and detection never decides it (ADR-018, `docs/modules/platform.md#geo`). `region` is collected — and **required** — only when `country` is `CA`, because Quebec changes giveaway eligibility; a Canadian signup with no region is rejected `invalid_input`. It is ignored for every other country.
+
 Order of operations, and it is load-bearing: verify Turnstile → rate-limit → validate → **normalise the email** → blocklist and MX → upsert the subscriber → attribute the referral edge → run fraud signals (flag only) → decide giveaway eligibility and stamp the rules version → queue the verification mail → respond.
 
 Returns `{ status: "pending" }`. **Never returns a position, a count or a rank** — that is the position-inflation pattern the brand forbids (ADR-024), and a pending row has no honest position anyway.

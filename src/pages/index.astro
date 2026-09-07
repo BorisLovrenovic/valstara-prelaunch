@@ -3,7 +3,16 @@ import Accordion from '../components/accordion.astro';
 import Button from '../components/button.astro';
 import Field from '../components/field.astro';
 import Input from '../components/input.astro';
+import Select from '../components/select.astro';
+import {
+  CANADA_COUNTRY_CODE,
+  canadaRegionOptions,
+  countryFieldCopy,
+  countryOptions,
+  regionFieldCopy,
+} from '../copy/country.ts';
 import { landingCopy } from '../copy/landing.ts';
+import { suggestCountry } from '../server/geo/suggest-country.ts';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getFlagService } from '../server/flags/app-service.ts';
 
@@ -11,6 +20,19 @@ import { getFlagService } from '../server/flags/app-service.ts';
 // (signup on), so a database blip never silently pauses signups. Only an
 // operator turning the flag off replaces the form with the paused message.
 const signupEnabled = await getFlagService().isEnabled('signup.enabled');
+
+// Geo is a *suggestion*, read only through the geo module — the page never
+// reads the Cloudflare country header itself (the module's interface is the
+// guardrail, and a scan enforces that it is the sole reader). A code we do not
+// offer, or a missing/sentinel header, resolves to `null` and the selector
+// renders unfilled rather than guessing. Detection only prefills; the confirmed
+// value the person submits is what is stored.
+const detectedCountry = suggestCountry(Astro.request.headers);
+const suggestedCountry =
+  detectedCountry !== null &&
+  countryOptions.some((option) => option.code === detectedCountry)
+    ? detectedCountry
+    : null;
 ---
 
 <BaseLayout
@@ -44,6 +66,50 @@ const signupEnabled = await getFlagService().isEnabled('signup.enabled');
                 aria-describedby="signup-email-hint"
               />
             </Field>
+            <Field controlId="signup-country" label={countryFieldCopy.label}>
+              <Select
+                id="signup-country"
+                name="country"
+                autocomplete="country"
+                required
+              >
+                <option value="" disabled selected={suggestedCountry === null}>
+                  {countryFieldCopy.placeholder}
+                </option>
+                {countryOptions.map((option) => (
+                  <option
+                    value={option.code}
+                    selected={option.code === suggestedCountry}
+                  >
+                    {option.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {/*
+              The region field is collected only for Canada, because Quebec
+              changes giveaway eligibility (ADR-018). It is always in the DOM and
+              revealed by CSS `:has()` when Canada is the chosen country — no
+              client JavaScript, so the landing page keeps shipping only the
+              theme-toggle island. It is *required there* by the server (a repeat
+              of the CSS literal on a hidden control cannot carry `required`
+              without breaking a no-JS submit); the route rejects a Canadian
+              signup with no region.
+            */}
+            <div class="signup-region" data-region-for={CANADA_COUNTRY_CODE}>
+              <Field controlId="signup-region" label={regionFieldCopy.label}>
+                <Select
+                  id="signup-region"
+                  name="region"
+                  autocomplete="address-level1"
+                >
+                  <option value="">{regionFieldCopy.placeholder}</option>
+                  {canadaRegionOptions.map((option) => (
+                    <option value={option.code}>{option.name}</option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
             <input name="turnstile_token" type="hidden" />
             <Button type="submit">{landingCopy.form.submit}</Button>
           </form>
@@ -138,6 +204,22 @@ const signupEnabled = await getFlagService().isEnabled('signup.enabled');
     display: grid;
     gap: var(--space-2);
     margin-block-start: var(--space-2);
+  }
+
+  /*
+    The Canada-only region field. Hidden until Canada is the selected country,
+    revealed with `:has()` on the live `:checked` option — no JavaScript, so the
+    landing page keeps shipping only the theme-toggle island. The `CA` literal is
+    Canada's ISO 3166-1 alpha-2 code (CANADA_COUNTRY_CODE, ADR-018); a stylesheet
+    selector cannot read the constant, so the field also carries it as
+    `data-region-for` for the markup and tests to reconcile against.
+  */
+  .signup-region {
+    display: none;
+  }
+
+  .lp-hero form:has(#signup-country option[value='CA']:checked) .signup-region {
+    display: block;
   }
 
   .lp-paused {

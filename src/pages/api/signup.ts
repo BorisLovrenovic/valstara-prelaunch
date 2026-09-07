@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { randomUUID } from 'node:crypto';
 
+import { CANADA_COUNTRY_CODE } from '../../copy/country.ts';
 import { signupCopy } from '../../copy/signup.ts';
 import { getConfig } from '../../server/config.ts';
 import { DatabaseUnavailableError } from '../../server/db/errors.ts';
@@ -134,6 +135,17 @@ function validateBody(formData: FormData): ValidBody | null {
       return null;
     }
     region = trimmed === '' ? undefined : trimmed;
+  }
+
+  // The region is collected — and required — only for Canada, because Quebec
+  // changes giveaway eligibility (ADR-018, E3-04). A Canadian signup with no
+  // region is incomplete: the eligibility decision (E7-01) has nothing to read.
+  // This is where "required there" is enforced: a CSS-hidden control cannot
+  // carry HTML `required` without breaking a no-JS submit, so the server is the
+  // only honest place to require it, and E3-05's inline validation must never
+  // accept what the server would reject.
+  if (country === CANADA_COUNTRY_CODE && region === undefined) {
+    return null;
   }
 
   // The raw email keeps its exact form for normalisation (which rejects
