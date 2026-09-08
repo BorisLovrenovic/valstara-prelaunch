@@ -93,7 +93,7 @@ async function waitForPage(port, pathname) {
   throw new Error('Rendered-page test server did not start.');
 }
 
-test('the rendered E1-11 signup and verification pages set no cookie', async () => {
+test('the rendered E3-07 verification success page replays safely and sets no cookie', async () => {
   await executeFile('npm', ['run', 'build']);
   const fixture = await createDatabaseFixture();
   const subscriberId = randomUUID();
@@ -148,11 +148,14 @@ test('the rendered E1-11 signup and verification pages set no cookie', async () 
       await signup.text(),
       /<form action="\/api\/signup" method="post">/u,
     );
-    assert.match(
-      await verification.text(),
-      /Your email address is verified\./u,
-    );
-    assert.match(await replay.text(), /Your email address is verified\./u);
+    const verificationBody = await verification.text();
+    const replayBody = await replay.text();
+    for (const body of [verificationBody, replayBody]) {
+      assert.match(body, /Your email address is verified\./u);
+      assert.match(body, /Share your referral link/u);
+      assert.match(body, /Help us prepare for launch/u);
+      assert.match(body, /View your status/u);
+    }
     const subscriber = await fixture.database.query(
       'SELECT status, verified_at FROM subscriber WHERE id = $1',
       [subscriberId],

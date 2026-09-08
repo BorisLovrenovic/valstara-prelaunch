@@ -1,27 +1,159 @@
 ---
-import { thinSliceCopy } from '../copy/e1-11.ts';
+import { verificationCopy } from '../copy/verification.ts';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
-import { consumeThinVerificationToken } from '../server/e1-11/verify.ts';
+import { getFlagService } from '../server/flags/app-service.ts';
+import {
+  createVerificationCompletionService,
+  type VerificationCompletion,
+} from '../server/verification/complete.ts';
 
 const token = Astro.url.searchParams.get('token') ?? '';
 const database = createPool(getConfig().databaseUrl);
-let outcome: 'verified' | 'already' | 'invalid';
+const referralEnabled =
+  token === '' ? false : await getFlagService().isEnabled('referral.enabled');
+let completion: VerificationCompletion;
 try {
-  outcome = await consumeThinVerificationToken(database, token);
+  completion = await createVerificationCompletionService(database, {
+    referralEnabled,
+  })(token);
 } finally {
   await database.close();
 }
-const message =
-  outcome === 'verified' || outcome === 'already'
-    ? thinSliceCopy.verificationComplete
-    : thinSliceCopy.verificationInvalid;
+const completed =
+  completion.outcome === 'verified' || completion.outcome === 'already';
+const surveyEnabled = completed
+  ? await getFlagService().isEnabled('survey.enabled')
+  : false;
+const referralUrl =
+  referralEnabled && completion.referralCode !== null
+    ? new URL(`/?ref=${encodeURIComponent(completion.referralCode)}`, Astro.url)
+    : null;
+const statusUrl =
+  completion.statusToken === null
+    ? null
+    : new URL(`/me?t=${encodeURIComponent(completion.statusToken)}`, Astro.url);
 ---
 
 <BaseLayout
-  title={thinSliceCopy.verifyTitle}
-  description={thinSliceCopy.verifyDescription}
+  title={verificationCopy.meta.title}
+  description={verificationCopy.meta.description}
 >
-  <p>{message}</p>
+  {
+    completed ? (
+      <div class="verification-success">
+        <p class="verification-success__message">{verificationCopy.complete}</p>
+
+        {referralUrl !== null ? (
+          <section class="verification-success__section">
+            <h2>{verificationCopy.referral.label}</h2>
+            <a href={referralUrl.toString()}>
+              {verificationCopy.referral.link}
+            </a>
+          </section>
+        ) : null}
+
+        {surveyEnabled && statusUrl !== null ? (
+          <form
+            action="/api/survey"
+            class="verification-success__section"
+            method="post"
+          >
+            <h2>{verificationCopy.survey.heading}</h2>
+            <input name="token" type="hidden" value={completion.statusToken} />
+            <fieldset>
+              <legend>{verificationCopy.survey.categoryLabel}</legend>
+              {verificationCopy.survey.categoryOptions.map((option) => (
+                <label>
+                  <input
+                    name="category_preference"
+                    type="checkbox"
+                    value={option.value}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </fieldset>
+            <fieldset>
+              <legend>{verificationCopy.survey.frequencyLabel}</legend>
+              {verificationCopy.survey.frequencyOptions.map((option) => (
+                <label>
+                  <input
+                    name="shopping_frequency"
+                    type="radio"
+                    value={option.value}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </fieldset>
+            <button type="submit">{verificationCopy.survey.submit}</button>
+          </form>
+        ) : null}
+
+        {statusUrl !== null ? (
+          <section class="verification-success__section">
+            <h2>{verificationCopy.status.label}</h2>
+            <a href={statusUrl.toString()}>{verificationCopy.status.link}</a>
+          </section>
+        ) : null}
+      </div>
+    ) : (
+      <p>{verificationCopy.invalid}</p>
+    )
+  }
 </BaseLayout>
+
+<style>
+  .verification-success,
+  .verification-success__section,
+  fieldset {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .verification-success__message,
+  h2,
+  legend,
+  label,
+  a,
+  button {
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .verification-success__message,
+  h2 {
+    margin: 0;
+  }
+
+  h2 {
+    font-size: var(--step-3);
+    line-height: var(--leading-3);
+  }
+
+  fieldset {
+    margin: 0;
+    padding: var(--space-2);
+    border: thin solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  label {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+  }
+
+  button {
+    width: fit-content;
+    padding: var(--space-1) var(--space-2);
+    color: var(--midnight);
+    background: var(--coral);
+    border: thin solid var(--coral);
+    border-radius: var(--radius-control);
+  }
+</style>
