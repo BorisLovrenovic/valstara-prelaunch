@@ -209,10 +209,12 @@ test('a token issued for one purpose is invalid for another, and does not consum
     assert.equal(await service.consume(issued.token, 'unsubscribe'), 'invalid');
 
     // It remains unconsumed and still usable for its own purpose.
-    const before = await fixture.database.readOne<{ consumed_at: Date | null }>({
-      text: 'SELECT consumed_at FROM verification_token WHERE subscriber_id = $1',
-      values: [subscriberId],
-    });
+    const before = await fixture.database.readOne<{ consumed_at: Date | null }>(
+      {
+        text: 'SELECT consumed_at FROM verification_token WHERE subscriber_id = $1',
+        values: [subscriberId],
+      },
+    );
     assert.equal(before?.consumed_at, null);
     assert.equal(await service.consume(issued.token, 'status'), 'verified');
   } finally {
@@ -341,10 +343,7 @@ test('purgeExpired rejects a non-positive limit', async () => {
       RangeError,
       'a zero limit must be rejected',
     );
-    await assert.rejects(
-      () => service.purgeExpired(baseTime, -1),
-      RangeError,
-    );
+    await assert.rejects(() => service.purgeExpired(baseTime, -1), RangeError);
   } finally {
     await fixture.dispose();
   }

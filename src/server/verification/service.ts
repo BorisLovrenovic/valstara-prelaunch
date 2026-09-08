@@ -83,7 +83,9 @@ function createVerificationServiceWithRepository(
   return {
     async issue(subscriberId, purpose) {
       const token = createToken();
-      const expiresAt = new Date(clock().getTime() + purposeLifetimeMs[purpose]);
+      const expiresAt = new Date(
+        clock().getTime() + purposeLifetimeMs[purpose],
+      );
 
       await repository.insert({
         expiresAt,

@@ -35,7 +35,9 @@ export interface VerificationTokenRepository {
     purpose: TokenPurpose,
     now: Date,
   ): Promise<number>;
-  findByHash(tokenHash: Buffer): Promise<VerificationTokenClassification | null>;
+  findByHash(
+    tokenHash: Buffer,
+  ): Promise<VerificationTokenClassification | null>;
   /**
    * Batch-capped purge of tokens whose expiry is strictly before `before`.
    * Returns the number removed, so a caller can loop until it drains. Bounded
