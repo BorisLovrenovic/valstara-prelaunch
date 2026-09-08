@@ -6,7 +6,12 @@ import {
   type VerificationTokenRepository,
 } from '../db/verification-token.ts';
 
-import type { ConsumeResult, CustomerOutcome, TokenPurpose } from './types.ts';
+import type {
+  ConsumeResult,
+  CustomerOutcome,
+  TokenPurpose,
+  VerificationCompletionConsumeResult,
+} from './types.ts';
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
 
@@ -27,6 +32,9 @@ export interface IssuedToken {
 export interface VerificationService {
   issue(subscriberId: string, purpose: TokenPurpose): Promise<IssuedToken>;
   consume(token: string, purpose: TokenPurpose): Promise<ConsumeResult>;
+  consumeForVerification(
+    token: string,
+  ): Promise<VerificationCompletionConsumeResult>;
   purgeExpired(before: Date, limit: number): Promise<number>;
 }
 
@@ -99,40 +107,49 @@ function createVerificationServiceWithRepository(
     },
 
     async consume(token, purpose) {
-      if (token === '') {
-        return 'invalid';
-      }
+      return (await consumeWithSubscriber(repository, token, purpose, clock))
+        .outcome;
+    },
 
-      const now = clock();
-      const hash = tokenHash(token);
-
-      // The atomic update is the single-use primitive: exactly one concurrent
-      // consume of a fresh token changes a row.
-      const consumed = await repository.consumeFresh(hash, purpose, now);
-      if (consumed === 1) {
-        return 'verified';
-      }
-
-      // The fresh consume did not land — classify why, without leaking whether
-      // a token hash exists beyond the expired/invalid pair the caller renders
-      // identically.
-      const existing = await repository.findByHash(hash);
-      if (existing === null || existing.purpose !== purpose) {
-        return 'invalid';
-      }
-      if (existing.consumed_at !== null) {
-        return 'already';
-      }
-      if (existing.expires_at <= now) {
-        return 'expired';
-      }
-      // Unconsumed and unexpired, yet the update did not land: another consumer
-      // took it between the update and this read. That is a successful replay.
-      return 'already';
+    async consumeForVerification(token) {
+      return consumeWithSubscriber(repository, token, 'verify', clock);
     },
 
     async purgeExpired(before, limit) {
       return repository.purgeExpired(before, limit);
     },
   };
+}
+
+async function consumeWithSubscriber(
+  repository: VerificationTokenRepository,
+  token: string,
+  purpose: TokenPurpose,
+  clock: () => Date,
+): Promise<VerificationCompletionConsumeResult> {
+  if (token === '') {
+    return { outcome: 'invalid', subscriberId: null };
+  }
+
+  const now = clock();
+  const hash = tokenHash(token);
+  const consumed = await repository.consumeFresh(hash, purpose, now);
+  const existing = await repository.findByHash(hash);
+
+  if (consumed === 1) {
+    if (existing === null) {
+      throw new Error('A consumed verification token could not be read.');
+    }
+    return { outcome: 'verified', subscriberId: existing.subscriber_id };
+  }
+  if (existing === null || existing.purpose !== purpose) {
+    return { outcome: 'invalid', subscriberId: null };
+  }
+  if (existing.consumed_at !== null) {
+    return { outcome: 'already', subscriberId: existing.subscriber_id };
+  }
+  if (existing.expires_at <= now) {
+    return { outcome: 'expired', subscriberId: null };
+  }
+  return { outcome: 'already', subscriberId: existing.subscriber_id };
 }

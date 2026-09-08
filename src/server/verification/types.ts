@@ -26,3 +26,8 @@ export type ConsumeResult = 'verified' | 'already' | 'expired' | 'invalid';
  * surface can leak the distinction.
  */
 export type CustomerOutcome = 'ok' | 'rejected';
+
+export interface VerificationCompletionConsumeResult {
+  readonly outcome: ConsumeResult;
+  readonly subscriberId: string | null;
+}

@@ -93,7 +93,7 @@ async function waitForPage(port, pathname) {
   throw new Error('Rendered-page test server did not start.');
 }
 
-test('the rendered E1-11 signup and verification pages set no cookie', async () => {
+test('the rendered E3-07 verification success page replays safely and sets no cookie', async () => {
   await executeFile('npm', ['run', 'build']);
   const fixture = await createDatabaseFixture();
   const subscriberId = randomUUID();
@@ -148,17 +148,81 @@ test('the rendered E1-11 signup and verification pages set no cookie', async () 
       await signup.text(),
       /<form action="\/api\/signup" method="post">/u,
     );
-    assert.match(
-      await verification.text(),
-      /Your email address is verified\./u,
-    );
-    assert.match(await replay.text(), /Your email address is verified\./u);
+    const verificationBody = await verification.text();
+    const replayBody = await replay.text();
+    for (const body of [verificationBody, replayBody]) {
+      assert.match(body, /Your email address is verified\./u);
+      assert.match(body, /Share your referral link/u);
+      assert.match(body, /Help us prepare for launch/u);
+      assert.match(body, /View your status/u);
+    }
     const subscriber = await fixture.database.query(
       'SELECT status, verified_at FROM subscriber WHERE id = $1',
       [subscriberId],
     );
     assert.equal(subscriber.rows[0]?.status, 'verified');
     assert.notEqual(subscriber.rows[0]?.verified_at, null);
+  } finally {
+    server.kill('SIGTERM');
+    await once(server, 'exit');
+    await fixture.dispose();
+  }
+});
+
+test('with survey.enabled off, the rendered verification success page omits the survey form and questions', async () => {
+  await executeFile('npm', ['run', 'build']);
+  const fixture = await createDatabaseFixture();
+  const subscriberId = randomUUID();
+  const tokenId = randomUUID();
+  const token = 'survey-disabled-verification-token';
+  await fixture.database.query(
+    `INSERT INTO campaign_flag (key, enabled, updated_by) VALUES ($1, $2, $3)`,
+    ['survey.enabled', false, 'e3-07-rendered-page-test'],
+  );
+  await fixture.database.query(
+    `
+      INSERT INTO subscriber (id, email, email_normalised, email_domain, status)
+      VALUES ($1, $2, $3, $4, 'pending')
+    `,
+    [
+      subscriberId,
+      'survey-disabled@example.test',
+      'survey-disabled@example.test',
+      'example.test',
+    ],
+  );
+  await fixture.database.query(
+    `
+      INSERT INTO verification_token (
+        id,
+        subscriber_id,
+        token_hash,
+        purpose,
+        expires_at
+      )
+      VALUES ($1, $2, $3, 'verify', $4)
+    `,
+    [
+      tokenId,
+      subscriberId,
+      createHash('sha256').update(token).digest(),
+      new Date('2099-01-01T00:00:00.000Z'),
+    ],
+  );
+  const { port, server } = startServer(fixture.databaseUrl);
+
+  try {
+    const verification = await waitForPage(
+      port,
+      `/verify?token=${encodeURIComponent(token)}`,
+    );
+    const body = await verification.text();
+    assert.match(body, /Your email address is verified\./u);
+    assert.ok(!/<form[^>]+action="\/api\/survey"/u.test(body));
+    assert.ok(!body.includes('name="category_preference"'));
+    assert.ok(!body.includes('name="shopping_frequency"'));
+    assert.ok(!body.includes('Help us prepare for launch'));
+    assert.equal(verification.headers.get('set-cookie'), null);
   } finally {
     server.kill('SIGTERM');
     await once(server, 'exit');
