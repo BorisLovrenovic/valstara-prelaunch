@@ -185,6 +185,21 @@ test('an induced failure rolls back every E3-07 transition', async () => {
   const fixture = await createDatabaseFixture();
   try {
     const referrerId = await insertSubscriber(fixture.database, 'verified');
+    for (let index = 0; index < 2; index += 1) {
+      const priorReferral = await insertSubscriber(
+        fixture.database,
+        'verified',
+      );
+      await fixture.database.execute({
+        text: `
+          INSERT INTO referral_edge (
+            id, referrer_id, referred_id, state, reward_state, confirmed_at
+          )
+          VALUES ($1, $2, $3, 'confirmed', 'settled', $4)
+        `,
+        values: [randomUUID(), referrerId, priorReferral, now],
+      });
+    }
     const referredId = await insertSubscriber(fixture.database, 'pending');
     await seedAttributedEdge(fixture.database, referrerId, referredId);
     await seedVerificationToken(fixture.database, referredId, 'rollback-token');
@@ -220,6 +235,22 @@ test('an induced failure rolls back every E3-07 transition', async () => {
       values: [referredId],
     });
     assert.deepEqual(edge, { reward_state: 'none', state: 'attributed' });
+    const referrer = await fixture.database.readOne<{
+      confirmed_referrals: number;
+      referral_tier: number;
+    }>({
+      text: 'SELECT confirmed_referrals, referral_tier FROM subscriber WHERE id = $1',
+      values: [referrerId],
+    });
+    assert.deepEqual(referrer, { confirmed_referrals: 0, referral_tier: 0 });
+    const award = await fixture.database.readOne<{
+      reward_kind: string;
+      state: string;
+    }>({
+      text: 'SELECT reward_kind, state FROM milestone_award WHERE subscriber_id = $1',
+      values: [referrerId],
+    });
+    assert.equal(award, null);
     const token = await fixture.database.readOne<{ consumed_at: Date | null }>({
       text: 'SELECT consumed_at FROM verification_token WHERE subscriber_id = $1',
       values: [referredId],
