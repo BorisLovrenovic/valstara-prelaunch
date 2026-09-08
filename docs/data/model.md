@@ -37,7 +37,7 @@ The waitlist row.
 | `referred_by_id` | uuid null → `subscriber(id)` | Set once at signup; **never reassigned** |
 | `referral_tier` | int not null default 0 | **Derived** from settled milestones |
 | `confirmed_referrals` | int not null default 0 | **Derived** from `referral_edge`; recomputable |
-| `access_window` | text | `wave-1`…`wave-4`. Assigned at verification from tier and signup order |
+| `access_window` | text | `wave-1`…`wave-4`. Assigned at verification from tier and signup order; band thresholds are config (ADR-025) |
 | `subslush_customer` | boolean not null default false | Provenance. Becomes the `subslush-legacy` group at handoff |
 | `giveaway_eligible` | boolean | Decided **at signup** against the rules version then in force |
 | `giveaway_rules_version` | text | **The rules version that decided `giveaway_eligible`.** Written with it at signup, so an eligibility decision stays explainable after the rules change. Distinct from `giveaway_entry.rules_version`, which stamps each accrual |

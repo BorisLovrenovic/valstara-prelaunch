@@ -30,6 +30,18 @@ interface ReferralService {
 - **`confirmed_referrals` is derived from edges.** `recomputeCounters()` is idempotent and **alerts on any non-zero correction** — a silently repaired counter hides the bug that caused it.
 - **Single level only.** No second-degree credit, no multi-level structure, no code path that walks a referral chain.
 
+## Configuration (ADR-025)
+Values, not schema. Changing any of them requires no migration.
+
+- **Base entry:** `1` on verification. **Per confirmed referral:** `+1` entry — cheap, settles on confirmation.
+- **Tier ladder** (`milestone_award`, unique on `(subscriber_id, tier)`):
+  - **Tier 1 — 3 confirmed referrals:** cheap settled = tier progress + `wave_upgrade`; **held** = 15% launch discount + `+5` bonus entries.
+  - **Tier 2 — 5 confirmed referrals** (cut-list item 7, added mid-campaign, no migration): held = 25% discount + `+10` bonus entries.
+- **Cheap vs high-value** follows ADR-012: base/per-referral entries, tier progress and wave position settle on confirmation; **milestone discount codes and milestone bonus entries are `held`**.
+- **Access-window bands** (assigned at verification — see `docs/data/model.md` `access_window`): base band by verification order `≤1,000 → wave-1 · ≤5,000 → wave-2 · ≤15,000 → wave-3 · else wave-4`, then each tier promotes one band toward `wave-1` (promotion only, audited).
+
+The held discount percentages (15% / 25%) are **confirmed production values** (ADR-025).
+
 ## Dependencies
 `db`, `audit`, `giveaway` (entry accrual on confirmation), `flags`.
 
