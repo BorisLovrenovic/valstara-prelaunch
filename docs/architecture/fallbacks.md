@@ -32,7 +32,7 @@ Everything else announces itself. These two look exactly like ordinary underperf
 | Turnstile token invalid or replayed | Server-side verification | Rejected, not recorded, counted as a bot event | "That didn't go through — please try again." | P3 |
 | Verification token expired | Expiry check on consume | The page offers a one-click resend, rate-limited | "That link has expired — we've sent a new one." | P3 |
 | Verification token replayed | `consumed_at` present | **Treated as success, not as an error** — an already-verified visitor clicking twice is not a failure | The normal success page | — |
-| **Visitor never verifies** | Bounded-wait ladder | Reminders at +1h, +24h, +72h, then the row **expires** at the configured horizon and is excluded from every count and export | Two reminders, then silence | P3 |
+| **Visitor never verifies** | Bounded-wait ladder | Reminders at +1h, +24h, +72h, then the row **expires** at the configured horizon and is excluded from every count and export | Three reminders, then silence | P3 |
 | MX lookup times out | DNS timeout | **Accept the signup and flag it** — never block a real person on a slow resolver | Nothing | P3 |
 | Rate limit hit by a real person | Counter | Honest message with a wait time. **Never a silent no-op that looks like success** | "Too many attempts — try again in a few minutes." | P3 |
 
