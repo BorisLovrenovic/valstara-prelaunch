@@ -15,7 +15,20 @@ interface VerificationService {
   consume(token: string, purpose: TokenPurpose): Promise<ConsumeResult>  // 'verified' | 'already' | 'expired' | 'invalid'
   purgeExpired(before: Date, limit: number): Promise<number>
 }
+
+// Collapses a ConsumeResult to what the visitor may see: 'verified'/'already'
+// → 'ok', and 'expired'/'invalid' → the identical 'rejected'. The endpoint
+// renders from this, so it cannot leak which token hashes exist.
+function customerOutcome(result: ConsumeResult): 'ok' | 'rejected'
 ```
+
+`createVerificationService(db, { clock? })` builds the service. It takes a
+`DatabaseConnection` (not a pool), so a caller inside a transaction — the
+`/verify` transaction (E3-07) — can bind the service to its own connection and
+consume a token atomically with the other state transitions. The clock is
+injected; nothing calls `Date.now()`. The token is 256 bits from the CSPRNG,
+base64url-encoded, generated in this module and hashed (SHA-256) before it
+reaches the data layer.
 
 ## Rules
 - **Only the SHA-256 of the token is stored.** The plaintext exists in the emailed URL and nowhere else — not in a log line, not in an audit detail, not in an analytics event.
