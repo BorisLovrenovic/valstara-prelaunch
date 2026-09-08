@@ -76,7 +76,7 @@ export function createVerificationService(
   );
 }
 
-export function createVerificationServiceWithRepository(
+function createVerificationServiceWithRepository(
   repository: VerificationTokenRepository,
   clock: () => Date,
 ): VerificationService {
