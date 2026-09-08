@@ -660,7 +660,9 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this tier:** this route performs five state transitions in one request, and a partial application of them is a corrupt subscriber.
 
-**Build:** `/verify?token=` consuming the token and, **in one transaction**: setting `verified`, confirming referral edges, settling cheap rewards, holding high-value ones, and assigning the access window. Then the success page carrying the referral link, the survey questions and the status link.
+**Build:** `/verify?token=` consuming the token and, **in one transaction**: setting `verified`, **generating the referral code** (E4-01's `generateCode`, invoked here because it happens at verification and the success page must render the link), confirming referral edges, settling cheap rewards, holding high-value ones, and assigning the access window. Then the success page carrying the referral link, the survey questions and the status link.
+
+**Scope note (2026-09-08):** two dependencies are resolved into this ticket. (1) **Referral code generation** — E4-01 owns the algorithm and its entropy/collision/case-insensitive/no-pending-row tests; those travel with the implementation brought forward here, and E3-07's transaction calls `generateCode` inside the same transaction so the link can be rendered. (2) **Survey** — E3-07 renders the two questions as a **static, progressively-enhanced `<form>`** (no client hydration, no fourth island). **Submission stays in E6-03**: `POST /api/survey` is token-authenticated (the signed `status` token), so it is **exempt from Turnstile-first** (`docs/api/README.md`, rule 2), and its "answerable without a page load" enhancement is a **minimal inline handler, not a fourth island** (the E6-05 precedent). ADR-001's three-island rule is unchanged.
 
 **Acceptance criteria:**
 - **All five transitions commit together or none do** — asserted by an induced mid-transaction failure

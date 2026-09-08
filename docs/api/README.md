@@ -6,13 +6,13 @@ Status: authoritative. All routes are Astro API routes in `src/pages/api/`, same
 
 Two rules make that safe, and they are what a reviewer checks:
 
-1. **Whatever a ticket does implement, it implements in the documented order.** A step may be absent; it may not be out of sequence. Turnstile is first on every write route from the first line of code, because a route that does work before its challenge cannot be reordered later without re-auditing everything built on it.
+1. **Whatever a ticket does implement, it implements in the documented order.** A step may be absent; it may not be out of sequence. On a route that carries a challenge, Turnstile is first from the first line of code, because a route that does work before its challenge cannot be reordered later without re-auditing everything built on it.
 2. **A ticket that creates a route names the subset it implements**, in its plan entry. A subset that is not written down is scope drift, not a subset.
 
 ## Rules that bind every route
 
 1. **Validate, call one server module, shape the response.** No SQL, no business branching, no email dispatch in a route.
-2. **Every write route verifies Turnstile server-side first**, then rate-limits, then does work.
+2. **Every *public, unauthenticated* write route verifies Turnstile server-side first**, then rate-limits, then does work — these are the routes a stranger can call with no prior proof: `/api/signup`, `/api/resend-verification`, `/api/amoe`. **A write authenticated by a single-use signed token is guarded by consuming that token first, in place of Turnstile** — the token is a stronger authenticator than a challenge, so `/api/survey`, `/api/unsubscribe` and `/api/dsr/*` carry no `turnstile_token`. Rate-limiting still applies to both kinds.
 3. **Every response uses the error envelope below**, with a code from the closed set. **No vendor error body is ever forwarded.**
 4. **No response contains another person's data.** The leaderboard is anonymised; `/me` returns only the bearer's own row.
 5. **Every write route is idempotent or explicitly documented as not.** A double-submitted form must never produce two subscribers, two edges or two emails.
