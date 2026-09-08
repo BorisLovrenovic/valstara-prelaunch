@@ -677,16 +677,18 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E3-08 — The reminder ladder and unverified expiry
 **Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** backend
 
-**Build:** The reminder job at **+1h, +24h, +72h**, stopping immediately on verification, deduplicated by business key. Then the expiry sweep moving `pending` rows past the horizon to `expired`. Both batch-capped, both clock-injected.
+**Build:** The reminder job at **+1h, +24h, +72h** — **three reminders**, stopping immediately on verification, deduplicated by business key. Then the expiry sweep moving `pending` rows past the horizon to `expired`. Both batch-capped, both clock-injected.
+
+**Scope note (2026-09-09):** two clarifications resolved. (1) **Reminder count is three** (+1h, +24h, +72h) — authoritative per ADR-011, `docs/features/double-opt-in.md` and the offsets here; `docs/architecture/fallbacks.md` said "Two reminders" in error and is corrected to "Three." (2) **Expired-exclusion is asserted only against surfaces that exist at this ticket** (standing rule 20). Ranking (E6-01) and the exports (E10-04, E11-06) are later tickets; each owns its own exclusion assertion. See the AC below.
 
 **Acceptance criteria:**
 - Reminders fire at the documented offsets and **stop on verification** — table-tested with an injected clock
 - **Exactly one reminder per offset per subscriber**, enforced by business key
-- **Expired rows disappear from every count, ranking and export** — asserted against the consuming surfaces, not just the table
+- **An `expired` row is excluded from every count and query this ticket can reach** — asserted at the shared status-filter layer every consumer uses (standing rule 2), not just at the table. **Ranking (E6-01) and export (E10-04, E11-06) are later surfaces and cannot be tested here (standing rule 20)**; each asserts the same exclusion in its own suite. The exports already scope their set to *verified* rows, which an expired row is not.
 - Both jobs honour their batch caps
 - **If the job stops, no subscriber is lost** — the row still verifies from the original mail
 
-**Tests:** Clock-injected ladder table · deduplication · a consuming-surface assertion for expired rows · batch-cap tests.
+**Tests:** Clock-injected ladder table (three offsets) · deduplication · an expired-exclusion assertion at the shared status-filter/query layer · batch-cap tests.
 **Docs:** `docs/features/double-opt-in.md` · `docs/architecture/fallbacks.md`
 
 ### E3-09 — Resend-verification, without an enumeration oracle
@@ -990,11 +992,12 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Acceptance criteria:**
 - **The public route reads only the snapshot** — asserted by a test that fails if the route touches `subscriber`
 - **No email address, country, referral code or exact signup time is in the snapshot**
+- **Pending and `expired` rows never appear in the snapshot** — asserted; this is E3-08's deferred ranking-exclusion assertion, owned here (standing rule 20)
 - Ties break deterministically; **the board does not shuffle between refreshes**
 - **A stopped job leaves the last good snapshot serving**, with its age visible
 - The snapshot computation is batch-safe and does not hold the full table in memory
 
-**Tests:** The route-isolation assertion · anonymisation over the response shape · tie determinism across repeated computations · stale-snapshot serving.
+**Tests:** The route-isolation assertion · anonymisation over the response shape · the pending/expired-exclusion assertion · tie determinism across repeated computations · stale-snapshot serving.
 **Docs:** `docs/features/leaderboard.md` · `docs/architecture/adr/024-no-dark-patterns.md`
 
 ### E6-02 — The leaderboard island and the kill switch
@@ -1519,7 +1522,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Acceptance criteria:**
 - **Streamed and batch-capped** — asserted with a large seeded dataset, with memory observed
-- **The export set matches the handoff contract exactly** — asserted against `docs/data/model.md#the-launch-day-handoff-contract`
+- **The export set matches the handoff contract exactly** — asserted against `docs/data/model.md#the-launch-day-handoff-contract`. The set is *verified, unsuppressed, not disqualified*, so a **pending or `expired` row is absent** — this is E3-08's deferred export-exclusion assertion, owned here (standing rule 20)
 - Every run is audited with actor and row count
 - **The export contains no raw IP address and no token**
 - Admin authentication required
@@ -1638,7 +1641,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Build:** `scripts/export-handoff.ts` producing the export set and payload per `docs/data/model.md#the-launch-day-handoff-contract`, and `scripts/import-rehearsal.ts` performing the idempotent import keyed on `email_normalised` against a scratch database. **Rehearse twice.**
 
 **Acceptance criteria:**
-- The export set is exactly *verified, unsuppressed, not disqualified* — asserted
+- The export set is exactly *verified, unsuppressed, not disqualified* — asserted, so a **pending or `expired` row is absent** (E3-08's deferred handoff-exclusion assertion, owned here — standing rule 20)
 - **Every field in the handoff contract is present and correctly typed**
 - **Running the import twice produces zero additional customers** — the invariant, asserted, and a failure here is blocking
 - **Customer groups `wave-1`…`wave-4` and `subslush-legacy` are assigned**, and their values match what the storefront expects
