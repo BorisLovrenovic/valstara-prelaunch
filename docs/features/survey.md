@@ -6,6 +6,14 @@ Two questions on the verification success page — category preference and one q
 ## Feature flag
 `survey.enabled` — default on. Off skips the questions; verification is unaffected.
 
+## Question set (v1 — ADR-025)
+`version` = `"2026-09-08"`. A version change never rewrites earlier responses.
+
+1. **`category_preference`** (multi-select — **this is the handoff export field**): `[apparel, footwear, accessories, home, beauty]`. This is the **canonical** taxonomy — the storefront's Medusa product categories are created to match it at handoff (ADR-025).
+2. **`shopping_frequency`** (single-select, the qualifying question): "How often do you shop this kind of product?" → `[weekly, monthly, a few times a year, rarely]`.
+
+Skipping either is a first-class outcome, recorded, with no follow-up prompt.
+
 ## User flows
 1. **Ask** — on the verification success page, below the referral link, answerable in one interaction each.
 2. **Write back** — answers stored as a versioned `survey_response` and the category preference denormalised onto the subscriber, because that is the field the handoff exports.
