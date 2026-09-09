@@ -1,0 +1,210 @@
+import type { APIRoute } from 'astro';
+import { setTimeout as systemSleep } from 'node:timers/promises';
+import { randomUUID } from 'node:crypto';
+
+import { resendVerificationCopy } from '../../copy/resend-verification.ts';
+import { getConfig } from '../../server/config.ts';
+import { createFraudFlagRepository } from '../../server/db/fraud-flag.ts';
+import { createPool, type DatabasePool } from '../../server/db/pool.ts';
+import { consumeRateLimit } from '../../server/ratelimit/consume.ts';
+import { hashedIpPrefix } from '../../server/ratelimit/ip-prefix.ts';
+import { normaliseEmail } from '../../server/subscriber/normalise-email.ts';
+import {
+  createResendVerificationService,
+  type ResendVerificationInput,
+  type ResendVerificationOutcome,
+} from '../../server/subscriber/resend-verification.ts';
+import {
+  verifyTurnstileToken,
+  type TurnstileOutcome,
+} from '../../server/turnstile/verify.ts';
+
+export const resendVerificationRateLimitWindowMs = 15 * 60 * 1_000;
+export const resendVerificationAddressLimit = 1;
+export const resendVerificationIpPrefixLimit = 5;
+export const resendVerificationStrictIpPrefixLimit = 2;
+export const resendVerificationMinimumResponseMs = 250;
+
+const invalidAddressRateLimitKey = 'invalid';
+
+export interface ResendVerificationRouteDependencies {
+  readonly verifyTurnstile: (token: string) => Promise<TurnstileOutcome>;
+  readonly consumeAddressRateLimit: (
+    emailNormalised: string,
+    now: Date,
+  ) => Promise<'ok' | 'rate_limited'>;
+  readonly consumeIpRateLimit: (
+    ipAddress: string,
+    now: Date,
+    strict: boolean,
+  ) => Promise<'ok' | 'rate_limited'>;
+  readonly resendVerification: (
+    input: ResendVerificationInput,
+  ) => Promise<ResendVerificationOutcome>;
+  readonly flagChallengeTimeout: (subscriberId: string) => Promise<void>;
+  readonly clock?: () => Date;
+  readonly monotonicClock?: () => number;
+  readonly sleep?: (milliseconds: number) => Promise<void>;
+}
+
+let database: DatabasePool | undefined;
+
+function getDatabase(): DatabasePool {
+  database ??= createPool(getConfig().databaseUrl);
+  return database;
+}
+
+function jsonResponse(status: number, body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Cache-Control': 'no-store',
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+  });
+}
+
+function acceptedResponse(): Response {
+  return jsonResponse(200, {
+    status: 'pending',
+    message: resendVerificationCopy.accepted,
+  });
+}
+
+function errorResponse(
+  code: 'challenge_failed' | 'rate_limited' | 'unavailable',
+): Response {
+  const status =
+    code === 'challenge_failed' ? 400 : code === 'rate_limited' ? 429 : 503;
+  const message =
+    code === 'challenge_failed'
+      ? resendVerificationCopy.challengeFailed
+      : code === 'rate_limited'
+        ? resendVerificationCopy.rateLimited
+        : resendVerificationCopy.unavailable;
+  return jsonResponse(status, { error: { code, message } });
+}
+
+export function createResendVerificationRoute(
+  dependencies: ResendVerificationRouteDependencies,
+): APIRoute {
+  const clock = dependencies.clock ?? (() => new Date());
+  const monotonicClock =
+    dependencies.monotonicClock ?? (() => performance.now());
+  const sleep = dependencies.sleep ?? systemSleep;
+
+  return async ({ clientAddress, request }) => {
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch {
+      // Keep malformed bodies on the same public response path as an address
+      // that is not present in the waitlist.
+      return acceptedResponse();
+    }
+
+    // Turnstile is intentionally the first dependency call on this public
+    // write route. A timeout follows the established accept-and-flag policy on
+    // signup; no subscriber exists here to flag, so it is treated as unavailable.
+    const turnstileToken = formData.get('turnstile_token');
+    if (typeof turnstileToken !== 'string') {
+      return errorResponse('challenge_failed');
+    }
+    const challenge = await dependencies.verifyTurnstile(turnstileToken);
+    if (challenge === 'rejected') {
+      return errorResponse('challenge_failed');
+    }
+    const challengeTimedOut = challenge === 'unavailable';
+
+    const startedAt = monotonicClock();
+    const now = clock();
+    const email = formData.get('email');
+    const rawEmail = typeof email === 'string' ? email : '';
+    const normalised = normaliseEmail(rawEmail);
+    const addressKey = normalised?.normalised ?? invalidAddressRateLimitKey;
+
+    try {
+      if (
+        (await dependencies.consumeIpRateLimit(
+          clientAddress,
+          now,
+          challengeTimedOut,
+        )) !== 'ok' ||
+        (await dependencies.consumeAddressRateLimit(addressKey, now)) !== 'ok'
+      ) {
+        return errorResponse('rate_limited');
+      }
+
+      const outcome = await dependencies.resendVerification({
+        email: rawEmail,
+        now,
+        verificationUrl: (token) => {
+          const verificationUrl = new URL('/verify', request.url);
+          verificationUrl.searchParams.set('token', token);
+          return verificationUrl.toString();
+        },
+      });
+      if (challengeTimedOut && outcome.pendingSubscriberId !== null) {
+        // The resend path may know the pending subscriber, but that fact never
+        // reaches the response. Preserve the established timeout-review signal.
+        try {
+          await dependencies.flagChallengeTimeout(outcome.pendingSubscriberId);
+        } catch {
+          // The resend work is committed; a failed review marker must not turn
+          // a real person's retry into a false failure.
+        }
+      }
+    } catch {
+      return errorResponse('unavailable');
+    } finally {
+      const remaining =
+        resendVerificationMinimumResponseMs - (monotonicClock() - startedAt);
+      if (remaining > 0) {
+        await sleep(remaining);
+      }
+    }
+
+    return acceptedResponse();
+  };
+}
+
+function defaultDependencies(): ResendVerificationRouteDependencies {
+  const config = getConfig();
+  return {
+    verifyTurnstile: (token) => verifyTurnstileToken(token),
+    async consumeAddressRateLimit(emailNormalised, now) {
+      const count = await consumeRateLimit(
+        getDatabase(),
+        `resend-verification:address:${emailNormalised}`,
+        resendVerificationRateLimitWindowMs,
+        now,
+      );
+      return count > resendVerificationAddressLimit ? 'rate_limited' : 'ok';
+    },
+    async consumeIpRateLimit(ipAddress, now, strict) {
+      const prefixHash = hashedIpPrefix(ipAddress, config.ipPrefixPepper);
+      if (prefixHash === null) {
+        return 'rate_limited';
+      }
+      const count = await consumeRateLimit(
+        getDatabase(),
+        `resend-verification:ip:${prefixHash}`,
+        resendVerificationRateLimitWindowMs,
+        now,
+      );
+      const limit = strict
+        ? resendVerificationStrictIpPrefixLimit
+        : resendVerificationIpPrefixLimit;
+      return count > limit ? 'rate_limited' : 'ok';
+    },
+    resendVerification: createResendVerificationService(getDatabase()),
+    async flagChallengeTimeout(subscriberId) {
+      await createFraudFlagRepository(getDatabase()).insertChallengeTimeoutFlag(
+        { id: randomUUID(), subscriberId },
+      );
+    },
+  };
+}
+
+export const POST: APIRoute = (context) =>
+  createResendVerificationRoute(defaultDependencies())(context);

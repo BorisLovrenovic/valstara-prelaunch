@@ -10,7 +10,7 @@ Status: authoritative. Scope: the pre-launch site for the duration of the campai
 
 **The highest-consequence outcome.** Not because the data is sensitive in isolation, but because a leaked pre-launch list is a story that follows the brand into launch, and the audience is already suspicious.
 
-**Controls:** No route returns another person's data — `/me` returns only the bearer's row, and the leaderboard is anonymised. **Resend-verification returns an identical response for known and unknown addresses**, so the endpoint is not an enumeration oracle. Exports are admin-only, audited with a row count, and batch-capped. The database is not exposed on a host port in production. **A generated test asserts that no public response shape can carry an email address** except the bearer's own on `/me`.
+**Controls:** No route returns another person's data — `/me` returns only the bearer's row, and the leaderboard is anonymised. **Resend-verification returns an identical response for known and unknown addresses, padded to a 250 ms post-challenge minimum**, so the endpoint is not an enumeration oracle. Exports are admin-only, audited with a row count, and batch-capped. The database is not exposed on a host port in production. **A generated test asserts that no public response shape can carry an email address** except the bearer's own on `/me`.
 
 ---
 

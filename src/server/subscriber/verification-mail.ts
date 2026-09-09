@@ -1,4 +1,11 @@
 import { thinSliceCopy } from '../../copy/e1-11.ts';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+
+import { createSubscriberRepository } from '../db/subscriber.ts';
+import type { DatabasePool } from '../db/pool.ts';
+import { withTransaction } from '../db/transaction.ts';
+
+const verificationLifetimeMs = 7 * 24 * 60 * 60 * 1_000;
 
 /**
  * The verification mail, queued and sent by the signup flow.
@@ -13,6 +20,46 @@ import { thinSliceCopy } from '../../copy/e1-11.ts';
 export interface VerificationTestMail {
   readonly businessKey: string;
   readonly verificationUrl: string;
+}
+
+function tokenHash(token: string): Buffer {
+  return createHash('sha256').update(token).digest();
+}
+
+function createVerificationToken(): string {
+  return randomBytes(32).toString('base64url');
+}
+
+/**
+ * Creates a fresh, single-use verification token and its queued mail record.
+ * Delivery remains outside this transaction: E8-01 owns dispatch and retry.
+ */
+export async function queueVerificationMail(
+  database: DatabasePool,
+  subscriberId: string,
+  verificationUrl: (token: string) => string,
+  now: Date,
+): Promise<VerificationTestMail> {
+  return withTransaction(database, async (connection) => {
+    const repository = createSubscriberRepository(connection);
+    const tokenId = randomUUID();
+    const token = createVerificationToken();
+    const businessKey = `verify:${subscriberId}:${tokenId}`;
+
+    await repository.insertVerificationToken({
+      expiresAt: new Date(now.getTime() + verificationLifetimeMs),
+      id: tokenId,
+      subscriberId,
+      tokenHash: tokenHash(token),
+    });
+    await repository.insertQueuedVerificationEmail({
+      businessKey,
+      id: randomUUID(),
+      subscriberId,
+    });
+
+    return { businessKey, verificationUrl: verificationUrl(token) };
+  });
 }
 
 export type VerificationMailSender = (
