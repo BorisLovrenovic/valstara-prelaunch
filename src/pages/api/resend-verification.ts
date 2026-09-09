@@ -91,7 +91,8 @@ export function createResendVerificationRoute(
 ): APIRoute {
   const clock = dependencies.clock ?? (() => new Date());
   const monotonicClock =
-    dependencies.monotonicClock ?? (() => performance.now());
+    dependencies.monotonicClock ??
+    (() => Number(process.hrtime.bigint() / 1_000_000n));
   const sleep = dependencies.sleep ?? systemSleep;
 
   return async ({ clientAddress, request }) => {
@@ -136,33 +137,57 @@ export function createResendVerificationRoute(
         return errorResponse('rate_limited');
       }
 
-      const outcome = await dependencies.resendVerification({
-        email: rawEmail,
-        now,
-        verificationUrl: (token) => {
-          const verificationUrl = new URL('/verify', request.url);
-          verificationUrl.searchParams.set('token', token);
-          return verificationUrl.toString();
-        },
-      });
-      if (challengeTimedOut && outcome.pendingSubscriberId !== null) {
-        // The resend path may know the pending subscriber, but that fact never
-        // reaches the response. Preserve the established timeout-review signal.
-        try {
-          await dependencies.flagChallengeTimeout(outcome.pendingSubscriberId);
-        } catch {
-          // The resend work is committed; a failed review marker must not turn
-          // a real person's retry into a false failure.
+      const resendWork = (async () => {
+        const outcome = await dependencies.resendVerification({
+          email: rawEmail,
+          now,
+          verificationUrl: (token) => {
+            const verificationUrl = new URL('/verify', request.url);
+            verificationUrl.searchParams.set('token', token);
+            return verificationUrl.toString();
+          },
+        });
+        if (challengeTimedOut && outcome.pendingSubscriberId !== null) {
+          // The resend path may know the pending subscriber, but that fact
+          // never reaches the response. Preserve the established
+          // timeout-review signal.
+          try {
+            await dependencies.flagChallengeTimeout(outcome.pendingSubscriberId);
+          } catch {
+            // The resend work is committed; a failed review marker must not
+            // turn a real person's retry into a false failure.
+          }
         }
-      }
-    } catch {
-      return errorResponse('unavailable');
-    } finally {
+      })();
+
       const remaining =
         resendVerificationResponseTargetMs - (monotonicClock() - startedAt);
-      if (remaining > 0) {
-        await sleep(remaining);
+      if (remaining <= 0) {
+        // A known-address operation must never make this route take longer
+        // than the public response deadline. Its outcome remains private and
+        // any later rejection is deliberately consumed.
+        void resendWork.catch(() => undefined);
+        return acceptedResponse();
       }
+
+      const responseDeadline = sleep(remaining);
+      const finishedBeforeDeadline = await Promise.race([
+        resendWork.then(() => true),
+        responseDeadline.then(() => false),
+      ]);
+      if (!finishedBeforeDeadline) {
+        // The same accepted response is returned at the deadline whether the
+        // address is known or unknown. The already-started database work can
+        // finish without leaking its outcome through request timing.
+        void resendWork.catch(() => undefined);
+        return acceptedResponse();
+      }
+
+      // Reuse the deadline promise rather than starting a second timer: all
+      // successful post-rate-limit paths finish their response window here.
+      await responseDeadline;
+    } catch {
+      return errorResponse('unavailable');
     }
 
     return acceptedResponse();

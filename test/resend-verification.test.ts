@@ -65,6 +65,10 @@ function routeContext(request: Request, clientAddress = '203.0.113.10') {
   return { clientAddress, request } as never;
 }
 
+function elapsedMilliseconds(startedAt: bigint): number {
+  return Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+}
+
 function routeDependencies(
   overrides: Partial<ResendVerificationRouteDependencies> = {},
 ): ResendVerificationRouteDependencies {
@@ -113,36 +117,41 @@ test('known and unknown addresses have the same response, status, and padded tim
   ]);
 });
 
-test('known work exceeding the minimum pad has the same response timing as unknown work', async () => {
-  let elapsed = 0;
-  const completionTimes: number[] = [];
+test('known work exceeding the response deadline has the same response timing as unknown work', async () => {
+  let knownWorkSettled: (() => void) | undefined;
+  const knownWorkFinished = new Promise<void>((resolve) => {
+    knownWorkSettled = resolve;
+  });
   const route = createResendVerificationRoute(
     routeDependencies({
-      monotonicClock: () => elapsed,
       async resendVerification(input) {
-        elapsed += input.email === 'known@example.test' ? 300 : 5;
+        if (input.email === 'known@example.test') {
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, resendVerificationResponseTargetMs + 100);
+          });
+          knownWorkSettled?.();
+        }
         return { pendingSubscriberId: null };
-      },
-      async sleep(milliseconds) {
-        elapsed += milliseconds;
       },
     }),
   );
 
+  const knownStartedAt = process.hrtime.bigint();
   const known = await route(routeContext(makeRequest('known@example.test')));
-  completionTimes.push(elapsed);
-  elapsed = 0;
+  const knownElapsed = elapsedMilliseconds(knownStartedAt);
+  const unknownStartedAt = process.hrtime.bigint();
   const unknown = await route(
     routeContext(makeRequest('unknown@example.test')),
   );
-  completionTimes.push(elapsed);
+  const unknownElapsed = elapsedMilliseconds(unknownStartedAt);
 
   assert.equal(known.status, unknown.status);
   assert.deepEqual(await known.json(), await unknown.json());
-  assert.deepEqual(completionTimes, [
-    resendVerificationResponseTargetMs,
-    resendVerificationResponseTargetMs,
-  ]);
+  assert.ok(knownElapsed >= resendVerificationResponseTargetMs);
+  assert.ok(knownElapsed < resendVerificationResponseTargetMs + 75);
+  assert.ok(unknownElapsed >= resendVerificationResponseTargetMs);
+  assert.ok(unknownElapsed < resendVerificationResponseTargetMs + 75);
+  await knownWorkFinished;
   assert.ok(
     resendVerificationResponseTargetMs > resendVerificationMinimumResponseMs,
   );
