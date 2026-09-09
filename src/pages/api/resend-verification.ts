@@ -24,6 +24,7 @@ export const resendVerificationAddressLimit = 1;
 export const resendVerificationIpPrefixLimit = 5;
 export const resendVerificationStrictIpPrefixLimit = 2;
 export const resendVerificationMinimumResponseMs = 250;
+export const resendVerificationResponseTargetMs = 500;
 
 const invalidAddressRateLimitKey = 'invalid';
 
@@ -98,9 +99,9 @@ export function createResendVerificationRoute(
     try {
       formData = await request.formData();
     } catch {
-      // Keep malformed bodies on the same public response path as an address
-      // that is not present in the waitlist.
-      return acceptedResponse();
+      // A malformed body cannot contain a usable challenge token. Do not let
+      // it bypass the public write route's challenge boundary.
+      return errorResponse('challenge_failed');
     }
 
     // Turnstile is intentionally the first dependency call on this public
@@ -158,7 +159,7 @@ export function createResendVerificationRoute(
       return errorResponse('unavailable');
     } finally {
       const remaining =
-        resendVerificationMinimumResponseMs - (monotonicClock() - startedAt);
+        resendVerificationResponseTargetMs - (monotonicClock() - startedAt);
       if (remaining > 0) {
         await sleep(remaining);
       }
@@ -168,13 +169,17 @@ export function createResendVerificationRoute(
   };
 }
 
-function defaultDependencies(): ResendVerificationRouteDependencies {
-  const config = getConfig();
+export function createResendVerificationRateLimits(
+  database: DatabasePool,
+  ipPrefixPepper: string,
+): Pick<
+  ResendVerificationRouteDependencies,
+  'consumeAddressRateLimit' | 'consumeIpRateLimit'
+> {
   return {
-    verifyTurnstile: (token) => verifyTurnstileToken(token),
     async consumeAddressRateLimit(emailNormalised, now) {
       const count = await consumeRateLimit(
-        getDatabase(),
+        database,
         `resend-verification:address:${emailNormalised}`,
         resendVerificationRateLimitWindowMs,
         now,
@@ -182,12 +187,12 @@ function defaultDependencies(): ResendVerificationRouteDependencies {
       return count > resendVerificationAddressLimit ? 'rate_limited' : 'ok';
     },
     async consumeIpRateLimit(ipAddress, now, strict) {
-      const prefixHash = hashedIpPrefix(ipAddress, config.ipPrefixPepper);
+      const prefixHash = hashedIpPrefix(ipAddress, ipPrefixPepper);
       if (prefixHash === null) {
         return 'rate_limited';
       }
       const count = await consumeRateLimit(
-        getDatabase(),
+        database,
         `resend-verification:ip:${prefixHash}`,
         resendVerificationRateLimitWindowMs,
         now,
@@ -197,6 +202,18 @@ function defaultDependencies(): ResendVerificationRouteDependencies {
         : resendVerificationIpPrefixLimit;
       return count > limit ? 'rate_limited' : 'ok';
     },
+  };
+}
+
+function defaultDependencies(): ResendVerificationRouteDependencies {
+  const config = getConfig();
+  const rateLimits = createResendVerificationRateLimits(
+    getDatabase(),
+    config.ipPrefixPepper,
+  );
+  return {
+    verifyTurnstile: (token) => verifyTurnstileToken(token),
+    ...rateLimits,
     resendVerification: createResendVerificationService(getDatabase()),
     async flagChallengeTimeout(subscriberId) {
       await createFraudFlagRepository(getDatabase()).insertChallengeTimeoutFlag(

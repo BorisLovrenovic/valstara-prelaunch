@@ -4,7 +4,9 @@ import test from 'node:test';
 
 import {
   createResendVerificationRoute,
+  createResendVerificationRateLimits,
   resendVerificationMinimumResponseMs,
+  resendVerificationResponseTargetMs,
   type ResendVerificationRouteDependencies,
 } from '../src/pages/api/resend-verification.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
@@ -106,9 +108,44 @@ test('known and unknown addresses have the same response, status, and padded tim
   assert.equal(known.status, unknown.status);
   assert.deepEqual(await known.json(), await unknown.json());
   assert.deepEqual(completionTimes, [
-    resendVerificationMinimumResponseMs,
-    resendVerificationMinimumResponseMs,
+    resendVerificationResponseTargetMs,
+    resendVerificationResponseTargetMs,
   ]);
+});
+
+test('known work exceeding the minimum pad has the same response timing as unknown work', async () => {
+  let elapsed = 0;
+  const completionTimes: number[] = [];
+  const route = createResendVerificationRoute(
+    routeDependencies({
+      monotonicClock: () => elapsed,
+      async resendVerification(input) {
+        elapsed += input.email === 'known@example.test' ? 300 : 5;
+        return { pendingSubscriberId: null };
+      },
+      async sleep(milliseconds) {
+        elapsed += milliseconds;
+      },
+    }),
+  );
+
+  const known = await route(routeContext(makeRequest('known@example.test')));
+  completionTimes.push(elapsed);
+  elapsed = 0;
+  const unknown = await route(
+    routeContext(makeRequest('unknown@example.test')),
+  );
+  completionTimes.push(elapsed);
+
+  assert.equal(known.status, unknown.status);
+  assert.deepEqual(await known.json(), await unknown.json());
+  assert.deepEqual(completionTimes, [
+    resendVerificationResponseTargetMs,
+    resendVerificationResponseTargetMs,
+  ]);
+  assert.ok(
+    resendVerificationResponseTargetMs > resendVerificationMinimumResponseMs,
+  );
 });
 
 test('Turnstile is verified before rate limits and the resend service', async () => {
@@ -137,6 +174,45 @@ test('Turnstile is verified before rate limits and the resend service', async ()
 
   await route(routeContext(makeRequest('person@example.test')));
   assert.deepEqual(order, ['turnstile', 'ip', 'address', 'resend']);
+});
+
+test('a malformed body returns challenge_failed before rate limits or resend work', async () => {
+  const order: string[] = [];
+  const route = createResendVerificationRoute(
+    routeDependencies({
+      async verifyTurnstile() {
+        order.push('turnstile');
+        return 'verified';
+      },
+      async consumeIpRateLimit() {
+        order.push('ip');
+        return 'ok';
+      },
+      async resendVerification() {
+        order.push('resend');
+        return { pendingSubscriberId: null };
+      },
+    }),
+  );
+  const malformed = new Request(
+    'http://valstara.test/api/resend-verification',
+    {
+      body: '{',
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    },
+  );
+
+  const response = await route(routeContext(malformed));
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: {
+      code: 'challenge_failed',
+      message: "We couldn't confirm that request. Please try again.",
+    },
+  });
+  assert.deepEqual(order, []);
 });
 
 test('both IP-prefix and normalised-address limits independently reject requests', async () => {
@@ -172,6 +248,48 @@ test('both IP-prefix and normalised-address limits independently reject requests
   );
   assert.equal(addressResponse.status, 429);
   assert.equal(receivedAddress, 'user@gmail.com');
+});
+
+test('database-backed address and IP-prefix counters reject attempts beyond their actual limits', async () => {
+  const fixture = await createDatabaseFixture();
+  const rateLimits = createResendVerificationRateLimits(
+    fixture.database,
+    'test-ip-prefix-pepper',
+  );
+  const route = createResendVerificationRoute(
+    routeDependencies({
+      ...rateLimits,
+      clock: () => new Date('2026-09-09T12:00:00.000Z'),
+      sleep: async () => undefined,
+    }),
+  );
+
+  try {
+    const firstAddressAttempt = await route(
+      routeContext(makeRequest('address@example.test'), '203.0.113.10'),
+    );
+    const secondAddressAttempt = await route(
+      routeContext(makeRequest('address@example.test'), '203.0.113.11'),
+    );
+    assert.equal(firstAddressAttempt.status, 200);
+    assert.equal(secondAddressAttempt.status, 429);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const response = await route(
+        routeContext(
+          makeRequest(`ip-${attempt}@example.test`),
+          '198.51.100.10',
+        ),
+      );
+      assert.equal(response.status, 200);
+    }
+    const sixthIpAttempt = await route(
+      routeContext(makeRequest('ip-six@example.test'), '198.51.100.10'),
+    );
+    assert.equal(sixthIpAttempt.status, 429);
+  } finally {
+    await fixture.dispose();
+  }
 });
 
 test('a rejected Turnstile token stops the route before either rate limit', async () => {
