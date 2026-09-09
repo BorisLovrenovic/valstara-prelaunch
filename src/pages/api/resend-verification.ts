@@ -152,7 +152,9 @@ export function createResendVerificationRoute(
           // never reaches the response. Preserve the established
           // timeout-review signal.
           try {
-            await dependencies.flagChallengeTimeout(outcome.pendingSubscriberId);
+            await dependencies.flagChallengeTimeout(
+              outcome.pendingSubscriberId,
+            );
           } catch {
             // The resend work is committed; a failed review marker must not
             // turn a real person's retry into a false failure.
