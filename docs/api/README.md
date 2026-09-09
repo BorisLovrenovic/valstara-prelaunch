@@ -64,7 +64,7 @@ Idempotent on `email_normalised`: a repeat signup for a `pending` row re-sends t
 Consumes the token, sets `verified`, confirms referral edges, settles cheap rewards, assigns the access window, and renders the success page carrying the two survey questions and the referral link. **A replayed token renders the same success page** — never an error.
 
 ### `POST /api/resend-verification`
-Body: `email`, `turnstile_token`. Rate-limited hard, per address and per IP prefix. **Always returns the same response whether or not the address exists** — an enumeration oracle on a waitlist is a real leak.
+Body: `email`, `turnstile_token`. Turnstile is verified first. Rate-limited hard: **one attempt per normalised address and five per hashed IP prefix in 15 minutes** (two per prefix when Turnstile is unavailable). **Always returns the same `200` response whether or not the address exists, is pending, or is already verified** — an enumeration oracle on a waitlist is a real leak. After rate limiting, the resend decision has a fixed **500 ms response deadline**: a response is held until that deadline, and work still unsettled then finishes without changing the identical accepted response. A pending address receives a fresh token and queued verification mail; a verified address receives neither.
 
 ### `POST /api/survey`
 Body: signed token or an in-page verification continuation, plus `answers`. Validated against the versioned question set. Idempotent per subscriber — a resubmission replaces, and the replacement is audited.

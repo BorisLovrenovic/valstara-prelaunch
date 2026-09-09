@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import type { DatabasePool } from '../db/pool.ts';
 import { createSubscriberRepository } from '../db/subscriber.ts';
@@ -6,9 +6,10 @@ import { withTransaction } from '../db/transaction.ts';
 import { consumeRateLimit } from '../ratelimit/consume.ts';
 
 import { normaliseEmail, type NormalisedEmail } from './normalise-email.ts';
-import type { VerificationMailSender } from './verification-mail.ts';
-
-const verificationLifetimeMs = 7 * 24 * 60 * 60 * 1_000;
+import {
+  queueVerificationMail,
+  type VerificationMailSender,
+} from './verification-mail.ts';
 
 // One verification mail per normalised address per window. The limit is 1 by
 // design, not by tuning: it is what makes a concurrent double-submit produce
@@ -56,19 +57,6 @@ export interface SignupServiceDependencies {
   readonly sendVerificationMail: VerificationMailSender;
 }
 
-interface QueuedVerificationMail {
-  readonly businessKey: string;
-  readonly verificationUrl: string;
-}
-
-function tokenHash(token: string): Buffer {
-  return createHash('sha256').update(token).digest();
-}
-
-function createVerificationToken(): string {
-  return randomBytes(32).toString('base64url');
-}
-
 async function upsertSubscriber(
   database: DatabasePool,
   email: NormalisedEmail,
@@ -99,35 +87,6 @@ async function upsertSubscriber(
     }
 
     return { created: false, id: existing.id, status: existing.status };
-  });
-}
-
-async function queueVerificationMail(
-  database: DatabasePool,
-  subscriberId: string,
-  verificationUrl: (token: string) => string,
-  now: Date,
-): Promise<QueuedVerificationMail> {
-  return withTransaction(database, async (connection) => {
-    const repository = createSubscriberRepository(connection);
-    const tokenId = randomUUID();
-    const token = createVerificationToken();
-    const businessKey = `verify:${subscriberId}:${tokenId}`;
-    const expiresAt = new Date(now.getTime() + verificationLifetimeMs);
-
-    await repository.insertVerificationToken({
-      expiresAt,
-      id: tokenId,
-      subscriberId,
-      tokenHash: tokenHash(token),
-    });
-    await repository.insertQueuedVerificationEmail({
-      businessKey,
-      id: randomUUID(),
-      subscriberId,
-    });
-
-    return { businessKey, verificationUrl: verificationUrl(token) };
   });
 }
 
