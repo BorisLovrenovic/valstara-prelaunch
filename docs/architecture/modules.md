@@ -108,6 +108,7 @@ valstara-prelaunch/
 | **geo** | `CF-IPCountry` → a prefill suggestion | Returns a *suggestion*. It has no method that can decide eligibility |
 | **turnstile** | Server-side token verification | The only consumer of the Turnstile secret |
 | **ratelimit** | Per-IP-prefix and per-identity windows | Backed by the database; batch-capped cleanup |
+| **verification-rate** | Rolling verification-rate calculation, provider breakdown and collapse alert | Runs hourly; reports P1 only after the configured cohort is large enough |
 | **content** | Loads Markdown collections, validates frontmatter | Trust and legal prose only. No interface strings |
 
 ### Provider modules — the vendor SDK boundary
@@ -140,12 +141,12 @@ Jobs only ever **materialise, remind, expire and repair.** Nothing a customer is
 | Job | Cadence | Batch cap | Fallback if it stops |
 |---|---|---|---|
 | Verification reminder ladder | hourly, in the maintenance process | yes | Reminders are late; the row still verifies from the original mail |
+| Verification-rate check | hourly, in the maintenance process | n/a | The funnel can fail silently — this job is the guard against that |
 | Unverified expiry sweep | daily, in the maintenance process | yes | Rows linger; no counter is affected, since nothing counts unverified rows |
 | Leaderboard snapshot refresh | 5 min | n/a | The last good snapshot keeps serving, with its timestamp shown |
 | Referral counter repair | daily | yes | Counters drift from edges; the edges remain correct and authoritative |
 | IP-prefix retention purge | daily | yes | **Retention breach — this is a compliance alert, not a hygiene one** |
 | Bounce/complaint reconciliation | hourly | yes | Suppression lags; a suppressed address could receive one more send |
-| Verification-rate check | hourly | n/a | **The funnel can fail silently — this job is the guard against that** |
 
 ---
 

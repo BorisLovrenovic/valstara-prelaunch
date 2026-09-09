@@ -55,6 +55,10 @@ services:
       IP_PREFIX_PEPPER: ${IP_PREFIX_PEPPER:?IP_PREFIX_PEPPER is required}
       RESEND_API_KEY: ${RESEND_API_KEY:?RESEND_API_KEY is required}
       RESEND_TEST_RECIPIENT: ${RESEND_TEST_RECIPIENT:?RESEND_TEST_RECIPIENT is required}
+      VERIFICATION_RATE_BASELINE_DAYS: ${VERIFICATION_RATE_BASELINE_DAYS:-7}
+      VERIFICATION_RATE_COHORT_HOURS: ${VERIFICATION_RATE_COHORT_HOURS:-24}
+      VERIFICATION_RATE_COLLAPSE_PERCENT: ${VERIFICATION_RATE_COLLAPSE_PERCENT:-50}
+      VERIFICATION_RATE_MINIMUM_SIGNUPS: ${VERIFICATION_RATE_MINIMUM_SIGNUPS:-50}
       ASTRO_TELEMETRY_DISABLED: '1'
       NODE_ENV: development
       # Same install as migrate — pin npm the same way (see the migrate service).
@@ -110,6 +114,10 @@ services:
     command: ['node', '/workspace/src/server/subscriber/run-maintenance.ts']
     environment:
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:-valstara-app-local-only}@postgres:5432/valstara_waitlist
+      VERIFICATION_RATE_BASELINE_DAYS: ${VERIFICATION_RATE_BASELINE_DAYS:-7}
+      VERIFICATION_RATE_COHORT_HOURS: ${VERIFICATION_RATE_COHORT_HOURS:-24}
+      VERIFICATION_RATE_COLLAPSE_PERCENT: ${VERIFICATION_RATE_COLLAPSE_PERCENT:-50}
+      VERIFICATION_RATE_MINIMUM_SIGNUPS: ${VERIFICATION_RATE_MINIMUM_SIGNUPS:-50}
     volumes:
       - ../..:/workspace
       - app-node-modules:/workspace/node_modules

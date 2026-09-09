@@ -17,7 +17,7 @@ Everything else announces itself. These two look exactly like ordinary underperf
 
 | Failure | Why it is silent | The guard |
 |---|---|---|
-| **★ Verification mail stops being delivered** | The page still works, signups still arrive, the funnel simply stops converting. Indistinguishable from a bad landing page | **Alert on verification *rate*, not count**, hourly against a rolling baseline. Plus weekly seed tests into Gmail, Outlook, GMX and Web.de. **A rate collapse is P1** |
+| **★ Verification mail stops being delivered** | The page still works, signups still arrive, the funnel simply stops converting. Indistinguishable from a bad landing page | **Alert on verification *rate*, not count**, hourly against a rolling baseline. The default compares the current 24-hour cohort with the preceding seven days, only after 50 signups; a 50% relative drop is P1. Plus weekly seed tests into Gmail, Outlook, GMX and Web.de. |
 | **★ Referral attribution silently stops** | Signups keep arriving, referrers keep sharing, and nobody's counter moves. Discovered weeks later, unrecoverable | **Alert when the attributed-referral share of new signups drops below its baseline**, and assert in CI that a request carrying `?ref=` produces a signed field and an edge row |
 
 ---

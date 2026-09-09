@@ -710,14 +710,18 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this ticket exists:** without it, the campaign's most dangerous failure is indistinguishable from a page that simply is not converting — and it is discovered weeks later, with the list already lost.
 
-**Build:** An hourly job computing the verification rate over a rolling window against a baseline, alerting **P1 on a collapse.** Surface it on the admin health view. Include per-mailbox-provider breakdown so the alert points at a cause.
+**Build:** An hourly job computing the verification rate over a rolling window against a baseline, alerting **P1 on a collapse.** Export the current rate, baseline and per-mailbox-provider breakdown from `src/server/verification-rate` so the authenticated admin health view can surface it. Include the provider breakdown so the alert points at a cause.
+
+**Scope note (2026-09-09):** `GET /api/admin/health` and its MFA protection remain E10-05's route and security boundary. This ticket supplies its verification-rate health result; E10-05 renders that result in the route. Creating the route here would require building E10-05's authentication work ahead of its ticket, contrary to standing rule 20. Founder-authorised 2026-09-09.
+
+**Monitoring configuration (2026-09-09):** compare the current rolling 24-hour signup cohort with the preceding seven days; the cohort is eligible once it contains 50 signups; raise P1 at a relative rate drop of 50% or greater. Report mailbox-provider groups Gmail, Microsoft, GMX, Web.de and other. These values are validated configuration, so operations can change them without code; they are the founder-authorised defaults for this ticket.
 
 **Acceptance criteria:**
 - **The alert is on the *rate*, not the count** — a drop in traffic must not fire it, and a drop in conversion must
 - The baseline is rolling and configurable; **the first hours of the campaign do not produce a false alarm**
 - The breakdown is per mailbox provider, because "Gmail only" and "everywhere" are different incidents
 - **The alert fires in a simulated collapse** — drilled, not assumed
-- The metric appears on `GET /api/admin/health`
+- The metric is available through the verification-rate health result consumed by `GET /api/admin/health` in E10-05
 
 **Tests:** Simulated collapse · a traffic-drop scenario that must **not** alert · cold-start behaviour.
 **Docs:** `docs/architecture/fallbacks.md#the-two-silent-failures` · `docs/ops/runbook.md`
@@ -1534,7 +1538,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this tier:** one credential guards disqualification, export and the draw.
 
-**Build:** Admin authentication — **a single operator credential with MFA**, not a user system. Then `GET /api/admin/health`: verification rate against baseline, snapshot age, email queue depth, quota projection, purge-job status, open flag count.
+**Build:** Admin authentication — **a single operator credential with MFA**, not a user system. Then `GET /api/admin/health`: verification rate against baseline (from E3-10's verification-rate health result), snapshot age, email queue depth, quota projection, purge-job status, open flag count.
 
 **Acceptance criteria:**
 - **MFA is active and verified, not assumed**

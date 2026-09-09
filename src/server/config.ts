@@ -12,6 +12,10 @@ const optionalKeys = [
   'NODE_ENV',
   'PORT',
   'TURNSTILE_SITE_KEY',
+  'VERIFICATION_RATE_BASELINE_DAYS',
+  'VERIFICATION_RATE_COHORT_HOURS',
+  'VERIFICATION_RATE_COLLAPSE_PERCENT',
+  'VERIFICATION_RATE_MINIMUM_SIGNUPS',
 ] as const;
 
 // The public Turnstile site key is rendered into the signup page so the widget
@@ -46,6 +50,7 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     resendTestRecipient: recipient(environment),
     turnstileSecretKey: requiredValue(environment, 'TURNSTILE_SECRET_KEY'),
     turnstileSiteKey: turnstileSiteKey(environment),
+    verificationRate: verificationRate(environment),
   };
   return Object.freeze(config);
 }
@@ -61,6 +66,12 @@ export function getDatabaseUrl(
   environment: NodeJS.ProcessEnv = process.env,
 ): string {
   return databaseUrl(environment);
+}
+
+export function getVerificationRateConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): VerificationRateConfiguration {
+  return verificationRate(environment);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -164,9 +175,64 @@ function host(environment: NodeJS.ProcessEnv): string | undefined {
     : invalid('HOST', 'must be a hostname or address without whitespace');
 }
 
+function verificationRate(
+  environment: NodeJS.ProcessEnv,
+): VerificationRateConfiguration {
+  return Object.freeze({
+    baselineDays: positiveInteger(
+      environment,
+      'VERIFICATION_RATE_BASELINE_DAYS',
+      7,
+    ),
+    cohortHours: positiveInteger(
+      environment,
+      'VERIFICATION_RATE_COHORT_HOURS',
+      24,
+    ),
+    collapsePercent: positiveInteger(
+      environment,
+      'VERIFICATION_RATE_COLLAPSE_PERCENT',
+      50,
+      100,
+    ),
+    minimumSignups: positiveInteger(
+      environment,
+      'VERIFICATION_RATE_MINIMUM_SIGNUPS',
+      50,
+    ),
+  });
+}
+
+function positiveInteger(
+  environment: NodeJS.ProcessEnv,
+  key: OptionalEnvironmentKey,
+  fallback: number,
+  maximum = Number.MAX_SAFE_INTEGER,
+): number {
+  const value = environment[key];
+  if (value === undefined || value === '') {
+    return fallback;
+  }
+  if (!/^\d+$/u.test(value)) {
+    return invalid(key, `must be an integer from 1 to ${maximum}`);
+  }
+  const parsed = Number(value);
+  return parsed >= 1 && parsed <= maximum
+    ? parsed
+    : invalid(key, `must be an integer from 1 to ${maximum}`);
+}
+
 type RequiredEnvironmentKey = (typeof requiredKeys)[number];
 type NodeEnvironment = 'development' | 'production' | 'test';
+type OptionalEnvironmentKey = (typeof optionalKeys)[number];
 export type AppEnvironmentKey = (typeof appEnvironmentKeys)[number];
+
+export interface VerificationRateConfiguration {
+  readonly baselineDays: number;
+  readonly cohortHours: number;
+  readonly collapsePercent: number;
+  readonly minimumSignups: number;
+}
 
 export interface AppConfig {
   readonly databaseUrl: string;
@@ -178,4 +244,5 @@ export interface AppConfig {
   readonly resendTestRecipient: string;
   readonly turnstileSecretKey: string;
   readonly turnstileSiteKey: string;
+  readonly verificationRate: VerificationRateConfiguration;
 }

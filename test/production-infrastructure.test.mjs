@@ -192,6 +192,10 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   assert.equal(config.services.maintenance.ports, undefined);
   assert.deepEqual(Object.keys(config.services.maintenance.environment), [
     'DATABASE_URL',
+    'VERIFICATION_RATE_BASELINE_DAYS',
+    'VERIFICATION_RATE_COHORT_HOURS',
+    'VERIFICATION_RATE_COLLAPSE_PERCENT',
+    'VERIFICATION_RATE_MINIMUM_SIGNUPS',
   ]);
   assert.equal(config.services.postgres.ports, undefined);
   assert.equal(config.services.umami.ports, undefined);
