@@ -117,6 +117,35 @@ test('known and unknown addresses have the same response, status, and padded tim
   ]);
 });
 
+test('known resend-work errors and unknown addresses have the same accepted response timing', async () => {
+  const route = createResendVerificationRoute(
+    routeDependencies({
+      async resendVerification(input) {
+        if (input.email === 'known@example.test') {
+          throw new Error('private resend work failed');
+        }
+        return { pendingSubscriberId: null };
+      },
+    }),
+  );
+
+  const knownStartedAt = process.hrtime.bigint();
+  const known = await route(routeContext(makeRequest('known@example.test')));
+  const knownElapsed = elapsedMilliseconds(knownStartedAt);
+  const unknownStartedAt = process.hrtime.bigint();
+  const unknown = await route(
+    routeContext(makeRequest('unknown@example.test')),
+  );
+  const unknownElapsed = elapsedMilliseconds(unknownStartedAt);
+
+  assert.equal(known.status, unknown.status);
+  assert.deepEqual(await known.json(), await unknown.json());
+  assert.ok(knownElapsed >= resendVerificationResponseTargetMs);
+  assert.ok(knownElapsed < resendVerificationResponseTargetMs + 75);
+  assert.ok(unknownElapsed >= resendVerificationResponseTargetMs);
+  assert.ok(unknownElapsed < resendVerificationResponseTargetMs + 75);
+});
+
 test('known work exceeding the response deadline has the same response timing as unknown work', async () => {
   let knownWorkSettled: (() => void) | undefined;
   const knownWorkFinished = new Promise<void>((resolve) => {

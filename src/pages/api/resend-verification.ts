@@ -172,7 +172,12 @@ export function createResendVerificationRoute(
 
       const responseDeadline = sleep(remaining);
       const finishedBeforeDeadline = await Promise.race([
-        resendWork.then(() => true),
+        resendWork.then(
+          () => true,
+          // Resend work is intentionally private: its failure cannot expose
+          // address membership through the public response.
+          () => true,
+        ),
         responseDeadline.then(() => false),
       ]);
       if (!finishedBeforeDeadline) {
