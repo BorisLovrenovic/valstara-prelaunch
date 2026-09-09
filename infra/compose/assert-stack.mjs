@@ -10,7 +10,7 @@ const execFileAsync = promisify(execFile);
 const composeFile = fileURLToPath(
   new URL('./docker-compose.yml', import.meta.url),
 );
-const expectedServices = ['app', 'postgres', 'umami'];
+const expectedServices = ['app', 'maintenance', 'postgres', 'umami'];
 
 async function run(command, args) {
   const { stdout } = await execFileAsync(command, args, {
@@ -169,6 +169,7 @@ export async function assertStack() {
   }
 
   const appEnvironment = environmentOf(inspections.get('app'));
+  const maintenanceEnvironment = environmentOf(inspections.get('maintenance'));
   const umamiEnvironment = environmentOf(inspections.get('umami'));
   assert.equal(
     appEnvironment.MIGRATION_DATABASE_URL,
@@ -210,6 +211,11 @@ export async function assertStack() {
     assertDatabaseConnection({
       service: 'app',
       connectionUrl: appEnvironment.DATABASE_URL,
+      database: appDatabase,
+    }),
+    assertDatabaseConnection({
+      service: 'maintenance',
+      connectionUrl: maintenanceEnvironment.DATABASE_URL,
       database: appDatabase,
     }),
     assertDatabaseConnection({

@@ -148,7 +148,14 @@ test('the production migration entry point resolves under native Node TypeScript
 
 test('production Compose uses the SHA image and hard-disables swap', async () => {
   const config = await renderedProductionCompose();
-  const expectedServices = ['app', 'caddy', 'migrate', 'postgres', 'umami'];
+  const expectedServices = [
+    'app',
+    'caddy',
+    'maintenance',
+    'migrate',
+    'postgres',
+    'umami',
+  ];
 
   assert.deepEqual(Object.keys(config.services).sort(), expectedServices);
   assert.equal(
@@ -156,6 +163,7 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
     `ghcr.io/example/valstara-prelaunch:${sha}`,
   );
   assert.equal(config.services.migrate.image, config.services.app.image);
+  assert.equal(config.services.maintenance.image, config.services.app.image);
   for (const key of [
     'DATABASE_URL',
     'IP_PREFIX_PEPPER',
@@ -181,6 +189,10 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   }
 
   assert.equal(config.services.app.ports, undefined);
+  assert.equal(config.services.maintenance.ports, undefined);
+  assert.deepEqual(Object.keys(config.services.maintenance.environment), [
+    'DATABASE_URL',
+  ]);
   assert.equal(config.services.postgres.ports, undefined);
   assert.equal(config.services.umami.ports, undefined);
   assert.equal(config.networks.backend.internal, true);

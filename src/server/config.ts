@@ -57,6 +57,12 @@ export function getConfig(): AppConfig {
   return cachedConfig;
 }
 
+export function getDatabaseUrl(
+  environment: NodeJS.ProcessEnv = process.env,
+): string {
+  return databaseUrl(environment);
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   getConfig();
 }

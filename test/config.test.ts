@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import {
   appEnvironmentKeys,
   ConfigurationError,
+  getDatabaseUrl,
   turnstileTestSiteKey,
   validateConfig,
 } from '../src/server/config.ts';
@@ -75,6 +76,18 @@ test('E1-12 validates and types the complete application environment', () => {
     turnstileSecretKey: 'local-test-turnstile-secret',
     turnstileSiteKey: turnstileTestSiteKey,
   });
+});
+
+test('a database-only process validates only its required connection URL', () => {
+  assert.equal(getDatabaseUrl(validEnvironment), validEnvironment.DATABASE_URL);
+  assert.throws(
+    () => getDatabaseUrl(withVariable('DATABASE_URL', undefined)),
+    (error) => {
+      assert.ok(error instanceof ConfigurationError);
+      assert.equal(error.variableName, 'DATABASE_URL');
+      return true;
+    },
+  );
 });
 
 test('E3-05 defaults the public site key to the placeholder and honours an override', () => {

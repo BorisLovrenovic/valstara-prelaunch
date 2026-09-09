@@ -69,10 +69,11 @@ There is no staging. The compensating controls are mandatory CI gates, additive 
 **One consequence to hold onto:** production carries no visitors before the campaign opens, but **it carries real sending credentials and a real domain reputation the moment email is configured.** From the first live Resend key onward, a mistake in production is a deliverability event. Sandbox keys never reach production; live keys never reach local.
 
 Production is defined by `infra/compose/docker-compose.production.yml`:
-PostgreSQL, the one-shot migration gate, the SHA-tagged app image, Umami and
-Caddy. Every service has a hard memory limit with its memory-plus-swap limit set
-to the same value. Only Caddy publishes host ports; the app, PostgreSQL and
-Umami remain on an internal Docker network.
+PostgreSQL, the one-shot migration gate, the SHA-tagged app image, the
+verification-maintenance process, Umami and Caddy. Every service has a hard
+memory limit with its memory-plus-swap limit set to the same value. Only Caddy
+publishes host ports; the app, maintenance process, PostgreSQL and Umami remain
+on an internal Docker network.
 
 Caddy terminates TLS with a mounted Cloudflare Origin CA certificate. It
 matches the immediate socket peer against Cloudflare's published address

@@ -23,6 +23,25 @@ interface SubscriberService {
 }
 ```
 
+E3-08 adds two scheduled interfaces beside the request-facing service:
+
+```ts
+interface VerificationReminderJob {
+  run(limit: number): Promise<{ scanned: number; queued: number }>
+}
+
+interface UnverifiedExpiryJob {
+  run(limit: number): Promise<number>
+}
+```
+
+The maintenance process runs the reminder job hourly and the expiry job once per
+UTC day. Each invocation is explicitly capped. The reminder offsets are exactly
+`+1h`, `+24h` and `+72h`; their immutable business keys are
+`verify-reminder:{subscriber_id}:{offset}h`, so the `email_send.business_key`
+constraint is the final deduplication guard. The expiry horizon defaults to 30
+days and changes only `pending` rows strictly past it.
+
 ## Rules
 - **`normaliseEmail()` runs before any uniqueness check.** Lowercase, strip `+tag` (all domains), remove dots for **Gmail-family domains only** — `gmail.com` and `googlemail.com`; every other provider keeps its dots. The family is not cross-canonicalised (a `googlemail.com` address is not rewritten to `gmail.com`). The normalised form is the unique key; the raw form is what is displayed and mailed. A malformed address, or one whose local part is emptied by tag/dot removal, is rejected (the function returns `null`); Unicode and internationalised domains never throw. This one step removes the cheapest referral attack entirely.
 - **`signup()` is idempotent on `email_normalised`.** A repeat for a `pending` row re-queues the verification mail subject to its own rate limit; a repeat for a `verified` row does not. The outcome it returns — `created`, `existing` (a pending repeat, whether the mail was re-queued or throttled), `already_verified`, or `invalid_email` — is what the signup route maps onto the closed code set. The per-address send window has a limit of one, which is also what makes a concurrent double-submit produce exactly one verification email.
@@ -31,9 +50,12 @@ interface SubscriberService {
 - **`anonymise()` never deletes the row** where referral edges reference it — it nulls the personal fields, so counts stay defensible and no personal data remains.
 - `referral_tier` and `confirmed_referrals` are **caches** owned by the referral module. This module never writes them directly.
 - Every sweep is batch-capped and takes an explicit limit.
+- **Only `verified` is a counted subscriber status.** The canonical value lives
+  in the subscriber database query layer and is shared by current and future
+  count consumers; `pending` and `expired` never enter a counted query.
 
 ## Dependencies
 `db`, `audit`, `fraud` (signals at signup), `referral` (edge creation), `email` (queue verification).
 
 ## Contract tests
-`user+tag@gmail.com`, `u.s.e.r@gmail.com` and `user@gmail.com` collide on one row · a non-Gmail domain keeps its dots · double signup produces one row and one email · `referred_by_id` cannot be updated · `disqualify()` without an actor throws · `anonymise()` leaves edges intact and personal fields null · `expireUnverified()` honours its limit.
+`user+tag@gmail.com`, `u.s.e.r@gmail.com` and `user@gmail.com` collide on one row · a non-Gmail domain keeps its dots · double signup produces one row and one email · `referred_by_id` cannot be updated · `disqualify()` without an actor throws · `anonymise()` leaves edges intact and personal fields null · reminder offsets and business-key deduplication · reminder stop on verification · `expireUnverified()` honours its limit · expired rows fail the shared counted-status filter.
