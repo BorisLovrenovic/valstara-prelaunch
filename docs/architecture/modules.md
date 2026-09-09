@@ -139,8 +139,8 @@ Jobs only ever **materialise, remind, expire and repair.** Nothing a customer is
 
 | Job | Cadence | Batch cap | Fallback if it stops |
 |---|---|---|---|
-| Verification reminder ladder | hourly | yes | Reminders are late; the row still verifies from the original mail |
-| Unverified expiry sweep | daily | yes | Rows linger; no counter is affected, since nothing counts unverified rows |
+| Verification reminder ladder | hourly, in the maintenance process | yes | Reminders are late; the row still verifies from the original mail |
+| Unverified expiry sweep | daily, in the maintenance process | yes | Rows linger; no counter is affected, since nothing counts unverified rows |
 | Leaderboard snapshot refresh | 5 min | n/a | The last good snapshot keeps serving, with its timestamp shown |
 | Referral counter repair | daily | yes | Counters drift from edges; the edges remain correct and authoritative |
 | IP-prefix retention purge | daily | yes | **Retention breach — this is a compliance alert, not a hygiene one** |

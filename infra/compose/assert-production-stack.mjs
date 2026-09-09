@@ -95,7 +95,14 @@ async function requestStatus(network, hostname, sourceIp) {
 }
 
 async function assertMemoryLimits() {
-  for (const service of ['app', 'caddy', 'migrate', 'postgres', 'umami']) {
+  for (const service of [
+    'app',
+    'caddy',
+    'maintenance',
+    'migrate',
+    'postgres',
+    'umami',
+  ]) {
     const inspection = await inspect(service);
     const memory = inspection.HostConfig.Memory;
     assert.ok(memory > 0, `${service} has no hard memory limit`);

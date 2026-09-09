@@ -1,5 +1,6 @@
 import type { DatabaseConnection } from './pool.ts';
 import type { AccessWindow } from '../referral/config.ts';
+import { countedSubscriberStatus } from './subscriber-maintenance.ts';
 
 export interface ReferralEdgeForConfirmation {
   readonly id: string;
@@ -155,10 +156,10 @@ export function createReferralRepository(
         text: `
           SELECT COUNT(*)::text AS count
           FROM subscriber
-          WHERE status = 'verified'
+          WHERE status = $3
             AND (verified_at < $2 OR (verified_at = $2 AND id <= $1::uuid))
         `,
-        values: [subscriberId, verifiedAt],
+        values: [subscriberId, verifiedAt, countedSubscriberStatus],
       });
       return Number(row?.count ?? '0');
     },

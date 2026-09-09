@@ -38,7 +38,7 @@ and telemetry switches are neither live nor sandbox credentials.
 | ------------------------------- | -------------------------------------------------------------------------------- | ------------------------- | -------------------------------------- | ----------------------------- |
 | `VALSTARA_DB_USER`              | PostgreSQL role that owns and migrates `valstara_waitlist`                       | PostgreSQL, migrate       | `valstara`                             | No                            |
 | `VALSTARA_DB_PASSWORD`          | Password for the waitlist owner/migration role; URL-safe characters are required | PostgreSQL, migrate       | Local-only value in Compose            | Yes outside local development |
-| `VALSTARA_APP_DB_PASSWORD`      | Password provisioned for the non-owner `valstara_app` login by migrations        | Migrate, app              | Local-only value in Compose            | Yes outside local development |
+| `VALSTARA_APP_DB_PASSWORD`      | Password provisioned for the non-owner `valstara_app` login by migrations        | Migrate, app, maintenance | Local-only value in Compose            | Yes outside local development |
 | `TURNSTILE_SECRET_KEY`          | Server-side key for E1-11's inline signup challenge verification                 | App                       | None                                   | Yes                           |
 | `IP_PREFIX_PEPPER`              | Server-side HMAC pepper for E1-11's truncated IP-prefix rate-limit key           | App                       | None                                   | Yes                           |
 | `RESEND_API_KEY`                | Resend API key used only for E1-11's transactional test-mode mail                | App                       | None                                   | Yes                           |
@@ -51,6 +51,7 @@ and telemetry switches are neither live nor sandbox credentials.
 | `POSTGRES_MEM_LIMIT`            | Hard memory and equal memory-plus-swap limit for PostgreSQL                      | Docker Compose            | `512m`                                 | No                            |
 | `APP_MEM_LIMIT`                 | Hard memory and equal memory-plus-swap limit for the Astro app                   | Docker Compose            | `768m`                                 | No                            |
 | `MIGRATION_MEM_LIMIT`           | Hard memory and equal memory-plus-swap limit for the one-shot migration service  | Docker Compose            | `768m`                                 | No                            |
+| `MAINTENANCE_MEM_LIMIT`         | Hard memory and equal memory-plus-swap limit for reminder and expiry jobs        | Docker Compose            | `128m`                                 | No                            |
 | `UMAMI_MEM_LIMIT`               | Hard memory and equal memory-plus-swap limit for Umami                           | Docker Compose            | `768m`                                 | No                            |
 | `CADDY_MEM_LIMIT`               | Hard memory and equal memory-plus-swap limit for the production TLS proxy        | Production Compose        | `128m`                                 | No                            |
 | `VALSTARA_IMAGE`                | Exact GHCR image reference, including the 40-character commit-SHA tag            | Production Compose        | None                                   | No                            |
@@ -95,19 +96,19 @@ provider credential.
 Compose derives or fixes the following container variables. They are listed
 separately because developers do not override them directly:
 
-| Variable                   | Purpose                                                                | Used by           | Source                                      | Secret |
-| -------------------------- | ---------------------------------------------------------------------- | ----------------- | ------------------------------------------- | ------ |
-| `POSTGRES_DB`              | Names the waitlist database                                            | PostgreSQL        | Fixed to `valstara_waitlist`                | No     |
-| `POSTGRES_USER`            | Configures the waitlist database owner                                 | PostgreSQL        | `VALSTARA_DB_USER`                          | No     |
-| `POSTGRES_PASSWORD`        | Authenticates the waitlist database owner                              | PostgreSQL        | `VALSTARA_DB_PASSWORD`                      | Yes    |
-| `PGBACKREST_PG1_USER`      | Gives pgBackRest the PostgreSQL owner role for source-cluster checks   | PostgreSQL        | Derived from `VALSTARA_DB_USER`             | No     |
-| `MIGRATION_DATABASE_URL`   | Connects the one-shot migration runner as the waitlist database owner  | Migration service | Constructed from `VALSTARA_DB_*` settings   | Yes    |
-| `UMAMI_DB_NAME`            | Names Umami's separate database                                        | PostgreSQL        | Fixed to `umami`                            | No     |
-| `DATABASE_URL`             | Connects each long-running application to its assigned database        | App, Umami        | Constructed from the matching role settings | Yes    |
-| `APP_SECRET`               | Supplies Umami's token-signing and encryption secret                   | Umami             | `UMAMI_APP_SECRET`                          | Yes    |
-| `ASTRO_TELEMETRY_DISABLED` | Prevents optional Astro developer telemetry from the local app service | App               | Fixed to `1`                                | No     |
-| `DISABLE_TELEMETRY`        | Prevents optional Umami telemetry                                      | Umami             | Fixed to `1`                                | No     |
-| `PRIVATE_MODE`             | Prevents Umami from making optional external requests                  | Umami             | Fixed to `1`                                | No     |
+| Variable                   | Purpose                                                                | Used by                 | Source                                      | Secret |
+| -------------------------- | ---------------------------------------------------------------------- | ----------------------- | ------------------------------------------- | ------ |
+| `POSTGRES_DB`              | Names the waitlist database                                            | PostgreSQL              | Fixed to `valstara_waitlist`                | No     |
+| `POSTGRES_USER`            | Configures the waitlist database owner                                 | PostgreSQL              | `VALSTARA_DB_USER`                          | No     |
+| `POSTGRES_PASSWORD`        | Authenticates the waitlist database owner                              | PostgreSQL              | `VALSTARA_DB_PASSWORD`                      | Yes    |
+| `PGBACKREST_PG1_USER`      | Gives pgBackRest the PostgreSQL owner role for source-cluster checks   | PostgreSQL              | Derived from `VALSTARA_DB_USER`             | No     |
+| `MIGRATION_DATABASE_URL`   | Connects the one-shot migration runner as the waitlist database owner  | Migration service       | Constructed from `VALSTARA_DB_*` settings   | Yes    |
+| `UMAMI_DB_NAME`            | Names Umami's separate database                                        | PostgreSQL              | Fixed to `umami`                            | No     |
+| `DATABASE_URL`             | Connects each long-running application to its assigned database        | App, maintenance, Umami | Constructed from the matching role settings | Yes    |
+| `APP_SECRET`               | Supplies Umami's token-signing and encryption secret                   | Umami                   | `UMAMI_APP_SECRET`                          | Yes    |
+| `ASTRO_TELEMETRY_DISABLED` | Prevents optional Astro developer telemetry from the local app service | App                     | Fixed to `1`                                | No     |
+| `DISABLE_TELEMETRY`        | Prevents optional Umami telemetry                                      | Umami                   | Fixed to `1`                                | No     |
+| `PRIVATE_MODE`             | Prevents Umami from making optional external requests                  | Umami                   | Fixed to `1`                                | No     |
 
 Generate the Umami application secret for any non-local environment with
 `openssl rand -hex 32`. No generated value belongs in this repository.
@@ -129,7 +130,9 @@ npm run test:stack
 ```
 
 Compose runs migrations in an isolated one-shot `migrate` service before
-starting the app.
+starting the app and the maintenance process. The latter queues verification
+reminders hourly and expires unverified rows once per UTC day; every invocation
+is batch-capped.
 
 Before starting the backup-enabled stack, supply a repository passphrase from
 your shell or secret manager. It is never written to this repository:

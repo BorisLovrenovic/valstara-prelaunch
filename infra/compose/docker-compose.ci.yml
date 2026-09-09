@@ -39,3 +39,8 @@ services:
     volumes:
       - ../..:/workspace
       - ../../node_modules:/workspace/node_modules
+
+  maintenance:
+    volumes:
+      - ../..:/workspace
+      - ../../node_modules:/workspace/node_modules

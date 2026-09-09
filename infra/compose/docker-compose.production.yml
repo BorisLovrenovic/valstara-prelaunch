@@ -71,6 +71,27 @@ services:
     networks:
       - backend
 
+  maintenance:
+    image: ${VALSTARA_IMAGE:?VALSTARA_IMAGE must be a SHA-tagged GHCR image}
+    restart: unless-stopped
+    command: ['node', './src/server/subscriber/run-maintenance.ts']
+    environment:
+      DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:?VALSTARA_APP_DB_PASSWORD is required}@postgres:5432/valstara_waitlist
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'node', '-e', 'process.kill(1, 0)']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    mem_limit: ${MAINTENANCE_MEM_LIMIT:-128m}
+    memswap_limit: ${MAINTENANCE_MEM_LIMIT:-128m}
+    networks:
+      - backend
+
   umami:
     image: ghcr.io/umami-software/umami:3.3.0
     restart: unless-stopped

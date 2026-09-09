@@ -33,6 +33,7 @@ COPY --chown=node:node --from=production-dependencies /app/node_modules ./node_m
 COPY --chown=node:node --from=build /app/dist ./dist
 COPY --chown=node:node --from=build /app/src/server/config.ts ./src/server/config.ts
 COPY --chown=node:node --from=build /app/src/server/db ./src/server/db
+COPY --chown=node:node --from=build /app/src/server/subscriber ./src/server/subscriber
 COPY --chown=node:node package.json ./package.json
 
 USER node
