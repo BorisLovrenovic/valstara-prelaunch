@@ -16,7 +16,7 @@ Each is re-derived from this campaign and traces to an ADR.
 
 2. **A signup is not a subscriber until it is verified.** Double opt-in is unconditional. Nothing is counted, ranked, rewarded or broadcast to before verification, because the entire funnel's honesty rests on that one boundary. → ADR-011
 
-3. **No non-essential cookie, ever — so there is no consent banner.** This is not a shortcut. Referral attribution is captured **server-side on the rendering request** and carried as a signed hidden field, analytics is cookieless, and no third-party script identifies a visitor. That combination puts the site outside ePrivacy Article 5(3) entirely, and it is the reason the measurement is trustworthy rather than a self-selected subset. → ADR-007, ADR-008
+3. **No non-essential cookie, ever — so there is no consent banner.** This is not a shortcut. Referral attribution is captured **server-side on the rendering request** and carried as a signed hidden field, analytics is cookieless, and the site runs no device-fingerprinting API. Because nothing is stored on or read from the visitor's device for a non-essential purpose, the site is outside ePrivacy Article 5(3); Cloudflare Turnstile's separate server-side processing of IP, TLS and user-agent security signals is disclosed as processor activity (`docs/legal/compliance.md`). That is the reason the measurement is trustworthy rather than a self-selected subset. → ADR-007, ADR-008
 
 4. **Fraud is answered by economics, not detection.** Cheap rewards confirm on verification; **high-value rewards are held until the referred person completes a first order after launch.** Detection layers exist, they *flag*, and a human decides. Nothing auto-bans. → ADR-012, ADR-013
 
