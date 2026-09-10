@@ -8,7 +8,7 @@ Status: authoritative. Organised **by symptom**, because that is how a problem a
 
 **The most important entry in this file, because it is the failure that hides.**
 
-**Detect:** the hourly verification-rate check alerts against a rolling baseline. Do not wait to notice it on a dashboard.
+**Detect:** the hourly verification-rate check alerts against a rolling baseline. By default it compares the current 24-hour cohort with the preceding seven days once the cohort has 50 signups; a 50% relative-rate drop is P1. Do not wait to notice it on a dashboard.
 
 **Diagnose, in this order:**
 1. `GET /api/admin/health` — is the verification rate down, or is the *signup* rate down? A drop in signups is a marketing problem; a drop in the *ratio* is this one.

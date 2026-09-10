@@ -225,6 +225,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0004-audit-log-polymorphic-subject-id.sql',
       '0005-fraud-flag-challenge-timeout-kind.sql',
       '0006-subscriber-maintenance-permissions.sql',
+      '0007-verification-rate-monitor-permissions.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -236,6 +237,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0004-audit-log-polymorphic-subject-id.sql',
         '0005-fraud-flag-challenge-timeout-kind.sql',
         '0006-subscriber-maintenance-permissions.sql',
+        '0007-verification-rate-monitor-permissions.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -360,10 +362,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          6,
+          7,
         );
 
-        assert.equal(appliedCount, 6);
+        assert.equal(appliedCount, 7);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -373,6 +375,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0004-audit-log-polymorphic-subject-id.sql',
             '0005-fraud-flag-challenge-timeout-kind.sql',
             '0006-subscriber-maintenance-permissions.sql',
+            '0007-verification-rate-monitor-permissions.sql',
           ],
         );
       } finally {

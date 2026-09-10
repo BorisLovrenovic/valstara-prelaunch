@@ -8,6 +8,7 @@ import {
   appEnvironmentKeys,
   ConfigurationError,
   getDatabaseUrl,
+  getVerificationRateConfiguration,
   turnstileTestSiteKey,
   validateConfig,
 } from '../src/server/config.ts';
@@ -75,6 +76,12 @@ test('E1-12 validates and types the complete application environment', () => {
     resendTestRecipient: 'delivered@resend.dev',
     turnstileSecretKey: 'local-test-turnstile-secret',
     turnstileSiteKey: turnstileTestSiteKey,
+    verificationRate: {
+      baselineDays: 7,
+      cohortHours: 24,
+      collapsePercent: 50,
+      minimumSignups: 50,
+    },
   });
 });
 
@@ -85,6 +92,42 @@ test('a database-only process validates only its required connection URL', () =>
     (error) => {
       assert.ok(error instanceof ConfigurationError);
       assert.equal(error.variableName, 'DATABASE_URL');
+      return true;
+    },
+  );
+});
+
+test('E3-10 validates monitoring defaults and configuration overrides', () => {
+  assert.deepEqual(getVerificationRateConfiguration(validEnvironment), {
+    baselineDays: 7,
+    cohortHours: 24,
+    collapsePercent: 50,
+    minimumSignups: 50,
+  });
+  assert.deepEqual(
+    getVerificationRateConfiguration({
+      ...validEnvironment,
+      VERIFICATION_RATE_BASELINE_DAYS: '14',
+      VERIFICATION_RATE_COHORT_HOURS: '12',
+      VERIFICATION_RATE_COLLAPSE_PERCENT: '40',
+      VERIFICATION_RATE_MINIMUM_SIGNUPS: '100',
+    }),
+    {
+      baselineDays: 14,
+      cohortHours: 12,
+      collapsePercent: 40,
+      minimumSignups: 100,
+    },
+  );
+  assert.throws(
+    () =>
+      getVerificationRateConfiguration({
+        ...validEnvironment,
+        VERIFICATION_RATE_COLLAPSE_PERCENT: '0',
+      }),
+    (error) => {
+      assert.ok(error instanceof ConfigurationError);
+      assert.equal(error.variableName, 'VERIFICATION_RATE_COLLAPSE_PERCENT');
       return true;
     },
   );

@@ -8,14 +8,21 @@ export interface MaintenanceJob {
   run(limit: number): Promise<unknown>;
 }
 
+export interface VerificationRateJob {
+  run(): Promise<unknown>;
+}
+
 export interface VerificationMaintenanceJobs {
   readonly expiry: MaintenanceJob;
   readonly reminder: MaintenanceJob;
+  readonly verificationRate: VerificationRateJob;
 }
 
 export interface VerificationMaintenanceDependencies {
   readonly clock?: () => Date;
-  readonly reportFailure?: (job: 'expiry' | 'reminder') => void;
+  readonly reportFailure?: (
+    job: 'expiry' | 'reminder' | 'verification_rate',
+  ) => void;
   readonly sleep?: (milliseconds: number) => Promise<void>;
 }
 
@@ -46,9 +53,18 @@ export function createVerificationMaintenanceScheduler(
     }
   }
 
+  async function runVerificationRateJob(): Promise<void> {
+    try {
+      await jobs.verificationRate.run();
+    } catch {
+      reportFailure('verification_rate');
+    }
+  }
+
   async function runCycle(): Promise<void> {
     const now = clock();
     await runJob('reminder', jobs.reminder);
+    await runVerificationRateJob();
 
     const day = now.toISOString().slice(0, 10);
     if (expiryDay !== day && (await runJob('expiry', jobs.expiry))) {
