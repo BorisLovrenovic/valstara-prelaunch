@@ -350,7 +350,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       const record = body as Record<string, unknown>;
 
       const status = record.status;
-      if (status === 'pending' || status === 'already_verified') {
+      if (status === 'pending') {
         this.#showSuccess(this.#messageOf(record.message));
         return;
       }

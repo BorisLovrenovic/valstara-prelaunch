@@ -28,6 +28,8 @@ const composeEnvironment = {
   CADDY_ORIGIN_CERT_PATH: '/run/valstara-test-origin-cert.pem',
   CADDY_ORIGIN_KEY_PATH: '/run/valstara-test-origin-key.pem',
   IP_PREFIX_PEPPER: 'test-prefix-pepper',
+  P1_ALERT_WEBHOOK_TOKEN: 'test-alert-token',
+  P1_ALERT_WEBHOOK_URL: 'https://alerts.example.test/valstara',
   RESEND_API_KEY: 'test-resend-key',
   RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
   TURNSTILE_SECRET_KEY: 'test-turnstile-secret',
@@ -192,6 +194,9 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   assert.equal(config.services.maintenance.ports, undefined);
   assert.deepEqual(Object.keys(config.services.maintenance.environment), [
     'DATABASE_URL',
+    'NODE_ENV',
+    'P1_ALERT_WEBHOOK_TOKEN',
+    'P1_ALERT_WEBHOOK_URL',
     'VERIFICATION_RATE_BASELINE_DAYS',
     'VERIFICATION_RATE_COHORT_HOURS',
     'VERIFICATION_RATE_COLLAPSE_PERCENT',

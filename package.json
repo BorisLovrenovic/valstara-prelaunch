@@ -14,11 +14,16 @@
     "format": "prettier --check .",
     "lint": "eslint .",
     "security": "node scripts/ci/security-gates.mjs",
+    "test:a11y": "node --test test/accessibility.test.mjs",
+    "test:privacy": "node scripts/ci/security-gates.mjs && node --test test/e1-11-rendered-page.test.mjs test/signup-form-rendered-page.test.mjs",
     "preview": "astro preview",
     "test": "tsx --test --test-concurrency=1",
     "test:production-stack": "node infra/compose/assert-production-stack.mjs",
     "test:stack": "node infra/compose/assert-stack.mjs",
     "typecheck": "astro check"
+  },
+  "engines": {
+    "node": ">=22.22.3 <23"
   },
   "dependencies": {
     "@astrojs/node": "11.1.4",

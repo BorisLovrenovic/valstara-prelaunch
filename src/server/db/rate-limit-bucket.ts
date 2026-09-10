@@ -2,6 +2,7 @@ import type { DatabaseConnection } from './pool.ts';
 
 export interface RateLimitBucketRepository {
   consume(key: string, now: Date, windowThreshold: Date): Promise<number>;
+  purgeOlderThan(before: Date, limit: number): Promise<number>;
 }
 
 /**
@@ -43,6 +44,26 @@ export function createRateLimitBucketRepository(
       }
 
       return row.count;
+    },
+    async purgeOlderThan(before, limit) {
+      if (!Number.isInteger(limit) || limit < 1) {
+        throw new RangeError('A rate-limit retention limit must be positive.');
+      }
+
+      return database.execute({
+        text: `
+          DELETE FROM rate_limit_bucket
+          WHERE key IN (
+            SELECT key
+            FROM rate_limit_bucket
+            WHERE window_start < $1
+            ORDER BY window_start, key
+            LIMIT $2
+            FOR UPDATE SKIP LOCKED
+          )
+        `,
+        values: [before, limit],
+      });
     },
   };
 }

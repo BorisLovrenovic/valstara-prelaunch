@@ -17,6 +17,7 @@ const applicationRolePassword =
 const now = new Date('2026-09-08T12:00:00.000Z');
 
 interface DatabaseFixture {
+  readonly applicationDatabase: DatabasePool;
   readonly database: DatabasePool;
   dispose(): Promise<void>;
 }
@@ -26,6 +27,9 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
   const adminUrl = new URL(process.env.TEST_DATABASE_URL ?? defaultDatabaseUrl);
   const databaseUrl = new URL(adminUrl);
   databaseUrl.pathname = `/${databaseName}`;
+  const applicationDatabaseUrl = new URL(databaseUrl);
+  applicationDatabaseUrl.username = 'valstara_app';
+  applicationDatabaseUrl.password = applicationRolePassword;
   const admin = createPool(adminUrl.toString());
 
   await admin.execute({ text: `CREATE DATABASE "${databaseName}"` });
@@ -34,10 +38,13 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
     applicationRolePassword,
     release: 'e3-07-test',
   });
+  const applicationDatabase = createPool(applicationDatabaseUrl.toString());
 
   return {
+    applicationDatabase,
     database,
     async dispose() {
+      await applicationDatabase.close();
       await database.close();
       await admin.list(
         {
@@ -51,6 +58,43 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
     },
   };
 }
+
+test('the application role completes verification and replay through the E3 transaction', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const subscriberId = await insertSubscriber(fixture.database, 'pending');
+    await seedVerificationToken(
+      fixture.database,
+      subscriberId,
+      'application-role-completion-token',
+    );
+
+    const complete = createVerificationCompletionService(
+      fixture.applicationDatabase,
+      { clock: () => now },
+    );
+    assert.equal(
+      (await complete('application-role-completion-token')).outcome,
+      'verified',
+    );
+    assert.equal(
+      (await complete('application-role-completion-token')).outcome,
+      'already',
+    );
+
+    const subscriber = await fixture.database.readOne<{
+      status: string;
+      verified_at: Date | null;
+    }>({
+      text: 'SELECT status, verified_at FROM subscriber WHERE id = $1',
+      values: [subscriberId],
+    });
+    assert.equal(subscriber?.status, 'verified');
+    assert.notEqual(subscriber?.verified_at, null);
+  } finally {
+    await fixture.dispose();
+  }
+});
 
 async function insertSubscriber(
   database: DatabasePool,

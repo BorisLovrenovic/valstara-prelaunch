@@ -18,6 +18,7 @@ const applicationRolePassword =
 
 interface DatabaseFixture {
   readonly database: DatabasePool;
+  readonly applicationDatabase: DatabasePool;
   dispose(): Promise<void>;
 }
 
@@ -26,6 +27,9 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
   const adminUrl = new URL(process.env.TEST_DATABASE_URL ?? defaultDatabaseUrl);
   const databaseUrl = new URL(adminUrl);
   databaseUrl.pathname = `/${databaseName}`;
+  const applicationDatabaseUrl = new URL(databaseUrl);
+  applicationDatabaseUrl.username = 'valstara_app';
+  applicationDatabaseUrl.password = applicationRolePassword;
   const admin = createPool(adminUrl.toString());
 
   await admin.execute({ text: `CREATE DATABASE "${databaseName}"` });
@@ -34,10 +38,13 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
     applicationRolePassword,
     release: 'e3-02-service-test',
   });
+  const applicationDatabase = createPool(applicationDatabaseUrl.toString());
 
   return {
     database,
+    applicationDatabase,
     async dispose() {
+      await applicationDatabase.close();
       await database.close();
       await admin.list(
         {
@@ -51,6 +58,34 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
     },
   };
 }
+
+test('the Compose application role can complete the signup write path', async () => {
+  const fixture = await createDatabaseFixture();
+  const signup = createSignupService(fixture.applicationDatabase, {
+    clock: () => new Date('2026-09-10T12:00:00.000Z'),
+    async sendVerificationMail() {},
+  });
+
+  try {
+    assert.equal((await signup(inputFor('role@example.test'))).kind, 'created');
+    assert.equal(await rowCount(fixture.database, 'subscriber'), 1);
+    assert.equal(await rowCount(fixture.database, 'verification_token'), 1);
+    assert.equal(await rowCount(fixture.database, 'email_send'), 1);
+    await assert.rejects(
+      fixture.applicationDatabase.execute({
+        text: 'UPDATE subscriber SET email = $1 WHERE email_normalised = $2',
+        values: ['changed@example.test', 'role@example.test'],
+      }),
+      (error) =>
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === '42501',
+    );
+  } finally {
+    await fixture.dispose();
+  }
+});
 
 async function rowCount(
   database: DatabasePool,
@@ -113,7 +148,7 @@ test('a first signup creates a pending subscriber with country and region, one t
   }
 });
 
-test('a repeat for a verified subscriber returns already_verified and sends nothing', async () => {
+test('a repeat for a verified subscriber reports the internal already_verified outcome and sends nothing', async () => {
   const fixture = await createDatabaseFixture();
   const sent: VerificationTestMail[] = [];
   const signup = createSignupService(fixture.database, {

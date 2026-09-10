@@ -140,7 +140,7 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 ## `rate_limit_bucket`
 
-`key` pk (hashed IP prefix or normalised email + route) · `window_start` · `count`. Cleanup is batch-capped and daily.
+`key` pk (hashed IP prefix or normalised email + route) · `window_start` · `count`. `src/server/ratelimit/retention.ts` deletes buckets older than seven days once per UTC day through the maintenance scheduler. Each run is batch-capped; a failed run raises the compliance-alert path.
 
 ## `migration_ledger`
 
@@ -154,7 +154,7 @@ The site needs IP-derived signals for velocity flags and rate limiting, and IP a
 
 - **Truncate first** — IPv4 to /24, IPv6 to /64 — then hash with a **server-side pepper held outside the database**. Only `signup_ip_prefix_hash` is stored.
 - **A full IP address is never written** to any table, log line or analytics event.
-- **Purge at 90 days**, by a daily job. A failure of that job is a **compliance alert**, not a hygiene one.
+- **Purge stored subscriber prefix hashes at 90 days**, by a daily job. Rate-limit buckets have the shorter seven-day retention in the summary below. A failure of either job is a **compliance alert**, not a hygiene one.
 - The purpose (fraud prevention on a prize giveaway) and the retention period are stated in the privacy policy. `docs/legal/compliance.md` carries the lawful-basis reasoning.
 
 The pepper is a secret with a handling procedure of its own: rotating it invalidates every existing prefix hash, which is acceptable, but it must be done deliberately and recorded.

@@ -17,6 +17,10 @@ const optionalKeys = [
   'VERIFICATION_RATE_COLLAPSE_PERCENT',
   'VERIFICATION_RATE_MINIMUM_SIGNUPS',
 ] as const;
+export const p1AlertEnvironmentKeys = [
+  'P1_ALERT_WEBHOOK_TOKEN',
+  'P1_ALERT_WEBHOOK_URL',
+] as const;
 
 // The public Turnstile site key is rendered into the signup page so the widget
 // can mount client-side (E3-05, ADR-006). It is public, not a secret, so unlike
@@ -30,9 +34,9 @@ export const turnstileTestSiteKey = '1x00000000000000000000AA';
 export const appEnvironmentKeys = [...requiredKeys, ...optionalKeys] as const;
 
 export class ConfigurationError extends Error {
-  public readonly variableName: AppEnvironmentKey;
+  public readonly variableName: EnvironmentKey;
 
-  public constructor(variableName: AppEnvironmentKey, reason: string) {
+  public constructor(variableName: EnvironmentKey, reason: string) {
     super(`Invalid configuration: ${variableName} ${reason}.`);
     this.name = 'ConfigurationError';
     this.variableName = variableName;
@@ -74,17 +78,47 @@ export function getVerificationRateConfiguration(
   return verificationRate(environment);
 }
 
+export function getP1AlertConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): P1AlertConfiguration {
+  const rawUrl = requiredValue(environment, 'P1_ALERT_WEBHOOK_URL');
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return invalid('P1_ALERT_WEBHOOK_URL', 'must be a valid URL');
+  }
+  const runtime = nodeEnvironment(environment);
+  if (
+    !['http:', 'https:'].includes(parsed.protocol) ||
+    parsed.username !== '' ||
+    parsed.password !== '' ||
+    parsed.hash !== '' ||
+    (runtime === 'production' && parsed.protocol !== 'https:')
+  ) {
+    return invalid(
+      'P1_ALERT_WEBHOOK_URL',
+      'must be an HTTPS URL without credentials or a fragment in production',
+    );
+  }
+
+  return Object.freeze({
+    token: requiredValue(environment, 'P1_ALERT_WEBHOOK_TOKEN'),
+    url: parsed.toString(),
+  });
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   getConfig();
 }
 
-function invalid(variableName: AppEnvironmentKey, reason: string): never {
+function invalid(variableName: EnvironmentKey, reason: string): never {
   throw new ConfigurationError(variableName, reason);
 }
 
 function requiredValue(
   environment: NodeJS.ProcessEnv,
-  key: RequiredEnvironmentKey,
+  key: EnvironmentKey,
 ): string {
   const value = environment[key];
   if (value === undefined || value === '') {
@@ -222,10 +256,16 @@ function positiveInteger(
     : invalid(key, `must be an integer from 1 to ${maximum}`);
 }
 
-type RequiredEnvironmentKey = (typeof requiredKeys)[number];
+type P1AlertEnvironmentKey = (typeof p1AlertEnvironmentKeys)[number];
 type NodeEnvironment = 'development' | 'production' | 'test';
 type OptionalEnvironmentKey = (typeof optionalKeys)[number];
 export type AppEnvironmentKey = (typeof appEnvironmentKeys)[number];
+type EnvironmentKey = AppEnvironmentKey | P1AlertEnvironmentKey;
+
+export interface P1AlertConfiguration {
+  readonly token: string;
+  readonly url: string;
+}
 
 export interface VerificationRateConfiguration {
   readonly baselineDays: number;

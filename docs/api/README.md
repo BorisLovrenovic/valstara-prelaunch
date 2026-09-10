@@ -34,7 +34,6 @@ Two rules make that safe, and they are what a reviewer checks:
 | `invalid_email` | 400 | Not a deliverable address shape, or no MX |
 | `blocked_domain` | 400 | Disposable-domain blocklist |
 | `challenge_failed` | 400 | Turnstile token missing, invalid or replayed |
-| `already_verified` | 200 | Not an error path — returned as success. Listed so nobody invents a 4xx for it |
 | `token_invalid` | 400 | Signature, purpose or subject mismatch |
 | `token_expired` | 410 | Consumable, but past its expiry |
 | `not_eligible` | 200 | Giveaway entry declined by jurisdiction. **The signup still succeeded** |
@@ -56,9 +55,9 @@ Body: `email`, `country`, `region?`, `ref` (the **signed** hidden field), `turns
 
 Order of operations, and it is load-bearing: verify Turnstile → rate-limit → validate → **normalise the email** → blocklist and MX → upsert the subscriber → attribute the referral edge → run fraud signals (flag only) → decide giveaway eligibility and stamp the rules version → queue the verification mail → respond.
 
-Returns `{ status: "pending" }`. **Never returns a position, a count or a rank** — that is the position-inflation pattern the brand forbids (ADR-024), and a pending row has no honest position anyway.
+Returns `{ status: "pending" }`. The status code, response keys and values are identical whether the normalised address is unknown, pending or already verified. **Never returns a position, a count, a rank or an address-membership signal** — a public response cannot disclose another person's status.
 
-Idempotent on `email_normalised`: a repeat signup for a `pending` row re-sends the verification mail subject to its own rate limit and returns the same shape. A repeat for a `verified` row returns `already_verified`.
+Idempotent on `email_normalised`: a repeat signup for a `pending` row re-sends the verification mail subject to its own rate limit; a repeat for a `verified` row sends no second verification mail. Both return the same accepted response as an unknown address. Any status-link affordance is sent only to the submitted address, never returned by this route or rendered on its response page.
 
 ### `GET /verify?token=…` *(page route)*
 Consumes the token, sets `verified`, confirms referral edges, settles cheap rewards, assigns the access window, and renders the success page carrying the two survey questions and the referral link. **A replayed token renders the same success page** — never an error.

@@ -1,8 +1,13 @@
 import { setTimeout as systemSleep } from 'node:timers/promises';
 
+import type { P1AlertTransport } from '../verification-rate/p1-webhook.ts';
+
 const HOUR_MS = 60 * 60 * 1_000;
 
 export const verificationMaintenanceBatchLimit = 1_000;
+
+export type MaintenanceJobName =
+  'expiry' | 'rate_limit_retention' | 'reminder' | 'verification_rate';
 
 export interface MaintenanceJob {
   run(limit: number): Promise<unknown>;
@@ -14,16 +19,49 @@ export interface VerificationRateJob {
 
 export interface VerificationMaintenanceJobs {
   readonly expiry: MaintenanceJob;
+  readonly rateLimitRetention: MaintenanceJob;
   readonly reminder: MaintenanceJob;
   readonly verificationRate: VerificationRateJob;
 }
 
 export interface VerificationMaintenanceDependencies {
   readonly clock?: () => Date;
-  readonly reportFailure?: (
-    job: 'expiry' | 'reminder' | 'verification_rate',
-  ) => void;
+  readonly reportFailure?: (job: MaintenanceJobName) => Promise<void> | void;
   readonly sleep?: (milliseconds: number) => Promise<void>;
+}
+
+export interface MaintenanceFailureReporterDependencies {
+  readonly clock?: () => Date;
+  readonly writeStderr?: (message: string) => void;
+}
+
+export function createMaintenanceFailureReporter(
+  p1Alerts: P1AlertTransport,
+  dependencies: MaintenanceFailureReporterDependencies = {},
+): (job: MaintenanceJobName) => Promise<void> {
+  const clock = dependencies.clock ?? (() => new Date());
+  const writeStderr =
+    dependencies.writeStderr ??
+    ((message: string) => process.stderr.write(message));
+
+  return async (job) => {
+    const severity =
+      job === 'verification_rate' || job === 'rate_limit_retention'
+        ? 'P1'
+        : 'P3';
+    if (severity === 'P1') {
+      await p1Alerts.send({
+        detail: { job },
+        event: 'verification_maintenance_failed',
+        occurredAt: clock(),
+        severity,
+      });
+      return;
+    }
+    writeStderr(
+      `${JSON.stringify({ event: 'verification_maintenance_failed', job, severity })}\n`,
+    );
+  };
 }
 
 export interface VerificationMaintenanceScheduler {
@@ -39,16 +77,17 @@ export function createVerificationMaintenanceScheduler(
   const reportFailure = dependencies.reportFailure ?? (() => undefined);
   const sleep = dependencies.sleep ?? systemSleep;
   let expiryDay: string | null = null;
+  let rateLimitRetentionDay: string | null = null;
 
   async function runJob(
-    name: 'expiry' | 'reminder',
+    name: Exclude<MaintenanceJobName, 'verification_rate'>,
     job: MaintenanceJob,
   ): Promise<boolean> {
     try {
       await job.run(verificationMaintenanceBatchLimit);
       return true;
     } catch {
-      reportFailure(name);
+      await reportFailure(name);
       return false;
     }
   }
@@ -57,7 +96,7 @@ export function createVerificationMaintenanceScheduler(
     try {
       await jobs.verificationRate.run();
     } catch {
-      reportFailure('verification_rate');
+      await reportFailure('verification_rate');
     }
   }
 
@@ -69,6 +108,12 @@ export function createVerificationMaintenanceScheduler(
     const day = now.toISOString().slice(0, 10);
     if (expiryDay !== day && (await runJob('expiry', jobs.expiry))) {
       expiryDay = day;
+    }
+    if (
+      rateLimitRetentionDay !== day &&
+      (await runJob('rate_limit_retention', jobs.rateLimitRetention))
+    ) {
+      rateLimitRetentionDay = day;
     }
   }
 

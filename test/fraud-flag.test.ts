@@ -12,23 +12,32 @@ const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 
 async function withDatabase(
-  operation: (database: DatabasePool) => Promise<void>,
+  operation: (
+    database: DatabasePool,
+    applicationDatabase: DatabasePool,
+  ) => Promise<void>,
 ): Promise<void> {
   const databaseName = `valstara_e303flag_${randomUUID().replaceAll('-', '')}`;
   const adminUrl = new URL(process.env.TEST_DATABASE_URL ?? defaultDatabaseUrl);
   const databaseUrl = new URL(adminUrl);
   databaseUrl.pathname = `/${databaseName}`;
+  const applicationUrl = new URL(databaseUrl);
+  applicationUrl.username = 'valstara_app';
+  applicationUrl.password = applicationRolePassword;
   const admin = createPool(adminUrl.toString());
   await admin.execute({ text: `CREATE DATABASE "${databaseName}"` });
   const database = createPool(databaseUrl.toString());
+  let applicationDatabase: DatabasePool | undefined;
 
   try {
     await runMigrations(database, {
       applicationRolePassword,
       release: 'e3-03-flag-test',
     });
-    await operation(database);
+    applicationDatabase = createPool(applicationUrl.toString());
+    await operation(database, applicationDatabase);
   } finally {
+    await applicationDatabase?.close();
     await database.close();
     await admin.list(
       {
@@ -76,10 +85,10 @@ async function openFlags(
 }
 
 test('migration 0005 lets a challenge_timeout flag be written, and the detail carries no personal data', async () => {
-  await withDatabase(async (database) => {
+  await withDatabase(async (database, applicationDatabase) => {
     const subscriberId = await insertPendingSubscriber(database);
     const written = await createFraudFlagRepository(
-      database,
+      applicationDatabase,
     ).insertChallengeTimeoutFlag({ id: randomUUID(), subscriberId });
 
     assert.equal(written, 1);
@@ -94,8 +103,8 @@ test('migration 0005 lets a challenge_timeout flag be written, and the detail ca
 });
 
 test('a second timeout for the same subscriber does not open a second flag', async () => {
-  await withDatabase(async (database) => {
-    const repository = createFraudFlagRepository(database);
+  await withDatabase(async (database, applicationDatabase) => {
+    const repository = createFraudFlagRepository(applicationDatabase);
     const subscriberId = await insertPendingSubscriber(database);
 
     const first = await repository.insertChallengeTimeoutFlag({
@@ -114,10 +123,10 @@ test('a second timeout for the same subscriber does not open a second flag', asy
 });
 
 test('the kind CHECK still constrains — an unknown kind is rejected at the database level', async () => {
-  await withDatabase(async (database) => {
+  await withDatabase(async (database, applicationDatabase) => {
     const subscriberId = await insertPendingSubscriber(database);
     await assert.rejects(
-      database.execute({
+      applicationDatabase.execute({
         text: `
           INSERT INTO fraud_flag (id, subscriber_id, kind, detail, state)
           VALUES ($1, $2, 'not_a_real_kind', '{}'::jsonb, 'open')

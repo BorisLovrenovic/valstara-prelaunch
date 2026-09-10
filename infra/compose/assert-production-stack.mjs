@@ -32,6 +32,8 @@ const environment = {
   CADDY_ORIGIN_CERT_PATH: certificate,
   CADDY_ORIGIN_KEY_PATH: privateKey,
   IP_PREFIX_PEPPER: 'production-stack-test-prefix-pepper',
+  P1_ALERT_WEBHOOK_TOKEN: 'production-stack-test-alert-token',
+  P1_ALERT_WEBHOOK_URL: 'https://alerts.example.test/valstara',
   RESEND_API_KEY: 'production-stack-test-resend-key',
   RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
   SITE_HOST: 'valstara.com',

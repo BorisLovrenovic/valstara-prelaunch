@@ -553,7 +553,9 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Goal:** the spine of the campaign — a real person's address, normalised, challenged, verified, and monitored for the silent failure that would otherwise look like poor conversion. *10 tickets.*
 
-**Exit criteria:** a signup from a real browser produces a verified subscriber, an unverified one expires on schedule, and a collapse in verification rate raises a P1 alert.
+**Exit criteria:** a signup through the production-shaped route queues verification mail in test mode, its token produces a verified subscriber through `/verify`, an unverified one expires on schedule, and a collapse in verification rate raises a P1 alert.
+
+**Scope note (founder-authorised 2026-09-10):** E3 proves the token, queue and verify path with mail queued and sent only in test mode. Operational transactional dispatch belongs to E8-01, and E8-02 owns the authenticated Resend sending domain; the real-browser signup → delivered email → verified-subscriber end-to-end criterion therefore moves to E8. No E8 delivery implementation is part of E3.
 
 ### E3-01 — Email normalisation and the uniqueness rule
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
@@ -580,13 +582,13 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Acceptance criteria:**
 - **The order of operations matches the documented order** — asserted by test, because doing work before the challenge is the failure mode
 - **The response contains no position, count or rank**
-- Idempotent on `email_normalised`: a repeat for `pending` re-queues subject to its own limit; a repeat for `verified` returns `already_verified` and sends nothing
+- Idempotent on `email_normalised`: a repeat for `pending` re-queues subject to its own limit; a repeat for `verified` sends nothing. **Unknown, pending and verified addresses return the identical accepted response** — the route exposes no membership oracle
 - **A double submission produces one subscriber, one edge and one email** — asserted **under genuine concurrency against a real database**
 - Every error maps to a code in the closed set; **an unmapped error fails a test**
 - With the flag off, the route returns an honest paused response
 - **A send failure never rolls back the subscriber row**
 
-**Tests:** Order-of-operations assertion · concurrent double-submit against a real database · the closed-code-set completeness test · flag-off path.
+**Tests:** Order-of-operations assertion · concurrent double-submit against a real database · unknown/pending/verified response equivalence · the closed-code-set completeness test · flag-off path.
 **Docs:** `docs/api/README.md` · `docs/features/signup.md` · `docs/modules/subscriber.md`
 
 ### E3-03 — Turnstile verification
@@ -1192,7 +1194,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Goal:** verification mail that arrives, campaign mail that cannot damage it, and one unrepeatable migration send done carefully. *9 tickets.*
 
-**Exit criteria:** both domains authenticate, seed tests land in the inbox at all four major providers, the quota projection alerts a week ahead, and the migration send is staged and ready.
+**Exit criteria:** both domains authenticate, a real-browser signup receives its delivered verification email and produces a verified subscriber, seed tests land in the inbox at all four major providers, the quota projection alerts a week ahead, and the migration send is staged and ready.
 
 **BLOCKED on P1.** Domain authentication has a hard 12-week clock and no ticket can shorten it.
 

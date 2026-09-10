@@ -12,12 +12,18 @@ test('maintenance runs reminders hourly and expiry once per UTC day with fixed b
   let now = new Date('2026-09-09T00:00:00.000Z');
   const reminderLimits: number[] = [];
   const expiryLimits: number[] = [];
+  const retentionLimits: number[] = [];
   let verificationRateRuns = 0;
   const scheduler = createVerificationMaintenanceScheduler(
     {
       expiry: {
         async run(limit) {
           expiryLimits.push(limit);
+        },
+      },
+      rateLimitRetention: {
+        async run(limit) {
+          retentionLimits.push(limit);
         },
       },
       reminder: {
@@ -45,8 +51,9 @@ test('maintenance runs reminders hourly and expiry once per UTC day with fixed b
   assert.equal(reminderLimits.length, 25);
   assert.equal(verificationRateRuns, 25);
   assert.equal(expiryLimits.length, 2);
+  assert.equal(retentionLimits.length, 2);
   assert.ok(
-    [...reminderLimits, ...expiryLimits].every(
+    [...reminderLimits, ...expiryLimits, ...retentionLimits].every(
       (limit) => limit === verificationMaintenanceBatchLimit,
     ),
   );
@@ -55,12 +62,21 @@ test('maintenance runs reminders hourly and expiry once per UTC day with fixed b
 test('maintenance reports failures through its runner seam and retries expiry', async () => {
   const failures: string[] = [];
   let expiryAttempts = 0;
+  let retentionAttempts = 0;
   const scheduler = createVerificationMaintenanceScheduler(
     {
       expiry: {
         async run() {
           expiryAttempts += 1;
           if (expiryAttempts === 1) {
+            throw new Error('database unavailable');
+          }
+        },
+      },
+      rateLimitRetention: {
+        async run() {
+          retentionAttempts += 1;
+          if (retentionAttempts === 1) {
             throw new Error('database unavailable');
           }
         },
@@ -91,8 +107,10 @@ test('maintenance reports failures through its runner seam and retries expiry', 
     'reminder',
     'verification_rate',
     'expiry',
+    'rate_limit_retention',
     'reminder',
     'verification_rate',
   ]);
   assert.equal(expiryAttempts, 2);
+  assert.equal(retentionAttempts, 2);
 });

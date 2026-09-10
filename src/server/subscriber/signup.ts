@@ -33,11 +33,12 @@ export interface SignupSubscriber {
 
 /**
  * Discriminated outcome of `signup()`. The route maps it onto the closed error
- * code set (`docs/api/README.md`): `invalid_email` → 400 `invalid_email`,
- * `already_verified` → 200 `already_verified`, and `created`/`existing` → the
- * 200 pending response. `existing` covers a pending repeat, whether the
- * verification mail was re-queued or throttled — both are the same honest
- * "check your inbox" response, so the throttle never leaks.
+ * code set (`docs/api/README.md`): `invalid_email` → 400 `invalid_email`; every
+ * non-error outcome maps to the same 200 pending response. The internal
+ * `already_verified` outcome lets the service suppress a second mail without
+ * exposing membership through the route. `existing` covers a pending repeat,
+ * whether the verification mail was re-queued or throttled — both receive the
+ * same neutral accepted response, so the throttle never leaks.
  */
 export type SignupOutcome =
   | { readonly kind: 'created'; readonly subscriber: SignupSubscriber }

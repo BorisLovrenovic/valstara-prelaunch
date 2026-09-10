@@ -1,7 +1,7 @@
 export const signupCopy = {
-  // Success — the pending row has no honest position, so there is none to show.
-  pending: "Check your inbox — we've sent a link to confirm your email.",
-  alreadyVerified: "You're already on the list, and your email is confirmed.",
+  // Identical accepted copy for unknown, pending, and verified addresses: no
+  // membership or position signal leaves the public route.
+  pending: 'Thanks — any next step will arrive by email.',
   // Flag-off: an honest paused response, never a form that fails on submit.
   paused:
     "We're not taking new signups right now. Check back in a little while — the waitlist will reopen soon.",

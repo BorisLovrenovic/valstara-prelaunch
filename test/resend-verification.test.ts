@@ -19,6 +19,7 @@ const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 
 interface DatabaseFixture {
+  readonly applicationDatabase: DatabasePool;
   readonly database: DatabasePool;
   dispose(): Promise<void>;
 }
@@ -28,6 +29,9 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
   const adminUrl = new URL(process.env.TEST_DATABASE_URL ?? defaultDatabaseUrl);
   const databaseUrl = new URL(adminUrl);
   databaseUrl.pathname = `/${databaseName}`;
+  const applicationDatabaseUrl = new URL(databaseUrl);
+  applicationDatabaseUrl.username = 'valstara_app';
+  applicationDatabaseUrl.password = applicationRolePassword;
   const admin = createPool(adminUrl.toString());
   await admin.execute({ text: `CREATE DATABASE "${databaseName}"` });
   const database = createPool(databaseUrl.toString());
@@ -35,10 +39,13 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
     applicationRolePassword,
     release: 'e3-09-test',
   });
+  const applicationDatabase = createPool(applicationDatabaseUrl.toString());
 
   return {
+    applicationDatabase,
     database,
     async dispose() {
+      await applicationDatabase.close();
       await database.close();
       await admin.list(
         {
@@ -291,7 +298,7 @@ test('both IP-prefix and normalised-address limits independently reject requests
 test('database-backed address and IP-prefix counters reject attempts beyond their actual limits', async () => {
   const fixture = await createDatabaseFixture();
   const rateLimits = createResendVerificationRateLimits(
-    fixture.database,
+    fixture.applicationDatabase,
     'test-ip-prefix-pepper',
   );
   const route = createResendVerificationRoute(
@@ -379,9 +386,11 @@ test('a Turnstile timeout uses the strict IP limit and flags a pending row witho
   assert.deepEqual(flagged, ['pending-id']);
 });
 
-test('only a pending subscriber receives a newly queued verification token and mail', async () => {
+test('through the application role, only a pending subscriber receives a newly queued verification token and mail', async () => {
   const fixture = await createDatabaseFixture();
-  const resendVerification = createResendVerificationService(fixture.database);
+  const resendVerification = createResendVerificationService(
+    fixture.applicationDatabase,
+  );
   const pendingId = randomUUID();
   const verifiedId = randomUUID();
   const now = new Date('2026-09-09T12:00:00.000Z');

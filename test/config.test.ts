@@ -8,6 +8,7 @@ import {
   appEnvironmentKeys,
   ConfigurationError,
   getDatabaseUrl,
+  getP1AlertConfiguration,
   getVerificationRateConfiguration,
   turnstileTestSiteKey,
   validateConfig,
@@ -130,6 +131,33 @@ test('E3-10 validates monitoring defaults and configuration overrides', () => {
       assert.equal(error.variableName, 'VERIFICATION_RATE_COLLAPSE_PERCENT');
       return true;
     },
+  );
+});
+
+test('the P1 alert transport requires authenticated HTTPS configuration in production', () => {
+  assert.deepEqual(
+    getP1AlertConfiguration({
+      NODE_ENV: 'production',
+      P1_ALERT_WEBHOOK_TOKEN: 'operator-alert-token',
+      P1_ALERT_WEBHOOK_URL: 'https://alerts.example.test/valstara',
+    }),
+    {
+      token: 'operator-alert-token',
+      url: 'https://alerts.example.test/valstara',
+    },
+  );
+  assert.throws(
+    () =>
+      getP1AlertConfiguration({
+        NODE_ENV: 'production',
+        P1_ALERT_WEBHOOK_TOKEN: 'operator-alert-token',
+        P1_ALERT_WEBHOOK_URL: 'http://alerts.example.test/valstara',
+      }),
+    /P1_ALERT_WEBHOOK_URL/u,
+  );
+  assert.throws(
+    () => getP1AlertConfiguration({ NODE_ENV: 'production' }),
+    /P1_ALERT_WEBHOOK_URL/u,
   );
 });
 

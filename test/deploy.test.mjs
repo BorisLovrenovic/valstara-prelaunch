@@ -338,6 +338,8 @@ test(
       DEPLOY_COMPOSE_FILE: productionComposeUrl.pathname,
       DEPLOY_HEALTH_POLL_SECONDS: '1',
       DEPLOY_HEALTH_TIMEOUT_SECONDS: '10',
+      P1_ALERT_WEBHOOK_TOKEN: 'local-production-drill-alert-token',
+      P1_ALERT_WEBHOOK_URL: 'https://alerts.example.test/valstara',
       SITE_HOST: 'valstara.com',
       UMAMI_APP_SECRET: 'local-production-drill-umami-secret',
       UMAMI_DB_PASSWORD: 'local-production-drill-umami-password',

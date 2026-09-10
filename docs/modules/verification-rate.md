@@ -17,7 +17,7 @@ interface VerificationRateMonitor {
 }
 ```
 
-`run()` emits a P1 alert when the current cohort has reached the configured
+`run()` awaits delivery of a P1 alert when the current cohort has reached the configured
 minimum and its verification rate has fallen by at least the configured relative
 percentage below the baseline. `health()` does not emit an alert.
 
@@ -32,6 +32,10 @@ percentage below the baseline. `health()` does not emit an alert.
   other. It carries no address, token, IP address or other personal data.
 - E10-05 owns `GET /api/admin/health` and its MFA boundary. It consumes this
   module's result; this module creates no route.
+- The maintenance runner delivers P1 through the authenticated webhook in
+  `src/server/verification-rate/p1-webhook.ts`. Production configuration requires an HTTPS
+  endpoint and bearer token. A rejected or unreachable webhook fails the job
+  instead of degrading to a container log line.
 
 ## Contract tests
 

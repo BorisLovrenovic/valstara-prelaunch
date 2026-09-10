@@ -10,6 +10,13 @@ Status: authoritative. Organised **by symptom**, because that is how a problem a
 
 **Detect:** the hourly verification-rate check alerts against a rolling baseline. By default it compares the current 24-hour cohort with the preceding seven days once the cohort has 50 signups; a 50% relative-rate drop is P1. Do not wait to notice it on a dashboard.
 
+**Notification path:** the maintenance process posts an authenticated JSON
+notification to `P1_ALERT_WEBHOOK_URL`, which must terminate in the operator's
+paging service. Production rejects a non-HTTPS or missing destination. A failed
+delivery fails the maintenance job and restarts the process; it never falls back
+to a log-only success. Drill this path against the configured receiver before
+campaign open and confirm receipt outside the application.
+
 **Diagnose, in this order:**
 1. `GET /api/admin/health` — is the verification rate down, or is the *signup* rate down? A drop in signups is a marketing problem; a drop in the *ratio* is this one.
 2. Check `email_send` for `queued` rows piling up — a stuck dispatcher.
@@ -72,6 +79,10 @@ The five-minute objective is measured in E12-03; until that has run there is no 
 ## "The IP retention purge failed"
 
 **This is a compliance alert, not a hygiene one.** Run it manually, confirm the oldest remaining hash is inside 90 days, and record the gap. If the gap exceeded the retention period, it is recordable.
+
+The rate-limit bucket purge uses the same P1 webhook but a seven-day retention
+period. Confirm both the subscriber prefix hashes (90 days) and rate-limit
+buckets (seven days) independently.
 
 ---
 
