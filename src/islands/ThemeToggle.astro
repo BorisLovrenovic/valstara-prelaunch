@@ -111,9 +111,12 @@ import { themeToggleCopy } from '../copy/theme-toggle.ts';
   }
 
   button {
+    box-sizing: border-box;
+    inline-size: calc(var(--space-10) * 2);
     padding: var(--space-1) var(--space-2);
     color: var(--ink);
     font: inherit;
+    line-height: var(--leading-1);
     background-color: var(--surface);
     border-color: var(--line);
     border-radius: var(--radius-control);

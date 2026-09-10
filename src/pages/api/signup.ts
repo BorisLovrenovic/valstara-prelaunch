@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { randomUUID } from 'node:crypto';
+import { setTimeout as systemSleep } from 'node:timers/promises';
 
 import { CANADA_COUNTRY_CODE } from '../../copy/country.ts';
 import { signupCopy } from '../../copy/signup.ts';
@@ -30,6 +31,7 @@ const ipRateLimitMaxAttempts = 5;
 const strictIpRateLimitMaxAttempts = 2;
 const maxEmailLength = 254;
 const maxRegionLength = 64;
+export const signupResponseTargetMs = 500;
 
 /**
  * The closed error-code set this route can return, each with its HTTP status.
@@ -68,6 +70,8 @@ export interface SignupRouteDependencies {
   readonly signup: (input: SignupInput) => Promise<SignupOutcome>;
   readonly flagChallengeTimeout: (subscriberId: string) => Promise<void>;
   readonly clock?: () => Date;
+  readonly monotonicClock?: () => number;
+  readonly sleep?: (milliseconds: number) => Promise<void>;
 }
 
 let database: DatabasePool | undefined;
@@ -157,6 +161,10 @@ export function createSignupRoute(
   dependencies: SignupRouteDependencies,
 ): APIRoute {
   const clock = dependencies.clock ?? (() => new Date());
+  const monotonicClock =
+    dependencies.monotonicClock ??
+    (() => Number(process.hrtime.bigint() / 1_000_000n));
+  const sleep = dependencies.sleep ?? systemSleep;
 
   return async ({ clientAddress, request }) => {
     let formData: FormData;
@@ -171,7 +179,7 @@ export function createSignupRoute(
     // does not reject a real person — it accepts under strict limits and flags
     // the row further down (ADR-006).
     const turnstileToken = formData.get('turnstile_token');
-    if (typeof turnstileToken !== 'string') {
+    if (typeof turnstileToken !== 'string' || turnstileToken === '') {
       return errorResponse('challenge_failed');
     }
     const challenge = await dependencies.verifyTurnstile(turnstileToken);
@@ -214,6 +222,12 @@ export function createSignupRoute(
       return errorResponse('invalid_input');
     }
 
+    // Every syntactically valid request that can reveal subscriber membership
+    // shares the same minimum response boundary. Unknown, pending, and verified
+    // addresses therefore do not expose their different database/mail paths as
+    // a useful timing signal.
+    const membershipWorkStartedAt = monotonicClock();
+
     // 4. Normalise + upsert + queue the verification mail (in the module).
     let outcome: SignupOutcome;
     try {
@@ -247,6 +261,12 @@ export function createSignupRoute(
         // The review flag is metadata; losing it degrades the queue, it never
         // touches the committed subscriber row.
       }
+    }
+
+    const remaining =
+      signupResponseTargetMs - (monotonicClock() - membershipWorkStartedAt);
+    if (remaining > 0) {
+      await sleep(remaining);
     }
 
     // Created, existing pending, and already verified all receive the same

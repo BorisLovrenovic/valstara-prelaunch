@@ -5,8 +5,10 @@ import {
 } from '../config.ts';
 import { createPool } from '../db/pool.ts';
 import { createRateLimitRetentionJob } from '../ratelimit/retention.ts';
+import { createStrandedReferralReconciliationJob } from '../referral/reconcile-stranded.ts';
 import { createP1AlertWebhookTransport } from '../verification-rate/p1-webhook.ts';
 import { createVerificationRateMonitor } from '../verification-rate/service.ts';
+import { createVerificationTokenRetentionJob } from '../verification/retention.ts';
 
 import { createUnverifiedExpiryJob } from './expiry.ts';
 import {
@@ -44,11 +46,17 @@ const scheduler = createVerificationMaintenanceScheduler(
     expiry: createUnverifiedExpiryJob(database, { clock }),
     rateLimitRetention: createRateLimitRetentionJob(database, { clock }),
     reminder: createVerificationReminderJob(database, { clock }),
+    strandedReferral: createStrandedReferralReconciliationJob(database, {
+      clock,
+    }),
     verificationRate: createVerificationRateMonitor(
       database,
       getVerificationRateConfiguration(),
       { alert: reportVerificationRateCollapse, clock },
     ),
+    verificationTokenRetention: createVerificationTokenRetentionJob(database, {
+      clock,
+    }),
   },
   { clock, reportFailure },
 );

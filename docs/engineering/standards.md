@@ -10,7 +10,7 @@ TypeScript strict throughout. **No `any`** — `unknown` plus narrowing. ESM. Da
 - **An API route validates, calls one server module, and shapes the response.** No SQL, no branching campaign logic, no email dispatch in a route.
 - **Only `server/db` issues SQL.**
 - **Vendor SDKs only inside their provider module** — lint-enforced, never disabled.
-- Islands hydrate with the narrowest directive that works: `client:idle` over `client:load`, `client:visible` for the leaderboard. **The signup form works with JavaScript disabled**; the island only adds inline validation.
+- Islands hydrate with the narrowest directive that works: `client:idle` over `client:load`, `client:visible` for the leaderboard. The signup form still renders without JavaScript and explains that JavaScript is required for Turnstile; submission cannot succeed without a challenge token.
 
 ## Data and queries
 Money does not appear here. Counts are integers and are **derived from their source table**, never incremented in two places. **Every query that can return an unbounded set takes an explicit limit** — the box has hard memory limits and no swap. Migrations are forward-only checked-in SQL, additive first, never edited after they have run anywhere.

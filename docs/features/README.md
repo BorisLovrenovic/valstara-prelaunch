@@ -34,7 +34,7 @@ Flags exist for one reason: **so a mechanic can be switched off during an incide
 These apply to **every** feature and are not restated per spec:
 
 - **No non-essential cookie, and no browser-storage value used to identify a visitor.** The theme preference is the single permitted storage write, and it is functional.
-- **No third-party script loads on any page** except two sanctioned, consent-free requests: the deliberately-flagged Trustpilot widget, lazily and only when it is worth showing, and the always-on Cloudflare Turnstile loader on the signup form (ADR-006, founder-authorised 2026-09-08). Turnstile sets no cookie and uses no fingerprinting API.
+- **No third-party script loads on any page** except two sanctioned hosts: the deliberately-flagged Trustpilot widget, lazily and only when it is worth showing, and the always-on Cloudflare Turnstile loader on protected forms (ADR-006, founder-authorised 2026-09-08). Turnstile's Article 5(3) basis is the verified absence of device storage/access. The site runs no device-fingerprinting API; Cloudflare processes IP/TLS/UA server-side as security processor.
 - **No unverified subscriber is counted, ranked, rewarded, or broadcast to.**
 - **Referral attribution is server-side and signed** — never read from a cookie or from client JavaScript.
 - **Fraud signals flag; humans decide.** No code path sets `disqualified` without a recorded human action.

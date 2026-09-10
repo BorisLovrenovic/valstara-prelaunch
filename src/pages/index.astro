@@ -6,11 +6,27 @@ import SignupForm from '../islands/SignupForm.astro';
 import { suggestCountry } from '../server/geo/suggest-country.ts';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getFlagService } from '../server/flags/app-service.ts';
+import {
+  hasNonDefaultFlagState,
+  landingCacheVary,
+  landingFlagGeneration,
+} from '../server/cache/landing.ts';
 
 // Fail-safe default: an unreadable flag resolves to the registered default
 // (signup on), so a database blip never silently pauses signups. Only an
 // operator turning the flag off replaces the form with the paused message.
-const signupEnabled = await getFlagService().isEnabled('signup.enabled');
+const flags = await getFlagService().list();
+const signupEnabled =
+  flags.find((flag) => flag.key === 'signup.enabled')?.enabled ?? true;
+const flagGeneration = landingFlagGeneration(flags);
+const hasReferralQuery = Astro.url.searchParams.has('ref');
+const bypassLandingCache = hasReferralQuery || hasNonDefaultFlagState(flags);
+Astro.response.headers.set(
+  'Cache-Control',
+  bypassLandingCache ? 'private, no-store' : 'public, max-age=0, s-maxage=300',
+);
+Astro.response.headers.set('Vary', landingCacheVary);
+Astro.response.headers.set('X-Valstara-Flag-Generation', flagGeneration);
 
 // Geo is a *suggestion*, read only through the geo module — the page never
 // reads the Cloudflare country header itself (the module's interface is the

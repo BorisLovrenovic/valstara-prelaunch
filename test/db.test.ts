@@ -227,6 +227,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0006-subscriber-maintenance-permissions.sql',
       '0007-verification-rate-monitor-permissions.sql',
       '0008-e1-e3-runtime-role-permissions.sql',
+      '0009-milestone-reward-kinds.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -240,6 +241,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0006-subscriber-maintenance-permissions.sql',
         '0007-verification-rate-monitor-permissions.sql',
         '0008-e1-e3-runtime-role-permissions.sql',
+        '0009-milestone-reward-kinds.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -364,10 +366,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          8,
+          9,
         );
 
-        assert.equal(appliedCount, 8);
+        assert.equal(appliedCount, 9);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -379,6 +381,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0006-subscriber-maintenance-permissions.sql',
             '0007-verification-rate-monitor-permissions.sql',
             '0008-e1-e3-runtime-role-permissions.sql',
+            '0009-milestone-reward-kinds.sql',
           ],
         );
       } finally {
@@ -461,7 +464,7 @@ test('the named database constraints exist in the PostgreSQL catalogue', async (
           [
             'uq_email_send_business_key',
             'uq_giveaway_entry_subscriber_method_source_edge',
-            'uq_milestone_award_subscriber_tier',
+            'uq_milestone_award_subscriber_tier_kind',
             'uq_referral_edge_referred_id',
             'uq_subscriber_email_normalised',
           ],
@@ -481,8 +484,8 @@ test('the named database constraints exist in the PostgreSQL catalogue', async (
           'UNIQUE NULLS NOT DISTINCT (subscriber_id, method, source_edge_id)',
       },
       {
-        conname: 'uq_milestone_award_subscriber_tier',
-        definition: 'UNIQUE (subscriber_id, tier)',
+        conname: 'uq_milestone_award_subscriber_tier_kind',
+        definition: 'UNIQUE (subscriber_id, tier, reward_kind)',
       },
       {
         conname: 'uq_referral_edge_referred_id',

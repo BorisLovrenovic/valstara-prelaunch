@@ -7,7 +7,12 @@ const HOUR_MS = 60 * 60 * 1_000;
 export const verificationMaintenanceBatchLimit = 1_000;
 
 export type MaintenanceJobName =
-  'expiry' | 'rate_limit_retention' | 'reminder' | 'verification_rate';
+  | 'expiry'
+  | 'rate_limit_retention'
+  | 'reminder'
+  | 'stranded_referral'
+  | 'verification_rate'
+  | 'verification_token_retention';
 
 export interface MaintenanceJob {
   run(limit: number): Promise<unknown>;
@@ -21,7 +26,9 @@ export interface VerificationMaintenanceJobs {
   readonly expiry: MaintenanceJob;
   readonly rateLimitRetention: MaintenanceJob;
   readonly reminder: MaintenanceJob;
+  readonly strandedReferral: MaintenanceJob;
   readonly verificationRate: VerificationRateJob;
+  readonly verificationTokenRetention: MaintenanceJob;
 }
 
 export interface VerificationMaintenanceDependencies {
@@ -46,7 +53,9 @@ export function createMaintenanceFailureReporter(
 
   return async (job) => {
     const severity =
-      job === 'verification_rate' || job === 'rate_limit_retention'
+      job === 'verification_rate' ||
+      job === 'rate_limit_retention' ||
+      job === 'verification_token_retention'
         ? 'P1'
         : 'P3';
     if (severity === 'P1') {
@@ -78,6 +87,8 @@ export function createVerificationMaintenanceScheduler(
   const sleep = dependencies.sleep ?? systemSleep;
   let expiryDay: string | null = null;
   let rateLimitRetentionDay: string | null = null;
+  let strandedReferralDay: string | null = null;
+  let verificationTokenRetentionDay: string | null = null;
 
   async function runJob(
     name: Exclude<MaintenanceJobName, 'verification_rate'>,
@@ -114,6 +125,21 @@ export function createVerificationMaintenanceScheduler(
       (await runJob('rate_limit_retention', jobs.rateLimitRetention))
     ) {
       rateLimitRetentionDay = day;
+    }
+    if (
+      verificationTokenRetentionDay !== day &&
+      (await runJob(
+        'verification_token_retention',
+        jobs.verificationTokenRetention,
+      ))
+    ) {
+      verificationTokenRetentionDay = day;
+    }
+    if (
+      strandedReferralDay !== day &&
+      (await runJob('stranded_referral', jobs.strandedReferral))
+    ) {
+      strandedReferralDay = day;
     }
   }
 

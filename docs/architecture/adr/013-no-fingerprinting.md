@@ -8,7 +8,7 @@
 Device fingerprinting is the conventional next layer of referral-fraud detection after IP and email heuristics.
 
 ## Decision
-**No fingerprinting.** No canvas, font enumeration, WebGL or timing-entropy collection, anywhere in the codebase. CI-scanned.
+**The site runs no device-fingerprinting API.** No canvas, font enumeration, WebGL or timing-entropy collection is invoked by site code. CI-scanned. Cloudflare Turnstile's disclosed server-side processing of IP, TLS and user-agent security signals under its processor role is not represented as absent.
 
 Three independent reasons, each sufficient:
 

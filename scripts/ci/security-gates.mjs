@@ -313,7 +313,12 @@ function scanFingerprinting(files) {
   ];
   const issues = [];
 
-  for (const file of files) {
+  // Rendered probes may inspect these APIs to verify the contract. Everything
+  // except test-only code remains scanned, including scripts and dependencies
+  // that could later be wired into a page.
+  for (const file of files.filter(
+    (candidate) => !candidate.path.startsWith('test/'),
+  )) {
     for (const pattern of patterns) {
       if (pattern.test(file.content)) {
         issues.push(
@@ -356,6 +361,46 @@ function scanThirdPartyRequests(files) {
     /(?:fetch|import|navigator\.sendBeacon|new\s+(?:WebSocket|EventSource)|\.open)\(\s*(?:['"`][^'"`]+['"`]\s*,\s*)?(['"`])(https?:\/\/[^'"`]+)\1|<(?:script|iframe|img|link)\b[^>]*\b(?:src|href)=["'](https?:\/\/[^"']+)|(?:@import\s+(?:url\()?|url\()\s*['"]?(https?:\/\/[^'"\s)]+)/g;
 
   return readJson('scripts/ci/privacy-allowlist.json').then((policy) => {
+    const turnstile = policy.thirdPartyRequests.find(
+      (entry) => entry.host === 'challenges.cloudflare.com',
+    );
+    const expectedSignals = ['IP', 'TLS', 'user-agent'];
+    const contract = turnstile?.disclosureContract;
+    if (
+      contract?.article5_3Basis !== 'no-device-storage-or-access' ||
+      contract?.siteDeviceFingerprintingApi !== false ||
+      contract?.processorRole !== 'security-processor' ||
+      contract?.privacyPolicyDisclosure !==
+        'docs/legal/compliance.md#cloudflare-turnstile-processor-disclosure' ||
+      contract?.legalSignOff !== 'required' ||
+      JSON.stringify(contract?.processorServerSideSignals) !==
+        JSON.stringify(expectedSignals)
+    ) {
+      issues.push(
+        issue(
+          'privacy-disclosure',
+          'scripts/ci/privacy-allowlist.json',
+          'Turnstile disclosure contract is missing or incomplete',
+        ),
+      );
+    }
+    const compliance = files.find(
+      (file) => file.path === 'docs/legal/compliance.md',
+    )?.content;
+    if (
+      compliance === undefined ||
+      !compliance.includes('Cloudflare Turnstile processor disclosure') ||
+      !compliance.includes('LEGAL SIGN-OFF REQUIRED') ||
+      !expectedSignals.every((signal) => compliance.includes(`**${signal}**`))
+    ) {
+      issues.push(
+        issue(
+          'privacy-disclosure',
+          'docs/legal/compliance.md',
+          'privacy policy does not state the enforced Turnstile processor contract',
+        ),
+      );
+    }
     for (const file of browserFiles(files)) {
       for (const match of file.content.matchAll(urlPattern)) {
         const requestUrl = match[2] ?? match[3] ?? match[4];

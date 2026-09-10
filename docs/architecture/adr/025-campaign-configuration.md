@@ -33,7 +33,7 @@ the single source of the numbers.
 - **Base entry:** `1`, accrued on verification.
 - **Per confirmed referral:** `+1` entry — cheap, settles on confirmation.
 
-### Tier ladder (`milestone_award`, unique on `(subscriber_id, tier)`)
+### Tier ladder (`milestone_award`, unique on `(subscriber_id, tier, reward_kind)`)
 | Tier | Threshold (confirmed referrals) | Cheap (settled on confirmation) | High-value (`held`) |
 |---|---|---|---|
 | 1 | 3 | tier progress · `wave_upgrade` | **15%** launch discount code · `+5` bonus entries |

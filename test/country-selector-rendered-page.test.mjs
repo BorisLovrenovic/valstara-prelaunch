@@ -201,7 +201,7 @@ test('the country and region reveal ships no script of its own — the reveal st
     script.content.includes('valstara-theme'),
   );
   const signupIsland = scripts.filter((script) =>
-    script.content.includes('valstara-signup-form'),
+    /SignupForm\.astro[^"']*\.js/u.test(script.attributes),
   );
   const turnstileLoader = scripts.filter((script) =>
     script.attributes.includes('challenges.cloudflare.com/turnstile'),

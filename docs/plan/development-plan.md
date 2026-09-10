@@ -206,7 +206,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 
 **Build:** `src/server/db` — the connection pool, transaction helper, and a **forward-only migration runner with a `migration_ledger` recording filename, checksum and applied timestamp.** Then the initial schema per `docs/data/model.md`: `subscriber`, `verification_token`, `referral_edge`, `milestone_award`, `survey_response`, `giveaway_entry`, `giveaway_draw`, `fraud_flag`, `email_send`, `suppression`, `campaign_flag`, `audit_log`, `rate_limit_bucket`.
 
-**The constraints are the deliverable, not the columns.** `subscriber.email_normalised` unique · `referral_edge.referred_id` unique · `email_send.business_key` unique · `giveaway_entry (subscriber_id, method, source_edge_id)` unique · `milestone_award (subscriber_id, tier)` unique · `subscriber.referred_by_id` **write-once, enforced by trigger**.
+**The constraints are the deliverable, not the columns.** `subscriber.email_normalised` unique · `referral_edge.referred_id` unique · `email_send.business_key` unique · `giveaway_entry (subscriber_id, method, source_edge_id)` unique · `milestone_award (subscriber_id, tier, reward_kind)` unique · `subscriber.referred_by_id` **write-once, enforced by trigger**.
 
 **Including `audit_log`'s permissions.** This ticket creates `audit_log`, and standing rule 11 says that table is append-only **enforced by database permissions**. So this ticket grants the application role `INSERT` and `SELECT` only — no `UPDATE`, no `DELETE` — and provisions that role with a login and password **in the migration path**, not in a first-boot init hook, so an existing volume upgrades correctly. **E1-09 owns the `audit` service on top of this; it does not own the table or its permissions** (standing rule 19).
 
@@ -577,7 +577,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** backend
 **Why this tier:** the campaign's only write path, publicly exposed, with a documented and load-bearing order of operations.
 
-**Build:** `POST /api/signup` per `docs/api/README.md#post-apisignup`, in **exactly the documented order**: verify Turnstile → rate-limit → validate → normalise → blocklist and MX → upsert subscriber → attribute the referral edge → run fraud signals → decide giveaway eligibility and stamp the rules version → queue the verification mail → respond. Typed errors from the closed code set.
+**Build:** The E3-owned subset of `POST /api/signup` per `docs/api/README.md#post-apisignup`, in this exact order: verify Turnstile → rate-limit → validate → normalise → upsert subscriber → issue a verification token → queue the verification mail → respond. Typed errors from the closed code set. The current implementation remains the integration point; blocklist/MX and fraud signals belong to E5, referral attribution to E4, and giveaway eligibility/rules stamping to E7.
 
 **Acceptance criteria:**
 - **The order of operations matches the documented order** — asserted by test, because doing work before the challenge is the failure mode
@@ -627,19 +627,19 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E3-05 — The signup form island
 **Model:** Tier A — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
 
-**Build:** The form island: inline validation, submission states, error rendering from the closed code set, the signed ref carried as a hidden field, and Turnstile mounted invisibly. **It must work with JavaScript disabled** — the island only adds inline validation.
+**Build:** The form island: inline validation, submission states, error rendering from the closed code set, the signed ref carried as a hidden field, and Turnstile mounted invisibly. Submission requires JavaScript because Turnstile has no no-JS token path; the server-rendered form remains visible and its `<noscript>` notice tells visitors to enable JavaScript.
 
-**Turnstile client mount and the no-third-party-request property — founder-authorised 2026-09-08 (Option A).** Mounting Turnstile client-side loads `challenges.cloudflare.com/turnstile/v0/api.js`, an off-origin request that the standing "no third-party request from a rendered page" rule and `docs/legal/compliance.md#3` otherwise forbid (only the flagged Trustpilot widget was allowlisted). The founder authorised treating Turnstile as a second sanctioned rendered-page request: it is consent-free (no cookie, no fingerprinting) and Cloudflare already fronts the whole zone as the site's processor. So this ticket — the first to put Turnstile in the browser — owns the reconciliation under standing rule 19: it extends the third-party-request gate's allowlist to permit an **always-on** (no flag) `challenges.cloudflare.com` entry scoped to the signup island, adds the public `TURNSTILE_SITE_KEY` config (a temporary placeholder until the real Cloudflare key is provisioned; E12-05 swaps it in with the production secret), and updates ADR-006, ADR-007, `docs/legal/compliance.md#3` and the threat model to name Turnstile alongside Trustpilot. The signed ref field itself remains E4-02's to render; the island only carries it through unchanged.
+**Turnstile client mount and the no-third-party-request property — founder-authorised 2026-09-08 (Option A).** Mounting Turnstile client-side loads `challenges.cloudflare.com/turnstile/v0/api.js`, an off-origin request that the standing "no third-party request from a rendered page" rule and `docs/legal/compliance.md#3` otherwise forbid (only the flagged Trustpilot widget was allowlisted). The Article 5(3) no-banner basis is the probe-confirmed absence of device storage/access. The site runs no device-fingerprinting API; Cloudflare processes IP, TLS and user-agent signals server-side as a security processor. So this ticket — the first to put Turnstile in the browser — owns the reconciliation under standing rule 19: it extends the third-party-request gate's allowlist to permit an **always-on** (no flag) `challenges.cloudflare.com` entry scoped to the protected forms, adds the public `TURNSTILE_SITE_KEY` config (a temporary placeholder until the real Cloudflare key is provisioned; E12-05 swaps it in with the production secret), and updates ADR-006, ADR-007, `docs/legal/compliance.md#3` and the threat model to name Turnstile alongside Trustpilot. The signed ref field itself remains E4-02's to render; the island only carries it through unchanged.
 
 **Acceptance criteria:**
-- **The form posts and works with JavaScript disabled** — evidenced
+- With JavaScript disabled the form still renders, explains that JavaScript is required, and a native submission is rejected for its missing/empty Turnstile token
 - Inline validation never blocks a submission the server would accept
 - Errors render from the copy layer with the field association assistive technology needs
 - The signed ref is carried through unchanged; **the island never reads or writes the ref itself**
 - **No cookie and no storage write occurs** in the flow
 - Submission is disabled during flight; a double-click cannot double-submit
 
-**Tests:** No-JS submission path · error rendering per code · double-click prevention · the storage-gate check over the rendered page.
+**Tests:** Real-route no-JS missing/empty-token rejection · delayed Turnstile resolution in the submitted body · error rendering per code · expiry/error retry · double-click prevention · the storage-gate check over the rendered page.
 **Docs:** `docs/features/signup.md` · `docs/api/README.md`
 
 ### E3-06 — Verification tokens
@@ -662,7 +662,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this tier:** this route performs five state transitions in one request, and a partial application of them is a corrupt subscriber.
 
-**Build:** `/verify?token=` consuming the token and, **in one transaction**: setting `verified`, **generating the referral code** (E4-01's `generateCode`, invoked here because it happens at verification and the success page must render the link), confirming referral edges, settling cheap rewards, holding high-value ones, and assigning the access window. Then the success page carrying the referral link, the survey questions and the status link.
+**Build:** Non-mutating `GET /verify?token=` renders a confirmation page so scanners and prefetchers are inert. Its token-authenticated `POST /verify` consumes the token and, **in one transaction**: sets `verified`, **generates the referral code** (E4-01's `generateCode`, invoked here because it happens at verification and the success page must render the link), confirms existing referral edges regardless of the new-attribution flag, settles cheap rewards, holds high-value ones, and assigns/promotes access windows. Then the success page carries the referral link, survey questions and status link. Invalid and expired posts render the identical generic response and request-new-link control.
 
 **Scope note (2026-09-08):** two dependencies are resolved into this ticket. (1) **Referral code generation** — E4-01 owns the algorithm and its entropy/collision/case-insensitive/no-pending-row tests; those travel with the implementation brought forward here, and E3-07's transaction calls `generateCode` inside the same transaction so the link can be rendered. (2) **Survey** — E3-07 renders the two questions as a **static, progressively-enhanced `<form>`** (no client hydration, no fourth island). **Submission stays in E6-03**: `POST /api/survey` is token-authenticated (the signed `status` token), so it is **exempt from Turnstile-first** (`docs/api/README.md`, rule 2), and its "answerable without a page load" enhancement is a **minimal inline handler, not a fourth island** (the E6-05 precedent). ADR-001's three-island rule is unchanged.
 
@@ -673,7 +673,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 - The referral link, the survey questions and the status link are all present
 - The page is static apart from the survey interaction; **no cookie is set**
 
-**Tests:** Transactional atomicity under induced failure · the held-reward invariant · replay rendering.
+**Tests:** Scanner/prefetch GET inertness · transactional atomicity under induced failure · full cheap/held reward matrix · referral flag-off existing-edge regression and bounded stranded-row reconciliation · invalid/expired equivalence with recovery control · replay rendering.
 **Docs:** `docs/features/double-opt-in.md` · `docs/modules/referral.md` · `docs/architecture/adr/012-reward-gating.md`
 
 ### E3-08 — The reminder ladder and unverified expiry
@@ -798,7 +798,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E4-05 — Milestone ladder and tiers
 **Model:** Tier A — Medium · **Priority:** High · **Flag:** `referral.enabled` · **Area:** backend
 
-**Build:** The tier ladder as configuration, evaluated on each confirmation. `milestone_award` unique on `(subscriber_id, tier)`. Tier 1 ships; **the five-referral tier is cut-list item 7 and can be added mid-campaign** without a migration.
+**Build:** The tier ladder as configuration, evaluated on each confirmation. `milestone_award` unique on `(subscriber_id, tier, reward_kind)` so the tier's settled wave upgrade and held discount/bonus entries coexist. Tier 1 ships; **the five-referral tier is cut-list item 7 and can be added mid-campaign** without a migration.
 
 **Acceptance criteria:**
 - A tier is awarded **exactly once**, enforced by the unique constraint
@@ -1779,13 +1779,13 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this tier:** an origin reachable around the proxy defeats the caching the spike plan depends on and exposes the box directly.
 
-**Build:** Put the zone in front of the host, proxied. Restrict the origin to Cloudflare. Move Turnstile and Web Analytics to production keys. Verify the static-asset cache behaviour the spike plan assumes.
+**Build:** Put the zone in front of the host, proxied. Restrict the origin to Cloudflare. Move Turnstile and Web Analytics to production keys. Implement and verify the recorded landing-cache contract: a ref-less/default-flag response is cached with country plus `X-Valstara-Flag-Generation` in the custom key; `?ref=` and non-default flag states remain `private, no-store`. Verify static-asset cache behaviour as well.
 
 **Acceptance criteria:**
 - **The origin is not reachable except through Cloudflare** — verified by attempting a direct connection, from outside
 - TLS terminates correctly; no mixed content; security headers as documented
 - **Turnstile verifies server-side with production keys**, and a failure still fails closed
-- **Static pages are served from Cloudflare's cache** — confirmed by cache-status headers, because the entire spike plan rests on the origin seeing only writes
+- **The anonymous/default landing page and static assets are served from Cloudflare's cache** — cache-status and cache-key assertions cover two countries and two flag generations; `?ref=` and a non-default flag state are confirmed misses with `private, no-store`
 - Cloudflare Web Analytics reports, and **still sets no cookie** — the privacy gate re-run against the live site
 
 **Tests:** Direct-origin attempt; cache-status assertions; the rendered-page privacy check against production.

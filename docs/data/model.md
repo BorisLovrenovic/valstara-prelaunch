@@ -65,6 +65,8 @@ Indexes: `email_normalised` (unique) · `referral_code` (unique) · `referred_by
 
 The same table shape backs the signed status link for `/me` with a longer expiry and a `purpose` discriminator (`verify` · `status` · `unsubscribe`), so there is one token lifecycle to reason about rather than three.
 
+`GET /verify?token=` never reads or mutates this table; it renders a confirmation form so mail scanners and prefetchers are inert. Only the token-authenticated `POST /verify` consumes. Invalid and expired posts render identical copy and the same request-new-link control. `src/server/verification/retention.ts` invokes `purgeExpired()` daily through the maintenance scheduler with the shared 1,000-row batch cap, deleting rows 30 days after expiry; failure follows the P1 compliance-alert path.
+
 ---
 
 ## `referral_edge` — the record referrals are recomputed from
@@ -85,7 +87,7 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 ## `milestone_award`
 
-`id` · `subscriber_id` · `tier` int · `reward_kind` (`entries` · `discount` · `wave_upgrade` · `merch`) · `state` (`settled` · `held` · `void`) · `awarded_at`. Unique on `(subscriber_id, tier)` — a tier is awarded once.
+`id` · `subscriber_id` · `tier` int · `reward_kind` (`entries` · `discount` · `wave_upgrade` · `merch`) · `state` (`settled` · `held` · `void`) · `awarded_at`. Unique on `(subscriber_id, tier, reward_kind)` — each configured reward kind is awarded once while one tier can durably hold its settled wave upgrade, held discount and held bonus-entry rows.
 
 ## `survey_response`
 
@@ -167,7 +169,7 @@ The pepper is a secret with a handling procedure of its own: rotating it invalid
 |---|---|---|
 | `signup_ip_prefix_hash` | 90 days | Daily purge job |
 | Unverified `pending` subscribers | Campaign-configured horizon (default 30 days) | Daily expiry sweep → `expired` |
-| Verification and status tokens | Purged 30 days after expiry | Daily sweep |
+| Verification and status tokens | Purged 30 days after expiry | Daily, 1,000-row-capped sweep; P1 on failure |
 | `rate_limit_bucket` | 7 days | Daily cleanup |
 | Giveaway rules pages and entry records | The statutory retention period for the relevant jurisdictions, then `410` | Manual, checklisted |
 | The whole database after handoff | **Read-only for 90 days as the audit trail**, then reviewed for deletion | ADR-022 |

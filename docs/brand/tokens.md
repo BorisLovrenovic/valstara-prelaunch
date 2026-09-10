@@ -36,8 +36,8 @@ So the rule is stronger than "use tokens":
   --error: #C0392B; --warning: #B7791F; --success: #2E7D57;
 
   /* type — LOCKED, §6. Söhne is the eventual primary; pre-launch ships Instrument Sans (ADR-016) */
-  --font-sans: 'Instrument Sans', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: 'Instrument Sans', 'Instrument Sans Fallback', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'JetBrains Mono Fallback', ui-monospace, monospace;
 
   /* scale — §6.1: H1 32/40 · H2 24/32 · H3 20/28 · Body 16/24 · Small 14/20 · Label 13/18 */
   --step-5: 2rem;    --leading-5: 2.5rem;    /* H1 */
@@ -95,11 +95,11 @@ The media block exists because **the site must render the system-preferred theme
 
 ## Type
 
-**Instrument Sans and JetBrains Mono**, both OFL, both **self-hosted as WOFF2** (ADR-016).
+**Instrument Sans and JetBrains Mono**, both OFL, both self-hosted as Latin-subset variable **WOFF2 with WOFF fallback** (ADR-016). The OFL files ship beside the binaries. Instrument Sans uses a metric-adjusted local Arial fallback (`size-adjust`, ascent, descent and line-gap overrides); JetBrains Mono does the same against Courier New.
 
 - **Never the Google Fonts CDN.** The Munich ruling makes it a live liability in a named target market, and self-hosting is the correct default regardless.
 - **Metric-matched fallbacks with `size-adjust` and `ascent-override` from the first commit.** Söhne is bought at store launch, and the swap should then be one `@font-face` change plus a QA pass — not a re-layout.
-- Subset to the Latin ranges actually used, preloaded for the faces above the fold only.
+- Subset to the Latin ranges actually used. Only Instrument Sans WOFF2 is preloaded because it is the above-fold face; JetBrains Mono loads only when a changing figure needs it. `.tabular-figure` applies the mono family and `font-variant-numeric: tabular-nums` together.
 
 ## Port checklist
 

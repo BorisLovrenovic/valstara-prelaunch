@@ -51,6 +51,8 @@ function deps(
       subscriber: pendingSubscriber,
     }),
     flagChallengeTimeout: async () => undefined,
+    monotonicClock: () => 500,
+    sleep: async () => undefined,
     ...overrides,
   };
 }
@@ -360,6 +362,46 @@ test('unknown, pending, and verified addresses receive an identical accepted res
   }
 });
 
+test('unknown, pending, and verified outcomes share the real 500ms response boundary', async () => {
+  const outcomes: SignupOutcome[] = [
+    { kind: 'created', subscriber: pendingSubscriber },
+    {
+      kind: 'existing',
+      subscriber: { created: false, id: 'pending-id', status: 'pending' },
+    },
+    {
+      kind: 'already_verified',
+      subscriber: { created: false, id: 'verified-id', status: 'verified' },
+    },
+  ];
+
+  const elapsed = await Promise.all(
+    outcomes.map(async (outcome, index) => {
+      const route = createSignupRoute({
+        ...deps(),
+        monotonicClock: undefined,
+        sleep: undefined,
+        async signup() {
+          await new Promise((resolve) => setTimeout(resolve, index * 30));
+          return outcome;
+        },
+      });
+      const started = performance.now();
+      const response = await route(routeContext(makeRequest()));
+      assert.equal(response.status, 200);
+      return performance.now() - started;
+    }),
+  );
+
+  for (const duration of elapsed) {
+    assert.ok(
+      duration >= 475,
+      `response returned before its boundary: ${duration}`,
+    );
+  }
+  assert.ok(Math.max(...elapsed) - Math.min(...elapsed) < 75);
+});
+
 test('each error outcome maps to the documented code', async () => {
   const missingToken = await createSignupRoute(deps()).call(
     null,
@@ -367,6 +409,23 @@ test('each error outcome maps to the documented code', async () => {
   );
   assert.equal(missingToken.status, 400);
   assert.equal((await missingToken.json()).error.code, 'challenge_failed');
+
+  let emptyTokenVerified = false;
+  const emptyToken = await createSignupRoute(
+    deps({
+      async verifyTurnstile() {
+        emptyTokenVerified = true;
+        return 'verified';
+      },
+    }),
+  )(
+    routeContext(
+      makeRequest({ country: 'GB', email: 'a@b.co', turnstile_token: '' }),
+    ),
+  );
+  assert.equal(emptyToken.status, 400);
+  assert.equal((await emptyToken.json()).error.code, 'challenge_failed');
+  assert.equal(emptyTokenVerified, false);
 
   const invalidEmail = await createSignupRoute(
     deps({ signup: async () => ({ kind: 'invalid_email' }) }),

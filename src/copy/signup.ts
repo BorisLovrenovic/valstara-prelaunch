@@ -22,6 +22,11 @@ export const signupCopy = {
  * status, and a connection failure where no response comes back at all.
  */
 export const signupFormCopy = {
+  javaScriptRequired:
+    'JavaScript is required to complete the security check and join the waitlist.',
+  challengePending: 'Completing the security check…',
+  challengeUnavailable:
+    "We couldn't complete the security check. Please try again.",
   submitting: 'Adding you to the waitlist…',
   connection:
     "We couldn't reach the waitlist just now — check your connection and try again.",

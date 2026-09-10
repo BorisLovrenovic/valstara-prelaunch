@@ -11,6 +11,7 @@ import {
   regionFieldCopy,
 } from '../copy/country.ts';
 import { landingCopy } from '../copy/landing.ts';
+import { signupFormCopy } from '../copy/signup.ts';
 import { getConfig } from '../server/config.ts';
 
 interface Props {
@@ -30,6 +31,9 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
 <valstara-signup-form data-sitekey={turnstileSiteKey}>
   <form action="/api/signup" method="post">
+    <noscript>
+      <p class="signup-error">{signupFormCopy.javaScriptRequired}</p>
+    </noscript>
     <Field
       controlId="signup-email"
       description={landingCopy.form.hint}
@@ -170,8 +174,9 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   /*
   Cloudflare Turnstile's client widget. This off-origin request is the second
   sanctioned rendered-page request (after the flagged Trustpilot widget): the
-  challenge is consent-free — no cookie, no fingerprinting — and Cloudflare
-  already fronts the whole zone. It is allowlisted in the third-party gate for
+  Article 5(3) basis is the probe-confirmed absence of device storage/access;
+  Cloudflare's IP/TLS/UA security processing is disclosed separately. It is
+  allowlisted in the third-party gate for
   this exact file (Option A, founder-authorised 2026-09-08; ADR-006, ADR-007,
   compliance §3). Loaded with explicit rendering so it does nothing until the
   island renders it lazily on first interaction, keeping the initial page inert.
@@ -213,7 +218,9 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     #tokenInput: HTMLInputElement | null = null;
     #turnstileContainer: HTMLElement | null = null;
     #widgetId: string | undefined;
-    #turnstileStarted = false;
+    #challengePromise: Promise<string> | null = null;
+    #resolveChallenge: ((token: string) => void) | null = null;
+    #rejectChallenge: ((error: Error) => void) | null = null;
     #inFlight = false;
 
     connectedCallback(): void {
@@ -230,8 +237,8 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
       // With the island active, custom validation governs; native constraint
       // validation would otherwise pop its own UI before the submit handler
-      // runs. With JavaScript disabled this line never runs, so the plain form
-      // keeps its native `required`/`type=email` validation and still posts.
+      // runs. With JavaScript disabled the server-rendered form remains visible
+      // with the explicit enable-JavaScript notice.
       form.noValidate = true;
 
       form.addEventListener('submit', this.#onSubmit);
@@ -249,15 +256,25 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       this.#form?.removeEventListener('submit', this.#onSubmit);
     }
 
-    readonly #startTurnstile = (): void => {
-      if (this.#turnstileStarted) {
-        return;
+    readonly #startTurnstile = (): Promise<string> => {
+      const existingToken = this.#tokenInput?.value ?? '';
+      if (existingToken !== '') {
+        return Promise.resolve(existingToken);
       }
-      this.#turnstileStarted = true;
+      if (this.#challengePromise !== null) {
+        return this.#challengePromise;
+      }
+
+      this.#challengePromise = new Promise<string>((resolve, reject) => {
+        this.#resolveChallenge = resolve;
+        this.#rejectChallenge = reject;
+      });
+      const challengePromise = this.#challengePromise;
       const container = this.#turnstileContainer;
       const sitekey = this.dataset.sitekey;
       if (container === null || sitekey === undefined) {
-        return;
+        this.#failChallenge();
+        return challengePromise;
       }
 
       let attempts = 0;
@@ -269,21 +286,18 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
               sitekey,
               appearance: 'interaction-only',
               callback: (token: string) => {
-                if (this.#tokenInput !== null) {
+                if (token !== '' && this.#tokenInput !== null) {
                   this.#tokenInput.value = token;
+                  this.#resolveChallenge?.(token);
+                  this.#resolveChallenge = null;
+                  this.#rejectChallenge = null;
                 }
               },
               'expired-callback': () => {
-                if (this.#tokenInput !== null) {
-                  this.#tokenInput.value = '';
-                }
+                this.#failChallenge();
               },
               'error-callback': () => {
-                // Degrade quietly: the server still challenges, and the visitor
-                // can retry. Never block the form because the widget failed.
-                if (this.#tokenInput !== null) {
-                  this.#tokenInput.value = '';
-                }
+                this.#failChallenge();
                 return true;
               },
             });
@@ -293,12 +307,15 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         attempts += 1;
         if (attempts <= 100) {
           window.setTimeout(tryRender, 50);
+        } else {
+          this.#failChallenge();
         }
       };
       tryRender();
+      return challengePromise;
     };
 
-    readonly #onSubmit = (event: SubmitEvent): void => {
+    readonly #onSubmit = async (event: SubmitEvent): Promise<void> => {
       event.preventDefault();
       if (this.#inFlight || this.#form === null) {
         return;
@@ -318,15 +335,24 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
       // Make sure the challenge is running even if the visitor never fired an
       // input event (e.g. autofill straight to submit).
-      this.#startTurnstile();
-      void this.#send();
+      this.#setInFlight(true, signupFormCopy.challengePending);
+      try {
+        const token = await this.#startTurnstile();
+        if (token === '' || this.#tokenInput?.value === '') {
+          throw new Error('The security challenge returned no token.');
+        }
+        await this.#send();
+      } catch {
+        this.#showFormError(signupFormCopy.challengeUnavailable);
+        this.#setInFlight(false);
+      }
     };
 
     async #send(): Promise<void> {
       if (this.#form === null) {
         return;
       }
-      this.#setInFlight(true);
+      this.#setInFlight(true, signupFormCopy.submitting);
       try {
         const response = await fetch('/api/signup', {
           method: 'POST',
@@ -373,6 +399,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         }
         if (code === 'challenge_failed' && this.#widgetId !== undefined) {
           window.turnstile?.reset(this.#widgetId);
+          this.#resetChallenge();
         }
         this.#setInFlight(false);
         return;
@@ -396,16 +423,36 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         : '';
     }
 
-    #setInFlight(inFlight: boolean): void {
+    #setInFlight(
+      inFlight: boolean,
+      message: string = signupFormCopy.submitting,
+    ): void {
       this.#inFlight = inFlight;
       if (this.#submit !== null) {
         this.#submit.disabled = inFlight;
       }
       const status = this.querySelector<HTMLElement>('[data-form-status]');
       if (status !== null) {
-        status.textContent = inFlight ? signupFormCopy.submitting : '';
+        status.textContent = inFlight ? message : '';
         status.hidden = !inFlight;
       }
+    }
+
+    #failChallenge(): void {
+      if (this.#tokenInput !== null) {
+        this.#tokenInput.value = '';
+      }
+      this.#rejectChallenge?.(new Error('The security challenge failed.'));
+      this.#resetChallenge();
+    }
+
+    #resetChallenge(): void {
+      if (this.#tokenInput !== null) {
+        this.#tokenInput.value = '';
+      }
+      this.#challengePromise = null;
+      this.#resolveChallenge = null;
+      this.#rejectChallenge = null;
     }
 
     #renderFieldErrors(errors: readonly SignupClientError[]): void {

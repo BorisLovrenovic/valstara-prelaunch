@@ -10,16 +10,35 @@ import {
 } from '../server/verification/complete.ts';
 
 const token = Astro.url.searchParams.get('token') ?? '';
-const database = createPool(getConfig().databaseUrl);
-const referralEnabled =
-  token === '' ? false : await getFlagService().isEnabled('referral.enabled');
-let completion: VerificationCompletion;
-try {
-  completion = await createVerificationCompletionService(database, {
-    referralEnabled,
-  })(token);
-} finally {
-  await database.close();
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+let completion: VerificationCompletion = {
+  accessWindow: null,
+  outcome: 'invalid',
+  referralCode: null,
+  statusToken: null,
+};
+let submitted = false;
+let referralEnabled = false;
+
+if (Astro.request.method === 'POST') {
+  submitted = true;
+  const formData = await Astro.request.formData().catch(() => new FormData());
+  const submittedToken = formData.get('token');
+  const authenticatedToken =
+    typeof submittedToken === 'string' ? submittedToken : '';
+  const database = createPool(getConfig().databaseUrl);
+  referralEnabled =
+    authenticatedToken === ''
+      ? false
+      : await getFlagService().isEnabled('referral.enabled');
+  try {
+    completion = await createVerificationCompletionService(database, {
+      referralEnabled,
+    })(authenticatedToken);
+  } finally {
+    await database.close();
+  }
 }
 const completed =
   completion.outcome === 'verified' || completion.outcome === 'already';
@@ -34,6 +53,8 @@ const statusUrl =
   completion.statusToken === null
     ? null
     : new URL(`/me?t=${encodeURIComponent(completion.statusToken)}`, Astro.url);
+const showConfirmation = !submitted && token !== '';
+const turnstileSiteKey = getConfig().turnstileSiteKey;
 ---
 
 <BaseLayout
@@ -41,7 +62,13 @@ const statusUrl =
   description={verificationCopy.meta.description}
 >
   {
-    completed ? (
+    showConfirmation ? (
+      <form action="/verify" class="verification-confirm" method="post">
+        <p>{verificationCopy.confirm.body}</p>
+        <input name="token" type="hidden" value={token} />
+        <button type="submit">{verificationCopy.confirm.submit}</button>
+      </form>
+    ) : completed ? (
       <div class="verification-success">
         <p class="verification-success__message">{verificationCopy.complete}</p>
 
@@ -100,13 +127,43 @@ const statusUrl =
         ) : null}
       </div>
     ) : (
-      <p>{verificationCopy.invalid}</p>
+      <div class="verification-invalid">
+        <p>{verificationCopy.invalid}</p>
+        <form action="/api/resend-verification" method="post">
+          <label for="resend-email">{verificationCopy.resend.emailLabel}</label>
+          <input
+            id="resend-email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            required
+          />
+          <div
+            class="cf-turnstile"
+            data-sitekey={turnstileSiteKey}
+            data-response-field-name="turnstile_token"
+          />
+          <noscript>
+            <p>{verificationCopy.resend.javaScriptRequired}</p>
+          </noscript>
+          <button type="submit">{verificationCopy.resend.submit}</button>
+        </form>
+        <script
+          is:inline
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          async
+          defer
+        />
+      </div>
     )
   }
 </BaseLayout>
 
 <style>
   .verification-success,
+  .verification-confirm,
+  .verification-invalid,
+  .verification-invalid form,
   .verification-success__section,
   fieldset {
     display: grid;
@@ -117,6 +174,7 @@ const statusUrl =
   h2,
   legend,
   label,
+  input,
   a,
   button {
     color: var(--ink);

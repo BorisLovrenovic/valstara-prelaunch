@@ -34,7 +34,7 @@ The campaign's single unrecoverable technical failure. It has two shapes.
 
 ## T4 — A privacy failure forces a consent banner
 
-The site operates with no banner because it sets no non-essential cookie and makes no unsanctioned third-party request. The only off-origin requests a rendered page may make are two consent-free, Cloudflare-adjacent exceptions on the third-party gate's allowlist — the flagged Trustpilot widget and the Cloudflare Turnstile challenge (ADR-006, Option A, founder-authorised 2026-09-08) — neither of which sets a cookie or fingerprints. **One careless dependency reverses that**, and the cost is not a banner — it is the conversion the banner takes and the measurement it corrupts.
+The site operates with no banner because Article 5(3) device storage/access is absent outside the documented functional theme preference, and it makes no unsanctioned third-party request. The only off-origin hosts a rendered page may contact are the flagged Trustpilot widget and Cloudflare Turnstile on protected forms (ADR-006, Option A, founder-authorised 2026-09-08). The site runs no device-fingerprinting API; Cloudflare processes IP, TLS and user-agent signals server-side as a security processor, as the privacy disclosure states. **One careless dependency reverses that**, and the cost is not a banner — it is the conversion the banner takes and the measurement it corrupts.
 
 **Controls:** three CI gates — the cookie/storage rule, the fingerprinting rule and the third-party request rule — each with a planted fixture. Referral attribution is server-side and signed. Analytics is cookieless and its event registry is asserted free of personal data. **A new dependency that reaches the browser requires an explicit note in the PR describing what it loads.**
 

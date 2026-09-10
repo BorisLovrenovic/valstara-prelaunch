@@ -46,13 +46,17 @@ Article 5(3) applies to **storing information on, or accessing information alrea
 
 - **No analytics cookie.** Umami and Cloudflare Web Analytics are cookieless.
 - **No referral cookie.** `?ref=` is read **server-side on the rendering request** and carried as a signed hidden field — a mechanic that is both more reliable and entirely outside Article 5(3).
-- **No fingerprinting.** Device fingerprinting requires consent under ePrivacy regardless of cookies, which is one of three reasons it is not used (ADR-013).
-- **No third-party script** on any page, except two sanctioned Cloudflare-adjacent exceptions: the deliberately-flagged Trustpilot widget, which stays off until a rating is worth showing, and the Cloudflare Turnstile challenge on the signup form (ADR-006). Turnstile is **consent-free** — it sets no cookie and runs no fingerprinting API — and Cloudflare already fronts the whole zone as the site's processor, so it is outside Article 5(3) exactly as the analytics are. Both are enforced by the third-party-request CI gate's allowlist; nothing else off-origin loads.
+- **No site-run device fingerprinting API.** The site invokes no canvas, font-enumeration, WebGL or timing-entropy API. Cloudflare's server-side security processing is disclosed separately below.
+- **No third-party script** on any page, except two sanctioned exceptions: the deliberately-flagged Trustpilot widget, which stays off until a rating is worth showing, and Cloudflare Turnstile on the signup and verification-recovery forms (ADR-006). The no-banner basis for Turnstile is specifically Article 5(3): the rendered-page probe confirms that it neither stores information on nor accesses information already stored on the visitor's device. Both exceptions are enforced by the third-party-request CI gate's allowlist; nothing else off-origin loads.
 - **One storage write exists**: the theme preference. Functional, non-identifying, and documented in the cookie and storage inventory.
 
 **This is not a shortcut.** GA4 requires opt-in consent in Germany with no analytics exemption at all, and CNIL's French exemption is narrow and conditional. A banner on a page targeting 20–35% signup costs conversion directly **and corrupts the measurement it was added for**, since consented analytics only ever sees a self-selected subset. **Cookieless gives better numbers here, not worse.** GA4 and a CMP return at store launch, when ads and ecommerce attribution justify the cost.
 
 **The three CI gates in `docs/security/threat-model.md#ci-security-gates` are what keep this true.** Without them it is an intention.
+
+### Cloudflare Turnstile processor disclosure
+
+**LEGAL SIGN-OFF REQUIRED before this becomes customer-visible privacy-policy copy.** The site runs no device-fingerprinting API. For bot and abuse prevention, Cloudflare processes the visitor's **IP**, **TLS** connection characteristics and **user-agent** server-side in its role as Valstara's security processor. The Article 5(3) no-banner basis is limited to the probe-confirmed absence of device storage/access; it does not claim that Cloudflare processes no security signals.
 
 ---
 

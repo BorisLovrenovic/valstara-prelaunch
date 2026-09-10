@@ -8,7 +8,7 @@
 The brand's intended display face is Söhne, from Klim. Klim's web licences are perpetual and **tiered on traffic** — and a viral giveaway is precisely an event that pushes past the tier you just bought.
 
 ## Decision
-**Ship on Instrument Sans and JetBrains Mono**, both OFL, both **self-hosted as WOFF2**. Buy Söhne at store launch, when traffic is predictable.
+**Ship on Instrument Sans and JetBrains Mono**, both OFL, both self-hosted as Latin-subset variable WOFF2 with WOFF fallback. Only the above-fold Instrument Sans WOFF2 is preloaded. Buy Söhne at store launch, when traffic is predictable.
 
 **Build metric-matched fallbacks with `size-adjust` and `ascent-override` from the first commit**, so the eventual swap is one `@font-face` change plus a QA pass rather than a re-layout.
 

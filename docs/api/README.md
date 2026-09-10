@@ -60,7 +60,10 @@ Returns `{ status: "pending" }`. The status code, response keys and values are i
 Idempotent on `email_normalised`: a repeat signup for a `pending` row re-sends the verification mail subject to its own rate limit; a repeat for a `verified` row sends no second verification mail. Both return the same accepted response as an unknown address. Any status-link affordance is sent only to the submitted address, never returned by this route or rendered on its response page.
 
 ### `GET /verify?token=…` *(page route)*
-Consumes the token, sets `verified`, confirms referral edges, settles cheap rewards, assigns the access window, and renders the success page carrying the two survey questions and the referral link. **A replayed token renders the same success page** — never an error.
+Non-mutating: renders a confirmation form carrying the bearer token. Mail scanners and prefetchers can GET repeatedly without consuming it.
+
+### `POST /verify` *(page route)*
+Body: `token`. Token-authenticated and therefore exempt from Turnstile-first. Consumes the token and, in one transaction, sets `verified`, confirms referral edges, settles cheap rewards, holds high-value rewards and assigns access windows, then renders the success page. **A replayed token renders the same success page**. Invalid and expired tokens render identical generic failure copy and the same request-new-link control.
 
 ### `POST /api/resend-verification`
 Body: `email`, `turnstile_token`. Turnstile is verified first. Rate-limited hard: **one attempt per normalised address and five per hashed IP prefix in 15 minutes** (two per prefix when Turnstile is unavailable). **Always returns the same `200` response whether or not the address exists, is pending, or is already verified** — an enumeration oracle on a waitlist is a real leak. After rate limiting, the resend decision has a fixed **500 ms response deadline**: a response is held until that deadline, and work still unsettled then finishes without changing the identical accepted response. A pending address receives a fresh token and queued verification mail; a verified address receives neither.
