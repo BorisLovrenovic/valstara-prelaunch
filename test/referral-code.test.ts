@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import crypto, { randomUUID } from 'node:crypto';
+import { syncBuiltinESMExports } from 'node:module';
 import test from 'node:test';
 
 import { runMigrations } from '../src/server/db/migration.ts';
@@ -88,7 +89,29 @@ function shannonEntropy(counts: ReadonlyMap<string, number>, total: number) {
   return entropy;
 }
 
+function assertProductionUsesCryptographicRandomBytes(): void {
+  const originalRandomBytes = crypto.randomBytes;
+  let calls = 0;
+  crypto.randomBytes = ((size: number) => {
+    calls += 1;
+    return Buffer.alloc(size);
+  }) as typeof crypto.randomBytes;
+  syncBuiltinESMExports();
+
+  try {
+    assert.equal(
+      createReferralCode(),
+      referralCodeAlphabet.charAt(0).repeat(referralCodeLength),
+    );
+    assert.equal(calls, 1, 'production generation must call crypto.randomBytes');
+  } finally {
+    crypto.randomBytes = originalRandomBytes;
+    syncBuiltinESMExports();
+  }
+}
+
 test('codes have a large keyspace and a uniform, non-sequential large-sample distribution', () => {
+  assertProductionUsesCryptographicRandomBytes();
   assert.equal(referralCodeAlphabet.length, 31);
   assert.equal(referralCodeLength, 12);
   assert.ok(
