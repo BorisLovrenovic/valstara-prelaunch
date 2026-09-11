@@ -46,11 +46,16 @@ export function createReferralCode(): string {
   const unbiasedMaximum = 256 - (256 % referralCodeAlphabet.length);
 
   while (code.length < referralCodeLength) {
-    const value = randomBytes(1)[0];
-    if (value === undefined || value >= unbiasedMaximum) {
-      continue;
+    const remaining = referralCodeLength - code.length;
+    for (const value of randomBytes(remaining)) {
+      if (value >= unbiasedMaximum) {
+        continue;
+      }
+      code += referralCodeAlphabet.charAt(value % referralCodeAlphabet.length);
+      if (code.length === referralCodeLength) {
+        break;
+      }
     }
-    code += referralCodeAlphabet[value % referralCodeAlphabet.length];
   }
   return code;
 }
@@ -138,9 +143,15 @@ function createReferralServiceWithRepository(
     },
 
     async generateCode(subscriberId) {
-      const existing = await repository.findCode(subscriberId);
-      if (existing !== null) {
-        return existing;
+      const subscriber = await repository.findSubscriber(subscriberId);
+      if (subscriber === null) {
+        throw new Error('A referral code requires an existing subscriber.');
+      }
+      if (subscriber.referral_code !== null) {
+        return subscriber.referral_code;
+      }
+      if (subscriber.status !== 'verified') {
+        throw new Error('A referral code requires a verified subscriber.');
       }
 
       for (let attempt = 0; attempt < maximumCodeAttempts; attempt += 1) {
@@ -152,6 +163,13 @@ function createReferralServiceWithRepository(
           );
           if (assigned === 1) {
             return code;
+          }
+
+          // Another verification/replay may have won the allocation race for
+          // this subscriber. Return that code so generation stays idempotent.
+          const concurrentlyAssigned = await repository.findCode(subscriberId);
+          if (concurrentlyAssigned !== null) {
+            return concurrentlyAssigned;
           }
         } catch (error) {
           if (!isReferralCodeCollision(error)) {
