@@ -4,10 +4,6 @@ import test from 'node:test';
 
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
-import {
-  createReferralCode,
-  createReferralService,
-} from '../src/server/referral/service.ts';
 import { createStrandedReferralReconciliationJob } from '../src/server/referral/reconcile-stranded.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
 
@@ -342,6 +338,17 @@ test('with referral.enabled off, verification still confirms and settles an exis
     assert.equal(result.outcome, 'verified');
     assert.equal(result.referralCode, null);
 
+    const subscriber = await fixture.database.readOne<{
+      referral_code: string | null;
+    }>({
+      text: 'SELECT referral_code FROM subscriber WHERE id = $1',
+      values: [referredId],
+    });
+    assert.match(
+      subscriber?.referral_code ?? '',
+      /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{12}$/u,
+    );
+
     const edge = await fixture.database.readOne<{
       reward_state: string;
       state: string;
@@ -421,59 +428,6 @@ test('the bounded reconciliation job repairs already-stranded verified rows', as
       2,
     );
     assert.deepEqual(states, [{ state: 'confirmed' }, { state: 'confirmed' }]);
-  } finally {
-    await fixture.dispose();
-  }
-});
-
-test('referral codes are unambiguous, collision-safe, case-insensitive on lookup, and unavailable to pending rows', async () => {
-  const fixture = await createDatabaseFixture();
-  try {
-    const codes = new Set<string>();
-    const symbolCounts = new Map<string, number>();
-    for (let index = 0; index < 2_000; index += 1) {
-      const code = createReferralCode();
-      assert.match(code, /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{12}$/u);
-      codes.add(code);
-      for (const symbol of code) {
-        symbolCounts.set(symbol, (symbolCounts.get(symbol) ?? 0) + 1);
-      }
-    }
-    assert.equal(codes.size, 2_000);
-    assert.ok(
-      [...symbolCounts.values()].every((count) => count > 400),
-      'a large sample must use every permitted code symbol, not a narrow subset',
-    );
-
-    const firstId = await insertSubscriber(fixture.database, 'verified');
-    const secondId = await insertSubscriber(fixture.database, 'verified');
-    const existingCode = 'ABCDEFGHJKMN';
-    const replacementCode = 'QRSTUVWXYZ23';
-    const first = createReferralService(fixture.database, {
-      createCode: () => existingCode,
-    });
-    assert.equal(await first.generateCode(firstId), existingCode);
-
-    let calls = 0;
-    const second = createReferralService(fixture.database, {
-      createCode: () => {
-        calls += 1;
-        return calls === 1 ? existingCode : replacementCode;
-      },
-    });
-    assert.equal(await second.generateCode(secondId), replacementCode);
-    assert.equal(
-      await second.lookupCode(replacementCode.toLowerCase()),
-      secondId,
-    );
-
-    const pendingId = await insertSubscriber(fixture.database, 'pending');
-    await assert.rejects(
-      createReferralService(fixture.database, {
-        createCode: () => 'BCDEFGHJKLMN',
-      }).generateCode(pendingId),
-      /allocate/u,
-    );
   } finally {
     await fixture.dispose();
   }

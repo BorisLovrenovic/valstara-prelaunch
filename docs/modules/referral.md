@@ -22,7 +22,11 @@ interface ReferralService {
 ```
 
 ## Rules
-- **Codes are unguessable and non-sequential**, drawn from an unambiguous alphabet, collision-checked on write.
+- **Codes are unguessable and non-sequential**: 12 characters drawn without
+  modulo bias from the 31-character CSPRNG-backed alphabet
+  `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (more than 59 bits). Allocation is idempotent,
+  limited to verified subscribers, collision-checked on write and backed by the
+  database unique constraint. Lookup is case-insensitive.
 - **`?ref=` is read server-side on the rendering request** and returned as a signed, expiring field. There is no cookie, no `localStorage`, and no client-side attribution path anywhere in the codebase. This is what keeps the mechanic outside ePrivacy Article 5(3) — and it is also simply more reliable.
 - **`verifyRef()` returns `null` rather than throwing.** A bad ref must never cost a signup.
 - **One edge per referred person, forever** — a database unique constraint, not an application check.
