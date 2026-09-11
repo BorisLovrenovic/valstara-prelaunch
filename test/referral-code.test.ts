@@ -103,7 +103,11 @@ function assertProductionUsesCryptographicRandomBytes(): void {
       createReferralCode(),
       referralCodeAlphabet.charAt(0).repeat(referralCodeLength),
     );
-    assert.equal(calls, 1, 'production generation must call crypto.randomBytes');
+    assert.equal(
+      calls,
+      1,
+      'production generation must call crypto.randomBytes',
+    );
   } finally {
     crypto.randomBytes = originalRandomBytes;
     syncBuiltinESMExports();
