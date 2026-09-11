@@ -13,7 +13,9 @@ test('a server-captured referral and UTM envelope verifies until its 24-hour exp
   let now = new Date('2026-09-11T12:00:00.000Z');
   const service = createReferralCaptureService(secret, { clock: () => now });
   const capture = service.capture(
-    new URL('https://valstara.test/?ref=ABCDEF123456&utm_source=launch&utm_campaign=autumn'),
+    new URL(
+      'https://valstara.test/?ref=ABCDEF123456&utm_source=launch&utm_campaign=autumn',
+    ),
   );
   const signed = service.signRef(capture);
 
@@ -30,7 +32,9 @@ test('tampered, absent, and forged fields return null rather than throwing', () 
   const signed = service.signRef({ ref: 'ABCDEF123456', utm: null });
   assert.equal(service.verifyRef(`${signed}x`), null);
   assert.equal(service.verifyRef(null), null);
-  const forged = createReferralCaptureService('public-information-only').signRef({
+  const forged = createReferralCaptureService(
+    'public-information-only',
+  ).signRef({
     ref: 'FORGED123456',
     utm: null,
   });
@@ -46,7 +50,10 @@ test('UTM capture drops unknown, empty, control-character, and oversized values'
     utm_term: 'needle',
     utm_unknown: 'ignored',
   });
-  assert.deepEqual(captureUtm(params), { source: 'newsletter', term: 'needle' });
+  assert.deepEqual(captureUtm(params), {
+    source: 'newsletter',
+    term: 'needle',
+  });
 });
 
 test('UTM capture drops later values that would exceed the 512-byte serialized cap', () => {

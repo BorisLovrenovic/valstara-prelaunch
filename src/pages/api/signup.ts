@@ -72,7 +72,9 @@ export interface SignupRouteDependencies {
     strict: boolean,
   ) => Promise<'ok' | 'rate_limited'>;
   readonly signup: (input: SignupInput) => Promise<SignupOutcome>;
-  readonly verifyReferralCapture?: (signed: string | null) => ReferralCapture | null;
+  readonly verifyReferralCapture?: (
+    signed: string | null,
+  ) => ReferralCapture | null;
   readonly flagChallengeTimeout: (subscriberId: string) => Promise<void>;
   readonly clock?: () => Date;
   readonly monotonicClock?: () => number;
@@ -229,9 +231,10 @@ export function createSignupRoute(
     // Bad attribution is deliberately equivalent to no attribution; it never
     // costs the underlying signup.
     const rawReferralCapture = formData.get('referral_capture');
-    const referralCapture = dependencies.verifyReferralCapture?.(
-      typeof rawReferralCapture === 'string' ? rawReferralCapture : null,
-    ) ?? null;
+    const referralCapture =
+      dependencies.verifyReferralCapture?.(
+        typeof rawReferralCapture === 'string' ? rawReferralCapture : null,
+      ) ?? null;
 
     // Every syntactically valid request that can reveal subscriber membership
     // shares the same minimum response boundary. Unknown, pending, and verified
@@ -326,7 +329,9 @@ function defaultDependencies(): SignupRouteDependencies {
         ),
       })(input),
     verifyReferralCapture: (signed) =>
-      createReferralCaptureService(config.referralSigningSecret).verifyRef(signed),
+      createReferralCaptureService(config.referralSigningSecret).verifyRef(
+        signed,
+      ),
     async flagChallengeTimeout(subscriberId) {
       await createFraudFlagRepository(getDatabase()).insertChallengeTimeoutFlag(
         {

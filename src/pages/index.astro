@@ -28,7 +28,8 @@ const referralCaptureService = createReferralCaptureService(
 );
 const referralCapture = referralCaptureService.capture(Astro.url);
 const signedReferralCapture =
-  referralEnabled && (referralCapture.ref !== null || referralCapture.utm !== null)
+  referralEnabled &&
+  (referralCapture.ref !== null || referralCapture.utm !== null)
     ? referralCaptureService.signRef(referralCapture)
     : null;
 const hasReferralQuery = Astro.url.searchParams.has('ref');

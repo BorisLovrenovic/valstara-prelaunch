@@ -154,12 +154,19 @@ test('signup persists verified UTM data and keeps utm null when it is absent', a
     async sendVerificationMail() {},
   });
   try {
-    await signup(inputFor('utm@example.test', {
-      utm: { campaign: 'autumn', source: 'newsletter' },
-    }));
+    await signup(
+      inputFor('utm@example.test', {
+        utm: { campaign: 'autumn', source: 'newsletter' },
+      }),
+    );
     await signup(inputFor('no-utm@example.test'));
-    const rows = await fixture.database.list<{ email_normalised: string; utm: unknown }>(
-      { text: 'SELECT email_normalised, utm FROM subscriber ORDER BY email_normalised' },
+    const rows = await fixture.database.list<{
+      email_normalised: string;
+      utm: unknown;
+    }>(
+      {
+        text: 'SELECT email_normalised, utm FROM subscriber ORDER BY email_normalised',
+      },
       2,
     );
     assert.deepEqual(rows, [

@@ -125,10 +125,11 @@ Generate the Umami application secret for any non-local environment with
 
 Before the first start, create the untracked `infra/compose/.env` file and
 populate it with local sandbox or test values for `TURNSTILE_SECRET_KEY`,
-`IP_PREFIX_PEPPER`, `RESEND_API_KEY`, and `RESEND_TEST_RECIPIENT`. Obtain the
-provider test values from the matching provider account, and generate the
-disposable local pepper using the procedure below. Do not put live values in
-the local file, and do not commit it.
+`IP_PREFIX_PEPPER`, `REFERRAL_SIGNING_SECRET`, `RESEND_API_KEY`, and
+`RESEND_TEST_RECIPIENT`. Obtain the provider test values from the matching
+provider account, and generate the disposable local pepper and referral
+signing secret using the procedures below. Do not put live values in the local
+file, and do not commit it.
 
 Start and verify the stack from the repository root:
 
@@ -155,11 +156,12 @@ export PGBACKREST_REPO1_CIPHER_PASS='obtain-this-from-your-secret-manager'
 ```
 
 Generate the IP-prefix hashing pepper with a cryptographically secure secret
-generator and store it in the environment's secret manager, outside both the
-repository and PostgreSQL. Local and CI values are disposable test secrets;
-production uses a separately generated live secret. Rotation invalidates all
-existing prefix hashes, so record and schedule it deliberately. Never print the
-pepper or pass it to logs, database columns, or client code.
+generator, and generate the referral signing secret the same way. Store both in
+the environment's secret manager, outside both the repository and PostgreSQL.
+Local and CI values are disposable test secrets; production uses separately
+generated live secrets. Pepper rotation invalidates all existing prefix hashes,
+so record and schedule it deliberately. Never print either value or pass it to
+logs, database columns, or client code.
 
 The production pgBackRest passphrase is generated separately, stored off-host,
 and recovered through the secret-manager procedure before a restore. Losing it

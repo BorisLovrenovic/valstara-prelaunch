@@ -170,6 +170,7 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   for (const key of [
     'DATABASE_URL',
     'IP_PREFIX_PEPPER',
+    'REFERRAL_SIGNING_SECRET',
     'RESEND_API_KEY',
     'RESEND_TEST_RECIPIENT',
     'TURNSTILE_SECRET_KEY',

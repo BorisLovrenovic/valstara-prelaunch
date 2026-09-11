@@ -49,7 +49,10 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     databaseUrl: databaseUrl(environment),
     host: host(environment),
     ipPrefixPepper: requiredValue(environment, 'IP_PREFIX_PEPPER'),
-    referralSigningSecret: requiredValue(environment, 'REFERRAL_SIGNING_SECRET'),
+    referralSigningSecret: requiredValue(
+      environment,
+      'REFERRAL_SIGNING_SECRET',
+    ),
     nodeEnvironment: nodeEnvironment(environment),
     port: port(environment),
     resendApiKey: requiredValue(environment, 'RESEND_API_KEY'),

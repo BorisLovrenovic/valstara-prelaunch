@@ -65,6 +65,7 @@ jobs:
           echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "TURNSTILE_SECRET_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "IP_PREFIX_PEPPER=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "REFERRAL_SIGNING_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "RESEND_API_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "RESEND_TEST_RECIPIENT=delivered@resend.dev" >> "$GITHUB_ENV"
       - name: Build the app the compose stack serves in CI
@@ -119,6 +120,7 @@ jobs:
           echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "TURNSTILE_SECRET_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "IP_PREFIX_PEPPER=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "REFERRAL_SIGNING_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "RESEND_API_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "RESEND_TEST_RECIPIENT=delivered@resend.dev" >> "$GITHUB_ENV"
       - name: Build the app the compose stack serves in CI
