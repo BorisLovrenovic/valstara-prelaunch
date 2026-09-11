@@ -1,4 +1,5 @@
 import type { DatabaseConnection } from './pool.ts';
+import type { UtmParameters } from '../referral/capture.ts';
 
 export interface PendingSubscriberInsert {
   readonly id: string;
@@ -7,6 +8,7 @@ export interface PendingSubscriberInsert {
   readonly emailDomain: string;
   readonly country: string;
   readonly region: string | null;
+  readonly utm: UtmParameters | null;
 }
 
 export interface SubscriberIdentity {
@@ -57,9 +59,10 @@ export function createSubscriberRepository(
             email_domain,
             country,
             region,
+            utm,
             status
           )
-          VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+          VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
           ON CONFLICT (email_normalised) DO NOTHING
         `,
         values: [
@@ -69,6 +72,7 @@ export function createSubscriberRepository(
           input.emailDomain,
           input.country,
           input.region,
+          input.utm === null ? null : JSON.stringify(input.utm),
         ],
       });
     },

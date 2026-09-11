@@ -6,6 +6,8 @@ import SignupForm from '../islands/SignupForm.astro';
 import { suggestCountry } from '../server/geo/suggest-country.ts';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getFlagService } from '../server/flags/app-service.ts';
+import { getConfig } from '../server/config.ts';
+import { createReferralCaptureService } from '../server/referral/capture.ts';
 import {
   hasNonDefaultFlagState,
   landingCacheVary,
@@ -19,6 +21,16 @@ const flags = await getFlagService().list();
 const signupEnabled =
   flags.find((flag) => flag.key === 'signup.enabled')?.enabled ?? true;
 const flagGeneration = landingFlagGeneration(flags);
+const referralEnabled =
+  flags.find((flag) => flag.key === 'referral.enabled')?.enabled ?? true;
+const referralCaptureService = createReferralCaptureService(
+  getConfig().referralSigningSecret,
+);
+const referralCapture = referralCaptureService.capture(Astro.url);
+const signedReferralCapture =
+  referralEnabled && (referralCapture.ref !== null || referralCapture.utm !== null)
+    ? referralCaptureService.signRef(referralCapture)
+    : null;
 const hasReferralQuery = Astro.url.searchParams.has('ref');
 const bypassLandingCache = hasReferralQuery || hasNonDefaultFlagState(flags);
 Astro.response.headers.set(
@@ -56,7 +68,10 @@ const suggestedCountry =
 
       {
         signupEnabled ? (
-          <SignupForm suggestedCountry={suggestedCountry} />
+          <SignupForm
+            suggestedCountry={suggestedCountry}
+            signedReferralCapture={signedReferralCapture}
+          />
         ) : (
           <div class="lp-paused">
             <p class="lp-paused__title">{landingCopy.paused.heading}</p>

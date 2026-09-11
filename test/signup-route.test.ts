@@ -51,6 +51,7 @@ function deps(
       subscriber: pendingSubscriber,
     }),
     flagChallengeTimeout: async () => undefined,
+    verifyReferralCapture: () => null,
     monotonicClock: () => 500,
     sleep: async () => undefined,
     ...overrides,
@@ -289,6 +290,31 @@ test('validation runs before the signup module — a missing country never reach
   assert.equal(signupCalled, false);
 });
 
+test('a bad referral field still signs up without attribution data', async () => {
+  let receivedUtm: unknown = 'not-called';
+  const route = createSignupRoute(
+    deps({
+      verifyReferralCapture: () => null,
+      async signup(input) {
+        receivedUtm = input.utm;
+        return { kind: 'created', subscriber: pendingSubscriber };
+      },
+    }),
+  );
+  const response = await route(
+    routeContext(
+      makeRequest({
+        country: 'GB',
+        email: 'person@example.test',
+        referral_capture: 'tampered',
+        turnstile_token: 'valid-token',
+      }),
+    ),
+  );
+  assert.equal(response.status, 200);
+  assert.equal(receivedUtm, null);
+});
+
 // --- Flag off ---------------------------------------------------------------
 
 test('with signup.enabled off the route verifies Turnstile first, returns an honest paused response, and does no database work', async () => {
@@ -514,6 +540,7 @@ test('the default POST route verifies Turnstile server-side then sends, writing 
   const originalEnv = { ...process.env };
   process.env.DATABASE_URL = databaseUrl.toString();
   process.env.IP_PREFIX_PEPPER = 'route-test-pepper';
+  process.env.REFERRAL_SIGNING_SECRET = 'route-test-referral-signing-secret';
   process.env.TURNSTILE_SECRET_KEY = 'route-test-turnstile-secret';
   process.env.RESEND_API_KEY = 'route-test-resend-key';
   process.env.RESEND_TEST_RECIPIENT = 'delivered@resend.dev';

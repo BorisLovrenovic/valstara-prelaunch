@@ -148,6 +148,32 @@ test('a first signup creates a pending subscriber with country and region, one t
   }
 });
 
+test('signup persists verified UTM data and keeps utm null when it is absent', async () => {
+  const fixture = await createDatabaseFixture();
+  const signup = createSignupService(fixture.database, {
+    async sendVerificationMail() {},
+  });
+  try {
+    await signup(inputFor('utm@example.test', {
+      utm: { campaign: 'autumn', source: 'newsletter' },
+    }));
+    await signup(inputFor('no-utm@example.test'));
+    const rows = await fixture.database.list<{ email_normalised: string; utm: unknown }>(
+      { text: 'SELECT email_normalised, utm FROM subscriber ORDER BY email_normalised' },
+      2,
+    );
+    assert.deepEqual(rows, [
+      { email_normalised: 'no-utm@example.test', utm: null },
+      {
+        email_normalised: 'utm@example.test',
+        utm: { campaign: 'autumn', source: 'newsletter' },
+      },
+    ]);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
 test('a repeat for a verified subscriber reports the internal already_verified outcome and sends nothing', async () => {
   const fixture = await createDatabaseFixture();
   const sent: VerificationTestMail[] = [];

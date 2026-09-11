@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 const requiredKeys = [
   'DATABASE_URL',
   'IP_PREFIX_PEPPER',
+  'REFERRAL_SIGNING_SECRET',
   'RESEND_API_KEY',
   'RESEND_TEST_RECIPIENT',
   'TURNSTILE_SECRET_KEY',
@@ -48,6 +49,7 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     databaseUrl: databaseUrl(environment),
     host: host(environment),
     ipPrefixPepper: requiredValue(environment, 'IP_PREFIX_PEPPER'),
+    referralSigningSecret: requiredValue(environment, 'REFERRAL_SIGNING_SECRET'),
     nodeEnvironment: nodeEnvironment(environment),
     port: port(environment),
     resendApiKey: requiredValue(environment, 'RESEND_API_KEY'),
@@ -278,6 +280,7 @@ export interface AppConfig {
   readonly databaseUrl: string;
   readonly host: string | undefined;
   readonly ipPrefixPepper: string;
+  readonly referralSigningSecret: string;
   readonly nodeEnvironment: NodeEnvironment;
   readonly port: number | undefined;
   readonly resendApiKey: string;

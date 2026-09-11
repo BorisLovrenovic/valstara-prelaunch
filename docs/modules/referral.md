@@ -12,8 +12,8 @@ Referral codes, the referral edge, tier and milestone computation, and reward st
 ```ts
 interface ReferralService {
   generateCode(subscriberId: string): Promise<string>
-  signRef(code: string): string                        // for the hidden field
-  verifyRef(signed: string): string | null             // null on tamper or expiry — never throws
+  signRef(capture: ReferralCapture): string             // HMAC-SHA256, 24h hidden field
+  verifyRef(signed: string | null): ReferralCapture | null // null on tamper or expiry — never throws
   attribute(referredId: string, code: string): Promise<AttributeResult>
   confirm(referredId: string): Promise<void>           // called on verification
   rejectEdgesOf(referrerId: string, reason: RejectReason): Promise<number>
@@ -27,7 +27,8 @@ interface ReferralService {
   `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (more than 59 bits). Allocation is idempotent,
   limited to verified subscribers, collision-checked on write and backed by the
   database unique constraint. Lookup is case-insensitive.
-- **`?ref=` is read server-side on the rendering request** and returned as a signed, expiring field. There is no cookie, no `localStorage`, and no client-side attribution path anywhere in the codebase. This is what keeps the mechanic outside ePrivacy Article 5(3) — and it is also simply more reliable.
+- **`?ref=` and accepted UTM parameters are read server-side on the rendering request** and returned as one signed, HMAC-SHA256 field with a named 24-hour TTL. `REFERRAL_SIGNING_SECRET` is server-only and signatures are compared in constant time. There is no cookie, no `localStorage`, and no client-side attribution path anywhere in the codebase. This is what keeps the mechanic outside ePrivacy Article 5(3) — and it is also simply more reliable.
+- UTM accepts only source, medium, campaign, content and term; values are trimmed, control-character-free, capped at 128 characters and 512 serialized bytes. Invalid values are dropped. It is analytics-only and never gates attribution or rewards.
 - **`verifyRef()` returns `null` rather than throwing.** A bad ref must never cost a signup.
 - **One edge per referred person, forever** — a database unique constraint, not an application check.
 - **Cheap rewards settle on confirmation; high-value rewards enter `held`** and settle only on a post-launch first order. **A verification alone can never settle a high-value reward** — this is the module's central invariant.

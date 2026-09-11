@@ -9,6 +9,10 @@ import { DatabaseUnavailableError } from '../../server/db/errors.ts';
 import { createFraudFlagRepository } from '../../server/db/fraud-flag.ts';
 import { createPool, type DatabasePool } from '../../server/db/pool.ts';
 import { getFlagService } from '../../server/flags/app-service.ts';
+import {
+  createReferralCaptureService,
+  type ReferralCapture,
+} from '../../server/referral/capture.ts';
 import { consumeRateLimit } from '../../server/ratelimit/consume.ts';
 import { hashedIpPrefix } from '../../server/ratelimit/ip-prefix.ts';
 import {
@@ -68,6 +72,7 @@ export interface SignupRouteDependencies {
     strict: boolean,
   ) => Promise<'ok' | 'rate_limited'>;
   readonly signup: (input: SignupInput) => Promise<SignupOutcome>;
+  readonly verifyReferralCapture?: (signed: string | null) => ReferralCapture | null;
   readonly flagChallengeTimeout: (subscriberId: string) => Promise<void>;
   readonly clock?: () => Date;
   readonly monotonicClock?: () => number;
@@ -221,6 +226,12 @@ export function createSignupRoute(
     if (body === null) {
       return errorResponse('invalid_input');
     }
+    // Bad attribution is deliberately equivalent to no attribution; it never
+    // costs the underlying signup.
+    const rawReferralCapture = formData.get('referral_capture');
+    const referralCapture = dependencies.verifyReferralCapture?.(
+      typeof rawReferralCapture === 'string' ? rawReferralCapture : null,
+    ) ?? null;
 
     // Every syntactically valid request that can reveal subscriber membership
     // shares the same minimum response boundary. Unknown, pending, and verified
@@ -235,6 +246,7 @@ export function createSignupRoute(
         country: body.country,
         email: body.email,
         region: body.region,
+        utm: referralCapture?.utm ?? null,
         verificationUrl: (token) => {
           const verificationUrl = new URL('/verify', request.url);
           verificationUrl.searchParams.set('token', token);
@@ -313,6 +325,8 @@ function defaultDependencies(): SignupRouteDependencies {
           config.resendTestRecipient,
         ),
       })(input),
+    verifyReferralCapture: (signed) =>
+      createReferralCaptureService(config.referralSigningSecret).verifyRef(signed),
     async flagChallengeTimeout(subscriberId) {
       await createFraudFlagRepository(getDatabase()).insertChallengeTimeoutFlag(
         {

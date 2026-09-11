@@ -112,6 +112,7 @@ before(async () => {
       DATABASE_URL: 'postgresql://unused:unused@127.0.0.1:5434/unused-landing',
       HOST: '0.0.0.0',
       IP_PREFIX_PEPPER: 'landing-theme-prefix-pepper',
+      REFERRAL_SIGNING_SECRET: 'landing-theme-referral-secret',
       PORT: String(appPort),
       RESEND_API_KEY: 'landing-theme-resend-key',
       RESEND_TEST_RECIPIENT: 'delivered@resend.dev',

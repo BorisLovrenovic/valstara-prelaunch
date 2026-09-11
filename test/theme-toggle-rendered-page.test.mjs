@@ -113,6 +113,7 @@ before(async () => {
         'postgresql://unused:unused@127.0.0.1:5434/unused-theme-test',
       HOST: '0.0.0.0',
       IP_PREFIX_PEPPER: 'theme-rendered-page-prefix-pepper',
+      REFERRAL_SIGNING_SECRET: 'theme-rendered-page-referral-secret',
       PORT: String(appPort),
       RESEND_API_KEY: 'theme-rendered-page-resend-key',
       RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
