@@ -176,6 +176,7 @@ before(async () => {
       DATABASE_URL: 'postgresql://unused:unused@127.0.0.1:5434/unused-a11y',
       HOST: '0.0.0.0',
       IP_PREFIX_PEPPER: 'accessibility-prefix-pepper',
+      REFERRAL_SIGNING_SECRET: 'accessibility-referral-secret',
       PORT: String(appPort),
       RESEND_API_KEY: 'accessibility-resend-key',
       RESEND_TEST_RECIPIENT: 'delivered@resend.dev',

@@ -47,6 +47,7 @@ test('a provider-unreachable signup, through the default wiring, commits the row
   const originalEnv = { ...process.env };
   process.env.DATABASE_URL = databaseUrl.toString();
   process.env.IP_PREFIX_PEPPER = 'timeout-route-test-pepper';
+  process.env.REFERRAL_SIGNING_SECRET = 'timeout-route-referral-secret';
   process.env.TURNSTILE_SECRET_KEY = 'timeout-route-test-turnstile-secret';
   process.env.RESEND_API_KEY = 'timeout-route-test-resend-key';
   process.env.RESEND_TEST_RECIPIENT = 'delivered@resend.dev';
@@ -101,6 +102,7 @@ test('a provider-unreachable signup, through the default wiring, commits the row
     for (const key of [
       'DATABASE_URL',
       'IP_PREFIX_PEPPER',
+      'REFERRAL_SIGNING_SECRET',
       'TURNSTILE_SECRET_KEY',
       'RESEND_API_KEY',
       'RESEND_TEST_RECIPIENT',

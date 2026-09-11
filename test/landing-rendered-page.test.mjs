@@ -40,6 +40,7 @@ function startServer(databaseUrl) {
       ...process.env,
       DATABASE_URL: databaseUrl,
       IP_PREFIX_PEPPER: 'landing-rendered-page-prefix-pepper',
+      REFERRAL_SIGNING_SECRET: 'landing-rendered-page-referral-secret',
       RESEND_API_KEY: 'landing-rendered-page-resend-key',
       RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
       TURNSTILE_SECRET_KEY: 'landing-rendered-page-turnstile-secret',
@@ -255,4 +256,13 @@ test('the landing cache header follows flag state and a ref, from the rendered p
   });
   assert.equal(flagged.cacheControl, 'private, no-store');
   assert.match(flagged.body, /<form action="\/api\/signup" method="post">/u);
+});
+
+test('referral.enabled off omits the signed attribution field without pausing signup', async () => {
+  const { body } = await renderLanding({
+    flags: [signupOn, { enabled: false, key: 'referral.enabled' }],
+    paths: ['/?ref=ABCDEF123456&utm_source=newsletter'],
+  });
+  assert.match(body, /<form action="\/api\/signup" method="post">/u);
+  assert.doesNotMatch(body, /name="referral_capture"/u);
 });

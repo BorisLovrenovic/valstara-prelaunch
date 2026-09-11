@@ -18,6 +18,7 @@ table and fails if it differs from `src/server/config.ts`.
 | `DATABASE_URL`                       | Authenticates the long-running application role against `valstara_waitlist` | App boot, database pool             | Local credentials locally; live credentials in production                                                                                                              |
 | `HOST`                               | Selects the Node adapter listen address                                     | App boot, Node adapter              | Runtime setting; neither live nor sandbox                                                                                                                              |
 | `IP_PREFIX_PEPPER`                   | HMAC pepper for the signup route's truncated IP-prefix rate-limit key       | App boot, signup                    | Test-only secret locally; live secret in production                                                                                                                    |
+| `REFERRAL_SIGNING_SECRET`            | HMAC-SHA256 key for the signed, 24-hour referral/UTM form field             | App boot, referral capture          | Test-only secret locally; live secret in production                                                                                                                    |
 | `NODE_ENV`                           | Selects the Node runtime mode                                               | App boot, Node runtime              | `development` locally; `production` on the host; neither is a credential                                                                                               |
 | `PORT`                               | Selects the Node adapter listen port                                        | App boot, Node adapter              | Runtime setting; neither live nor sandbox                                                                                                                              |
 | `RESEND_API_KEY`                     | Authenticates the signup route's transactional test-mode verification mail  | App boot, signup mail               | Sandbox/test key locally; live key only on the production host after E12-07                                                                                            |
@@ -45,6 +46,7 @@ and telemetry switches are neither live nor sandbox credentials.
 | `VALSTARA_APP_DB_PASSWORD`      | Password provisioned for the non-owner `valstara_app` login by migrations        | Migrate, app, maintenance | Local-only value in Compose             | Yes outside local development |
 | `TURNSTILE_SECRET_KEY`          | Server-side key for E1-11's inline signup challenge verification                 | App                       | None                                    | Yes                           |
 | `IP_PREFIX_PEPPER`              | Server-side HMAC pepper for E1-11's truncated IP-prefix rate-limit key           | App                       | None                                    | Yes                           |
+| `REFERRAL_SIGNING_SECRET`       | Server-only HMAC-SHA256 key for E4-02's 24-hour referral/UTM field               | App                       | None                                    | Yes                           |
 | `RESEND_API_KEY`                | Resend API key used only for E1-11's transactional test-mode mail                | App                       | None                                    | Yes                           |
 | `RESEND_TEST_RECIPIENT`         | Resend test address, normally `delivered@resend.dev`; never a subscriber address | App                       | None                                    | No                            |
 | `UMAMI_DB_USER`                 | PostgreSQL role that owns and connects to the separate `umami` database          | PostgreSQL, Umami         | `umami`                                 | No                            |
@@ -123,10 +125,11 @@ Generate the Umami application secret for any non-local environment with
 
 Before the first start, create the untracked `infra/compose/.env` file and
 populate it with local sandbox or test values for `TURNSTILE_SECRET_KEY`,
-`IP_PREFIX_PEPPER`, `RESEND_API_KEY`, and `RESEND_TEST_RECIPIENT`. Obtain the
-provider test values from the matching provider account, and generate the
-disposable local pepper using the procedure below. Do not put live values in
-the local file, and do not commit it.
+`IP_PREFIX_PEPPER`, `REFERRAL_SIGNING_SECRET`, `RESEND_API_KEY`, and
+`RESEND_TEST_RECIPIENT`. Obtain the provider test values from the matching
+provider account, and generate the disposable local pepper and referral
+signing secret using the procedures below. Do not put live values in the local
+file, and do not commit it.
 
 Start and verify the stack from the repository root:
 
@@ -153,11 +156,12 @@ export PGBACKREST_REPO1_CIPHER_PASS='obtain-this-from-your-secret-manager'
 ```
 
 Generate the IP-prefix hashing pepper with a cryptographically secure secret
-generator and store it in the environment's secret manager, outside both the
-repository and PostgreSQL. Local and CI values are disposable test secrets;
-production uses a separately generated live secret. Rotation invalidates all
-existing prefix hashes, so record and schedule it deliberately. Never print the
-pepper or pass it to logs, database columns, or client code.
+generator, and generate the referral signing secret the same way. Store both in
+the environment's secret manager, outside both the repository and PostgreSQL.
+Local and CI values are disposable test secrets; production uses separately
+generated live secrets. Pepper rotation invalidates all existing prefix hashes,
+so record and schedule it deliberately. Never print either value or pass it to
+logs, database columns, or client code.
 
 The production pgBackRest passphrase is generated separately, stored off-host,
 and recovered through the secret-manager procedure before a restore. Losing it

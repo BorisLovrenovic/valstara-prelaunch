@@ -32,7 +32,7 @@ The waitlist row.
 | `region` | text | Only collected where it changes eligibility — currently Canada, for Quebec (ADR-018) |
 | `category_preference` | text[] | From the survey. Carried into the handoff |
 | `source` | text | Bucketed acquisition source |
-| `utm` | jsonb | `source`, `medium`, `campaign`, `content`, `term`. Capped in size |
+| `utm` | jsonb | `source`, `medium`, `campaign`, `content`, `term`; null when none. Captured server-side with the signed referral field; each value is trimmed, control-character-free and capped at 128 characters, with the serialized object capped at 512 bytes. Analytics-only |
 | `referral_code` | text unique **nullable** | **Null until verification.** The code is generated when a subscriber verifies, never for a `pending` row — so it cannot be `NOT NULL` (ADR-011, `docs/modules/referral.md`). Founder-authorised 2026-08-26, resolving the E1-03/E4-01 conflict; see E1-03's acceptance criteria |
 | `referred_by_id` | uuid null → `subscriber(id)` | Set once at signup; **never reassigned** |
 | `referral_tier` | int not null default 0 | **Derived** from settled milestones |

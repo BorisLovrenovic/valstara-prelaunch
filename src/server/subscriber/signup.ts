@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { DatabasePool } from '../db/pool.ts';
+import type { UtmParameters } from '../referral/capture.ts';
 import { createSubscriberRepository } from '../db/subscriber.ts';
 import { withTransaction } from '../db/transaction.ts';
 import { consumeRateLimit } from '../ratelimit/consume.ts';
@@ -50,6 +51,7 @@ export interface SignupInput {
   readonly email: string;
   readonly country: string;
   readonly region?: string | undefined;
+  readonly utm?: UtmParameters | null;
   readonly verificationUrl: (token: string) => string;
 }
 
@@ -63,6 +65,7 @@ async function upsertSubscriber(
   email: NormalisedEmail,
   country: string,
   region: string | null,
+  utm: UtmParameters | null,
 ): Promise<SignupSubscriber> {
   return withTransaction(database, async (connection) => {
     const repository = createSubscriberRepository(connection);
@@ -74,6 +77,7 @@ async function upsertSubscriber(
       emailNormalised: email.normalised,
       id: subscriberId,
       region,
+      utm,
     });
 
     if (inserted === 1) {
@@ -118,6 +122,7 @@ export function createSignupService(
       normalised,
       input.country,
       region,
+      input.utm ?? null,
     );
 
     if (subscriber.status === 'verified') {

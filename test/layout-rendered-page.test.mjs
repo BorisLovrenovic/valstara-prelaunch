@@ -116,6 +116,7 @@ before(async () => {
         'postgresql://unused:unused@127.0.0.1:5434/unused-layout-test',
       HOST: '0.0.0.0',
       IP_PREFIX_PEPPER: 'layout-rendered-page-prefix-pepper',
+      REFERRAL_SIGNING_SECRET: 'layout-rendered-page-referral-secret',
       PORT: String(appPort),
       RESEND_API_KEY: 'layout-rendered-page-resend-key',
       RESEND_TEST_RECIPIENT: 'delivered@resend.dev',

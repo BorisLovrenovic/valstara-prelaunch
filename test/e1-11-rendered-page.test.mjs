@@ -20,6 +20,7 @@ function startServer(databaseUrl) {
       ...process.env,
       DATABASE_URL: databaseUrl,
       IP_PREFIX_PEPPER: 'rendered-page-test-prefix-pepper',
+      REFERRAL_SIGNING_SECRET: 'rendered-page-test-referral-secret',
       RESEND_API_KEY: 'rendered-page-test-resend-key',
       RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
       TURNSTILE_SECRET_KEY: 'rendered-page-test-turnstile-secret',

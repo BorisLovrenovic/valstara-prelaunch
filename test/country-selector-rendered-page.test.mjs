@@ -24,6 +24,7 @@ function startServer(databaseUrl) {
       ...process.env,
       DATABASE_URL: databaseUrl,
       IP_PREFIX_PEPPER: 'country-selector-prefix-pepper',
+      REFERRAL_SIGNING_SECRET: 'country-selector-referral-secret',
       RESEND_API_KEY: 'country-selector-resend-key',
       RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
       TURNSTILE_SECRET_KEY: 'country-selector-turnstile-secret',

@@ -28,6 +28,7 @@ const composeEnvironment = {
   CADDY_ORIGIN_CERT_PATH: '/run/valstara-test-origin-cert.pem',
   CADDY_ORIGIN_KEY_PATH: '/run/valstara-test-origin-key.pem',
   IP_PREFIX_PEPPER: 'test-prefix-pepper',
+  REFERRAL_SIGNING_SECRET: 'test-referral-secret',
   P1_ALERT_WEBHOOK_TOKEN: 'test-alert-token',
   P1_ALERT_WEBHOOK_URL: 'https://alerts.example.test/valstara',
   RESEND_API_KEY: 'test-resend-key',
@@ -169,6 +170,7 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   for (const key of [
     'DATABASE_URL',
     'IP_PREFIX_PEPPER',
+    'REFERRAL_SIGNING_SECRET',
     'RESEND_API_KEY',
     'RESEND_TEST_RECIPIENT',
     'TURNSTILE_SECRET_KEY',

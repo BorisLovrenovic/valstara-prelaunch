@@ -19,9 +19,10 @@ interface Props {
   // The island never re-reads a header; it only leaves this server-chosen value
   // in place, so detection prefills but never decides.
   suggestedCountry: string | null;
+  signedReferralCapture: string | null;
 }
 
-const { suggestedCountry } = Astro.props;
+const { suggestedCountry, signedReferralCapture } = Astro.props;
 
 // The public Turnstile site key is rendered into the page so the widget can
 // mount client-side (ADR-006). It is public, not a secret — a temporary
@@ -136,6 +137,15 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       the island never reads or writes it — it simply posts the whole form, so
       whatever hidden fields exist are carried through unchanged.
     */
+    }
+    {
+      signedReferralCapture !== null && (
+        <input
+          name="referral_capture"
+          type="hidden"
+          value={signedReferralCapture}
+        />
+      )
     }
     <input name="turnstile_token" type="hidden" />
     <div class="signup-turnstile" data-turnstile-container></div>
