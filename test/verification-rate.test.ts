@@ -128,7 +128,12 @@ test('a simulated verification-rate collapse raises a P1 alert with a mailbox-pr
     const monitor = createVerificationRateMonitor(
       fixture.applicationDatabase,
       configuration,
-      { alert: (alert) => alerts.push(alert), clock: () => measuredAt },
+      {
+        alert: (alert) => {
+          alerts.push(alert);
+        },
+        clock: () => measuredAt,
+      },
     );
 
     const health = await monitor.run();
@@ -183,7 +188,12 @@ test('a traffic drop with an unchanged verification rate does not alert', async 
     const monitor = createVerificationRateMonitor(
       fixture.applicationDatabase,
       configuration,
-      { alert: (alert) => alerts.push(alert), clock: () => measuredAt },
+      {
+        alert: (alert) => {
+          alerts.push(alert);
+        },
+        clock: () => measuredAt,
+      },
     );
 
     const health = await monitor.run();
@@ -215,7 +225,12 @@ test('a cold cohort remains warming up and cannot raise a false alert', async ()
     const monitor = createVerificationRateMonitor(
       fixture.applicationDatabase,
       configuration,
-      { alert: (alert) => alerts.push(alert), clock: () => measuredAt },
+      {
+        alert: (alert) => {
+          alerts.push(alert);
+        },
+        clock: () => measuredAt,
+      },
     );
 
     const health = await monitor.run();

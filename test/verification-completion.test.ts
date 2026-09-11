@@ -8,6 +8,7 @@ import {
   createReferralCode,
   createReferralService,
 } from '../src/server/referral/service.ts';
+import { createStrandedReferralReconciliationJob } from '../src/server/referral/reconcile-stranded.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
 
 const defaultDatabaseUrl =
@@ -17,6 +18,7 @@ const applicationRolePassword =
 const now = new Date('2026-09-08T12:00:00.000Z');
 
 interface DatabaseFixture {
+  readonly applicationDatabase: DatabasePool;
   readonly database: DatabasePool;
   dispose(): Promise<void>;
 }
@@ -26,6 +28,9 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
   const adminUrl = new URL(process.env.TEST_DATABASE_URL ?? defaultDatabaseUrl);
   const databaseUrl = new URL(adminUrl);
   databaseUrl.pathname = `/${databaseName}`;
+  const applicationDatabaseUrl = new URL(databaseUrl);
+  applicationDatabaseUrl.username = 'valstara_app';
+  applicationDatabaseUrl.password = applicationRolePassword;
   const admin = createPool(adminUrl.toString());
 
   await admin.execute({ text: `CREATE DATABASE "${databaseName}"` });
@@ -34,10 +39,13 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
     applicationRolePassword,
     release: 'e3-07-test',
   });
+  const applicationDatabase = createPool(applicationDatabaseUrl.toString());
 
   return {
+    applicationDatabase,
     database,
     async dispose() {
+      await applicationDatabase.close();
       await database.close();
       await admin.list(
         {
@@ -51,6 +59,43 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
     },
   };
 }
+
+test('the application role completes verification and replay through the E3 transaction', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const subscriberId = await insertSubscriber(fixture.database, 'pending');
+    await seedVerificationToken(
+      fixture.database,
+      subscriberId,
+      'application-role-completion-token',
+    );
+
+    const complete = createVerificationCompletionService(
+      fixture.applicationDatabase,
+      { clock: () => now },
+    );
+    assert.equal(
+      (await complete('application-role-completion-token')).outcome,
+      'verified',
+    );
+    assert.equal(
+      (await complete('application-role-completion-token')).outcome,
+      'already',
+    );
+
+    const subscriber = await fixture.database.readOne<{
+      status: string;
+      verified_at: Date | null;
+    }>({
+      text: 'SELECT status, verified_at FROM subscriber WHERE id = $1',
+      values: [subscriberId],
+    });
+    assert.equal(subscriber?.status, 'verified');
+    assert.notEqual(subscriber?.verified_at, null);
+  } finally {
+    await fixture.dispose();
+  }
+});
 
 async function insertSubscriber(
   database: DatabasePool,
@@ -114,6 +159,10 @@ test('verification commits the referral completion together and holds high-value
   const fixture = await createDatabaseFixture();
   try {
     const referrerId = await insertSubscriber(fixture.database, 'verified');
+    await fixture.database.execute({
+      text: "UPDATE subscriber SET access_window = 'wave-3' WHERE id = $1",
+      values: [referrerId],
+    });
     for (let index = 0; index < 2; index += 1) {
       const priorReferral = await insertSubscriber(
         fixture.database,
@@ -160,22 +209,39 @@ test('verification commits the referral completion together and holds high-value
     assert.deepEqual(edge, { reward_state: 'settled', state: 'confirmed' });
 
     const referrer = await fixture.database.readOne<{
+      access_window: string;
       confirmed_referrals: number;
       referral_tier: number;
     }>({
-      text: 'SELECT confirmed_referrals, referral_tier FROM subscriber WHERE id = $1',
+      text: 'SELECT confirmed_referrals, referral_tier, access_window FROM subscriber WHERE id = $1',
       values: [referrerId],
     });
-    assert.deepEqual(referrer, { confirmed_referrals: 3, referral_tier: 1 });
+    assert.deepEqual(referrer, {
+      access_window: 'wave-2',
+      confirmed_referrals: 3,
+      referral_tier: 1,
+    });
 
-    const award = await fixture.database.readOne<{
+    const awards = await fixture.database.list<{
       reward_kind: string;
       state: string;
-    }>({
-      text: 'SELECT reward_kind, state FROM milestone_award WHERE subscriber_id = $1',
-      values: [referrerId],
-    });
-    assert.deepEqual(award, { reward_kind: 'discount', state: 'held' });
+    }>(
+      {
+        text: `
+        SELECT reward_kind, state
+        FROM milestone_award
+        WHERE subscriber_id = $1
+        ORDER BY reward_kind
+      `,
+        values: [referrerId],
+      },
+      3,
+    );
+    assert.deepEqual(awards, [
+      { reward_kind: 'discount', state: 'held' },
+      { reward_kind: 'entries', state: 'held' },
+      { reward_kind: 'wave_upgrade', state: 'settled' },
+    ]);
   } finally {
     await fixture.dispose();
   }
@@ -261,7 +327,7 @@ test('an induced failure rolls back every E3-07 transition', async () => {
   }
 });
 
-test('with referral.enabled off, verification remains successful and leaves referral state untouched', async () => {
+test('with referral.enabled off, verification still confirms and settles an existing edge', async () => {
   const fixture = await createDatabaseFixture();
   try {
     const referrerId = await insertSubscriber(fixture.database, 'verified');
@@ -283,7 +349,78 @@ test('with referral.enabled off, verification remains successful and leaves refe
       text: 'SELECT state, reward_state FROM referral_edge WHERE referred_id = $1',
       values: [referredId],
     });
-    assert.deepEqual(edge, { reward_state: 'none', state: 'attributed' });
+    assert.deepEqual(edge, { reward_state: 'settled', state: 'confirmed' });
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+test('a replay repairs an edge previously stranded while referral.enabled was off', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const referrerId = await insertSubscriber(fixture.database, 'verified');
+    const referredId = await insertSubscriber(fixture.database, 'verified');
+    await seedAttributedEdge(fixture.database, referrerId, referredId);
+    await seedVerificationToken(fixture.database, referredId, 'stranded-token');
+    await fixture.database.execute({
+      text: 'UPDATE verification_token SET consumed_at = $2 WHERE subscriber_id = $1',
+      values: [referredId, now],
+    });
+
+    const result = await createVerificationCompletionService(fixture.database, {
+      clock: () => now,
+      referralEnabled: false,
+    })('stranded-token');
+    assert.equal(result.outcome, 'already');
+    assert.equal(result.referralCode, null);
+
+    const edge = await fixture.database.readOne<{
+      reward_state: string;
+      state: string;
+    }>({
+      text: 'SELECT state, reward_state FROM referral_edge WHERE referred_id = $1',
+      values: [referredId],
+    });
+    assert.deepEqual(edge, { reward_state: 'settled', state: 'confirmed' });
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+test('the bounded reconciliation job repairs already-stranded verified rows', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const referrerId = await insertSubscriber(fixture.database, 'verified');
+    const firstReferredId = await insertSubscriber(
+      fixture.database,
+      'verified',
+    );
+    const secondReferredId = await insertSubscriber(
+      fixture.database,
+      'verified',
+    );
+    await seedAttributedEdge(fixture.database, referrerId, firstReferredId);
+    await seedAttributedEdge(fixture.database, referrerId, secondReferredId);
+
+    const job = createStrandedReferralReconciliationJob(fixture.database, {
+      clock: () => now,
+    });
+    assert.equal(await job.run(1), 1);
+    assert.equal(await job.run(1), 1);
+    assert.equal(await job.run(1), 0);
+
+    const states = await fixture.database.list<{ state: string }>(
+      {
+        text: `
+          SELECT state FROM referral_edge
+          WHERE referred_id = ANY($1::uuid[])
+          ORDER BY referred_id
+        `,
+        values: [[firstReferredId, secondReferredId]],
+      },
+      2,
+    );
+    assert.deepEqual(states, [{ state: 'confirmed' }, { state: 'confirmed' }]);
   } finally {
     await fixture.dispose();
   }

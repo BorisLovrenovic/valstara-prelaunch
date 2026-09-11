@@ -30,7 +30,8 @@ Everything else announces itself. These two look exactly like ordinary underperf
 | **★ Resend unavailable or over quota** | Send errors, 4xx quota codes | **The subscriber row is already committed.** The send queues and retries with backoff, deduplicated on its business key. Permanent failure raises an operator task | "You're on the list — the confirmation email may take a few minutes." Never a false "check your inbox now" | **P1** |
 | Turnstile unavailable | Verification endpoint errors or timeout | **Fail closed on hard failure; on provider timeout, fall through to strict rate limiting and flag the row for review.** Never fail open silently | A retry prompt, or a normal signup that is quietly flagged | **P2** |
 | Turnstile token invalid or replayed | Server-side verification | Rejected, not recorded, counted as a bot event | "That didn't go through — please try again." | P3 |
-| Verification token expired | Expiry check on consume | The page offers a one-click resend, rate-limited | "That link has expired — we've sent a new one." | P3 |
+| Verification token invalid or expired | Expiry check on token-authenticated POST | Both states render the identical generic failure and always offer the same request-new-link control through the enumeration-safe, Turnstile-protected resend route. Scanner/prefetch GETs only render confirmation and never consume | "This verification link is not available." | P3 |
+| Verification-token retention sweep fails | Daily maintenance result | Retry the same batch-capped purge next scheduler cycle; tokens remain unusable after expiry even while retained | Nothing | **P1** |
 | Verification token replayed | `consumed_at` present | **Treated as success, not as an error** — an already-verified visitor clicking twice is not a failure | The normal success page | — |
 | **Visitor never verifies** | Bounded-wait ladder | Reminders at +1h, +24h, +72h, then the row **expires** at the configured horizon and is excluded from every count and export | Three reminders, then silence | P3 |
 | MX lookup times out | DNS timeout | **Accept the signup and flag it** — never block a real person on a slow resolver | Nothing | P3 |
@@ -43,6 +44,7 @@ Everything else announces itself. These two look exactly like ordinary underperf
 | Failure | Detection | Fallback | Visitor sees | Alert |
 |---|---|---|---|---|
 | **★ Referral counters drift from edges** | Daily repair job reports a delta | **Edges are authoritative; counters are recomputed from them.** A non-zero delta is investigated, never silently corrected and forgotten | Correct numbers after the repair | **P2** on any non-zero delta |
+| Verified referral edge remains `attributed` after a legacy flag-off completion | Daily bounded stranded-edge reconciliation | Run normal confirmation/reward logic transactionally; the flag gates new attribution/display only | Correct tier/reward state after repair | P3 |
 | Signed ref field invalid or expired | Signature check | **Signup proceeds without attribution.** Never rejected — the visitor did nothing wrong | Normal signup | P3 |
 | Referrer disqualified after edges exist | Disqualification action | Edges move to `rejected`; the referred subscribers stay on the list. **A referred person is never punished for their referrer** | Nothing | P2 |
 | Leaderboard snapshot job stops | Snapshot age exceeds threshold | **Last good snapshot keeps serving with its timestamp shown.** Stale is fine; a live query during a spike is not | A visible "as of" timestamp | P2 |

@@ -34,6 +34,8 @@ trap cleanup EXIT HUP INT TERM
 # scratch containers it left behind before starting.
 docker ps --all --quiet --filter 'name=^valstara-backup-restore-' \
   | xargs --no-run-if-empty docker rm --force >/dev/null 2>&1 || true
+docker volume ls --quiet --filter 'label=valstara.backup-restore-scratch=true' \
+  | xargs --no-run-if-empty docker volume rm >/dev/null 2>&1 || true
 
 query_ledger() {
   compose exec -T postgres sh -c \
@@ -94,7 +96,9 @@ printf '%s\n' "$backup_info" | grep -F 'full backup:' >/dev/null
 printf '%s\n' "$backup_info" | grep -F 'diff backup:' >/dev/null
 printf '%s\n' "$backup_info" | grep -F 'wal archive min/max' >/dev/null
 
-docker volume create "$scratch_volume" >/dev/null
+docker volume create \
+  --label valstara.backup-restore-scratch=true \
+  "$scratch_volume" >/dev/null
 
 # The image is built by Compose, so it carries com.docker.compose.* labels.
 # A container run from it inherits them and looks like a member of the stack,

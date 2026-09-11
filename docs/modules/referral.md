@@ -34,7 +34,7 @@ interface ReferralService {
 Values, not schema. Changing any of them requires no migration.
 
 - **Base entry:** `1` on verification. **Per confirmed referral:** `+1` entry — cheap, settles on confirmation.
-- **Tier ladder** (`milestone_award`, unique on `(subscriber_id, tier)`):
+- **Tier ladder** (`milestone_award`, unique on `(subscriber_id, tier, reward_kind)`):
   - **Tier 1 — 3 confirmed referrals:** cheap settled = tier progress + `wave_upgrade`; **held** = 15% launch discount + `+5` bonus entries.
   - **Tier 2 — 5 confirmed referrals** (cut-list item 7, added mid-campaign, no migration): held = 25% discount + `+10` bonus entries.
 - **Cheap vs high-value** follows ADR-012: base/per-referral entries, tier progress and wave position settle on confirmation; **milestone discount codes and milestone bonus entries are `held`**.

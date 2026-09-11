@@ -51,16 +51,22 @@ function deps(
       subscriber: pendingSubscriber,
     }),
     flagChallengeTimeout: async () => undefined,
+    monotonicClock: () => 500,
+    sleep: async () => undefined,
     ...overrides,
   };
 }
 
 // --- Order of operations ----------------------------------------------------
 
-test('the route runs Turnstile, then the rate limit, then the signup module, in that order', async () => {
+test('the route runs Turnstile, then the flag, rate limit, and signup module, in that order', async () => {
   const order: string[] = [];
   const route = createSignupRoute(
     deps({
+      async isSignupEnabled() {
+        order.push('flag');
+        return true;
+      },
       async verifyTurnstile() {
         order.push('turnstile');
         return 'verified';
@@ -78,7 +84,7 @@ test('the route runs Turnstile, then the rate limit, then the signup module, in 
 
   const response = await route(routeContext(makeRequest()));
   assert.equal(response.status, 200);
-  assert.deepEqual(order, ['turnstile', 'rate-limit', 'signup']);
+  assert.deepEqual(order, ['turnstile', 'flag', 'rate-limit', 'signup']);
 });
 
 test('a rejected Turnstile token stops the route before the rate limit or any work', async () => {
@@ -189,7 +195,7 @@ test('an already-verified repeat during a timeout is not flagged', async () => {
 
   const response = await route(routeContext(makeRequest()));
   assert.equal(response.status, 200);
-  assert.equal((await response.json()).status, 'already_verified');
+  assert.equal((await response.json()).status, 'pending');
   assert.equal(flagCalled, false);
 });
 
@@ -285,7 +291,7 @@ test('validation runs before the signup module — a missing country never reach
 
 // --- Flag off ---------------------------------------------------------------
 
-test('with signup.enabled off the route returns an honest paused response and does no work', async () => {
+test('with signup.enabled off the route verifies Turnstile first, returns an honest paused response, and does no database work', async () => {
   let turnstileCalled = false;
   let rateLimitCalled = false;
   let signupCalled = false;
@@ -312,14 +318,91 @@ test('with signup.enabled off the route returns an honest paused response and do
   const body = await response.json();
   assert.equal(body.status, 'paused');
   assert.equal(typeof body.message, 'string');
-  assert.equal(turnstileCalled, false);
+  assert.equal(turnstileCalled, true);
   assert.equal(rateLimitCalled, false);
   assert.equal(signupCalled, false);
 });
 
 // --- Error and success mapping, and the no-position rule --------------------
 
-test('each outcome maps to the documented code and no success response carries a position, count or rank', async () => {
+test('unknown, pending, and verified addresses receive an identical accepted response with no membership signal', async () => {
+  const outcomes: SignupOutcome[] = [
+    { kind: 'created', subscriber: pendingSubscriber },
+    {
+      kind: 'existing',
+      subscriber: { created: false, id: 'pending-id', status: 'pending' },
+    },
+    {
+      kind: 'already_verified',
+      subscriber: { created: false, id: 'verified-id', status: 'verified' },
+    },
+  ];
+  const responses = await Promise.all(
+    outcomes.map((outcome) =>
+      createSignupRoute(deps({ signup: async () => outcome }))(
+        routeContext(makeRequest()),
+      ),
+    ),
+  );
+  const bodies = await Promise.all(
+    responses.map((response) => response.json()),
+  );
+
+  for (const response of responses) {
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  }
+  for (const body of bodies) {
+    assert.deepEqual(body, bodies[0]);
+    assert.deepEqual(Object.keys(body).sort(), ['message', 'status']);
+    assert.equal(body.status, 'pending');
+    for (const forbidden of ['already_verified', 'position', 'count', 'rank']) {
+      assert.equal(forbidden in body, false);
+    }
+  }
+});
+
+test('unknown, pending, and verified outcomes share the real 500ms response boundary', async () => {
+  const outcomes: SignupOutcome[] = [
+    { kind: 'created', subscriber: pendingSubscriber },
+    {
+      kind: 'existing',
+      subscriber: { created: false, id: 'pending-id', status: 'pending' },
+    },
+    {
+      kind: 'already_verified',
+      subscriber: { created: false, id: 'verified-id', status: 'verified' },
+    },
+  ];
+
+  const elapsed = await Promise.all(
+    outcomes.map(async (outcome, index) => {
+      const route = createSignupRoute({
+        ...deps(),
+        monotonicClock: undefined,
+        sleep: undefined,
+        async signup() {
+          await new Promise((resolve) => setTimeout(resolve, index * 30));
+          return outcome;
+        },
+      });
+      const started = performance.now();
+      const response = await route(routeContext(makeRequest()));
+      assert.equal(response.status, 200);
+      return performance.now() - started;
+    }),
+  );
+
+  for (const duration of elapsed) {
+    assert.ok(
+      duration >= 475,
+      `response returned before its boundary: ${duration}`,
+    );
+  }
+  assert.ok(Math.max(...elapsed) - Math.min(...elapsed) < 75);
+});
+
+test('each error outcome maps to the documented code', async () => {
   const missingToken = await createSignupRoute(deps()).call(
     null,
     routeContext(makeRequest({ country: 'GB', email: 'a@b.co' })),
@@ -327,35 +410,28 @@ test('each outcome maps to the documented code and no success response carries a
   assert.equal(missingToken.status, 400);
   assert.equal((await missingToken.json()).error.code, 'challenge_failed');
 
+  let emptyTokenVerified = false;
+  const emptyToken = await createSignupRoute(
+    deps({
+      async verifyTurnstile() {
+        emptyTokenVerified = true;
+        return 'verified';
+      },
+    }),
+  )(
+    routeContext(
+      makeRequest({ country: 'GB', email: 'a@b.co', turnstile_token: '' }),
+    ),
+  );
+  assert.equal(emptyToken.status, 400);
+  assert.equal((await emptyToken.json()).error.code, 'challenge_failed');
+  assert.equal(emptyTokenVerified, false);
+
   const invalidEmail = await createSignupRoute(
     deps({ signup: async () => ({ kind: 'invalid_email' }) }),
   )(routeContext(makeRequest()));
   assert.equal(invalidEmail.status, 400);
   assert.equal((await invalidEmail.json()).error.code, 'invalid_email');
-
-  const alreadyVerified = await createSignupRoute(
-    deps({
-      signup: async () => ({
-        kind: 'already_verified',
-        subscriber: { created: false, id: 'x', status: 'verified' },
-      }),
-    }),
-  )(routeContext(makeRequest()));
-  assert.equal(alreadyVerified.status, 200);
-  const verifiedBody = await alreadyVerified.json();
-  assert.equal(verifiedBody.status, 'already_verified');
-  assert.deepEqual(Object.keys(verifiedBody).sort(), ['message', 'status']);
-
-  const pending = await createSignupRoute(deps())(routeContext(makeRequest()));
-  assert.equal(pending.status, 200);
-  const pendingBody = await pending.json();
-  assert.equal(pendingBody.status, 'pending');
-  assert.deepEqual(Object.keys(pendingBody).sort(), ['message', 'status']);
-  for (const forbidden of ['position', 'count', 'rank']) {
-    assert.equal(forbidden in pendingBody, false);
-    assert.equal(forbidden in verifiedBody, false);
-  }
-  assert.equal(pending.headers.get('Cache-Control'), 'no-store');
 });
 
 test('a database outage maps to unavailable, and an unexpected error maps to internal', async () => {
@@ -412,8 +488,7 @@ test('every code the route can return is in the documented closed set with the s
       `${code} must be documented at HTTP ${status}`,
     );
   }
-  // already_verified is returned as a success status, and is documented at 200.
-  assert.equal(documented.get('already_verified'), 200);
+  assert.equal(documented.has('already_verified'), false);
 });
 
 // --- Default wiring against a real database ---------------------------------

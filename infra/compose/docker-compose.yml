@@ -45,7 +45,7 @@ services:
     memswap_limit: ${POSTGRES_MEM_LIMIT:-512m}
 
   app:
-    image: node:22-bookworm-slim
+    image: node:22.22.3-bookworm-slim
     restart: unless-stopped
     working_dir: /workspace
     command: ['sh', '/workspace/infra/compose/run-app.sh']
@@ -85,7 +85,7 @@ services:
     memswap_limit: ${APP_MEM_LIMIT:-768m}
 
   migrate:
-    image: node:22-bookworm-slim
+    image: node:22.22.3-bookworm-slim
     restart: 'no'
     working_dir: /workspace
     command: ['sh', '/workspace/infra/compose/run-migrations.sh']
@@ -108,12 +108,15 @@ services:
     memswap_limit: ${MIGRATION_MEM_LIMIT:-768m}
 
   maintenance:
-    image: node:22-bookworm-slim
+    image: node:22.22.3-bookworm-slim
     restart: unless-stopped
     working_dir: /workspace
     command: ['node', '/workspace/src/server/subscriber/run-maintenance.ts']
     environment:
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:-valstara-app-local-only}@postgres:5432/valstara_waitlist
+      NODE_ENV: development
+      P1_ALERT_WEBHOOK_TOKEN: ${P1_ALERT_WEBHOOK_TOKEN:-local-only-alert-token}
+      P1_ALERT_WEBHOOK_URL: ${P1_ALERT_WEBHOOK_URL:-http://127.0.0.1:9/local-only-alert-sink}
       VERIFICATION_RATE_BASELINE_DAYS: ${VERIFICATION_RATE_BASELINE_DAYS:-7}
       VERIFICATION_RATE_COHORT_HOURS: ${VERIFICATION_RATE_COHORT_HOURS:-24}
       VERIFICATION_RATE_COLLAPSE_PERCENT: ${VERIFICATION_RATE_COLLAPSE_PERCENT:-50}

@@ -37,6 +37,16 @@ test('the layout ships only the theme toggle island and no other client script',
   assert.match(scripts[0], /set:html=\{themeBootstrapScript\}/u);
 });
 
+test('the layout selectively preloads only the above-fold Instrument Sans WOFF2', async () => {
+  const source = await layoutSource();
+  const preloads = [
+    ...source.matchAll(/<link[\s\S]*?rel="preload"[\s\S]*?\/>/gu),
+  ].map((match) => match[0]);
+  assert.equal(preloads.length, 1);
+  assert.match(preloads[0], /instrument-sans-latin-wght-normal\.woff2/u);
+  assert.doesNotMatch(preloads[0], /jetbrains/u);
+});
+
 test('the layout carries no literal colour, font, radius, spacing or duration value', async () => {
   const source = await layoutSource();
   const literalColour = /#[\da-f]{3,8}\b|\b(?:rgb|hsl)a?\(/iu;

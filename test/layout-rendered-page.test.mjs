@@ -211,7 +211,7 @@ test('the landing page ships only the theme toggle and signup form islands', asy
     script.content.includes('valstara-theme'),
   );
   const signupIsland = scripts.filter((script) =>
-    script.content.includes('valstara-signup-form'),
+    /SignupForm\.astro[^"']*\.js/u.test(script.src),
   );
   const turnstileLoader = scripts.filter((script) =>
     script.src.includes('challenges.cloudflare.com/turnstile'),

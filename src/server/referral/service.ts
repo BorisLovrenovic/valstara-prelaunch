@@ -9,6 +9,8 @@ import type { DatabaseConnection } from '../db/pool.ts';
 import {
   referralCodeAlphabet,
   referralCodeLength,
+  milestoneTiers,
+  promoteAccessWindow,
   tierForConfirmedReferrals,
 } from './config.ts';
 
@@ -85,14 +87,53 @@ function createReferralServiceWithRepository(
       );
 
       if (nextTier > current.referral_tier) {
-        // The row is the durable record of the high-value reward. Its amount is
-        // the ADR-025 configuration for the tier, not an unversioned literal.
-        await repository.insertHeldMilestoneAward(
+        const tier = milestoneTiers.find(
+          (candidate) => candidate.number === nextTier,
+        );
+        if (tier === undefined) {
+          throw new Error('The earned referral tier has no configuration.');
+        }
+
+        // Cheap rewards settle at confirmation. High-value rewards remain held
+        // until the post-launch first-order transition (ADR-025).
+        await repository.insertMilestoneAward(
           randomUUID(),
           edge.referrer_id,
           nextTier,
+          'wave_upgrade',
+          'settled',
           now,
         );
+        if (tier.discountPercent > 0) {
+          await repository.insertMilestoneAward(
+            randomUUID(),
+            edge.referrer_id,
+            nextTier,
+            'discount',
+            'held',
+            now,
+          );
+        }
+        if (tier.bonusEntries > 0) {
+          await repository.insertMilestoneAward(
+            randomUUID(),
+            edge.referrer_id,
+            nextTier,
+            'entries',
+            'held',
+            now,
+          );
+        }
+
+        if (current.access_window !== null) {
+          await repository.setAccessWindow(
+            edge.referrer_id,
+            promoteAccessWindow(
+              current.access_window,
+              nextTier - current.referral_tier,
+            ),
+          );
+        }
       }
     },
 

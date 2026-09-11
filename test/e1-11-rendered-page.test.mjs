@@ -93,7 +93,18 @@ async function waitForPage(port, pathname) {
   throw new Error('Rendered-page test server did not start.');
 }
 
-test('the rendered E3-07 verification success page replays safely and sets no cookie', async () => {
+function postVerification(port, token) {
+  return globalThis.fetch(`http://127.0.0.1:${port}/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Origin: `http://127.0.0.1:${port}`,
+    },
+    body: new globalThis.URLSearchParams({ token }),
+  });
+}
+
+test('scanner GETs are inert, then token-authenticated POST verifies and replays safely', async () => {
   await executeFile('npm', ['run', 'build']);
   const fixture = await createDatabaseFixture();
   const subscriberId = randomUUID();
@@ -109,6 +120,21 @@ test('the rendered E3-07 verification success page replays safely and sets no co
       'verify@example.test',
       'verify@example.test',
       'example.test',
+    ],
+  );
+  const expiredToken = 'expired-thin-verification-token';
+  await fixture.database.query(
+    `
+      INSERT INTO verification_token (
+        id, subscriber_id, token_hash, purpose, expires_at
+      )
+      VALUES ($1, $2, $3, 'verify', $4)
+    `,
+    [
+      randomUUID(),
+      subscriberId,
+      createHash('sha256').update(expiredToken).digest(),
+      new Date('2000-01-01T00:00:00.000Z'),
     ],
   );
   await fixture.database.query(
@@ -133,14 +159,31 @@ test('the rendered E3-07 verification success page replays safely and sets no co
 
   try {
     const signup = await waitForPage(port, '/');
-    const verification = await waitForPage(
+    const scannerGet = await waitForPage(
       port,
       `/verify?token=${encodeURIComponent(token)}`,
     );
-    const replay = await waitForPage(
+    const prefetchGet = await waitForPage(
       port,
       `/verify?token=${encodeURIComponent(token)}`,
     );
+    for (const response of [scannerGet, prefetchGet]) {
+      assert.match(await response.text(), /Confirm email address/u);
+      assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    }
+    const beforePost = await fixture.database.query(
+      `SELECT s.status, t.consumed_at
+       FROM subscriber s JOIN verification_token t ON t.subscriber_id = s.id
+       WHERE s.id = $1`,
+      [subscriberId],
+    );
+    assert.equal(beforePost.rows[0]?.status, 'pending');
+    assert.equal(beforePost.rows[0]?.consumed_at, null);
+
+    const verification = await postVerification(port, token);
+    const replay = await postVerification(port, token);
+    const expired = await postVerification(port, expiredToken);
+    const invalid = await postVerification(port, 'unknown-verification-token');
     assert.equal(signup.headers.get('set-cookie'), null);
     assert.equal(verification.headers.get('set-cookie'), null);
     assert.equal(replay.headers.get('set-cookie'), null);
@@ -156,6 +199,11 @@ test('the rendered E3-07 verification success page replays safely and sets no co
       assert.match(body, /Help us prepare for launch/u);
       assert.match(body, /View your status/u);
     }
+    const expiredBody = await expired.text();
+    const invalidBody = await invalid.text();
+    assert.equal(expiredBody, invalidBody);
+    assert.match(expiredBody, /Request a new link/u);
+    assert.match(expiredBody, /action="\/api\/resend-verification"/u);
     const subscriber = await fixture.database.query(
       'SELECT status, verified_at FROM subscriber WHERE id = $1',
       [subscriberId],
@@ -212,10 +260,12 @@ test('with survey.enabled off, the rendered verification success page omits the 
   const { port, server } = startServer(fixture.databaseUrl);
 
   try {
-    const verification = await waitForPage(
+    const confirmation = await waitForPage(
       port,
       `/verify?token=${encodeURIComponent(token)}`,
     );
+    assert.match(await confirmation.text(), /Confirm email address/u);
+    const verification = await postVerification(port, token);
     const body = await verification.text();
     assert.match(body, /Your email address is verified\./u);
     assert.ok(!/<form[^>]+action="\/api\/survey"/u.test(body));

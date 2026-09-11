@@ -9,12 +9,12 @@ None. It cannot be switched off.
 ## User flows
 1. **Queue** — the verification mail is queued on the same request that creates the subscriber, idempotent on `verify:{subscriber_id}:{token_id}`.
 2. **Token** — single use, **hashed at rest**; the plaintext exists only in the emailed URL. Default expiry 7 days.
-3. **Verify** — `GET /verify?token=…` consumes the token, sets `verified`, confirms referral edges, settles cheap rewards, assigns the access window.
+3. **Confirm** — `GET /verify?token=…` renders an inert confirmation page; scanners and prefetchers cannot mutate state. Its token-authenticated `POST /verify` consumes the token, sets `verified`, confirms referral edges, settles cheap rewards, holds high-value rewards and assigns access windows in one transaction.
 4. **Success page** — the referral link, the two survey questions, and the signed status link. This is the highest-attention moment in the funnel and is treated as such.
 5. **Welcome mail** — referral link and status link, so the page is not the only place they exist.
 
 ## Edge cases and error states
-Token replayed → **renders the same success page.** An already-verified person clicking twice is not a failure. Token expired → a one-click resend, rate-limited. Token tampered → a re-request page; never a stack trace, never another subscriber's data. Resend requested for an unknown address → **the same response as for a known one**; an enumeration oracle on a waitlist list is a real leak. Never verified → reminders at +1h, +24h and +72h, then the row **expires** at the configured horizon and is excluded from every count and export. Resend outage → the row is already committed; the send retries with backoff and the response says so honestly rather than claiming the mail has arrived.
+Token replayed → **renders the same success page.** An already-verified person clicking twice is not a failure. Token expired or tampered → identical generic failure copy and the same request-new-link control through the enumeration-safe, rate-limited resend route; never a stack trace or another subscriber's data. Resend requested for an unknown address → **the same response as for a known one**; an enumeration oracle on a waitlist list is a real leak. Never verified → reminders at +1h, +24h and +72h, then the row **expires** at the configured horizon and is excluded from every count and export. Resend outage → the row is already committed; the send retries with backoff and the response says so honestly rather than claiming the mail has arrived.
 
 ## Acceptance criteria
 - [ ] **No unverified row is counted, ranked, rewarded, exported or broadcast to** — asserted by a query-level test over every consuming surface

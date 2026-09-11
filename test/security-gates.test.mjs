@@ -170,6 +170,38 @@ test('the third-party request rule excludes server-only API routes', async () =>
   }
 });
 
+test('the privacy gate rejects an incomplete Turnstile disclosure contract', async () => {
+  const policy = JSON.parse(
+    await readFile(
+      new URL('../scripts/ci/privacy-allowlist.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const turnstile = policy.thirdPartyRequests.find(
+    (entry) => entry.host === 'challenges.cloudflare.com',
+  );
+  delete turnstile.disclosureContract.processorServerSideSignals;
+  const fixture = {
+    content: `${JSON.stringify(policy, null, 2)}\n`,
+    path: 'scripts/ci/privacy-allowlist.json',
+  };
+  const { repository, temporaryRoot } = await createFixtureRepository(
+    'turnstile-disclosure',
+    fixture,
+  );
+
+  try {
+    const result = runSecurityGate(repository);
+    assert.notEqual(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /\[privacy-disclosure\]/u,
+    );
+  } finally {
+    await rm(temporaryRoot, { force: true, recursive: true });
+  }
+});
+
 test('a credential in .env.example fails the content scan', async () => {
   const fixture = {
     contentParts: [

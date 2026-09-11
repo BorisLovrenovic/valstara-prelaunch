@@ -313,7 +313,7 @@ test(
     const certificate = join(directory, 'origin-cert.pem');
     const privateKey = join(directory, 'origin-key.pem');
     const auditFile = join(directory, 'audit', 'deploy-audit.jsonl');
-    const migrationPath = join(directory, '0008-local-deployment-drill.sql');
+    const migrationPath = join(directory, '0010-local-deployment-drill.sql');
     const initialDockerfile = join(directory, 'Dockerfile.initial');
     const deployedDockerfile = join(directory, 'Dockerfile.deployed');
     const unhealthyDockerfile = join(directory, 'Dockerfile.unhealthy');
@@ -338,6 +338,8 @@ test(
       DEPLOY_COMPOSE_FILE: productionComposeUrl.pathname,
       DEPLOY_HEALTH_POLL_SECONDS: '1',
       DEPLOY_HEALTH_TIMEOUT_SECONDS: '10',
+      P1_ALERT_WEBHOOK_TOKEN: 'local-production-drill-alert-token',
+      P1_ALERT_WEBHOOK_URL: 'https://alerts.example.test/valstara',
       SITE_HOST: 'valstara.com',
       UMAMI_APP_SECRET: 'local-production-drill-umami-secret',
       UMAMI_DB_PASSWORD: 'local-production-drill-umami-password',
@@ -387,7 +389,7 @@ test(
       );
       await writeFile(
         deployedDockerfile,
-        `FROM ${initialImage}\nUSER root\nCOPY --chown=node:node 0008-local-deployment-drill.sql /app/src/server/db/migrations/0008-local-deployment-drill.sql\nUSER node\n`,
+        `FROM ${initialImage}\nUSER root\nCOPY --chown=node:node 0010-local-deployment-drill.sql /app/src/server/db/migrations/0010-local-deployment-drill.sql\nUSER node\n`,
       );
       await runChecked('docker', ['build', '--tag', sourceImage, '.']);
       await runChecked('docker', [
@@ -474,7 +476,7 @@ test(
         '-c',
         "SELECT filename FROM migration_ledger WHERE applied_by_release = '2222222222222222222222222222222222222222';",
       ]);
-      assert.equal(migrations.stdout.trim(), '0008-local-deployment-drill.sql');
+      assert.equal(migrations.stdout.trim(), '0010-local-deployment-drill.sql');
 
       const failedCandidate = await run(
         'sh',
@@ -521,7 +523,7 @@ test(
           (record) =>
             record.image === deployedImage &&
             record.outcome === 'succeeded' &&
-            record.migrations.includes('0008-local-deployment-drill.sql'),
+            record.migrations.includes('0010-local-deployment-drill.sql'),
         ),
       );
       assert.ok(

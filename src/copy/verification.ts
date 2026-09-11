@@ -1,4 +1,8 @@
 export const verificationCopy = {
+  confirm: {
+    body: 'Confirm this email address to join the Valstara waitlist.',
+    submit: 'Confirm email address',
+  },
   complete: 'Your email address is verified.',
   invalid: 'This verification link is not available.',
   meta: {
@@ -8,6 +12,12 @@ export const verificationCopy = {
   referral: {
     label: 'Your referral link',
     link: 'Share your referral link',
+  },
+  resend: {
+    emailLabel: 'Email address',
+    javaScriptRequired:
+      'JavaScript is required to complete the security check and request a new link.',
+    submit: 'Request a new link',
   },
   status: {
     label: 'Your waitlist status',

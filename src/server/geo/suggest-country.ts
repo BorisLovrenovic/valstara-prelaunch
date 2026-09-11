@@ -2,14 +2,15 @@
  * `geo` — turn Cloudflare's `CF-IPCountry` header into a **suggestion**, and
  * nothing more (`docs/modules/platform.md#geo`, ADR-018).
  *
- * The shape of this interface is the guardrail: there is exactly one export and
- * it returns a country code or `null`. **There is no method here that can decide
- * eligibility.** Detection prefills the country dropdown; the *confirmed* value
- * the person submits is what drives giveaway eligibility, the VAT story and the
- * access wave. Detection never decides silently.
+ * The shape of this interface is the guardrail: its only function returns a
+ * country code or `null`. The exported header name lets cache policy vary on the
+ * same input without duplicating or reading it. **There is no method here that
+ * can decide eligibility.** Detection prefills the country dropdown; the
+ * *confirmed* value the person submits is what drives giveaway eligibility, the
+ * VAT story and the access wave. Detection never decides silently.
  */
 
-const CF_IP_COUNTRY_HEADER = 'CF-IPCountry';
+export const geoCountryHeaderName = 'CF-IPCountry';
 
 // Cloudflare returns two-letter ISO 3166-1 alpha-2 codes, plus a few sentinels
 // that are not countries: `XX` (unknown), `T1` (the client is on Tor). Neither
@@ -27,7 +28,7 @@ const NON_COUNTRY_SENTINELS = new Set(['XX', 'T1']);
  * any list it might be tempted to make a decision from.
  */
 export function suggestCountry(headers: Headers): string | null {
-  const raw = headers.get(CF_IP_COUNTRY_HEADER);
+  const raw = headers.get(geoCountryHeaderName);
   if (raw === null) {
     return null;
   }

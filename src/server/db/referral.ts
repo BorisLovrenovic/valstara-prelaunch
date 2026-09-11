@@ -25,10 +25,13 @@ export interface ReferralRepository {
   ): Promise<ReferralEdgeForConfirmation | null>;
   findSubscriber(subscriberId: string): Promise<ReferralSubscriber | null>;
   findSubscriberIdByCode(code: string): Promise<string | null>;
-  insertHeldMilestoneAward(
+  findStrandedVerifiedReferralIds(limit: number): Promise<readonly string[]>;
+  insertMilestoneAward(
     id: string,
     subscriberId: string,
     tier: number,
+    rewardKind: 'discount' | 'entries' | 'wave_upgrade',
+    state: 'held' | 'settled',
     now: Date,
   ): Promise<number>;
   setAccessWindow(subscriberId: string, window: AccessWindow): Promise<number>;
@@ -118,14 +121,36 @@ export function createReferralRepository(
       return row?.id ?? null;
     },
 
-    async insertHeldMilestoneAward(id, subscriberId, tier, now) {
+    async findStrandedVerifiedReferralIds(limit) {
+      if (!Number.isInteger(limit) || limit < 1) {
+        throw new RangeError(
+          'A referral reconciliation limit must be positive.',
+        );
+      }
+      const rows = await database.list<{ referred_id: string }>(
+        {
+          text: `
+            SELECT edge.referred_id
+            FROM referral_edge edge
+            JOIN subscriber referred ON referred.id = edge.referred_id
+            WHERE edge.state = 'attributed'
+              AND referred.status = 'verified'
+            ORDER BY edge.created_at, edge.id
+          `,
+        },
+        limit,
+      );
+      return rows.map((row) => row.referred_id);
+    },
+
+    async insertMilestoneAward(id, subscriberId, tier, rewardKind, state, now) {
       return database.execute({
         text: `
           INSERT INTO milestone_award (id, subscriber_id, tier, reward_kind, state, awarded_at)
-          VALUES ($1, $2, $3, 'discount', 'held', $4)
-          ON CONFLICT (subscriber_id, tier) DO NOTHING
+          VALUES ($1, $2, $3, $4, $5, $6)
+          ON CONFLICT (subscriber_id, tier, reward_kind) DO NOTHING
         `,
-        values: [id, subscriberId, tier, now],
+        values: [id, subscriberId, tier, rewardKind, state, now],
       });
     },
 

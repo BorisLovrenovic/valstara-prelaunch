@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { randomUUID } from 'node:crypto';
+import { setTimeout as systemSleep } from 'node:timers/promises';
 
 import { CANADA_COUNTRY_CODE } from '../../copy/country.ts';
 import { signupCopy } from '../../copy/signup.ts';
@@ -30,6 +31,7 @@ const ipRateLimitMaxAttempts = 5;
 const strictIpRateLimitMaxAttempts = 2;
 const maxEmailLength = 254;
 const maxRegionLength = 64;
+export const signupResponseTargetMs = 500;
 
 /**
  * The closed error-code set this route can return, each with its HTTP status.
@@ -68,6 +70,8 @@ export interface SignupRouteDependencies {
   readonly signup: (input: SignupInput) => Promise<SignupOutcome>;
   readonly flagChallengeTimeout: (subscriberId: string) => Promise<void>;
   readonly clock?: () => Date;
+  readonly monotonicClock?: () => number;
+  readonly sleep?: (milliseconds: number) => Promise<void>;
 }
 
 let database: DatabasePool | undefined;
@@ -157,19 +161,12 @@ export function createSignupRoute(
   dependencies: SignupRouteDependencies,
 ): APIRoute {
   const clock = dependencies.clock ?? (() => new Date());
+  const monotonicClock =
+    dependencies.monotonicClock ??
+    (() => Number(process.hrtime.bigint() / 1_000_000n));
+  const sleep = dependencies.sleep ?? systemSleep;
 
   return async ({ clientAddress, request }) => {
-    // The kill switch closes the route entirely: an honest paused response,
-    // and no Turnstile call or database work while signups are off. When the
-    // flag store is unreachable the service returns the registered default
-    // (on), so a database blip never silently pauses signups.
-    if (!(await dependencies.isSignupEnabled())) {
-      return jsonResponse(200, {
-        status: 'paused',
-        message: signupCopy.paused,
-      });
-    }
-
     let formData: FormData;
     try {
       formData = await request.formData();
@@ -182,7 +179,7 @@ export function createSignupRoute(
     // does not reject a real person — it accepts under strict limits and flags
     // the row further down (ADR-006).
     const turnstileToken = formData.get('turnstile_token');
-    if (typeof turnstileToken !== 'string') {
+    if (typeof turnstileToken !== 'string' || turnstileToken === '') {
       return errorResponse('challenge_failed');
     }
     const challenge = await dependencies.verifyTurnstile(turnstileToken);
@@ -190,6 +187,17 @@ export function createSignupRoute(
       return errorResponse('challenge_failed');
     }
     const challengeTimedOut = challenge === 'unavailable';
+
+    // The flag lookup is deliberately after Turnstile: it can touch the flag
+    // store, so doing it first would violate the challenge boundary on this
+    // public write route. A disabled route returns honest paused copy before
+    // rate limiting or signup work.
+    if (!(await dependencies.isSignupEnabled())) {
+      return jsonResponse(200, {
+        status: 'paused',
+        message: signupCopy.paused,
+      });
+    }
 
     // 2. Rate-limit per hashed IP prefix — the strict window when the challenge
     // could not be confirmed.
@@ -214,6 +222,12 @@ export function createSignupRoute(
       return errorResponse('invalid_input');
     }
 
+    // Every syntactically valid request that can reveal subscriber membership
+    // shares the same minimum response boundary. Unknown, pending, and verified
+    // addresses therefore do not expose their different database/mail paths as
+    // a useful timing signal.
+    const membershipWorkStartedAt = monotonicClock();
+
     // 4. Normalise + upsert + queue the verification mail (in the module).
     let outcome: SignupOutcome;
     try {
@@ -234,19 +248,13 @@ export function createSignupRoute(
     if (outcome.kind === 'invalid_email') {
       return errorResponse('invalid_email');
     }
-    if (outcome.kind === 'already_verified') {
-      return jsonResponse(200, {
-        status: 'already_verified',
-        message: signupCopy.alreadyVerified,
-      });
-    }
 
     // 5. Flag the row for review when the challenge timed out — the subscriber
     // now exists (created, or an existing pending row). Best-effort: the row is
     // already committed and safe, so a failed flag write never turns a real
     // signup into an error (fallbacks.md — "a signup that reached PostgreSQL is
     // safe").
-    if (challengeTimedOut) {
+    if (challengeTimedOut && outcome.kind !== 'already_verified') {
       try {
         await dependencies.flagChallengeTimeout(outcome.subscriber.id);
       } catch {
@@ -255,8 +263,15 @@ export function createSignupRoute(
       }
     }
 
-    // created or existing pending → the same honest "check your inbox", with
-    // no position, count or rank (a pending row has no honest position).
+    const remaining =
+      signupResponseTargetMs - (monotonicClock() - membershipWorkStartedAt);
+    if (remaining > 0) {
+      await sleep(remaining);
+    }
+
+    // Created, existing pending, and already verified all receive the same
+    // accepted response. Whether an address is on the list is disclosed only
+    // by email to that address, never through this public route.
     return jsonResponse(200, {
       status: 'pending',
       message: signupCopy.pending,

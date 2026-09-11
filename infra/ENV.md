@@ -38,38 +38,40 @@ and telemetry switches are neither live nor sandbox credentials.
 
 ## Infrastructure and tooling inventory
 
-| Variable                        | Purpose                                                                          | Used by                   | Local default                          | Secret                        |
-| ------------------------------- | -------------------------------------------------------------------------------- | ------------------------- | -------------------------------------- | ----------------------------- |
-| `VALSTARA_DB_USER`              | PostgreSQL role that owns and migrates `valstara_waitlist`                       | PostgreSQL, migrate       | `valstara`                             | No                            |
-| `VALSTARA_DB_PASSWORD`          | Password for the waitlist owner/migration role; URL-safe characters are required | PostgreSQL, migrate       | Local-only value in Compose            | Yes outside local development |
-| `VALSTARA_APP_DB_PASSWORD`      | Password provisioned for the non-owner `valstara_app` login by migrations        | Migrate, app, maintenance | Local-only value in Compose            | Yes outside local development |
-| `TURNSTILE_SECRET_KEY`          | Server-side key for E1-11's inline signup challenge verification                 | App                       | None                                   | Yes                           |
-| `IP_PREFIX_PEPPER`              | Server-side HMAC pepper for E1-11's truncated IP-prefix rate-limit key           | App                       | None                                   | Yes                           |
-| `RESEND_API_KEY`                | Resend API key used only for E1-11's transactional test-mode mail                | App                       | None                                   | Yes                           |
-| `RESEND_TEST_RECIPIENT`         | Resend test address, normally `delivered@resend.dev`; never a subscriber address | App                       | None                                   | No                            |
-| `UMAMI_DB_USER`                 | PostgreSQL role that owns and connects to the separate `umami` database          | PostgreSQL, Umami         | `umami`                                | No                            |
-| `UMAMI_DB_PASSWORD`             | Password for the Umami database role; URL-safe characters are required           | PostgreSQL, Umami         | Local-only value in Compose            | Yes outside local development |
-| `UMAMI_APP_SECRET`              | Signs and encrypts Umami authentication tokens                                   | Umami                     | Local-only value in Compose            | Yes                           |
-| `PGBACKREST_REPO1_CIPHER_PASS`  | Encrypts the pgBackRest repository                                               | PostgreSQL, restore drill | `pgbackrest-local-only`                | Yes outside local development |
-| `POSTGRES_HOST_PORT`            | Loopback-only host port for local PostgreSQL access                              | Docker Compose            | `5434`                                 | No                            |
-| `POSTGRES_MEM_LIMIT`            | Hard memory and equal memory-plus-swap limit for PostgreSQL                      | Docker Compose            | `512m`                                 | No                            |
-| `APP_MEM_LIMIT`                 | Hard memory and equal memory-plus-swap limit for the Astro app                   | Docker Compose            | `768m`                                 | No                            |
-| `MIGRATION_MEM_LIMIT`           | Hard memory and equal memory-plus-swap limit for the one-shot migration service  | Docker Compose            | `768m`                                 | No                            |
-| `MAINTENANCE_MEM_LIMIT`         | Hard memory and equal memory-plus-swap limit for reminder and expiry jobs        | Docker Compose            | `128m`                                 | No                            |
-| `UMAMI_MEM_LIMIT`               | Hard memory and equal memory-plus-swap limit for Umami                           | Docker Compose            | `768m`                                 | No                            |
-| `CADDY_MEM_LIMIT`               | Hard memory and equal memory-plus-swap limit for the production TLS proxy        | Production Compose        | `128m`                                 | No                            |
-| `VALSTARA_IMAGE`                | Exact GHCR image reference, including the 40-character commit-SHA tag            | Production Compose        | None                                   | No                            |
-| `VALSTARA_RELEASE`              | Commit SHA recorded by the migration ledger for the production image             | Migration service         | None                                   | No                            |
-| `DEPLOY_AUDIT_FILE`             | Host path for the fsynced, append-only deployment and rollback audit records     | Deploy scripts            | `/var/lib/valstara/deploy-audit.jsonl` | No                            |
-| `DEPLOY_COMPOSE_FILE`           | Production Compose file used by deploy and rollback scripts                      | Deploy scripts            | Production Compose path                | No                            |
-| `DEPLOY_HEALTH_TIMEOUT_SECONDS` | Candidate and restarted-app health deadline                                      | Deploy scripts            | `60`                                   | No                            |
-| `DEPLOY_HEALTH_POLL_SECONDS`    | Health polling interval                                                          | Deploy scripts            | `2`                                    | No                            |
-| `SITE_HOST`                     | Hostname on the Cloudflare-proxied DNS record                                    | Caddy                     | `valstara.com`                         | No                            |
-| `CADDY_ORIGIN_CERT_PATH`        | Host path to the Cloudflare Origin CA certificate mounted read-only into Caddy   | Production Compose        | None                                   | No                            |
-| `CADDY_ORIGIN_KEY_PATH`         | Host path to the Cloudflare Origin CA private key mounted read-only into Caddy   | Production Compose        | None                                   | Yes                           |
-| `CADDY_BIND_ADDRESS`            | Address on which Caddy publishes the origin HTTP and HTTPS ports                 | Production Compose        | `0.0.0.0`                              | No                            |
-| `CADDY_HTTP_PORT`               | Host HTTP port; override only for a local production-stack drill                 | Production Compose        | `80`                                   | No                            |
-| `CADDY_HTTPS_PORT`              | Host HTTPS port; override only for a local production-stack drill                | Production Compose        | `443`                                  | No                            |
+| Variable                        | Purpose                                                                          | Used by                   | Local default                           | Secret                        |
+| ------------------------------- | -------------------------------------------------------------------------------- | ------------------------- | --------------------------------------- | ----------------------------- |
+| `VALSTARA_DB_USER`              | PostgreSQL role that owns and migrates `valstara_waitlist`                       | PostgreSQL, migrate       | `valstara`                              | No                            |
+| `VALSTARA_DB_PASSWORD`          | Password for the waitlist owner/migration role; URL-safe characters are required | PostgreSQL, migrate       | Local-only value in Compose             | Yes outside local development |
+| `VALSTARA_APP_DB_PASSWORD`      | Password provisioned for the non-owner `valstara_app` login by migrations        | Migrate, app, maintenance | Local-only value in Compose             | Yes outside local development |
+| `TURNSTILE_SECRET_KEY`          | Server-side key for E1-11's inline signup challenge verification                 | App                       | None                                    | Yes                           |
+| `IP_PREFIX_PEPPER`              | Server-side HMAC pepper for E1-11's truncated IP-prefix rate-limit key           | App                       | None                                    | Yes                           |
+| `RESEND_API_KEY`                | Resend API key used only for E1-11's transactional test-mode mail                | App                       | None                                    | Yes                           |
+| `RESEND_TEST_RECIPIENT`         | Resend test address, normally `delivered@resend.dev`; never a subscriber address | App                       | None                                    | No                            |
+| `UMAMI_DB_USER`                 | PostgreSQL role that owns and connects to the separate `umami` database          | PostgreSQL, Umami         | `umami`                                 | No                            |
+| `UMAMI_DB_PASSWORD`             | Password for the Umami database role; URL-safe characters are required           | PostgreSQL, Umami         | Local-only value in Compose             | Yes outside local development |
+| `UMAMI_APP_SECRET`              | Signs and encrypts Umami authentication tokens                                   | Umami                     | Local-only value in Compose             | Yes                           |
+| `PGBACKREST_REPO1_CIPHER_PASS`  | Encrypts the pgBackRest repository                                               | PostgreSQL, restore drill | `pgbackrest-local-only`                 | Yes outside local development |
+| `P1_ALERT_WEBHOOK_TOKEN`        | Authenticates P1 notifications to the operator-owned paging webhook              | Maintenance               | `local-only-alert-token`                | Yes outside local development |
+| `P1_ALERT_WEBHOOK_URL`          | Endpoint for immediate operator-consumed P1 notifications                        | Maintenance               | Unroutable local sink unless overridden | No                            |
+| `POSTGRES_HOST_PORT`            | Loopback-only host port for local PostgreSQL access                              | Docker Compose            | `5434`                                  | No                            |
+| `POSTGRES_MEM_LIMIT`            | Hard memory and equal memory-plus-swap limit for PostgreSQL                      | Docker Compose            | `512m`                                  | No                            |
+| `APP_MEM_LIMIT`                 | Hard memory and equal memory-plus-swap limit for the Astro app                   | Docker Compose            | `768m`                                  | No                            |
+| `MIGRATION_MEM_LIMIT`           | Hard memory and equal memory-plus-swap limit for the one-shot migration service  | Docker Compose            | `768m`                                  | No                            |
+| `MAINTENANCE_MEM_LIMIT`         | Hard memory and equal memory-plus-swap limit for reminder and expiry jobs        | Docker Compose            | `128m`                                  | No                            |
+| `UMAMI_MEM_LIMIT`               | Hard memory and equal memory-plus-swap limit for Umami                           | Docker Compose            | `768m`                                  | No                            |
+| `CADDY_MEM_LIMIT`               | Hard memory and equal memory-plus-swap limit for the production TLS proxy        | Production Compose        | `128m`                                  | No                            |
+| `VALSTARA_IMAGE`                | Exact GHCR image reference, including the 40-character commit-SHA tag            | Production Compose        | None                                    | No                            |
+| `VALSTARA_RELEASE`              | Commit SHA recorded by the migration ledger for the production image             | Migration service         | None                                    | No                            |
+| `DEPLOY_AUDIT_FILE`             | Host path for the fsynced, append-only deployment and rollback audit records     | Deploy scripts            | `/var/lib/valstara/deploy-audit.jsonl`  | No                            |
+| `DEPLOY_COMPOSE_FILE`           | Production Compose file used by deploy and rollback scripts                      | Deploy scripts            | Production Compose path                 | No                            |
+| `DEPLOY_HEALTH_TIMEOUT_SECONDS` | Candidate and restarted-app health deadline                                      | Deploy scripts            | `60`                                    | No                            |
+| `DEPLOY_HEALTH_POLL_SECONDS`    | Health polling interval                                                          | Deploy scripts            | `2`                                     | No                            |
+| `SITE_HOST`                     | Hostname on the Cloudflare-proxied DNS record                                    | Caddy                     | `valstara.com`                          | No                            |
+| `CADDY_ORIGIN_CERT_PATH`        | Host path to the Cloudflare Origin CA certificate mounted read-only into Caddy   | Production Compose        | None                                    | No                            |
+| `CADDY_ORIGIN_KEY_PATH`         | Host path to the Cloudflare Origin CA private key mounted read-only into Caddy   | Production Compose        | None                                    | Yes                           |
+| `CADDY_BIND_ADDRESS`            | Address on which Caddy publishes the origin HTTP and HTTPS ports                 | Production Compose        | `0.0.0.0`                               | No                            |
+| `CADDY_HTTP_PORT`               | Host HTTP port; override only for a local production-stack drill                 | Production Compose        | `80`                                    | No                            |
+| `CADDY_HTTPS_PORT`              | Host HTTPS port; override only for a local production-stack drill                | Production Compose        | `443`                                   | No                            |
 
 ### CI, test, and process environment
 
@@ -136,8 +138,11 @@ npm run test:stack
 Compose runs migrations in an isolated one-shot `migrate` service before
 starting the app and the maintenance process. The latter queues verification
 reminders and checks the verification rate hourly, and expires unverified rows
-once per UTC day; every invocation is batch-capped where it reads or writes a
-set of rows. The monitoring defaults are a 24-hour cohort, seven prior days,
+and purges rate-limit buckets older than seven days once per UTC day; every
+invocation is batch-capped where it reads or writes a set of rows. P1 failures
+and verification-rate collapses are delivered to the authenticated webhook;
+production refuses to start maintenance without an HTTPS destination and token.
+The monitoring defaults are a 24-hour cohort, seven prior days,
 at least 50 signups, and a 50% relative-rate collapse threshold.
 
 Before starting the backup-enabled stack, supply a repository passphrase from
@@ -205,7 +210,7 @@ tighter one.
 
 ## Why the containers are Debian rather than Alpine
 
-`app` and `migrate` run `node:22-bookworm-slim`, not `node:22-alpine`. The
+`app`, `migrate`, and `maintenance` run `node:22.22.3-bookworm-slim`, not `node:22-alpine`. The
 lockfile pins platform-specific native binaries built for glibc —
 `@astrojs/compiler-binding-linux-x64-gnu`, `@rolldown/binding-linux-x64-gnu`,
 `@esbuild/linux-x64` and `sharp`. Alpine is musl and cannot load them, which is

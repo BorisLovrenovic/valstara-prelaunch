@@ -81,21 +81,20 @@ export function createVerificationCompletionService(
         }
         await dependencies.afterStep?.('verified');
 
-        if (referralEnabled) {
-          await referral.generateCode(subscriberId);
-        }
-        await dependencies.afterStep?.('referral-code');
-
-        if (referralEnabled) {
-          await referral.confirm(subscriberId, clock());
-        }
-        await dependencies.afterStep?.('referral-confirmed');
-
         const order = await repository.verificationOrder(subscriberId, clock());
         const window = accessWindowForVerificationOrder(order);
         await repository.setAccessWindow(subscriberId, window);
         await dependencies.afterStep?.('access-window');
       }
+
+      // The flag gates only display/new attribution. Code allocation and an
+      // already-recorded edge must continue to completion even while it is off;
+      // running these idempotently on replay also repairs rows stranded by the
+      // former flag-off behaviour.
+      await referral.generateCode(subscriberId);
+      await dependencies.afterStep?.('referral-code');
+      await referral.confirm(subscriberId, clock());
+      await dependencies.afterStep?.('referral-confirmed');
 
       const subscriber = await repository.findSubscriber(subscriberId);
       if (subscriber === null || subscriber.status !== 'verified') {

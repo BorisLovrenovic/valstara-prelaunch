@@ -36,7 +36,7 @@ export interface VerificationRateAlert {
 }
 
 export interface VerificationRateDependencies {
-  readonly alert?: (alert: VerificationRateAlert) => void;
+  readonly alert?: (alert: VerificationRateAlert) => Promise<void> | void;
   readonly clock?: () => Date;
 }
 
@@ -64,7 +64,11 @@ export function createVerificationRateMonitorWithRepository(
 ): VerificationRateMonitor {
   assertConfiguration(configuration);
   const clock = dependencies.clock ?? (() => new Date());
-  const alert = dependencies.alert ?? (() => undefined);
+  const alert =
+    dependencies.alert ??
+    (() => {
+      throw new Error('A P1 alert transport is required for monitor.run().');
+    });
 
   async function health(): Promise<VerificationRateHealth> {
     const measuredAt = clock();
@@ -104,7 +108,7 @@ export function createVerificationRateMonitorWithRepository(
         result.baseline.rate !== null &&
         result.current.rate !== null
       ) {
-        alert({
+        await alert({
           baselineRate: result.baseline.rate,
           currentRate: result.current.rate,
           measuredAt: result.measuredAt,

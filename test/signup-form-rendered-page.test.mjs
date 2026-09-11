@@ -103,8 +103,9 @@ async function startBrowserServer() {
 before(async () => {
   await execFileAsync('npm', ['run', 'build']);
   // No reachable database is needed: the landing flag read fails safe to its
-  // registered default (signup on), so the form island renders. Every request
-  // to /api/signup is intercepted in-browser, so the route is never exercised.
+  // registered default (signup on), so the form island renders. Most signup
+  // requests are intercepted in-browser; the no-JS case deliberately reaches
+  // the real route and is rejected at the empty-token boundary before DB work.
   server = spawn(process.execPath, ['dist/server/entry.mjs'], {
     env: {
       ...process.env,
@@ -145,19 +146,76 @@ after(async () => {
   }
 });
 
-async function openForm({ javaScriptEnabled = true } = {}) {
+async function openForm({
+  javaScriptEnabled = true,
+  turnstileDelay = 0,
+  turnstileMode = 'success',
+  turnstileToken = 'rendered-page-turnstile-token',
+} = {}) {
   const context = await browser.newContext({ javaScriptEnabled });
+  if (javaScriptEnabled) {
+    await context.route('https://challenges.cloudflare.com/**', (route) =>
+      route.fulfill({ contentType: 'text/javascript', body: '' }),
+    );
+    await context.addInitScript(
+      ({ delay, mode, token }) => {
+        globalThis.turnstile = {
+          ready(callback) {
+            callback();
+          },
+          render(_element, options) {
+            globalThis.setTimeout(() => {
+              if (mode === 'error') {
+                options['error-callback']();
+              } else if (mode === 'expired') {
+                options['expired-callback']();
+              } else {
+                options.callback(token);
+              }
+            }, delay);
+            return 'test-widget';
+          },
+          reset() {},
+        };
+      },
+      { delay: turnstileDelay, mode: turnstileMode, token: turnstileToken },
+    );
+  }
   const page = await context.newPage();
   await page.goto(browserOrigin, { waitUntil: 'domcontentloaded' });
+  if (javaScriptEnabled) {
+    await page.evaluate(() =>
+      globalThis.customElements.whenDefined('valstara-signup-form'),
+    );
+  }
   return { context, page };
 }
 
-test('the form posts to /api/signup even with JavaScript disabled', async () => {
+test('the no-JS form explains the requirement and the real route rejects its empty token', async () => {
   const { context, page } = await openForm({ javaScriptEnabled: false });
-  const posted = [];
+  assert.match(
+    await page.locator('noscript').textContent(),
+    /JavaScript is required/u,
+  );
+
+  await page.fill('#signup-email', 'nojs@example.com');
+  await page.selectOption('#signup-country', 'US');
+  const responsePromise = page.waitForResponse('**/api/signup');
+  await page.click('[data-submit]');
+  const response = await responsePromise;
+  assert.equal(response.status(), 400);
+  assert.equal((await response.json()).error.code, 'challenge_failed');
+
+  await context.close();
+});
+
+test('submission waits for delayed Turnstile resolution and posts the resolved token', async () => {
+  const { context, page } = await openForm({ turnstileDelay: 250 });
+  let submittedBody;
+  let requestSeen = false;
   await page.route('**/api/signup', async (route) => {
-    const request = route.request();
-    posted.push({ body: request.postData(), method: request.method() });
+    requestSeen = true;
+    submittedBody = route.request().postDataBuffer();
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -165,22 +223,48 @@ test('the form posts to /api/signup even with JavaScript disabled', async () => 
     });
   });
 
-  await page.fill('#signup-email', 'nojs@example.com');
+  await page.fill('#signup-email', 'delayed@example.com');
   await page.selectOption('#signup-country', 'US');
-  const request = page.waitForRequest('**/api/signup');
   await page.click('[data-submit]');
-  await request;
+  await page.waitForTimeout(100);
+  assert.equal(
+    requestSeen,
+    false,
+    'no request is sent before Turnstile resolves',
+  );
+  await page.waitForResponse('**/api/signup');
 
-  assert.equal(posted.length, 1, 'a native submit reaches the route');
-  assert.equal(posted[0].method, 'POST');
-  // A no-JS native submit is application/x-www-form-urlencoded — parse it rather
-  // than pattern-match the percent-encoding, and prove the fields carried.
-  const submitted = new globalThis.URLSearchParams(posted[0].body ?? '');
-  assert.equal(submitted.get('email'), 'nojs@example.com');
-  assert.equal(submitted.get('country'), 'US');
-
+  const body = submittedBody?.toString('utf8') ?? '';
+  assert.match(
+    body,
+    /name="turnstile_token"\r\n\r\nrendered-page-turnstile-token/u,
+  );
   await context.close();
 });
+
+for (const turnstileMode of ['expired', 'error']) {
+  test(`a Turnstile ${turnstileMode} callback fails honestly without submitting`, async () => {
+    const { context, page } = await openForm({
+      turnstileDelay: 50,
+      turnstileMode,
+    });
+    let requestSeen = false;
+    await page.route('**/api/signup', () => {
+      requestSeen = true;
+    });
+    await page.fill('#signup-email', `${turnstileMode}@example.com`);
+    await page.selectOption('#signup-country', 'US');
+    await page.click('[data-submit]');
+    await page.waitForSelector('[data-form-error]:not([hidden])');
+    assert.match(
+      await page.locator('[data-form-error]').textContent(),
+      /couldn't complete the security check/u,
+    );
+    assert.equal(requestSeen, false);
+    assert.equal(await page.locator('[data-submit]').isEnabled(), true);
+    await context.close();
+  });
+}
 
 test('a double click submits exactly once', async () => {
   const { context, page } = await openForm();

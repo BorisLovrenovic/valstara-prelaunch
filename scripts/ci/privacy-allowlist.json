@@ -12,8 +12,16 @@
     },
     {
       "host": "challenges.cloudflare.com",
-      "pathPattern": "^src/islands/SignupForm\\.astro$",
-      "reason": "Cloudflare Turnstile bot-defence widget (ADR-006, E3-05). Cloudflare already fronts the whole zone as processor, and the challenge is consent-free — no cookie, no fingerprinting. It is the one always-on off-origin request (no flag), sanctioned under Option A, founder-authorised 2026-09-08."
+      "pathPattern": "^src/(?:islands/SignupForm|pages/verify)\\.astro$",
+      "reason": "Cloudflare Turnstile bot-defence widget (ADR-006, E3-05). The Article 5(3) basis is the verified absence of device storage/access; the site invokes no device-fingerprinting API. Cloudflare processes IP, TLS and user-agent signals server-side as a security processor.",
+      "disclosureContract": {
+        "article5_3Basis": "no-device-storage-or-access",
+        "siteDeviceFingerprintingApi": false,
+        "processorServerSideSignals": ["IP", "TLS", "user-agent"],
+        "processorRole": "security-processor",
+        "privacyPolicyDisclosure": "docs/legal/compliance.md#cloudflare-turnstile-processor-disclosure",
+        "legalSignOff": "required"
+      }
     }
   ]
 }

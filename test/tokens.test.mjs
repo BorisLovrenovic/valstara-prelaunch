@@ -24,8 +24,10 @@ const expectedRootTokens = {
   '--error': '#C0392B',
   '--warning': '#B7791F',
   '--success': '#2E7D57',
-  '--font-sans': "'Instrument Sans', system-ui, sans-serif",
-  '--font-mono': "'JetBrains Mono', ui-monospace, monospace",
+  '--font-sans':
+    "'Instrument Sans', 'Instrument Sans Fallback', system-ui, sans-serif",
+  '--font-mono':
+    "'JetBrains Mono', 'JetBrains Mono Fallback', ui-monospace, monospace",
   '--step-5': '2rem',
   '--leading-5': '2.5rem',
   '--step-4': '1.5rem',
@@ -268,5 +270,35 @@ test('declared body-text pairings meet WCAG AA in both themes', async () => {
   assert.ok(
     contrastRatio(root['--error'], root['--coral']) >= 1.2,
     '--error must be visibly distinct from --coral',
+  );
+});
+
+test('self-hosted Latin variable fonts have metric fallbacks and tabular-figure contract', async () => {
+  const source = await readFile(tokenPath, 'utf8');
+  for (const filename of [
+    'instrument-sans-latin-wght-normal.woff2',
+    'instrument-sans-latin-wght-normal.woff',
+    'jetbrains-mono-latin-wght-normal.woff2',
+    'jetbrains-mono-latin-wght-normal.woff',
+    'OFL-Instrument-Sans.txt',
+    'OFL-JetBrains-Mono.txt',
+  ]) {
+    assert.ok(
+      (await readFile(new URL(`../public/fonts/${filename}`, import.meta.url)))
+        .byteLength > 0,
+      `${filename} must ship`,
+    );
+  }
+  assert.match(
+    source,
+    /font-family: 'Instrument Sans Fallback'[\s\S]*size-adjust:[\s\S]*ascent-override:[\s\S]*descent-override:[\s\S]*line-gap-override:/u,
+  );
+  assert.match(
+    source,
+    /font-family: 'JetBrains Mono Fallback'[\s\S]*size-adjust:[\s\S]*ascent-override:[\s\S]*descent-override:[\s\S]*line-gap-override:/u,
+  );
+  assert.match(
+    source,
+    /\.tabular-figure\s*\{[\s\S]*font-family: var\(--font-mono\);[\s\S]*font-variant-numeric: tabular-nums;/u,
   );
 });

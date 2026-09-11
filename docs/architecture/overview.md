@@ -16,7 +16,7 @@ Each is re-derived from this campaign and traces to an ADR.
 
 2. **A signup is not a subscriber until it is verified.** Double opt-in is unconditional. Nothing is counted, ranked, rewarded or broadcast to before verification, because the entire funnel's honesty rests on that one boundary. → ADR-011
 
-3. **No non-essential cookie, ever — so there is no consent banner.** This is not a shortcut. Referral attribution is captured **server-side on the rendering request** and carried as a signed hidden field, analytics is cookieless, and no third-party script identifies a visitor. That combination puts the site outside ePrivacy Article 5(3) entirely, and it is the reason the measurement is trustworthy rather than a self-selected subset. → ADR-007, ADR-008
+3. **No non-essential cookie, ever — so there is no consent banner.** This is not a shortcut. Referral attribution is captured **server-side on the rendering request** and carried as a signed hidden field, analytics is cookieless, and the site runs no device-fingerprinting API. Because nothing is stored on or read from the visitor's device for a non-essential purpose, the site is outside ePrivacy Article 5(3); Cloudflare Turnstile's separate server-side processing of IP, TLS and user-agent security signals is disclosed as processor activity (`docs/legal/compliance.md`). That is the reason the measurement is trustworthy rather than a self-selected subset. → ADR-007, ADR-008
 
 4. **Fraud is answered by economics, not detection.** Cheap rewards confirm on verification; **high-value rewards are held until the referred person completes a first order after launch.** Detection layers exist, they *flag*, and a human decides. Nothing auto-bans. → ADR-012, ADR-013
 
@@ -87,7 +87,7 @@ C4Container
 
 **Everything runs on the existing €15 VPS beside the storefront's future services**, under Docker Compose with hard memory limits and no swap. Three rules follow and bind every ticket: **cap the batch size on every sweep and export**, **cache anything that a spike can read repeatedly**, and **never hold a whole result set in memory**. → ADR-003
 
-The one route that can generate real read volume during a viral moment is the leaderboard, and it is served from a cached snapshot rather than a live query (ADR-024). Everything else a spike touches is static and served by Cloudflare, so the origin only ever sees writes.
+The leaderboard is served from a cached snapshot rather than a live query (ADR-024). The landing response is also CDN-cacheable when it has no `?ref=` and all flags are at their registered defaults. Its cache identity is country plus `X-Valstara-Flag-Generation`; referral-bearing requests and any non-default flag state return `Cache-Control: private, no-store`. Verification and other bearer/query-dependent pages are never shared-cacheable. Cloudflare therefore absorbs anonymous read spikes while personalised state reaches the origin.
 
 ---
 
@@ -117,6 +117,8 @@ sequenceDiagram
   A-->>V: "Check your inbox" — never a position, never a count
 
   V->>A: GET /verify?token=...
+  A-->>V: Render inert confirmation page
+  V->>A: POST /verify (token)
   A->>DB: Consume single-use token, set status = verified
   A->>DB: Referral edge -> confirmed; cheap reward settles
   A->>DB: High-value reward -> HELD (waits on a post-launch first order)
@@ -222,7 +224,7 @@ flowchart TD
 
 | Concern | Approach | ADR |
 |---|---|---|
-| **Bot defence** | Cloudflare Turnstile, verified **server-side** on every write route. Free, unmetered, and consent-free — which is why it is not a fingerprinting library | 006 |
+| **Bot defence** | Cloudflare Turnstile, verified **server-side** on every public write route. Article 5(3): no device storage/access; the site runs no device-fingerprinting API; Cloudflare processes IP/TLS/UA server-side as security processor | 006 |
 | **Feature flags** | A small `campaign_flag` table with **code-registered fail-safe defaults**. Exists so the leaderboard or the giveaway can be switched off during an incident without a deploy | 023 |
 | **Audit** | Append-only `audit_log`, enforced by database permissions. Records disqualifications, flag decisions, exports, draw execution, admin actions and consent-relevant events | — |
 | **Analytics** | Umami self-hosted plus Cloudflare Web Analytics. Cookieless by construction; **a test asserts no non-essential cookie and no browser-storage identifier is ever set** | 007 |

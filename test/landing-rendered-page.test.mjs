@@ -94,13 +94,21 @@ async function createDatabaseFixture() {
   };
 }
 
-async function fetchLanding(port) {
+async function fetchLanding(port, path = '/') {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     try {
-      const response = await globalThis.fetch(`http://127.0.0.1:${port}/`);
+      const response = await globalThis.fetch(
+        `http://127.0.0.1:${port}${path}`,
+      );
       if (response.ok) {
         const body = await response.text();
-        return { body, setCookie: response.headers.get('set-cookie') };
+        return {
+          body,
+          cacheControl: response.headers.get('cache-control'),
+          flagGeneration: response.headers.get('x-valstara-flag-generation'),
+          setCookie: response.headers.get('set-cookie'),
+          vary: response.headers.get('vary'),
+        };
       }
     } catch {
       // The standalone server has not started yet.
@@ -110,17 +118,25 @@ async function fetchLanding(port) {
   throw new Error('Landing rendered-page test server did not start.');
 }
 
-async function renderLanding(setFlag) {
+// `flags` seeds `campaign_flag` rows before the server boots, so the server's
+// first flag read already reflects them (its in-process cache starts empty).
+// `paths` fetches one or more paths from the same running server. The single
+// path is returned unwrapped so the common case reads as before.
+async function renderLanding({ flags = [], paths = ['/'] } = {}) {
   const fixture = await createDatabaseFixture();
-  if (setFlag !== undefined) {
+  for (const { key, enabled } of flags) {
     await fixture.database.query(
       `INSERT INTO campaign_flag (key, enabled, updated_by) VALUES ($1, $2, $3)`,
-      ['signup.enabled', setFlag, 'e2-06-landing-test'],
+      [key, enabled, 'landing-rendered-page-test'],
     );
   }
   const { port, server } = startServer(fixture.databaseUrl);
   try {
-    return await fetchLanding(port);
+    const responses = [];
+    for (const path of paths) {
+      responses.push(await fetchLanding(port, path));
+    }
+    return paths.length === 1 ? responses[0] : responses;
   } finally {
     server.kill('SIGTERM');
     await once(server, 'exit');
@@ -128,12 +144,15 @@ async function renderLanding(setFlag) {
   }
 }
 
+const signupOn = { enabled: true, key: 'signup.enabled' };
+const signupOff = { enabled: false, key: 'signup.enabled' };
+
 before(async () => {
   await executeFile('npm', ['run', 'build']);
 });
 
 test('with signup.enabled on, the landing page renders the signup form and every section', async () => {
-  const { body, setCookie } = await renderLanding(true);
+  const { body, setCookie } = await renderLanding({ flags: [signupOn] });
 
   // The form posts to the signup route with no extra attributes, so the E1-11
   // slice's contract holds and E3-05 can later hydrate exactly this element.
@@ -166,7 +185,7 @@ test('with signup.enabled on, the landing page renders the signup form and every
 });
 
 test('with signup.enabled off, an honest paused message replaces the form', async () => {
-  const { body, setCookie } = await renderLanding(false);
+  const { body, setCookie } = await renderLanding({ flags: [signupOff] });
 
   // The form is gone — not present-but-broken — so nothing can fail on submit.
   assert.ok(!/<form action="\/api\/signup"/u.test(body));
@@ -185,7 +204,7 @@ test('the landing page ships only the theme toggle and signup form islands', asy
   // the signup form (E3-05) — plus Cloudflare's Turnstile loader, the one
   // always-on off-origin request (ADR-006, Option A). Every script must fall
   // into one of these three buckets; a third island or a stray script fails.
-  const { body } = await renderLanding(true);
+  const { body } = await renderLanding({ flags: [signupOn] });
 
   const scripts = [
     ...body.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gu),
@@ -194,7 +213,7 @@ test('the landing page ships only the theme toggle and signup form islands', asy
     script.content.includes('valstara-theme'),
   );
   const signupIsland = scripts.filter((script) =>
-    script.content.includes('valstara-signup-form'),
+    /SignupForm\.astro[^"']*\.js/u.test(script.attributes),
   );
   const turnstileLoader = scripts.filter((script) =>
     script.attributes.includes('challenges.cloudflare.com/turnstile'),
@@ -211,4 +230,29 @@ test('the landing page ships only the theme toggle and signup form islands', asy
 
   // No hydrated framework island is introduced, and no client directive leaks.
   assert.ok(!/client:(?:load|idle|visible|media|only)/u.test(body));
+});
+
+test('the landing cache header follows flag state and a ref, from the rendered page', async () => {
+  // Default flag state, no ref: the page is edge-cacheable, keyed on country and
+  // the flag generation. This is the fast path E12 relies on for the spike.
+  const [cacheable, referred] = await renderLanding({
+    paths: ['/', '/?ref=signed-ref'],
+  });
+  assert.equal(cacheable.cacheControl, 'public, max-age=0, s-maxage=300');
+  assert.equal(cacheable.vary, 'CF-IPCountry, X-Valstara-Flag-Generation');
+  assert.match(cacheable.flagGeneration ?? '', /^[a-f0-9]{16}$/u);
+
+  // A signed referral is per-request and must never be served from cache.
+  assert.equal(referred.cacheControl, 'private, no-store');
+
+  // A non-default flag state must bypass the cache too — otherwise a stale edge
+  // copy outlives a flag flip. `giveaway.open` defaults off, so turning it on is
+  // a non-default state that does not change the rendered form: this proves the
+  // bypass is driven by the flag generation itself, and it fails if the page
+  // stops consulting `hasNonDefaultFlagState`.
+  const flagged = await renderLanding({
+    flags: [{ enabled: true, key: 'giveaway.open' }],
+  });
+  assert.equal(flagged.cacheControl, 'private, no-store');
+  assert.match(flagged.body, /<form action="\/api\/signup" method="post">/u);
 });

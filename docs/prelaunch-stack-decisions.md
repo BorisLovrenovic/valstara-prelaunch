@@ -33,7 +33,7 @@
 | Waitlist API | Astro API routes, or a small Node service if you prefer the split | $0 |
 | Database | Separate `valstara_waitlist` Postgres 17 database — **never inside Medusa's** | $0 |
 | DNS / CDN | Cloudflare (existing zone), proxied | $0 |
-| Bot defence | Cloudflare Turnstile — free, unmetered, consent-free | $0 |
+| Bot defence | Cloudflare Turnstile — free, unmetered; Article 5(3) basis is no device storage/access, with IP/TLS/UA processed server-side under Cloudflare's security-processor role | $0 |
 | Transactional email | **Resend** on `send.valstara.com` | $0 → $60 |
 | Broadcast email | **Brevo** on `mail.valstara.com` (+$9/mo to remove branding) | $0 → ~$165 |
 | Analytics | **Umami self-hosted** + Cloudflare Web Analytics. No GA4, no consent banner. | $0 |

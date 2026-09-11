@@ -216,3 +216,80 @@ test('the landing page renders every section, in light and dark, at both extreme
   // The theme actually changes the rendered page: the two grounds differ.
   assert.notEqual(backgroundsByTheme.light, backgroundsByTheme.dark);
 });
+
+test('the ref-less landing response is cacheable by country and flag generation while ref bypasses', async () => {
+  const cacheable = await globalThis.fetch(hostOrigin, {
+    headers: { 'CF-IPCountry': 'SE' },
+  });
+  assert.equal(
+    cacheable.headers.get('cache-control'),
+    'public, max-age=0, s-maxage=300',
+  );
+  assert.equal(
+    cacheable.headers.get('vary'),
+    'CF-IPCountry, X-Valstara-Flag-Generation',
+  );
+  assert.match(
+    cacheable.headers.get('x-valstara-flag-generation') ?? '',
+    /^[a-f0-9]{16}$/u,
+  );
+
+  const referred = await globalThis.fetch(`${hostOrigin}/?ref=signed-ref`);
+  assert.equal(referred.headers.get('cache-control'), 'private, no-store');
+});
+
+test('the delayed self-hosted above-fold font swaps with zero rendered CLS and selective preload', async () => {
+  const context = await browser.newContext({
+    viewport: { width: 375, height: 900 },
+  });
+  await context.addInitScript(() => {
+    globalThis.__fontLayoutShift = 0;
+    globalThis.__fontLayoutShiftSources = [];
+    new globalThis.PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (!entry.hadRecentInput) {
+          globalThis.__fontLayoutShift += entry.value;
+          globalThis.__fontLayoutShiftSources.push(
+            ...entry.sources.map((source) => ({
+              currentRect: source.currentRect.toJSON(),
+              node: source.node?.outerHTML,
+              previousRect: source.previousRect.toJSON(),
+            })),
+          );
+        }
+      }
+    }).observe({ type: 'layout-shift', buffered: true });
+  });
+  await context.route('https://challenges.cloudflare.com/**', (route) =>
+    route.abort(),
+  );
+  await context.route('**/fonts/*.woff2', async (route) => {
+    const response = await route.fetch();
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 350));
+    await route.fulfill({ response });
+  });
+
+  const page = await context.newPage();
+  await page.goto(browserOrigin, { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => globalThis.document.fonts.ready);
+  await page.waitForTimeout(100);
+
+  const result = await page.evaluate(() => ({
+    cls: globalThis.__fontLayoutShift,
+    layoutShiftSources: globalThis.__fontLayoutShiftSources,
+    fonts: globalThis.performance
+      .getEntriesByType('resource')
+      .map((entry) => entry.name)
+      .filter((name) => name.includes('/fonts/')),
+    preloads: [
+      ...globalThis.document.querySelectorAll('link[rel="preload"][as="font"]'),
+    ].map((link) => link.getAttribute('href')),
+  }));
+  assert.equal(result.cls, 0, JSON.stringify(result.layoutShiftSources));
+  assert.deepEqual(result.preloads, [
+    '/fonts/instrument-sans-latin-wght-normal.woff2',
+  ]);
+  assert.ok(result.fonts.some((url) => url.includes('instrument-sans')));
+  assert.ok(result.fonts.every((url) => !url.includes('jetbrains-mono')));
+  await context.close();
+});

@@ -27,6 +27,7 @@ test('the PR workflow exposes the mandatory E1-04 and E1-05 check names', async 
     'security',
   ]);
   assert.equal((workflow.match(/- run: npm ci/g) ?? []).length, 6);
+  assert.equal((workflow.match(/node-version: 22\.22\.3/g) ?? []).length, 6);
   assert.match(workflow, /npm run lint && npm run format/);
   assert.match(workflow, /npm run typecheck/);
   assert.match(workflow, /npm test/);
@@ -34,6 +35,46 @@ test('the PR workflow exposes the mandatory E1-04 and E1-05 check names', async 
   assert.match(workflow, /npm run coverage/);
   assert.match(workflow, /npm run security/);
   assert.match(workflow, /npm run ci:security-red-paths/);
+});
+
+test('developer, CI, and local Compose Node versions satisfy lint plugin engines', async () => {
+  const [nvmVersion, packageJson, compose] = await Promise.all([
+    readFile(new URL('../.nvmrc', import.meta.url), 'utf8'),
+    readFile(new URL('../package.json', import.meta.url), 'utf8').then(
+      JSON.parse,
+    ),
+    readFile(
+      new URL('../infra/compose/docker-compose.yml', import.meta.url),
+      'utf8',
+    ),
+  ]);
+
+  assert.equal(nvmVersion.trim(), '22.22.3');
+  assert.equal(packageJson.engines.node, '>=22.22.3 <23');
+  assert.equal(
+    (compose.match(/image: node:22\.22\.3-bookworm-slim/g) ?? []).length,
+    3,
+  );
+});
+
+test('the integrated QA privacy and accessibility commands are runnable scripts', async () => {
+  const packageJson = JSON.parse(
+    await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+  );
+
+  assert.equal(
+    packageJson.scripts['test:a11y'],
+    'node --test test/accessibility.test.mjs',
+  );
+  assert.match(packageJson.scripts['test:privacy'], /security-gates\.mjs/u);
+  assert.match(
+    packageJson.scripts['test:privacy'],
+    /e1-11-rendered-page\.test\.mjs/u,
+  );
+  assert.match(
+    packageJson.scripts['test:privacy'],
+    /signup-form-rendered-page\.test\.mjs/u,
+  );
 });
 
 test('docs-only pull requests are excluded without excluding other changes', async () => {
