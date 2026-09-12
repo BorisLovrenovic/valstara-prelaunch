@@ -51,12 +51,19 @@ export interface SignupInput {
   readonly email: string;
   readonly country: string;
   readonly region?: string | undefined;
+  readonly referralCode?: string | null;
   readonly utm?: UtmParameters | null;
   readonly verificationUrl: (token: string) => string;
 }
 
 export interface SignupServiceDependencies {
   readonly clock?: () => Date;
+  readonly attributeReferral?: (
+    referredId: string,
+    code: string,
+    allowAttribution: boolean,
+  ) => Promise<unknown>;
+  readonly isReferralEnabled?: () => Promise<boolean>;
   readonly sendVerificationMail: VerificationMailSender;
 }
 
@@ -124,6 +131,22 @@ export function createSignupService(
       region,
       input.utm ?? null,
     );
+
+    // Only the initial row can receive attribution. Existing subscribers are
+    // still checked for self-referral, but their original referrer is never
+    // reassigned.
+    if (
+      input.referralCode !== undefined &&
+      input.referralCode !== null &&
+      dependencies.attributeReferral !== undefined &&
+      (await (dependencies.isReferralEnabled?.() ?? Promise.resolve(false)))
+    ) {
+      await dependencies.attributeReferral(
+        subscriber.id,
+        input.referralCode,
+        subscriber.created,
+      );
+    }
 
     if (subscriber.status === 'verified') {
       return { kind: 'already_verified', subscriber };
