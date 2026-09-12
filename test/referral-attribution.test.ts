@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
@@ -13,6 +14,48 @@ const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
 const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
+const repositorySourceExtensions = new Set(['.astro', '.sql', '.ts']);
+const referralChainTraversal = /WITH\s+RECURSIVE\b|referral[_ -]chain/iu;
+
+interface SourceFile {
+  readonly contents: string;
+  readonly path: string;
+}
+
+function repositorySourceFiles(repositoryRoot: string): readonly SourceFile[] {
+  const sourceDirectory = join(repositoryRoot, 'src');
+  const files: SourceFile[] = [];
+
+  function visit(directory: string): void {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        visit(path);
+      } else if (
+        entry.isFile() &&
+        repositorySourceExtensions.has(extname(path))
+      ) {
+        files.push({
+          contents: readFileSync(path, 'utf8'),
+          path: relative(repositoryRoot, path),
+        });
+      }
+    }
+  }
+
+  visit(sourceDirectory);
+  return files;
+}
+
+function assertNoReferralChainTraversal(sources: readonly SourceFile[]): void {
+  for (const source of sources) {
+    assert.doesNotMatch(
+      source.contents,
+      referralChainTraversal,
+      `${source.path} must not walk a referral chain`,
+    );
+  }
+}
 
 interface DatabaseFixture {
   readonly database: DatabasePool;
@@ -234,12 +277,22 @@ test('unknown codes and disabled attribution leave a signup unattributed', async
 
 test('the edge remains single-level and referred_by_id is database write-once', async () => {
   const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
-  const source = readFileSync(
-    `${repositoryRoot}/src/server/referral/service.ts`,
-    'utf8',
+  const sources = repositorySourceFiles(repositoryRoot);
+  assert.equal(
+    sources.some((source) => source.path === 'src/server/db/referral.ts'),
+    true,
   );
-  assert.doesNotMatch(source, /referred_by_id\s*=\s*.*referred_by_id/u);
-  assert.doesNotMatch(source, /WITH\s+RECURSIVE|referral[_ ]chain/iu);
+  assertNoReferralChainTraversal(sources);
+  assert.throws(
+    () =>
+      assertNoReferralChainTraversal([
+        {
+          contents: 'WITH RECURSIVE referral_chain AS (SELECT 1)',
+          path: 'src/server/db/referral.ts',
+        },
+      ]),
+    /src\/server\/db\/referral\.ts must not walk a referral chain/u,
+  );
 
   const fixture = await createDatabaseFixture();
   try {
