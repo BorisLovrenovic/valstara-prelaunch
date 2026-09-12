@@ -229,6 +229,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0008-e1-e3-runtime-role-permissions.sql',
       '0009-milestone-reward-kinds.sql',
       '0010-referral-utm-permissions.sql',
+      '0011-referral-attribution-permissions.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -244,6 +245,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0008-e1-e3-runtime-role-permissions.sql',
         '0009-milestone-reward-kinds.sql',
         '0010-referral-utm-permissions.sql',
+        '0011-referral-attribution-permissions.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -371,7 +373,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
           10,
         );
 
-        assert.equal(appliedCount, 10);
+        assert.equal(appliedCount, 11);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -385,6 +387,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0008-e1-e3-runtime-role-permissions.sql',
             '0009-milestone-reward-kinds.sql',
             '0010-referral-utm-permissions.sql',
+            '0011-referral-attribution-permissions.sql',
           ],
         );
       } finally {

@@ -48,7 +48,7 @@ Values, not schema. Changing any of them requires no migration.
 The held discount percentages (15% / 25%) are **confirmed production values** (ADR-025).
 
 ## Dependencies
-`db`, `audit`, `giveaway` (entry accrual on confirmation), `flags`.
+`db`, `audit`, `fraud` (the E4-03 `self_referral` signal only), `giveaway` (entry accrual on confirmation), `flags`.
 
 ## Contract tests
 Entropy and collision over a large generated sample · a tampered signed ref returns `null` · self-referral rejected and the signup still completes · duplicate edge rejected by the database · **seeded property test: `recomputeCounters()` is idempotent and matches the edges for any generated graph** · **a high-value reward cannot reach `settled` from a verification path** · rejecting a referrer's edges leaves referred subscribers' status unchanged.

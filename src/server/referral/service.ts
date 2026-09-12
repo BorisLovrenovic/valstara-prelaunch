@@ -4,7 +4,9 @@ import {
   createReferralRepository,
   type ReferralRepository,
 } from '../db/referral.ts';
-import type { DatabaseConnection } from '../db/pool.ts';
+import { createFraudFlagRepository } from '../db/fraud-flag.ts';
+import type { DatabaseConnection, DatabasePool } from '../db/pool.ts';
+import { withTransaction } from '../db/transaction.ts';
 
 import {
   referralCodeAlphabet,
@@ -20,7 +22,17 @@ export interface ReferralServiceDependencies {
   readonly createCode?: () => string;
 }
 
+export type AttributeResult =
+  | { readonly kind: 'attributed' }
+  | { readonly kind: 'self_referral' }
+  | { readonly kind: 'unattributed' };
+
 export interface ReferralService {
+  attribute(
+    referredId: string,
+    code: string,
+    allowAttribution?: boolean,
+  ): Promise<AttributeResult>;
   confirm(referredId: string, now: Date): Promise<void>;
   generateCode(subscriberId: string): Promise<string>;
   getReferralCode(subscriberId: string): Promise<string | null>;
@@ -32,14 +44,28 @@ export interface ReferralService {
  * signed refs, and later repair/settlement paths remain in their owning tickets.
  */
 export function createReferralService(
-  database: DatabaseConnection,
+  database: DatabaseConnection | DatabasePool,
   dependencies: ReferralServiceDependencies = {},
 ): ReferralService {
+  const createCode = dependencies.createCode ?? createReferralCode;
   return createReferralServiceWithRepository(
     createReferralRepository(database),
-    dependencies.createCode ?? createReferralCode,
+    createCode,
+    isDatabasePool(database)
+      ? (operation) =>
+          withTransaction(database, async (connection) =>
+            operation(connection),
+          )
+      : async (operation) => operation(database),
   );
 }
+
+type AttributionOperation = (
+  connection: DatabaseConnection,
+) => Promise<AttributeResult>;
+type AttributionTransaction = (
+  operation: AttributionOperation,
+) => Promise<AttributeResult>;
 
 export function createReferralCode(): string {
   let code = '';
@@ -63,8 +89,48 @@ export function createReferralCode(): string {
 function createReferralServiceWithRepository(
   repository: ReferralRepository,
   createCode: () => string,
+  runAttributionTransaction: AttributionTransaction,
 ): ReferralService {
   return {
+    async attribute(referredId, code, allowAttribution = true) {
+      return runAttributionTransaction(async (connection) => {
+        const transactionalRepository = createReferralRepository(connection);
+        const referrerId = await transactionalRepository.findSubscriberIdByCode(
+          code,
+        );
+        if (referrerId === null) {
+          return { kind: 'unattributed' };
+        }
+        if (referrerId === referredId) {
+          await createFraudFlagRepository(connection).insertSelfReferralFlag({
+            id: randomUUID(),
+            subscriberId: referredId,
+          });
+          return { kind: 'self_referral' };
+        }
+        if (!allowAttribution) {
+          return { kind: 'unattributed' };
+        }
+
+        const inserted = await transactionalRepository.insertAttributedEdge(
+          randomUUID(),
+          referrerId,
+          referredId,
+        );
+        if (inserted === 0) {
+          return { kind: 'unattributed' };
+        }
+
+        const assigned = await transactionalRepository.assignReferrer(
+          referredId,
+          referrerId,
+        );
+        if (assigned !== 1) {
+          throw new Error('Referral attribution could not assign its referrer.');
+        }
+        return { kind: 'attributed' };
+      });
+    },
     async confirm(referredId, now) {
       const edge = await repository.findEdgeForConfirmation(referredId);
       if (edge === null) {
@@ -189,6 +255,12 @@ function createReferralServiceWithRepository(
       return repository.findSubscriberIdByCode(code);
     },
   };
+}
+
+function isDatabasePool(
+  database: DatabaseConnection | DatabasePool,
+): database is DatabasePool {
+  return 'connect' in database;
 }
 
 function isReferralCodeCollision(error: unknown): boolean {

@@ -17,6 +17,7 @@ export interface ReferralSubscriber {
 
 export interface ReferralRepository {
   assignReferralCode(subscriberId: string, code: string): Promise<number>;
+  assignReferrer(referredId: string, referrerId: string): Promise<number>;
   confirmEdge(referredId: string, now: Date): Promise<number>;
   countConfirmedEdges(referrerId: string): Promise<number>;
   findCode(subscriberId: string): Promise<string | null>;
@@ -33,6 +34,11 @@ export interface ReferralRepository {
     rewardKind: 'discount' | 'entries' | 'wave_upgrade',
     state: 'held' | 'settled',
     now: Date,
+  ): Promise<number>;
+  insertAttributedEdge(
+    id: string,
+    referrerId: string,
+    referredId: string,
   ): Promise<number>;
   setAccessWindow(subscriberId: string, window: AccessWindow): Promise<number>;
   setReferralCounterAndTier(
@@ -57,6 +63,17 @@ export function createReferralRepository(
             AND referral_code IS NULL
         `,
         values: [subscriberId, code],
+      });
+    },
+
+    async assignReferrer(referredId, referrerId) {
+      return database.execute({
+        text: `
+          UPDATE subscriber
+          SET referred_by_id = $2, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND referred_by_id IS NULL
+        `,
+        values: [referredId, referrerId],
       });
     },
 
@@ -151,6 +168,19 @@ export function createReferralRepository(
           ON CONFLICT (subscriber_id, tier, reward_kind) DO NOTHING
         `,
         values: [id, subscriberId, tier, rewardKind, state, now],
+      });
+    },
+
+    async insertAttributedEdge(id, referrerId, referredId) {
+      return database.execute({
+        text: `
+          INSERT INTO referral_edge (
+            id, referrer_id, referred_id, state, reward_state
+          )
+          VALUES ($1, $2, $3, 'attributed', 'none')
+          ON CONFLICT (referred_id) DO NOTHING
+        `,
+        values: [id, referrerId, referredId],
       });
     },
 

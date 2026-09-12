@@ -17,6 +17,12 @@ export interface FraudFlagRepository {
   insertChallengeTimeoutFlag(
     input: ChallengeTimeoutFlagInsert,
   ): Promise<number>;
+  insertSelfReferralFlag(input: SelfReferralFlagInsert): Promise<number>;
+}
+
+export interface SelfReferralFlagInsert {
+  readonly id: string;
+  readonly subscriberId: string;
 }
 
 // The detail never carries a token, a secret, a full IP or an email — only the
@@ -24,6 +30,7 @@ export interface FraudFlagRepository {
 const challengeTimeoutDetail = JSON.stringify({
   reason: 'turnstile_provider_timeout',
 });
+const selfReferralDetail = JSON.stringify({ reason: 'self_referral' });
 
 /**
  * The data layer for the one `fraud_flag` write E3-03 owns: the Turnstile
@@ -50,6 +57,22 @@ export function createFraudFlagRepository(
           )
         `,
         values: [input.id, input.subscriberId, challengeTimeoutDetail],
+      });
+    },
+    async insertSelfReferralFlag(input) {
+      return database.execute({
+        text: `
+          INSERT INTO fraud_flag (id, subscriber_id, kind, detail, state)
+          SELECT $1, $2, 'self_referral', $3::jsonb, 'open'
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM fraud_flag
+            WHERE subscriber_id = $2
+              AND kind = 'self_referral'
+              AND state = 'open'
+          )
+        `,
+        values: [input.id, input.subscriberId, selfReferralDetail],
       });
     },
   };

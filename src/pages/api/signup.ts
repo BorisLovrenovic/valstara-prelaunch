@@ -13,6 +13,7 @@ import {
   createReferralCaptureService,
   type ReferralCapture,
 } from '../../server/referral/capture.ts';
+import { createReferralService } from '../../server/referral/service.ts';
 import { consumeRateLimit } from '../../server/ratelimit/consume.ts';
 import { hashedIpPrefix } from '../../server/ratelimit/ip-prefix.ts';
 import {
@@ -248,6 +249,7 @@ export function createSignupRoute(
       outcome = await dependencies.signup({
         country: body.country,
         email: body.email,
+        referralCode: referralCapture?.ref ?? null,
         region: body.region,
         utm: referralCapture?.utm ?? null,
         verificationUrl: (token) => {
@@ -321,13 +323,6 @@ function defaultDependencies(): SignupRouteDependencies {
       );
       return count > limit ? 'rate_limited' : 'ok';
     },
-    signup: (input) =>
-      createSignupService(getDatabase(), {
-        sendVerificationMail: createResendTestMailSender(
-          config.resendApiKey,
-          config.resendTestRecipient,
-        ),
-      })(input),
     verifyReferralCapture: (signed) =>
       createReferralCaptureService(config.referralSigningSecret).verifyRef(
         signed,
@@ -340,6 +335,21 @@ function defaultDependencies(): SignupRouteDependencies {
         },
       );
     },
+    signup: (input) =>
+      createSignupService(getDatabase(), {
+        attributeReferral: (referredId, code, allowAttribution) =>
+          createReferralService(getDatabase()).attribute(
+            referredId,
+            code,
+            allowAttribution,
+          ),
+        isReferralEnabled: () =>
+          getFlagService().isEnabled('referral.enabled'),
+        sendVerificationMail: createResendTestMailSender(
+          config.resendApiKey,
+          config.resendTestRecipient,
+        ),
+      })(input),
   };
 }
 
