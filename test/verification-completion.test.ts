@@ -413,6 +413,20 @@ test('with referral.enabled off, verification still confirms and settles an exis
   const fixture = await createDatabaseFixture();
   try {
     const referrerId = await insertSubscriber(fixture.database, 'verified');
+    for (let index = 0; index < 2; index += 1) {
+      const priorReferralId = await insertSubscriber(
+        fixture.database,
+        'verified',
+      );
+      await fixture.database.execute({
+        text: `
+          INSERT INTO referral_edge (
+            id, referrer_id, referred_id, state, reward_state, confirmed_at
+          ) VALUES ($1, $2, $3, 'confirmed', 'settled', $4)
+        `,
+        values: [randomUUID(), referrerId, priorReferralId, now],
+      });
+    }
     const referredId = await insertSubscriber(fixture.database, 'pending');
     await seedAttributedEdge(fixture.database, referrerId, referredId);
     await seedVerificationToken(fixture.database, referredId, 'flag-off-token');
@@ -443,6 +457,26 @@ test('with referral.enabled off, verification still confirms and settles an exis
       values: [referredId],
     });
     assert.deepEqual(edge, { reward_state: 'settled', state: 'confirmed' });
+    assert.deepEqual(
+      await fixture.database.readOne({
+        text: 'SELECT referral_tier FROM subscriber WHERE id = $1',
+        values: [referrerId],
+      }),
+      { referral_tier: 1 },
+    );
+    assert.equal(
+      (
+        await fixture.database.readOne<{ count: string }>({
+          text: `
+            SELECT COUNT(*)::text AS count
+            FROM milestone_award
+            WHERE subscriber_id = $1 AND tier = 1
+          `,
+          values: [referrerId],
+        })
+      )?.count,
+      '3',
+    );
   } finally {
     await fixture.dispose();
   }
