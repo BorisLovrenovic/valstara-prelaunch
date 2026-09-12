@@ -5,6 +5,7 @@ import test from 'node:test';
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import { createStrandedReferralReconciliationJob } from '../src/server/referral/reconcile-stranded.ts';
+import { createReferralService } from '../src/server/referral/service.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
 
 const defaultDatabaseUrl =
@@ -243,6 +244,91 @@ test('verification commits the referral completion together and holds high-value
   }
 });
 
+test('an attributed edge cannot confirm before its referred subscriber verifies', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const referrerId = await insertSubscriber(fixture.database, 'verified');
+    const referredId = await insertSubscriber(fixture.database, 'pending');
+    await seedAttributedEdge(fixture.database, referrerId, referredId);
+
+    await createReferralService(fixture.database).confirm(referredId, now);
+
+    const edge = await fixture.database.readOne<{ state: string }>({
+      text: 'SELECT state FROM referral_edge WHERE referred_id = $1',
+      values: [referredId],
+    });
+    const referrer = await fixture.database.readOne<{
+      confirmed_referrals: number;
+    }>({
+      text: 'SELECT confirmed_referrals FROM subscriber WHERE id = $1',
+      values: [referrerId],
+    });
+    assert.deepEqual(edge, { state: 'attributed' });
+    assert.deepEqual(referrer, { confirmed_referrals: 0 });
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+test('confirmation derives the counter from edges and evaluates each milestone only once', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const referrerId = await insertSubscriber(fixture.database, 'verified');
+    await fixture.database.execute({
+      text: 'UPDATE subscriber SET confirmed_referrals = 99 WHERE id = $1',
+      values: [referrerId],
+    });
+    for (let index = 0; index < 2; index += 1) {
+      const priorReferredId = await insertSubscriber(
+        fixture.database,
+        'verified',
+      );
+      await fixture.database.execute({
+        text: `
+          INSERT INTO referral_edge (
+            id, referrer_id, referred_id, state, reward_state, confirmed_at
+          ) VALUES ($1, $2, $3, 'confirmed', 'settled', $4)
+        `,
+        values: [randomUUID(), referrerId, priorReferredId, now],
+      });
+    }
+    const referredId = await insertSubscriber(fixture.database, 'verified');
+    await seedAttributedEdge(fixture.database, referrerId, referredId);
+
+    const referral = createReferralService(fixture.database);
+    await referral.confirm(referredId, now);
+    await referral.confirm(referredId, now);
+
+    const referrer = await fixture.database.readOne<{
+      confirmed_referrals: number;
+      referral_tier: number;
+    }>({
+      text: 'SELECT confirmed_referrals, referral_tier FROM subscriber WHERE id = $1',
+      values: [referrerId],
+    });
+    const awards = await fixture.database.list<{ reward_kind: string }>(
+      {
+        text: `
+          SELECT reward_kind
+          FROM milestone_award
+          WHERE subscriber_id = $1
+          ORDER BY reward_kind
+        `,
+        values: [referrerId],
+      },
+      3,
+    );
+    assert.deepEqual(referrer, { confirmed_referrals: 3, referral_tier: 1 });
+    assert.deepEqual(awards, [
+      { reward_kind: 'discount' },
+      { reward_kind: 'entries' },
+      { reward_kind: 'wave_upgrade' },
+    ]);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
 test('an induced failure rolls back every E3-07 transition', async () => {
   const fixture = await createDatabaseFixture();
   try {
@@ -268,7 +354,7 @@ test('an induced failure rolls back every E3-07 transition', async () => {
 
     const complete = createVerificationCompletionService(fixture.database, {
       afterStep: async (step) => {
-        if (step === 'access-window') {
+        if (step === 'referral-confirmed') {
           throw new Error('induced mid-transaction failure');
         }
       },

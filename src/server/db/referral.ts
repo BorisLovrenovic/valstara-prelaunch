@@ -111,9 +111,12 @@ export function createReferralRepository(
     async findEdgeForConfirmation(referredId) {
       return database.readOne<ReferralEdgeForConfirmation>({
         text: `
-          SELECT id, referrer_id
-          FROM referral_edge
-          WHERE referred_id = $1 AND state = 'attributed'
+          SELECT edge.id, edge.referrer_id
+          FROM referral_edge edge
+          JOIN subscriber referred ON referred.id = edge.referred_id
+          WHERE edge.referred_id = $1
+            AND edge.state = 'attributed'
+            AND referred.status = 'verified'
         `,
         values: [referredId],
       });
