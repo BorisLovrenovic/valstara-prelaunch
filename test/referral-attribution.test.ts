@@ -99,7 +99,10 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
 
 async function insertSubscriber(
   database: DatabasePool,
-  values: { readonly code?: string; readonly status?: 'pending' | 'verified' } = {},
+  values: {
+    readonly code?: string;
+    readonly status?: 'pending' | 'verified';
+  } = {},
 ): Promise<string> {
   const id = randomUUID();
   const status = values.status ?? 'pending';
@@ -122,7 +125,10 @@ async function insertSubscriber(
   return id;
 }
 
-async function edgeCount(database: DatabasePool, referredId: string): Promise<number> {
+async function edgeCount(
+  database: DatabasePool,
+  referredId: string,
+): Promise<number> {
   const row = await database.readOne<{ count: string }>({
     text: 'SELECT COUNT(*)::text AS count FROM referral_edge WHERE referred_id = $1',
     values: [referredId],
@@ -177,7 +183,10 @@ test('concurrent attribution writes exactly one database-backed edge and stamps 
         values: [randomUUID(), referrerId, directReferredId],
       }),
     ]);
-    assert.equal(writes.filter((write) => write.status === 'fulfilled').length, 1);
+    assert.equal(
+      writes.filter((write) => write.status === 'fulfilled').length,
+      1,
+    );
     assert.equal(
       writes.some(
         (write) =>

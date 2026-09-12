@@ -53,9 +53,7 @@ export function createReferralService(
     createCode,
     isDatabasePool(database)
       ? (operation) =>
-          withTransaction(database, async (connection) =>
-            operation(connection),
-          )
+          withTransaction(database, async (connection) => operation(connection))
       : async (operation) => operation(database),
   );
 }
@@ -95,9 +93,8 @@ function createReferralServiceWithRepository(
     async attribute(referredId, code, allowAttribution = true) {
       return runAttributionTransaction(async (connection) => {
         const transactionalRepository = createReferralRepository(connection);
-        const referrerId = await transactionalRepository.findSubscriberIdByCode(
-          code,
-        );
+        const referrerId =
+          await transactionalRepository.findSubscriberIdByCode(code);
         if (referrerId === null) {
           return { kind: 'unattributed' };
         }
@@ -126,7 +123,9 @@ function createReferralServiceWithRepository(
           referrerId,
         );
         if (assigned !== 1) {
-          throw new Error('Referral attribution could not assign its referrer.');
+          throw new Error(
+            'Referral attribution could not assign its referrer.',
+          );
         }
         return { kind: 'attributed' };
       });

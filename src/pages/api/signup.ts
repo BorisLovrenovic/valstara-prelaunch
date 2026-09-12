@@ -343,8 +343,7 @@ function defaultDependencies(): SignupRouteDependencies {
             code,
             allowAttribution,
           ),
-        isReferralEnabled: () =>
-          getFlagService().isEnabled('referral.enabled'),
+        isReferralEnabled: () => getFlagService().isEnabled('referral.enabled'),
         sendVerificationMail: createResendTestMailSender(
           config.resendApiKey,
           config.resendTestRecipient,
