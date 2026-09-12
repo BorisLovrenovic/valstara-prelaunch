@@ -21,11 +21,17 @@ export interface ReferralRepository {
   confirmEdge(referredId: string, now: Date): Promise<number>;
   countConfirmedEdges(referrerId: string): Promise<number>;
   findCode(subscriberId: string): Promise<string | null>;
+  findMilestoneBackfillCandidateIds(
+    tier: number,
+    threshold: number,
+    limit: number,
+  ): Promise<readonly string[]>;
   findEdgeForConfirmation(
     referredId: string,
   ): Promise<ReferralEdgeForConfirmation | null>;
   findSubscriber(subscriberId: string): Promise<ReferralSubscriber | null>;
   findSubscriberIdByCode(code: string): Promise<string | null>;
+  findSettledReferralTier(subscriberId: string): Promise<number>;
   findStrandedVerifiedReferralIds(limit: number): Promise<readonly string[]>;
   insertMilestoneAward(
     id: string,
@@ -40,6 +46,7 @@ export interface ReferralRepository {
     referrerId: string,
     referredId: string,
   ): Promise<number>;
+  lockSubscriber(subscriberId: string): Promise<ReferralSubscriber | null>;
   setAccessWindow(subscriberId: string, window: AccessWindow): Promise<number>;
   setReferralCounterAndTier(
     subscriberId: string,
@@ -108,6 +115,37 @@ export function createReferralRepository(
       return row?.referral_code ?? null;
     },
 
+    async findMilestoneBackfillCandidateIds(tier, threshold, limit) {
+      if (!Number.isInteger(limit) || limit < 1) {
+        throw new RangeError('A milestone backfill limit must be positive.');
+      }
+      return (
+        await database.list<{ id: string }>(
+          {
+            text: `
+              SELECT subscriber.id
+              FROM subscriber
+              JOIN referral_edge
+                ON referral_edge.referrer_id = subscriber.id
+               AND referral_edge.state = 'confirmed'
+              WHERE subscriber.status = 'verified'
+                AND NOT EXISTS (
+                  SELECT 1
+                  FROM milestone_award
+                  WHERE milestone_award.subscriber_id = subscriber.id
+                    AND milestone_award.tier = $1
+                )
+              GROUP BY subscriber.id, subscriber.created_at
+              HAVING COUNT(referral_edge.id) >= $2
+              ORDER BY subscriber.created_at, subscriber.id
+            `,
+            values: [tier, threshold],
+          },
+          limit,
+        )
+      ).map((row) => row.id);
+    },
+
     async findEdgeForConfirmation(referredId) {
       return database.readOne<ReferralEdgeForConfirmation>({
         text: `
@@ -139,6 +177,18 @@ export function createReferralRepository(
         values: [code],
       });
       return row?.id ?? null;
+    },
+
+    async findSettledReferralTier(subscriberId) {
+      const row = await database.readOne<{ tier: number }>({
+        text: `
+          SELECT COALESCE(MAX(tier), 0)::integer AS tier
+          FROM milestone_award
+          WHERE subscriber_id = $1 AND state = 'settled'
+        `,
+        values: [subscriberId],
+      });
+      return row?.tier ?? 0;
     },
 
     async findStrandedVerifiedReferralIds(limit) {
@@ -184,6 +234,18 @@ export function createReferralRepository(
           ON CONFLICT (referred_id) DO NOTHING
         `,
         values: [id, referrerId, referredId],
+      });
+    },
+
+    async lockSubscriber(subscriberId) {
+      return database.readOne<ReferralSubscriber>({
+        text: `
+          SELECT status, referral_code, confirmed_referrals, referral_tier, access_window
+          FROM subscriber
+          WHERE id = $1
+          FOR UPDATE
+        `,
+        values: [subscriberId],
       });
     },
 

@@ -2,6 +2,7 @@ export const auditActions = [
   'subscriber.disqualified',
   'subscriber.anonymised',
   'fraud.reviewed',
+  'referral.milestone_backfilled',
   'flag.changed',
   'export.run',
   'draw.executed',

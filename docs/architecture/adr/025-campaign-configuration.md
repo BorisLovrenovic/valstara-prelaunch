@@ -43,6 +43,14 @@ Tier 1 ships. Tier 2 is cut-list item 7 (`docs/features/README.md#cut-list-in-or
 added mid-campaign with no migration, and **never retroactively awarded** to people who
 already passed it unless a separate, audited backfill runs (E4-05).
 
+Milestones are evaluated on each edge confirmation and a newly enabled tier is awarded
+only when that confirmation reaches its configured threshold. Subscribers already above
+the threshold are unchanged. A deliberate retroactive award uses the actor-named,
+batch-capped referral backfill action; each batch is recorded as
+`referral.milestone_backfilled`. The subscriber's cached `referral_tier` is then derived
+from the highest settled milestone award, never directly from the ladder or referral
+count.
+
 ### Access-window bands (`access_window`, assigned at verification — E4-07)
 Assignment is deterministic **at the moment of verification**, so the bands are absolute
 verification-order thresholds, not shares of the final list (the final size is not known

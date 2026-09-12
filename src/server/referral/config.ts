@@ -8,6 +8,18 @@ export interface MilestoneTier {
   readonly threshold: number;
 }
 
+export function milestoneReachedAtConfirmation(
+  confirmedReferrals: number,
+  tiers: readonly MilestoneTier[] = milestoneTiers,
+): MilestoneTier | null {
+  return (
+    tiers.find(
+      (candidate) =>
+        candidate.enabled && candidate.threshold === confirmedReferrals,
+    ) ?? null
+  );
+}
+
 /**
  * Founder-confirmed campaign values from ADR-025. Tier 2 remains present as
  * configuration but disabled until its explicit mid-campaign activation; this
@@ -60,14 +72,4 @@ export function promoteAccessWindow(
   ];
   const current = windows.indexOf(window);
   return windows[Math.max(0, current - tiers)] ?? 'wave-1';
-}
-
-export function tierForConfirmedReferrals(confirmedReferrals: number): number {
-  return milestoneTiers.reduce(
-    (tier, candidate) =>
-      candidate.enabled && confirmedReferrals >= candidate.threshold
-        ? candidate.number
-        : tier,
-    0,
-  );
 }
