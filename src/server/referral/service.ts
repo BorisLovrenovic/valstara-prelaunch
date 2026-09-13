@@ -12,23 +12,35 @@ import { withTransaction } from '../db/transaction.ts';
 import {
   referralCodeAlphabet,
   referralCodeLength,
+  milestoneRewardClassifications,
   milestoneTiers,
   milestoneReachedAtConfirmation,
   type MilestoneTier,
+  type RewardClassifications,
   promoteAccessWindow,
 } from './config.ts';
+import {
+  rewardStateAtCampaignClose,
+  rewardStateAtConfirmation,
+} from './reward-state.ts';
 
 const maximumCodeAttempts = 10;
 export const milestoneBackfillMaximumLimit = 100;
+export const campaignCloseVoidMaximumLimit = 100;
 
 export interface ReferralServiceDependencies {
   readonly createCode?: () => string;
+  readonly rewardClassifications?: RewardClassifications;
   readonly tiers?: readonly MilestoneTier[];
 }
 
 export interface MilestoneBackfillResult {
   readonly awarded: number;
   readonly checked: number;
+}
+
+export interface CampaignCloseVoidResult {
+  readonly voided: number;
 }
 
 export type AttributeResult =
@@ -52,21 +64,27 @@ export interface ReferralService {
   generateCode(subscriberId: string): Promise<string>;
   getReferralCode(subscriberId: string): Promise<string | null>;
   lookupCode(code: string): Promise<string | null>;
+  voidHeldRewardsAtCampaignClose(
+    limit: number,
+  ): Promise<CampaignCloseVoidResult>;
 }
 
 /**
  * Referral operations used by E3-07's verification transaction. Attribution,
- * signed refs, and later repair/settlement paths remain in their owning tickets.
+ * signed refs, confirmation rewards, and campaign-close voiding live here.
  */
 export function createReferralService(
   database: DatabaseConnection | DatabasePool,
   dependencies: ReferralServiceDependencies = {},
 ): ReferralService {
   const createCode = dependencies.createCode ?? createReferralCode;
+  const rewardClassifications =
+    dependencies.rewardClassifications ?? milestoneRewardClassifications;
   const tiers = dependencies.tiers ?? milestoneTiers;
   return createReferralServiceWithRepository(
     createReferralRepository(database),
     createCode,
+    rewardClassifications,
     tiers,
     isDatabasePool(database)
       ? (operation) =>
@@ -101,6 +119,7 @@ export function createReferralCode(): string {
 function createReferralServiceWithRepository(
   repository: ReferralRepository,
   createCode: () => string,
+  rewardClassifications: RewardClassifications,
   tiers: readonly MilestoneTier[],
   runTransaction: ReferralTransaction,
 ): ReferralService {
@@ -190,6 +209,7 @@ function createReferralServiceWithRepository(
               transactionalRepository,
               subscriberId,
               tier,
+              rewardClassifications,
               now,
             )
           ) {
@@ -249,6 +269,7 @@ function createReferralServiceWithRepository(
 
         const confirmed = await transactionalRepository.confirmEdge(
           referredId,
+          rewardStateAtConfirmation('cheap'),
           now,
         );
         if (confirmed !== 1) {
@@ -271,6 +292,7 @@ function createReferralServiceWithRepository(
             transactionalRepository,
             edge.referrer_id,
             reachedTier,
+            rewardClassifications,
             now,
           ))
         ) {
@@ -343,6 +365,30 @@ function createReferralServiceWithRepository(
     async lookupCode(code) {
       return repository.findSubscriberIdByCode(code);
     },
+
+    async voidHeldRewardsAtCampaignClose(limit) {
+      assertCampaignCloseVoidLimit(limit);
+      return runTransaction(async (connection) => {
+        const transactionalRepository = createReferralRepository(connection);
+        const voidState = rewardStateAtCampaignClose('held');
+        const heldAwardIds =
+          await transactionalRepository.findHeldMilestoneAwardIds(limit);
+        const voidedAwards = await transactionalRepository.voidMilestoneAwards(
+          heldAwardIds,
+          voidState,
+        );
+        const remaining = limit - voidedAwards;
+        const heldEdgeIds =
+          remaining === 0
+            ? []
+            : await transactionalRepository.findHeldReferralEdgeIds(remaining);
+        const voidedEdges = await transactionalRepository.voidReferralEdges(
+          heldEdgeIds,
+          voidState,
+        );
+        return { voided: voidedAwards + voidedEdges };
+      });
+    },
   };
 }
 
@@ -350,6 +396,7 @@ async function awardMilestone(
   repository: ReferralRepository,
   subscriberId: string,
   tier: MilestoneTier,
+  rewardClassifications: RewardClassifications,
   now: Date,
 ): Promise<boolean> {
   // The settled wave upgrade is the tier-progress record. Inserting it first
@@ -359,7 +406,7 @@ async function awardMilestone(
     subscriberId,
     tier.number,
     'wave_upgrade',
-    'settled',
+    rewardStateAtConfirmation(rewardClassifications.wave_upgrade),
     now,
   );
   if (inserted === 0) {
@@ -371,7 +418,7 @@ async function awardMilestone(
       subscriberId,
       tier.number,
       'discount',
-      'held',
+      rewardStateAtConfirmation(rewardClassifications.discount),
       now,
     );
   }
@@ -381,11 +428,23 @@ async function awardMilestone(
       subscriberId,
       tier.number,
       'entries',
-      'held',
+      rewardStateAtConfirmation(rewardClassifications.entries),
       now,
     );
   }
   return true;
+}
+
+function assertCampaignCloseVoidLimit(limit: number): void {
+  if (
+    !Number.isInteger(limit) ||
+    limit < 1 ||
+    limit > campaignCloseVoidMaximumLimit
+  ) {
+    throw new RangeError(
+      `A campaign-close void limit must be between 1 and ${campaignCloseVoidMaximumLimit}.`,
+    );
+  }
 }
 
 function isDatabasePool(

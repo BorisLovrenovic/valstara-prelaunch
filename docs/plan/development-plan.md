@@ -813,14 +813,13 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — **Extra High** · **Priority:** Highest · **Flag:** `referral.enabled` · **Area:** backend
 **Why this tier:** this is the campaign's central anti-fraud invariant (ADR-012). Every other fraud control is secondary to it, and a subtle path that settles a high-value reward from a verification undoes all of them at once.
 
-**Build:** The reward state machine: `none` → `settled` for cheap rewards on confirmation; `held` for high-value rewards, settling **only** on a post-launch first order, becoming `void` at campaign close. The classification of cheap versus high-value is configuration.
+**Build:** The pre-launch reward state machine: `none` → `settled` for cheap rewards on confirmation; `none` → `held` for high-value rewards on confirmation; and `held` → `void` at campaign close. The classification of cheap versus high-value is configuration. `held` → `settled` on a qualifying first order is deliberately **not** a pre-launch transition: the storefront (Medusa) is the authoritative order source and owns that transition after the handoff. This repository never reads or writes Medusa.
 
 **Acceptance criteria:**
 - **No code path settles a high-value reward from a verification** — asserted by enumerating every transition into `settled` and proving each one's precondition
 - Cheap rewards settle on confirmation
 - **Held rewards that never qualify become `void` — recorded, never deleted**, because the rule was published and must be checkable
 - The classification is configuration, changeable without a migration
-- **The milestone email plainly states which reward is settled and which is held** — a reward someone believes they have and does not receive is worse than one they knew was conditional
 
 **Tests:** **A generated test over every transition into `settled`, asserting its precondition** · a seeded property test over generated referral graphs asserting no held reward settles without a qualifying order · the void path at campaign close.
 **Docs:** `docs/architecture/adr/012-reward-gating.md` · `docs/modules/referral.md` · `docs/security/threat-model.md#t2--referral-fraud-discredits-the-leaderboard`
@@ -1646,13 +1645,15 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Build:** `scripts/export-handoff.ts` producing the export set and payload per `docs/data/model.md#the-launch-day-handoff-contract`, and `scripts/import-rehearsal.ts` performing the idempotent import keyed on `email_normalised` against a scratch database. **Rehearse twice.**
 
+**Reward-gating boundary (founder-authorised 2026-09-13):** E4-06 owns the pre-launch hold and bounded campaign-close void transition. A qualifying post-launch first order comes only from the storefront (Medusa), which applies `held` → `settled` after the handoff; the pre-launch repository never reads or writes Medusa and the waitlist database becomes read-only after handoff. This ticket's handoff-time reconciliation exports the held-reward records, applies the published campaign-close void rule where applicable, and records every held reward's outcome.
+
 **Acceptance criteria:**
 - The export set is exactly *verified, unsuppressed, not disqualified* — asserted, so a **pending or `expired` row is absent** (E3-08's deferred handoff-exclusion assertion, owned here — standing rule 20)
 - **Every field in the handoff contract is present and correctly typed**
 - **Running the import twice produces zero additional customers** — the invariant, asserted, and a failure here is blocking
 - **Customer groups `wave-1`…`wave-4` and `subslush-legacy` are assigned**, and their values match what the storefront expects
 - **Both rehearsals are executed against a scratch database and recorded in the repository**
-- Held referral rewards are settled or voided per the published rule, and **every held edge's outcome is recorded**
+- Held referral rewards are reconciled per the published rule — voided in pre-launch where the campaign-close rule applies, otherwise handed to the storefront for first-order settlement — and **every held reward's outcome is recorded**
 - The export is streamed and batch-capped
 
 **Tests:** Double-import idempotency · field completeness against the contract · group assignment · the held-reward settlement pass.

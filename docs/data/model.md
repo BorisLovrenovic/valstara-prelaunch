@@ -81,13 +81,13 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 | `rejected_reason` | text null | `self_referral` · `duplicate_identity` · `referrer_disqualified` · `manual` |
 | `confirmed_at` `created_at` | timestamptz | |
 
-**Cheap rewards settle on confirmation; high-value rewards enter `held` and only settle on a post-launch first order** (ADR-012). `held` edges that never settle become `void` at campaign close — recorded, not deleted, because the rule was published and must be checkable afterwards.
+**Cheap rewards settle on confirmation; high-value rewards enter `held` and only settle on a post-launch first order** (ADR-012). The pre-launch repository implements the confirmation hold and campaign-close `void` transitions; the storefront owns first-order settlement after handoff. `held` reward records that never qualify become `void` at campaign close — recorded, not deleted, because the rule was published and must be checkable afterwards.
 
 ---
 
 ## `milestone_award`
 
-`id` · `subscriber_id` · `tier` int · `reward_kind` (`entries` · `discount` · `wave_upgrade` · `merch`) · `state` (`settled` · `held` · `void`) · `awarded_at`. Unique on `(subscriber_id, tier, reward_kind)` — each configured reward kind is awarded once while one tier can durably hold its settled wave upgrade, held discount and held bonus-entry rows.
+`id` · `subscriber_id` · `tier` int · `reward_kind` (`entries` · `discount` · `wave_upgrade` · `merch`) · `state` (`settled` · `held` · `void`) · `awarded_at`. Unique on `(subscriber_id, tier, reward_kind)` — each configured reward kind is awarded once while one tier can durably hold its settled wave upgrade, held discount and held bonus-entry rows. E4-06 may transition `held` rows to `void` at campaign close; it never transitions them to `settled`.
 
 ## `survey_response`
 

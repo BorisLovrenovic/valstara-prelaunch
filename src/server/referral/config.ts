@@ -1,4 +1,10 @@
+import type { RewardClassification } from './reward-state.ts';
+
 export type AccessWindow = 'wave-1' | 'wave-2' | 'wave-3' | 'wave-4';
+export type MilestoneRewardKind = 'discount' | 'entries' | 'wave_upgrade';
+export type RewardClassifications = Readonly<
+  Record<MilestoneRewardKind, RewardClassification>
+>;
 
 export interface MilestoneTier {
   readonly bonusEntries: number;
@@ -41,6 +47,17 @@ export const milestoneTiers: readonly MilestoneTier[] = Object.freeze([
     threshold: 5,
   },
 ]);
+
+/**
+ * Founder-confirmed ADR-025 values. This is campaign configuration rather
+ * than schema: changing a classification requires no migration.
+ */
+export const milestoneRewardClassifications: RewardClassifications =
+  Object.freeze({
+    discount: 'high_value',
+    entries: 'high_value',
+    wave_upgrade: 'cheap',
+  });
 
 export const referralCodeAlphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const referralCodeLength = 12;
