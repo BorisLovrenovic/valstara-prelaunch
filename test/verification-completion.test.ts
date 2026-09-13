@@ -94,6 +94,53 @@ test('the application role completes verification and replay through the E3 tran
   }
 });
 
+test('concurrent verifications receive distinct recorded orders at a wave boundary', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const firstId = await insertSubscriber(fixture.database, 'pending');
+    const secondId = await insertSubscriber(fixture.database, 'pending');
+    await seedVerificationToken(fixture.database, firstId, 'wave-token-one');
+    await seedVerificationToken(fixture.database, secondId, 'wave-token-two');
+
+    const complete = createVerificationCompletionService(fixture.database, {
+      accessWindowBands: [
+        { maximumVerificationOrder: 1, window: 'wave-1' },
+        { maximumVerificationOrder: 2, window: 'wave-2' },
+        { maximumVerificationOrder: 3, window: 'wave-3' },
+        { maximumVerificationOrder: null, window: 'wave-4' },
+      ],
+      clock: () => now,
+    });
+    const results = await Promise.all([
+      complete('wave-token-one'),
+      complete('wave-token-two'),
+    ]);
+
+    assert.deepEqual(results.map((result) => result.accessWindow).sort(), [
+      'wave-1',
+      'wave-2',
+    ]);
+    const persisted = await fixture.database.list<{ access_window: string }>(
+      {
+        text: `
+          SELECT access_window
+          FROM subscriber
+          WHERE id = $1 OR id = $2
+          ORDER BY access_window
+        `,
+        values: [firstId, secondId],
+      },
+      2,
+    );
+    assert.deepEqual(persisted, [
+      { access_window: 'wave-1' },
+      { access_window: 'wave-2' },
+    ]);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
 async function insertSubscriber(
   database: DatabasePool,
   status: 'pending' | 'verified',
@@ -218,6 +265,24 @@ test('verification commits the referral completion together and holds high-value
       confirmed_referrals: 3,
       referral_tier: 1,
     });
+    assert.deepEqual(
+      await fixture.database.readOne({
+        text: `
+          SELECT actor, detail
+          FROM audit_log
+          WHERE action = 'referral.access_window_promoted'
+        `,
+      }),
+      {
+        actor: 'system:referral-confirmation',
+        detail: {
+          fromTier: 0,
+          fromWindow: 'wave-3',
+          toTier: 1,
+          toWindow: 'wave-2',
+        },
+      },
+    );
 
     const awards = await fixture.database.list<{
       reward_kind: string;

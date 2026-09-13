@@ -48,6 +48,7 @@ Values, not schema. Changing any of them requires no migration.
   - **Tier 2 — 5 confirmed referrals** (cut-list item 7, added mid-campaign, no migration): held = 25% discount + `+10` bonus entries.
 - **Cheap vs high-value** follows ADR-012: base/per-referral entries, tier progress and wave position settle on confirmation; **milestone discount codes and milestone bonus entries are `held`**, then become `void` at campaign close if they remain in pre-launch. The classification is configuration, not schema.
 - **Access-window bands** (assigned at verification — see `docs/data/model.md` `access_window`): base band by verification order `≤1,000 → wave-1 · ≤5,000 → wave-2 · ≤15,000 → wave-3 · else wave-4`, then each tier promotes one band toward `wave-1` (promotion only, audited).
+  The count-and-assignment section is serialised, so concurrent verifications receive distinct ordinals at a band boundary. Every later promotion records `referral.access_window_promoted` with its previous and resulting tier and wave.
 
 The held discount percentages (15% / 25%) are **confirmed production values** (ADR-025).
 

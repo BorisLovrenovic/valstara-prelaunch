@@ -15,6 +15,7 @@ import {
   milestoneRewardClassifications,
   milestoneTiers,
   milestoneReachedAtConfirmation,
+  type AccessWindow,
   type MilestoneTier,
   type RewardClassifications,
   promoteAccessWindow,
@@ -215,12 +216,15 @@ function createReferralServiceWithRepository(
           ) {
             awarded += 1;
             if (subscriber.access_window !== null) {
-              await transactionalRepository.setAccessWindow(
+              await promoteSubscriberAccessWindow(
+                connection,
+                transactionalRepository,
                 subscriberId,
-                promoteAccessWindow(
-                  subscriber.access_window,
-                  tier.number - previousSettledTier,
-                ),
+                subscriber.access_window,
+                tier.number - previousSettledTier,
+                previousSettledTier,
+                tier.number,
+                actor,
               );
             }
           }
@@ -297,12 +301,15 @@ function createReferralServiceWithRepository(
           ))
         ) {
           if (current.access_window !== null) {
-            await transactionalRepository.setAccessWindow(
+            await promoteSubscriberAccessWindow(
+              connection,
+              transactionalRepository,
               edge.referrer_id,
-              promoteAccessWindow(
-                current.access_window,
-                reachedTier.number - previousSettledTier,
-              ),
+              current.access_window,
+              reachedTier.number - previousSettledTier,
+              previousSettledTier,
+              reachedTier.number,
+              'system:referral-confirmation',
             );
           }
         }
@@ -390,6 +397,37 @@ function createReferralServiceWithRepository(
       });
     },
   };
+}
+
+async function promoteSubscriberAccessWindow(
+  connection: DatabaseConnection,
+  repository: ReferralRepository,
+  subscriberId: string,
+  currentWindow: AccessWindow,
+  levels: number,
+  fromTier: number,
+  toTier: number,
+  actor: string,
+): Promise<void> {
+  const promotedWindow = promoteAccessWindow(currentWindow, levels);
+  if (promotedWindow === currentWindow) {
+    return;
+  }
+  if ((await repository.setAccessWindow(subscriberId, promotedWindow)) !== 1) {
+    throw new Error('The referral tier could not promote its access window.');
+  }
+  await createAuditService(connection).record({
+    action: 'referral.access_window_promoted',
+    actor,
+    detail: {
+      fromTier,
+      fromWindow: currentWindow,
+      toTier,
+      toWindow: promotedWindow,
+    },
+    subjectId: subscriberId,
+    subjectType: 'subscriber',
+  });
 }
 
 async function awardMilestone(
