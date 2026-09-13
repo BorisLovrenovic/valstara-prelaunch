@@ -271,6 +271,24 @@ test('enabling a tier does not reward subscribers who already passed it without 
         text: `
           SELECT actor, detail
           FROM audit_log
+          WHERE action = 'referral.access_window_promoted'
+        `,
+      }),
+      {
+        actor: 'operator-1',
+        detail: {
+          fromTier: 1,
+          fromWindow: 'wave-2',
+          toTier: 2,
+          toWindow: 'wave-1',
+        },
+      },
+    );
+    assert.deepEqual(
+      await fixture.database.readOne({
+        text: `
+          SELECT actor, detail
+          FROM audit_log
           WHERE action = 'referral.milestone_backfilled'
         `,
       }),

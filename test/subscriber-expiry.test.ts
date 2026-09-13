@@ -182,21 +182,14 @@ test('expired rows are excluded at the shared counted-status query layer and fro
 
   try {
     const expiredId = await insertSubscriber(fixture.database, old);
-    const verifiedId = await insertSubscriber(
-      fixture.database,
-      old,
-      'verified',
-    );
+    await insertSubscriber(fixture.database, old, 'verified');
     const counted = createSubscriberMaintenanceRepository(fixture.database);
 
     assert.equal(await counted.countCountedSubscribers(), 1);
     assert.equal(await expiry.run(10), 1);
     assert.equal(await counted.countCountedSubscribers(), 1);
     assert.equal(
-      await createReferralRepository(fixture.database).verificationOrder(
-        verifiedId,
-        old,
-      ),
+      await createReferralRepository(fixture.database).verificationOrder(),
       1,
     );
 

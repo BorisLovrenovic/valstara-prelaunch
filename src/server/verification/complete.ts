@@ -3,7 +3,9 @@ import { createReferralRepository } from '../db/referral.ts';
 import { createVerificationCompletionRepository } from '../db/verification-completion.ts';
 import { withTransaction } from '../db/transaction.ts';
 import {
+  accessWindowBands,
   accessWindowForVerificationOrder,
+  type AccessWindowBand,
   type AccessWindow,
 } from '../referral/config.ts';
 import { createReferralService } from '../referral/service.ts';
@@ -19,6 +21,7 @@ export interface VerificationCompletion {
 }
 
 export interface VerificationCompletionDependencies {
+  readonly accessWindowBands?: readonly AccessWindowBand[];
   readonly clock?: () => Date;
   readonly referralEnabled?: boolean;
   /** Test-only fault injection that proves the whole completion rolls back. */
@@ -73,7 +76,14 @@ export function createVerificationCompletionService(
       const repository = createReferralRepository(connection);
 
       if (consumed.outcome === 'verified') {
-        const verified = await completion.markVerified(subscriberId, clock());
+        // Serialise the count-and-assign section so concurrent verifications
+        // receive distinct, stable ordinals at a configured band boundary.
+        await repository.lockAccessWindowAssignment();
+        const verificationTime = clock();
+        const verified = await completion.markVerified(
+          subscriberId,
+          verificationTime,
+        );
         if (verified !== 1) {
           throw new Error(
             'A fresh verification token did not verify a pending subscriber.',
@@ -81,9 +91,21 @@ export function createVerificationCompletionService(
         }
         await dependencies.afterStep?.('verified');
 
-        const order = await repository.verificationOrder(subscriberId, clock());
-        const window = accessWindowForVerificationOrder(order);
-        await repository.setAccessWindow(subscriberId, window);
+        const subscriber = await repository.findSubscriber(subscriberId);
+        if (subscriber === null) {
+          throw new Error(
+            'A verified subscriber could not be read for wave assignment.',
+          );
+        }
+        const order = await repository.verificationOrder();
+        const window = accessWindowForVerificationOrder(
+          order,
+          subscriber.referral_tier,
+          dependencies.accessWindowBands ?? accessWindowBands,
+        );
+        if ((await repository.setAccessWindow(subscriberId, window)) !== 1) {
+          throw new Error('The verified subscriber wave was not recorded.');
+        }
         await dependencies.afterStep?.('access-window');
       }
 

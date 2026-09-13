@@ -1,6 +1,11 @@
 import type { RewardClassification } from './reward-state.ts';
 
-export type AccessWindow = 'wave-1' | 'wave-2' | 'wave-3' | 'wave-4';
+export const accessWindows = ['wave-1', 'wave-2', 'wave-3', 'wave-4'] as const;
+export type AccessWindow = (typeof accessWindows)[number];
+export interface AccessWindowBand {
+  readonly maximumVerificationOrder: number | null;
+  readonly window: AccessWindow;
+}
 export type MilestoneRewardKind = 'discount' | 'entries' | 'wave_upgrade';
 export type RewardClassifications = Readonly<
   Record<MilestoneRewardKind, RewardClassification>
@@ -62,31 +67,82 @@ export const milestoneRewardClassifications: RewardClassifications =
 export const referralCodeAlphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const referralCodeLength = 12;
 
+/**
+ * Founder-confirmed ADR-025 distribution. The final band has no upper bound.
+ * Keeping the thresholds as data makes campaign tuning a configuration-only
+ * change while the handoff values remain closed by AccessWindow.
+ */
+export const accessWindowBands: readonly AccessWindowBand[] = Object.freeze([
+  { maximumVerificationOrder: 1_000, window: 'wave-1' },
+  { maximumVerificationOrder: 5_000, window: 'wave-2' },
+  { maximumVerificationOrder: 15_000, window: 'wave-3' },
+  { maximumVerificationOrder: null, window: 'wave-4' },
+]);
+
 export function accessWindowForVerificationOrder(
   verificationOrder: number,
+  tier = 0,
+  bands: readonly AccessWindowBand[] = accessWindowBands,
 ): AccessWindow {
-  if (verificationOrder <= 1_000) {
-    return 'wave-1';
+  if (!Number.isInteger(verificationOrder) || verificationOrder < 1) {
+    throw new RangeError('Verification order must be a positive integer.');
   }
-  if (verificationOrder <= 5_000) {
-    return 'wave-2';
+  if (!Number.isInteger(tier) || tier < 0) {
+    throw new RangeError('Referral tier must be a non-negative integer.');
   }
-  if (verificationOrder <= 15_000) {
-    return 'wave-3';
+  assertAccessWindowBands(bands);
+
+  const band = bands.find(
+    ({ maximumVerificationOrder }) =>
+      maximumVerificationOrder === null ||
+      verificationOrder <= maximumVerificationOrder,
+  );
+  if (band === undefined) {
+    throw new RangeError('Access-window configuration must cover every order.');
   }
-  return 'wave-4';
+
+  return promoteAccessWindow(band.window, tier);
 }
 
 export function promoteAccessWindow(
   window: AccessWindow,
   tiers: number,
 ): AccessWindow {
-  const windows: readonly AccessWindow[] = [
-    'wave-1',
-    'wave-2',
-    'wave-3',
-    'wave-4',
-  ];
-  const current = windows.indexOf(window);
-  return windows[Math.max(0, current - tiers)] ?? 'wave-1';
+  if (!Number.isInteger(tiers) || tiers < 0) {
+    throw new RangeError('Promotion levels must be a non-negative integer.');
+  }
+  const current = accessWindows.indexOf(window);
+  return accessWindows[Math.max(0, current - tiers)] ?? 'wave-1';
+}
+
+function assertAccessWindowBands(bands: readonly AccessWindowBand[]): void {
+  if (
+    bands.length !== accessWindows.length ||
+    bands.some((band, index) => band.window !== accessWindows[index])
+  ) {
+    throw new RangeError(
+      'Access-window configuration must contain each handoff wave in order.',
+    );
+  }
+
+  let previousMaximum = 0;
+  for (const [index, band] of bands.entries()) {
+    if (band.maximumVerificationOrder === null) {
+      if (index !== bands.length - 1) {
+        throw new RangeError(
+          'Only the final access-window band may be unbounded.',
+        );
+      }
+      continue;
+    }
+    if (
+      !Number.isInteger(band.maximumVerificationOrder) ||
+      band.maximumVerificationOrder <= previousMaximum
+    ) {
+      throw new RangeError(
+        'Access-window thresholds must be increasing positive integers.',
+      );
+    }
+    previousMaximum = band.maximumVerificationOrder;
+  }
 }

@@ -56,6 +56,7 @@ export interface ReferralRepository {
     referrerId: string,
     referredId: string,
   ): Promise<number>;
+  lockAccessWindowAssignment(): Promise<void>;
   lockSubscriber(subscriberId: string): Promise<ReferralSubscriber | null>;
   setAccessWindow(subscriberId: string, window: AccessWindow): Promise<number>;
   setReferralCounterAndTier(
@@ -63,7 +64,7 @@ export interface ReferralRepository {
     confirmedReferrals: number,
     tier: number,
   ): Promise<number>;
-  verificationOrder(subscriberId: string, verifiedAt: Date): Promise<number>;
+  verificationOrder(): Promise<number>;
   voidMilestoneAwards(ids: readonly string[], state: 'void'): Promise<number>;
   voidReferralEdges(ids: readonly string[], state: 'void'): Promise<number>;
 }
@@ -285,6 +286,12 @@ export function createReferralRepository(
       });
     },
 
+    async lockAccessWindowAssignment() {
+      await database.readOne({
+        text: "SELECT pg_advisory_xact_lock(hashtext('valstara:access-window-assignment'))",
+      });
+    },
+
     async lockSubscriber(subscriberId) {
       return database.readOne<ReferralSubscriber>({
         text: `
@@ -319,15 +326,14 @@ export function createReferralRepository(
       });
     },
 
-    async verificationOrder(subscriberId, verifiedAt) {
+    async verificationOrder() {
       const row = await database.readOne<{ count: string }>({
         text: `
           SELECT COUNT(*)::text AS count
           FROM subscriber
-          WHERE status = $3
-            AND (verified_at < $2 OR (verified_at = $2 AND id <= $1::uuid))
+          WHERE status = $1
         `,
-        values: [subscriberId, verifiedAt, countedSubscriberStatus],
+        values: [countedSubscriberStatus],
       });
       return Number(row?.count ?? '0');
     },
