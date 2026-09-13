@@ -464,19 +464,26 @@ test('with referral.enabled off, verification still confirms and settles an exis
       }),
       { referral_tier: 1 },
     );
-    assert.equal(
-      (
-        await fixture.database.readOne<{ count: string }>({
-          text: `
-            SELECT COUNT(*)::text AS count
-            FROM milestone_award
-            WHERE subscriber_id = $1 AND tier = 1
-          `,
-          values: [referrerId],
-        })
-      )?.count,
-      '3',
+    const awards = await fixture.database.list<{
+      reward_kind: string;
+      state: string;
+    }>(
+      {
+        text: `
+          SELECT reward_kind, state
+          FROM milestone_award
+          WHERE subscriber_id = $1 AND tier = 1
+          ORDER BY reward_kind
+        `,
+        values: [referrerId],
+      },
+      3,
     );
+    assert.deepEqual(awards, [
+      { reward_kind: 'discount', state: 'held' },
+      { reward_kind: 'entries', state: 'held' },
+      { reward_kind: 'wave_upgrade', state: 'settled' },
+    ]);
   } finally {
     await fixture.dispose();
   }

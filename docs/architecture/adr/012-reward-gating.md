@@ -24,4 +24,6 @@ Held rewards that never qualify become `void` at campaign close — **recorded, 
 
 It makes the reward state machine explicit — `none` → `settled` | `held` → `settled` | `void` — and creates one invariant worth testing directly: **a high-value reward can never reach `settled` from a verification path.**
 
+**Repository boundary (founder-authorised 2026-09-13):** this pre-launch repository implements only `none` → `settled` for cheap confirmation rewards, `none` → `held` for high-value confirmation rewards, and `held` → `void` at campaign close. It has no qualifying-order path and never reads or writes Medusa. The storefront (Medusa) is the authoritative source of a qualifying post-launch first order and owns `held` → `settled` after handoff. E11-06 reconciles held-reward records at handoff, applies the pre-launch void rule where applicable, and records each outcome before the waitlist database is frozen read-only.
+
 The messaging must be honest about it. The milestone email **plainly states which reward is settled and which is held**, because a reward a person believes they have and then does not receive is worse than one they knew was conditional.
