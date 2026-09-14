@@ -62,6 +62,8 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
 test('the Compose application role can complete the signup write path', async () => {
   const fixture = await createDatabaseFixture();
   const signup = createSignupService(fixture.applicationDatabase, {
+    raiseFraudFlag: async () => undefined,
+    screenEmailDomain: async () => ({ flags: [] }),
     clock: () => new Date('2026-09-10T12:00:00.000Z'),
     async sendVerificationMail() {},
   });
@@ -113,6 +115,8 @@ test('a first signup creates a pending subscriber with country and region, one t
   const fixture = await createDatabaseFixture();
   const sent: VerificationTestMail[] = [];
   const signup = createSignupService(fixture.database, {
+    raiseFraudFlag: async () => undefined,
+    screenEmailDomain: async () => ({ flags: [] }),
     clock: () => new Date('2026-09-06T12:00:00.000Z'),
     async sendVerificationMail(mail) {
       sent.push(mail);
@@ -151,6 +155,8 @@ test('a first signup creates a pending subscriber with country and region, one t
 test('signup persists verified UTM data and keeps utm null when it is absent', async () => {
   const fixture = await createDatabaseFixture();
   const signup = createSignupService(fixture.database, {
+    raiseFraudFlag: async () => undefined,
+    screenEmailDomain: async () => ({ flags: [] }),
     async sendVerificationMail() {},
   });
   try {
@@ -185,6 +191,8 @@ test('a repeat for a verified subscriber reports the internal already_verified o
   const fixture = await createDatabaseFixture();
   const sent: VerificationTestMail[] = [];
   const signup = createSignupService(fixture.database, {
+    raiseFraudFlag: async () => undefined,
+    screenEmailDomain: async () => ({ flags: [] }),
     clock: () => new Date('2026-09-06T12:00:00.000Z'),
     async sendVerificationMail(mail) {
       sent.push(mail);
@@ -214,6 +222,8 @@ test('a pending repeat inside the send window is throttled, and after the window
   const sent: VerificationTestMail[] = [];
   let now = new Date('2026-09-06T12:00:00.000Z');
   const signup = createSignupService(fixture.database, {
+    raiseFraudFlag: async () => undefined,
+    screenEmailDomain: async () => ({ flags: [] }),
     clock: () => now,
     async sendVerificationMail(mail) {
       sent.push(mail);
@@ -249,6 +259,8 @@ test('a pending repeat inside the send window is throttled, and after the window
 test('a malformed email is rejected with invalid_email and writes no row', async () => {
   const fixture = await createDatabaseFixture();
   const signup = createSignupService(fixture.database, {
+    raiseFraudFlag: async () => undefined,
+    screenEmailDomain: async () => ({ flags: [] }),
     async sendVerificationMail() {
       return undefined;
     },
@@ -267,6 +279,8 @@ test('a malformed email is rejected with invalid_email and writes no row', async
 test('a send failure never rolls back the committed subscriber, token or queued email', async () => {
   const fixture = await createDatabaseFixture();
   const signup = createSignupService(fixture.database, {
+    raiseFraudFlag: async () => undefined,
+    screenEmailDomain: async () => ({ flags: [] }),
     clock: () => new Date('2026-09-06T12:00:00.000Z'),
     async sendVerificationMail() {
       throw new Error('provider outage');
@@ -290,6 +304,8 @@ test('a concurrent double-submit produces one subscriber and exactly one email, 
   const fixture = await createDatabaseFixture();
   const sent: VerificationTestMail[] = [];
   const signup = createSignupService(fixture.database, {
+    raiseFraudFlag: async () => undefined,
+    screenEmailDomain: async () => ({ flags: [] }),
     clock: () => new Date('2026-09-06T12:00:00.000Z'),
     async sendVerificationMail(mail) {
       sent.push(mail);

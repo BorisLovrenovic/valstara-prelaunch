@@ -217,6 +217,8 @@ function createRecordingPool(recorded: RecordedStatement[]): DatabasePool {
 test('the signup call site binds the normalised key before it touches the uniqueness structure', async () => {
   const recorded: RecordedStatement[] = [];
   const signup = createSignupService(createRecordingPool(recorded), {
+    raiseFraudFlag: async () => undefined,
+    screenEmailDomain: async () => ({ flags: [] }),
     clock: () => new Date('2026-09-06T12:00:00.000Z'),
     async sendVerificationMail() {
       return undefined;
@@ -297,6 +299,8 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
 test('the three Gmail variants collide on one subscriber row', async () => {
   const fixture = await createDatabaseFixture();
   const signup = createSignupService(fixture.database, {
+    raiseFraudFlag: async () => undefined,
+    screenEmailDomain: async () => ({ flags: [] }),
     clock: () => new Date('2026-09-06T12:00:00.000Z'),
     async sendVerificationMail() {
       return undefined;
@@ -346,6 +350,8 @@ test('the three Gmail variants collide on one subscriber row', async () => {
 test('a non-Gmail dotted address is stored as a distinct row', async () => {
   const fixture = await createDatabaseFixture();
   const signup = createSignupService(fixture.database, {
+    raiseFraudFlag: async () => undefined,
+    screenEmailDomain: async () => ({ flags: [] }),
     clock: () => new Date('2026-09-06T12:00:00.000Z'),
     async sendVerificationMail() {
       return undefined;

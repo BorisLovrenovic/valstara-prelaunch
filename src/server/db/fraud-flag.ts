@@ -18,9 +18,16 @@ export interface FraudFlagRepository {
     input: ChallengeTimeoutFlagInsert,
   ): Promise<number>;
   insertSelfReferralFlag(input: SelfReferralFlagInsert): Promise<number>;
+  insertNoMxFlag(input: NoMxFlagInsert): Promise<number>;
 }
 
 export interface SelfReferralFlagInsert {
+  readonly id: string;
+  readonly subscriberId: string;
+}
+
+export interface NoMxFlagInsert {
+  readonly detail: Readonly<Record<string, string>>;
   readonly id: string;
   readonly subscriberId: string;
 }
@@ -73,6 +80,22 @@ export function createFraudFlagRepository(
           )
         `,
         values: [input.id, input.subscriberId, selfReferralDetail],
+      });
+    },
+    async insertNoMxFlag(input) {
+      return database.execute({
+        text: `
+          INSERT INTO fraud_flag (id, subscriber_id, kind, detail, state)
+          SELECT $1, $2, 'no_mx', $3::jsonb, 'open'
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM fraud_flag
+            WHERE subscriber_id = $2
+              AND kind = 'no_mx'
+              AND state = 'open'
+          )
+        `,
+        values: [input.id, input.subscriberId, JSON.stringify(input.detail)],
       });
     },
   };

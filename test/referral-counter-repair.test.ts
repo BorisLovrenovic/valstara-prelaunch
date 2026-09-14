@@ -276,6 +276,8 @@ test('a real database signup can attribute a referral while counter repair runs'
     )?.referral_code;
     assert.notEqual(referrerCode, undefined);
     const signup = createSignupService(fixture.applicationDatabase, {
+      raiseFraudFlag: async () => undefined,
+      screenEmailDomain: async () => ({ flags: [] }),
       attributeReferral: (referredId, code, allowAttribution) =>
         createReferralService(fixture.applicationDatabase).attribute(
           referredId,

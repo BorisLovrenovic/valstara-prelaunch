@@ -11,7 +11,8 @@ The waitlist row and its lifecycle: create, normalise, verify, expire, unsubscri
 ## Exposed interface
 ```ts
 interface SubscriberService {
-  // Discriminated outcome: created | existing | already_verified | invalid_email
+  // Discriminated outcome: created | existing | already_verified |
+  // invalid_email | blocked_domain
   signup(input: SignupInput): Promise<SignupOutcome>
   findByNormalised(email: string): Promise<Subscriber | null>
   markVerified(id: string, at: Date): Promise<void>
@@ -44,6 +45,10 @@ days and changes only `pending` rows strictly past it.
 
 ## Rules
 - **`normaliseEmail()` runs before any uniqueness check.** Lowercase, strip `+tag` (all domains), remove dots for **Gmail-family domains only** — `gmail.com` and `googlemail.com`; every other provider keeps its dots. The family is not cross-canonicalised (a `googlemail.com` address is not rewritten to `gmail.com`). The normalised form is the unique key; the raw form is what is displayed and mailed. A malformed address, or one whose local part is emptied by tag/dot removal, is rejected (the function returns `null`); Unicode and internationalised domains never throw. This one step removes the cheapest referral attack entirely.
+- After normalisation and before the subscriber upsert, `signup()` invokes the
+  fraud domain screen. A blocklist hit returns `blocked_domain`; a definitive
+  no-MX result returns `invalid_email`; a DNS timeout continues the upsert and
+  raises an open review flag after the row exists.
 - **`signup()` is idempotent on `email_normalised`.** A repeat for a `pending` row re-queues the verification mail subject to its own rate limit; a repeat for a `verified` row does not. Its internal outcome remains `created`, `existing` (a pending repeat, whether the mail was re-queued or throttled), `already_verified`, or `invalid_email`, so mail suppression does not depend on the public response. The route maps `invalid_email` to the closed error set and collapses every non-error outcome to the same accepted response. The per-address send window has a limit of one, which is also what makes a concurrent double-submit produce exactly one verification email.
 - **`referred_by_id` is write-once**, enforced in the schema. Reassignment is a defect, not a feature.
 - **`disqualify()` requires an actor and writes an audit record.** There is no code path that sets `disqualified` without one.

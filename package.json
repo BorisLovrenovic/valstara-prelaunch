@@ -12,6 +12,7 @@
     "db:migrate": "tsx src/server/db/run-migrations.ts",
     "dev": "astro dev",
     "format": "prettier --check .",
+    "fraud:allow-domain": "tsx scripts/allow-domain.ts",
     "lint": "eslint .",
     "security": "node scripts/ci/security-gates.mjs",
     "test:a11y": "node --test test/accessibility.test.mjs",

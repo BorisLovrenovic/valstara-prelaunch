@@ -111,6 +111,15 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 **`challenge_timeout`** is the review flag raised when Cloudflare Turnstile is unreachable at signup: the signup is accepted under strict rate limits and the row is flagged (ADR-006, `fallbacks.md` "Turnstile unavailable" → P2). It is the one `kind` written outside the E5 fraud module — the signup route writes it through a minimal `server/db` path (E3-03, founder-authorised 2026-09-07, added by migration `0005`). The fraud module owns every other kind.
 
+## `domain_allow`
+
+`domain` normalised text primary key · `allowed_by` text not null ·
+`created_at` timestamptz not null. This is the durable false-positive override
+for the versioned disposable-domain dataset. The application role may select
+and insert only; an override is created atomically with an append-only
+`fraud.domain_allowed` audit record carrying the required actor. The operator
+surface is the E5-01 CLI, not a public or admin HTTP route.
+
 ## `email_send`
 
 `id` · `subscriber_id` · `template` · `provider` · `business_key` text **unique** · `provider_message_id` · `state` (`queued` · `sent` · `delivered` · `bounced` · `complained` · `failed`) · `attempts` int · `last_error` · `created_at` · `updated_at`.

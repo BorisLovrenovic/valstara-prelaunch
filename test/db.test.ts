@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      12,
+      14,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -231,6 +231,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0010-referral-utm-permissions.sql',
       '0011-referral-attribution-permissions.sql',
       '0012-reward-gating-permissions.sql',
+      '0013-domain-allow-overrides.sql',
+      '0014-domain-allow-domain-constraint.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -248,6 +250,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0010-referral-utm-permissions.sql',
         '0011-referral-attribution-permissions.sql',
         '0012-reward-gating-permissions.sql',
+        '0013-domain-allow-overrides.sql',
+        '0014-domain-allow-domain-constraint.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -261,6 +265,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       [
         'audit_log',
         'campaign_flag',
+        'domain_allow',
         'email_send',
         'fraud_flag',
         'giveaway_draw',
@@ -372,10 +377,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          12,
+          14,
         );
 
-        assert.equal(appliedCount, 12);
+        assert.equal(appliedCount, 14);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -391,6 +396,8 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0010-referral-utm-permissions.sql',
             '0011-referral-attribution-permissions.sql',
             '0012-reward-gating-permissions.sql',
+            '0013-domain-allow-overrides.sql',
+            '0014-domain-allow-domain-constraint.sql',
           ],
         );
       } finally {
