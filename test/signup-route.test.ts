@@ -458,6 +458,17 @@ test('each error outcome maps to the documented code', async () => {
   )(routeContext(makeRequest()));
   assert.equal(invalidEmail.status, 400);
   assert.equal((await invalidEmail.json()).error.code, 'invalid_email');
+
+  const blockedDomain = await createSignupRoute(
+    deps({ signup: async () => ({ kind: 'blocked_domain' }) }),
+  )(routeContext(makeRequest()));
+  assert.equal(blockedDomain.status, 400);
+  assert.deepEqual(await blockedDomain.json(), {
+    error: {
+      code: 'blocked_domain',
+      message: 'Use a permanent email address to join the waitlist.',
+    },
+  });
 });
 
 test('a database outage maps to unavailable, and an unexpected error maps to internal', async () => {
@@ -562,7 +573,7 @@ test('the default POST route verifies Turnstile server-side then sends, writing 
       routeContext(
         makeRequest({
           country: 'GB',
-          email: 'default-route@example.test',
+          email: 'default-route@gmail.com',
           turnstile_token: 'token',
         }),
       ),

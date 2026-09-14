@@ -70,6 +70,7 @@ test('every closed server error code maps to a rendering target', () => {
   );
 
   assert.equal(serverErrorField('invalid_email'), 'email');
+  assert.equal(serverErrorField('blocked_domain'), 'email');
   assert.equal(serverErrorField('invalid_input'), 'form');
   assert.equal(serverErrorField('challenge_failed'), 'form');
   assert.equal(serverErrorField('rate_limited'), 'form');

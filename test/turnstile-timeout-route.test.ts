@@ -64,7 +64,7 @@ test('a provider-unreachable signup, through the default wiring, commits the row
   }) as typeof globalThis.fetch;
 
   try {
-    const email = 'timeout-signup@example.test';
+    const email = 'timeout-signup@gmail.com';
     const response = await signupPost(routeContext(makeRequest(email)));
     assert.equal(response.status, 200);
     assert.equal((await response.json()).status, 'pending');

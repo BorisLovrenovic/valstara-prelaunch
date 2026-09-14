@@ -58,6 +58,7 @@ export function collectClientErrors(
  * a new code cannot be added without deciding where the island shows it.
  */
 export const signupErrorField: Record<SignupErrorCode, 'email' | 'form'> = {
+  blocked_domain: 'email',
   invalid_input: 'form',
   invalid_email: 'email',
   challenge_failed: 'form',

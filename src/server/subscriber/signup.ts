@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { DatabasePool } from '../db/pool.ts';
 import type { UtmParameters } from '../referral/capture.ts';
+import type { FraudScreenFlag, ScreenResult } from '../fraud/service.ts';
 import { createSubscriberRepository } from '../db/subscriber.ts';
 import { withTransaction } from '../db/transaction.ts';
 import { consumeRateLimit } from '../ratelimit/consume.ts';
@@ -45,7 +46,8 @@ export type SignupOutcome =
   | { readonly kind: 'created'; readonly subscriber: SignupSubscriber }
   | { readonly kind: 'existing'; readonly subscriber: SignupSubscriber }
   | { readonly kind: 'already_verified'; readonly subscriber: SignupSubscriber }
-  | { readonly kind: 'invalid_email' };
+  | { readonly kind: 'invalid_email' }
+  | { readonly kind: 'blocked_domain' };
 
 export interface SignupInput {
   readonly email: string;
@@ -64,6 +66,12 @@ export interface SignupServiceDependencies {
     allowAttribution: boolean,
   ) => Promise<unknown>;
   readonly isReferralEnabled?: () => Promise<boolean>;
+  readonly raiseFraudFlag: (
+    subscriberId: string,
+    kind: FraudScreenFlag,
+    detail: Readonly<Record<string, string>>,
+  ) => Promise<void>;
+  readonly screenEmailDomain: (domain: string) => Promise<ScreenResult>;
   readonly sendVerificationMail: VerificationMailSender;
 }
 
@@ -103,12 +111,13 @@ async function upsertSubscriber(
 }
 
 /**
- * The signup domain step: normalise, upsert on the normalised uniqueness key,
- * and — only for a pending row and only when the per-address send window
- * permits — queue and send a verification mail. Normalisation runs before the
- * uniqueness check (the `ON CONFLICT` inside `upsertSubscriber`), and a send
- * failure is swallowed because the queued `email_send` row is the source of
- * truth; neither the send nor its failure touches the committed subscriber row.
+ * The signup domain step: normalise, run the domain screen, upsert on the
+ * normalised uniqueness key, and — only for a pending row and only when the
+ * per-address send window permits — queue and send a verification mail.
+ * Normalisation and screening both run before the uniqueness check (the
+ * `ON CONFLICT` inside `upsertSubscriber`), and a send failure is swallowed
+ * because the queued `email_send` row is the source of truth; neither the send
+ * nor its failure touches the committed subscriber row.
  */
 export function createSignupService(
   database: DatabasePool,
@@ -122,6 +131,14 @@ export function createSignupService(
       return { kind: 'invalid_email' };
     }
 
+    // E5-01 owns this step. It is after normalisation and before the first
+    // uniqueness query or write, matching docs/api/README.md's load-bearing
+    // route order.
+    const screen = await dependencies.screenEmailDomain(normalised.domain);
+    if (screen.reject !== undefined) {
+      return { kind: screen.reject };
+    }
+
     const region =
       input.region !== undefined && input.region !== '' ? input.region : null;
     const subscriber = await upsertSubscriber(
@@ -131,6 +148,20 @@ export function createSignupService(
       region,
       input.utm ?? null,
     );
+
+    // A DNS timeout must never cost a real signup. The row is committed first
+    // because fraud_flag requires its id; flagging is best-effort metadata and
+    // cannot turn the accepted signup back into a failure.
+    for (const kind of screen.flags) {
+      try {
+        await dependencies.raiseFraudFlag(subscriber.id, kind, {
+          domain: normalised.domain,
+          reason: 'mx_lookup_timeout',
+        });
+      } catch {
+        // The subscriber row remains the source of truth and can still verify.
+      }
+    }
 
     // Only the initial row can receive attribution. Existing subscribers are
     // still checked for self-referral, but their original referrer is never

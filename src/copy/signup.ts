@@ -8,6 +8,7 @@ export const signupCopy = {
   // Errors, in brand voice: plain, specific, no vendor names, no machinery terms.
   invalidInput: 'Enter a valid email address and select your country.',
   invalidEmail: 'Enter a valid email address.',
+  blockedDomain: 'Use a permanent email address to join the waitlist.',
   challengeFailed: "We couldn't confirm that request. Please try again.",
   rateLimited: 'Too many attempts — try again in a few minutes.',
   unavailable: "We can't take signups right now — try again in a few minutes.",

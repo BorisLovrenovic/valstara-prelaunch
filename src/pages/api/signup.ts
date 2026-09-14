@@ -10,6 +10,10 @@ import { createFraudFlagRepository } from '../../server/db/fraud-flag.ts';
 import { createPool, type DatabasePool } from '../../server/db/pool.ts';
 import { getFlagService } from '../../server/flags/app-service.ts';
 import {
+  createFraudService,
+  type FraudService,
+} from '../../server/fraud/service.ts';
+import {
   createReferralCaptureService,
   type ReferralCapture,
 } from '../../server/referral/capture.ts';
@@ -45,6 +49,7 @@ export const signupResponseTargetMs = 500;
  * here but not documented, or a status that disagrees — fails CI.
  */
 export const signupErrorCatalogue = {
+  blocked_domain: 400,
   invalid_input: 400,
   invalid_email: 400,
   challenge_failed: 400,
@@ -56,6 +61,7 @@ export const signupErrorCatalogue = {
 export type SignupErrorCode = keyof typeof signupErrorCatalogue;
 
 const errorMessages: Record<SignupErrorCode, string> = {
+  blocked_domain: signupCopy.blockedDomain,
   invalid_input: signupCopy.invalidInput,
   invalid_email: signupCopy.invalidEmail,
   challenge_failed: signupCopy.challengeFailed,
@@ -83,10 +89,16 @@ export interface SignupRouteDependencies {
 }
 
 let database: DatabasePool | undefined;
+let fraudService: FraudService | undefined;
 
 function getDatabase(): DatabasePool {
   database ??= createPool(getConfig().databaseUrl);
   return database;
+}
+
+function getFraudService(): FraudService {
+  fraudService ??= createFraudService(getDatabase());
+  return fraudService;
 }
 
 function jsonResponse(status: number, body: Record<string, unknown>): Response {
@@ -243,7 +255,8 @@ export function createSignupRoute(
     // a useful timing signal.
     const membershipWorkStartedAt = monotonicClock();
 
-    // 4. Normalise + upsert + queue the verification mail (in the module).
+    // 4. Normalise + blocklist/MX screen + upsert + queue the verification
+    // mail (in the module).
     let outcome: SignupOutcome;
     try {
       outcome = await dependencies.signup({
@@ -264,6 +277,9 @@ export function createSignupRoute(
 
     if (outcome.kind === 'invalid_email') {
       return errorResponse('invalid_email');
+    }
+    if (outcome.kind === 'blocked_domain') {
+      return errorResponse('blocked_domain');
     }
 
     // 5. Flag the row for review when the challenge timed out — the subscriber
@@ -344,6 +360,9 @@ function defaultDependencies(): SignupRouteDependencies {
             allowAttribution,
           ),
         isReferralEnabled: () => getFlagService().isEnabled('referral.enabled'),
+        raiseFraudFlag: (subscriberId, kind, detail) =>
+          getFraudService().raise(subscriberId, kind, detail),
+        screenEmailDomain: (domain) => getFraudService().screen({ domain }),
         sendVerificationMail: createResendTestMailSender(
           config.resendApiKey,
           config.resendTestRecipient,

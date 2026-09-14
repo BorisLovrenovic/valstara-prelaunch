@@ -199,7 +199,7 @@ test('the no-JS form explains the requirement and the real route rejects its emp
     /JavaScript is required/u,
   );
 
-  await page.fill('#signup-email', 'nojs@example.com');
+  await page.fill('#signup-email', 'nojs@gmail.com');
   await page.selectOption('#signup-country', 'US');
   const responsePromise = page.waitForResponse('**/api/signup');
   await page.click('[data-submit]');
@@ -320,6 +320,13 @@ test('a pending response hides the form and shows the success message', async ()
 
 test('each server error code renders its message at the right target', async () => {
   const cases = [
+    {
+      code: 'blocked_domain',
+      status: 400,
+      message: 'Use a permanent email address to join the waitlist.',
+      target: '[data-error-for="email"]',
+      invalidControl: '#signup-email',
+    },
     {
       code: 'invalid_email',
       status: 400,

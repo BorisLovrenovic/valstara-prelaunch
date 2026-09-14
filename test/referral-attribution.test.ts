@@ -212,6 +212,8 @@ test('self-referral is flagged while the repeat signup remains accepted and has 
       status: 'verified',
     });
     const signup = createSignupService(fixture.applicationDatabase, {
+      raiseFraudFlag: async () => undefined,
+      screenEmailDomain: async () => ({ flags: [] }),
       attributeReferral: (referredId, code, allowAttribution) =>
         createReferralService(fixture.applicationDatabase).attribute(
           referredId,
@@ -255,6 +257,8 @@ test('unknown codes and disabled attribution leave a signup unattributed', async
   try {
     const attributed: string[] = [];
     const signup = createSignupService(fixture.applicationDatabase, {
+      raiseFraudFlag: async () => undefined,
+      screenEmailDomain: async () => ({ flags: [] }),
       attributeReferral: async (_referredId, code) => {
         attributed.push(code);
       },
