@@ -11,6 +11,12 @@ export interface ReferralEdgeForConfirmation {
   readonly referrer_id: string;
 }
 
+export interface ReferralStatusAward {
+  readonly reward_kind: 'discount' | 'entries' | 'merch' | 'wave_upgrade';
+  readonly state: 'held' | 'settled';
+  readonly tier: number;
+}
+
 export interface ReferralSubscriber {
   readonly access_window: AccessWindow | null;
   readonly confirmed_referrals: number;
@@ -29,6 +35,10 @@ export interface ReferralRepository {
   ): Promise<number>;
   countConfirmedEdges(referrerId: string): Promise<number>;
   findCode(subscriberId: string): Promise<string | null>;
+  findActiveMilestoneAwards(
+    subscriberId: string,
+    limit: number,
+  ): Promise<readonly ReferralStatusAward[]>;
   findMilestoneBackfillCandidateIds(
     tier: number,
     threshold: number,
@@ -126,6 +136,27 @@ export function createReferralRepository(
         values: [subscriberId],
       });
       return row?.referral_code ?? null;
+    },
+
+    async findActiveMilestoneAwards(subscriberId, limit) {
+      if (!Number.isInteger(limit) || limit < 1) {
+        throw new RangeError(
+          'A referral-status reward limit must be positive.',
+        );
+      }
+      return database.list<ReferralStatusAward>(
+        {
+          text: `
+            SELECT tier, reward_kind, state
+            FROM milestone_award
+            WHERE subscriber_id = $1
+              AND state IN ('settled', 'held')
+            ORDER BY tier, reward_kind
+          `,
+          values: [subscriberId],
+        },
+        limit,
+      );
     },
 
     async findMilestoneBackfillCandidateIds(tier, threshold, limit) {

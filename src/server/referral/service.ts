@@ -24,10 +24,12 @@ import {
   rewardStateAtCampaignClose,
   rewardStateAtConfirmation,
 } from './reward-state.ts';
+import { computeReferralStatus, type ReferralStatus } from './status.ts';
 
 const maximumCodeAttempts = 10;
 export const milestoneBackfillMaximumLimit = 100;
 export const campaignCloseVoidMaximumLimit = 100;
+export const referralStatusRewardMaximumLimit = 100;
 
 export interface ReferralServiceDependencies {
   readonly createCode?: () => string;
@@ -65,6 +67,7 @@ export interface ReferralService {
   generateCode(subscriberId: string): Promise<string>;
   getReferralCode(subscriberId: string): Promise<string | null>;
   lookupCode(code: string): Promise<string | null>;
+  status(subscriberId: string): Promise<ReferralStatus>;
   voidHeldRewardsAtCampaignClose(
     limit: number,
   ): Promise<CampaignCloseVoidResult>;
@@ -371,6 +374,33 @@ function createReferralServiceWithRepository(
 
     async lookupCode(code) {
       return repository.findSubscriberIdByCode(code);
+    },
+
+    async status(subscriberId) {
+      const subscriber = await repository.findSubscriber(subscriberId);
+      if (
+        subscriber === null ||
+        subscriber.status !== 'verified' ||
+        subscriber.referral_code === null
+      ) {
+        throw new Error(
+          'Referral status requires a verified subscriber with a referral code.',
+        );
+      }
+
+      const awards = await repository.findActiveMilestoneAwards(
+        subscriberId,
+        referralStatusRewardMaximumLimit + 1,
+      );
+      if (awards.length > referralStatusRewardMaximumLimit) {
+        throw new Error('Referral status exceeds the configured reward limit.');
+      }
+
+      return computeReferralStatus(
+        subscriber.confirmed_referrals,
+        subscriber.referral_code,
+        awards,
+      );
     },
 
     async voidHeldRewardsAtCampaignClose(limit) {
