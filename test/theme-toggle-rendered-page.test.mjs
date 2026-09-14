@@ -105,6 +105,30 @@ async function startBrowserServer() {
   );
 }
 
+async function connectToBrowserServer() {
+  let connectionError;
+
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      return await chromium.connect(browserServerEndpoint);
+    } catch (error) {
+      connectionError = error;
+      if (
+        browserServerError !== undefined ||
+        browserServer?.exitCode !== null
+      ) {
+        break;
+      }
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
+    }
+  }
+
+  throw new Error(
+    'Containerized Playwright server did not accept a connection.',
+    { cause: connectionError },
+  );
+}
+
 before(async () => {
   server = spawn(process.execPath, ['dist/server/entry.mjs'], {
     env: {
@@ -123,7 +147,7 @@ before(async () => {
   });
   await waitForAppServer();
   await startBrowserServer();
-  browser = await chromium.connect(browserServerEndpoint);
+  browser = await connectToBrowserServer();
 });
 
 after(async () => {
