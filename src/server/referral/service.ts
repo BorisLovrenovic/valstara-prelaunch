@@ -30,6 +30,7 @@ const maximumCodeAttempts = 10;
 export const milestoneBackfillMaximumLimit = 100;
 export const campaignCloseVoidMaximumLimit = 100;
 export const referralStatusRewardMaximumLimit = 100;
+export const referralCounterRepairMaximumLimit = 1_000;
 
 export interface ReferralServiceDependencies {
   readonly createCode?: () => string;
@@ -44,6 +45,11 @@ export interface MilestoneBackfillResult {
 
 export interface CampaignCloseVoidResult {
   readonly voided: number;
+}
+
+export interface ReferralCounterRepairResult {
+  readonly checked: number;
+  readonly corrected: number;
 }
 
 export type AttributeResult =
@@ -67,6 +73,7 @@ export interface ReferralService {
   generateCode(subscriberId: string): Promise<string>;
   getReferralCode(subscriberId: string): Promise<string | null>;
   lookupCode(code: string): Promise<string | null>;
+  recomputeCounters(limit: number): Promise<ReferralCounterRepairResult>;
   status(subscriberId: string): Promise<ReferralStatus>;
   voidHeldRewardsAtCampaignClose(
     limit: number,
@@ -376,6 +383,41 @@ function createReferralServiceWithRepository(
       return repository.findSubscriberIdByCode(code);
     },
 
+    async recomputeCounters(limit) {
+      assertCounterRepairLimit(limit);
+      return runTransaction(async (connection) => {
+        const transactionalRepository = createReferralRepository(connection);
+        const subscriberIds =
+          await transactionalRepository.findSubscriberIdsForCounterRepair(
+            limit,
+          );
+        let corrected = 0;
+        for (const subscriberId of subscriberIds) {
+          const [confirmedReferrals, tier] = await Promise.all([
+            transactionalRepository.countConfirmedEdges(subscriberId),
+            transactionalRepository.findSettledReferralTier(subscriberId),
+          ]);
+          if (
+            await transactionalRepository.repairReferralCounterAndTier(
+              subscriberId,
+              confirmedReferrals,
+              tier,
+            )
+          ) {
+            corrected += 1;
+          }
+        }
+        await createAuditService(connection).record({
+          action: 'referral.counters_repaired',
+          actor: 'system:referral-counter-repair',
+          detail: { checked: subscriberIds.length, corrected, limit },
+          subjectId: 'daily',
+          subjectType: 'referral_counter_repair',
+        });
+        return { checked: subscriberIds.length, corrected };
+      });
+    },
+
     async status(subscriberId) {
       const subscriber = await repository.findSubscriber(subscriberId);
       if (
@@ -511,6 +553,18 @@ function assertCampaignCloseVoidLimit(limit: number): void {
   ) {
     throw new RangeError(
       `A campaign-close void limit must be between 1 and ${campaignCloseVoidMaximumLimit}.`,
+    );
+  }
+}
+
+function assertCounterRepairLimit(limit: number): void {
+  if (
+    !Number.isInteger(limit) ||
+    limit < 1 ||
+    limit > referralCounterRepairMaximumLimit
+  ) {
+    throw new RangeError(
+      `A counter repair limit must be between 1 and ${referralCounterRepairMaximumLimit}.`,
     );
   }
 }

@@ -1,24 +1,26 @@
 import type { P1AlertConfiguration } from '../config.ts';
 
-export interface P1Alert {
+export type AlertSeverity = 'P1' | 'P2';
+
+export interface Alert {
   readonly detail: Readonly<Record<string, number | string>>;
   readonly event: string;
   readonly occurredAt: Date;
-  readonly severity: 'P1';
+  readonly severity: AlertSeverity;
 }
 
-export interface P1AlertTransport {
-  send(alert: P1Alert): Promise<void>;
+export interface AlertTransport {
+  send(alert: Alert): Promise<void>;
 }
 
 export interface P1AlertTransportDependencies {
   readonly fetch?: typeof globalThis.fetch;
 }
 
-export function createP1AlertWebhookTransport(
+export function createAlertWebhookTransport(
   configuration: P1AlertConfiguration,
   dependencies: P1AlertTransportDependencies = {},
-): P1AlertTransport {
+): AlertTransport {
   const request = dependencies.fetch ?? globalThis.fetch;
 
   return {

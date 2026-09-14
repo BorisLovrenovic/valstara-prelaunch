@@ -62,6 +62,7 @@ test('maintenance runs reminders hourly and expiry once per UTC day with fixed b
   const retentionLimits: number[] = [];
   const tokenRetentionLimits: number[] = [];
   const strandedReferralLimits: number[] = [];
+  const referralCounterRepairLimits: number[] = [];
   let verificationRateRuns = 0;
   const scheduler = createVerificationMaintenanceScheduler(
     {
@@ -73,6 +74,11 @@ test('maintenance runs reminders hourly and expiry once per UTC day with fixed b
       rateLimitRetention: {
         async run(limit) {
           retentionLimits.push(limit);
+        },
+      },
+      referralCounterRepair: {
+        async run(limit) {
+          referralCounterRepairLimits.push(limit);
         },
       },
       reminder: {
@@ -113,6 +119,7 @@ test('maintenance runs reminders hourly and expiry once per UTC day with fixed b
   assert.equal(retentionLimits.length, 2);
   assert.equal(tokenRetentionLimits.length, 2);
   assert.equal(strandedReferralLimits.length, 2);
+  assert.equal(referralCounterRepairLimits.length, 2);
   assert.ok(
     [
       ...reminderLimits,
@@ -120,6 +127,7 @@ test('maintenance runs reminders hourly and expiry once per UTC day with fixed b
       ...retentionLimits,
       ...tokenRetentionLimits,
       ...strandedReferralLimits,
+      ...referralCounterRepairLimits,
     ].every((limit) => limit === verificationMaintenanceBatchLimit),
   );
 });
@@ -145,6 +153,9 @@ test('maintenance reports failures through its runner seam and retries expiry', 
             throw new Error('database unavailable');
           }
         },
+      },
+      referralCounterRepair: {
+        async run() {},
       },
       reminder: {
         async run() {

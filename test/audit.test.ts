@@ -87,6 +87,7 @@ test('the required audit action registry is complete', () => {
     'fraud.reviewed',
     'referral.access_window_promoted',
     'referral.milestone_backfilled',
+    'referral.counters_repaired',
     'flag.changed',
     'export.run',
     'draw.executed',

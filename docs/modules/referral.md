@@ -38,7 +38,7 @@ interface ReferralService {
 - A configured tier is awarded only by the confirmation that reaches its threshold. Enabling a tier after a subscriber has already passed that threshold is deliberately non-retroactive. Retroactive awards require the actor-named, batch-capped `backfillTier()` action, and every batch writes `referral.milestone_backfilled` to the audit log.
 - **`referral_tier` is derived from the highest settled `milestone_award`.** Held awards do not raise it.
 - **Referral status has one computation.** `status()` returns the code-derived referral link, the subscriber row's exact `confirmed_referrals` value without display transformation, the tier derived afresh from settled awards, and every active milestone reward with its `settled` or `held` state. E6-05 and E8-03 render this result; they do not recompute it. Founder-authorised 2026-09-14.
-- **`confirmed_referrals` is derived from edges.** `recomputeCounters()` is idempotent and **alerts on any non-zero correction** — a silently repaired counter hides the bug that caused it.
+- **`confirmed_referrals` is derived from edges.** `recomputeCounters()` is idempotent, batch-capped at 1,000 and records every run in the append-only audit log. Its daily job sends a **P2** alert carrying the correction count for any non-zero correction — a silently repaired counter hides the bug that caused it. It locks each repaired subscriber row transactionally, so concurrent signup and verification work cannot be overwritten.
 - **Single level only.** No second-degree credit, no multi-level structure, no code path that walks a referral chain.
 
 ## Configuration (ADR-025)

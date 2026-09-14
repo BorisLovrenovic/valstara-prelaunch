@@ -1,6 +1,6 @@
 import { setTimeout as systemSleep } from 'node:timers/promises';
 
-import type { P1AlertTransport } from '../verification-rate/p1-webhook.ts';
+import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 
 const HOUR_MS = 60 * 60 * 1_000;
 
@@ -10,6 +10,7 @@ export type MaintenanceJobName =
   | 'expiry'
   | 'rate_limit_retention'
   | 'reminder'
+  | 'referral_counter_repair'
   | 'stranded_referral'
   | 'verification_rate'
   | 'verification_token_retention';
@@ -25,6 +26,7 @@ export interface VerificationRateJob {
 export interface VerificationMaintenanceJobs {
   readonly expiry: MaintenanceJob;
   readonly rateLimitRetention: MaintenanceJob;
+  readonly referralCounterRepair: MaintenanceJob;
   readonly reminder: MaintenanceJob;
   readonly strandedReferral: MaintenanceJob;
   readonly verificationRate: VerificationRateJob;
@@ -43,7 +45,7 @@ export interface MaintenanceFailureReporterDependencies {
 }
 
 export function createMaintenanceFailureReporter(
-  p1Alerts: P1AlertTransport,
+  alerts: AlertTransport,
   dependencies: MaintenanceFailureReporterDependencies = {},
 ): (job: MaintenanceJobName) => Promise<void> {
   const clock = dependencies.clock ?? (() => new Date());
@@ -53,13 +55,15 @@ export function createMaintenanceFailureReporter(
 
   return async (job) => {
     const severity =
-      job === 'verification_rate' ||
-      job === 'rate_limit_retention' ||
-      job === 'verification_token_retention'
-        ? 'P1'
-        : 'P3';
-    if (severity === 'P1') {
-      await p1Alerts.send({
+      job === 'referral_counter_repair'
+        ? 'P2'
+        : job === 'verification_rate' ||
+            job === 'rate_limit_retention' ||
+            job === 'verification_token_retention'
+          ? 'P1'
+          : 'P3';
+    if (severity === 'P1' || severity === 'P2') {
+      await alerts.send({
         detail: { job },
         event: 'verification_maintenance_failed',
         occurredAt: clock(),
@@ -87,6 +91,7 @@ export function createVerificationMaintenanceScheduler(
   const sleep = dependencies.sleep ?? systemSleep;
   let expiryDay: string | null = null;
   let rateLimitRetentionDay: string | null = null;
+  let referralCounterRepairDay: string | null = null;
   let strandedReferralDay: string | null = null;
   let verificationTokenRetentionDay: string | null = null;
 
@@ -140,6 +145,12 @@ export function createVerificationMaintenanceScheduler(
       (await runJob('stranded_referral', jobs.strandedReferral))
     ) {
       strandedReferralDay = day;
+    }
+    if (
+      referralCounterRepairDay !== day &&
+      (await runJob('referral_counter_repair', jobs.referralCounterRepair))
+    ) {
+      referralCounterRepairDay = day;
     }
   }
 
