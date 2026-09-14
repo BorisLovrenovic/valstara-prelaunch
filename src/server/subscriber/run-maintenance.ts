@@ -6,7 +6,8 @@ import {
 import { createPool } from '../db/pool.ts';
 import { createRateLimitRetentionJob } from '../ratelimit/retention.ts';
 import { createStrandedReferralReconciliationJob } from '../referral/reconcile-stranded.ts';
-import { createP1AlertWebhookTransport } from '../verification-rate/p1-webhook.ts';
+import { createReferralCounterRepairJob } from '../referral/counter-repair.ts';
+import { createAlertWebhookTransport } from '../verification-rate/p1-webhook.ts';
 import { createVerificationRateMonitor } from '../verification-rate/service.ts';
 import { createVerificationTokenRetentionJob } from '../verification/retention.ts';
 
@@ -19,8 +20,8 @@ import { createVerificationReminderJob } from './reminder.ts';
 
 const database = createPool(getDatabaseUrl());
 const clock = (): Date => new Date();
-const p1Alerts = createP1AlertWebhookTransport(getP1AlertConfiguration());
-const reportFailure = createMaintenanceFailureReporter(p1Alerts, { clock });
+const alerts = createAlertWebhookTransport(getP1AlertConfiguration());
+const reportFailure = createMaintenanceFailureReporter(alerts, { clock });
 
 async function reportVerificationRateCollapse(alert: {
   readonly baselineRate: number;
@@ -29,7 +30,7 @@ async function reportVerificationRateCollapse(alert: {
   readonly relativeDrop: number;
   readonly severity: 'P1';
 }): Promise<void> {
-  await p1Alerts.send({
+  await alerts.send({
     detail: {
       baseline_rate: alert.baselineRate,
       current_rate: alert.currentRate,
@@ -45,6 +46,9 @@ const scheduler = createVerificationMaintenanceScheduler(
   {
     expiry: createUnverifiedExpiryJob(database, { clock }),
     rateLimitRetention: createRateLimitRetentionJob(database, { clock }),
+    referralCounterRepair: createReferralCounterRepairJob(database, {
+      alert: (alert) => alerts.send(alert),
+    }),
     reminder: createVerificationReminderJob(database, { clock }),
     strandedReferral: createStrandedReferralReconciliationJob(database, {
       clock,

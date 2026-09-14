@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import test from 'node:test';
 
-import { createP1AlertWebhookTransport } from '../src/server/verification-rate/p1-webhook.ts';
+import { createAlertWebhookTransport } from '../src/server/verification-rate/p1-webhook.ts';
 import { createVerificationRateMonitorWithRepository } from '../src/server/verification-rate/service.ts';
 import { createMaintenanceFailureReporter } from '../src/server/subscriber/maintenance.ts';
 
@@ -23,7 +23,7 @@ test('a simulated verification-rate collapse reaches the authenticated P1 webhoo
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address !== null && typeof address === 'object');
-  const transport = createP1AlertWebhookTransport({
+  const transport = createAlertWebhookTransport({
     token: 'drill-token',
     url: `http://127.0.0.1:${address.port}/p1`,
   });
@@ -83,7 +83,7 @@ test('a simulated verification-rate collapse reaches the authenticated P1 webhoo
 });
 
 test('a rejected P1 notification rejects instead of becoming a log-only success', async () => {
-  const transport = createP1AlertWebhookTransport(
+  const transport = createAlertWebhookTransport(
     { token: 'test-token', url: 'https://alerts.example.test/p1' },
     { fetch: async () => new Response(null, { status: 503 }) },
   );
@@ -97,6 +97,33 @@ test('a rejected P1 notification rejects instead of becoming a log-only success'
     }),
     /rejected the notification/u,
   );
+});
+
+test('the existing authenticated webhook preserves a P2 severity for its receiver', async () => {
+  let requestBody = '';
+  const transport = createAlertWebhookTransport(
+    { token: 'test-token', url: 'https://alerts.example.test/alerts' },
+    {
+      async fetch(_input, init) {
+        requestBody = String(init?.body);
+        return new Response(null, { status: 204 });
+      },
+    },
+  );
+
+  await transport.send({
+    detail: { corrected: 2 },
+    event: 'referral_counters_corrected',
+    occurredAt: new Date('2026-09-14T12:00:00.000Z'),
+    severity: 'P2',
+  });
+
+  assert.deepEqual(JSON.parse(requestBody), {
+    detail: { corrected: 2 },
+    event: 'referral_counters_corrected',
+    occurred_at: '2026-09-14T12:00:00.000Z',
+    severity: 'P2',
+  });
 });
 
 test('a failed rate-limit retention sweep reaches the authenticated P1 webhook', async () => {
@@ -116,7 +143,7 @@ test('a failed rate-limit retention sweep reaches the authenticated P1 webhook',
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address !== null && typeof address === 'object');
-  const transport = createP1AlertWebhookTransport({
+  const transport = createAlertWebhookTransport({
     token: 'retention-drill-token',
     url: `http://127.0.0.1:${address.port}/p1`,
   });

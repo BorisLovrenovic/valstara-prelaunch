@@ -4,6 +4,10 @@ Status: authoritative. **Every row is testable.** User-facing failure copy lives
 
 **Alert severities.** **P1** — act now · **P2** — within the hour · **P3** — daily digest.
 
+The single authenticated alert webhook carries a `severity` field and delivers
+both P1 and P2 notifications. Its `P1_ALERT_WEBHOOK_*` environment-variable
+prefix is historical; the receiver owns paging-versus-within-the-hour routing.
+
 **Two properties hold across every row, and they are why this matrix is short:**
 
 - **A signup that reached PostgreSQL is safe.** Email, analytics, leaderboard and ESP sync are all downstream of the row. Losing any of them delays or degrades; none of them can lose a subscriber.

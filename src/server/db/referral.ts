@@ -52,6 +52,7 @@ export interface ReferralRepository {
   findSubscriber(subscriberId: string): Promise<ReferralSubscriber | null>;
   findSubscriberIdByCode(code: string): Promise<string | null>;
   findSettledReferralTier(subscriberId: string): Promise<number>;
+  findSubscriberIdsForCounterRepair(limit: number): Promise<readonly string[]>;
   findStrandedVerifiedReferralIds(limit: number): Promise<readonly string[]>;
   insertMilestoneAward(
     id: string,
@@ -74,6 +75,11 @@ export interface ReferralRepository {
     confirmedReferrals: number,
     tier: number,
   ): Promise<number>;
+  repairReferralCounterAndTier(
+    subscriberId: string,
+    confirmedReferrals: number,
+    tier: number,
+  ): Promise<boolean>;
   verificationOrder(): Promise<number>;
   voidMilestoneAwards(ids: readonly string[], state: 'void'): Promise<number>;
   voidReferralEdges(ids: readonly string[], state: 'void'): Promise<number>;
@@ -271,6 +277,25 @@ export function createReferralRepository(
       return row?.tier ?? 0;
     },
 
+    async findSubscriberIdsForCounterRepair(limit) {
+      if (!Number.isInteger(limit) || limit < 1) {
+        throw new RangeError('A counter repair limit must be positive.');
+      }
+      const rows = await database.list<{ id: string }>(
+        {
+          text: `
+            SELECT id
+            FROM subscriber
+            WHERE status = 'verified'
+            ORDER BY id
+            FOR UPDATE SKIP LOCKED
+          `,
+        },
+        limit,
+      );
+      return rows.map((row) => row.id);
+    },
+
     async findStrandedVerifiedReferralIds(limit) {
       if (!Number.isInteger(limit) || limit < 1) {
         throw new RangeError(
@@ -355,6 +380,19 @@ export function createReferralRepository(
         `,
         values: [subscriberId, confirmedReferrals, tier],
       });
+    },
+
+    async repairReferralCounterAndTier(subscriberId, confirmedReferrals, tier) {
+      const corrected = await database.execute({
+        text: `
+          UPDATE subscriber
+          SET confirmed_referrals = $2, referral_tier = $3, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1
+            AND (confirmed_referrals, referral_tier) IS DISTINCT FROM ($2, $3)
+        `,
+        values: [subscriberId, confirmedReferrals, tier],
+      });
+      return corrected === 1;
     },
 
     async verificationOrder() {
