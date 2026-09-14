@@ -45,7 +45,11 @@ The waitlist row.
 | `verified_at` `unsubscribed_at` `expired_at` `disqualified_at` | timestamptz | |
 | `created_at` `updated_at` | timestamptz not null | |
 
-Indexes: `email_normalised` (unique) · `referral_code` (unique) · `referred_by_id` · `(status, created_at)` · `(status, confirmed_referrals desc)` for the leaderboard snapshot · `signup_ip_prefix_hash` partial where not null.
+Indexes: `email_normalised` (unique) · `referral_code` (unique) ·
+`referred_by_id` · `(status, created_at)` ·
+`(status, confirmed_referrals desc)` for the leaderboard snapshot ·
+`signup_ip_prefix_hash` partial where not null · functional
+`split_part(email_normalised, '@', 1)` for bounded duplicate-identity evidence.
 
 **`referral_tier` and `confirmed_referrals` are caches.** `referral_edge` and `milestone_award` are the record. A daily repair job recomputes both idempotently and alerts on any non-zero delta (`docs/architecture/fallbacks.md`).
 
@@ -109,7 +113,19 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 **A flag never changes `subscriber.status` by itself.** Only a human upholding a flag can produce a `disqualified` subscriber, and that action is audited.
 
-**`challenge_timeout`** is the review flag raised when Cloudflare Turnstile is unreachable at signup: the signup is accepted under strict rate limits and the row is flagged (ADR-006, `fallbacks.md` "Turnstile unavailable" → P2). It is the one `kind` written outside the E5 fraud module — the signup route writes it through a minimal `server/db` path (E3-03, founder-authorised 2026-09-07, added by migration `0005`). The fraud module owns every other kind.
+`duplicate_identity` is raised for a newly inserted subscriber when its
+normalised local part matches an existing subscriber on a different email
+domain. Its structured evidence records rule name and version, local part,
+complete match count and at most 20 matched subscriber IDs. It never rejects a
+signup.
+
+**Two kinds are written outside the fraud module.** `challenge_timeout` is
+raised by the signup route when Cloudflare Turnstile is unreachable: the signup
+is accepted under strict rate limits and the row is flagged (ADR-006,
+`fallbacks.md` "Turnstile unavailable" → P2). `self_referral` is raised by the
+referral attribution transaction, which rejects the edge atomically while the
+signup still completes (E4-03). The fraud module reviews both like any other
+flag but does not raise them. It owns every other kind.
 
 ## `domain_allow`
 

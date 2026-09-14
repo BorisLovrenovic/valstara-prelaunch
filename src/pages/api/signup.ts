@@ -255,8 +255,8 @@ export function createSignupRoute(
     // a useful timing signal.
     const membershipWorkStartedAt = monotonicClock();
 
-    // 4. Normalise + blocklist/MX screen + upsert + queue the verification
-    // mail (in the module).
+    // 4. Normalise + blocklist/MX screen + upsert + referral attribution +
+    // fraud signals + queue the verification mail (in the module).
     let outcome: SignupOutcome;
     try {
       outcome = await dependencies.signup({
@@ -360,6 +360,8 @@ function defaultDependencies(): SignupRouteDependencies {
             allowAttribution,
           ),
         isReferralEnabled: () => getFlagService().isEnabled('referral.enabled'),
+        flagDuplicateIdentity: (subscriberId) =>
+          getFraudService().flagDuplicateIdentity(subscriberId),
         raiseFraudFlag: (subscriberId, kind, detail) =>
           getFraudService().raise(subscriberId, kind, detail),
         screenEmailDomain: (domain) => getFraudService().screen({ domain }),

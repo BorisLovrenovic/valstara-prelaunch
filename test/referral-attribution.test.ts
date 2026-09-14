@@ -236,15 +236,26 @@ test('self-referral is flagged while the repeat signup remains accepted and has 
     assert.equal(result.kind, 'already_verified');
     assert.equal(await edgeCount(fixture.database, subscriberId), 0);
     assert.deepEqual(
-      await fixture.database.readOne<{ kind: string; detail: unknown }>({
+      await fixture.database.readOne<{
+        kind: string;
+        detail: unknown;
+        state: string;
+        status: string;
+      }>({
         text: `
-          SELECT kind, detail
-          FROM fraud_flag
-          WHERE subscriber_id = $1 AND kind = 'self_referral'
+          SELECT f.kind, f.detail, f.state, s.status
+          FROM fraud_flag f
+          JOIN subscriber s ON s.id = f.subscriber_id
+          WHERE f.subscriber_id = $1 AND f.kind = 'self_referral'
         `,
         values: [subscriberId],
       }),
-      { kind: 'self_referral', detail: { reason: 'self_referral' } },
+      {
+        kind: 'self_referral',
+        detail: { reason: 'self_referral' },
+        state: 'open',
+        status: 'verified',
+      },
     );
   } finally {
     await fixture.applicationDatabase.close();

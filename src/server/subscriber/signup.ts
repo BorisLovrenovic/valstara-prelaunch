@@ -66,6 +66,7 @@ export interface SignupServiceDependencies {
     allowAttribution: boolean,
   ) => Promise<unknown>;
   readonly isReferralEnabled?: () => Promise<boolean>;
+  readonly flagDuplicateIdentity?: (subscriberId: string) => Promise<boolean>;
   readonly raiseFraudFlag: (
     subscriberId: string,
     kind: FraudScreenFlag,
@@ -112,12 +113,12 @@ async function upsertSubscriber(
 
 /**
  * The signup domain step: normalise, run the domain screen, upsert on the
- * normalised uniqueness key, and — only for a pending row and only when the
- * per-address send window permits — queue and send a verification mail.
- * Normalisation and screening both run before the uniqueness check (the
- * `ON CONFLICT` inside `upsertSubscriber`), and a send failure is swallowed
- * because the queued `email_send` row is the source of truth; neither the send
- * nor its failure touches the committed subscriber row.
+ * normalised uniqueness key, attribute, raise post-upsert fraud signals, and
+ * — only for a pending row and only when the per-address send window permits —
+ * queue and send a verification mail. Normalisation and screening both run
+ * before the uniqueness check (the `ON CONFLICT` inside `upsertSubscriber`),
+ * and a send or flag failure is swallowed because neither may roll back or
+ * reject the committed subscriber row.
  */
 export function createSignupService(
   database: DatabasePool,
@@ -177,6 +178,21 @@ export function createSignupService(
         input.referralCode,
         subscriber.created,
       );
+    }
+
+    // E5-02: this signal applies only to the newly inserted identity. Repeats
+    // of an existing signup are not new identities and must not create review
+    // noise. The signal is metadata only, so a lookup or flag-write failure
+    // cannot turn an accepted signup into a rejection.
+    if (
+      subscriber.created &&
+      dependencies.flagDuplicateIdentity !== undefined
+    ) {
+      try {
+        await dependencies.flagDuplicateIdentity(subscriber.id);
+      } catch {
+        // Fraud signals never change subscriber status or reject a signup.
+      }
     }
 
     if (subscriber.status === 'verified') {

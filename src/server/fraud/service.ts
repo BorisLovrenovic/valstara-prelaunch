@@ -4,6 +4,7 @@ import { domainToASCII } from 'node:url';
 
 import { createAuditService } from '../audit/service.ts';
 import { createDomainAllowRepository } from '../db/domain-allow.ts';
+import { findDuplicateIdentityMatches } from '../db/duplicate-identity.ts';
 import { createFraudFlagRepository } from '../db/fraud-flag.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
@@ -13,6 +14,8 @@ import { isBlocklistedDomain } from './blocklist.ts';
 export const mxLookupTimeoutMs = 1_500;
 export const mxCacheTtlMs = 15 * 60 * 1_000;
 export const mxCacheMaximumEntries = 10_000;
+export const duplicateIdentityEvidenceLimit = 20;
+export const duplicateIdentityRuleVersion = 1;
 
 export type FraudScreenReject = 'blocked_domain' | 'invalid_email';
 export type FraudScreenFlag = 'no_mx';
@@ -28,6 +31,7 @@ export interface ScreenResult {
 
 export interface FraudService {
   allowDomain(domain: string, actor: string): Promise<void>;
+  flagDuplicateIdentity(subscriberId: string): Promise<boolean>;
   raise(
     subscriberId: string,
     kind: FraudScreenFlag,
@@ -173,6 +177,33 @@ export function createFraudService(
           subjectId: domain,
           subjectType: 'email_domain',
         });
+      });
+    },
+    async flagDuplicateIdentity(subscriberId) {
+      return withTransaction(database, async (connection) => {
+        const matches = await findDuplicateIdentityMatches(connection, {
+          limit: duplicateIdentityEvidenceLimit,
+          subscriberId,
+        });
+        const firstMatch = matches[0];
+        if (firstMatch === undefined) {
+          return false;
+        }
+
+        await createFraudFlagRepository(connection).insertDuplicateIdentityFlag(
+          {
+            detail: {
+              local_part: firstMatch.local_part,
+              match_count: Number(firstMatch.match_count),
+              matched_subscriber_ids: matches.map((match) => match.id),
+              rule: 'shared_local_part_across_domains',
+              rule_version: duplicateIdentityRuleVersion,
+            },
+            id: randomUUID(),
+            subscriberId,
+          },
+        );
+        return true;
       });
     },
     async raise(subscriberId, kind, detail) {

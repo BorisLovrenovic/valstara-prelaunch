@@ -21,6 +21,7 @@ loaded into an in-memory `Set` at boot and is never fetched at runtime.
 interface FraudService {
   screen(input: ScreenInput): Promise<ScreenResult>    // { reject?: 'blocked_domain' | 'invalid_email', flags: FlagKind[] }
   allowDomain(domain: string, actor: string): Promise<void>
+  flagDuplicateIdentity(subscriberId: string): Promise<boolean>
   raise(subscriberId: string, kind: FlagKind, detail: object): Promise<void>
   review(flagId: string, outcome: 'dismissed' | 'upheld', actor: string): Promise<void>
   openFlags(limit: number): Promise<FraudFlag[]>
@@ -35,6 +36,12 @@ interface FraudService {
   `npm run fraud:allow-domain -- <domain> <actor>`; actor is required, and the
   override plus `fraud.domain_allowed` audit record commit atomically.
 - **Only two outcomes reject at signup**: a disposable domain, and an address with no MX record. Everything else flags and lets the signup through.
+- A newly inserted subscriber raises `duplicate_identity` when the local part of
+  `email_normalised` matches an existing subscriber on a different
+  `email_domain`. The functional local-part index keeps the lookup off a full
+  table scan. Evidence is capped at 20 matched subscriber IDs and records the
+  complete match count, local part, rule name and rule version. A repeat signup
+  for an existing subscriber is not a new identity and raises no new flag.
 - **An MX lookup timeout accepts and flags.** A slow resolver must never cost a real signup — the asymmetry of those two errors is not close.
 - MX lookups wait at most 1.5 seconds and cache their result per normalised
   domain for 15 minutes in a 10,000-entry bounded cache. A definitive
@@ -52,4 +59,4 @@ interface FraudService {
 `db`, `audit`, `subscriber`, `referral` (rejecting edges on an upheld flag).
 
 ## Contract tests
-Blocklist hit rejects · allow override wins and is audited with its actor · MX absent rejects · **MX timeout accepts and flags** · MX timeout is bounded and results are cached per domain · no write path sets `disqualified` outside `review()` · IP hashing is truncated and peppered, and the raw value never appears in any output · purge honours its limit · a repository-wide scan finds no fingerprinting API usage.
+Blocklist hit rejects · allow override wins and is audited with its actor · MX absent rejects · **MX timeout accepts and flags** · MX timeout is bounded and results are cached per domain · cross-domain normalised local-part matches raise a bounded, complete `duplicate_identity` flag without changing subscriber status · no write path sets `disqualified` outside `review()` · IP hashing is truncated and peppered, and the raw value never appears in any output · purge honours its limit · a repository-wide scan finds no fingerprinting API usage.
