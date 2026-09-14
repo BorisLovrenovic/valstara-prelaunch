@@ -16,6 +16,7 @@ interface ReferralService {
   verifyRef(signed: string | null): ReferralCapture | null // null on tamper or expiry — never throws
   attribute(referredId: string, code: string): Promise<AttributeResult>
   confirm(referredId: string): Promise<void>           // called on verification
+  status(subscriberId: string): Promise<ReferralStatus>
   voidHeldRewardsAtCampaignClose(limit: number): Promise<{ voided: number }>
   backfillTier(tier: number, actor: string, limit: number): Promise<{ checked: number; awarded: number }>
   rejectEdgesOf(referrerId: string, reason: RejectReason): Promise<number>
@@ -36,6 +37,7 @@ interface ReferralService {
 - **Cheap rewards settle on confirmation; high-value rewards enter `held`.** This repository implements the hold and campaign-close `void` transition only. The storefront is the authoritative post-launch order source and owns `held` → `settled` after handoff. **A verification alone can never settle a high-value reward** — this is the module's central invariant.
 - A configured tier is awarded only by the confirmation that reaches its threshold. Enabling a tier after a subscriber has already passed that threshold is deliberately non-retroactive. Retroactive awards require the actor-named, batch-capped `backfillTier()` action, and every batch writes `referral.milestone_backfilled` to the audit log.
 - **`referral_tier` is derived from the highest settled `milestone_award`.** Held awards do not raise it.
+- **Referral status has one computation.** `status()` returns the code-derived referral link, the subscriber row's exact `confirmed_referrals` value without display transformation, the tier derived afresh from settled awards, and every active milestone reward with its `settled` or `held` state. E6-05 and E8-03 render this result; they do not recompute it. Founder-authorised 2026-09-14.
 - **`confirmed_referrals` is derived from edges.** `recomputeCounters()` is idempotent and **alerts on any non-zero correction** — a silently repaired counter hides the bug that caused it.
 - **Single level only.** No second-degree credit, no multi-level structure, no code path that walks a referral chain.
 
@@ -56,4 +58,4 @@ The held discount percentages (15% / 25%) are **confirmed production values** (A
 `db`, `audit`, `fraud` (the E4-03 `self_referral` signal only), `giveaway` (entry accrual on confirmation), `flags`.
 
 ## Contract tests
-Entropy and collision over a large generated sample · a tampered signed ref returns `null` · self-referral rejected and the signup still completes · duplicate edge rejected by the database · duplicate milestone award rejected by the database · a mid-campaign tier addition stays non-retroactive until an audited backfill · tier derives only from settled awards · **seeded property test: `recomputeCounters()` is idempotent and matches the edges for any generated graph** · **a high-value reward cannot reach `settled` from a verification path** · rejecting a referrer's edges leaves referred subscribers' status unchanged.
+Entropy and collision over a large generated sample · a tampered signed ref returns `null` · self-referral rejected and the signup still completes · duplicate edge rejected by the database · duplicate milestone award rejected by the database · a mid-campaign tier addition stays non-retroactive until an audited backfill · tier derives only from settled awards · referral status returns the exact stored count and active reward states · **seeded property test: `recomputeCounters()` is idempotent and matches the edges for any generated graph** · **a high-value reward cannot reach `settled` from a verification path** · rejecting a referrer's edges leaves referred subscribers' status unchanged.

@@ -839,17 +839,18 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Docs:** `docs/data/model.md` · `docs/ops/launch-cutover.md`
 
 ### E4-08 — Referral status in email and on `/me`
-**Model:** Tier A — Medium · **Priority:** High · **Flag:** `referral.enabled` · **Area:** frontend
+**Model:** Tier A — Medium · **Priority:** High · **Flag:** `referral.enabled` · **Area:** backend
 
-**Build:** Surface the referral link, confirmed count, tier and **the settled-versus-held reward distinction** in the welcome email, the milestone email and the `/me` page. One shared status computation, three renderings.
+**Scope correction (founder-authorised 2026-09-14):** This ticket is reduced to the shared computation and remains in sequence. E6-05 owns the `/me` rendering; E8-03 owns the welcome and milestone email renderings and the final cross-surface parity assertion.
+
+**Build:** The single shared referral-status computation in the referral module: `ReferralService.status(subscriberId)`. It returns the referral link from the subscriber's code, the **exact** stored confirmed count with no rounding or inflation, the tier derived only from settled awards, and the per-reward **settled-versus-held** breakdown. **Do not build an email template or `/me` markup in this ticket.**
 
 **Acceptance criteria:**
-- The referral link is present and correct in all three surfaces
-- **The held-versus-settled distinction is stated plainly**, not implied
-- The count shown is **the count in the database** — no rounding, no inflation
-- One status computation serves all three; **a divergence between email and page is impossible by construction**
+- The computation returns the **exact count in the database** — no rounding, no inflation
+- The tier derives only from settled awards; held awards do not raise it
+- Every active reward is labelled `settled` or `held` correctly
 
-**Tests:** Parity across the three surfaces from one computation; the no-inflation assertion.
+**Tests:** Computation-level tests for the exact count, settled-only tier derivation and per-reward state.
 **Docs:** `docs/features/member-status.md` · `docs/brand/copy-rules.md`
 
 ### E4-09 — The counter repair job
@@ -1055,10 +1056,11 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E6-05 — The member dashboard
 **Model:** Tier A — Medium · **Priority:** Medium · **Flag:** `member.dashboard` · **Area:** frontend
 
-**Build:** The `/me` content: status, confirmed referrals, tier, wave, entries and eligibility, the referral link with a copy control, the survey re-answer path, and unsubscribe. **With the flag off, the equivalent information is in email** — this is cut-list item 3.
+**Build:** The `/me` content: status, confirmed referrals, tier, wave, entries and eligibility, the referral link with a copy control, the survey re-answer path, and unsubscribe. The referral section renders from `ReferralService.status`. **With the flag off, the equivalent information is in email** — this is cut-list item 3. Referral-status rendering ownership assigned here by founder authorisation on 2026-09-14.
 
 **Acceptance criteria:**
 - Every field comes from the **one shared status computation** used by the emails
+- The `/me` referral section renders directly from `ReferralService.status`
 - **The held-versus-settled reward distinction is stated plainly**
 - The copy control works without a permanent island — a minimal inline handler, not a fourth island
 - **With the flag off, the welcome and weekly emails carry the same information** — tested
@@ -1232,17 +1234,19 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E8-03 — The six transactional templates
 **Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
-**Build:** Verification, verification reminder, welcome, milestone reached, status link, and giveaway entry receipt. One shared layout, tokens where email clients support them, **plain-text alternative for every one.** All copy from the copy layer.
+**Build:** Verification, verification reminder, welcome, milestone reached, status link, and giveaway entry receipt. One shared layout, tokens where email clients support them, **plain-text alternative for every one.** All copy from the copy layer. The welcome and milestone templates render referral status from `ReferralService.status`, including a plain settled-versus-held distinction. Those renderings and the cross-surface parity assertion were assigned here by founder authorisation on 2026-09-14.
 
 **Acceptance criteria:**
 - All six exist with plain-text alternatives
 - **The verification mail says what it is in the first line** — its only job is one click
 - **The milestone mail plainly states which reward is settled and which is held**
+- The welcome and milestone referral sections render directly from `ReferralService.status`
+- The email and `/me` renderings derive from one `ReferralService.status` result shape, so field-level divergence is impossible by construction
 - **Subject lines are descriptive, not curiosity-baiting** — the copy rules bind here as on the site
 - Every mail carries the status link and a working one-click unsubscribe
 - No forbidden copy string — the scan covers templates
 
-**Tests:** Template rendering with plain-text parity · the copy scan over templates · required-element presence per template.
+**Tests:** Template rendering with plain-text parity · the copy scan over templates · required-element presence per template · parity between the email and `/me` renderings from one `ReferralService.status` result.
 **Docs:** `docs/features/email-campaign.md` · `docs/brand/copy-rules.md#email-copy`
 
 ### E8-04 — Rendering QA and seed tests
