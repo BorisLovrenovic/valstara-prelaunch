@@ -22,6 +22,7 @@ export interface FraudFlagRepository {
   ): Promise<number>;
   insertSelfReferralFlag(input: SelfReferralFlagInsert): Promise<number>;
   insertNoMxFlag(input: NoMxFlagInsert): Promise<number>;
+  insertIpVelocityFlag(input: IpVelocityFlagInsert): Promise<number>;
 }
 
 export interface DuplicateIdentityFlagInsert {
@@ -37,6 +38,11 @@ export interface SelfReferralFlagInsert {
 
 export interface NoMxFlagInsert {
   readonly detail: Readonly<Record<string, string>>;
+  readonly id: string;
+  readonly subscriberId: string;
+}
+export interface IpVelocityFlagInsert {
+  readonly detail: Readonly<Record<string, string | number>>;
   readonly id: string;
   readonly subscriberId: string;
 }
@@ -118,6 +124,19 @@ export function createFraudFlagRepository(
             WHERE subscriber_id = $2
               AND kind = 'no_mx'
               AND state = 'open'
+          )
+        `,
+        values: [input.id, input.subscriberId, JSON.stringify(input.detail)],
+      });
+    },
+    async insertIpVelocityFlag(input) {
+      return database.execute({
+        text: `
+          INSERT INTO fraud_flag (id, subscriber_id, kind, detail, state)
+          SELECT $1, $2, 'ip_velocity', $3::jsonb, 'open'
+          WHERE NOT EXISTS (
+            SELECT 1 FROM fraud_flag
+            WHERE subscriber_id = $2 AND kind = 'ip_velocity' AND state = 'open'
           )
         `,
         values: [input.id, input.subscriberId, JSON.stringify(input.detail)],

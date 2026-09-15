@@ -8,6 +8,7 @@ import {
   appEnvironmentKeys,
   ConfigurationError,
   getDatabaseUrl,
+  getIpVelocityConfiguration,
   getP1AlertConfiguration,
   getVerificationRateConfiguration,
   turnstileTestSiteKey,
@@ -72,6 +73,7 @@ test('E1-12 validates and types the complete application environment', () => {
     databaseUrl: validEnvironment.DATABASE_URL,
     host: '127.0.0.1',
     ipPrefixPepper: 'local-test-prefix-pepper',
+    ipVelocity: { threshold: 10, windowMinutes: 60 },
     referralSigningSecret: 'local-test-referral-signing-secret',
     nodeEnvironment: 'test',
     port: 4321,
@@ -133,6 +135,29 @@ test('E3-10 validates monitoring defaults and configuration overrides', () => {
       assert.equal(error.variableName, 'VERIFICATION_RATE_COLLAPSE_PERCENT');
       return true;
     },
+  );
+});
+
+test('E5-03 validates IP-velocity defaults and overrides', () => {
+  assert.deepEqual(getIpVelocityConfiguration(validEnvironment), {
+    threshold: 10,
+    windowMinutes: 60,
+  });
+  assert.deepEqual(
+    getIpVelocityConfiguration({
+      ...validEnvironment,
+      IP_VELOCITY_THRESHOLD: '12',
+      IP_VELOCITY_WINDOW_MINUTES: '30',
+    }),
+    { threshold: 12, windowMinutes: 30 },
+  );
+  assert.throws(
+    () =>
+      getIpVelocityConfiguration({
+        ...validEnvironment,
+        IP_VELOCITY_THRESHOLD: '0',
+      }),
+    /IP_VELOCITY_THRESHOLD/u,
   );
 });
 

@@ -48,6 +48,7 @@ function routeCapturing(captured: { input?: SignupInput }) {
       return { kind: 'created', subscriber: pendingSubscriber };
     },
     flagChallengeTimeout: async () => undefined,
+    ipPrefixPepper: 'signup-region-test-pepper',
   };
   return createSignupRoute(deps);
 }

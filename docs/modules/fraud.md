@@ -25,7 +25,6 @@ interface FraudService {
   raise(subscriberId: string, kind: FlagKind, detail: object): Promise<void>
   review(flagId: string, outcome: 'dismissed' | 'upheld', actor: string): Promise<void>
   openFlags(limit: number): Promise<FraudFlag[]>
-  hashIpPrefix(ip: string): Buffer
   purgeIpHashes(before: Date, limit: number): Promise<number>
 }
 ```
@@ -50,7 +49,7 @@ interface FraudService {
   `mx_lookup_timeout` reason; a definitive no-MX rejection creates no subscriber
   row and therefore no flag row.
 - **`review(_, 'upheld')` is the only path to `disqualified`**, and it requires an actor and writes an audit record.
-- **`hashIpPrefix()` truncates before hashing** — IPv4 to /24, IPv6 to /64 — with a server-side pepper held outside the database. **A full IP address is never returned, stored or logged.**
+- At the signup request boundary, **`hashIpPrefix()` truncates before hashing** — IPv4 to /24, IPv6 to /64 — with a server-side pepper held outside the database. Fraud receives only the hash. **A full IP address is never returned, stored or logged.**
 - **`purgeIpHashes()` runs daily and its failure is a compliance alert**, not a hygiene one.
 - **The site runs no device-fingerprinting API.** No canvas, font, WebGL or timing entropy collection is invoked by site code. Cloudflare's disclosed server-side IP/TLS/UA security processing under its processor role is separate.
 - A velocity flag on a shared network is expected. That is why it is a flag.
