@@ -6,9 +6,7 @@ import test from 'node:test';
 import { createSignupRoute, hashIpPrefix } from '../src/pages/api/signup.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool } from '../src/server/db/pool.ts';
-import {
-  createIpPrefixRetentionJob,
-} from '../src/server/fraud/retention.ts';
+import { createIpPrefixRetentionJob } from '../src/server/fraud/retention.ts';
 import {
   createMaintenanceFailureReporter,
   createVerificationMaintenanceScheduler,
@@ -151,9 +149,7 @@ test('E5-03 purges only hashes past 90 days and honours the batch limit', async 
   const now = new Date('2026-09-15T12:00:00.000Z');
 
   try {
-    const expiredAt = new Date(
-      now.getTime() - (90 * 24 + 1) * 60 * 60 * 1_000,
-    );
+    const expiredAt = new Date(now.getTime() - (90 * 24 + 1) * 60 * 60 * 1_000);
     const retainedAt = new Date(
       now.getTime() - (90 * 24 - 1) * 60 * 60 * 1_000,
     );
