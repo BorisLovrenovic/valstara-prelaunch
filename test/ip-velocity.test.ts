@@ -8,7 +8,6 @@ import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool } from '../src/server/db/pool.ts';
 import {
   createIpPrefixRetentionJob,
-  ipPrefixRetentionDays,
 } from '../src/server/fraud/retention.ts';
 import {
   createMaintenanceFailureReporter,
@@ -153,10 +152,10 @@ test('E5-03 purges only hashes past 90 days and honours the batch limit', async 
 
   try {
     const expiredAt = new Date(
-      now.getTime() - (ipPrefixRetentionDays * 24 + 1) * 60 * 60 * 1_000,
+      now.getTime() - (90 * 24 + 1) * 60 * 60 * 1_000,
     );
     const retainedAt = new Date(
-      now.getTime() - (ipPrefixRetentionDays * 24 - 1) * 60 * 60 * 1_000,
+      now.getTime() - (90 * 24 - 1) * 60 * 60 * 1_000,
     );
     await owner.execute({
       text: `
