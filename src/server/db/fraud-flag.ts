@@ -17,8 +17,17 @@ export interface FraudFlagRepository {
   insertChallengeTimeoutFlag(
     input: ChallengeTimeoutFlagInsert,
   ): Promise<number>;
+  insertDuplicateIdentityFlag(
+    input: DuplicateIdentityFlagInsert,
+  ): Promise<number>;
   insertSelfReferralFlag(input: SelfReferralFlagInsert): Promise<number>;
   insertNoMxFlag(input: NoMxFlagInsert): Promise<number>;
+}
+
+export interface DuplicateIdentityFlagInsert {
+  readonly detail: Readonly<Record<string, unknown>>;
+  readonly id: string;
+  readonly subscriberId: string;
 }
 
 export interface SelfReferralFlagInsert {
@@ -64,6 +73,22 @@ export function createFraudFlagRepository(
           )
         `,
         values: [input.id, input.subscriberId, challengeTimeoutDetail],
+      });
+    },
+    async insertDuplicateIdentityFlag(input) {
+      return database.execute({
+        text: `
+          INSERT INTO fraud_flag (id, subscriber_id, kind, detail, state)
+          SELECT $1, $2, 'duplicate_identity', $3::jsonb, 'open'
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM fraud_flag
+            WHERE subscriber_id = $2
+              AND kind = 'duplicate_identity'
+              AND state = 'open'
+          )
+        `,
+        values: [input.id, input.subscriberId, JSON.stringify(input.detail)],
       });
     },
     async insertSelfReferralFlag(input) {
