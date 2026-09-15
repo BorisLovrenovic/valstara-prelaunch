@@ -326,14 +326,9 @@ test('the default POST wiring flags a cross-domain duplicate identity on the new
   }) as typeof globalThis.fetch;
 
   try {
-    await insertSubscriber(
-      fixture.database,
-      `${localPart}@existing.example`,
-    );
+    await insertSubscriber(fixture.database, `${localPart}@existing.example`);
 
-    const response = await signupPost(
-      signupRouteContext(signupRequest(email)),
-    );
+    const response = await signupPost(signupRouteContext(signupRequest(email)));
     assert.equal(response.status, 200);
     assert.equal((await response.json()).status, 'pending');
 
