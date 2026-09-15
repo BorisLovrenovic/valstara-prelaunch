@@ -5,6 +5,7 @@ import { extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
+import { POST as signupPost } from '../src/pages/api/signup.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import {
@@ -21,6 +22,7 @@ const applicationRolePassword =
 
 interface DatabaseFixture {
   readonly applicationDatabase: DatabasePool;
+  readonly applicationDatabaseUrl: string;
   readonly database: DatabasePool;
   dispose(): Promise<void>;
 }
@@ -45,6 +47,7 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
 
   return {
     applicationDatabase,
+    applicationDatabaseUrl: applicationUrl.toString(),
     database,
     async dispose() {
       await applicationDatabase.close();
@@ -60,6 +63,22 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
       await admin.close();
     },
   };
+}
+
+function signupRequest(email: string): Request {
+  return new Request('http://valstara.test/api/signup', {
+    body: new URLSearchParams({
+      country: 'GB',
+      email,
+      turnstile_token: 'duplicate-identity-route-token',
+    }),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    method: 'POST',
+  });
+}
+
+function signupRouteContext(request: Request) {
+  return { clientAddress: '203.0.113.82', request } as never;
 }
 
 async function insertSubscriber(
@@ -276,6 +295,91 @@ test('a duplicate-identity signal failure cannot reject the signup', async () =>
       { status: 'pending' },
     );
   } finally {
+    await fixture.dispose();
+  }
+});
+
+test('the default POST wiring flags a cross-domain duplicate identity on the new subscriber', async () => {
+  const fixture = await createDatabaseFixture();
+  const originalFetch = globalThis.fetch;
+  const originalEnv = { ...process.env };
+  const localPart = `default-route-${randomUUID().replaceAll('-', '')}`;
+  const email = `${localPart}@gmail.com`;
+
+  process.env.DATABASE_URL = fixture.applicationDatabaseUrl;
+  process.env.IP_PREFIX_PEPPER = 'duplicate-identity-route-pepper';
+  process.env.REFERRAL_SIGNING_SECRET =
+    'duplicate-identity-route-referral-secret';
+  process.env.TURNSTILE_SECRET_KEY = 'duplicate-identity-route-secret';
+  process.env.RESEND_API_KEY = 'duplicate-identity-route-resend-key';
+  process.env.RESEND_TEST_RECIPIENT = 'delivered@resend.dev';
+
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = input instanceof Request ? input.url : input.toString();
+    if (url.includes('challenges.cloudflare.com')) {
+      return Response.json({ success: true });
+    }
+    if (url === 'https://api.resend.com/emails') {
+      return new Response(null, { status: 200 });
+    }
+    throw new Error(`Unexpected provider request: ${url}`);
+  }) as typeof globalThis.fetch;
+
+  try {
+    await insertSubscriber(
+      fixture.database,
+      `${localPart}@existing.example`,
+    );
+
+    const response = await signupPost(
+      signupRouteContext(signupRequest(email)),
+    );
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).status, 'pending');
+
+    const subscriber = await fixture.database.readOne<{
+      readonly id: string;
+      readonly status: string;
+    }>({
+      text: `
+        SELECT id, status
+        FROM subscriber
+        WHERE email_normalised = $1
+      `,
+      values: [email],
+    });
+    assert.ok(subscriber, 'the default route must create the new subscriber');
+
+    const flag = await fixture.database.readOne<{
+      readonly kind: string;
+      readonly state: string;
+    }>({
+      text: `
+        SELECT kind, state
+        FROM fraud_flag
+        WHERE subscriber_id = $1
+          AND kind = 'duplicate_identity'
+      `,
+      values: [subscriber.id],
+    });
+    assert.deepEqual(flag, { kind: 'duplicate_identity', state: 'open' });
+    assert.equal(subscriber.status, 'pending');
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const key of [
+      'DATABASE_URL',
+      'IP_PREFIX_PEPPER',
+      'REFERRAL_SIGNING_SECRET',
+      'TURNSTILE_SECRET_KEY',
+      'RESEND_API_KEY',
+      'RESEND_TEST_RECIPIENT',
+    ]) {
+      if (originalEnv[key] === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = originalEnv[key];
+      }
+    }
     await fixture.dispose();
   }
 });
