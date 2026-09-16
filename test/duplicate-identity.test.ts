@@ -388,7 +388,9 @@ function assertFlagPathsDoNotWriteSubscriberStatus(
 ): void {
   const statusWrite = /UPDATE\s+subscriber\s+SET[\s\S]{0,300}\bstatus\s*=/iu;
   for (const source of sources) {
-    if (/createFraudFlagRepository|flagDuplicateIdentity/u.test(source.contents)) {
+    if (
+      /createFraudFlagRepository|flagDuplicateIdentity/u.test(source.contents)
+    ) {
       assert.doesNotMatch(
         source.contents,
         statusWrite,

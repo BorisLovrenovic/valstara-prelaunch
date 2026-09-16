@@ -131,7 +131,11 @@ function disqualificationAssignments(
   sources: readonly { readonly contents: string; readonly path: string }[],
 ): readonly DisqualificationAssignment[] {
   return sources.flatMap(({ contents, path }) =>
-    [...contents.matchAll(/\bUPDATE\s+subscriber\s+SET\b(?<set>[\s\S]*?)\bWHERE\b/giu)]
+    [
+      ...contents.matchAll(
+        /\bUPDATE\s+subscriber\s+SET\b(?<set>[\s\S]*?)\bWHERE\b/giu,
+      ),
+    ]
       .filter(({ groups }) =>
         /\bstatus\s*=\s*'disqualified'/iu.test(groups?.set ?? ''),
       )
@@ -157,9 +161,10 @@ test('E5-05 permits exactly one disqualification assignment: the actor-audited u
   visit(join(repositoryRoot, 'src'));
 
   const assignments = disqualificationAssignments(sources);
-  assert.deepEqual(assignments.map(({ path }) => path), [
-    'src/server/fraud/review.ts',
-  ]);
+  assert.deepEqual(
+    assignments.map(({ path }) => path),
+    ['src/server/fraud/review.ts'],
+  );
 
   const reviewSource = sources.find(
     ({ path }) => path === 'src/server/fraud/review.ts',
@@ -404,12 +409,17 @@ test('E5-05 upholding disqualifies only through review, isolates referred people
           WHERE id = ANY($1::uuid[])
           ORDER BY id
         `,
-        values: [[referralEntryId, referredBaseEntryId, unrelatedReferralEntryId]],
+        values: [
+          [referralEntryId, referredBaseEntryId, unrelatedReferralEntryId],
+        ],
       },
       3,
     );
     assert.deepEqual(
-      entries.map((entry) => ({ id: entry.id, voided: entry.voided_at !== null })),
+      entries.map((entry) => ({
+        id: entry.id,
+        voided: entry.voided_at !== null,
+      })),
       [
         { id: referralEntryId, voided: true },
         { id: referredBaseEntryId, voided: false },
@@ -454,7 +464,10 @@ test('E5-05 requires an actor and rolls back a disqualification when its audit c
     await assert.rejects(
       review.review(flag.flagId, 'upheld', adminActor),
       (error: unknown) =>
-        typeof error === 'object' && error !== null && 'code' in error && error.code === '42501',
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === '42501',
     );
     assert.deepEqual(
       await fixture.database.readOne({
@@ -511,7 +524,11 @@ test('E5-05 reversing an upheld review restores the recorded state and audits th
                FROM subscriber WHERE id = $1`,
         values: [flag.subscriberId],
       }),
-      { disqualified_at: null, disqualified_by_flag_id: null, status: 'verified' },
+      {
+        disqualified_at: null,
+        disqualified_by_flag_id: null,
+        status: 'verified',
+      },
     );
     assert.deepEqual(
       await fixture.database.readOne({
@@ -519,7 +536,11 @@ test('E5-05 reversing an upheld review restores the recorded state and audits th
                FROM referral_edge WHERE id = $1`,
         values: [edgeId],
       }),
-      { rejected_reason: null, state: 'attributed', state_before_rejection: null },
+      {
+        rejected_reason: null,
+        state: 'attributed',
+        state_before_rejection: null,
+      },
     );
     assert.deepEqual(
       await fixture.database.readOne({
