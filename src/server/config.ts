@@ -13,6 +13,8 @@ const optionalKeys = [
   'NODE_ENV',
   'PORT',
   'TURNSTILE_SITE_KEY',
+  'IP_VELOCITY_WINDOW_MINUTES',
+  'IP_VELOCITY_THRESHOLD',
   'VERIFICATION_RATE_BASELINE_DAYS',
   'VERIFICATION_RATE_COHORT_HOURS',
   'VERIFICATION_RATE_COLLAPSE_PERCENT',
@@ -49,6 +51,7 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     databaseUrl: databaseUrl(environment),
     host: host(environment),
     ipPrefixPepper: requiredValue(environment, 'IP_PREFIX_PEPPER'),
+    ipVelocity: ipVelocity(environment),
     referralSigningSecret: requiredValue(
       environment,
       'REFERRAL_SIGNING_SECRET',
@@ -81,6 +84,12 @@ export function getVerificationRateConfiguration(
   environment: NodeJS.ProcessEnv = process.env,
 ): VerificationRateConfiguration {
   return verificationRate(environment);
+}
+
+export function getIpVelocityConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): IpVelocityConfiguration {
+  return ipVelocity(environment);
 }
 
 export function getP1AlertConfiguration(
@@ -261,6 +270,17 @@ function positiveInteger(
     : invalid(key, `must be an integer from 1 to ${maximum}`);
 }
 
+function ipVelocity(environment: NodeJS.ProcessEnv): IpVelocityConfiguration {
+  return Object.freeze({
+    threshold: positiveInteger(environment, 'IP_VELOCITY_THRESHOLD', 10),
+    windowMinutes: positiveInteger(
+      environment,
+      'IP_VELOCITY_WINDOW_MINUTES',
+      60,
+    ),
+  });
+}
+
 type P1AlertEnvironmentKey = (typeof p1AlertEnvironmentKeys)[number];
 type NodeEnvironment = 'development' | 'production' | 'test';
 type OptionalEnvironmentKey = (typeof optionalKeys)[number];
@@ -279,10 +299,16 @@ export interface VerificationRateConfiguration {
   readonly minimumSignups: number;
 }
 
+export interface IpVelocityConfiguration {
+  readonly threshold: number;
+  readonly windowMinutes: number;
+}
+
 export interface AppConfig {
   readonly databaseUrl: string;
   readonly host: string | undefined;
   readonly ipPrefixPepper: string;
+  readonly ipVelocity: IpVelocityConfiguration;
   readonly referralSigningSecret: string;
   readonly nodeEnvironment: NodeEnvironment;
   readonly port: number | undefined;

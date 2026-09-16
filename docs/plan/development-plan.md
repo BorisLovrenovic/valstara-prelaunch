@@ -911,7 +911,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — Medium · **Priority:** High · **Flag:** — · **Area:** security
 **Why this tier:** this is the one place the campaign touches an identifier that is unambiguously personal data, and the retention obligation attaches immediately.
 
-**Build:** `hashIpPrefix()` — **truncate first** (IPv4 /24, IPv6 /64), then hash with a **server-side pepper held outside the database.** A velocity flag over a rolling window. The daily purge job at 90 days.
+**Build:** `hashIpPrefix()` — **truncate first** (IPv4 /24, IPv6 /64), then hash with a **server-side pepper held outside the database.** A velocity flag over a rolling window. The daily purge job at 90 days. **Founder-authorised 2026-09-15:** `IP_VELOCITY_WINDOW_MINUTES` and `IP_VELOCITY_THRESHOLD` are optional positive-integer environment variables with defaults of `60` and `10` respectively.
 
 **Acceptance criteria:**
 - **A full IP address is never stored, logged, returned or passed to another module** — asserted by a scan and by a test over the module's outputs

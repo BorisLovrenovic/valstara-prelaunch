@@ -116,8 +116,9 @@ async function renderLanding(headers = {}) {
     }
     return { ...page, css };
   } finally {
+    const exited = once(server, 'exit');
     server.kill('SIGTERM');
-    await once(server, 'exit');
+    await exited;
     await fixture.dispose();
   }
 }

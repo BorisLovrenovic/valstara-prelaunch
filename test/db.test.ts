@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      15,
+      16,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -234,6 +234,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0013-domain-allow-overrides.sql',
       '0014-domain-allow-domain-constraint.sql',
       '0015-duplicate-identity-local-part-index.sql',
+      '0016-ip-velocity-permissions.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -254,6 +255,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0013-domain-allow-overrides.sql',
         '0014-domain-allow-domain-constraint.sql',
         '0015-duplicate-identity-local-part-index.sql',
+        '0016-ip-velocity-permissions.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -379,10 +381,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          15,
+          16,
         );
 
-        assert.equal(appliedCount, 15);
+        assert.equal(appliedCount, 16);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -401,6 +403,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0013-domain-allow-overrides.sql',
             '0014-domain-allow-domain-constraint.sql',
             '0015-duplicate-identity-local-part-index.sql',
+            '0016-ip-velocity-permissions.sql',
           ],
         );
       } finally {

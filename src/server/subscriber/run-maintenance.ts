@@ -5,6 +5,7 @@ import {
 } from '../config.ts';
 import { createPool } from '../db/pool.ts';
 import { createRateLimitRetentionJob } from '../ratelimit/retention.ts';
+import { createIpPrefixRetentionJob } from '../fraud/retention.ts';
 import { createStrandedReferralReconciliationJob } from '../referral/reconcile-stranded.ts';
 import { createReferralCounterRepairJob } from '../referral/counter-repair.ts';
 import { createAlertWebhookTransport } from '../verification-rate/p1-webhook.ts';
@@ -45,6 +46,7 @@ async function reportVerificationRateCollapse(alert: {
 const scheduler = createVerificationMaintenanceScheduler(
   {
     expiry: createUnverifiedExpiryJob(database, { clock }),
+    ipPrefixRetention: createIpPrefixRetentionJob(database, { clock }),
     rateLimitRetention: createRateLimitRetentionJob(database, { clock }),
     referralCounterRepair: createReferralCounterRepairJob(database, {
       alert: (alert) => alerts.send(alert),

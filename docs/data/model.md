@@ -182,6 +182,7 @@ The site needs IP-derived signals for velocity flags and rate limiting, and IP a
 - **Truncate first** — IPv4 to /24, IPv6 to /64 — then hash with a **server-side pepper held outside the database**. Only `signup_ip_prefix_hash` is stored.
 - **A full IP address is never written** to any table, log line or analytics event.
 - **Purge stored subscriber prefix hashes at 90 days**, by a daily job. Rate-limit buckets have the shorter seven-day retention in the summary below. A failure of either job is a **compliance alert**, not a hygiene one.
+- Velocity review uses optional `IP_VELOCITY_WINDOW_MINUTES` (default `60`) and `IP_VELOCITY_THRESHOLD` (default `10`) configuration. Reaching the threshold raises an `ip_velocity` flag only.
 - The purpose (fraud prevention on a prize giveaway) and the retention period are stated in the privacy policy. `docs/legal/compliance.md` carries the lawful-basis reasoning.
 
 The pepper is a secret with a handling procedure of its own: rotating it invalidates every existing prefix hash, which is acceptable, but it must be done deliberately and recorded.

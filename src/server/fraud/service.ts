@@ -6,6 +6,7 @@ import { createAuditService } from '../audit/service.ts';
 import { createDomainAllowRepository } from '../db/domain-allow.ts';
 import { findDuplicateIdentityMatches } from '../db/duplicate-identity.ts';
 import { createFraudFlagRepository } from '../db/fraud-flag.ts';
+import { createIpVelocityRepository } from '../db/ip-velocity.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
 
@@ -19,6 +20,11 @@ export const duplicateIdentityRuleVersion = 1;
 
 export type FraudScreenReject = 'blocked_domain' | 'invalid_email';
 export type FraudScreenFlag = 'no_mx';
+
+export interface IpVelocityConfiguration {
+  readonly threshold: number;
+  readonly windowMinutes: number;
+}
 
 export interface ScreenInput {
   readonly domain: string;
@@ -38,6 +44,12 @@ export interface FraudService {
     detail: Readonly<Record<string, string>>,
   ): Promise<void>;
   screen(input: ScreenInput): Promise<ScreenResult>;
+  flagIpVelocity(
+    subscriberId: string,
+    prefixHash: Buffer,
+    configuration: IpVelocityConfiguration,
+  ): Promise<boolean>;
+  purgeIpHashes(before: Date, limit: number): Promise<number>;
 }
 
 type MxLookupResult = 'deliverable' | 'no_mx' | 'timeout';
@@ -236,6 +248,27 @@ export function createFraudService(
         return { flags: ['no_mx'] };
       }
       return { flags: [] };
+    },
+    async flagIpVelocity(subscriberId, prefixHash, configuration) {
+      const windowMs = configuration.windowMinutes * 60 * 1_000;
+      const count = await createIpVelocityRepository(database).countSince(
+        prefixHash,
+        new Date(clock().getTime() - windowMs),
+      );
+      if (count < configuration.threshold) return false;
+      await createFraudFlagRepository(database).insertIpVelocityFlag({
+        detail: {
+          count,
+          prefix_hash: prefixHash.toString('hex'),
+          window_minutes: configuration.windowMinutes,
+        },
+        id: randomUUID(),
+        subscriberId,
+      });
+      return true;
+    },
+    purgeIpHashes(before, limit) {
+      return createIpVelocityRepository(database).purgeBefore(before, limit);
     },
   };
 }

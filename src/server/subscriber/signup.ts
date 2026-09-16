@@ -55,6 +55,7 @@ export interface SignupInput {
   readonly region?: string | undefined;
   readonly referralCode?: string | null;
   readonly utm?: UtmParameters | null;
+  readonly signupIpPrefixHash?: Buffer | null;
   readonly verificationUrl: (token: string) => string;
 }
 
@@ -67,6 +68,10 @@ export interface SignupServiceDependencies {
   ) => Promise<unknown>;
   readonly isReferralEnabled?: () => Promise<boolean>;
   readonly flagDuplicateIdentity?: (subscriberId: string) => Promise<boolean>;
+  readonly flagIpVelocity?: (
+    subscriberId: string,
+    prefixHash: Buffer,
+  ) => Promise<boolean>;
   readonly raiseFraudFlag: (
     subscriberId: string,
     kind: FraudScreenFlag,
@@ -82,6 +87,7 @@ async function upsertSubscriber(
   country: string,
   region: string | null,
   utm: UtmParameters | null,
+  signupIpPrefixHash: Buffer | null,
 ): Promise<SignupSubscriber> {
   return withTransaction(database, async (connection) => {
     const repository = createSubscriberRepository(connection);
@@ -93,6 +99,7 @@ async function upsertSubscriber(
       emailNormalised: email.normalised,
       id: subscriberId,
       region,
+      signupIpPrefixHash,
       utm,
     });
 
@@ -148,6 +155,7 @@ export function createSignupService(
       input.country,
       region,
       input.utm ?? null,
+      input.signupIpPrefixHash ?? null,
     );
 
     // A DNS timeout must never cost a real signup. The row is committed first
@@ -192,6 +200,22 @@ export function createSignupService(
         await dependencies.flagDuplicateIdentity(subscriber.id);
       } catch {
         // Fraud signals never change subscriber status or reject a signup.
+      }
+    }
+
+    if (
+      subscriber.created &&
+      dependencies.flagIpVelocity !== undefined &&
+      input.signupIpPrefixHash !== undefined &&
+      input.signupIpPrefixHash !== null
+    ) {
+      try {
+        await dependencies.flagIpVelocity(
+          subscriber.id,
+          input.signupIpPrefixHash,
+        );
+      } catch {
+        /* Fraud flags never reject signups. */
       }
     }
 

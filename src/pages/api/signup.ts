@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
+import { isIP } from 'node:net';
 import { setTimeout as systemSleep } from 'node:timers/promises';
 
 import { CANADA_COUNTRY_CODE } from '../../copy/country.ts';
@@ -19,7 +20,6 @@ import {
 } from '../../server/referral/capture.ts';
 import { createReferralService } from '../../server/referral/service.ts';
 import { consumeRateLimit } from '../../server/ratelimit/consume.ts';
-import { hashedIpPrefix } from '../../server/ratelimit/ip-prefix.ts';
 import {
   createSignupService,
   type SignupInput,
@@ -74,7 +74,7 @@ export interface SignupRouteDependencies {
   readonly isSignupEnabled: () => Promise<boolean>;
   readonly verifyTurnstile: (token: string) => Promise<TurnstileOutcome>;
   readonly consumeIpRateLimit: (
-    ipAddress: string,
+    prefixHash: string,
     now: Date,
     strict: boolean,
   ) => Promise<'ok' | 'rate_limited'>;
@@ -83,6 +83,7 @@ export interface SignupRouteDependencies {
     signed: string | null,
   ) => ReferralCapture | null;
   readonly flagChallengeTimeout: (subscriberId: string) => Promise<void>;
+  readonly ipPrefixPepper: string;
   readonly clock?: () => Date;
   readonly monotonicClock?: () => number;
   readonly sleep?: (milliseconds: number) => Promise<void>;
@@ -99,6 +100,36 @@ function getDatabase(): DatabasePool {
 function getFraudService(): FraudService {
   fraudService ??= createFraudService(getDatabase());
   return fraudService;
+}
+
+/**
+ * The raw client address is confined to this route boundary. It is reduced to
+ * an IPv4 /24 or IPv6 /64 before HMACing, and only the hash may leave here.
+ */
+export function hashIpPrefix(
+  clientAddress: string | undefined,
+  pepper: string,
+): Buffer | null {
+  const address = clientAddress?.split('%', 1)[0] ?? '';
+  if (isIP(address) === 4) {
+    const prefix = `${address.split('.').slice(0, 3).join('.')}.0/24`;
+    return createHmac('sha256', pepper).update(prefix).digest();
+  }
+  if (isIP(address) !== 6) return null;
+
+  const [left = '', right = ''] = address.toLowerCase().split('::');
+  const leftParts = left === '' ? [] : left.split(':');
+  const rightParts = right === '' ? [] : right.split(':');
+  const missingParts = 8 - leftParts.length - rightParts.length;
+  const prefix = `${[
+    ...leftParts,
+    ...Array.from({ length: missingParts }, () => '0'),
+    ...rightParts,
+  ]
+    .slice(0, 4)
+    .map((part) => Number.parseInt(part, 16).toString(16))
+    .join(':')}::/64`;
+  return createHmac('sha256', pepper).update(prefix).digest();
 }
 
 function jsonResponse(status: number, body: Record<string, unknown>): Response {
@@ -221,11 +252,13 @@ export function createSignupRoute(
 
     // 2. Rate-limit per hashed IP prefix — the strict window when the challenge
     // could not be confirmed.
+    const prefixHash = hashIpPrefix(clientAddress, dependencies.ipPrefixPepper);
+    if (prefixHash === null) return errorResponse('rate_limited');
     const now = clock();
     try {
       if (
         (await dependencies.consumeIpRateLimit(
-          clientAddress,
+          prefixHash.toString('hex'),
           now,
           challengeTimedOut,
         )) !== 'ok'
@@ -264,6 +297,7 @@ export function createSignupRoute(
         email: body.email,
         referralCode: referralCapture?.ref ?? null,
         region: body.region,
+        signupIpPrefixHash: prefixHash,
         utm: referralCapture?.utm ?? null,
         verificationUrl: (token) => {
           const verificationUrl = new URL('/verify', request.url);
@@ -320,11 +354,7 @@ function defaultDependencies(): SignupRouteDependencies {
     // of the secret. The raw client address is not forwarded to the provider —
     // it stays in the truncate-then-hash rate-limit path (standing rule 9).
     verifyTurnstile: (token) => verifyTurnstileToken(token),
-    async consumeIpRateLimit(ipAddress, now, strict) {
-      const prefixHash = hashedIpPrefix(ipAddress, config.ipPrefixPepper);
-      if (prefixHash === null) {
-        return 'rate_limited';
-      }
+    async consumeIpRateLimit(prefixHash, now, strict) {
       const key = strict
         ? `signup:ip:strict:${prefixHash}`
         : `signup:ip:${prefixHash}`;
@@ -339,6 +369,7 @@ function defaultDependencies(): SignupRouteDependencies {
       );
       return count > limit ? 'rate_limited' : 'ok';
     },
+    ipPrefixPepper: config.ipPrefixPepper,
     verifyReferralCapture: (signed) =>
       createReferralCaptureService(config.referralSigningSecret).verifyRef(
         signed,
@@ -362,6 +393,12 @@ function defaultDependencies(): SignupRouteDependencies {
         isReferralEnabled: () => getFlagService().isEnabled('referral.enabled'),
         flagDuplicateIdentity: (subscriberId) =>
           getFraudService().flagDuplicateIdentity(subscriberId),
+        flagIpVelocity: (subscriberId, prefixHash) =>
+          getFraudService().flagIpVelocity(
+            subscriberId,
+            prefixHash,
+            config.ipVelocity,
+          ),
         raiseFraudFlag: (subscriberId, kind, detail) =>
           getFraudService().raise(subscriberId, kind, detail),
         screenEmailDomain: (domain) => getFraudService().screen({ domain }),

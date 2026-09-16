@@ -8,6 +8,7 @@ export interface PendingSubscriberInsert {
   readonly emailDomain: string;
   readonly country: string;
   readonly region: string | null;
+  readonly signupIpPrefixHash: Buffer | null;
   readonly utm: UtmParameters | null;
 }
 
@@ -59,10 +60,11 @@ export function createSubscriberRepository(
             email_domain,
             country,
             region,
+            signup_ip_prefix_hash,
             utm,
             status
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
           ON CONFLICT (email_normalised) DO NOTHING
         `,
         values: [
@@ -72,6 +74,7 @@ export function createSubscriberRepository(
           input.emailDomain,
           input.country,
           input.region,
+          input.signupIpPrefixHash,
           input.utm === null ? null : JSON.stringify(input.utm),
         ],
       });

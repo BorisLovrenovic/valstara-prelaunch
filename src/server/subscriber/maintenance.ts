@@ -8,6 +8,7 @@ export const verificationMaintenanceBatchLimit = 1_000;
 
 export type MaintenanceJobName =
   | 'expiry'
+  | 'ip_prefix_retention'
   | 'rate_limit_retention'
   | 'reminder'
   | 'referral_counter_repair'
@@ -25,6 +26,7 @@ export interface VerificationRateJob {
 
 export interface VerificationMaintenanceJobs {
   readonly expiry: MaintenanceJob;
+  readonly ipPrefixRetention?: MaintenanceJob;
   readonly rateLimitRetention: MaintenanceJob;
   readonly referralCounterRepair: MaintenanceJob;
   readonly reminder: MaintenanceJob;
@@ -59,6 +61,7 @@ export function createMaintenanceFailureReporter(
         ? 'P2'
         : job === 'verification_rate' ||
             job === 'rate_limit_retention' ||
+            job === 'ip_prefix_retention' ||
             job === 'verification_token_retention'
           ? 'P1'
           : 'P3';
@@ -90,6 +93,7 @@ export function createVerificationMaintenanceScheduler(
   const reportFailure = dependencies.reportFailure ?? (() => undefined);
   const sleep = dependencies.sleep ?? systemSleep;
   let expiryDay: string | null = null;
+  let ipPrefixRetentionDay: string | null = null;
   let rateLimitRetentionDay: string | null = null;
   let referralCounterRepairDay: string | null = null;
   let strandedReferralDay: string | null = null;
@@ -124,6 +128,13 @@ export function createVerificationMaintenanceScheduler(
     const day = now.toISOString().slice(0, 10);
     if (expiryDay !== day && (await runJob('expiry', jobs.expiry))) {
       expiryDay = day;
+    }
+    if (
+      ipPrefixRetentionDay !== day &&
+      jobs.ipPrefixRetention !== undefined &&
+      (await runJob('ip_prefix_retention', jobs.ipPrefixRetention))
+    ) {
+      ipPrefixRetentionDay = day;
     }
     if (
       rateLimitRetentionDay !== day &&

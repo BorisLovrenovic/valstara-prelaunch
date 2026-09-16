@@ -51,6 +51,7 @@ function deps(
       subscriber: pendingSubscriber,
     }),
     flagChallengeTimeout: async () => undefined,
+    ipPrefixPepper: 'signup-route-test-pepper',
     verifyReferralCapture: () => null,
     monotonicClock: () => 500,
     sleep: async () => undefined,
