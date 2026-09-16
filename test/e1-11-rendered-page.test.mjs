@@ -212,8 +212,9 @@ test('scanner GETs are inert, then token-authenticated POST verifies and replays
     assert.equal(subscriber.rows[0]?.status, 'verified');
     assert.notEqual(subscriber.rows[0]?.verified_at, null);
   } finally {
+    const exited = once(server, 'exit');
     server.kill('SIGTERM');
-    await once(server, 'exit');
+    await exited;
     await fixture.dispose();
   }
 });
@@ -275,8 +276,9 @@ test('with survey.enabled off, the rendered verification success page omits the 
     assert.ok(!body.includes('Help us prepare for launch'));
     assert.equal(verification.headers.get('set-cookie'), null);
   } finally {
+    const exited = once(server, 'exit');
     server.kill('SIGTERM');
-    await once(server, 'exit');
+    await exited;
     await fixture.dispose();
   }
 });
