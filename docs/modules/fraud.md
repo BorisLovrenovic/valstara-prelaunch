@@ -35,6 +35,14 @@ interface FraudService {
   `npm run fraud:allow-domain -- <domain> <actor>`; actor is required, and the
   override plus `fraud.domain_allowed` audit record commit atomically.
 - **Only two outcomes reject at signup**: a disposable domain, and an address with no MX record. Everything else flags and lets the signup through.
+- The review queue returns at most **50 open flags**. It orders explicit manual
+  flags first, then IP velocity, duplicate identity, self-referral, disposable
+  domain, challenge timeout and no-MX signals; equal-priority flags are oldest
+  first. Each item carries the structured flag detail plus the subject's
+  status, domain, country, referral count, tier and verification timestamps, so
+  the operator can decide without opening the database. Evidence is recursively
+  redacted before it reaches the response, so a legacy/manual detail cannot
+  expose a token or raw IP address.
 - A newly inserted subscriber raises `duplicate_identity` when the local part of
   `email_normalised` matches an existing subscriber on a different
   `email_domain`. The functional local-part index keeps the lookup off a full
@@ -58,4 +66,4 @@ interface FraudService {
 `db`, `audit`, `subscriber`, `referral` (rejecting edges on an upheld flag).
 
 ## Contract tests
-Blocklist hit rejects · allow override wins and is audited with its actor · MX absent rejects · **MX timeout accepts and flags** · MX timeout is bounded and results are cached per domain · cross-domain normalised local-part matches raise a bounded, complete `duplicate_identity` flag without changing subscriber status · no write path sets `disqualified` outside `review()` · IP hashing is truncated and peppered, and the raw value never appears in any output · purge honours its limit · a repository-wide scan finds no fingerprinting API usage.
+Blocklist hit rejects · allow override wins and is audited with its actor · MX absent rejects · **MX timeout accepts and flags** · MX timeout is bounded and results are cached per domain · cross-domain normalised local-part matches raise a bounded, complete `duplicate_identity` flag without changing subscriber status · dismiss and uphold both record the authenticated actor and an append-only audit entry · the open queue honours its 50-row cap and priority order · fraud responses redact tokens and raw IP addresses · no write path sets `disqualified` outside `review()` · IP hashing is truncated and peppered, and the raw value never appears in any output · purge honours its limit · a repository-wide scan finds no fingerprinting API usage.

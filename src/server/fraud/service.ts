@@ -11,6 +11,7 @@ import type { DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
 
 import { isBlocklistedDomain } from './blocklist.ts';
+import { createFraudReviewService, type FraudReviewService } from './review.ts';
 
 export const mxLookupTimeoutMs = 1_500;
 export const mxCacheTtlMs = 15 * 60 * 1_000;
@@ -35,7 +36,7 @@ export interface ScreenResult {
   readonly flags: readonly FraudScreenFlag[];
 }
 
-export interface FraudService {
+export interface FraudService extends FraudReviewService {
   allowDomain(domain: string, actor: string): Promise<void>;
   flagDuplicateIdentity(subscriberId: string): Promise<boolean>;
   raise(
@@ -129,6 +130,7 @@ export function createFraudService(
   const resolver = options.mxResolver ?? resolveMx;
   const timeout = options.timeoutMs ?? mxLookupTimeoutMs;
   const withTimeout = options.withTimeout ?? bounded;
+  const reviewService = createFraudReviewService(database);
 
   if (!Number.isInteger(cacheMaximumEntries) || cacheMaximumEntries < 1) {
     throw new RangeError('MX cache size must be a positive integer.');
@@ -267,8 +269,11 @@ export function createFraudService(
       });
       return true;
     },
+    openFlags: (limit) => reviewService.openFlags(limit),
     purgeIpHashes(before, limit) {
       return createIpVelocityRepository(database).purgeBefore(before, limit);
     },
+    review: (flagId, outcome, actor) =>
+      reviewService.review(flagId, outcome, actor),
   };
 }
