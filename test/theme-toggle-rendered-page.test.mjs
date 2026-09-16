@@ -133,6 +133,8 @@ before(async () => {
   server = spawn(process.execPath, ['dist/server/entry.mjs'], {
     env: {
       ...process.env,
+      ADMIN_CREDENTIAL: 'theme-rendered-admin-credential-32-chars',
+      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
       DATABASE_URL:
         'postgresql://unused:unused@127.0.0.1:5434/unused-theme-test',
       HOST: '0.0.0.0',

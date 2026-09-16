@@ -331,6 +331,8 @@ test(
     const unhealthyImage = `${repository}:${unhealthyRelease}`;
     const environment = {
       ...process.env,
+      ADMIN_CREDENTIAL: 'production-drill-admin-credential-32-chars',
+      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
       CADDY_ORIGIN_CERT_PATH: certificate,
       CADDY_ORIGIN_KEY_PATH: privateKey,
       COMPOSE_PROJECT_NAME: project,

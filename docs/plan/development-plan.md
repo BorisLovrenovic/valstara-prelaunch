@@ -714,7 +714,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Build:** An hourly job computing the verification rate over a rolling window against a baseline, alerting **P1 on a collapse.** Export the current rate, baseline and per-mailbox-provider breakdown from `src/server/verification-rate` so the authenticated admin health view can surface it. Include the provider breakdown so the alert points at a cause.
 
-**Scope note (2026-09-09):** `GET /api/admin/health` and its MFA protection remain E10-05's route and security boundary. This ticket supplies its verification-rate health result; E10-05 renders that result in the route. Creating the route here would require building E10-05's authentication work ahead of its ticket, contrary to standing rule 20. Founder-authorised 2026-09-09.
+**Scope note (updated 2026-09-16):** `GET /api/admin/health` remains E10-05's route, behind the MFA boundary built by E5-03a. This ticket supplies its verification-rate health result; E10-05 renders that result in the route. Creating the route here would require building E10-05's health-view work ahead of its ticket, contrary to standing rule 20. Founder-authorised 2026-09-09; authentication split founder-authorised 2026-09-16.
 
 **Monitoring configuration (2026-09-09):** compare the current rolling 24-hour signup cohort with the preceding seven days; the cohort is eligible once it contains 50 signups; raise P1 at a relative rate drop of 50% or greater. Report mailbox-provider groups Gmail, Microsoft, GMX, Web.de and other. These values are validated configuration, so operations can change them without code; they are the founder-authorised defaults for this ticket.
 
@@ -872,7 +872,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 ## Epic E5 — Fraud and integrity
 
-**Goal:** make fraud visible and cheap to review, without punishing real people and without collecting anything that would cost the no-banner property. *7 tickets.*
+**Goal:** make fraud visible and cheap to review, without punishing real people and without collecting anything that would cost the no-banner property. *8 tickets.*
 
 **Exit criteria:** the signals fire on seeded fraud patterns, an operator can clear a false positive in one action, and no code path can disqualify without a human.
 
@@ -924,10 +924,31 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Tests:** Truncate-then-hash ordering · full-address absence across outputs and logs · purge honouring retention and its limit · the alert on purge failure.
 **Docs:** `docs/data/model.md#ip-handling` · `docs/legal/compliance.md#2-lawful-basis-and-the-record-of-processing`
 
+### E5-03a — Admin authentication (the single-operator MFA boundary)
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this tier:** one credential guards disqualification, export and the draw, and every later admin route inherits this boundary.
+
+**Founder-authorised split (2026-09-16):** Admin authentication moves here from E10-05 so E5-04 never creates an unauthenticated admin route. E10-05 is reduced to the health view and consumes this boundary.
+
+**Build:** A single operator credential with TOTP MFA, enforced by fail-closed middleware over `/api/admin/*`. The credential is a bearer secret and the six-digit TOTP travels separately; neither creates a password system or session. Add the central admin-route registry and the generated assertion that every admin route source is registered and protected. Because no functional admin route exists yet, register and exercise a protected probe fixture so the assertion is non-vacuous. Authenticated requests carry the fixed single-operator actor for downstream audit records. Admin routes are excluded in `robots.txt` and unlinked from the public site. No user system or permission matrix.
+
+**Acceptance criteria:**
+- **Both factors are required and verified** — a missing or wrong credential or TOTP fails closed; a valid pair reaches the route
+- **Every admin route requires authentication** — a generated test reconciles the registered route set with `src/pages/api/admin` and exercises every registration through the middleware, so a new route cannot be added unprotected
+- The generated assertion is non-vacuous before E5-04: a registered protected probe fixture rejects an unauthenticated request and accepts an authenticated one
+- Every authenticated admin request carries the single operator actor, so every later admin action can audit a human actor
+- Admin routes are excluded in `robots.txt` and unlinked from the public site
+- **No authentication response contains a raw IP address, credential, TOTP or token**
+- `ADMIN_CREDENTIAL` and `ADMIN_TOTP_SECRET` are validated at boot, documented, test-only locally and live only in the production secret manager; no value is committed
+- No user system, permission matrix, password or session is built
+
+**Tests:** RFC 6238 vector and clock-window cases · both-factor rejection matrix · fail-closed middleware · non-vacuous protected probe · generated registry/filesystem/auth reconciliation · actor propagation · response-content assertion · robots/unlinked assertion · configuration validation.
+**Docs:** `docs/features/admin.md` · `docs/api/README.md` · `docs/security/threat-model.md#t7--admin-compromise` · `docs/architecture/modules.md` · `infra/ENV.md`
+
 ### E5-04 — The flag review queue
 **Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** admin
 
-**Build:** `GET /api/admin/fraud` and `POST /api/admin/fraud/:id` — open flags with their evidence, dismiss or uphold. Batch-capped, audited.
+**Build:** Behind E5-03a's authentication boundary, `GET /api/admin/fraud` and `POST /api/admin/fraud/:id` — open flags with their evidence, dismiss or uphold. Batch-capped, audited. Dependency ordering founder-authorised 2026-09-16.
 
 **Acceptance criteria:**
 - Open flags list with enough detail to decide **without opening the database**
@@ -1541,21 +1562,17 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Tests:** Large-dataset streaming with a memory assertion · the export-set reconciliation · the audit record · the forbidden-column assertion.
 **Docs:** `docs/features/admin.md` · `docs/data/model.md`
 
-### E10-05 — Admin authentication and the health view
+### E10-05 — The health view
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
-**Why this tier:** one credential guards disqualification, export and the draw.
 
-**Build:** Admin authentication — **a single operator credential with MFA**, not a user system. Then `GET /api/admin/health`: verification rate against baseline (from E3-10's verification-rate health result), snapshot age, email queue depth, quota projection, purge-job status, open flag count.
+**Build:** `GET /api/admin/health`, consuming E5-03a's authentication boundary: verification rate against baseline (from E3-10's verification-rate health result), snapshot age, email queue depth, quota projection, purge-job status, open flag count. Authentication split founder-authorised 2026-09-16.
 
 **Acceptance criteria:**
-- **MFA is active and verified, not assumed**
-- **Every admin route requires authentication** — asserted by a generated test over the registered admin route set, so a new route cannot be added unprotected
-- Admin routes are excluded in `robots.txt` and unlinked from the public site
 - **The health view answers "is the campaign silently broken"** in one screen — it carries both silent-failure guards
-- **No admin response contains a raw IP address or a token**
-- No permission matrix is built — one operator, deliberately
+- The route is registered with and protected by E5-03a's existing admin authentication boundary
+- **No health response contains a raw IP address or a token**
 
-**Tests:** The generated auth assertion over every admin route · the response-content assertion · health-view completeness against the named metrics.
+**Tests:** Health-view completeness against the named metrics · the response-content assertion. E5-03a's generated registry test automatically covers this route's authentication.
 **Docs:** `docs/features/admin.md` · `docs/security/threat-model.md#t7--admin-compromise`
 
 ---
@@ -1847,17 +1864,17 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 | E2 Design system and shell | 8 | Tokens, fonts, theme toggle, primitives, layout, landing page, a11y, copy layer |
 | E3 Signup and double opt-in | 10 | Normalisation, signup route, Turnstile, geo, form, tokens, verify, reminders, resend, rate monitoring |
 | E4 Referral engine | 9 | Codes, signed capture, edges, confirmation, milestones, **reward gating**, waves, status, repair |
-| E5 Fraud and integrity | 7 | Blocklist, flags, IP handling, review queue, disqualification, board integrity, top-20 gate |
+| E5 Fraud and integrity | 8 | Blocklist, flags, IP handling, admin authentication, review queue, disqualification, board integrity, top-20 gate |
 | E6 Leaderboard, survey, member area | 6 | Snapshot, island, survey, status link, dashboard, unsubscribe |
 | E7 Giveaway | 6 | Eligibility, rules pages, entry ledger, AMOE, **reproducible draw**, awards |
 | E8 Email | 9 | Service, Resend, templates, seed tests, Brevo, bounces, weekly, **migration send**, quotas |
 | E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, **the representative gate**, inventory, DSR, SEO, OG, llms.txt |
-| E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, admin auth and health |
+| E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
-| **Total** | **95** | |
+| **Total** | **96** | |
 
-**Tier distribution:** Tier B Extra High 4 · Tier B High 16 · Tier B Medium 28 · Tier A High 16 · Tier A Medium 31.
+**Tier distribution:** Tier B Extra High 4 · Tier B High 16 · Tier B Medium 29 · Tier A High 16 · Tier A Medium 31.
 
 **Tier B carries the personal data, the privacy properties, the fraud invariants, the prize draw, the sending reputation and the handoff** — the places where a mistake is expensive, subtle, or discovered too late to fix. Tier A carries the well-specified majority.
 
@@ -1867,11 +1884,11 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 ## Effort reconciliation
 
-The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 88 tickets at roughly 1.4 hours each. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
+The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 96 tickets at roughly 1.4 hours each. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
 
 | Cut | Removes | Saves |
 |---|---|---|
-| 2. Admin UI → SQL + export script | E5-04 reduced, E10-05 reduced | ~5 h |
+| 2. Admin UI → SQL + export script | E5-04 reduced, E10-05 reduced; E5-03a retained as the mandatory boundary | ~5 h |
 | 3. Member dashboard → status in email | E6-05, E6-04 reduced | ~8 h |
 | 4. Public leaderboard → top-10 in email | E6-01, E6-02, E5-06 | ~6 h |
 | 6. Advanced fraud checks | E5-03 velocity portion | ~4 h |

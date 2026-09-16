@@ -1,6 +1,8 @@
 import { fileURLToPath } from 'node:url';
 
 const requiredKeys = [
+  'ADMIN_CREDENTIAL',
+  'ADMIN_TOTP_SECRET',
   'DATABASE_URL',
   'IP_PREFIX_PEPPER',
   'REFERRAL_SIGNING_SECRET',
@@ -48,6 +50,7 @@ export class ConfigurationError extends Error {
 
 export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
   const config: AppConfig = {
+    adminAuth: adminAuth(environment),
     databaseUrl: databaseUrl(environment),
     host: host(environment),
     ipPrefixPepper: requiredValue(environment, 'IP_PREFIX_PEPPER'),
@@ -65,6 +68,26 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     verificationRate: verificationRate(environment),
   };
   return Object.freeze(config);
+}
+
+function adminAuth(environment: NodeJS.ProcessEnv): AdminAuthConfiguration {
+  const credential = requiredValue(environment, 'ADMIN_CREDENTIAL');
+  if (!/^[!-~]{32,}$/u.test(credential)) {
+    return invalid(
+      'ADMIN_CREDENTIAL',
+      'must be at least 32 printable non-space ASCII characters',
+    );
+  }
+
+  const totpSecret = requiredValue(environment, 'ADMIN_TOTP_SECRET');
+  if (!/^[A-Z2-7]{32,}$/u.test(totpSecret)) {
+    return invalid(
+      'ADMIN_TOTP_SECRET',
+      'must be an uppercase unpadded Base32 secret of at least 160 bits',
+    );
+  }
+
+  return Object.freeze({ credential, totpSecret });
 }
 
 let cachedConfig: AppConfig | undefined;
@@ -304,7 +327,13 @@ export interface IpVelocityConfiguration {
   readonly windowMinutes: number;
 }
 
+export interface AdminAuthConfiguration {
+  readonly credential: string;
+  readonly totpSecret: string;
+}
+
 export interface AppConfig {
+  readonly adminAuth: AdminAuthConfiguration;
   readonly databaseUrl: string;
   readonly host: string | undefined;
   readonly ipPrefixPepper: string;

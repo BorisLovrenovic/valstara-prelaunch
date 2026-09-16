@@ -306,6 +306,8 @@ test('the default POST wiring flags a cross-domain duplicate identity on the new
   const localPart = `default-route-${randomUUID().replaceAll('-', '')}`;
   const email = `${localPart}@gmail.com`;
 
+  process.env.ADMIN_CREDENTIAL = 'duplicate-identity-admin-credential-32';
+  process.env.ADMIN_TOTP_SECRET = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
   process.env.DATABASE_URL = fixture.applicationDatabaseUrl;
   process.env.IP_PREFIX_PEPPER = 'duplicate-identity-route-pepper';
   process.env.REFERRAL_SIGNING_SECRET =
@@ -362,6 +364,8 @@ test('the default POST wiring flags a cross-domain duplicate identity on the new
   } finally {
     globalThis.fetch = originalFetch;
     for (const key of [
+      'ADMIN_CREDENTIAL',
+      'ADMIN_TOTP_SECRET',
       'DATABASE_URL',
       'IP_PREFIX_PEPPER',
       'REFERRAL_SIGNING_SECRET',

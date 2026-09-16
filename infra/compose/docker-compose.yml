@@ -50,6 +50,8 @@ services:
     working_dir: /workspace
     command: ['sh', '/workspace/infra/compose/run-app.sh']
     environment:
+      ADMIN_CREDENTIAL: ${ADMIN_CREDENTIAL:?ADMIN_CREDENTIAL is required}
+      ADMIN_TOTP_SECRET: ${ADMIN_TOTP_SECRET:?ADMIN_TOTP_SECRET is required}
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:-valstara-app-local-only}@postgres:5432/valstara_waitlist
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY is required}
       IP_PREFIX_PEPPER: ${IP_PREFIX_PEPPER:?IP_PREFIX_PEPPER is required}

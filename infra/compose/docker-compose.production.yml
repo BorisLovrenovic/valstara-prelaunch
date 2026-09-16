@@ -52,6 +52,8 @@ services:
     image: ${VALSTARA_IMAGE:?VALSTARA_IMAGE must be a SHA-tagged GHCR image}
     restart: unless-stopped
     environment:
+      ADMIN_CREDENTIAL: ${ADMIN_CREDENTIAL:?ADMIN_CREDENTIAL is required}
+      ADMIN_TOTP_SECRET: ${ADMIN_TOTP_SECRET:?ADMIN_TOTP_SECRET is required}
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:?VALSTARA_APP_DB_PASSWORD is required}@postgres:5432/valstara_waitlist
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY is required}
       IP_PREFIX_PEPPER: ${IP_PREFIX_PEPPER:?IP_PREFIX_PEPPER is required}

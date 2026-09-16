@@ -550,6 +550,8 @@ test('the default POST route verifies Turnstile server-side then sends, writing 
 
   const originalFetch = globalThis.fetch;
   const originalEnv = { ...process.env };
+  process.env.ADMIN_CREDENTIAL = 'signup-route-admin-credential-32-chars';
+  process.env.ADMIN_TOTP_SECRET = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
   process.env.DATABASE_URL = databaseUrl.toString();
   process.env.IP_PREFIX_PEPPER = 'route-test-pepper';
   process.env.REFERRAL_SIGNING_SECRET = 'route-test-referral-signing-secret';
@@ -594,6 +596,8 @@ test('the default POST route verifies Turnstile server-side then sends, writing 
   } finally {
     globalThis.fetch = originalFetch;
     for (const key of [
+      'ADMIN_CREDENTIAL',
+      'ADMIN_TOTP_SECRET',
       'DATABASE_URL',
       'IP_PREFIX_PEPPER',
       'TURNSTILE_SECRET_KEY',

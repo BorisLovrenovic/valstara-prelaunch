@@ -60,7 +60,7 @@ Several target jurisdictions regulate prize draws directly: Italy requires local
 
 One operator, one credential, and the ability to disqualify, export and draw.
 
-**Controls:** MFA mandatory and verified, not assumed. **Every admin action is audited**, and the audit log is append-only by database permission — the application role has no `UPDATE` or `DELETE`. Admin routes are not linked from the public site and are excluded in `robots.txt`. A second draw execution is refused.
+**Controls:** E5-03a's fail-closed middleware requires both a server-held bearer credential and a TOTP on every `/api/admin/*` request. A generated registry/filesystem assertion prevents a new admin route from being added outside that boundary. Successful authentication supplies the fixed single-operator actor; **every admin action is audited**, and the audit log is append-only by database permission — the application role has no `UPDATE` or `DELETE`. There is no user system, permission matrix, password or session. Admin routes are not linked from the public site and are excluded in `robots.txt`. Authentication responses echo no secret, token or raw IP. A second draw execution is refused. Authentication split founder-authorised 2026-09-16.
 
 ---
 

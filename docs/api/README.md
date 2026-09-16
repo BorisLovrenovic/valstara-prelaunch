@@ -41,6 +41,7 @@ Two rules make that safe, and they are what a reviewer checks:
 | `suppressed` | 200 | Address is unsubscribed or bounced; no send occurs |
 | `unavailable` | 503 | A dependency the route cannot proceed without |
 | `internal` | 500 | Everything else. Never carries detail |
+| `unauthorized` | 401 | An admin credential or TOTP is missing or invalid. The response never distinguishes which factor failed |
 
 **An unmapped error fails a test.** Adding a code means adding it here in the same change.
 
@@ -90,7 +91,11 @@ Data-subject access and erasure. Both require a signed link sent to the address,
 
 ## Admin routes
 
-All under `/api/admin/*`, all behind admin authentication, all audited, all batch-capped.
+All under `/api/admin/*`, all behind the fail-closed E5-03a authentication
+middleware, all audited, all batch-capped. Every route file is declared in the
+central admin-route registry; the generated registry test fails if a route is
+added without registration and exercises each registration through the
+middleware.
 
 | Route | Purpose |
 |---|---|
@@ -100,7 +105,13 @@ All under `/api/admin/*`, all behind admin authentication, all audited, all batc
 | `POST /api/admin/draw` | Execute the draw. Records seed and snapshot hash; refuses to publish until it reproduces |
 | `GET /api/admin/health` | Verification rate, snapshot age, queue depth, quota projections |
 
-**Admin authentication is a single shared operator credential with MFA, not a user system.** There is one operator. A permission matrix is deliberately not built.
+**Admin authentication is a single shared bearer credential plus TOTP, not a
+user system.** Clients send `Authorization: Bearer <credential>` and the current
+six-digit code in `X-Valstara-TOTP`. Both values are server-held secrets and are
+never logged, audited or returned. There is one operator, exposed to routes as
+the `admin.operator` audit actor. There is no password, session or permission
+matrix. A missing or invalid factor returns the same `401 unauthorized`
+envelope with `Cache-Control: no-store`.
 
 ---
 
