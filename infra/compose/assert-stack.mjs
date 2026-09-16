@@ -177,6 +177,8 @@ export async function assertStack() {
     'the long-running app must not receive the migration-owner credential',
   );
   for (const key of [
+    'ADMIN_CREDENTIAL',
+    'ADMIN_TOTP_SECRET',
     'DATABASE_URL',
     'IP_PREFIX_PEPPER',
     'RESEND_API_KEY',

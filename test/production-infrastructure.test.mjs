@@ -25,6 +25,8 @@ const workflowUrl = new URL(
 const sha = '0123456789012345678901234567890123456789';
 const composeEnvironment = {
   ...process.env,
+  ADMIN_CREDENTIAL: 'production-infra-admin-credential-32-chars',
+  ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
   CADDY_ORIGIN_CERT_PATH: '/run/valstara-test-origin-cert.pem',
   CADDY_ORIGIN_KEY_PATH: '/run/valstara-test-origin-key.pem',
   IP_PREFIX_PEPPER: 'test-prefix-pepper',
@@ -168,6 +170,8 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   assert.equal(config.services.migrate.image, config.services.app.image);
   assert.equal(config.services.maintenance.image, config.services.app.image);
   for (const key of [
+    'ADMIN_CREDENTIAL',
+    'ADMIN_TOTP_SECRET',
     'DATABASE_URL',
     'IP_PREFIX_PEPPER',
     'REFERRAL_SIGNING_SECRET',

@@ -45,6 +45,8 @@ test('a provider-unreachable signup, through the default wiring, commits the row
 
   const originalFetch = globalThis.fetch;
   const originalEnv = { ...process.env };
+  process.env.ADMIN_CREDENTIAL = 'timeout-route-admin-credential-32-chars';
+  process.env.ADMIN_TOTP_SECRET = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
   process.env.DATABASE_URL = databaseUrl.toString();
   process.env.IP_PREFIX_PEPPER = 'timeout-route-test-pepper';
   process.env.REFERRAL_SIGNING_SECRET = 'timeout-route-referral-secret';
@@ -100,6 +102,8 @@ test('a provider-unreachable signup, through the default wiring, commits the row
   } finally {
     globalThis.fetch = originalFetch;
     for (const key of [
+      'ADMIN_CREDENTIAL',
+      'ADMIN_TOTP_SECRET',
       'DATABASE_URL',
       'IP_PREFIX_PEPPER',
       'REFERRAL_SIGNING_SECRET',

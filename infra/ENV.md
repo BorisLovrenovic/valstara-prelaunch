@@ -15,6 +15,8 @@ table and fails if it differs from `src/server/config.ts`.
 
 | Variable                             | Purpose                                                                       | Used by                             | Value class                                                                                                                                                            |
 | ------------------------------------ | ----------------------------------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_CREDENTIAL`                   | First factor for the single-operator admin boundary                           | App boot, admin middleware          | Disposable test credential locally; separately generated live credential only in the production secret manager                                                         |
+| `ADMIN_TOTP_SECRET`                  | Base32 seed for the single operator's TOTP second factor                      | App boot, admin middleware          | Disposable test seed locally; separately generated live seed only in the production secret manager                                                                     |
 | `DATABASE_URL`                       | Authenticates the long-running application role against `valstara_waitlist`   | App boot, database pool             | Local credentials locally; live credentials in production                                                                                                              |
 | `HOST`                               | Selects the Node adapter listen address                                       | App boot, Node adapter              | Runtime setting; neither live nor sandbox                                                                                                                              |
 | `IP_PREFIX_PEPPER`                   | HMAC pepper for truncated IP-prefix rate-limit keys and fraud velocity hashes | App boot, signup                    | Test-only secret locally; live secret in production                                                                                                                    |
@@ -126,12 +128,12 @@ Generate the Umami application secret for any non-local environment with
 ## Local stack
 
 Before the first start, create the untracked `infra/compose/.env` file and
-populate it with local sandbox or test values for `TURNSTILE_SECRET_KEY`,
-`IP_PREFIX_PEPPER`, `REFERRAL_SIGNING_SECRET`, `RESEND_API_KEY`, and
-`RESEND_TEST_RECIPIENT`. Obtain the provider test values from the matching
-provider account, and generate the disposable local pepper and referral
-signing secret using the procedures below. Do not put live values in the local
-file, and do not commit it.
+populate it with local sandbox or test values for `ADMIN_CREDENTIAL`,
+`ADMIN_TOTP_SECRET`, `TURNSTILE_SECRET_KEY`, `IP_PREFIX_PEPPER`,
+`REFERRAL_SIGNING_SECRET`, `RESEND_API_KEY`, and `RESEND_TEST_RECIPIENT`.
+Obtain the provider test values from the matching provider account, and
+generate the disposable local secrets using the procedures below. Do not put
+live values in the local file, and do not commit it.
 
 Start and verify the stack from the repository root:
 
@@ -165,6 +167,14 @@ Local and CI values are disposable test secrets; production uses separately
 generated live secrets. Pepper rotation invalidates all existing prefix hashes,
 so record and schedule it deliberately. Never print either value or pass it to
 logs, database columns, or client code.
+
+Generate the admin credential with at least 32 random bytes and generate the
+TOTP seed as an unpadded, uppercase Base32 encoding of at least 20 random bytes.
+Enroll that TOTP seed in the single operator's authenticator, then store both
+values only in the environment's secret manager. The app accepts the credential
+as an `Authorization: Bearer` value and the current six-digit code in
+`X-Valstara-TOTP`; neither value may be logged, audited, returned, or committed.
+Local and CI values are disposable and must never be reused in production.
 
 The production pgBackRest passphrase is generated separately, stored off-host,
 and recovered through the secret-manager procedure before a restore. Losing it

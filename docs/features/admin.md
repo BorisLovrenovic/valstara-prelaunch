@@ -6,6 +6,21 @@ The minimum an operator needs: the fraud review queue, campaign flags, the CSV e
 ## Feature flag
 None. Admin routes are internal and are protected by authentication, not by a flag.
 
+## Authentication boundary
+E5-03a provides one stateless boundary for every `/api/admin/*` route: a
+server-held operator bearer credential plus a six-digit TOTP in
+`X-Valstara-TOTP`. Both are required on every request. There is one operator,
+no user system, no permission matrix, no password and no session. Successful
+authentication adds the fixed `admin.operator` actor to request locals; action
+routes use that actor in their append-only audit record.
+
+Every admin route is declared in the central registry in the same change that
+adds its route file. A generated test reconciles the registry with the route
+tree and sends both unauthenticated and authenticated requests through the
+middleware. The initial protected probe is a test fixture, not a shipped route.
+Authentication failures are generic, `no-store`, and never echo a credential,
+TOTP, token, raw IP address or configuration detail.
+
 ## User flows
 1. **Health** — verification rate against baseline, leaderboard snapshot age, email queue depth, quota projections. **The one screen that answers "is the campaign silently broken".**
 2. **Fraud queue** — open flags with their evidence; dismiss or uphold.
@@ -18,6 +33,7 @@ Export requested during a spike → **streamed and batch-capped**; it must not h
 
 ## Acceptance criteria
 - [ ] Admin routes require authentication **with MFA active** — verified, not assumed
+- [ ] The route registry exactly covers the admin route tree; every registered route is exercised through the authentication middleware
 - [ ] **Every admin action is audited** with actor, subject and detail
 - [ ] The export is streamed and batch-capped — asserted with a large seeded dataset
 - [ ] The export set is exactly *verified, unsuppressed, not disqualified* — asserted by test against `docs/data/model.md`

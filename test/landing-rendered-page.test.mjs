@@ -38,6 +38,8 @@ function startServer(databaseUrl) {
   const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
     env: {
       ...process.env,
+      ADMIN_CREDENTIAL: 'landing-rendered-admin-credential-32',
+      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
       DATABASE_URL: databaseUrl,
       IP_PREFIX_PEPPER: 'landing-rendered-page-prefix-pepper',
       REFERRAL_SIGNING_SECRET: 'landing-rendered-page-referral-secret',

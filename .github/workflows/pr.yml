@@ -62,6 +62,8 @@ jobs:
       - run: npm ci
       - name: Generate an ephemeral pgBackRest repository passphrase
         run: |
+          echo "ADMIN_CREDENTIAL=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "ADMIN_TOTP_SECRET=$(openssl rand 20 | base32 | tr -d '=\n')" >> "$GITHUB_ENV"
           echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "TURNSTILE_SECRET_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "IP_PREFIX_PEPPER=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
@@ -117,6 +119,8 @@ jobs:
       - run: npm ci
       - name: Generate an ephemeral pgBackRest repository passphrase
         run: |
+          echo "ADMIN_CREDENTIAL=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "ADMIN_TOTP_SECRET=$(openssl rand 20 | base32 | tr -d '=\n')" >> "$GITHUB_ENV"
           echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "TURNSTILE_SECRET_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "IP_PREFIX_PEPPER=$(openssl rand -hex 32)" >> "$GITHUB_ENV"

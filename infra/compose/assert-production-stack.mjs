@@ -26,6 +26,8 @@ const privateKey = join(temporaryDirectory, 'origin-key.pem');
 
 const environment = {
   ...process.env,
+  ADMIN_CREDENTIAL: 'production-stack-admin-credential-32-chars',
+  ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
   CADDY_BIND_ADDRESS: '127.0.0.1',
   CADDY_HTTP_PORT: '18080',
   CADDY_HTTPS_PORT: '18443',

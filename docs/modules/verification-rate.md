@@ -6,7 +6,7 @@ Kind: cross-cutting service. Implements E3-10.
 
 Calculate the verification rate for a rolling signup cohort, compare it with a
 rolling baseline, report a P1 collapse, and expose an aggregate-only health
-result for E10-05's authenticated admin route.
+result for E10-05's admin health route, protected by E5-03a's authentication boundary.
 
 ## Exposed interface
 
@@ -30,7 +30,7 @@ percentage below the baseline. `health()` does not emit an alert.
 - A cohort below the configured minimum is `warming_up` and cannot alert.
 - Provider reporting is aggregate-only: Gmail, Microsoft, GMX, Web.de and
   other. It carries no address, token, IP address or other personal data.
-- E10-05 owns `GET /api/admin/health` and its MFA boundary. It consumes this
+- E10-05 owns `GET /api/admin/health`; E5-03a owns its MFA boundary. The route consumes this
   module's result; this module creates no route.
 - The maintenance runner delivers P1 through the authenticated webhook in
   `src/server/verification-rate/p1-webhook.ts`. Production configuration requires an HTTPS

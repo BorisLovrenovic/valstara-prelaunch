@@ -18,6 +18,8 @@ import {
 const execFileAsync = promisify(execFile);
 
 const validEnvironment: NodeJS.ProcessEnv = {
+  ADMIN_CREDENTIAL: 'local-test-admin-credential-32-chars',
+  ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
   DATABASE_URL:
     'postgresql://valstara_app:local-password@127.0.0.1:5434/valstara_waitlist',
   HOST: '127.0.0.1',
@@ -70,6 +72,10 @@ async function assertBootRejects(
 
 test('E1-12 validates and types the complete application environment', () => {
   assert.deepEqual(validateConfig(validEnvironment), {
+    adminAuth: {
+      credential: 'local-test-admin-credential-32-chars',
+      totpSecret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+    },
     databaseUrl: validEnvironment.DATABASE_URL,
     host: '127.0.0.1',
     ipPrefixPepper: 'local-test-prefix-pepper',
@@ -225,6 +231,8 @@ test('E1-12 applies only the documented Node adapter defaults', () => {
 });
 
 for (const key of [
+  'ADMIN_CREDENTIAL',
+  'ADMIN_TOTP_SECRET',
   'DATABASE_URL',
   'IP_PREFIX_PEPPER',
   'RESEND_API_KEY',
@@ -247,6 +255,10 @@ for (const key of [
 }
 
 const malformedCases = [
+  ['ADMIN_CREDENTIAL', 'too-short'],
+  ['ADMIN_CREDENTIAL', 'credential with spaces is not accepted'],
+  ['ADMIN_TOTP_SECRET', 'lowercase-is-not-base32'],
+  ['ADMIN_TOTP_SECRET', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='],
   ['DATABASE_URL', 'not-a-url'],
   ['DATABASE_URL', 'https://example.test/database'],
   ['DATABASE_URL', 'postgresql://missing-credentials.example.test/database'],
