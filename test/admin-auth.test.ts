@@ -185,7 +185,7 @@ test('the generated admin-route assertion is non-vacuous and checks both auth pa
     assert.equal(authenticated.status, 200);
     assert.deepEqual(await authenticated.json(), { actor: adminActor });
   }
-  assert.equal(authenticatedRouteCalls, 1);
+  assert.equal(authenticatedRouteCalls, routesUnderTest.length);
 });
 
 test('the admin registry exactly covers every real admin route source', async () => {
