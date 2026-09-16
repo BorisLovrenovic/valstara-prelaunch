@@ -45,4 +45,15 @@ export function defineAdminRouteRegistry(
 // Tickets that add an admin endpoint add its source, request path and methods
 // here in the same change. The generated test reconciles this registry with
 // src/pages/api/admin, then exercises every entry through the prefix middleware.
-export const adminRouteRegistry = defineAdminRouteRegistry([]);
+export const adminRouteRegistry = defineAdminRouteRegistry([
+  {
+    source: 'src/pages/api/admin/fraud.ts',
+    pathname: '/api/admin/fraud',
+    methods: [{ method: 'GET', audit: 'read-only' }],
+  },
+  {
+    source: 'src/pages/api/admin/fraud/[id].ts',
+    pathname: '/api/admin/fraud/:id',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+]);

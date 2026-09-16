@@ -101,7 +101,7 @@ middleware.
 |---|---|
 | `GET /api/admin/export.csv` | The list export. Streamed, batch-capped, audited with row count |
 | `GET /api/admin/flags` · `POST /api/admin/flags` | Read and set campaign flags |
-| `GET /api/admin/fraud` · `POST /api/admin/fraud/:id` | Review queue; dismiss or uphold. Upholding disqualifies and is audited |
+| `GET /api/admin/fraud?limit=…` · `POST /api/admin/fraud/:id` | Priority-ordered review queue (hard maximum 50); POST body is `{ "outcome": "dismissed" | "upheld" }`. Both outcomes use the authenticated actor and are audited. Upholding disqualifies once E5-05 adds that downstream transition |
 | `POST /api/admin/draw` | Execute the draw. Records seed and snapshot hash; refuses to publish until it reproduces |
 | `GET /api/admin/health` | Verification rate, snapshot age, queue depth, quota projections |
 
