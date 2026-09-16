@@ -101,17 +101,23 @@ export function createFraudReviewService(
 
       await withTransaction(database, async (connection) => {
         const repository = createFraudReviewRepository(connection);
-        const updated = await repository.review(flagId, outcome, actor);
-        if (updated === 0) {
-          const existing = await repository.findState(flagId);
-          if (existing === null) {
-            throw new FraudFlagNotFoundError();
-          }
-          if (existing.state === outcome) {
-            return;
-          }
+        const existing = await repository.findState(flagId);
+        if (existing === null) {
+          throw new FraudFlagNotFoundError();
+        }
+
+        if (existing.state === outcome) return;
+        if (existing.state === 'dismissed') {
           throw new FraudFlagAlreadyReviewedError();
         }
+
+        const updated = await repository.review(
+          flagId,
+          outcome,
+          actor,
+          existing.state,
+        );
+        if (updated !== 1) throw new FraudFlagAlreadyReviewedError();
 
         await createAuditService(connection).record({
           action: 'fraud.reviewed',
@@ -120,6 +126,106 @@ export function createFraudReviewService(
           subjectId: flagId,
           subjectType: 'fraud_flag',
         });
+
+        if (outcome === 'upheld') {
+          const disqualified = await connection.execute({
+            text: `
+              UPDATE subscriber
+              SET
+                disqualification_previous_status = status,
+                disqualified_by_flag_id = $2,
+                disqualified_at = CURRENT_TIMESTAMP,
+                status = 'disqualified',
+                updated_at = CURRENT_TIMESTAMP
+              WHERE id = $1
+                AND status <> 'disqualified'
+            `,
+            values: [existing.subscriber_id, flagId],
+          });
+
+          if (disqualified === 1) {
+            const rejectedEdges = await connection.execute({
+              text: `
+                UPDATE referral_edge
+                SET
+                  state_before_rejection = state,
+                  state = 'rejected',
+                  rejected_reason = 'referrer_disqualified'
+                WHERE referrer_id = $1
+                  AND state IN ('attributed', 'confirmed')
+              `,
+              values: [existing.subscriber_id],
+            });
+            const voidedEntries = await connection.execute({
+              text: `
+                UPDATE giveaway_entry
+                SET
+                  voided_at = CURRENT_TIMESTAMP,
+                  voided_by_disqualification_flag_id = $2
+                WHERE subscriber_id = $1
+                  AND method = 'referral'
+                  AND voided_at IS NULL
+              `,
+              values: [existing.subscriber_id, flagId],
+            });
+            await createAuditService(connection).record({
+              action: 'subscriber.disqualified',
+              actor,
+              detail: { flagId, rejectedEdges, voidedEntries },
+              subjectId: existing.subscriber_id,
+              subjectType: 'subscriber',
+            });
+          }
+          return;
+        }
+
+        const restored = await connection.execute({
+          text: `
+            UPDATE subscriber
+            SET
+              status = disqualification_previous_status,
+              disqualified_at = NULL,
+              disqualification_previous_status = NULL,
+              disqualified_by_flag_id = NULL,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND status = 'disqualified'
+              AND disqualified_by_flag_id = $2
+          `,
+          values: [existing.subscriber_id, flagId],
+        });
+        if (restored === 1) {
+          const restoredEdges = await connection.execute({
+            text: `
+              UPDATE referral_edge
+              SET
+                state = state_before_rejection,
+                rejected_reason = NULL,
+                state_before_rejection = NULL
+              WHERE referrer_id = $1
+                AND state = 'rejected'
+                AND rejected_reason = 'referrer_disqualified'
+                AND state_before_rejection IS NOT NULL
+            `,
+            values: [existing.subscriber_id],
+          });
+          const restoredEntries = await connection.execute({
+            text: `
+              UPDATE giveaway_entry
+              SET voided_at = NULL, voided_by_disqualification_flag_id = NULL
+              WHERE subscriber_id = $1
+                AND voided_by_disqualification_flag_id = $2
+            `,
+            values: [existing.subscriber_id, flagId],
+          });
+          await createAuditService(connection).record({
+            action: 'subscriber.disqualification_reversed',
+            actor,
+            detail: { flagId, restoredEdges, restoredEntries },
+            subjectId: existing.subscriber_id,
+            subjectType: 'subscriber',
+          });
+        }
       });
     },
   };

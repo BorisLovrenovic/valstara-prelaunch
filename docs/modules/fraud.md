@@ -56,7 +56,7 @@ interface FraudService {
   accept-and-flag path. That review flag uses the existing `no_mx` kind with an
   `mx_lookup_timeout` reason; a definitive no-MX rejection creates no subscriber
   row and therefore no flag row.
-- **`review(_, 'upheld')` is the only path to `disqualified`**, and it requires an actor and writes an audit record.
+- **`review(_, 'upheld')` is the only path to `disqualified`**, and it requires an actor and writes an audit record. `review(_, 'dismissed')` reverses an upheld decision by the same flag, restoring the recorded subscriber, edge and referral-entry state with its own audit record.
 - At the signup request boundary, **`hashIpPrefix()` truncates before hashing** — IPv4 to /24, IPv6 to /64 — with a server-side pepper held outside the database. Fraud receives only the hash. **A full IP address is never returned, stored or logged.**
 - **`purgeIpHashes()` runs daily and its failure is a compliance alert**, not a hygiene one.
 - **The site runs no device-fingerprinting API.** No canvas, font, WebGL or timing entropy collection is invoked by site code. Cloudflare's disclosed server-side IP/TLS/UA security processing under its processor role is separate.

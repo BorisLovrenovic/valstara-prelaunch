@@ -83,6 +83,7 @@ function auditInput(action: AuditAction) {
 test('the required audit action registry is complete', () => {
   assert.deepEqual(auditActions, [
     'subscriber.disqualified',
+    'subscriber.disqualification_reversed',
     'subscriber.anonymised',
     'fraud.reviewed',
     'fraud.domain_allowed',
@@ -186,6 +187,7 @@ test('record failures for irreversible actions propagate to their callers', asyn
 
   for (const action of [
     'subscriber.disqualified',
+    'subscriber.disqualification_reversed',
     'export.run',
     'draw.executed',
     'dsr.fulfilled',

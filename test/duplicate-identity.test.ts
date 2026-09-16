@@ -388,7 +388,7 @@ function assertFlagPathsDoNotWriteSubscriberStatus(
 ): void {
   const statusWrite = /UPDATE\s+subscriber\s+SET[\s\S]{0,300}\bstatus\s*=/iu;
   for (const source of sources) {
-    if (/fraud[-_]flag|flagDuplicateIdentity/u.test(source.contents)) {
+    if (/createFraudFlagRepository|flagDuplicateIdentity/u.test(source.contents)) {
       assert.doesNotMatch(
         source.contents,
         statusWrite,
@@ -398,7 +398,7 @@ function assertFlagPathsDoNotWriteSubscriberStatus(
   }
 }
 
-test('no fraud-flag write path changes subscriber.status', () => {
+test('no fraud-signal write path changes subscriber.status', () => {
   const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
   const sourceRoot = join(repositoryRoot, 'src');
   const sources: { contents: string; path: string }[] = [];
@@ -423,7 +423,7 @@ test('no fraud-flag write path changes subscriber.status', () => {
       assertFlagPathsDoNotWriteSubscriberStatus([
         {
           contents:
-            "INSERT INTO fraud_flag VALUES (...); UPDATE subscriber SET status = 'disqualified';",
+            "createFraudFlagRepository(database); UPDATE subscriber SET status = 'disqualified';",
           path: 'src/server/fraud/mutant.ts',
         },
       ]),

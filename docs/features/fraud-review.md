@@ -23,7 +23,7 @@ MX lookup times out → **accept and flag.** A slow resolver must never cost a r
 - [ ] **No code path sets `disqualified` without a recorded human action** — asserted over every write site
 - [ ] Upholding a flag rejects the referrer's edges and **changes no referred subscriber's status**
 - [ ] IP handling stores only a **truncated, hashed prefix**, purged at 90 days — asserted by test and by the purge job
-- [ ] The disqualification rule is **published on the site**, because an unpublished rule cannot be enforced fairly
+- [ ] **Deferred to E7-02 (founder-authorised 2026-09-16):** the disqualification rule is published on every counsel-reviewed per-jurisdiction rules page before `giveaway.open` can be enabled; no standalone wording is published while P4 is outstanding
 - [ ] No fingerprinting library or browser-entropy collection exists anywhere in the codebase — CI-scanned
 
 ## Telemetry

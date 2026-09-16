@@ -43,6 +43,8 @@ The waitlist row.
 | `giveaway_rules_version` | text | **The rules version that decided `giveaway_eligible`.** Written with it at signup, so an eligibility decision stays explainable after the rules change. Distinct from `giveaway_entry.rules_version`, which stamps each accrual |
 | `signup_ip_prefix_hash` | bytea | See *IP handling*. Purged at 90 days |
 | `verified_at` `unsubscribed_at` `expired_at` `disqualified_at` | timestamptz | |
+| `disqualification_previous_status` | text null | Status restored only by reversing the flag that disqualified the subscriber |
+| `disqualified_by_flag_id` | uuid null → `fraud_flag` | The human-reviewed flag that caused the current disqualification |
 | `created_at` `updated_at` | timestamptz not null | |
 
 Indexes: `email_normalised` (unique) · `referral_code` (unique) ·
@@ -83,6 +85,7 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 | `state` | text not null | `attributed` · `confirmed` · `rejected` |
 | `reward_state` | text not null | `none` · `settled` · `held` · `void` |
 | `rejected_reason` | text null | `self_referral` · `duplicate_identity` · `referrer_disqualified` · `manual` |
+| `state_before_rejection` | text null | `attributed` or `confirmed`, retained only for a reversible referrer disqualification |
 | `confirmed_at` `created_at` | timestamptz | |
 
 **Cheap rewards settle on confirmation; high-value rewards enter `held` and only settle on a post-launch first order** (ADR-012). The pre-launch repository implements the confirmation hold and campaign-close `void` transitions; the storefront owns first-order settlement after handoff. `held` reward records that never qualify become `void` at campaign close — recorded, not deleted, because the rule was published and must be checkable afterwards.
@@ -99,9 +102,13 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 ## `giveaway_entry`
 
-`id` · `subscriber_id` · `method` (`base` · `referral` · `amoe`) · `entries` int · `jurisdiction` char(2) · `rules_version` text · `source_edge_id` uuid null · `created_at`. Unique with `NULLS NOT DISTINCT` on `(subscriber_id, method, source_edge_id)` so a retry cannot double-credit when `source_edge_id` is null.
+`id` · `subscriber_id` · `method` (`base` · `referral` · `amoe`) · `entries` int · `jurisdiction` char(2) · `rules_version` text · `source_edge_id` uuid null · `voided_at` · `voided_by_disqualification_flag_id` uuid null → `fraud_flag` · `created_at`. Unique with `NULLS NOT DISTINCT` on `(subscriber_id, method, source_edge_id)` so a retry cannot double-credit when `source_edge_id` is null.
 
 **`rules_version` is stamped at accrual.** Entries keep the rules that were in force when they accrued — that is what makes a mid-campaign rules change survivable (`docs/architecture/fallbacks.md`).
+
+When a human upholds a fraud flag, only that referrer's `referral` entries are
+voided and tied to the flag. Reversing that decision restores those entries;
+the referred subscribers' entries are never affected.
 
 ## `giveaway_draw`
 
