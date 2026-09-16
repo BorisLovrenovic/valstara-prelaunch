@@ -11,6 +11,12 @@ A public top-N by confirmed referrals, **cached and anonymised**. It exists to m
 2. **Render** — the island shows rank, an anonymised display value and the confirmed count, with a visible "as of" timestamp.
 3. **Own position** — a verified visitor arriving from their status link sees their own rank highlighted, computed from the same snapshot.
 
+The snapshot candidates and the internal prize ranking share one integrity
+boundary. Only verified subscribers with no active (`open` or `upheld`) fraud
+flag are ranked; a dismissed false positive is eligible again. Filtering happens
+before ranks are assigned, and neither result carries an exclusion reason or an
+excluded-account count.
+
 ## Edge cases and error states
 Snapshot job stops → **the last good snapshot keeps serving with its timestamp shown.** Stale is acceptable; a live query during a spike is not. Ties → ordered by earliest verification, deterministically, so the board does not shuffle between refreshes. Flagged or disqualified subscribers → **excluded from the snapshot entirely**, not shown greyed. Fewer entries than N → the board renders short; it is never padded. Flag off → `503` from the route with honest copy, and the section is absent from the page rather than broken.
 
