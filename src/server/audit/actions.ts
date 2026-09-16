@@ -1,5 +1,6 @@
 export const auditActions = [
   'subscriber.disqualified',
+  'subscriber.disqualification_reversed',
   'subscriber.anonymised',
   'fraud.reviewed',
   'fraud.domain_allowed',

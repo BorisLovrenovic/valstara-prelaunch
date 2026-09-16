@@ -963,14 +963,14 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this tier:** it is irreversible-feeling from the outside, it affects a prize, and it must be defensible afterwards.
 
-**Build:** Upholding a flag sets `disqualified`, rejects the referrer's edges, and voids their referral-derived entries — **all audited.** Reversal is possible and equally audited, and **restores the edges the disqualification rejected.** Publish the disqualification rule on the site.
+**Build:** Upholding a flag sets `disqualified`, rejects the referrer's edges, and voids their referral-derived entries — **all audited.** Reversal is possible and equally audited, and **restores the edges the disqualification rejected.** Founder-authorised 2026-09-16: defer publication of the disqualification rule to E7-02's counsel-reviewed per-jurisdiction rules pages; no standalone rule copy is published in this ticket because P4 is outstanding and `giveaway.open` remains off until P4/P5.
 
 **Acceptance criteria:**
 - **`disqualified` is reachable only through `review(_, 'upheld')` with an actor** — asserted over every write site
 - Rejecting a referrer's edges **changes no referred subscriber's status** — nobody is punished for their referrer
 - Their referral-derived entries are voided; **the entries of the people they referred are not**
 - Reversal restores the rejected edges and is audited
-- **The rule is published on the site** — an unpublished rule cannot be enforced fairly
+- **Deferred to E7-02:** the rule is published on every counsel-reviewed jurisdiction rules page before `giveaway.open` can be enabled
 
 **Tests:** The single-path assertion · the referred-subscriber isolation · the entry-voiding scope · reversal restoring edges.
 **Docs:** `docs/features/fraud-review.md` · `docs/modules/fraud.md`
@@ -1138,6 +1138,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier A — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
 **Build:** `/giveaway/rules/[jurisdiction]` from content files, each carrying the **seven required sections**: eligibility, entry methods including AMOE, entry period, draw date and method, odds basis, prize description and substitution clause, the disqualification rule, and the promoter's identity.
+
+**Deferred assertion from E5-05 (founder-authorised 2026-09-16):** this ticket owns publication of the disqualification rule; it must be present on every counsel-reviewed rules page before `giveaway.open` can be enabled.
 
 **BLOCKED if P4 is outstanding.**
 

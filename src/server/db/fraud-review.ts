@@ -21,6 +21,7 @@ export interface OpenFraudFlagRow {
 }
 
 export interface FraudFlagReviewStateRow {
+  readonly subscriber_id: string;
   readonly state: 'dismissed' | 'open' | 'upheld';
 }
 
@@ -31,6 +32,7 @@ export interface FraudReviewRepository {
     flagId: string,
     outcome: FraudReviewOutcome,
     actor: string,
+    expectedState: 'open' | 'upheld',
   ): Promise<number>;
 }
 
@@ -40,7 +42,12 @@ export function createFraudReviewRepository(
   return {
     findState(flagId) {
       return database.readOne<FraudFlagReviewStateRow>({
-        text: 'SELECT state FROM fraud_flag WHERE id = $1',
+        text: `
+          SELECT subscriber_id::text, state
+          FROM fraud_flag
+          WHERE id = $1
+          FOR UPDATE
+        `,
         values: [flagId],
       });
     },
@@ -80,14 +87,14 @@ export function createFraudReviewRepository(
         limit,
       );
     },
-    review(flagId, outcome, actor) {
+    review(flagId, outcome, actor, expectedState) {
       return database.execute({
         text: `
           UPDATE fraud_flag
           SET state = $2, reviewed_by = $3, reviewed_at = CURRENT_TIMESTAMP
-          WHERE id = $1 AND state = 'open'
+          WHERE id = $1 AND state = $4
         `,
-        values: [flagId, outcome, actor],
+        values: [flagId, outcome, actor, expectedState],
       });
     },
   };
