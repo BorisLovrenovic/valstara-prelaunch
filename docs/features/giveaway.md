@@ -11,7 +11,7 @@ A prize draw that drives referrals, **scoped by jurisdiction at point of entry**
 2. **Entries** — a base entry on verification, plus entries per confirmed referral. Every accrual stamps the `rules_version` in force.
 3. **AMOE** — an alternative method of entry with no referral requirement, offered wherever it is required, and given **the same weight as an earned entry**.
 4. **Draw** — executed against a snapshot of the entry ledger with a recorded seed. **The result is not published until it reproduces from that seed and snapshot hash.**
-5. **Review** — the top 20 by entries are reviewed manually before any award.
+5. **Review** — the top 20 by raw, non-voided entries are reviewed manually before any award. A membership change invalidates the completed review; E7-05 calls E5-07's server-side current-review precondition before draw publication.
 6. **Award** — winners notified; the award is recorded with the entry snapshot that produced it.
 
 ## Edge cases and error states

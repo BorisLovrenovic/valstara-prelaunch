@@ -114,6 +114,10 @@ the referred subscribers' entries are never affected.
 
 `id` · `executed_at` · `seed` text · `entry_snapshot_hash` bytea · `winners` jsonb · `executed_by` · `reproduced_at`. **A draw is not published until it reproduces from its recorded seed and snapshot hash.**
 
+## `top_twenty_review_batch` and `top_twenty_review`
+
+`top_twenty_review_batch` stores the SHA-256 membership hash for one current top-20 review and an `invalidated_at` timestamp. Only one active batch exists. `top_twenty_review` records one non-empty outcome and its human actor for every member of that batch. The top 20 is calculated directly from non-voided `giveaway_entry` totals, including flagged accounts; it is not the leaderboard snapshot. A changed membership invalidates the active batch and E7-05 must call E5-07's current-review precondition before draw publication.
+
 ## `fraud_flag`
 
 `id` · `subscriber_id` · `kind` (`disposable_domain` · `no_mx` · `self_referral` · `duplicate_identity` · `ip_velocity` · `manual` · `challenge_timeout`) · `detail` jsonb · `state` (`open` · `dismissed` · `upheld`) · `reviewed_by` · `reviewed_at` · `created_at`.
