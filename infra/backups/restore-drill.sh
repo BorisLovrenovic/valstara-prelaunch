@@ -44,8 +44,8 @@ query_ledger() {
 
 wait_for_scratch_database() {
   attempt=0
-  while [ "$attempt" -lt 30 ]; do
-    if docker exec "$scratch_container" pg_isready --username postgres --dbname valstara_waitlist >/dev/null 2>&1; then
+  while [ "$attempt" -lt 60 ]; do
+    if docker exec "$scratch_container" psql --username "$source_db_user" --dbname valstara_waitlist --command 'SELECT 1' >/dev/null 2>&1; then
       return 0
     fi
     attempt=$((attempt + 1))

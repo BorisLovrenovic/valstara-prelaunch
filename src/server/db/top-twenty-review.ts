@@ -28,11 +28,11 @@ export function createTopTwentyReviewRepository(
   return {
     async createBatch(id, membershipHash) {
       await database.execute({
-          text: `
+        text: `
           INSERT INTO top_twenty_review_batch (id, membership_hash)
           VALUES ($1, $2)
         `,
-          values: [id, membershipHash],
+        values: [id, membershipHash],
       });
     },
     findActive() {
@@ -73,18 +73,13 @@ export function createTopTwentyReviewRepository(
     },
     async recordOutcome(input) {
       await database.execute({
-          text: `
+        text: `
           INSERT INTO top_twenty_review (
             batch_id, subscriber_id, outcome, actor
           )
           VALUES ($1, $2, $3, $4)
         `,
-          values: [
-            input.batchId,
-            input.subscriberId,
-            input.outcome,
-            input.actor,
-          ],
+        values: [input.batchId, input.subscriberId, input.outcome, input.actor],
       });
     },
   };
