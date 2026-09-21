@@ -8,6 +8,7 @@ import {
   createRankingIntegrityService,
   rankingBatchMaximum,
 } from '../src/server/referral/ranking.ts';
+import { createLeaderboardSnapshotCache } from '../src/server/leaderboard/snapshot.ts';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
@@ -255,4 +256,79 @@ test('E5-06 ranking queries require a positive capped limit', async () => {
     ranking.prizeCandidates(rankingBatchMaximum + 1),
     RangeError,
   );
+});
+
+test('E6-01 snapshots only verified ranked rows, anonymises them, and preserves deterministic ties', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const firstVerified = new Date('2026-09-20T08:00:00.000Z');
+    const laterVerified = new Date('2026-09-20T09:00:00.000Z');
+    const first = await insertSubscriber(fixture.database, {
+      confirmedReferrals: 9,
+      entries: 0,
+      label: 'snapshot-first',
+      verifiedAt: firstVerified,
+    });
+    const second = await insertSubscriber(fixture.database, {
+      confirmedReferrals: 9,
+      entries: 0,
+      label: 'snapshot-second',
+      verifiedAt: laterVerified,
+    });
+    const pending = await insertSubscriber(fixture.database, {
+      confirmedReferrals: 99,
+      entries: 0,
+      label: 'snapshot-pending',
+      status: 'pending',
+      verifiedAt: laterVerified,
+    });
+    const expired = await insertSubscriber(fixture.database, {
+      confirmedReferrals: 98,
+      entries: 0,
+      label: 'snapshot-expired',
+      status: 'pending',
+      verifiedAt: laterVerified,
+    });
+    await fixture.database.execute({
+      text: "UPDATE subscriber SET status = 'expired' WHERE id = $1",
+      values: [expired.id],
+    });
+    const snapshot = createLeaderboardSnapshotCache(
+      createRankingIntegrityService(fixture.applicationDatabase),
+      { now: () => new Date('2026-09-20T10:00:00.000Z') },
+    );
+
+    const firstRefresh = await snapshot.refresh();
+    const secondRefresh = await snapshot.refresh();
+
+    assert.deepEqual(firstRefresh, secondRefresh);
+    assert.deepEqual(
+      firstRefresh.entries.map(({ confirmedReferrals, rank }) => ({
+        confirmedReferrals,
+        rank,
+      })),
+      [
+        { confirmedReferrals: 9, rank: 1 },
+        { confirmedReferrals: 9, rank: 2 },
+      ],
+    );
+    assert.deepEqual(
+      firstRefresh.entries.map((entry) => Object.keys(entry).sort()),
+      [
+        ['confirmedReferrals', 'displayHandle', 'rank'],
+        ['confirmedReferrals', 'displayHandle', 'rank'],
+      ],
+    );
+    const serialised = JSON.stringify(firstRefresh);
+    for (const subscriber of [first, second, pending, expired]) {
+      assert.doesNotMatch(serialised, new RegExp(subscriber.id, 'u'));
+      assert.doesNotMatch(serialised, new RegExp(subscriber.label, 'u'));
+    }
+    assert.doesNotMatch(
+      serialised,
+      /email|country|referral.code|verified_at/iu,
+    );
+  } finally {
+    await fixture.dispose();
+  }
 });

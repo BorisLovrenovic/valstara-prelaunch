@@ -145,7 +145,7 @@ Jobs only ever **materialise, remind, expire and repair.** Nothing a customer is
 | Verification-rate check | hourly, in the maintenance process | n/a | The funnel can fail silently — this job is the guard against that |
 | Unverified expiry sweep | daily, in the maintenance process | yes | Rows linger; no counter is affected, since nothing counts unverified rows |
 | Rate-limit bucket retention | daily, in the maintenance process | yes | Buckets exceed seven days; failure takes the compliance P1 path |
-| Leaderboard snapshot refresh | 5 min | n/a | The last good snapshot keeps serving, with its timestamp shown |
+| Leaderboard snapshot refresh | 5 min | Top 10 | The last good snapshot keeps serving, with its timestamp shown |
 | Referral counter repair | daily | yes | Counters drift from edges; the edges remain correct and authoritative |
 | IP-prefix retention purge | daily | yes | **Retention breach — this is a compliance alert, not a hygiene one** |
 | Bounce/complaint reconciliation | hourly | yes | Suppression lags; a suppressed address could receive one more send |
