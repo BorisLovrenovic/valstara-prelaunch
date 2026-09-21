@@ -312,12 +312,22 @@ test('E6-01 snapshots only verified ranked rows, anonymises them, and preserves 
         { confirmedReferrals: 9, rank: 2 },
       ],
     );
+    assert.deepEqual(
+      firstRefresh.entries.map((entry) => Object.keys(entry).sort()),
+      [
+        ['confirmedReferrals', 'displayHandle', 'rank'],
+        ['confirmedReferrals', 'displayHandle', 'rank'],
+      ],
+    );
     const serialised = JSON.stringify(firstRefresh);
     for (const subscriber of [first, second, pending, expired]) {
       assert.doesNotMatch(serialised, new RegExp(subscriber.id, 'u'));
       assert.doesNotMatch(serialised, new RegExp(subscriber.label, 'u'));
     }
-    assert.doesNotMatch(serialised, /email|country|referral.code|verified_at/iu);
+    assert.doesNotMatch(
+      serialised,
+      /email|country|referral.code|verified_at/iu,
+    );
   } finally {
     await fixture.dispose();
   }

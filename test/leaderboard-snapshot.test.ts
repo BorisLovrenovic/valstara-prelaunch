@@ -33,7 +33,10 @@ test('E6-01 snapshot is bounded to the authorised top 10 and discards source IDs
 
   const snapshot = await cache.refresh();
   assert.deepEqual(limits, [leaderboardSnapshotSize]);
-  assert.deepEqual(snapshot.entries.map((entry) => entry.rank), [1]);
+  assert.deepEqual(
+    snapshot.entries.map((entry) => entry.rank),
+    [1],
+  );
   assert.equal(snapshot.entries[0]?.displayHandle.length, 12);
   assert.doesNotMatch(JSON.stringify(snapshot), /86d37cb5/u);
 });
@@ -93,7 +96,11 @@ test('E6-01 public route reads only a supplied snapshot and exposes its safe res
   };
   let reads = 0;
   const route = createLeaderboardRoute({
-    flags: { async isEnabled() { return true; } },
+    flags: {
+      async isEnabled() {
+        return true;
+      },
+    },
     snapshot: {
       read() {
         reads += 1;
@@ -113,7 +120,10 @@ test('E6-01 public route reads only a supplied snapshot and exposes its safe res
       { confirmed_referrals: 4, display_handle: 'BQBao_sEnxqw', rank: 1 },
     ],
   });
-  assert.doesNotMatch(JSON.stringify(body), /email|country|referral_code|subscriber/i);
+  assert.doesNotMatch(
+    JSON.stringify(body),
+    /email|country|referral_code|subscriber/i,
+  );
 
   const routeSource = await readFile(
     new URL('../src/pages/api/leaderboard.ts', import.meta.url),
@@ -124,7 +134,11 @@ test('E6-01 public route reads only a supplied snapshot and exposes its safe res
 
 test('E6-01 flag-off route response is an honest 503 without reading the snapshot', async () => {
   const route = createLeaderboardRoute({
-    flags: { async isEnabled() { return false; } },
+    flags: {
+      async isEnabled() {
+        return false;
+      },
+    },
     snapshot: {
       read() {
         throw new Error('flag-off must not read the snapshot');

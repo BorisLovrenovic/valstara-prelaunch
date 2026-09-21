@@ -58,7 +58,9 @@ export function createLeaderboardRoute(
   };
 }
 
-export function createDefaultLeaderboardRoute(database: DatabasePool): APIRoute {
+export function createDefaultLeaderboardRoute(
+  database: DatabasePool,
+): APIRoute {
   return createLeaderboardRoute({
     flags: createFlagService(database),
     snapshot: getLeaderboardSnapshot(),
