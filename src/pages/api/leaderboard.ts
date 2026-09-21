@@ -66,10 +66,11 @@ export function createLeaderboardRoute(
 
 export function createDefaultLeaderboardRoute(
   database: DatabasePool,
+  snapshot: Pick<LeaderboardSnapshotCache, 'read'> = getLeaderboardSnapshot(),
 ): APIRoute {
   return createLeaderboardRoute({
     flags: createFlagService(database),
-    snapshot: getLeaderboardSnapshot(),
+    snapshot,
   });
 }
 
