@@ -1,0 +1,245 @@
+---
+import { leaderboardCopy } from '../copy/leaderboard.ts';
+---
+
+<section class="leaderboard-section" data-leaderboard-section>
+  <valstara-leaderboard data-endpoint="/api/leaderboard">
+    <h1 class="leaderboard-heading">{leaderboardCopy.heading}</h1>
+    <p class="leaderboard-introduction">{leaderboardCopy.introduction}</p>
+    <p class="leaderboard-status" data-leaderboard-status role="status">
+      {leaderboardCopy.loading}
+    </p>
+    <p class="leaderboard-meta" data-leaderboard-meta hidden></p>
+    <ol class="leaderboard-entries" data-leaderboard-entries></ol>
+  </valstara-leaderboard>
+</section>
+
+<script>
+  import { leaderboardCopy } from '../copy/leaderboard.ts';
+  import {
+    formatSnapshotTimestamp,
+    leaderboardErrorMessage,
+    leaderboardPollIntervalMilliseconds,
+    parseLeaderboardSnapshot,
+    snapshotAgeSeconds,
+    type PublicLeaderboardSnapshot,
+  } from './leaderboard.ts';
+
+  class ValstaraLeaderboard extends HTMLElement {
+    #interval: ReturnType<typeof globalThis.setInterval> | null = null;
+    #observer: IntersectionObserver | null = null;
+    #refreshing = false;
+    #snapshot: PublicLeaderboardSnapshot | null = null;
+
+    connectedCallback(): void {
+      if ('IntersectionObserver' in globalThis) {
+        this.#observer = new IntersectionObserver((entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            this.#observer?.disconnect();
+            this.#observer = null;
+            this.#start();
+          }
+        });
+        this.#observer.observe(this);
+        return;
+      }
+      this.#start();
+    }
+
+    disconnectedCallback(): void {
+      this.#observer?.disconnect();
+      if (this.#interval !== null) {
+        globalThis.clearInterval(this.#interval);
+      }
+    }
+
+    #start(): void {
+      void this.#refresh();
+      this.#interval = globalThis.setInterval(
+        () => void this.#refresh(),
+        leaderboardPollIntervalMilliseconds,
+      );
+    }
+
+    async #refresh(): Promise<void> {
+      if (this.#refreshing) {
+        return;
+      }
+      this.#refreshing = true;
+      try {
+        const endpoint = this.dataset.endpoint;
+        if (endpoint === undefined) {
+          this.#showUnavailable();
+          return;
+        }
+        const response = await globalThis.fetch(endpoint, {
+          headers: { Accept: 'application/json' },
+        });
+        const body: unknown = await response.json().catch(() => null);
+
+        if (
+          response.status === 503 &&
+          leaderboardErrorMessage(body) === leaderboardCopy.paused
+        ) {
+          this.closest('[data-leaderboard-section]')?.remove();
+          return;
+        }
+        if (!response.ok) {
+          this.#showUnavailable();
+          return;
+        }
+
+        const snapshot = parseLeaderboardSnapshot(body);
+        if (snapshot === null) {
+          this.#showUnavailable();
+          return;
+        }
+        this.#snapshot = snapshot;
+        this.#render(snapshot);
+      } catch {
+        this.#showUnavailable();
+      } finally {
+        this.#refreshing = false;
+      }
+    }
+
+    #render(snapshot: PublicLeaderboardSnapshot): void {
+      const list = this.querySelector('[data-leaderboard-entries]');
+      const meta = this.querySelector('[data-leaderboard-meta]');
+      const status = this.querySelector('[data-leaderboard-status]');
+      if (
+        !(list instanceof HTMLOListElement) ||
+        !(meta instanceof HTMLElement)
+      ) {
+        return;
+      }
+
+      list.replaceChildren(
+        ...snapshot.entries.map((entry) => {
+          const item = document.createElement('li');
+          item.className = 'leaderboard-entry';
+
+          const rank = document.createElement('span');
+          rank.className = 'leaderboard-rank tabular-figure';
+          rank.textContent = leaderboardCopy.rank(entry.rank);
+
+          const handle = document.createElement('span');
+          handle.className = 'leaderboard-handle';
+          handle.textContent = leaderboardCopy.handle(entry.displayHandle);
+
+          const count = document.createElement('span');
+          count.className = 'leaderboard-count tabular-figure';
+          count.textContent = leaderboardCopy.confirmedReferrals(
+            entry.confirmedReferrals,
+          );
+
+          item.append(rank, handle, count);
+          return item;
+        }),
+      );
+
+      const age = leaderboardCopy.snapshotAge(
+        snapshotAgeSeconds(snapshot.asOf, new Date()),
+      );
+      meta.textContent = `${leaderboardCopy.snapshotAsOf} ${formatSnapshotTimestamp(snapshot.asOf)} · ${age}`;
+      meta.hidden = false;
+      if (status instanceof HTMLElement) {
+        status.textContent =
+          snapshot.entries.length === 0 ? leaderboardCopy.empty : '';
+        status.hidden = snapshot.entries.length > 0;
+      }
+    }
+
+    #showUnavailable(): void {
+      if (this.#snapshot !== null) {
+        this.#render(this.#snapshot);
+        return;
+      }
+      const status = this.querySelector('[data-leaderboard-status]');
+      if (status instanceof HTMLElement) {
+        status.textContent = leaderboardCopy.unavailable;
+        status.hidden = false;
+      }
+    }
+  }
+
+  if (!customElements.get('valstara-leaderboard')) {
+    customElements.define('valstara-leaderboard', ValstaraLeaderboard);
+  }
+</script>
+
+<style is:global>
+  .leaderboard-section,
+  valstara-leaderboard {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .leaderboard-heading,
+  .leaderboard-introduction,
+  .leaderboard-status,
+  .leaderboard-meta {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+
+  .leaderboard-heading {
+    font-size: var(--step-5);
+    line-height: var(--leading-5);
+  }
+
+  .leaderboard-introduction {
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .leaderboard-status,
+  .leaderboard-meta {
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  .leaderboard-entries {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .leaderboard-entry {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    color: var(--ink);
+    background-color: var(--surface);
+    border: thin solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  .leaderboard-rank,
+  .leaderboard-count {
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  .leaderboard-rank {
+    flex: 0 0 var(--space-10);
+  }
+
+  .leaderboard-handle {
+    flex: 1 1 calc(var(--space-10) * 2);
+    overflow-wrap: anywhere;
+    font-family: var(--font-sans);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .leaderboard-count {
+    margin-inline-start: auto;
+  }
+</style>

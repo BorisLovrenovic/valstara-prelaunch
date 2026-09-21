@@ -1,0 +1,17 @@
+---
+import { leaderboardCopy } from '../copy/leaderboard.ts';
+import Leaderboard from '../islands/Leaderboard.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getFlagService } from '../server/flags/app-service.ts';
+
+const leaderboardEnabled =
+  await getFlagService().isEnabled('leaderboard.public');
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+---
+
+<BaseLayout
+  title={leaderboardCopy.meta.title}
+  description={leaderboardCopy.meta.description}
+>
+  {leaderboardEnabled ? <Leaderboard /> : null}
+</BaseLayout>

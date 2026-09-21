@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { createLeaderboardRoute } from '../src/pages/api/leaderboard.ts';
+import { flagCacheTtlMilliseconds } from '../src/server/flags/service.ts';
 import {
   createLeaderboardSnapshotCache,
   leaderboardRefreshIntervalMilliseconds,
@@ -112,7 +113,10 @@ test('E6-01 public route reads only a supplied snapshot and exposes its safe res
   const response = await route({} as Parameters<typeof route>[0]);
   const body = (await response.json()) as Record<string, unknown>;
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get('Cache-Control'), 'public, max-age=60');
+  assert.equal(
+    response.headers.get('Cache-Control'),
+    `public, max-age=${flagCacheTtlMilliseconds / 1_000}`,
+  );
   assert.equal(reads, 1);
   assert.deepEqual(body, {
     as_of: snapshot.asOf,
