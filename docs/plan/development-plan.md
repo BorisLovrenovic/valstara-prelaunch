@@ -993,7 +993,9 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this tier:** this is the last human checkpoint before real money is given away, and a procedural version of it will be skipped under time pressure.
 
-**Build:** Enforce **server-side** that the top 20 by entries have been reviewed before any prize award can be recorded. Not a checklist — a precondition the award path checks.
+**Build:** Rank the raw, non-voided `giveaway_entry` ledger directly (including flagged accounts; this is not E6's anonymised snapshot) and record a human actor and outcome for every account in the top 20. Expose a **server-side** `top-20 reviewed and current` precondition. Not a checklist — E7-05's draw/publish path must call this precondition before recording or publishing an award. A changed top-20 membership invalidates the review and requires a re-check.
+
+**Scoping/deferred seam (founder-authorised 2026-09-17):** E5-07 provides the ranking, review workflow and precondition now, using seeded `giveaway_entry` rows. E7-05 owns wiring that precondition into draw/publish; E5-07 does not build E7-03's `accrue()` or E7-06's award record. This follows E3-08's deferred-surface pattern under standing rule 20.
 
 **Acceptance criteria:**
 - **An award cannot be recorded until the top 20 are reviewed** — enforced server-side, not by UI order

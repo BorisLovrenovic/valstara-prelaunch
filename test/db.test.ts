@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      19,
+      20,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -238,6 +238,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0017-fraud-review-queue-permissions.sql',
       '0018-disqualification-state.sql',
       '0019-ranking-integrity-permissions.sql',
+      '0020-top-twenty-review-gate.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -262,6 +263,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0017-fraud-review-queue-permissions.sql',
         '0018-disqualification-state.sql',
         '0019-ranking-integrity-permissions.sql',
+        '0020-top-twenty-review-gate.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -287,6 +289,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'subscriber',
         'suppression',
         'survey_response',
+        'top_twenty_review',
+        'top_twenty_review_batch',
         'verification_token',
       ],
     );
@@ -387,10 +391,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          19,
+          20,
         );
 
-        assert.equal(appliedCount, 19);
+        assert.equal(appliedCount, 20);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -413,6 +417,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0017-fraud-review-queue-permissions.sql',
             '0018-disqualification-state.sql',
             '0019-ranking-integrity-permissions.sql',
+            '0020-top-twenty-review-gate.sql',
           ],
         );
       } finally {

@@ -17,6 +17,7 @@ interface GiveawayService {
   entriesFor(subscriberId: string): Promise<EntrySummary>
   executeDraw(seed: string, actor: string): Promise<DrawResult>
   reproduceDraw(drawId: string): Promise<boolean>
+  assertTopTwentyReviewedAndCurrent(): Promise<void>
 }
 ```
 
@@ -28,6 +29,7 @@ interface GiveawayService {
 - **AMOE carries equal weight** to an earned entry and is reachable without a referral.
 - **`executeDraw()` records the seed and the entry-snapshot hash, and the result is not published until `reproduceDraw()` returns true.** A draw that cannot be reproduced is not a draw, it is an assertion.
 - **A second execution is refused.**
+- **Before draw publication, the raw top 20 by non-voided entries must have a current, actor-recorded review.** E5-07 provides this precondition; E7-05 calls it. Flagged accounts remain in this review ranking: it is not the public leaderboard snapshot.
 - Voiding a referrer's entries never touches the entries of the people they referred.
 
 ## Dependencies

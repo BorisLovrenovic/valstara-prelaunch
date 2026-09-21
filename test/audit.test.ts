@@ -93,6 +93,8 @@ test('the required audit action registry is complete', () => {
     'flag.changed',
     'export.run',
     'draw.executed',
+    'giveaway.top_twenty_reviewed',
+    'giveaway.top_twenty_review_invalidated',
     'dsr.requested',
     'dsr.fulfilled',
     'handoff.frozen',
