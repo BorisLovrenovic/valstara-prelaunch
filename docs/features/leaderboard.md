@@ -1,13 +1,13 @@
 # Feature: Leaderboard
 
 ## Summary
-A public top-N by confirmed referrals, **cached and anonymised**. It exists to motivate sharing; it carries a credibility exposure in exchange, which is why it is flag-killable and why flagged accounts never appear on it (ADR-024).
+A public top-10 by confirmed referrals, **cached and anonymised**. It exists to motivate sharing; it carries a credibility exposure in exchange, which is why it is flag-killable and why flagged accounts never appear on it (ADR-024).
 
 ## Feature flag
 `leaderboard.public` — default on. **Off during a credibility incident**: the section disappears within the cache window with no deploy, and the top-10 block in the weekly email becomes the fallback surface.
 
 ## User flows
-1. **Snapshot** — a job recomputes the ranked list every 5 minutes into a cached structure. **The public route never runs a live query**; the leaderboard is the one route a viral spike can hammer.
+1. **Snapshot** — a job recomputes the ranked top 10 every 5 minutes into a cached structure. **The public route never runs a live query**; the leaderboard is the one route a viral spike can hammer. Each entry has a deterministic SHA-256-derived display handle; the subscriber UUID is discarded before the snapshot is retained.
 2. **Render** — the island shows rank, an anonymised display value and the confirmed count, with a visible "as of" timestamp.
 3. **Own position** — a verified visitor arriving from their status link sees their own rank highlighted, computed from the same snapshot.
 

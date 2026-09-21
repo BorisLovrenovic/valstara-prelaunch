@@ -73,7 +73,7 @@ Body: `email`, `turnstile_token`. Turnstile is verified first. Rate-limited hard
 Body: signed token or an in-page verification continuation, plus `answers`. Validated against the versioned question set. Idempotent per subscriber — a resubmission replaces, and the replacement is audited.
 
 ### `GET /api/leaderboard`
-The only cacheable route. Returns the **anonymised** snapshot: display handle or masked identifier, confirmed referral count, rank, and the snapshot's `as_of` timestamp. **No email, no country, no referral code.** Flagged and disqualified subscribers are excluded. Returns `503` with honest copy when `leaderboard.public` is off.
+The only cacheable route. Returns the **anonymised top-10** snapshot: a deterministic SHA-256-derived display handle, confirmed referral count, rank, and the snapshot's `as_of` timestamp. **No email, country, referral code or subscriber ID.** Flagged and disqualified subscribers are excluded. Returns `503` with honest copy when `leaderboard.public` is off.
 
 ### `GET /me?t=…` *(page route)*
 Signed, expiring status link. No password, no session. Renders the bearer's own status: verified state, confirmed referrals, tier, wave, giveaway entries and eligibility. **A tampered or expired token renders a re-request page, never someone else's data.**
