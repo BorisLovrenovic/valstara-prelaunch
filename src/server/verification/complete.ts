@@ -18,6 +18,7 @@ export interface VerificationCompletion {
   readonly outcome: ConsumeResult;
   readonly referralCode: string | null;
   readonly statusToken: string | null;
+  readonly surveyCompleted: boolean;
 }
 
 export interface VerificationCompletionDependencies {
@@ -50,6 +51,7 @@ export function createVerificationCompletionService(
         outcome: 'invalid',
         referralCode: null,
         statusToken: null,
+        surveyCompleted: false,
       };
     }
 
@@ -62,6 +64,7 @@ export function createVerificationCompletionService(
           outcome: consumed.outcome,
           referralCode: null,
           statusToken: null,
+          surveyCompleted: false,
         };
       }
       if (consumed.subscriberId === null) {
@@ -131,6 +134,7 @@ export function createVerificationCompletionService(
         outcome: consumed.outcome,
         referralCode: referralEnabled ? subscriber.referral_code : null,
         statusToken: status.token,
+        surveyCompleted: await completion.hasSurveyResponse(subscriberId),
       };
     });
   };

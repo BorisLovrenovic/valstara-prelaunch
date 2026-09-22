@@ -1,5 +1,6 @@
 ---
 import { verificationCopy } from '../copy/verification.ts';
+import { surveyCopy } from '../copy/survey.ts';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
@@ -8,6 +9,7 @@ import {
   createVerificationCompletionService,
   type VerificationCompletion,
 } from '../server/verification/complete.ts';
+import { currentSurveyVersion } from '../server/survey/questions.ts';
 
 const token = Astro.url.searchParams.get('token') ?? '';
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -17,6 +19,7 @@ let completion: VerificationCompletion = {
   outcome: 'invalid',
   referralCode: null,
   statusToken: null,
+  surveyCompleted: false,
 };
 let submitted = false;
 let referralEnabled = false;
@@ -42,9 +45,10 @@ if (Astro.request.method === 'POST') {
 }
 const completed =
   completion.outcome === 'verified' || completion.outcome === 'already';
-const surveyEnabled = completed
-  ? await getFlagService().isEnabled('survey.enabled')
-  : false;
+const surveyEnabled =
+  completed && !completion.surveyCompleted
+    ? await getFlagService().isEnabled('survey.enabled')
+    : false;
 const referralUrl =
   referralEnabled && completion.referralCode !== null
     ? new URL(`/?ref=${encodeURIComponent(completion.referralCode)}`, Astro.url)
@@ -85,10 +89,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
           <form
             action="/api/survey"
             class="verification-success__section"
+            data-survey-form
+            data-unavailable-message={surveyCopy.unavailable}
             method="post"
           >
             <h2>{verificationCopy.survey.heading}</h2>
             <input name="token" type="hidden" value={completion.statusToken} />
+            <input name="version" type="hidden" value={currentSurveyVersion} />
             <fieldset>
               <legend>{verificationCopy.survey.categoryLabel}</legend>
               {verificationCopy.survey.categoryOptions.map((option) => (
@@ -116,6 +123,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
               ))}
             </fieldset>
             <button type="submit">{verificationCopy.survey.submit}</button>
+            <p aria-live="polite" data-survey-status />
           </form>
         ) : null}
 
@@ -158,6 +166,38 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     )
   }
 </BaseLayout>
+
+<script is:inline>
+  const surveyForm = document.querySelector('[data-survey-form]');
+  if (surveyForm instanceof HTMLFormElement) {
+    surveyForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submit = surveyForm.querySelector('[type="submit"]');
+      const status = surveyForm.querySelector('[data-survey-status]');
+      if (
+        !(submit instanceof HTMLButtonElement) ||
+        !(status instanceof HTMLElement)
+      )
+        return;
+
+      submit.disabled = true;
+      try {
+        const response = await fetch(surveyForm.action, {
+          body: new FormData(surveyForm),
+          method: 'POST',
+        });
+        const payload = await response.json();
+        status.textContent = response.ok
+          ? payload.message
+          : (payload.error?.message ?? surveyForm.dataset.unavailableMessage);
+      } catch {
+        status.textContent = surveyForm.dataset.unavailableMessage ?? '';
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  }
+</script>
 
 <style>
   .verification-success,

@@ -36,7 +36,7 @@ export const verificationCopy = {
     frequencyOptions: [
       { label: 'Weekly', value: 'weekly' },
       { label: 'Monthly', value: 'monthly' },
-      { label: 'A few times a year', value: 'a_few_times_a_year' },
+      { label: 'A few times a year', value: 'a few times a year' },
       { label: 'Rarely', value: 'rarely' },
     ],
     heading: 'Help us prepare for launch',
