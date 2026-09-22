@@ -60,6 +60,7 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
 async function insertSubscriber(
   database: DatabasePool,
   status: 'pending' | 'verified',
+  referralCode = 'ABCDEF234567',
 ): Promise<string> {
   const id = randomUUID();
   await database.execute({
@@ -73,7 +74,7 @@ async function insertSubscriber(
       id,
       `${id}@example.test`,
       status,
-      status === 'verified' ? 'ABCDEF234567' : null,
+      status === 'verified' ? referralCode : null,
       status === 'verified' ? 12 : 0,
       status === 'verified' ? 99 : 0,
       status === 'verified' ? now : null,
@@ -84,19 +85,34 @@ async function insertSubscriber(
 
 test('the shared computation preserves the exact count and derives reward status once', () => {
   assert.deepEqual(
-    computeReferralStatus(12, 'ABCDEF234567', [
-      { reward_kind: 'wave_upgrade', state: 'settled', tier: 1 },
-      { reward_kind: 'discount', state: 'held', tier: 7 },
-      { reward_kind: 'entries', state: 'held', tier: 7 },
-    ]),
+    computeReferralStatus(
+      12,
+      'ABCDEF234567',
+      [
+        { reward_kind: 'wave_upgrade', state: 'settled', tier: 1 },
+        { reward_kind: 'discount', state: 'held', tier: 7 },
+        { reward_kind: 'entries', state: 'held', tier: 7 },
+      ],
+      {
+        accessWindow: 'wave-2',
+        giveawayEligible: true,
+        giveawayEntries: 8,
+        ownRank: 4,
+      },
+    ),
     {
+      accessWindow: 'wave-2',
       confirmedReferrals: 12,
+      giveawayEligible: true,
+      giveawayEntries: 8,
+      ownRank: 4,
       referralLink: 'https://valstara.com/?ref=ABCDEF234567',
       rewards: [
         { kind: 'wave_upgrade', state: 'settled', tier: 1 },
         { kind: 'discount', state: 'held', tier: 7 },
         { kind: 'entries', state: 'held', tier: 7 },
       ],
+      subscriberStatus: 'verified',
       tier: 1,
     },
   );
@@ -106,6 +122,61 @@ test('status returns the exact stored count, a settled-only tier, and each activ
   const fixture = await createDatabaseFixture();
   try {
     const subscriberId = await insertSubscriber(fixture.database, 'verified');
+    const higherRankedSubscriberId = await insertSubscriber(
+      fixture.database,
+      'verified',
+      'HIGHER234567',
+    );
+    const earlierTiedSubscriberId = await insertSubscriber(
+      fixture.database,
+      'verified',
+      'EARLIER23456',
+    );
+    await fixture.database.execute({
+      text: `
+        UPDATE subscriber
+        SET access_window = 'wave-2', giveaway_eligible = true,
+            verified_at = $2
+        WHERE id = $1
+      `,
+      values: [subscriberId, now],
+    });
+    await fixture.database.execute({
+      text: `
+        UPDATE subscriber
+        SET confirmed_referrals = 13, verified_at = $2
+        WHERE id = $1
+      `,
+      values: [higherRankedSubscriberId, now],
+    });
+    await fixture.database.execute({
+      text: `
+        UPDATE subscriber
+        SET verified_at = $2
+        WHERE id = $1
+      `,
+      values: [earlierTiedSubscriberId, new Date('2026-09-14T11:00:00.000Z')],
+    });
+    await fixture.database.execute({
+      text: `
+        INSERT INTO giveaway_entry (
+          id, subscriber_id, method, entries, jurisdiction, rules_version
+        ) VALUES ($1, $2, 'base', 8, 'SE', '2026-09')
+      `,
+      values: [randomUUID(), subscriberId],
+    });
+    await fixture.database.execute({
+      text: `
+        INSERT INTO campaign_flag (key, enabled, updated_by)
+        VALUES ('leaderboard.public', false, 'e6-05-status-test')
+      `,
+    });
+    assert.equal(
+      await createFlagService(fixture.applicationDatabase).isEnabled(
+        'leaderboard.public',
+      ),
+      false,
+    );
     await fixture.database.execute({
       text: `
         INSERT INTO milestone_award (
@@ -131,13 +202,18 @@ test('status returns the exact stored count, a settled-only tier, and each activ
     ).status(subscriberId);
 
     assert.deepEqual(status, {
+      accessWindow: 'wave-2',
       confirmedReferrals: 12,
+      giveawayEligible: true,
+      giveawayEntries: 8,
+      ownRank: 3,
       referralLink: 'https://valstara.com/?ref=ABCDEF234567',
       rewards: [
         { kind: 'wave_upgrade', state: 'settled', tier: 1 },
         { kind: 'discount', state: 'held', tier: 7 },
         { kind: 'entries', state: 'held', tier: 7 },
       ],
+      subscriberStatus: 'verified',
       tier: 1,
     });
   } finally {

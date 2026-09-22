@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -8,16 +9,22 @@ import test, { after, before } from 'node:test';
 
 import axe from 'axe-core';
 import { chromium } from 'playwright';
+import { Pool } from 'pg';
 
 const execFileAsync = promisify(execFile);
-const appPort = 43_250;
-const browserPort = 43_251;
+const appPort = 45_000 + (process.pid % 1_000) * 2;
+const browserPort = appPort + 1;
 const hostOrigin = `http://127.0.0.1:${appPort}`;
 const browserOrigin = `http://host.docker.internal:${appPort}`;
 const browserServerEndpoint = `ws://127.0.0.1:${browserPort}/`;
 const browserContainer = `valstara-a11y-playwright-${process.pid}`;
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
+const defaultDatabaseUrl =
+  'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
+const applicationRolePassword =
+  process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
+const authenticatedStatusToken = 'accessibility-authenticated-status-token';
 
 // WCAG 2.2 AA is the standard docs/legal/compliance.md#6-accessibility commits
 // to. These are the axe tags that make up A and AA across 2.0, 2.1 and 2.2.
@@ -32,7 +39,83 @@ const themes = ['light', 'dark'];
 let browser;
 let browserServer;
 let browserServerError;
+let databaseFixture;
 let server;
+
+async function createDatabaseFixture() {
+  const databaseName = `valstara_e605a11y_${randomUUID().replaceAll('-', '')}`;
+  const adminUrl = new URL(process.env.TEST_DATABASE_URL ?? defaultDatabaseUrl);
+  const databaseUrl = new URL(adminUrl);
+  databaseUrl.pathname = `/${databaseName}`;
+  const applicationUrl = new URL(databaseUrl);
+  applicationUrl.username = 'valstara_app';
+  applicationUrl.password = applicationRolePassword;
+  const admin = new Pool({ connectionString: adminUrl.toString() });
+  const database = new Pool({ connectionString: databaseUrl.toString() });
+
+  await admin.query(`CREATE DATABASE "${databaseName}"`);
+  await execFileAsync(
+    'npx',
+    ['tsx', 'src/server/db/run-migrations.ts', 'e6-05-accessibility-test'],
+    {
+      env: {
+        ...process.env,
+        MIGRATION_DATABASE_URL: databaseUrl.toString(),
+        VALSTARA_APP_DB_PASSWORD: applicationRolePassword,
+      },
+    },
+  );
+
+  const subscriberId = randomUUID();
+  await database.query(
+    `
+      INSERT INTO subscriber (
+        id, email, email_normalised, email_domain, status, verified_at,
+        referral_code, confirmed_referrals, access_window, giveaway_eligible
+      ) VALUES (
+        $1, $2, $2, 'example.test', 'verified', CURRENT_TIMESTAMP,
+        'A11Y23456789', 3, 'wave-1', true
+      )
+    `,
+    [subscriberId, 'dashboard-accessibility@example.test'],
+  );
+  await database.query(
+    `
+      INSERT INTO verification_token (
+        id, subscriber_id, token_hash, purpose, expires_at
+      ) VALUES ($1, $2, $3, 'status', '2099-01-01T00:00:00.000Z')
+    `,
+    [
+      randomUUID(),
+      subscriberId,
+      createHash('sha256').update(authenticatedStatusToken).digest(),
+    ],
+  );
+  await database.query(
+    `
+      INSERT INTO milestone_award (
+        id, subscriber_id, tier, reward_kind, state, awarded_at
+      ) VALUES
+        ($1, $2, 1, 'wave_upgrade', 'settled', CURRENT_TIMESTAMP),
+        ($3, $2, 1, 'discount', 'held', CURRENT_TIMESTAMP)
+    `,
+    [randomUUID(), subscriberId, randomUUID()],
+  );
+
+  return {
+    applicationUrl: applicationUrl.toString(),
+    database,
+    async dispose() {
+      await database.end();
+      await admin.query(
+        'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1',
+        [databaseName],
+      );
+      await admin.query(`DROP DATABASE "${databaseName}"`);
+      await admin.end();
+    },
+  };
+}
 
 // Every built page, discovered from the filesystem rather than hard-coded, so a
 // page added in a later ticket is covered by this gate automatically instead of
@@ -166,16 +249,13 @@ async function axeViolations(page) {
 
 before(async () => {
   await execFileAsync('npm', ['run', 'build']);
-  // No reachable database is needed: the landing flag read fails safe to its
-  // registered default (signup on) and /verify with an empty token returns
-  // "invalid" before it queries, so both pages render and the axe gate runs
-  // against exactly the markup a visitor receives.
+  databaseFixture = await createDatabaseFixture();
   server = spawn(process.execPath, ['dist/server/entry.mjs'], {
     env: {
       ...process.env,
       ADMIN_CREDENTIAL: 'accessibility-admin-credential-32-chars',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
-      DATABASE_URL: 'postgresql://unused:unused@127.0.0.1:5434/unused-a11y',
+      DATABASE_URL: databaseFixture.applicationUrl,
       HOST: '0.0.0.0',
       IP_PREFIX_PEPPER: 'accessibility-prefix-pepper',
       REFERRAL_SIGNING_SECRET: 'accessibility-referral-secret',
@@ -187,6 +267,15 @@ before(async () => {
     stdio: 'ignore',
   });
   await waitForAppServer();
+  const authenticatedDashboard = await globalThis.fetch(
+    `${hostOrigin}/me?t=${encodeURIComponent(authenticatedStatusToken)}`,
+  );
+  const authenticatedDashboardBody = await authenticatedDashboard.text();
+  assert.ok(
+    authenticatedDashboard.ok &&
+      authenticatedDashboardBody.includes('data-member-dashboard'),
+    `authenticated dashboard fixture did not render: ${authenticatedDashboard.status} ${authenticatedDashboardBody}`,
+  );
   await startBrowserServer();
   browser = await chromium.connect(browserServerEndpoint);
 });
@@ -211,6 +300,7 @@ after(async () => {
     server.kill('SIGTERM');
     await once(server, 'exit');
   }
+  await databaseFixture?.dispose();
 });
 
 test('every built page has zero WCAG 2.2 AA violations in both themes', async () => {
@@ -224,7 +314,27 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
     for (const colorScheme of themes) {
       const context = await browser.newContext({ colorScheme });
       const page = await context.newPage();
-      await page.goto(`${browserOrigin}${route}`, { waitUntil: 'load' });
+      const target =
+        route === '/me'
+          ? `${browserOrigin}/me?t=${encodeURIComponent(authenticatedStatusToken)}`
+          : `${browserOrigin}${route}`;
+      await page.goto(target, { waitUntil: 'load' });
+      if (route === '/me') {
+        const dashboardCount = await page
+          .locator('[data-member-dashboard]')
+          .count();
+        assert.equal(
+          dashboardCount,
+          1,
+          `the accessibility gate must scan the authenticated dashboard; rendered: ${await page.locator('body').innerText()}`,
+        );
+        await page.locator('[data-copy-referral]').click();
+        await page.waitForFunction(
+          () =>
+            globalThis.document.querySelector('[data-copy-status]')
+              ?.textContent !== '',
+        );
+      }
       const violations = await axeViolations(page);
       assert.deepEqual(
         violations,
@@ -257,6 +367,38 @@ test('the axe gate fails on a planted violation', async () => {
   assert.ok(
     ids.includes('image-alt'),
     `expected the missing-alt violation to be caught; saw ${JSON.stringify(ids)}`,
+  );
+  await context.close();
+});
+
+test('the dashboard copy control copies the bearer referral link', async () => {
+  const context = await browser.newContext({ colorScheme: 'light' });
+  const page = await context.newPage();
+  await page.addInitScript(() => {
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        async writeText(value) {
+          globalThis.__copiedReferralLink = value;
+        },
+      },
+    });
+  });
+  await page.goto(
+    `${browserOrigin}/me?t=${encodeURIComponent(authenticatedStatusToken)}`,
+    { waitUntil: 'load' },
+  );
+
+  const referralLink = await page.locator('[data-referral-link]').inputValue();
+  await page.locator('[data-copy-referral]').click();
+
+  assert.equal(
+    await page.evaluate(() => globalThis.__copiedReferralLink),
+    referralLink,
+  );
+  assert.equal(
+    await page.locator('[data-copy-status]').textContent(),
+    'Referral link copied.',
   );
   await context.close();
 });

@@ -106,20 +106,46 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
   await fixture.database.query(
     `
       INSERT INTO subscriber (
-        id, email, email_normalised, email_domain, status, verified_at
+        id, email, email_normalised, email_domain, status, verified_at,
+        referral_code, confirmed_referrals, access_window, giveaway_eligible
       )
-      VALUES ($1, $2, $2, 'example.test', 'verified', CURRENT_TIMESTAMP)
+      VALUES (
+        $1, $2, $2, 'example.test', 'verified', CURRENT_TIMESTAMP,
+        'STATUS234567', 12, 'wave-2', true
+      )
     `,
     [subscriberId, 'status-owner@example.test'],
   );
   await fixture.database.query(
     `
       INSERT INTO subscriber (
-        id, email, email_normalised, email_domain, status, verified_at
+        id, email, email_normalised, email_domain, status, verified_at,
+        referral_code, confirmed_referrals, access_window, giveaway_eligible
       )
-      VALUES ($1, $2, $2, 'example.test', 'verified', CURRENT_TIMESTAMP)
+      VALUES (
+        $1, $2, $2, 'example.test', 'verified', CURRENT_TIMESTAMP,
+        'OTHER2345678', 3, 'wave-3', false
+      )
     `,
     [otherSubscriberId, 'other-status-owner@example.test'],
+  );
+  await fixture.database.query(
+    `
+      INSERT INTO milestone_award (
+        id, subscriber_id, tier, reward_kind, state, awarded_at
+      ) VALUES
+        ($1, $2, 1, 'wave_upgrade', 'settled', CURRENT_TIMESTAMP),
+        ($3, $2, 1, 'discount', 'held', CURRENT_TIMESTAMP)
+    `,
+    [randomUUID(), subscriberId, randomUUID()],
+  );
+  await fixture.database.query(
+    `
+      INSERT INTO giveaway_entry (
+        id, subscriber_id, method, entries, jurisdiction, rules_version
+      ) VALUES ($1, $2, 'base', 8, 'SE', '2026-09')
+    `,
+    [randomUUID(), subscriberId],
   );
   await fixture.database.query(
     `
@@ -181,6 +207,38 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     const authenticatedBody = await authenticated.text();
     assert.equal(authenticated.headers.get('set-cookie'), null);
     assert.match(authenticatedBody, /Your waitlist status/u);
+    for (const expected of [
+      'Verified',
+      'Confirmed referrals',
+      'Your rank',
+      'Referral tier',
+      'wave-2',
+      'Giveaway entries',
+      'Eligible under the current rules',
+      'https://valstara.com/?ref=STATUS234567',
+      'Settled rewards are already earned',
+      'Held rewards wait for a qualifying first order after launch',
+      'Access-wave upgrade',
+      'Settled',
+      'Launch discount',
+      'Held',
+      'Update your launch preferences',
+      'Unsubscribe from waitlist emails',
+    ]) {
+      assert.ok(
+        authenticatedBody.includes(expected),
+        `authenticated dashboard is missing ${expected}`,
+      );
+    }
+    assert.match(authenticatedBody, />12<\/dd>/u);
+    assert.match(authenticatedBody, />1<\/dd>/u);
+    assert.match(authenticatedBody, />8<\/dd>/u);
+    assert.match(authenticatedBody, /data-copy-referral/u);
+    assert.match(authenticatedBody, /action="\/api\/survey"/u);
+    assert.match(
+      authenticatedBody,
+      /href="http:\/\/127\.0\.0\.1:\d+\/unsubscribe\?t=/u,
+    );
     for (const forbidden of [
       subscriberId,
       otherSubscriberId,
@@ -250,6 +308,23 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     assert.deepEqual(sends.rows, [
       { subscriber_id: subscriberId, template: 'status_link' },
     ]);
+
+    await fixture.database.query(
+      `
+        INSERT INTO campaign_flag (key, enabled, updated_by)
+        VALUES ('member.dashboard', false, 'e6-05-flag-off-drill')
+      `,
+    );
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 5_100));
+    const disabled = await globalThis.fetch(
+      `http://127.0.0.1:${port}/me?t=${encodeURIComponent(validToken)}`,
+    );
+    const disabledBody = await disabled.text();
+    assert.equal(disabled.status, 200);
+    assert.equal(disabled.headers.get('set-cookie'), null);
+    assert.match(disabledBody, /Member page unavailable/u);
+    assert.doesNotMatch(disabledBody, /data-member-dashboard/u);
+    assert.doesNotMatch(disabledBody, /STATUS234567/u);
   } finally {
     const exited = once(server, 'exit');
     server.kill('SIGTERM');

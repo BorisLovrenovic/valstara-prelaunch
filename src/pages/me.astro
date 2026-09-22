@@ -1,10 +1,15 @@
 ---
 import { memberStatusCopy } from '../copy/member-status.ts';
+import { surveyCopy } from '../copy/survey.ts';
+import { verificationCopy } from '../copy/verification.ts';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
+import { createReferralService } from '../server/referral/service.ts';
+import type { ReferralStatus } from '../server/referral/status.ts';
 import { hashedIpPrefix } from '../server/ratelimit/ip-prefix.ts';
+import { currentSurveyVersion } from '../server/survey/questions.ts';
 import { verifyTurnstileToken } from '../server/turnstile/verify.ts';
 import {
   createStatusLinkRecoveryBoundary,
@@ -15,9 +20,13 @@ import {
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 
 const config = getConfig();
+const flags = getFlagService();
 let authentication: StatusLinkAuthentication = { kind: 'rejected' };
+let dashboardStatus: ReferralStatus | null = null;
 let replacementRequested = false;
 let challengeFailed = false;
+let surveyEnabled = false;
+const token = Astro.url.searchParams.get('t') ?? '';
 
 if (Astro.request.method === 'POST') {
   const formData = await Astro.request.formData().catch(() => new FormData());
@@ -34,11 +43,11 @@ if (Astro.request.method === 'POST') {
           config.ipPrefixPepper,
         );
         return await createStatusLinkService(database, {
-          flags: getFlagService(),
+          flags,
         }).requestReplacement({
           challengeTimedOut,
           ipPrefixHash: prefixHash ?? '',
-          token: Astro.url.searchParams.get('t') ?? '',
+          token,
         });
       } finally {
         await database.close();
@@ -58,15 +67,22 @@ if (Astro.request.method === 'POST') {
   const database = createPool(config.databaseUrl);
   try {
     const statusLinks = createStatusLinkService(database, {
-      flags: getFlagService(),
+      flags,
     });
-    authentication = await statusLinks.authenticate(
-      Astro.url.searchParams.get('t') ?? '',
-    );
+    authentication = await statusLinks.authenticate(token);
+    if (authentication.kind === 'authenticated') {
+      [dashboardStatus, surveyEnabled] = await Promise.all([
+        createReferralService(database).status(authentication.subscriberId),
+        flags.isEnabled('survey.enabled'),
+      ]);
+    }
   } finally {
     await database.close();
   }
 }
+
+const unsubscribeUrl = new URL('/unsubscribe', Astro.url);
+unsubscribeUrl.searchParams.set('t', token);
 ---
 
 <BaseLayout
@@ -74,11 +90,152 @@ if (Astro.request.method === 'POST') {
   description={memberStatusCopy.meta.description}
 >
   {
-    authentication.kind === 'authenticated' ? (
-      <section class="member-status-boundary">
+    authentication.kind === 'authenticated' && dashboardStatus !== null ? (
+      <div class="member-status-boundary" data-member-dashboard>
         <h1>{memberStatusCopy.authenticated.heading}</h1>
         <p>{memberStatusCopy.authenticated.body}</p>
-      </section>
+
+        <dl class="member-status-summary">
+          <div>
+            <dt>{memberStatusCopy.authenticated.status}</dt>
+            <dd>
+              {
+                memberStatusCopy.authenticated.statusValues[
+                  dashboardStatus.subscriberStatus
+                ]
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>{memberStatusCopy.authenticated.confirmedReferrals}</dt>
+            <dd class="tabular-figure">{dashboardStatus.confirmedReferrals}</dd>
+          </div>
+          <div>
+            <dt>{memberStatusCopy.authenticated.rank}</dt>
+            <dd class="tabular-figure">
+              {dashboardStatus.ownRank ??
+                memberStatusCopy.authenticated.rankUnavailable}
+            </dd>
+          </div>
+          <div>
+            <dt>{memberStatusCopy.authenticated.tier}</dt>
+            <dd class="tabular-figure">{dashboardStatus.tier}</dd>
+          </div>
+          <div>
+            <dt>{memberStatusCopy.authenticated.wave}</dt>
+            <dd>
+              {dashboardStatus.accessWindow ??
+                memberStatusCopy.authenticated.wavePending}
+            </dd>
+          </div>
+          <div>
+            <dt>{memberStatusCopy.authenticated.entries}</dt>
+            <dd class="tabular-figure">{dashboardStatus.giveawayEntries}</dd>
+          </div>
+          <div>
+            <dt>{memberStatusCopy.authenticated.eligibility}</dt>
+            <dd>
+              {dashboardStatus.giveawayEligible === null
+                ? memberStatusCopy.authenticated.eligibilityPending
+                : dashboardStatus.giveawayEligible
+                  ? memberStatusCopy.authenticated.eligibilityYes
+                  : memberStatusCopy.authenticated.eligibilityNo}
+            </dd>
+          </div>
+        </dl>
+
+        <section class="member-status-section">
+          <h2>{memberStatusCopy.referral.heading}</h2>
+          <div class="referral-control">
+            <input
+              aria-label={memberStatusCopy.referral.linkLabel}
+              data-referral-link
+              readonly
+              type="url"
+              value={dashboardStatus.referralLink}
+            />
+            <button
+              data-copy-failed={memberStatusCopy.referral.copyFailed}
+              data-copy-referral
+              data-copied={memberStatusCopy.referral.copied}
+              type="button"
+            >
+              {memberStatusCopy.referral.copy}
+            </button>
+          </div>
+          <p aria-live="polite" data-copy-status />
+        </section>
+
+        <section class="member-status-section">
+          <h2>{memberStatusCopy.rewards.heading}</h2>
+          <p>{memberStatusCopy.rewards.intro}</p>
+          {dashboardStatus.rewards.length === 0 ? (
+            <p>{memberStatusCopy.rewards.empty}</p>
+          ) : (
+            <ul class="reward-list">
+              {dashboardStatus.rewards.map((reward) => (
+                <li>
+                  <span>{memberStatusCopy.rewards.kinds[reward.kind]}</span>
+                  <span>{memberStatusCopy.rewards.tier(reward.tier)}</span>
+                  <strong>
+                    {memberStatusCopy.rewards.states[reward.state]}
+                  </strong>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {surveyEnabled ? (
+          <form
+            action="/api/survey"
+            class="member-status-section"
+            data-survey-form
+            data-unavailable-message={surveyCopy.unavailable}
+            method="post"
+          >
+            <h2>{memberStatusCopy.survey.heading}</h2>
+            <input name="token" type="hidden" value={token} />
+            <input name="version" type="hidden" value={currentSurveyVersion} />
+            <fieldset>
+              <legend>{verificationCopy.survey.categoryLabel}</legend>
+              {verificationCopy.survey.categoryOptions.map((option) => (
+                <label>
+                  <input
+                    name="category_preference"
+                    type="checkbox"
+                    value={option.value}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </fieldset>
+            <fieldset>
+              <legend>{verificationCopy.survey.frequencyLabel}</legend>
+              {verificationCopy.survey.frequencyOptions.map((option) => (
+                <label>
+                  <input
+                    name="shopping_frequency"
+                    type="radio"
+                    value={option.value}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </fieldset>
+            <button type="submit">{memberStatusCopy.survey.submit}</button>
+            <p aria-live="polite" data-survey-status />
+          </form>
+        ) : null}
+
+        <section class="member-status-section">
+          <h2>{memberStatusCopy.unsubscribe.heading}</h2>
+          <p>{memberStatusCopy.unsubscribe.body}</p>
+          <a href={unsubscribeUrl.toString()}>
+            {memberStatusCopy.unsubscribe.link}
+          </a>
+        </section>
+      </div>
     ) : authentication.kind === 'disabled' ? (
       <section class="member-status-boundary">
         <h1>{memberStatusCopy.disabled.heading}</h1>
@@ -120,8 +277,61 @@ if (Astro.request.method === 'POST') {
   }
 </BaseLayout>
 
+<script is:inline>
+  const copyButton = document.querySelector('[data-copy-referral]');
+  const referralLink = document.querySelector('[data-referral-link]');
+  const copyStatus = document.querySelector('[data-copy-status]');
+  if (
+    copyButton instanceof HTMLButtonElement &&
+    referralLink instanceof HTMLInputElement &&
+    copyStatus instanceof HTMLElement
+  ) {
+    copyButton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(referralLink.value);
+        copyStatus.textContent = copyButton.dataset.copied ?? '';
+      } catch {
+        referralLink.select();
+        copyStatus.textContent = copyButton.dataset.copyFailed ?? '';
+      }
+    });
+  }
+
+  const surveyForm = document.querySelector('[data-survey-form]');
+  if (surveyForm instanceof HTMLFormElement) {
+    surveyForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submit = surveyForm.querySelector('[type="submit"]');
+      const status = surveyForm.querySelector('[data-survey-status]');
+      if (
+        !(submit instanceof HTMLButtonElement) ||
+        !(status instanceof HTMLElement)
+      )
+        return;
+
+      submit.disabled = true;
+      try {
+        const response = await fetch(surveyForm.action, {
+          body: new FormData(surveyForm),
+          method: 'POST',
+        });
+        const payload = await response.json();
+        status.textContent = response.ok
+          ? payload.message
+          : (payload.error?.message ?? surveyForm.dataset.unavailableMessage);
+      } catch {
+        status.textContent = surveyForm.dataset.unavailableMessage ?? '';
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  }
+</script>
+
 <style>
   .member-status-boundary {
+    display: grid;
+    gap: var(--space-3);
     margin-inline: auto;
     padding: var(--space-3);
     color: var(--ink);
@@ -137,14 +347,93 @@ if (Astro.request.method === 'POST') {
     line-height: var(--leading-4);
   }
 
+  h2,
+  dt,
+  dd,
+  label,
+  input,
+  a,
+  strong {
+    color: var(--ink);
+  }
+
+  h2,
+  dt,
+  dd,
+  ul {
+    margin: 0;
+  }
+
+  h2 {
+    font-size: var(--step-3);
+    line-height: var(--leading-3);
+  }
+
   p {
-    margin-block: 0 var(--space-3);
+    margin: 0;
     color: var(--ink-600);
     font-size: var(--step-2);
     line-height: var(--leading-2);
   }
 
-  button {
+  .member-status-summary,
+  .member-status-section,
+  fieldset,
+  .reward-list {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .member-status-summary > div,
+  .reward-list li,
+  .referral-control {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  dt {
+    color: var(--ink-600);
+  }
+
+  dd {
+    text-align: end;
+  }
+
+  .member-status-section {
+    padding-block-start: var(--space-3);
+    border-block-start: thin solid var(--line);
+  }
+
+  .referral-control input {
+    min-width: 0;
+    flex: auto;
+  }
+
+  .referral-control input,
+  fieldset {
+    padding: var(--space-1);
+    font: inherit;
+    background: var(--surface);
+    border: thin solid var(--line);
+    border-radius: var(--radius-control);
+  }
+
+  fieldset label {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+  }
+
+  .reward-list {
+    padding: 0;
+    list-style: none;
+  }
+
+  button,
+  a {
     padding: var(--space-1) var(--space-2);
     color: var(--midnight);
     font: inherit;
@@ -154,7 +443,13 @@ if (Astro.request.method === 'POST') {
     cursor: pointer;
   }
 
-  button:focus-visible {
+  a {
+    justify-self: start;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  a:focus-visible {
     outline: medium solid var(--ink);
     outline-offset: var(--space-1);
   }

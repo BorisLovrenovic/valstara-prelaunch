@@ -1,3 +1,5 @@
+import type { AccessWindow } from './config.ts';
+
 const referralLandingUrl = 'https://valstara.com/';
 
 export type ReferralStatusRewardKind =
@@ -16,16 +18,29 @@ export interface ReferralStatusReward {
 }
 
 export interface ReferralStatus {
+  readonly accessWindow: AccessWindow | null;
   readonly confirmedReferrals: number;
+  readonly giveawayEligible: boolean | null;
+  readonly giveawayEntries: number;
+  readonly ownRank: number | null;
   readonly referralLink: string;
   readonly rewards: readonly ReferralStatusReward[];
+  readonly subscriberStatus: 'verified';
   readonly tier: number;
+}
+
+export interface ReferralStatusDetails {
+  readonly accessWindow: AccessWindow | null;
+  readonly giveawayEligible: boolean | null;
+  readonly giveawayEntries: number;
+  readonly ownRank: number | null;
 }
 
 export function computeReferralStatus(
   confirmedReferrals: number,
   referralCode: string,
   awards: readonly ReferralStatusSourceAward[],
+  details: ReferralStatusDetails,
 ): ReferralStatus {
   const rewards = awards.map<ReferralStatusReward>((award) => ({
     kind: award.reward_kind,
@@ -41,9 +56,14 @@ export function computeReferralStatus(
   referralLink.searchParams.set('ref', referralCode);
 
   return {
+    accessWindow: details.accessWindow,
     confirmedReferrals,
+    giveawayEligible: details.giveawayEligible,
+    giveawayEntries: details.giveawayEntries,
+    ownRank: details.ownRank,
     referralLink: referralLink.toString(),
     rewards,
+    subscriberStatus: 'verified',
     tier,
   };
 }
