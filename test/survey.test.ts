@@ -137,77 +137,135 @@ function submission(token: string) {
   } as const;
 }
 
-test('answers validate against their named version across a question-set change', () => {
+test('answers validate and persist against their named version across a question-set change', async () => {
+  const fixture = await createDatabaseFixture();
+  const earlierVersion = '2026-09-08';
+  const changedCurrentVersion = '2026-10-01';
   const versionedSets = {
-    '2026-09-08': {
+    [earlierVersion]: {
       categoryPreference: ['apparel', 'home'],
       shoppingFrequency: ['monthly'],
     },
-    '2026-10-01': {
+    [changedCurrentVersion]: {
       categoryPreference: ['collectibles'],
       shoppingFrequency: ['quarterly'],
     },
   } as const;
 
-  assert.notEqual(
-    validateSurveySubmission(
-      {
+  try {
+    const earlierSubscriberId = await insertSubscriber(
+      fixture.database,
+      'verified',
+    );
+    const earlierToken = 'earlier-version-survey-status-token';
+    await seedStatusToken(fixture.database, earlierSubscriberId, earlierToken);
+    const capture = createSurveyService(fixture.applicationDatabase, {
+      clock: () => now,
+      flags: { isEnabled: async () => true },
+      questionSets: versionedSets,
+    });
+
+    assert.equal(
+      await capture({
         answers: {
           category_preference: ['apparel'],
           shopping_frequency: 'monthly',
         },
-        version: '2026-09-08',
-      },
-      versionedSets,
-    ),
-    null,
-  );
-  assert.notEqual(
-    validateSurveySubmission(
-      {
-        answers: {
-          category_preference: ['collectibles'],
-          shopping_frequency: 'quarterly',
-        },
-        version: '2026-10-01',
-      },
-      versionedSets,
-    ),
-    null,
-  );
-  assert.equal(
-    validateSurveySubmission(
-      {
-        answers: {
-          category_preference: ['collectibles'],
-          shopping_frequency: 'quarterly',
-        },
-        version: '2026-09-08',
-      },
-      versionedSets,
-    ),
-    null,
-  );
-  assert.notEqual(
-    validateSurveySubmission({
+        ipPrefixHash: 'earlier-version-prefix',
+        token: earlierToken,
+        version: earlierVersion,
+      }),
+      'saved',
+    );
+    const earlierStoredResponse = await fixture.database.readOne({
+      text: 'SELECT answers, version FROM survey_response WHERE subscriber_id = $1',
+      values: [earlierSubscriberId],
+    });
+    assert.deepEqual(earlierStoredResponse, {
       answers: {
-        category_preference: null,
+        category_preference: ['apparel'],
         shopping_frequency: 'monthly',
       },
-      version: currentSurveyVersion,
-    }),
-    null,
-  );
-  assert.notEqual(
-    validateSurveySubmission({
-      answers: {
-        category_preference: ['home'],
-        shopping_frequency: null,
+      version: earlierVersion,
+    });
+
+    const currentSubscriberId = await insertSubscriber(
+      fixture.database,
+      'verified',
+    );
+    const currentToken = 'changed-current-version-survey-status-token';
+    await seedStatusToken(fixture.database, currentSubscriberId, currentToken);
+    assert.equal(
+      await capture({
+        answers: {
+          category_preference: ['collectibles'],
+          shopping_frequency: 'quarterly',
+        },
+        ipPrefixHash: 'changed-current-version-prefix',
+        token: currentToken,
+        version: changedCurrentVersion,
+      }),
+      'saved',
+    );
+
+    assert.deepEqual(
+      await fixture.database.readOne({
+        text: 'SELECT answers, version FROM survey_response WHERE subscriber_id = $1',
+        values: [currentSubscriberId],
+      }),
+      {
+        answers: {
+          category_preference: ['collectibles'],
+          shopping_frequency: 'quarterly',
+        },
+        version: changedCurrentVersion,
       },
-      version: currentSurveyVersion,
-    }),
-    null,
-  );
+    );
+    assert.deepEqual(
+      await fixture.database.readOne({
+        text: 'SELECT answers, version FROM survey_response WHERE subscriber_id = $1',
+        values: [earlierSubscriberId],
+      }),
+      earlierStoredResponse,
+      'changing the current question-set version leaves the earlier response unchanged',
+    );
+
+    assert.equal(
+      validateSurveySubmission(
+        {
+          answers: {
+            category_preference: ['collectibles'],
+            shopping_frequency: 'quarterly',
+          },
+          version: earlierVersion,
+        },
+        versionedSets,
+      ),
+      null,
+    );
+    assert.notEqual(
+      validateSurveySubmission({
+        answers: {
+          category_preference: null,
+          shopping_frequency: 'monthly',
+        },
+        version: currentSurveyVersion,
+      }),
+      null,
+    );
+    assert.notEqual(
+      validateSurveySubmission({
+        answers: {
+          category_preference: ['home'],
+          shopping_frequency: null,
+        },
+        version: currentSurveyVersion,
+      }),
+      null,
+    );
+  } finally {
+    await fixture.dispose();
+  }
 });
 
 test('a full skip is stored explicitly and does not denormalise categories', async () => {

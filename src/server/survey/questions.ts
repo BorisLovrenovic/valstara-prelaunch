@@ -30,17 +30,16 @@ export interface SurveySubmission {
   readonly version: string;
 }
 
+export interface SurveyQuestionSet {
+  readonly categoryPreference: readonly string[];
+  readonly shoppingFrequency: readonly string[];
+}
+
+export type SurveyQuestionSets = Readonly<Record<string, SurveyQuestionSet>>;
+
 export function validateSurveySubmission(
   submission: SurveySubmission,
-  questionSets: Readonly<
-    Record<
-      string,
-      {
-        readonly categoryPreference: readonly string[];
-        readonly shoppingFrequency: readonly string[];
-      }
-    >
-  > = surveyQuestionSets,
+  questionSets: SurveyQuestionSets = surveyQuestionSets,
 ): SurveySubmission | null {
   const questionSet = questionSets[submission.version];
   if (questionSet === undefined) return null;

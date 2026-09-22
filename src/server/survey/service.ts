@@ -10,6 +10,7 @@ import { createVerificationService } from '../verification/service.ts';
 
 import {
   validateSurveySubmission,
+  type SurveyQuestionSets,
   type SurveySubmission,
 } from './questions.ts';
 
@@ -35,6 +36,7 @@ export interface SurveyCaptureInput extends SurveySubmission {
 export interface SurveyServiceDependencies {
   readonly clock?: () => Date;
   readonly flags: Pick<FlagService, 'isEnabled'>;
+  readonly questionSets?: SurveyQuestionSets;
 }
 
 export function createSurveyService(
@@ -85,7 +87,10 @@ export function createSurveyService(
         return 'disabled';
       }
 
-      const submission = validateSurveySubmission(input);
+      const submission = validateSurveySubmission(
+        input,
+        dependencies.questionSets,
+      );
       if (submission === null) return 'invalid_input';
 
       const repository = createSurveyResponseRepository(connection);
