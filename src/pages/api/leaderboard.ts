@@ -3,7 +3,10 @@ import type { APIRoute } from 'astro';
 import { leaderboardCopy } from '../../copy/leaderboard.ts';
 import { getConfig } from '../../server/config.ts';
 import { createPool, type DatabasePool } from '../../server/db/pool.ts';
-import { createFlagService } from '../../server/flags/service.ts';
+import {
+  createFlagService,
+  flagCacheTtlMilliseconds,
+} from '../../server/flags/service.ts';
 import type { FlagService } from '../../server/flags/types.ts';
 import { getLeaderboardSnapshot } from '../../server/leaderboard/runtime.ts';
 import type { LeaderboardSnapshotCache } from '../../server/leaderboard/snapshot.ts';
@@ -24,7 +27,10 @@ function jsonResponse(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      'Cache-Control': status === 200 ? 'public, max-age=60' : 'no-store',
+      'Cache-Control':
+        status === 200
+          ? `public, max-age=${flagCacheTtlMilliseconds / 1_000}`
+          : 'no-store',
       'Content-Type': 'application/json; charset=utf-8',
     },
   });
@@ -60,10 +66,11 @@ export function createLeaderboardRoute(
 
 export function createDefaultLeaderboardRoute(
   database: DatabasePool,
+  snapshot: Pick<LeaderboardSnapshotCache, 'read'> = getLeaderboardSnapshot(),
 ): APIRoute {
   return createLeaderboardRoute({
     flags: createFlagService(database),
-    snapshot: getLeaderboardSnapshot(),
+    snapshot,
   });
 }
 

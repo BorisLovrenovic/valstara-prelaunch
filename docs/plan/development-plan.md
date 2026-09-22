@@ -1034,7 +1034,9 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E6-02 — The leaderboard island and the kill switch
 **Model:** Tier A — Medium · **Priority:** High · **Flag:** `leaderboard.public` · **Area:** frontend
 
-**Build:** The third and final island. Renders the snapshot with its `as_of` timestamp, and the visitor's own rank when they arrive from a status link. **With the flag off, the section is absent from the page** — not broken, not empty-stated.
+**Build:** The third and final island. Renders the anonymised public snapshot with its `as_of` timestamp. **With the flag off, the section is absent from the page** — not broken, not empty-stated. It does not identify a visitor, read or validate a `status` token, or derive personal content from the public snapshot.
+
+**Scope move (founder-authorised 2026-09-21):** the earlier own-rank clause moved to the authenticated `/me` surface. E6-04 authenticates the bearer with the `status` token; E6-05 computes and renders that subscriber's own rank server-side against the referral ordering through the shared `ReferralService.status` result. It is gated by `member.dashboard`, independently of `leaderboard.public`. E6-02 remains anonymous and reads only E6-01's snapshot.
 
 **Acceptance criteria:**
 - **Flipping the flag off removes the section within the flag TTL, with no deploy** — drilled, not assumed
@@ -1066,7 +1068,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — Medium · **Priority:** High · **Flag:** `member.dashboard` · **Area:** security
 **Why this tier:** it is the only route that renders one person's data, with no session behind it.
 
-**Build:** `/me?t=` using the `status` token purpose. **No password, no session, no cookie.** An expired link offers a one-click re-send, rate-limited.
+**Build:** `/me?t=` using the `status` token purpose. **No password, no session, no cookie.** An expired link offers a one-click re-send, rate-limited. The authenticated subscriber identity is the only identity E6-05 may use to request the bearer's own rank; the public leaderboard and `leaderboard.public` flag are not involved.
 
 **Acceptance criteria:**
 - **A tampered token and an expired token produce the identical response**
@@ -1081,11 +1083,12 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E6-05 — The member dashboard
 **Model:** Tier A — Medium · **Priority:** Medium · **Flag:** `member.dashboard` · **Area:** frontend
 
-**Build:** The `/me` content: status, confirmed referrals, tier, wave, entries and eligibility, the referral link with a copy control, the survey re-answer path, and unsubscribe. The referral section renders from `ReferralService.status`. **With the flag off, the equivalent information is in email** — this is cut-list item 3. Referral-status rendering ownership assigned here by founder authorisation on 2026-09-14.
+**Build:** The `/me` content: status, confirmed referrals, **the authenticated subscriber's own rank**, tier, wave, entries and eligibility, the referral link with a copy control, the survey re-answer path, and unsubscribe. The referral section renders from `ReferralService.status`; if that shared result does not yet expose own rank, this ticket adds it there as the single source, computed server-side against the referral ordering for E6-04's authenticated subscriber. Own rank is gated by `member.dashboard`, not `leaderboard.public`. **With the flag off, the equivalent information is in email** — this is cut-list item 3. Referral-status rendering ownership assigned here by founder authorisation on 2026-09-14; own-rank ownership moved here by founder authorisation on 2026-09-21.
 
 **Acceptance criteria:**
 - Every field comes from the **one shared status computation** used by the emails
 - The `/me` referral section renders directly from `ReferralService.status`
+- The visitor's own rank is computed server-side for E6-04's authenticated subscriber and is independent of `leaderboard.public`
 - **The held-versus-settled reward distinction is stated plainly**
 - The copy control works without a permanent island — a minimal inline handler, not a fourth island
 - **With the flag off, the welcome and weekly emails carry the same information** — tested

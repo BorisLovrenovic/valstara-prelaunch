@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { createLeaderboardRoute } from '../src/pages/api/leaderboard.ts';
+import {
+  createDefaultLeaderboardRoute,
+  createLeaderboardRoute,
+} from '../src/pages/api/leaderboard.ts';
+import type { DatabasePool } from '../src/server/db/pool.ts';
+import { flagCacheTtlMilliseconds } from '../src/server/flags/service.ts';
 import {
   createLeaderboardSnapshotCache,
   leaderboardRefreshIntervalMilliseconds,
@@ -87,7 +92,7 @@ test('E6-01 scheduler refreshes immediately and every five minutes', async () =>
   assert.equal(refreshes, 2);
 });
 
-test('E6-01 public route reads only a supplied snapshot and exposes its safe response shape', async () => {
+test('E6-01 production route reads only the flag and supplied snapshot and exposes its safe response shape', async () => {
   const snapshot: LeaderboardSnapshot = {
     asOf: '2026-09-20T10:00:00.000Z',
     entries: [
@@ -95,25 +100,43 @@ test('E6-01 public route reads only a supplied snapshot and exposes its safe res
     ],
   };
   let reads = 0;
-  const route = createLeaderboardRoute({
-    flags: {
-      async isEnabled() {
-        return true;
-      },
+  const databaseOperations: string[] = [];
+  const database: DatabasePool = {
+    async close() {},
+    async connect() {
+      throw new Error('The leaderboard route must not open a transaction.');
     },
-    snapshot: {
-      read() {
-        reads += 1;
-        return snapshot;
-      },
+    async execute(statement) {
+      databaseOperations.push(`execute: ${statement.text}`);
+      return 0;
+    },
+    async list(statement) {
+      databaseOperations.push(`list: ${statement.text}`);
+      return [];
+    },
+    async readOne(statement) {
+      databaseOperations.push(`readOne: ${statement.text}`);
+      return null;
+    },
+  };
+  const route = createDefaultLeaderboardRoute(database, {
+    read() {
+      reads += 1;
+      return snapshot;
     },
   });
 
   const response = await route({} as Parameters<typeof route>[0]);
   const body = (await response.json()) as Record<string, unknown>;
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get('Cache-Control'), 'public, max-age=60');
+  assert.equal(
+    response.headers.get('Cache-Control'),
+    `public, max-age=${flagCacheTtlMilliseconds / 1_000}`,
+  );
   assert.equal(reads, 1);
+  assert.equal(databaseOperations.length, 1);
+  assert.match(databaseOperations[0] ?? '', /FROM\s+campaign_flag/iu);
+  assert.doesNotMatch(databaseOperations[0] ?? '', /subscriber/iu);
   assert.deepEqual(body, {
     as_of: snapshot.asOf,
     entries: [
@@ -129,7 +152,10 @@ test('E6-01 public route reads only a supplied snapshot and exposes its safe res
     new URL('../src/pages/api/leaderboard.ts', import.meta.url),
     'utf8',
   );
-  assert.doesNotMatch(routeSource, /server\/subscriber|FROM\s+subscriber/iu);
+  assert.doesNotMatch(
+    routeSource,
+    /server\/(?:db\/)?subscriber|FROM\s+subscriber/iu,
+  );
 });
 
 test('E6-01 flag-off route response is an honest 503 without reading the snapshot', async () => {
