@@ -20,7 +20,7 @@ interface AuditService {
 - **The application database role holds `INSERT` and `SELECT` only — no `UPDATE`, no `DELETE`.** Append-only is enforced by permission, not by convention, and a test asserts the rejection at the database level.
 - **`detail` never contains a token, a secret, a raw IP address or a full email where the subject id already identifies the row.** A redaction test runs over every call site.
 - **`record()` failure on a disqualification or its reversal, an export, a draw or a DSR fulfilment raises an error**, never a warning. Those are exactly the actions whose absence from the record would matter.
-- Required actions: `subscriber.disqualified`, `subscriber.disqualification_reversed`, `subscriber.anonymised`, `fraud.reviewed`, `fraud.domain_allowed`, `referral.access_window_promoted`, `referral.milestone_backfilled`, `referral.counters_repaired`, `flag.changed`, `export.run`, `draw.executed`, `dsr.requested`, `dsr.fulfilled`, `handoff.frozen`.
+- Required actions: `subscriber.disqualified`, `subscriber.disqualification_reversed`, `subscriber.anonymised`, `fraud.reviewed`, `fraud.domain_allowed`, `referral.access_window_promoted`, `referral.milestone_backfilled`, `referral.counters_repaired`, `survey.response_replaced`, `flag.changed`, `export.run`, `draw.executed`, `dsr.requested`, `dsr.fulfilled`, `handoff.frozen`.
 
 ## Dependencies
 `db` only. **Nothing depends on audit succeeding except the actions listed above** — it must never become a reason a signup fails.

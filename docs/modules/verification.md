@@ -14,6 +14,7 @@ interface VerificationService {
   issue(subscriberId: string, purpose: TokenPurpose): Promise<{ token: string; expiresAt: Date }>
   consume(token: string, purpose: TokenPurpose): Promise<ConsumeResult>  // 'verified' | 'already' | 'expired' | 'invalid'
   consumeForVerification(token: string): Promise<{ outcome: ConsumeResult; subscriberId: string | null }>
+  consumeForPurpose(token: string, purpose: TokenPurpose): Promise<{ outcome: ConsumeResult; subscriberId: string | null }>
   purgeExpired(before: Date, limit: number): Promise<number>
 }
 
@@ -35,6 +36,11 @@ reaches the data layer.
 subscriber id only for `verified` and `already`, so the completion service can
 apply or render that subscriber's own state without making an invalid or expired
 token an existence oracle.
+
+`consumeForPurpose()` exposes the same subject-bound result to token-authenticated
+write modules. E6-03 uses it before rate limiting or survey work. A replay remains
+a no-op with the same subject, while an invalid, expired or cross-purpose token
+never yields a subscriber id.
 
 ## Rules
 - **Only the SHA-256 of the token is stored.** The plaintext exists in the emailed URL and nowhere else — not in a log line, not in an audit detail, not in an analytics event.

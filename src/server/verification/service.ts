@@ -35,6 +35,10 @@ export interface VerificationService {
   consumeForVerification(
     token: string,
   ): Promise<VerificationCompletionConsumeResult>;
+  consumeForPurpose(
+    token: string,
+    purpose: TokenPurpose,
+  ): Promise<VerificationCompletionConsumeResult>;
   purgeExpired(before: Date, limit: number): Promise<number>;
 }
 
@@ -113,6 +117,10 @@ function createVerificationServiceWithRepository(
 
     async consumeForVerification(token) {
       return consumeWithSubscriber(repository, token, 'verify', clock);
+    },
+
+    async consumeForPurpose(token, purpose) {
+      return consumeWithSubscriber(repository, token, purpose, clock);
     },
 
     async purgeExpired(before, limit) {
