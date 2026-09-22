@@ -12,7 +12,7 @@ Two rules make that safe, and they are what a reviewer checks:
 ## Rules that bind every route
 
 1. **Validate, call one server module, shape the response.** No SQL, no business branching, no email dispatch in a route.
-2. **Every *public, unauthenticated* write route verifies Turnstile server-side first**, then rate-limits, then does work — these are the routes a stranger can call with no prior proof: `/api/signup`, `/api/resend-verification`, `/api/amoe`. **A write authenticated by a single-use signed token is guarded by consuming that token first, in place of Turnstile** — the token is a stronger authenticator than a challenge, so `/api/survey`, `/api/unsubscribe` and `/api/dsr/*` carry no `turnstile_token`. Rate-limiting still applies to both kinds.
+2. **Every *public, unauthenticated* write route verifies Turnstile server-side first**, then rate-limits, then does work — these are the routes a stranger can call with no prior proof: `/api/signup`, `/api/resend-verification`, the `/me` recovery POST, and `/api/amoe`. **A write authenticated by a single-use signed token is guarded by consuming that token first, in place of Turnstile** — the token is a stronger authenticator than a challenge, so `/api/survey`, `/api/unsubscribe` and `/api/dsr/*` carry no `turnstile_token`. Rate-limiting still applies to both kinds.
 3. **Every response uses the error envelope below**, with a code from the closed set. **No vendor error body is ever forwarded.**
 4. **No response contains another person's data.** The leaderboard is anonymised; `/me` returns only the bearer's own row.
 5. **Every write route is idempotent or explicitly documented as not.** A double-submitted form must never produce two subscribers, two edges or two emails.
@@ -75,8 +75,18 @@ Body: the signed `status` token, question-set `version`, and the two answers. Ei
 ### `GET /api/leaderboard`
 The only cacheable route. Returns the **anonymised top-10** snapshot: a deterministic SHA-256-derived display handle, confirmed referral count, rank, and the snapshot's `as_of` timestamp. **No email, country, referral code or subscriber ID.** Flagged and disqualified subscribers are excluded. Returns `503` with honest copy when `leaderboard.public` is off.
 
-### `GET /me?t=…` *(page route)*
-Signed, expiring status link. No password, no session. Renders the bearer's own status: verified state, confirmed referrals, tier, wave, giveaway entries and eligibility. **A tampered or expired token renders a re-request page, never someone else's data.**
+### `GET /me?t=…` and `POST /me?t=…` *(page route)*
+`GET` authenticates the signed, expiring status link. No password, no session.
+It renders the bearer's own status: verified state, confirmed referrals, tier,
+wave, giveaway entries and eligibility. **A tampered or expired token renders
+the identical re-request page, never someone else's data.** `POST` is that
+page's one-click recovery action and carries `turnstile_token`. Turnstile is
+verified first, before flag, rate-limit, token or email work. Provider timeout
+uses the strict IP-prefix limit and flags a recognised subscriber for review.
+A recognised expired `status` token queues a `status_link` email request for
+its bound subscriber, rate-limited per subscriber and truncated, hashed IP
+prefix. Unknown, tampered and cross-purpose tokens queue nothing and receive
+the same acknowledgement.
 
 ### `POST /api/amoe`
 The alternative method of entry required in several jurisdictions. Same eligibility rules, no referral requirement, rate-limited, and recorded with its `rules_version`.

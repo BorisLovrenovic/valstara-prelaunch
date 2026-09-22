@@ -12,8 +12,8 @@
     },
     {
       "host": "challenges.cloudflare.com",
-      "pathPattern": "^src/(?:islands/SignupForm|pages/verify)\\.astro$",
-      "reason": "Cloudflare Turnstile bot-defence widget (ADR-006, E3-05). The Article 5(3) basis is the verified absence of device storage/access; the site invokes no device-fingerprinting API. Cloudflare processes IP, TLS and user-agent signals server-side as a security processor.",
+      "pathPattern": "^src/(?:islands/SignupForm|pages/(?:me|verify))\\.astro$",
+      "reason": "Cloudflare Turnstile bot-defence widget on signup and verification-recovery forms (ADR-006, E3-05, E6-04). The Article 5(3) basis is the verified absence of device storage/access; the site invokes no device-fingerprinting API. Cloudflare processes IP, TLS and user-agent signals server-side as a security processor.",
       "disclosureContract": {
         "article5_3Basis": "no-device-storage-or-access",
         "siteDeviceFingerprintingApi": false,
