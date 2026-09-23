@@ -15,10 +15,10 @@ The `/me` referral section is rendered by E6-05. The welcome and milestone email
 1. **Receive** — every transactional email carries the signed status link.
 2. **View** — `/me?t=…` renders the bearer's own row, own rank and referral link, with a copy control.
 3. **Act** — re-answer the survey, change country *(before eligibility is stamped)*, or unsubscribe.
-4. **Refresh** — an expired link offers a one-click re-send to the address it was issued for.
+4. **Refresh** — an expired link offers a Turnstile-protected, one-click re-send to the address it was issued for. E6-04 verifies the challenge server-side before recovery work and queues the `status_link` send request; E8-01/E8-03 own provider dispatch and the status-link template.
 
 ## Edge cases and error states
-Token expired → a re-request page, never an error page. Token tampered → **the same re-request page**; the failure must not distinguish a forged token from an expired one. Link forwarded to someone else → they see the original subscriber's status. **This is an accepted risk, stated plainly**: the alternative is a password on a waitlist, which costs more conversion than the exposure is worth, and the page carries nothing more sensitive than a referral count. Country change after eligibility is stamped → **allowed for the record, but the giveaway eligibility already accrued does not change**, and the page says so.
+Token expired → a re-request page, never an error page. Token tampered → **the same re-request page**; the failure must not distinguish a forged token from an expired one. The recovery submission also returns the same acknowledgement whether the expired token was recognised or not. Link forwarded to someone else → they see the original subscriber's status. **This is an accepted risk, stated plainly**: possession of the bearer link is the authentication boundary; the alternative is a password on a waitlist, which costs more conversion than the exposure is worth, and the page carries nothing more sensitive than the subscriber's waitlist status. Country change after eligibility is stamped → **allowed for the record, but the giveaway eligibility already accrued does not change**, and the page says so.
 
 ## Acceptance criteria
 - [ ] The link is signed and expiring; **a tampered token and an expired token produce the identical response**

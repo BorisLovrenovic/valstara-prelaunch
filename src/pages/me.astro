@@ -1,0 +1,161 @@
+---
+import { memberStatusCopy } from '../copy/member-status.ts';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getConfig } from '../server/config.ts';
+import { createPool } from '../server/db/pool.ts';
+import { getFlagService } from '../server/flags/app-service.ts';
+import { hashedIpPrefix } from '../server/ratelimit/ip-prefix.ts';
+import { verifyTurnstileToken } from '../server/turnstile/verify.ts';
+import {
+  createStatusLinkRecoveryBoundary,
+  createStatusLinkService,
+  type StatusLinkAuthentication,
+} from '../server/verification/status-link.ts';
+
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const config = getConfig();
+let authentication: StatusLinkAuthentication = { kind: 'rejected' };
+let replacementRequested = false;
+let challengeFailed = false;
+
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData().catch(() => new FormData());
+  const submittedChallenge = formData.get('turnstile_token');
+  const recovery = await createStatusLinkRecoveryBoundary({
+    verifyTurnstile: verifyTurnstileToken,
+    async recover(challengeTimedOut) {
+      // Construct every stateful dependency only after Turnstile has returned
+      // a verified or provider-unavailable outcome.
+      const database = createPool(config.databaseUrl);
+      try {
+        const prefixHash = hashedIpPrefix(
+          Astro.clientAddress,
+          config.ipPrefixPepper,
+        );
+        return await createStatusLinkService(database, {
+          flags: getFlagService(),
+        }).requestReplacement({
+          challengeTimedOut,
+          ipPrefixHash: prefixHash ?? '',
+          token: Astro.url.searchParams.get('t') ?? '',
+        });
+      } finally {
+        await database.close();
+      }
+    },
+  })(typeof submittedChallenge === 'string' ? submittedChallenge : '');
+
+  if (recovery === 'challenge_failed') {
+    Astro.response.status = 400;
+    challengeFailed = true;
+  } else if (recovery === 'disabled') {
+    authentication = { kind: 'disabled' };
+  } else {
+    replacementRequested = true;
+  }
+} else {
+  const database = createPool(config.databaseUrl);
+  try {
+    const statusLinks = createStatusLinkService(database, {
+      flags: getFlagService(),
+    });
+    authentication = await statusLinks.authenticate(
+      Astro.url.searchParams.get('t') ?? '',
+    );
+  } finally {
+    await database.close();
+  }
+}
+---
+
+<BaseLayout
+  title={memberStatusCopy.meta.title}
+  description={memberStatusCopy.meta.description}
+>
+  {
+    authentication.kind === 'authenticated' ? (
+      <section class="member-status-boundary">
+        <h1>{memberStatusCopy.authenticated.heading}</h1>
+        <p>{memberStatusCopy.authenticated.body}</p>
+      </section>
+    ) : authentication.kind === 'disabled' ? (
+      <section class="member-status-boundary">
+        <h1>{memberStatusCopy.disabled.heading}</h1>
+        <p>{memberStatusCopy.disabled.body}</p>
+      </section>
+    ) : (
+      <section class="member-status-boundary">
+        <h1>{memberStatusCopy.recovery.heading}</h1>
+        <p>
+          {replacementRequested
+            ? memberStatusCopy.recovery.sent
+            : challengeFailed
+              ? memberStatusCopy.recovery.challengeFailed
+              : memberStatusCopy.recovery.body}
+        </p>
+        {!replacementRequested ? (
+          <form method="post">
+            <div
+              class="cf-turnstile"
+              data-sitekey={config.turnstileSiteKey}
+              data-response-field-name="turnstile_token"
+            />
+            <noscript>
+              <p>{memberStatusCopy.recovery.javaScriptRequired}</p>
+            </noscript>
+            <button type="submit">{memberStatusCopy.recovery.submit}</button>
+          </form>
+        ) : null}
+        {!replacementRequested ? (
+          <script
+            is:inline
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+            async
+            defer
+          />
+        ) : null}
+      </section>
+    )
+  }
+</BaseLayout>
+
+<style>
+  .member-status-boundary {
+    margin-inline: auto;
+    padding: var(--space-3);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    background: var(--surface);
+    border: thin solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  h1 {
+    margin-block: 0 var(--space-2);
+    font-size: var(--step-4);
+    line-height: var(--leading-4);
+  }
+
+  p {
+    margin-block: 0 var(--space-3);
+    color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  button {
+    padding: var(--space-1) var(--space-2);
+    color: var(--midnight);
+    font: inherit;
+    background: var(--coral);
+    border: thin solid var(--coral);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+  }
+
+  button:focus-visible {
+    outline: medium solid var(--ink);
+    outline-offset: var(--space-1);
+  }
+</style>

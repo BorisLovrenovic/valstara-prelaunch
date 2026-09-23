@@ -22,6 +22,15 @@ interface VerificationService {
 // → 'ok', and 'expired'/'invalid' → the identical 'rejected'. The endpoint
 // renders from this, so it cannot leak which token hashes exist.
 function customerOutcome(result: ConsumeResult): 'ok' | 'rejected'
+
+interface StatusLinkService {
+  authenticate(token: string): Promise<
+    | { kind: 'authenticated'; subscriberId: string }
+    | { kind: 'disabled' }
+    | { kind: 'rejected' }
+  >
+  requestReplacement(input: { token: string; ipPrefixHash: string; challengeTimedOut: boolean }): Promise<'accepted' | 'disabled' | 'rate_limited'>
+}
 ```
 
 `createVerificationService(db, { clock? })` builds the service. It takes a
@@ -41,6 +50,17 @@ token an existence oracle.
 write modules. E6-03 uses it before rate limiting or survey work. A replay remains
 a no-op with the same subject, while an invalid, expired or cross-purpose token
 never yields a subscriber id.
+
+`createStatusLinkService()` is the E6-04 browser boundary. It authenticates only
+the subject bound to a `status` token and never accepts a caller-supplied subject.
+An expired status token may request a replacement for that same subject. The
+public recovery boundary verifies Turnstile before constructing or calling any
+flag, rate-limit, token or email dependency. A provider timeout proceeds under
+the strict IP-prefix limit and flags a recognised subscriber for review. The
+request is also rate-limited per subscriber and queues a `status_link` email
+request; invalid, tampered and cross-purpose values queue nothing and receive
+the same public acknowledgement. E8 owns rendering and dispatch of that queued
+message.
 
 ## Rules
 - **Only the SHA-256 of the token is stored.** The plaintext exists in the emailed URL and nowhere else — not in a log line, not in an audit detail, not in an analytics event.
