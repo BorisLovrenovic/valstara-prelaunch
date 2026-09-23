@@ -92,7 +92,7 @@ the same acknowledgement.
 The alternative method of entry required in several jurisdictions. Same eligibility rules, no referral requirement, rate-limited, and recorded with its `rules_version`.
 
 ### `GET /unsubscribe?t=…` and `POST /api/unsubscribe`
-One-click from the mail (RFC 8058 `List-Unsubscribe-Post`) and a confirmable page. Writes suppression. **Suppression is re-checked at dispatch**, so a send already queued still stops.
+One-click from the mail (RFC 8058 `List-Unsubscribe-Post`) and a confirmable page. The `unsubscribe` token resolves its originating template server-side from its bound `email_send` row; a request-supplied template is rejected. Writes one global suppression. **Suppression is re-checked at dispatch**, so a send already queued still stops.
 
 ### `POST /api/dsr/export` and `POST /api/dsr/delete`
 Data-subject access and erasure. Both require a signed link sent to the address, both are audited, and deletion **anonymises rather than drops** rows whose absence would corrupt referral edges — the edge survives with its subject nulled, so counts stay defensible and no personal data remains. `docs/legal/compliance.md` carries the reasoning.
