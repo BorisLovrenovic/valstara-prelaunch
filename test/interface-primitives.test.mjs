@@ -19,6 +19,8 @@ const browserOrigin = 'http://host.docker.internal:43222';
 const browserPort = 43_223;
 const browserServerEndpoint = `ws://127.0.0.1:${browserPort}/`;
 const browserContainer = `valstara-primitives-playwright-${process.pid}`;
+const fixtureServerStartupTimeoutMilliseconds = 30_000;
+const serverOutputLimit = 16_384;
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
 
@@ -26,6 +28,8 @@ let browser;
 let browserServer;
 let browserServerError;
 let server;
+let serverError;
+let serverOutput = '';
 
 function relativeLuminance(color) {
   const channels = color
@@ -126,9 +130,25 @@ async function startBrowserServer() {
 }
 
 async function waitForFixtureServer() {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  const deadline =
+    globalThis.performance.now() + fixtureServerStartupTimeoutMilliseconds;
+
+  while (globalThis.performance.now() < deadline) {
+    if (serverError !== undefined) {
+      throw new Error(
+        `Could not start the interface primitive fixture server: ${serverError.message}`,
+        { cause: serverError },
+      );
+    }
+    if (server.exitCode !== null) {
+      throw new Error(
+        `Interface primitive fixture server exited before startup.\n${serverOutput || '(no server output)'}`,
+      );
+    }
     try {
-      const response = await globalThis.fetch('http://127.0.0.1:43222');
+      const response = await globalThis.fetch('http://127.0.0.1:43222', {
+        signal: globalThis.AbortSignal.timeout(1_000),
+      });
       if (response.ok) {
         return;
       }
@@ -139,7 +159,9 @@ async function waitForFixtureServer() {
       globalThis.setTimeout(resolvePromise, 25),
     );
   }
-  throw new Error('Interface primitive fixture server did not start.');
+  throw new Error(
+    `Interface primitive fixture server did not start within 30 seconds.\n${serverOutput || '(no server output)'}`,
+  );
 }
 
 before(async () => {
@@ -161,9 +183,19 @@ before(async () => {
     [join(projectRoot, 'scripts/fixtures/run-interface-primitives-server.mjs')],
     {
       env: { ...process.env, HOST: '0.0.0.0', PORT: '43222' },
-      stdio: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],
     },
   );
+  server.stdout.setEncoding('utf8');
+  server.stderr.setEncoding('utf8');
+  const captureServerOutput = (chunk) => {
+    serverOutput = `${serverOutput}${chunk}`.slice(-serverOutputLimit);
+  };
+  server.stdout.on('data', captureServerOutput);
+  server.stderr.on('data', captureServerOutput);
+  server.once('error', (error) => {
+    serverError = error;
+  });
   await waitForFixtureServer();
   await startBrowserServer();
   browser = await chromium.connect(browserServerEndpoint);

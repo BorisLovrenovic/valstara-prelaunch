@@ -14,6 +14,8 @@ const hostOrigin = `http://127.0.0.1:${appPort}`;
 const browserOrigin = `http://host.docker.internal:${appPort}`;
 const browserServerEndpoint = `ws://127.0.0.1:${browserPort}/`;
 const browserContainer = `valstara-layout-playwright-${process.pid}`;
+const appServerStartupTimeoutMilliseconds = 30_000;
+const serverOutputLimit = 16_384;
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
 const permanentFooterUrls = [
@@ -28,11 +30,29 @@ let browser;
 let browserServer;
 let browserServerError;
 let server;
+let serverError;
+let serverOutput = '';
 
 async function waitForAppServer() {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  const deadline =
+    globalThis.performance.now() + appServerStartupTimeoutMilliseconds;
+
+  while (globalThis.performance.now() < deadline) {
+    if (serverError !== undefined) {
+      throw new Error(
+        `Could not start the layout rendered-page test server: ${serverError.message}`,
+        { cause: serverError },
+      );
+    }
+    if (server.exitCode !== null) {
+      throw new Error(
+        `Layout rendered-page test server exited before startup.\n${serverOutput || '(no server output)'}`,
+      );
+    }
     try {
-      const response = await globalThis.fetch(hostOrigin);
+      const response = await globalThis.fetch(hostOrigin, {
+        signal: globalThis.AbortSignal.timeout(1_000),
+      });
       if (response.ok) {
         return;
       }
@@ -41,7 +61,9 @@ async function waitForAppServer() {
     }
     await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
   }
-  throw new Error('Layout rendered-page test server did not start.');
+  throw new Error(
+    `Layout rendered-page test server did not start within 30 seconds.\n${serverOutput || '(no server output)'}`,
+  );
 }
 
 async function startBrowserServer() {
@@ -124,7 +146,17 @@ before(async () => {
       RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
       TURNSTILE_SECRET_KEY: 'layout-rendered-page-turnstile-secret',
     },
-    stdio: 'ignore',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  server.stdout.setEncoding('utf8');
+  server.stderr.setEncoding('utf8');
+  const captureServerOutput = (chunk) => {
+    serverOutput = `${serverOutput}${chunk}`.slice(-serverOutputLimit);
+  };
+  server.stdout.on('data', captureServerOutput);
+  server.stderr.on('data', captureServerOutput);
+  server.once('error', (error) => {
+    serverError = error;
   });
   await waitForAppServer();
   await startBrowserServer();
@@ -147,9 +179,10 @@ after(async () => {
     browserServer.kill('SIGTERM');
     await browserServerExited;
   }
-  if (server !== undefined) {
+  if (server !== undefined && server.exitCode === null) {
+    const serverExited = once(server, 'exit');
     server.kill('SIGTERM');
-    await once(server, 'exit');
+    await serverExited;
   }
 });
 
