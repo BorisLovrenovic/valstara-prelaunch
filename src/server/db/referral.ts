@@ -20,6 +20,7 @@ export interface ReferralStatusAward {
 export interface ReferralSubscriber {
   readonly access_window: AccessWindow | null;
   readonly confirmed_referrals: number;
+  readonly giveaway_eligible: boolean | null;
   readonly referral_code: string | null;
   readonly referral_tier: number;
   readonly status: string;
@@ -35,6 +36,8 @@ export interface ReferralRepository {
   ): Promise<number>;
   countConfirmedEdges(referrerId: string): Promise<number>;
   findCode(subscriberId: string): Promise<string | null>;
+  findGiveawayEntryTotal(subscriberId: string): Promise<number>;
+  findOwnReferralRank(subscriberId: string): Promise<number | null>;
   findActiveMilestoneAwards(
     subscriberId: string,
     limit: number,
@@ -144,6 +147,51 @@ export function createReferralRepository(
       return row?.referral_code ?? null;
     },
 
+    async findGiveawayEntryTotal(subscriberId) {
+      const row = await database.readOne<{ total: string }>({
+        text: `
+          SELECT COALESCE(SUM(entries), 0)::text AS total
+          FROM giveaway_entry
+          WHERE subscriber_id = $1 AND voided_at IS NULL
+        `,
+        values: [subscriberId],
+      });
+      return Number(row?.total ?? '0');
+    },
+
+    async findOwnReferralRank(subscriberId) {
+      const row = await database.readOne<{ rank: number }>({
+        text: `
+          WITH eligible AS (
+            SELECT
+              subscriber.id,
+              subscriber.confirmed_referrals,
+              subscriber.verified_at
+            FROM subscriber
+            WHERE subscriber.status = 'verified'
+              AND NOT EXISTS (
+                SELECT 1
+                FROM fraud_flag
+                WHERE fraud_flag.subscriber_id = subscriber.id
+                  AND fraud_flag.state <> 'dismissed'
+              )
+          ), ranked AS (
+            SELECT
+              id,
+              (ROW_NUMBER() OVER (
+                ORDER BY confirmed_referrals DESC, verified_at ASC NULLS LAST, id ASC
+              ))::integer AS rank
+            FROM eligible
+          )
+          SELECT rank
+          FROM ranked
+          WHERE id = $1
+        `,
+        values: [subscriberId],
+      });
+      return row?.rank ?? null;
+    },
+
     async findActiveMilestoneAwards(subscriberId, limit) {
       if (!Number.isInteger(limit) || limit < 1) {
         throw new RangeError(
@@ -249,7 +297,8 @@ export function createReferralRepository(
     async findSubscriber(subscriberId) {
       return database.readOne<ReferralSubscriber>({
         text: `
-          SELECT status, referral_code, confirmed_referrals, referral_tier, access_window
+          SELECT status, referral_code, confirmed_referrals, referral_tier,
+                 access_window, giveaway_eligible
           FROM subscriber
           WHERE id = $1
         `,
@@ -351,7 +400,8 @@ export function createReferralRepository(
     async lockSubscriber(subscriberId) {
       return database.readOne<ReferralSubscriber>({
         text: `
-          SELECT status, referral_code, confirmed_referrals, referral_tier, access_window
+          SELECT status, referral_code, confirmed_referrals, referral_tier,
+                 access_window, giveaway_eligible
           FROM subscriber
           WHERE id = $1
           FOR UPDATE

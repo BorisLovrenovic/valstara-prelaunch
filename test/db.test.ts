@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      21,
+      22,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -240,6 +240,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0019-ranking-integrity-permissions.sql',
       '0020-top-twenty-review-gate.sql',
       '0021-survey-capture-permissions.sql',
+      '0022-member-dashboard-status-permissions.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -266,6 +267,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0019-ranking-integrity-permissions.sql',
         '0020-top-twenty-review-gate.sql',
         '0021-survey-capture-permissions.sql',
+        '0022-member-dashboard-status-permissions.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -393,10 +395,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          21,
+          22,
         );
 
-        assert.equal(appliedCount, 21);
+        assert.equal(appliedCount, 22);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -421,6 +423,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0019-ranking-integrity-permissions.sql',
             '0020-top-twenty-review-gate.sql',
             '0021-survey-capture-permissions.sql',
+            '0022-member-dashboard-status-permissions.sql',
           ],
         );
       } finally {

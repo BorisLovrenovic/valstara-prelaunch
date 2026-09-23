@@ -430,10 +430,14 @@ function createReferralServiceWithRepository(
         );
       }
 
-      const awards = await repository.findActiveMilestoneAwards(
-        subscriberId,
-        referralStatusRewardMaximumLimit + 1,
-      );
+      const [awards, giveawayEntries, ownRank] = await Promise.all([
+        repository.findActiveMilestoneAwards(
+          subscriberId,
+          referralStatusRewardMaximumLimit + 1,
+        ),
+        repository.findGiveawayEntryTotal(subscriberId),
+        repository.findOwnReferralRank(subscriberId),
+      ]);
       if (awards.length > referralStatusRewardMaximumLimit) {
         throw new Error('Referral status exceeds the configured reward limit.');
       }
@@ -442,6 +446,12 @@ function createReferralServiceWithRepository(
         subscriber.confirmed_referrals,
         subscriber.referral_code,
         awards,
+        {
+          accessWindow: subscriber.access_window,
+          giveawayEligible: subscriber.giveaway_eligible,
+          giveawayEntries,
+          ownRank,
+        },
       );
     },
 
