@@ -1010,7 +1010,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 ## Epic E6 — Leaderboard, survey and member area
 
-**Goal:** the three surfaces that keep a verified subscriber engaged, each built so it can be switched off without breaking a page. *6 tickets.*
+**Goal:** the three surfaces that keep a verified subscriber engaged, each built so it can be switched off without breaking a page. *5 tickets.*
 
 **Exit criteria:** the leaderboard serves from a cached snapshot under load, the survey writes back, `/me` shows only the bearer's data, and every one of them degrades gracefully with its flag off.
 
@@ -1096,24 +1096,6 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Tests:** Parity with the email surfaces; the flag-off fallback; accessibility.
 **Docs:** `docs/features/member-status.md`
-
-### E6-06 — Unsubscribe and preferences
-**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
-**Why this tier:** a failed unsubscribe is a legal problem and a trust problem in the same moment.
-
-**Build:** One-click unsubscribe (RFC 8058 `List-Unsubscribe-Post`) and a confirmable page, both writing `suppression`. **The dispatch path re-checks suppression**, so a queued send still stops.
-
-**Acceptance criteria:**
-- **One click, no confirmation maze, no retention plea** — the copy rules forbid it and so does the law's spirit
-- **A suppression written after a send is queued still stops that send** — asserted by test
-- Unsubscribing from either provider suppresses for **both**
-- The token is single-use per the verification module's rules
-- Every unsubscribe is recorded with its source template
-
-**Tests:** The queue-then-suppress race · cross-provider suppression · the one-click POST path.
-**Docs:** `docs/modules/email.md` · `docs/legal/compliance.md`
-
----
 
 ## Epic E7 — Giveaway
 
@@ -1223,7 +1205,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 ## Epic E8 — Email
 
-**Goal:** verification mail that arrives, campaign mail that cannot damage it, and one unrepeatable migration send done carefully. *9 tickets.*
+**Goal:** verification mail that arrives, campaign mail that cannot damage it, and one unrepeatable migration send done carefully. *10 tickets.*
 
 **Exit criteria:** both domains authenticate, a real-browser signup receives its delivered verification email and produces a verified subscriber, seed tests land in the inbox at all four major providers, the quota projection alerts a week ahead, and the migration send is staged and ready.
 
@@ -1233,18 +1215,35 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this tier:** two of the campaign's three unrecoverable failures live in this module, and both of them are silent.
 
-**Build:** `src/server/email` per `docs/modules/email.md`: `queue()` with a unique `business_key`, batch-capped `dispatch()` with backoff, suppression **re-checked at dispatch**, and the provider interface. **A send failure never rolls back or blocks the caller's transaction.**
+**Build:** `src/server/email` per `docs/modules/email.md`: `queue()` with a unique `business_key`, batch-capped `dispatch()` with backoff, suppression **re-checked at dispatch**, and the provider interface. **A send failure never rolls back or blocks the caller's transaction.** For each queued message, mint an `unsubscribe`-purpose token and bind it to its originating `email_send` row, which is the server-side source of its template. The required binding schema and constraints ship in this ticket with token minting.
 
 **Acceptance criteria:**
 - **One email per business key** — enforced by the database, asserted under genuine concurrency
 - **A suppression written between queue and dispatch stops the send** — asserted by test
+- Each unsubscribe token resolves its source template through its bound `email_send` row, never from caller input
 - **A provider outage leaves the subscriber row committed** and the send queued — asserted
 - Dispatch is batch-capped with bounded backoff, and a permanent failure raises an operator task
 - Every message carries a plain-text alternative and a working one-click unsubscribe
 - **No vendor SDK is imported outside `providers/`** — the boundary gate passes
 
-**Tests:** Concurrent duplicate-key attempt · the queue-then-suppress race · outage isolation · batch cap · backoff bounds.
+**Tests:** Concurrent duplicate-key attempt · the queue-then-suppress race · unsubscribe-token binding to an `email_send` template · outage isolation · batch cap · backoff bounds.
 **Docs:** `docs/modules/email.md` · `docs/architecture/adr/009-split-email-providers.md`
+
+### E6-06 — Unsubscribe and preferences
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this tier:** a failed unsubscribe is a legal problem and a trust problem in the same moment.
+
+**Build:** One-click unsubscribe (RFC 8058 `List-Unsubscribe-Post`) and a confirmable page, both writing `suppression`. Consume the `unsubscribe`-purpose token and resolve its source template **server-side from the E8-01 token-to-`email_send` binding**, never from caller input. E8-01 owns the dispatch-time suppression re-check and its queue-then-suppress race assertion; E8-03 embeds this route's URL in every template. Founder-authorised reorder 2026-09-23: E8-01 → E6-06 → E8-03.
+
+**Acceptance criteria:**
+- **One click, no confirmation maze, no retention plea** — the copy rules forbid it and so does the law's spirit
+- Unsubscribing writes one global suppression that applies to **both** providers
+- The token is single-use per the verification module's rules
+- Every unsubscribe is recorded with its source template resolved from the token binding
+- A caller-supplied template value is rejected and cannot affect the recorded source
+
+**Tests:** The one-click POST path · single-use consumption · cross-provider global suppression · source-template resolution from the bound `email_send` row, including rejection of a form-supplied template.
+**Docs:** `docs/modules/email.md` · `docs/legal/compliance.md`
 
 ### E8-02 — The Resend provider and domain authentication
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
@@ -1872,9 +1871,9 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 | E3 Signup and double opt-in | 10 | Normalisation, signup route, Turnstile, geo, form, tokens, verify, reminders, resend, rate monitoring |
 | E4 Referral engine | 9 | Codes, signed capture, edges, confirmation, milestones, **reward gating**, waves, status, repair |
 | E5 Fraud and integrity | 8 | Blocklist, flags, IP handling, admin authentication, review queue, disqualification, board integrity, top-20 gate |
-| E6 Leaderboard, survey, member area | 6 | Snapshot, island, survey, status link, dashboard, unsubscribe |
+| E6 Leaderboard, survey, member area | 5 | Snapshot, island, survey, status link, dashboard |
 | E7 Giveaway | 6 | Eligibility, rules pages, entry ledger, AMOE, **reproducible draw**, awards |
-| E8 Email | 9 | Service, Resend, templates, seed tests, Brevo, bounces, weekly, **migration send**, quotas |
+| E8 Email | 10 | Service, unsubscribe, Resend, templates, seed tests, Brevo, bounces, weekly, **migration send**, quotas |
 | E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, **the representative gate**, inventory, DSR, SEO, OG, llms.txt |
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
