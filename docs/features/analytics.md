@@ -14,12 +14,12 @@ Funnel events are defined once and emitted from both the client (page-level) and
 | Event | Emitted from | Properties |
 |---|---|---|
 | `page_view` | client | path, referrer host, UTM bucket |
-| `signup_submitted` | server | source bucket, country, had_ref |
+| `signup_submitted` | server | source bucket, had_ref, marketing_opt_in |
 | `signup_rejected` | server | reason code |
 | `verified` | server | hours_to_verify bucket, source bucket |
 | `referral_confirmed` | server | referrer tier bucket |
 | `survey_completed` | server | question set version |
-| `giveaway_entered` | server | method, jurisdiction |
+| `giveaway_entered` | server | method |
 | `unsubscribed` | server | source template |
 
 **No property may carry an email address, referral code, IP address, or any value that identifies one person.** A schema test asserts this over every registered event.

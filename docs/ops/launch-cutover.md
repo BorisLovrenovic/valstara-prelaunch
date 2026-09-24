@@ -29,7 +29,7 @@ Status: authoritative. This describes the **store launch**, which happens after 
 | `/` | Waitlist landing page | Storefront home — **same URL, new content** |
 | `/legit`, `/guarantee`, `/about` | Trust content | Ported, same URLs |
 | `/terms`, `/privacy` | Legal | Ported and revised in place |
-| `/giveaway/rules/*` | Per-jurisdiction rules | **Kept live** for the statutory retention period, then `410` |
+| `/giveaway/rules`, `/giveaway/rules/<rules_version>` | The global rules page and its immutable revisions (ADR-026) | **Kept live** for 12 months after the final award, then `410`; revisions kept internally for 6 years |
 | `/waitlist`, `/leaderboard`, `/me` | Campaign mechanics | `301` to `/` and the account area |
 | `/verify`, `/api/*` | Campaign endpoints | Gone. **Any live verification token becomes unusable — send the final reminder before this** |
 
@@ -43,7 +43,7 @@ Rehearsed twice against a scratch database before the day (E11-06). **A rehearsa
 2. **Send the final reminder** to unverified rows *before* the freeze, so nobody is left holding a token that will stop working.
 3. **pgBackRest snapshot.** The point-in-time everything else references.
 4. **Export**: verified, unsuppressed, not disqualified.
-5. **Idempotent import keyed on `email_normalised`** → `createCustomersWorkflow` with metadata (`referral_tier`, `referral_code`, `confirmed_referrals`, `country`, `category_preference`, `access_window`, `source`, `subslush_customer`).
+5. **Idempotent import keyed on `email_normalised`** → `createCustomersWorkflow` with metadata (`referral_tier`, `referral_code`, `confirmed_referrals`, `category_preference`, `access_window`, `source`, `subslush_customer`, and the marketing-consent state). **The storefront sends marketing only to customers whose consent is present** (ADR-027).
 6. **Assign customer groups** `wave-1`…`wave-4` and `subslush-legacy`. **Groups, not metadata, are what promotions and price lists target** — the metadata carries provenance, the group carries the access it grants.
 7. **Generate per-customer discount codes.**
 8. **Settle or void held referral rewards** per the published rule, and record the outcome for every held edge.

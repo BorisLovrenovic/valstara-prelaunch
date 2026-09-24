@@ -12,7 +12,7 @@ Viral Loops, KickoffLabs, LaunchList and similar sell exactly this mechanic, and
 
 Three reasons, in order of weight:
 
-1. **No hosted tool covers more than half the requirement** — trust pages, a survey with write-back, geo-scoped giveaway eligibility, staggered access windows.
+1. **No hosted tool covers more than half the requirement** — trust pages, a survey with write-back, giveaway eligibility and rules, staggered access windows.
 2. **They all ship the patterns the brand forbids** — countdown timers, position inflation and fake scarcity. **LaunchList sells "ranking inflation" as a feature.** Fighting a tool's defaults on the exact axis the brand is differentiating on is a bad trade at any price (ADR-024).
 3. **Every buy option prices per lead or per participant**, so **a successful giveaway taxes you monthly at exactly the moment cash is tightest.** Viral Loops steps $35 → $99 → $159 → $279 at 1k/5k/10k/25k participants; KickoffLabs $19 → $289.
 

@@ -49,7 +49,7 @@ Five items no agent can complete. Each gates something, and the gate is stated s
 | **P2** | **Appoint the EU and UK Article 27 representatives** | Procurement, €200–500/yr each | **The privacy policy, which gates the first signup.** E9-03 asserts their presence at build time and the signup route is unreachable while it fails | **Today** |
 | **P3a** | ~~Brand token values~~ — **SATISFIED.** In the repository at `docs/brand/identity-guidelines.md` §5 (colour) and §6 (typography), LOCKED | — | Nothing. E2-01 is unblocked | Done |
 | **P3b** | **Trust-page prose** — `/legit`, `/guarantee`, `/about` | Founder input from the brand and store documentation | E9-02. **A page shell with placeholder text is not a deliverable** | Before E9 |
-| **P4** | **Giveaway prize, entry rules and reviewed rules-page text** | Founder input plus counsel | E7 entirely; `giveaway.open` stays off without it | Before E7 |
+| **P4** | **Giveaway prize and the final text of the single global rules page (Hong Kong law)** — **supplied 2026-09-25:** 5 bundles at €300 (€1,500), entries 1 Oct 2026 – 1 Mar 2027, draw 1 Apr 2027, the promoter **3NITY DIGITAL LIMITED** (Business Registration No. 79886556) with its registered address and contacts, and the layered substitution rule. The approved text is in `docs/prerequisites/p4-rules-page-draft.md`. **P4 is complete.** Bundle contents (due before the draw) and the sanctions list (due before the first award) are deliberately **not** blockers (ADR-026) | Founder input. One global page under Hong Kong law — no per-country rules or local review (founder decision, 2026-09-25, ADR-026) | Nothing now — satisfied | Done |
 | **P6** | **Provision the production VPS** | Purchase and provisioning | **E12 entirely.** Nothing before E12 requires it — founder decision, 2026-08-27: the site is built and verified locally first, then the host is provisioned once | Before E12 |
 | **P5** | **Upgrade Resend and Brevo past the free tiers** | Purchase — Resend free is 100/day, Brevo 300/day | **Turning `giveaway.open` on.** Upgrade *before* the giveaway opens, not when the limits hit | Before E7 exit |
 
@@ -117,6 +117,7 @@ flowchart TD
   E3 --> E5[E5 Fraud and integrity]
   E4 --> E6[E6 Leaderboard, survey, member area]
   E5 --> E6
+  S01[S-01 Hong Kong giveaway alignment] --> E7
   E4 --> E7[E7 Giveaway]
   E5 --> E7
   E1 --> E8[E8 Email]
@@ -134,6 +135,8 @@ flowchart TD
 
 **Everything through E11 is built and verified locally.** The VPS is provisioned once, at the end, and **E12 collects every piece of evidence that needs real infrastructure** — the rollback RTO, a restore from R2, capacity on the actual box (founder decision, 2026-08-27).
 
+**S-01 is a standalone ticket outside every epic (founder-authorised 2026-09-25).** It brings everything already built into line with ADR-026 and ADR-027 and **must be merged before any E7 ticket starts.**
+
 **E1 proves the whole path end to end before any feature work.** E3 is the spine: E4, E5, E8 and E10 all depend on a verified subscriber existing. **E9 is independent of the mechanics and has the longest founder-input lead time — start its content tickets early, in parallel.** E11 is the campaign gate.
 
 ---
@@ -147,7 +150,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 | 1 | E1 | 1 | Tier B |
 | 2 | E2 + E3 | 2 | Tier B + second model |
 | 3 | E4 + E5 | 2 | Tier B + second model |
-| 4 | E6 + E7 | 2 | Tier B + second model |
+| 4 | S-01 + E6 + E7 | 2 | Tier B + second model |
 | 5 | E8 | 2 | Tier B + second model |
 | 6 | E9 + E10 | 1 | Tier B |
 | 7 | E11 | 2 | Tier B + second model |
@@ -612,6 +615,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E3-04 — Country selector with geo prefill
 **Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
+> **Superseded by ADR-026 (founder decision, 2026-09-25).** No country or region is collected at signup. The selector, the region field, the geo module and the stored columns this ticket built are removed by **S-01**. The text below is kept as history.
+
 **Build:** `src/server/geo` returning a **suggestion** from `CF-IPCountry`, and the country dropdown prefilled from it. **Always overridable.** The Canada-only region field appears when Canada is selected, because Quebec changes eligibility.
 
 **Acceptance criteria:**
@@ -963,14 +968,14 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this tier:** it is irreversible-feeling from the outside, it affects a prize, and it must be defensible afterwards.
 
-**Build:** Upholding a flag sets `disqualified`, rejects the referrer's edges, and voids their referral-derived entries — **all audited.** Reversal is possible and equally audited, and **restores the edges the disqualification rejected.** Founder-authorised 2026-09-16: defer publication of the disqualification rule to E7-02's counsel-reviewed per-jurisdiction rules pages; no standalone rule copy is published in this ticket because P4 is outstanding and `giveaway.open` remains off until P4/P5.
+**Build:** Upholding a flag sets `disqualified`, rejects the referrer's edges, and voids their referral-derived entries — **all audited.** Reversal is possible and equally audited, and **restores the edges the disqualification rejected.** Founder-authorised 2026-09-16: defer publication of the disqualification rule to E7-02; no standalone rule copy is published in this ticket because P4 is outstanding and `giveaway.open` remains off until P4/P5. Since 2026-09-25 (ADR-026) E7-02 is the single global rules page.
 
 **Acceptance criteria:**
 - **`disqualified` is reachable only through `review(_, 'upheld')` with an actor** — asserted over every write site
 - Rejecting a referrer's edges **changes no referred subscriber's status** — nobody is punished for their referrer
 - Their referral-derived entries are voided; **the entries of the people they referred are not**
 - Reversal restores the rejected edges and is audited
-- **Deferred to E7-02:** the rule is published on every counsel-reviewed jurisdiction rules page before `giveaway.open` can be enabled
+- **Deferred to E7-02:** the rule is published on the global rules page before `giveaway.open` can be enabled
 
 **Tests:** The single-path assertion · the referred-subscriber isolation · the entry-voiding scope · reversal restoring edges.
 **Docs:** `docs/features/fraud-review.md` · `docs/modules/fraud.md`
@@ -1097,109 +1102,165 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Tests:** Parity with the email surfaces; the flag-off fallback; accessibility.
 **Docs:** `docs/features/member-status.md`
 
+> **Amended by S-01 (2026-09-25).** The country-based `giveaway_eligible` value this ticket rendered is removed, and `/me` gains the marketing on/off control required by ADR-027. S-01 owns both changes.
+
+---
+
+## Standalone ticket — outside every epic
+
+### S-01 — Align the built campaign with the Hong Kong giveaway strategy
+**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this tier:** it removes a collected field and adds a consent record across the only public write path, the schema, verification and `/me`. Those are privacy properties that are expensive to get subtly wrong.
+
+**Founder-authorised 2026-09-25.** Implements the built-code consequences of **ADR-026** (one global giveaway under Hong Kong law, with no country collected, no per-country rules, 18+ and one person per registration, prize limits, and location checks only at award time) and **ADR-027** (joining and entering are separate from marketing consent). **Merge it before any E7 ticket starts.** Branch: `feat/S-01-hong-kong-giveaway-alignment`. The docs were updated with the plan change on 2026-09-25. This ticket keeps them true and fixes any doc it finds still stale (standing rule 18).
+
+**Build — remove what ADR-026 retires:**
+1. **Signup form and landing page** (built in E2-06, E3-04 and E3-05): remove the country dropdown, the Canada region field and its CSS `:has()` reveal, the `CF-IPCountry` prefill in `src/pages/index.astro`, `src/copy/country.ts`, and the country and region wording in `src/copy/signup.ts` (`invalidInput`, `countryRequired`, `regionRequired`).
+2. **Signup route and subscriber module** (E3-02, E3-04): stop reading, validating and storing `country` and `region` in `src/pages/api/signup.ts` (including the `CANADA_COUNTRY_CODE` check), `src/server/subscriber/signup.ts` and `src/server/db/subscriber.ts`. A request that still sends either field is handled exactly like one that does not, and neither value is stored.
+3. **Geo module and landing cache:** delete `src/server/geo`. Remove the country header from `landingCacheVary` in `src/server/cache/landing.ts`, so the landing cache varies by flag generation alone. Keep the header scan, rewritten to assert that **nothing** reads `CF-IPCountry`.
+4. **Fraud review** (E5-04): remove `country` from the review-queue item in `src/server/db/fraud-review.ts` and `src/server/fraud/review.ts`.
+5. **`/me` and the shared status** (E6-05): remove `giveawayEligible` from `ReferralService.status` (`src/server/referral/service.ts`, `src/server/referral/status.ts`, `src/server/db/referral.ts`), and remove the eligibility row and its copy from `src/pages/me.astro`. The entries count stays.
+6. **Database:** one forward-only migration (the next number, `0023`). It drops `subscriber.country`, `subscriber.country_detected`, `subscriber.region` and `subscriber.giveaway_eligible`, and drops `giveaway_entry.jurisdiction`. It narrows the `giveaway_entry.method` check to `base` and `referral`, and **refuses to run if `giveaway_entry` has any row** (E7 has not been built, so it must be empty). It adjusts every grant that referenced a dropped column. `subscriber.giveaway_rules_version` stays, with the meaning given in `docs/data/model.md`.
+7. **Tests:** delete the tests that exist only for retired behaviour (`test/country-selector-rendered-page.test.mjs`, `test/signup-region.test.ts`, `test/geo-suggest-country.test.ts`). Update every test and fixture that sends or asserts `country` or `region` (signup form, route and subscriber tests, fraud, referral, leaderboard and rendered-page tests, and `test/fixtures/interface-primitives`). **Never weaken an unrelated assertion to get green.**
+
+**Build — add what ADR-027 requires:**
+8. **Signup form:** an optional, **unticked** marketing opt-in checkbox whose wording comes from the copy layer and carries a version, visually separate from the submit action. Next to the submit button, the statement "Open to people aged 18 and over." from the copy layer. No other new field.
+9. **Signup route:** accept `marketing_opt_in`. On a new or `pending` row, a ticked box sets `marketing_opt_in_pending` and records the wording version. It never clears a consent that already exists, and it never changes the response: the identical accepted response and the no-membership-oracle property are preserved.
+10. **Subscriber schema** (same migration): add `marketing_consent_at`, `marketing_consent_version`, `marketing_consent_source` (`signup` or `member_status`) and `marketing_opt_in_pending`, with a check that the first three are all null or all set, plus the application grants.
+11. **Verification** (E3-07): in the same transaction that sets `verified`, a pending opt-in becomes consent (source `signup`) and is audited as `consent.marketing_granted`. An unticked signup verifies exactly as before.
+12. **`/me`** (E6-05): show the current marketing preference and an on/off form posting to `POST /api/me/marketing`. The form is authenticated by the E6-04 status token, Turnstile-protected (extend the third-party gate's allowlist scope to this form) and rate-limited. A grant sets the consent fields with source `member_status`. A withdrawal clears them. Each is audited as `consent.marketing_granted` or `consent.marketing_withdrawn`. **Neither touches status, referral edges, wave or entries.**
+13. **Audit:** add both consent actions to the required set. A failure to record either raises an error, so consent never changes without its evidence.
+
+**Acceptance criteria:**
+- **No country, region or location field exists** on the signup form, in the signup route's accepted fields, in `subscriber`, in `giveaway_entry` or in any response. A request carrying `country` or `region` succeeds and stores neither
+- **Nothing reads `CF-IPCountry`** — the scan asserts zero readers, and the landing cache key varies only by flag generation
+- The migration is forward-only, refuses to run when `giveaway_entry` has rows, and passes the migration audit
+- **Signup and verification behave identically whether the marketing box is ticked or not** — waitlist status, referral code, wave and future entries never depend on it (GDPR Art. 7(4))
+- The marketing box renders **unticked**, with versioned wording from the copy layer
+- A ticked signup has **no marketing consent until verification**; verification records and audits it in the same transaction
+- `/me` shows the current preference. Grant and withdrawal each write the consent fields and an audit event, and **withdrawal leaves status, referral edges, wave and entries untouched**
+- The `/me` marketing route is Turnstile-protected and rate-limited, and gives the identical response for a tampered or an expired token
+- The 18+ statement renders next to the submit button, from the copy layer
+- `/me` no longer shows an eligibility row; the entries count still shows
+- The fraud-review queue item no longer carries `country`
+- Every retired test is removed or rewritten, no unrelated assertion is weakened, and lint, typecheck, test and build are green
+
+**Tests:** The no-location assertion over form, route, schema and responses · the zero-reader `CF-IPCountry` scan · the migration (drops, consent check constraint, refusal with rows present) · ticked-versus-unticked signup-and-verify equivalence · consent recorded only at verification · `/me` grant and withdrawal with the untouched-entries assertion · tampered/expired token equivalence on the marketing route · 18+ copy presence · the rendered-page privacy gates still clean.
+**Docs:** `docs/architecture/adr/026-global-giveaway-hong-kong-law.md` · `docs/architecture/adr/027-entry-separate-from-marketing-consent.md` · `docs/legal/compliance.md` · `docs/data/model.md` · `docs/api/README.md` · `docs/features/signup.md` · `docs/features/member-status.md` · `docs/modules/platform.md`
+
+---
+
 ## Epic E7 — Giveaway
 
-**Goal:** a prize draw that is legal where it runs, honest in its mechanics, and reproducible when someone asks. *6 tickets.*
+**Goal:** one global prize draw under Hong Kong law (ADR-026) that is honest in its mechanics and can be reproduced when someone asks. *6 tickets.*
 
-**Exit criteria:** eligibility is enforced per jurisdiction at point of entry, entries accrue idempotently with their rules version, and a draw reproduces from its recorded seed.
+**Exit criteria:** the single rules page is published and immutable per version; entries accrue idempotently for verified people with the rules version and hash they entered under; the free entry route is disclosed; and a draw reproduces from its recorded seed with a reserve list, followed by award-time checks.
 
-**BLOCKED on P4 and P5.** Without the reviewed rules text and the ESP upgrades, `giveaway.open` stays off and this epic's exit criteria cannot be met.
+**Requires S-01 merged first.** **Not blocked on P4:** the founder supplied it in full on 2026-09-25. Bundle contents and the sanctions list are deliberately not blockers (ADR-026). **P5 gates turning `giveaway.open` on.** **Implementation order: E7-02 → E7-01 → E7-03 → E7-04 → E7-05 → E7-06**, because E7-02 is the source of `rules_version`.
 
-### E7-01 — Eligibility at point of entry
-**Model:** Tier B — High · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
-**Why this tier:** getting an exclusion wrong is a legal exposure in a named jurisdiction, and the mistake is not visible until someone complains.
+### E7-01 — Entry eligibility: verified, 18+, one person
+**Model:** Tier A — Medium · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
 
-**Build:** `eligibility(country, region)` per `docs/legal/compliance.md#4-giveaway--jurisdiction-exclusions`. Excluded: Italy, Poland, Spain, the Nordics, and Quebec. **Decided at signup**, writing `giveaway_eligible` and `giveaway_rules_version` together, with the reason stated plainly at that point.
+**Build:** The single eligibility rule for the global giveaway (ADR-026), in `src/server/giveaway`. A subscriber may accrue entries when they are `verified` and the giveaway is open. **There is no location input:** the function takes no country, region or header. When a subscriber first becomes an entrant, the current global `rules_version` from E7-02 is written to `subscriber.giveaway_rules_version`. The 18+ requirement is a rules condition confirmed with provisional winners at award time (E7-06), not collected at entry. One registration per natural person is enforced by the existing normalisation and fraud controls (E3-01, E5).
 
 **Acceptance criteria:**
-- **A table test covers every excluded jurisdiction**, including the Canada/Quebec case and each Nordic country individually
-- **An excluded visitor still completes the waitlist signup**
-- **A jurisdiction with no published rules page is excluded** — asserted by reconciling the eligibility table against the rules-page set
-- The deciding rules version is written to **`subscriber.giveaway_rules_version`** alongside `giveaway_eligible` — the column exists from E1-03
-- Eligibility is decided from the **confirmed** country, never from `country_detected`
+- **The eligibility function has no location parameter, and a scan finds no location read anywhere in the giveaway module**
+- `pending`, `expired`, `unsubscribed`, `bounced` and `disqualified` subscribers are not eligible — a table test covers every status
+- **Entry never depends on marketing consent** — asserted with consent absent and with it present (ADR-027)
+- The rules version in force is written to `subscriber.giveaway_rules_version` once, on first entry, and never overwritten
+- With `giveaway.open` off, nothing accrues and the waitlist is unaffected
 
-**Tests:** The full jurisdiction table · the still-signs-up assertion · the rules-page reconciliation · a `country_detected`-only case that must not decide.
-**Docs:** `docs/legal/compliance.md` · `docs/architecture/adr/018-giveaway-jurisdictions.md`
+**Tests:** The status table · the no-location scan · consent independence · first-entry rules-version stamping · the flag-off path.
+**Docs:** `docs/architecture/adr/026-global-giveaway-hong-kong-law.md` · `docs/modules/giveaway.md` · `docs/legal/compliance.md#4-giveaway--one-global-draw-under-hong-kong-law`
 
-### E7-02 — Per-jurisdiction rules pages
+### E7-02 — The global rules page (Hong Kong law)
 **Model:** Tier A — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
-**Build:** `/giveaway/rules/[jurisdiction]` from content files, each carrying the **seven required sections**: eligibility, entry methods including AMOE, entry period, draw date and method, odds basis, prize description and substitution clause, the disqualification rule, and the promoter's identity.
+**Build:** `/giveaway/rules`, built from one content file carrying every section listed in `docs/legal/compliance.md#4`: eligibility (18+, one registration per person, excluded persons), entry methods including the free route and how referral entries work, the entry period in UTC, the draw date and method, the odds basis, the prize description with approximate retail value and substitution clause, taxes and delivery, award-time verification (age, sanctions, address, the Canadian skill-testing question and the response deadline), the disqualification rule, winner publicity, governing law (Hong Kong) and the promoter's identity. **Each published revision gets an immutable `rules_version`** in the form `VAL-GW-<campaign>-<YYYYMMDD>-r<N>`, a SHA-256 of its rendered content, and a permanent URL at `/giveaway/rules/<rules_version>`. `/giveaway/rules` always serves the current version. Any text change creates a new revision; no revision is ever overwritten.
 
-**Deferred assertion from E5-05 (founder-authorised 2026-09-16):** this ticket owns publication of the disqualification rule; it must be present on every counsel-reviewed rules page before `giveaway.open` can be enabled.
+**Deferred assertion from E5-05 (founder-authorised 2026-09-16):** this ticket publishes the disqualification rule, and it must be on the page before `giveaway.open` can be enabled.
 
-**BLOCKED if P4 is outstanding.**
+**P4 inputs (2026-09-25):** transcribe the founder-approved text in `docs/prerequisites/p4-rules-page-draft.md`. Bundle contents may stay "to be announced".
 
 **Acceptance criteria:**
-- **Every required section is present on every page** — schema-validated, and a missing section **fails the build**
-- Pages exist at the permanent URLs and are **retained, not redirected**, at store launch
-- **Every eligible jurisdiction has a page, and every page has an eligible jurisdiction** — reconciled by test
-- Prose is in content files, never inline
-- Structured data validates
+- **Every required section is present** — schema-validated; a missing section or a placeholder marker **fails the build**
+- **Each prize's stated approximate retail value is €449 or less, and the pool is below US$5,000 at the conservative euro-to-dollar rate recorded in the content file** — validated at build time, so a content file that breaks the ADR-026 limits fails the build
+- **Bundle contents may be "to be announced"**: the page then states the prize by value and says the products will be listed before the draw. Dummy products are allowed only in test fixtures — a scan asserts the production content file lists none
+- **Governing law is Hong Kong, and the promoter is the Hong Kong company, named with its legal identity**
+- The page states "No purchase necessary", 18+, one registration per person, one prize per person, the ADR-026 odds wording, that winners pay any local taxes, and the award-time checks
+- **Every revision is immutable at its versioned URL, and its recorded SHA-256 matches the bytes served** — asserted
+- The current `rules_version` and hash are available to the server from the same source that renders the page
+- Prose is in content files, never inline; structured data validates; pages are **retained, not redirected**, at store launch
 
-**Tests:** Section completeness per page · the two-way reconciliation with the eligibility table · the build-failure fixture.
-**Docs:** `docs/features/legal-and-dsr.md` · `docs/ops/launch-cutover.md`
+**Tests:** Section completeness · the prize-limit build-failure fixture · the placeholder fixture · the "to be announced" rendering and the no-dummy-products scan · revision immutability and hash match · the required-statement checks.
+**Docs:** `docs/legal/compliance.md` · `docs/architecture/adr/026-global-giveaway-hong-kong-law.md` · `docs/features/legal-and-dsr.md` · `docs/ops/launch-cutover.md`
 
 ### E7-03 — The entry ledger
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
 
-**Build:** `accrue()` writing `giveaway_entry` with `rules_version` and `source_edge_id`, idempotent via the unique constraint. Base entry on verification, plus entries per confirmed referral.
+**Build:** `accrue()` writes `giveaway_entry` with `rules_version`, `rules_sha256` and `source_edge_id`, and is idempotent through the unique constraint. One base entry on verification, plus one entry for each confirmed referral (a unique referred person who verifies). A forward-only migration adds `giveaway_entry.rules_sha256` as not-null, with its constraint (standing rule 19).
 
 **Acceptance criteria:**
-- **No entry accrues for an unverified subscriber**
+- **No entry accrues for a subscriber E7-01 finds ineligible**
 - **A retry never double-credits** — asserted under genuine concurrency against a real database
-- Every accrual stores its `rules_version`
+- Every accrual stores the `rules_version` and `rules_sha256` in force
 - **Entries already accrued keep their rules version when the rules change** — asserted
 - Voiding a referrer's entries **leaves the entries of the people they referred intact**
 
-**Tests:** Concurrent double-accrual · the unverified rejection · a mid-campaign rules-change scenario · the voiding scope.
+**Tests:** Concurrent double accrual · the ineligible rejection · a mid-campaign rules-revision scenario · the voiding scope.
 **Docs:** `docs/modules/giveaway.md` · `docs/data/model.md#giveaway_entry`
 
-### E7-04 — AMOE
+### E7-04 — The free entry route and its disclosure
 **Model:** Tier A — Medium · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
 
-**Build:** `POST /api/amoe` — an alternative method of entry with **no referral requirement**, same eligibility rules, Turnstile, rate-limited, recorded with its `rules_version`.
+**Build:** **There is no separate AMOE endpoint** (ADR-026, ADR-027). The ordinary verified signup is the free entry route, and this ticket proves and discloses it. A direct signup with no referral, no purchase and no marketing consent receives the same one base entry as anyone else, and every entry is the same unit in the draw. A "No purchase necessary" line, with a link to `/giveaway/rules`, sits next to the primary signup call to action and beside every giveaway claim, from the copy layer.
 
 **Acceptance criteria:**
-- **Reachable without a referral and without a purchase**
-- **Carries equal weight to an earned entry** — asserted, because unequal weighting defeats the legal purpose
-- Linked from every rules page that requires it
-- Same eligibility gating as referral entries
-- Rate-limited and challenge-protected like any other write route
+- **Entry is reachable without a referral, without a purchase and without marketing consent** — asserted end to end
+- **Every entry carries equal weight** — base and referral entries are identical units in the draw — asserted
+- The disclosure renders next to the primary call to action and links to the current rules page
+- No `POST /api/amoe` route exists, and the `amoe` method value is absent (S-01 removed it)
 
-**Tests:** Equal-weight assertion · the no-referral path · eligibility parity · the rules-page link check.
+**Tests:** End-to-end entry with no referral and no consent · equal weight · disclosure presence · route absence.
 **Docs:** `docs/features/giveaway.md` · `docs/legal/compliance.md`
 
 ### E7-05 — The reproducible draw
 **Model:** Tier B — **Extra High** · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
-**Why this tier:** a draw that cannot be reproduced cannot be defended, and this is the moment the campaign hands out real money to real people who will ask how it was decided.
+**Why this tier:** a draw that cannot be reproduced cannot be defended, and this is the moment the campaign hands prizes to real people who will ask how it was decided.
 
-**Build:** `POST /api/admin/draw` — snapshot the entry ledger, hash it, record the seed, select winners deterministically from seed and snapshot. **`reproduceDraw()` must return true before the result can be published.** A second execution is refused.
+**Build:** `POST /api/admin/draw`. Close entries and snapshot the non-voided entry ledger. **Record and commit the snapshot hash before the seed exists**, then derive the seed from an unpredictable source that is recorded with the draw and obtainable only after the commit. Select winners deterministically from the seed and snapshot, applying **one prize per person**: once a person is selected, their remaining entries leave the pool. In the same execution, produce an **ordered reserve list** for award-time replacements. **`reproduceDraw()` must return true before the result can be published.** A second execution is refused.
 
 **Acceptance criteria:**
-- **The draw reproduces exactly from its recorded seed and snapshot hash** — asserted, and the publication path checks it
+- **The draw reproduces exactly from its recorded seed and snapshot hash**, including the reserve list — asserted, and the publication path checks it
+- **The snapshot hash is committed before the seed exists** — asserted from the recorded timestamps
 - **A result that does not reproduce cannot be published** — enforced in code
-- **A second execution is refused**
+- **A second execution is refused**; replacements come only from the reserve list
+- **No person wins more than one prize** — asserted
+- **The draw refuses to execute unless the current rules revision lists the bundle contents** — so a "to be announced" prize can never be awarded
 - Selection is proportional to entries and **verifiably so** — tested statistically over a seeded run
 - The top-20 review gate (E5-07) must have passed
 - The whole execution is audited with an actor
 
-**Tests:** Reproduction · the refuse-to-publish path on a mismatch · the second-execution refusal · a seeded statistical proportionality test · the review-gate precondition.
+**Tests:** Reproduction including reserves · commit-before-seed ordering · refusal while bundle contents are unannounced · refusal to publish on a mismatch · refusal of a second execution · one prize per person · a seeded statistical proportionality test · the review-gate precondition.
 **Docs:** `docs/modules/giveaway.md` · `docs/features/giveaway.md`
 
-### E7-06 — Winner notification and the award record
-**Model:** Tier A — Medium · **Priority:** High · **Flag:** `giveaway.open` · **Area:** backend
+### E7-06 — Award-time checks, notification and the award record
+**Model:** Tier B — Medium · **Priority:** High · **Flag:** `giveaway.open` · **Area:** backend
+**Why this tier:** it is the only place the campaign collects any location, and it runs the sanctions check before a prize is delivered.
 
-**Build:** Notify winners, record the award against the entry snapshot that produced it, and apply the substitution clause path if a prize is unavailable.
+**Build:** Notify provisional winners, with notification idempotent on its business key. Then collect **from provisional winners only**, through a status-token-authenticated, Turnstile-protected form: their country of residence and confirmation that they are 18 or over. **No postal address:** prizes are Valstara digital goods, delivered electronically. **Screen the country against the sanctioned-jurisdiction list**, which is configuration rather than code. A winner resident in Canada must answer a skill-testing question correctly. A provisional winner who fails a check, or does not respond by the deadline stated in the rules, is replaced by the next reserve from E7-05, never by a new draw. Record the award against the entry snapshot that produced it, and apply the ADR-026 substitution path when a product is unavailable: the winner first chooses replacement products so the bundle keeps at least its stated retail value, and if they want none, the promoter pays the unavailable product's retail value in cash, as a last resort. A product that isn't available in the winner's region follows the same substitution path. Winner publicity follows the rules, and any photograph or testimonial needs separate, optional permission. This ticket creates `giveaway_award`, with its constraints, grants and retention (standing rule 19).
 
 **Acceptance criteria:**
+- **Only a provisional winner's country of residence is collected, and no postal address** — asserted; no other path stores location
+- **A winner in a sanctioned jurisdiction is replaced from the reserve list**, and the list is configuration — asserted. **An empty list is valid** (the founder adds it later) and must not fail an award
+- A winner resident in Canada cannot be confirmed without a correct skill-testing answer
+- Missing the response deadline, or failing the age confirmation, moves the prize to the next reserve — tested with an injected clock
 - **The award record references the entry snapshot that produced it**, not the current state
-- Notification is idempotent on its business key
-- The substitution path is implemented, because the rules pages promise it
-- Every award is audited
+- The substitution path is implemented in its three steps — replacement products chosen by the winner keeping at least the stated retail value, then cash for the unavailable product only if the winner declines — because the rules page promises it
+- Every award, replacement and check outcome is audited; publicity consent is separate and optional
 
-**Tests:** Idempotent notification · the snapshot reference · the substitution path.
-**Docs:** `docs/features/giveaway.md`
+**Tests:** Winner-only collection · sanctions replacement, including an empty list · the Canadian skill-testing question · deadline expiry with an injected clock · the snapshot reference · idempotent notification · the substitution path.
+**Docs:** `docs/features/giveaway.md` · `docs/legal/compliance.md#4-giveaway--one-global-draw-under-hong-kong-law` · `docs/data/model.md`
 
 ---
 
@@ -1215,34 +1276,36 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this tier:** two of the campaign's three unrecoverable failures live in this module, and both of them are silent.
 
-**Build:** `src/server/email` per `docs/modules/email.md`: `queue()` with a unique `business_key`, batch-capped `dispatch()` with backoff, suppression **re-checked at dispatch**, and the provider interface. **A send failure never rolls back or blocks the caller's transaction.** For each queued message, mint an `unsubscribe`-purpose token and bind it to its originating `email_send` row, which is the server-side source of its template. The required binding schema and constraints ship in this ticket with token minting.
+**Build:** `src/server/email` per `docs/modules/email.md`: `queue()` with a unique `business_key`, batch-capped `dispatch()` with backoff, suppression **re-checked at dispatch**, and the provider interface. **Broadcast (marketing) messages also re-check current marketing consent at dispatch** (ADR-027), so a withdrawal written after queueing still stops the send. **A send failure never rolls back or blocks the caller's transaction.** For each queued message, mint an `unsubscribe`-purpose token and bind it to its originating `email_send` row, which is the server-side source of its template. The required binding schema and constraints ship in this ticket with token minting.
 
 **Acceptance criteria:**
 - **One email per business key** — enforced by the database, asserted under genuine concurrency
 - **A suppression written between queue and dispatch stops the send** — asserted by test
+- **A marketing-consent withdrawal written between queue and dispatch stops a broadcast send**, and does not stop a transactional one — asserted by test
 - Each unsubscribe token resolves its source template through its bound `email_send` row, never from caller input
 - **A provider outage leaves the subscriber row committed** and the send queued — asserted
 - Dispatch is batch-capped with bounded backoff, and a permanent failure raises an operator task
 - Every message carries a plain-text alternative and a working one-click unsubscribe
 - **No vendor SDK is imported outside `providers/`** — the boundary gate passes
 
-**Tests:** Concurrent duplicate-key attempt · the queue-then-suppress race · unsubscribe-token binding to an `email_send` template · outage isolation · batch cap · backoff bounds.
+**Tests:** Concurrent duplicate-key attempt · the queue-then-suppress race · the queue-then-withdraw race for broadcast versus transactional · unsubscribe-token binding to an `email_send` template · outage isolation · batch cap · backoff bounds.
 **Docs:** `docs/modules/email.md` · `docs/architecture/adr/009-split-email-providers.md`
 
 ### E6-06 — Unsubscribe and preferences
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this tier:** a failed unsubscribe is a legal problem and a trust problem in the same moment.
 
-**Build:** One-click unsubscribe (RFC 8058 `List-Unsubscribe-Post`) and a confirmable page, both writing `suppression`. Consume the `unsubscribe`-purpose token and resolve its source template **server-side from the E8-01 token-to-`email_send` binding**, never from caller input. E8-01 owns the dispatch-time suppression re-check and its queue-then-suppress race assertion; E8-03 embeds this route's URL in every template. Founder-authorised reorder 2026-09-23: E8-01 → E6-06 → E8-03.
+**Build:** One-click unsubscribe (RFC 8058 `List-Unsubscribe-Post`) and a confirmable page. **Per ADR-027, unsubscribing from a marketing message withdraws marketing consent only** (an audited `consent.marketing_withdrawn` event); the person keeps their waitlist place and giveaway entries. Unsubscribing from a transactional message, or choosing "leave the waitlist" on the page, writes `suppression`. Consume the `unsubscribe`-purpose token and resolve its source template **server-side from the E8-01 token-to-`email_send` binding**, never from caller input. E8-01 owns the dispatch-time suppression re-check and its queue-then-suppress race assertion; E8-03 embeds this route's URL in every template. Founder-authorised reorder 2026-09-23: E8-01 → E6-06 → E8-03.
 
 **Acceptance criteria:**
 - **One click, no confirmation maze, no retention plea** — the copy rules forbid it and so does the law's spirit
-- Unsubscribing writes one global suppression that applies to **both** providers
+- A marketing-message unsubscribe withdraws marketing consent, leaves waitlist status and giveaway entries untouched, and is audited
+- A transactional-message unsubscribe or "leave the waitlist" writes one global suppression that applies to **both** providers
 - The token is single-use per the verification module's rules
 - Every unsubscribe is recorded with its source template resolved from the token binding
 - A caller-supplied template value is rejected and cannot affect the recorded source
 
-**Tests:** The one-click POST path · single-use consumption · cross-provider global suppression · source-template resolution from the bound `email_send` row, including rejection of a form-supplied template.
+**Tests:** The one-click POST path · single-use consumption · marketing-only withdrawal leaving entries intact · cross-provider global suppression · source-template resolution from the bound `email_send` row, including rejection of a form-supplied template.
 **Docs:** `docs/modules/email.md` · `docs/legal/compliance.md`
 
 ### E8-02 — The Resend provider and domain authentication
@@ -1263,7 +1326,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E8-03 — The six transactional templates
 **Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
-**Build:** Verification, verification reminder, welcome, milestone reached, status link, and giveaway entry receipt. One shared layout, tokens where email clients support them, **plain-text alternative for every one.** All copy from the copy layer. The welcome and milestone templates render referral status from `ReferralService.status`, including a plain settled-versus-held distinction. Those renderings and the cross-surface parity assertion were assigned here by founder authorisation on 2026-09-14.
+**Build:** Verification, verification reminder, welcome, milestone reached, status link, and giveaway entry receipt (entries, and a link to the immutable global rules version that governs them — no jurisdiction). One shared layout, tokens where email clients support them, **plain-text alternative for every one.** All copy from the copy layer. The welcome and milestone templates render referral status from `ReferralService.status`, including a plain settled-versus-held distinction. Those renderings and the cross-surface parity assertion were assigned here by founder authorisation on 2026-09-14.
 
 **Acceptance criteria:**
 - All six exist with plain-text alternatives
@@ -1295,16 +1358,16 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E8-05 — The Brevo provider and contact sync
 **Model:** Tier A — High · **Priority:** High · **Flag:** `email.broadcast` · **Area:** backend
 
-**Build:** `providers/brevo.ts` on `mail.valstara.com`. **Idempotent, resumable contact sync keyed on `email_normalised`**, syncing only verified, unsuppressed subscribers.
+**Build:** `providers/brevo.ts` on `mail.valstara.com`. **Idempotent, resumable contact sync keyed on `email_normalised`**, syncing only verified, unsuppressed subscribers **with current marketing consent** (ADR-027). A withdrawal removes the contact from broadcast lists on the next sync, and dispatch re-checks consent regardless.
 
 **Acceptance criteria:**
-- **Only verified, unsuppressed subscribers are synced** — asserted
+- **Only verified, unsuppressed, marketing-consented subscribers are synced** — asserted, including a withdrawn subscriber being removed
 - The sync is **idempotent and resumable on partial failure** — a retry produces no duplicates
 - **PostgreSQL remains the source of truth**; Brevo state is never read back as authoritative
 - The flag gates all broadcast sending; **transactional mail is unaffected by it**
 - Batch-capped
 
-**Tests:** Idempotent resync · a partial-failure resume · the verified-only assertion · flag isolation from transactional.
+**Tests:** Idempotent resync · a partial-failure resume · the verified-and-consented-only assertion · withdrawal removal · flag isolation from transactional.
 **Docs:** `docs/modules/email.md`
 
 ### E8-06 — Bounce and complaint handling
@@ -1333,7 +1396,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 - Composed from the shared layout with a plain-text alternative
 - **The top-10 block renders from the same snapshot the site uses** — one source, no divergence
 - **The counts are real** — no rounding, no inflation
-- Sent only to verified, unsuppressed subscribers
+- Sent only to verified, unsuppressed subscribers **with current marketing consent** (ADR-027)
 - With `leaderboard.public` off, **this block is the surface, and it still works**
 
 **Tests:** Snapshot parity with the site · the flag-off scenario · the recipient-set assertion.
@@ -1421,6 +1484,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 - **The build fails if either representative field is a placeholder** — fixture-proven
 - **The signup route is unreachable while the assertion fails** — asserted, not documented
 - Every collected field, its purpose, its lawful basis and its retention period appears in the policy — **reconciled against `docs/data/model.md` by a test**
+- **The policy states the ADR-027 split plainly:** joining and entering run on contract, marketing runs on separate optional consent, and withdrawing marketing never affects the waitlist place or entries. It also names the winner-only collection of country and address (ADR-026)
 - The cookie and storage inventory is published and lists **exactly one** entry
 - Pages are at their permanent URLs
 
@@ -1556,7 +1620,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — Medium · **Priority:** High · **Flag:** — · **Area:** admin
 **Why this tier:** it is the one route that emits the entire list, on a box with hard memory limits and no swap.
 
-**Build:** `GET /api/admin/export.csv` — **streamed, batch-capped**, audited with a row count. The export set is exactly *verified, unsuppressed, not disqualified.*
+**Build:** `GET /api/admin/export.csv` — **streamed, batch-capped**, audited with a row count. The export set is exactly *verified, unsuppressed, not disqualified*, and every row carries its marketing-consent state (ADR-027).
 
 **Acceptance criteria:**
 - **Streamed and batch-capped** — asserted with a large seeded dataset, with memory observed
@@ -1639,11 +1703,11 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 **Why this tier:** an unverifiable claim on a trust brand is disproportionately expensive, and this is the last check before anyone sees it.
 
-**Build:** Audit every customer-visible claim: **every giveaway claim matches the rules page for that jurisdiction** · every number shown is the real number · no countdown, no scarcity, no inflated position, no pre-checked box · the guarantee and sourcing statements match the source documents exactly · the data claims describe what actually happens.
+**Build:** Audit every customer-visible claim: **every giveaway claim matches the current global rules page** (ADR-026) · every number shown is the real number · no countdown, no scarcity, no inflated position, no pre-checked box · the guarantee and sourcing statements match the source documents exactly · the data claims describe what actually happens.
 
 **Acceptance criteria:**
 - **Every claim on the site is true and checkable** — enumerated, with its source named
-- **Every giveaway claim reconciles with its jurisdiction's rules page**
+- **Every giveaway claim reconciles with the current global rules page** — prize and value within the ADR-026 limits, "no purchase necessary", 18+, one prize per person, the odds wording
 - The forbidden-copy scan is clean across pages, copy layer and email templates
 - **No dark pattern is present anywhere** — enumerated against `docs/brand/copy-rules.md#never-build`
 - No placeholder text remains anywhere
@@ -1663,6 +1727,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 - **The storage inventory holds exactly one entry** and reconciles with the gate allowlist
 - **No full IP address appears in any table, log line, alert or response** — verified by inspection, not by assertion
 - Every dependency reaching the browser is enumerated with what it loads
+- **The ADR-027 consent split holds end to end:** signup and entry succeed with the marketing box unticked, no broadcast reaches a subscriber without current consent, withdrawal leaves waitlist status and entries intact, and the launch-access notification's classification as a requested service message is confirmed and recorded
+- **No country or location is collected anywhere except from a provisional winner at award time** (ADR-026)
 - **Any violation found is a blocking finding**
 
 **Tests:** A generated test over every registered route asserting response-shape safety; the full page inventory check.
@@ -1678,7 +1744,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Acceptance criteria:**
 - The export set is exactly *verified, unsuppressed, not disqualified* — asserted, so a **pending or `expired` row is absent** (E3-08's deferred handoff-exclusion assertion, owned here — standing rule 20)
-- **Every field in the handoff contract is present and correctly typed**
+- **Every field in the handoff contract is present and correctly typed**, including the marketing-consent state the storefront must honour (ADR-027); no `country` field exists (ADR-026)
 - **Running the import twice produces zero additional customers** — the invariant, asserted, and a failure here is blocking
 - **Customer groups `wave-1`…`wave-4` and `subslush-legacy` are assigned**, and their values match what the storefront expects
 - **Both rehearsals are executed against a scratch database and recorded in the repository**
@@ -1712,7 +1778,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 - **Both Article 27 representatives named**, and the build assertion passing
 - **SPF, DKIM and DMARC verified on all three sending domains**, and a seed test landing in the inbox at all four providers
 - **Both ESP tiers upgraded past the free caps**
-- Every giveaway rules page published, and its jurisdiction reconciling with the eligibility table
+- The global giveaway rules page published, its current `rules_version` and SHA-256 recorded, and the prize pool within the ADR-026 limits
 - MFA active on the admin account
 - Backups running and **a restore drilled with its timing recorded**
 - **No live provider key is present anywhere in the repository or local environment** — verified. **Installing live keys on the host is E12-07**, and the campaign does not open until that ticket's gate passes
@@ -1809,13 +1875,13 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this tier:** an origin reachable around the proxy defeats the caching the spike plan depends on and exposes the box directly.
 
-**Build:** Put the zone in front of the host, proxied. Restrict the origin to Cloudflare. Move Turnstile and Web Analytics to production keys. Implement and verify the recorded landing-cache contract: a ref-less/default-flag response is cached with country plus `X-Valstara-Flag-Generation` in the custom key; `?ref=` and non-default flag states remain `private, no-store`. Verify static-asset cache behaviour as well.
+**Build:** Put the zone in front of the host, proxied. Restrict the origin to Cloudflare. Move Turnstile and Web Analytics to production keys. Implement and verify the recorded landing-cache contract: a ref-less/default-flag response is cached with `X-Valstara-Flag-Generation` in the custom key (no country since ADR-026); `?ref=` and non-default flag states remain `private, no-store`. Verify static-asset cache behaviour as well.
 
 **Acceptance criteria:**
 - **The origin is not reachable except through Cloudflare** — verified by attempting a direct connection, from outside
 - TLS terminates correctly; no mixed content; security headers as documented
 - **Turnstile verifies server-side with production keys**, and a failure still fails closed
-- **The anonymous/default landing page and static assets are served from Cloudflare's cache** — cache-status and cache-key assertions cover two countries and two flag generations; `?ref=` and a non-default flag state are confirmed misses with `private, no-store`
+- **The anonymous/default landing page and static assets are served from Cloudflare's cache** — cache-status and cache-key assertions cover two flag generations and prove the key does not vary by country; `?ref=` and a non-default flag state are confirmed misses with `private, no-store`
 - Cloudflare Web Analytics reports, and **still sets no cookie** — the privacy gate re-run against the live site
 
 **Tests:** Direct-origin attempt; cache-status assertions; the rendered-page privacy check against production.
@@ -1872,15 +1938,16 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 | E4 Referral engine | 9 | Codes, signed capture, edges, confirmation, milestones, **reward gating**, waves, status, repair |
 | E5 Fraud and integrity | 8 | Blocklist, flags, IP handling, admin authentication, review queue, disqualification, board integrity, top-20 gate |
 | E6 Leaderboard, survey, member area | 5 | Snapshot, island, survey, status link, dashboard |
-| E7 Giveaway | 6 | Eligibility, rules pages, entry ledger, AMOE, **reproducible draw**, awards |
+| S-01 Standalone | 1 | **Align built work with the Hong Kong giveaway strategy** (ADR-026, ADR-027) — runs before E7 |
+| E7 Giveaway | 6 | Entry eligibility, **one global rules page**, entry ledger, free entry route, **reproducible draw**, awards |
 | E8 Email | 10 | Service, unsubscribe, Resend, templates, seed tests, Brevo, bounces, weekly, **migration send**, quotas |
 | E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, **the representative gate**, inventory, DSR, SEO, OG, llms.txt |
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
-| **Total** | **96** | |
+| **Total** | **97** | |
 
-**Tier distribution:** Tier B Extra High 4 · Tier B High 16 · Tier B Medium 29 · Tier A High 16 · Tier A Medium 31.
+**Tier distribution:** Tier B Extra High 4 · Tier B High 16 · Tier B Medium 30 · Tier A High 16 · Tier A Medium 31. *(2026-09-25: S-01 added at Tier B High; E7-01 moved from Tier B High to Tier A Medium once jurisdiction gating was removed; E7-06 moved from Tier A Medium to Tier B Medium because it now collects winners' addresses and runs the sanctions check.)*
 
 **Tier B carries the personal data, the privacy properties, the fraud invariants, the prize draw, the sending reputation and the handoff** — the places where a mistake is expensive, subtle, or discovered too late to fix. Tier A carries the well-specified majority.
 
@@ -1890,7 +1957,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 ## Effort reconciliation
 
-The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 96 tickets at roughly 1.4 hours each. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
+The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
 
 | Cut | Removes | Saves |
 |---|---|---|

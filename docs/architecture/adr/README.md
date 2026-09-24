@@ -26,7 +26,8 @@ Architecture decision records for the Valstara pre-launch site. One file per sig
 | 006 | Cloudflare Turnstile for bot defence | Accepted |
 | 007 | Cookieless analytics and no consent banner | Accepted |
 | 008 | Server-side referral attribution via a signed field, never a cookie | Accepted |
-| 011 | Double opt-in, unconditional | Accepted |
+| 011 | Double opt-in, unconditional | Accepted — amended by 027 |
+| 027 | Joining and entering are separate from marketing consent | Accepted |
 | 012 | Reward gating — high-value rewards held to a post-launch first order | Accepted |
 | 013 | No device fingerprinting | Accepted |
 | **Email** | | |
@@ -39,16 +40,17 @@ Architecture decision records for the Valstara pre-launch site. One file per sig
 | 017 | Trust and legal copy as content files at permanent URLs | Accepted |
 | 024 | No countdown timers, inflated positions or manufactured scarcity | Accepted |
 | **Campaign mechanics and law** | | |
-| 018 | Giveaway jurisdiction exclusions enforced at point of entry | Accepted |
+| 018 | Giveaway jurisdiction exclusions enforced at point of entry | Superseded by 026 |
 | 019 | EU and UK Article 27 representatives named before the first signup | Accepted |
 | 020 | Build the waitlist rather than buy a hosted one | Accepted |
 | 023 | Campaign flags with code-level fail-safe defaults | Accepted |
 | 025 | Campaign business config — tier ladder, wave bands, survey v1 | Accepted |
+| 026 | One global giveaway under Hong Kong law, with no jurisdiction gating | Accepted |
 | **Transition** | | |
 | 021 | Launch is a host cutover at the DNS layer, not a deploy | Accepted |
 | 022 | The waitlist database is frozen read-only for 90 days after handoff | Accepted |
 
-25 Accepted · 0 Proposed.
+26 Accepted · 1 Superseded · 0 Proposed.
 
 ## Open items
 

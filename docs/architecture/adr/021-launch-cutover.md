@@ -23,4 +23,4 @@ The pre-launch site occupies `valstara.com` for twelve weeks. With a shared repo
 Two consequences that are easy to miss and are therefore checklisted:
 
 - **`/verify` and `/api/*` disappear at cutover**, so any live verification token stops working. The final reminder goes out *before* the freeze.
-- **`/giveaway/rules/*` must be retained, not redirected**, for the statutory retention period.
+- **`/giveaway/rules` and its immutable revisions must be retained, not redirected**, for 12 months after the final award (ADR-026; Valstara policy rather than a statute).

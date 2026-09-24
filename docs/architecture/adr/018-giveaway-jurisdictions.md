@@ -1,8 +1,10 @@
 # ADR-018: Giveaway jurisdiction exclusions enforced at point of entry
 
-- Status: Accepted
+- Status: Superseded by ADR-026 (2026-09-25)
 - Date: 2026-08-25
 - Deciders: founder
+
+> **Superseded.** The giveaway is now one global draw under Hong Kong law with no jurisdiction gating, and no country is collected at signup (ADR-026). This record is kept unchanged as history.
 
 ## Context
 Several target markets regulate promotional prize draws directly, in ways that are disproportionate for a campaign of this size: Italy requires local data hosting and a ministry notification; Poland requires permits and bank guarantees; Spain requires the draw to occur in Spain and taxes the prize at 10%; the Nordics have restrictive regimes; Quebec has its own, separate from the rest of Canada.

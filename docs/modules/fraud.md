@@ -39,7 +39,7 @@ interface FraudService {
   flags first, then IP velocity, duplicate identity, self-referral, disposable
   domain, challenge timeout and no-MX signals; equal-priority flags are oldest
   first. Each item carries the structured flag detail plus the subject's
-  status, domain, country, referral count, tier and verification timestamps, so
+  status, domain, referral count, tier and verification timestamps, so
   the operator can decide without opening the database. Evidence is recursively
   redacted before it reaches the response, so a legacy/manual detail cannot
   expose a token or raw IP address.

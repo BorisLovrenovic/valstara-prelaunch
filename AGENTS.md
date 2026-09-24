@@ -40,7 +40,7 @@ This repository builds the **Valstara pre-launch waitlist site**. You are workin
 4. **Referral attribution is server-side and signed.** No cookie, no client-side attribution path.
 5. **One email per business key**, and **suppression is re-checked at dispatch**, not only at queue time.
 6. **A verification token is stored only as its hash**; a replay returns success, not an error.
-7. **Giveaway eligibility is decided at point of entry** and stamps its `rules_version`.
+7. **Every giveaway entry stamps the `rules_version` and rules hash in force when it accrues.** The giveaway is one global draw under Hong Kong law: **no country or location is collected except from a provisional winner at award time**, and entry never depends on marketing consent (ADR-026, ADR-027).
 8. **A draw is not published until it reproduces** from its recorded seed and snapshot hash.
 9. **A full IP address is never stored, logged or returned** — truncate, then hash with the server-side pepper.
 10. **No analytics event property carries personal data.**

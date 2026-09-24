@@ -27,9 +27,6 @@ The waitlist row.
 | `email_normalised` | text not null **unique** | Lowercased, `+tag` stripped, dots removed for Gmail-family domains. **The uniqueness key** |
 | `email_domain` | text not null | Denormalised for blocklist and analytics queries |
 | `status` | text not null | `pending` · `verified` · `expired` · `unsubscribed` · `bounced` · `disqualified` |
-| `country` | char(2) | ISO 3166-1 alpha-2. **Confirmed by the person**, never by detection |
-| `country_detected` | char(2) | Reserved for the `CF-IPCountry` suggestion at signup — diagnostic only, never drives eligibility. **Unpopulated as of E3-04**: the geo module (`src/server/geo`) returns the suggestion for prefill only, and no ticket yet stamps it onto the row. Column exists from E1-03 so a later ticket can write it additively |
-| `region` | text | Only collected where it changes eligibility — currently Canada, for Quebec (ADR-018) |
 | `category_preference` | text[] | From the survey. Carried into the handoff |
 | `source` | text | Bucketed acquisition source |
 | `utm` | jsonb | `source`, `medium`, `campaign`, `content`, `term`; null when none. Captured server-side with the signed referral field; each value is trimmed, control-character-free and capped at 128 characters, with the serialized object capped at 512 bytes. Analytics-only |
@@ -39,8 +36,11 @@ The waitlist row.
 | `confirmed_referrals` | int not null default 0 | **Derived** from `referral_edge`; recomputable |
 | `access_window` | text | `wave-1`…`wave-4`. Assigned at verification from tier and verification order; band thresholds are config (ADR-025) |
 | `subslush_customer` | boolean not null default false | Provenance. Becomes the `subslush-legacy` group at handoff |
-| `giveaway_eligible` | boolean | Decided **at signup** against the rules version then in force |
-| `giveaway_rules_version` | text | **The rules version that decided `giveaway_eligible`.** Written with it at signup, so an eligibility decision stays explainable after the rules change. Distinct from `giveaway_entry.rules_version`, which stamps each accrual |
+| `giveaway_rules_version` | text | **The global rules version in force when the subscriber first became a giveaway entrant** (E7-01). Written once and never overwritten; null until then. Distinct from `giveaway_entry.rules_version`, which stamps each accrual |
+| `marketing_consent_at` | timestamptz null | **When the current marketing consent took effect** — at verification for a signup opt-in, or immediately for an opt-in from `/me`. Null means no marketing consent (ADR-027) |
+| `marketing_consent_version` | text null | The version of the opt-in wording the person agreed to |
+| `marketing_consent_source` | text null | `signup` · `member_status`. `marketing_consent_at`, `_version` and `_source` are all null or all set (check constraint) |
+| `marketing_opt_in_pending` | boolean not null default false | The box was ticked at signup and is waiting for verification. **No marketing consent exists until verification confirms it** |
 | `signup_ip_prefix_hash` | bytea | See *IP handling*. Purged at 90 days |
 | `verified_at` `unsubscribed_at` `expired_at` `disqualified_at` | timestamptz | |
 | `disqualification_previous_status` | text null | Status restored only by reversing the flag that disqualified the subscriber |
@@ -104,9 +104,9 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 ## `giveaway_entry`
 
-`id` · `subscriber_id` · `method` (`base` · `referral` · `amoe`) · `entries` int · `jurisdiction` char(2) · `rules_version` text · `source_edge_id` uuid null · `voided_at` · `voided_by_disqualification_flag_id` uuid null → `fraud_flag` · `created_at`. Unique with `NULLS NOT DISTINCT` on `(subscriber_id, method, source_edge_id)` so a retry cannot double-credit when `source_edge_id` is null.
+`id` · `subscriber_id` · `method` (`base` · `referral`) · `entries` int · `rules_version` text · `rules_sha256` bytea not null (added by E7-03) · `source_edge_id` uuid null · `voided_at` · `voided_by_disqualification_flag_id` uuid null → `fraud_flag` · `created_at`. Unique with `NULLS NOT DISTINCT` on `(subscriber_id, method, source_edge_id)` so a retry cannot double-credit when `source_edge_id` is null.
 
-**`rules_version` is stamped at accrual.** Entries keep the rules that were in force when they accrued — that is what makes a mid-campaign rules change survivable (`docs/architecture/fallbacks.md`).
+**`rules_version` and `rules_sha256` are stamped at accrual.** There is one global rules page (ADR-026) and no jurisdiction column; S-01 dropped `jurisdiction` and the `amoe` method, because the ordinary verified signup is the free entry route. Entries keep the rules that were in force when they accrued — that is what makes a mid-campaign rules revision survivable (`docs/architecture/fallbacks.md`).
 
 When a human upholds a fraud flag, only that referrer's `referral` entries are
 voided and tied to the flag. Reversing that decision restores those entries;
@@ -114,7 +114,11 @@ the referred subscribers' entries are never affected.
 
 ## `giveaway_draw`
 
-`id` · `executed_at` · `seed` text · `entry_snapshot_hash` bytea · `winners` jsonb · `executed_by` · `reproduced_at`. **A draw is not published until it reproduces from its recorded seed and snapshot hash.**
+`id` · `executed_at` · `seed` text · `entry_snapshot_hash` bytea · `winners` jsonb · `executed_by` · `reproduced_at`. E7-05 adds the commit time of the snapshot hash and the ordered reserve list. **A draw is not published until it reproduces from its recorded seed and snapshot hash**, reserve list included. One prize per person.
+
+## `giveaway_award`
+
+Created by E7-06. One row per prize: the draw, the provisional winner, the award state (`notified` · `confirmed` · `replaced` · `delivered`), the winner's **country of residence — the only location data the campaign holds, collected from provisional winners at award time; no postal address, because prizes are delivered electronically** (ADR-026), the delivery record, the age confirmation, the sanctions-check and Canadian skill-testing outcomes, any substitution, and optional publicity consent. Kept 6 years with the draw records.
 
 ## `top_twenty_review_batch` and `top_twenty_review`
 
@@ -210,7 +214,9 @@ The pepper is a secret with a handling procedure of its own: rotating it invalid
 | Unverified `pending` subscribers | Campaign-configured horizon (default 30 days) | Daily expiry sweep → `expired` |
 | Verification and status tokens | Purged 30 days after expiry | Daily, 1,000-row-capped sweep; P1 on failure |
 | `rate_limit_bucket` | 7 days | Daily cleanup |
-| Giveaway rules pages and entry records | The statutory retention period for the relevant jurisdictions, then `410` | Manual, checklisted |
+| The public giveaway rules page | 12 months after the final award, then `410` (Valstara policy, not a statute) | Manual, checklisted |
+| Every rules revision, entry snapshot, seed, reserve list and award record | 6 years internally (Valstara policy) | Manual, checklisted |
+| Marketing-consent evidence | While consent is relied on, plus the evidential period after withdrawal | Audit log |
 | The whole database after handoff | **Read-only for 90 days as the audit trail**, then reviewed for deletion | ADR-022 |
 | Everything else | Until handoff, then per the storefront's policy | — |
 
@@ -229,7 +235,8 @@ This is what the schema exists to make trivial. Prelaunch owns the export and th
 | `email` (raw) | The customer email |
 | `email_normalised` | **The idempotency key for the import** |
 | `referral_tier`, `referral_code`, `confirmed_referrals` | Customer metadata |
-| `country`, `category_preference`, `source` | Customer metadata |
+| `category_preference`, `source` | Customer metadata |
+| `marketing_consent_at`, `marketing_consent_version`, `marketing_consent_source` | Customer metadata. **The storefront may send marketing only where consent is present** (ADR-027) |
 | `access_window` | Customer metadata **and** the customer group |
 | `subslush_customer` | The `subslush-legacy` group |
 

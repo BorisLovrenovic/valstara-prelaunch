@@ -139,7 +139,7 @@ Supporting layers, in order of value per hour: address normalisation before uniq
 
 No i18n framework. A reviewed six-language pass over 3–5k words of trust and legal copy is €500–2,000 — 10–40% of the entire marketing budget, spent on the throwaway artifact. Serve English at the **root**, not `/en/`, so adding `/de/` later is additive rather than a site-wide redirect. Astro's i18n routing is there when the store needs it.
 
-Country selector: dropdown, pre-filled from geo-IP, always overridable. With Cloudflare proxying the site, use the free **`CF-IPCountry`** header. (The v1 note about `x-vercel-ip-country` no longer applies.) The field drives giveaway eligibility, the VAT story and the access wave — never let detection silently decide it.
+Country selector: dropdown, pre-filled from geo-IP, always overridable. With Cloudflare proxying the site, use the free **`CF-IPCountry`** header. (The v1 note about `x-vercel-ip-country` no longer applies.) The field drives giveaway eligibility, the VAT story and the access wave — never let detection silently decide it. *(Superseded 2026-09-25 by ADR-026: no country is collected and the giveaway is one global draw under Hong Kong law.)*
 
 ### Fonts
 
@@ -154,7 +154,7 @@ Pre-launch site on the **root domain**. Build trust and legal pages at their **p
 | `/` | Waitlist landing page | Storefront home. Same URL, new content. |
 | `/legit`, `/guarantee`, `/about` | Trust content | Port to storefront, same URLs |
 | `/terms`, `/privacy` | Legal | Port and revise in place |
-| `/giveaway/rules/*` | Per-jurisdiction rules | Keep live for the statutory retention period, then `410` |
+| `/giveaway/rules/*` | Per-jurisdiction rules *(superseded by ADR-026: one global page, public 12 months after the final award)* | Keep live for the statutory retention period, then `410` |
 | `/waitlist`, `/leaderboard`, `/me` | Campaign mechanics | `301` to `/` and the account area |
 
 With separate repos, launch is a **host cutover at the DNS/proxy layer** on `valstara.com`, not a deploy. Plan it as a checklist item with the trust-page port completed and verified beforehand.
@@ -228,7 +228,7 @@ Plus, deferred to store launch as a consequence of the separate repo: **~15–25
 
 1. **The SubSlush migration send lands in spam** — highest impact, unrepeatable. Send from subslush.com, full authentication, staged batches, validate first.
 2. **Verification email failure kills the funnel silently** — looks identical to poor conversion. Alert on verification *rate*; weekly seed tests into Gmail, Outlook, GMX and Web.de.
-3. **GDPR exposure** — Article 27 EU representative plus a UK one, named in the privacy policy before the first signup. Exclude Italy, Poland, Spain, Quebec and the Nordics from the giveaway at point of entry (Italy: local data hosting and ministry notification; Poland: permits and bank guarantees; Spain: draw must occur in Spain plus 10% prize tax).
+3. **GDPR exposure** — Article 27 EU representative plus a UK one, named in the privacy policy before the first signup. Exclude Italy, Poland, Spain, Quebec and the Nordics from the giveaway at point of entry (Italy: local data hosting and ministry notification; Poland: permits and bank guarantees; Spain: draw must occur in Spain plus 10% prize tax). *(Superseded 2026-09-25 by ADR-026: no country is collected and the giveaway is one global draw under Hong Kong law.)* The Article 27 representatives are unaffected and still required.
 4. **Referral fraud discredits the leaderboard** — reputational, not financial. Reward-gate, review the top 20 manually, publish the disqualification rule.
 5. **Free-tier cliffs** — upgrade email providers before the giveaway opens.
 6. **Token drift between the two repos** — new in v2. If the pre-launch design system diverges during the campaign, the storefront inherits a subtly different brand. Keep tokens in one portable CSS file and treat it as canonical.

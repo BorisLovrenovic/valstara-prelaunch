@@ -1,6 +1,6 @@
 # ADR-011: Double opt-in, unconditional
 
-- Status: Accepted
+- Status: Accepted — amended by ADR-027 (2026-09-25)
 - Date: 2026-08-25
 - Deciders: founder
 
@@ -13,6 +13,8 @@ A single-opt-in list is larger and worthless: it contains typos, bot rows and ad
 **Nothing counts an unverified row** — not the leaderboard, not a referral tier, not a giveaway entry, not the broadcast list, not the export.
 
 The verification record is also **the consent record** (`docs/legal/compliance.md`): the timestamp, the token consumed and the address it went to are what make consent demonstrable rather than asserted.
+
+> **Amended by ADR-027 (2026-09-25).** Verification proves ownership of the address in every case. It confirms *marketing* consent only for a person who ticked the separate, optional marketing opt-in. Joining the waitlist and entering the giveaway never depend on marketing consent.
 
 ## Alternatives rejected
 - **Single opt-in** — larger number, worse list, and it puts the sending reputation at risk on the first broadcast.

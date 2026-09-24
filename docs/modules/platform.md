@@ -19,17 +19,9 @@ The five small modules, documented together because each is a few hundred lines 
 
 ---
 
-## `geo`
+## `geo` — retired
 
-**Responsibility:** turn the Cloudflare `CF-IPCountry` header into a **suggestion**.
-
-**Rules**
-- The interface is `suggestCountry(headers): string | null`. **There is no method on this module that can decide eligibility** — the shape of the interface is the guardrail.
-- A missing header, or one of Cloudflare's non-country sentinels (`XX` unknown, `T1` Tor), returns `null`, and the selector renders unfilled rather than guessing. A malformed value returns `null` too.
-- The country dropdown is prefilled from the returned suggestion but never bound to it: a code the dropdown does not offer prefills nothing, and the visitor can always override. The **region** field (Canadian provinces) is collected only for Canada — Quebec changes eligibility (ADR-018) — revealed with a CSS `:has()` rule so no client JavaScript is added, and **required server-side** because a CSS-hidden control cannot carry HTML `required`.
-- **Never let detection silently decide the country.** The confirmed value is what drives eligibility, the VAT story and the access wave.
-
-**Contract tests:** missing header returns `null` · `XX` returns `null` · no consumer reads the header directly.
+**Removed by S-01 (ADR-026, 2026-09-25).** No country is collected at signup, so the application reads no `CF-IPCountry` header and has no geo module. A scan asserts that nothing reads the header. The only location data the campaign holds is a provisional winner's country and address, collected at award time by the giveaway module (E7-06).
 
 ---
 

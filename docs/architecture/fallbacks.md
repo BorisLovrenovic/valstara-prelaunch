@@ -53,8 +53,8 @@ Everything else announces itself. These two look exactly like ordinary underperf
 | Referrer disqualified after edges exist | Disqualification action | Edges move to `rejected`; the referred subscribers stay on the list. **A referred person is never punished for their referrer** | Nothing | P2 |
 | Leaderboard snapshot job stops | Snapshot age exceeds threshold | **Last good snapshot keeps serving with its timestamp shown.** Stale is fine; a live query during a spike is not | A visible "as of" timestamp | P2 |
 | Leaderboard credibility incident | Operator judgement, flag review | **Flag `leaderboard.public` off — the board disappears without a deploy.** The top-10 block in the weekly email is the fallback surface | The section is absent, not broken | **P1** decision |
-| Giveaway rules change mid-campaign | Deliberate action | **Entries already accrued keep the rules version in force when they accrued.** Versioned rules are what make this survivable | Both versions published | P2 |
-| Excluded jurisdiction reached the entry step | Eligibility check at entry | Waitlist signup completes; giveaway entry does not accrue, and the reason is stated plainly at that point | "The giveaway isn't open in your country — you're still on the waitlist." | P3 |
+| Giveaway rules change mid-campaign | Deliberate action | **Entries already accrued keep the rules version in force when they accrued.** Every revision is immutable at its own URL | Both versions published | P2 |
+| Provisional winner fails an award-time check (sanctioned country, under 18, Canadian skill question) or misses the deadline | Award-time checks (E7-06) | **The prize moves to the next reserve from the same draw** — never a new draw | Plain notice to the provisional winner | P3 |
 | **Draw cannot be reproduced from its record** | Draw verification step | **Blocking. The draw is not published until it reproduces from the recorded seed and entry snapshot** | Nothing yet | **P1** |
 
 ---
