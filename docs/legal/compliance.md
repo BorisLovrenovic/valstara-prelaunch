@@ -2,7 +2,7 @@
 
 Status: authoritative for **what the code must do**. It is not legal advice, and the reviewed wording of the policy, terms and rules pages is a founder input from qualified counsel.
 
-Three regimes bind this campaign: **GDPR/UK GDPR** on the data, **ePrivacy** on what may be stored on a visitor's device, and **national promotion law** on the giveaway.
+Three regimes bind this campaign: **GDPR/UK GDPR** on the data, **ePrivacy** on what may be stored on a visitor's device, and **Hong Kong law** on the giveaway. Valstara is incorporated in Hong Kong and runs one global giveaway under Hong Kong law; the founder accepts residual foreign promotion-law risk as a business cost (ADR-026, 2026-09-25). Data protection is **not** part of that trade-off: GDPR and UK GDPR apply in full to people in the EU and UK.
 
 ---
 
@@ -24,17 +24,26 @@ An Article 27 representative is a **natural or legal person established in the E
 
 | Data | Purpose | Basis | Retention |
 |---|---|---|---|
-| Email address | Operating the waitlist; the launch announcement | Consent (the double opt-in **is** the consent record) | Until handoff or withdrawal |
-| Country, region | Giveaway eligibility, VAT story, access wave | Consent | As above |
-| Category preference | Launch segmentation | Consent | As above |
-| Referral edges | Running the referral mechanic | Consent | As above; anonymised on erasure |
+| Email address | Operating the waitlist the person joined: verification, status, referral and milestone updates, giveaway entry and winner notices, and the single launch-access notification the waitlist promises | **Contract** — providing the service requested, under the waitlist terms and giveaway rules (Art. 6(1)(b)) | Until handoff, erasure or leaving the waitlist |
+| Email address, for **marketing** | The weekly update, product news, other broadcasts, and storefront marketing after handoff | **Consent** — a separate, optional, unticked opt-in, confirmed by the verification click (ADR-027) | Until withdrawal; withdrawal is recorded and never affects the waitlist place or giveaway entries |
+| Marketing-consent record | Demonstrating consent | Legal obligation (Art. 7(1)) | While consent is relied on, plus the evidential period after withdrawal |
+| Category preference | Launch segmentation | Consent (the survey is optional and skippable) | Until handoff or withdrawal |
+| Referral edges | Running the referral mechanic | Contract | As above; anonymised on erasure |
+| Giveaway entries | Running the draw under its rules | Contract | Draw records 6 years (see §4) |
+| **Provisional winners' country of residence** | Sanctions check, regional availability of the digital goods, Canadian skill-testing question | Contract; legal obligation for the sanctions check | Collected **only from provisional winners, at award time**; 6 years with the award record, or longer if tax law requires. **No postal address** — prizes are delivered electronically |
 | UTM and source | Attribution | Legitimate interest | 12 months |
 | **Truncated hashed IP prefix** | **Fraud prevention on a prize giveaway** | **Legitimate interest** | **90 days, purged daily** |
 | Email delivery events | Deliverability and suppression | Legitimate interest / legal obligation | Campaign + statutory |
 
-**The double opt-in is the consent record**: timestamp, the token that was consumed, and the address it was sent to. That is what makes consent demonstrable rather than asserted.
+**No country or region is collected at signup** (ADR-026). The only location data the campaign holds is a provisional winner's country of residence, collected at award time.
 
-**Withdrawal is one click** and is as easy as giving it — RFC 8058 one-click unsubscribe in every mail, plus the page.
+**Joining and entering never depend on marketing consent** (ADR-027, GDPR Art. 7(4)). The ICO states in terms that consenting to a prize draw is not consenting to marketing. The signup form therefore carries a **separate, optional, unticked** marketing opt-in with versioned wording.
+
+**The double opt-in proves ownership of the address in every case, and confirms marketing consent where it was given.** The marketing-consent record holds the wording version, the source (`signup` or `member_status`), the request, the confirming verification, and every later withdrawal or re-grant as an audited event. That is what makes consent demonstrable rather than asserted.
+
+**To confirm in the privacy audit (E11-05):** that the single launch-access notification is a message the person requested by joining the waitlist, not marketing.
+
+**Withdrawal is one click** and is as easy as giving it. Every marketing mail carries an RFC 8058 one-click unsubscribe that withdraws marketing consent, and `/me` has a marketing on/off control. **Withdrawing marketing consent never removes a person from the waitlist or the giveaway.** Leaving the waitlist entirely is a separate, explicit action that suppresses all mail.
 
 **Erasure anonymises referral edges rather than dropping them.** The edge survives with its subject nulled, so counts stay defensible and no personal data remains. The reasoning is recorded here because it is the kind of decision a supervisory authority would ask about.
 
@@ -60,23 +69,34 @@ Article 5(3) applies to **storing information on, or accessing information alrea
 
 ---
 
-## 4. Giveaway — jurisdiction exclusions
+## 4. Giveaway — one global draw under Hong Kong law
 
-Excluded **at point of entry**, from the confirmed country, and for Canada from the province:
+**Founder decision, 2026-09-25 (ADR-026, superseding ADR-018).** The promoter is the Hong Kong company. The giveaway is governed by Hong Kong law, runs as a single global draw, and **excludes no country at entry**. No Hong Kong Trade Promotion Competition Licence is required for this free-entry draw (founder determination, 2026-09-25).
 
-| Jurisdiction | Reason |
+**The rules the draw is built to:**
+
+| Rule | What it means in practice |
 |---|---|
-| **Italy** | Local data hosting and a ministry notification are required for promotional draws |
-| **Poland** | Permits and bank guarantees |
-| **Spain** | The draw must occur in Spain, plus a 10% prize tax |
-| **Nordics** (Denmark, Finland, Iceland, Norway, Sweden) | Restrictive promotion regimes |
-| **Quebec** | Its own regime, distinct from the rest of Canada — **which is why Canada is the one country where a region is collected** |
+| **No purchase necessary** | The ordinary verified signup is the free entry route. Entry never requires a purchase, a referral or marketing consent. Every entry carries equal weight |
+| **18 or over** | Stated on the signup form and in the rules; confirmed with each provisional winner at award time |
+| **One registration per natural person** | One base entry on verification, plus entries for unique referred people who themselves verify. Multiple identities, self-referral and automation are grounds for disqualification |
+| **One prize per person** | Once a person is selected, their remaining entries leave the pool for later selections |
+| **Small prizes** | Each prize **≤ €449** approximate retail value; the total pool **below US$5,000**, checked at a conservative euro-to-dollar rate recorded in the rules content. Values are stated in euros. **Current prize (P4, 2026-09-25): 5 Valstara product bundles at €300 each, €1,500 in total** |
+| **Honest odds** | Each eligible entry has equal weight; a person's odds are their eligible entries divided by all eligible entries when entries close, subject to one prize per person |
+| **Taxes and delivery** | Winners pay any local taxes on their prize. Prizes are digital goods delivered electronically, at no cost to the winner |
+| **Award-time checks** | Only provisional winners give their **country of residence** (no postal address): for a **sanctions check** against a configured list, which may be empty until the founder adds it (a winner in a listed jurisdiction is replaced from the reserve list), for regional availability of the products (an unavailable product follows the substitution rule), and so a winner resident in **Canada** answers a skill-testing question |
+| **Substitution** | Bundle first; if a product in it is unavailable at award time, the winner picks replacement products so the bundle keeps at least its stated retail value; if the winner wants no replacement, the promoter pays that unavailable product's retail value in cash, as a last resort. Used only when a product becomes unavailable for reasons outside the promoter's control |
+| **Bundle contents** | May be "to be announced": the page then states the prize by value and promises the products will be listed before the draw. Never dummy products on the public page; the draw refuses to run until they are listed |
 
-**An excluded visitor still joins the waitlist.** The giveaway declines, the reason is stated plainly at that point, and nothing else about their signup changes.
+**One rules page, at `/giveaway/rules`.** It carries these sections: eligibility (age, one person, excluded persons) · entry methods including the free route and how referral entries work · the entry period in UTC · the draw date and method · the odds basis · the prize description, approximate retail value and substitution clause · taxes and delivery · award-time verification (age, sanctions, address, the Canadian skill-testing question, and the response deadline) · the disqualification rule · winner publicity · governing law (Hong Kong) · the promoter's identity. Every published version is immutable at `/giveaway/rules/<rules_version>` and is stored with a SHA-256 of its rendered content.
 
-**Every remaining jurisdiction has a rules page** at `/giveaway/rules/*` carrying: eligibility, entry methods **including AMOE**, the entry period, the draw date and method, odds basis, prize description and **substitution clause**, the disqualification rule, and the promoter's identity. **A jurisdiction without a published rules page is excluded** — never served a generic page.
+**Why the prize limits are what they are.** Staying at €449 or less per prize and below US$5,000 in total keeps several foreign regimes from being triggered at all: the Netherlands' gaming-tax line, the New York and Florida registration thresholds, and Austria's duty exemption. They are the zero-cost risk reduction that goes with accepting foreign promotion-law risk.
 
-Rules pages stay live for the statutory retention period after the campaign, then return `410`.
+**Winner publicity is minimal.** Information showing a valid award took place (for example first name and initial of the surname) is published or made available only to the extent needed. Any photograph, testimonial or likeness needs separate, optional permission and is never a condition of the prize.
+
+**Accepted risk, recorded so it is not forgotten.** Some countries regulate or prohibit free chance draws open to their residents; the P4 research (`docs/prerequisites/`) found, for example, that Belgium prohibits them and that Portugal, Italy, Spain and Poland require authorisation or charge prize taxes. A Hong Kong governing-law clause does not remove a consumer's mandatory home-country protections. The founder accepts this for a one-time, pre-launch campaign.
+
+**Retention.** The current rules page stays public for 12 months after the final award. Every rules version, the entry snapshot, seed, reserve list and award records are kept internally for 6 years. Neither period is presented as a statutory requirement; both are Valstara policy.
 
 ---
 

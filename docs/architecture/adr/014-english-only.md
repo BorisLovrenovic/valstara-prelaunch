@@ -18,4 +18,4 @@ The target markets are multilingual, and the site carries 3–5k words of trust 
 ## Consequences
 Serving at the root means **adding `/de/` later is additive rather than a site-wide redirect** — the transition cost is deferred, not increased. Astro's i18n routing is there when the store needs it.
 
-The country selector still exists and still matters: it drives giveaway eligibility, the VAT story and the access wave. **Language and market are separate concerns**, and conflating them is what makes i18n look mandatory when it is not.
+**Language and market are separate concerns**, and conflating them is what makes i18n look mandatory when it is not. *(Amended 2026-09-25: the country selector this paragraph originally cited was removed by ADR-026, and no country is collected at signup.)*

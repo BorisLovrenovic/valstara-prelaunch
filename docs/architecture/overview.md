@@ -20,7 +20,7 @@ Each is re-derived from this campaign and traces to an ADR.
 
 4. **Fraud is answered by economics, not detection.** Cheap rewards confirm on verification; **high-value rewards are held until the referred person completes a first order after launch.** Detection layers exist, they *flag*, and a human decides. Nothing auto-bans. → ADR-012, ADR-013
 
-5. **The waitlist database is its own database, and it is designed against the import.** Never tables inside Medusa's. Every column that the launch-day handoff needs — referral tier, code, confirmed referrals, country, category preference, access window, source, SubSlush provenance — exists from the first migration, so the handoff is a script rather than a modelling exercise. → ADR-004, `docs/data/model.md`
+5. **The waitlist database is its own database, and it is designed against the import.** Never tables inside Medusa's. Every column that the launch-day handoff needs — referral tier, code, confirmed referrals, category preference, access window, source, SubSlush provenance, marketing-consent state — exists from the first migration, so the handoff is a script rather than a modelling exercise. → ADR-004, `docs/data/model.md`
 
 6. **Transactional and broadcast email never share a reputation.** Verification goes out on `send.valstara.com` through Resend; campaign mail on `mail.valstara.com` through Brevo. The isolation is the point: a spam complaint on the marketing list must not stop new signups from being able to verify. → ADR-009
 
@@ -87,7 +87,7 @@ C4Container
 
 **Everything runs on the existing €15 VPS beside the storefront's future services**, under Docker Compose with hard memory limits and no swap. Three rules follow and bind every ticket: **cap the batch size on every sweep and export**, **cache anything that a spike can read repeatedly**, and **never hold a whole result set in memory**. → ADR-003
 
-The leaderboard is served from a cached snapshot rather than a live query (ADR-024). The landing response is also CDN-cacheable when it has no `?ref=` and all flags are at their registered defaults. Its cache identity is country plus `X-Valstara-Flag-Generation`; referral-bearing requests and any non-default flag state return `Cache-Control: private, no-store`. Verification and other bearer/query-dependent pages are never shared-cacheable. Cloudflare therefore absorbs anonymous read spikes while personalised state reaches the origin.
+The leaderboard is served from a cached snapshot rather than a live query (ADR-024). The landing response is also CDN-cacheable when it has no `?ref=` and all flags are at their registered defaults. Its cache identity is `X-Valstara-Flag-Generation` alone — no country, since none is collected (ADR-026); referral-bearing requests and any non-default flag state return `Cache-Control: private, no-store`. Verification and other bearer/query-dependent pages are never shared-cacheable. Cloudflare therefore absorbs anonymous read spikes while personalised state reaches the origin.
 
 ---
 
@@ -104,11 +104,10 @@ sequenceDiagram
   participant R as Resend
 
   V->>CF: GET / (or /?ref=CODE)
-  CF->>A: Proxied request + CF-IPCountry
+  CF->>A: Proxied request
   A->>A: Read ?ref= SERVER-SIDE; sign it into a hidden field
-  A->>A: Prefill country from CF-IPCountry (overridable, never a gate)
   A-->>V: Page + signup island
-  V->>A: POST /api/signup (email, country, signed ref, Turnstile token)
+  V->>A: POST /api/signup (email, optional marketing opt-in, signed ref, Turnstile token)
   A->>A: Verify Turnstile server-side
   A->>A: Normalise email (lowercase, strip +tag, Gmail dots)
   A->>A: Blocklist + MX check; velocity and self-referral flags
@@ -155,26 +154,24 @@ Two properties make this defensible:
 
 ---
 
-## Runtime flow 3 — Giveaway eligibility
+## Runtime flow 3 — The global giveaway
 
-Eligibility is decided **at point of entry**, not at draw time, because an entrant who was allowed to enter and is then excluded is a complaint, and in several of these jurisdictions a legal one.
+One draw under Hong Kong law, with no location read at entry (ADR-026). Entry never depends on marketing consent (ADR-027). Location is collected only from provisional winners, at award time.
 
 ```mermaid
 flowchart TD
-  S[Signup with confirmed country] --> X{Country excluded?}
-  X -- Italy, Poland, Spain, Nordics --> NO[Waitlist yes, giveaway no.<br/>Stated plainly at the point of entry]
-  X -- Canada --> Q{Province = Quebec?}
-  Q -- yes --> NO
-  Q -- no --> OK
-  X -- otherwise --> OK[Eligible]
-  OK --> V{Verified?}
+  S[Signup: email only, no location] --> V{Verified?}
   V -- no --> PEND[No entries accrue]
-  V -- yes --> E[Entries accrue: base + confirmed referrals + AMOE]
-  E --> D[Draw: seeded, reproducible, audited]
-  D --> REV[Top 20 by entries manually reviewed before any award]
+  V -- yes --> E[Entries accrue: 1 base + 1 per confirmed referral<br/>stamped with the global rules_version and hash]
+  E --> REV[Top 20 by entries manually reviewed]
+  REV --> D[Draw: hash committed before seed, one prize per person,<br/>reserve list, reproducible, audited]
+  D --> W[Provisional winner gives country of residence<br/>and 18+ confirmation, no postal address]
+  W --> C{Sanctioned country, under 18,<br/>failed Canadian skill question or no reply?}
+  C -- yes --> R[Next reserve]
+  C -- no --> AW[Award recorded against the snapshot]
 ```
 
-The exclusions and their reasons are recorded in `docs/legal/compliance.md`; the per-jurisdiction rules pages live at `/giveaway/rules/*` and stay live for the statutory retention period after the campaign. → ADR-018
+The rules are in `docs/legal/compliance.md#4`; the one rules page lives at `/giveaway/rules`, with immutable revisions at `/giveaway/rules/<rules_version>`. → ADR-026
 
 ---
 
@@ -228,9 +225,9 @@ flowchart TD
 | **Feature flags** | A small `campaign_flag` table with **code-registered fail-safe defaults**. Exists so the leaderboard or the giveaway can be switched off during an incident without a deploy | 023 |
 | **Audit** | Append-only `audit_log`, enforced by database permissions. Records disqualifications, flag decisions, exports, draw execution, admin actions and consent-relevant events | — |
 | **Analytics** | Umami self-hosted plus Cloudflare Web Analytics. Cookieless by construction; **a test asserts no non-essential cookie and no browser-storage identifier is ever set** | 007 |
-| **Geo** | `CF-IPCountry` prefills the country selector. **A signal, never a gate** — the field is always overridable, and the confirmed value is what drives eligibility, the VAT story and the access wave | 003 |
+| **Geo** | **None.** No country is collected and `CF-IPCountry` is not read. Location is collected only from provisional giveaway winners at award time | 026 |
 | **Rate limiting** | Per-IP-prefix and per-normalised-email limits on every write route, ahead of the database, with honest error copy | — |
-| **Retention** | Truncated hashed IP prefixes purge at 90 days; unverified rows expire; the whole database goes read-only 90 days after handoff | 022, 026 |
+| **Retention** | Truncated hashed IP prefixes purge at 90 days; unverified rows expire; the whole database goes read-only 90 days after handoff | 011, 022 |
 | **i18n** | None. English at the **root**, not `/en/`, so adding `/de/` later is additive rather than a site-wide redirect | 014 |
 
 ---

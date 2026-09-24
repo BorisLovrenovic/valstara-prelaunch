@@ -12,7 +12,7 @@ Two rules make that safe, and they are what a reviewer checks:
 ## Rules that bind every route
 
 1. **Validate, call one server module, shape the response.** No SQL, no business branching, no email dispatch in a route.
-2. **Every *public, unauthenticated* write route verifies Turnstile server-side first**, then rate-limits, then does work — these are the routes a stranger can call with no prior proof: `/api/signup`, `/api/resend-verification`, the `/me` recovery POST, and `/api/amoe`. **A write authenticated by a single-use signed token is guarded by consuming that token first, in place of Turnstile** — the token is a stronger authenticator than a challenge, so `/api/survey`, `/api/unsubscribe` and `/api/dsr/*` carry no `turnstile_token`. Rate-limiting still applies to both kinds.
+2. **Every *public, unauthenticated* write route verifies Turnstile server-side first**, then rate-limits, then does work — these are the routes a stranger can call with no prior proof: `/api/signup`, `/api/resend-verification`, the `/me` recovery POST, `/api/me/marketing` and the E7-06 winner-details form. The last two carry a status token as well, but it is reusable rather than single-use, so Turnstile still applies. **A write authenticated by a single-use signed token is guarded by consuming that token first, in place of Turnstile** — the token is a stronger authenticator than a challenge, so `/api/survey`, `/api/unsubscribe` and `/api/dsr/*` carry no `turnstile_token`. Rate-limiting still applies to both kinds.
 3. **Every response uses the error envelope below**, with a code from the closed set. **No vendor error body is ever forwarded.**
 4. **No response contains another person's data.** The leaderboard is anonymised; `/me` returns only the bearer's own row.
 5. **Every write route is idempotent or explicitly documented as not.** A double-submitted form must never produce two subscribers, two edges or two emails.
@@ -36,7 +36,6 @@ Two rules make that safe, and they are what a reviewer checks:
 | `challenge_failed` | 400 | Turnstile token missing, invalid or replayed |
 | `token_invalid` | 400 | Signature, purpose or subject mismatch |
 | `token_expired` | 410 | Consumable, but past its expiry |
-| `not_eligible` | 200 | Giveaway entry declined by jurisdiction. **The signup still succeeded** |
 | `rate_limited` | 429 | Per-IP-prefix or per-identity window exceeded |
 | `suppressed` | 200 | Address is unsubscribed or bounced; no send occurs |
 | `unavailable` | 503 | A dependency the route cannot proceed without |
@@ -50,11 +49,11 @@ Two rules make that safe, and they are what a reviewer checks:
 ## Public routes
 
 ### `POST /api/signup`
-Body: `email`, `country`, `region?`, `ref` (the **signed** hidden field), `turnstile_token`, `utm?`.
+Body: `email`, `ref` (the **signed** hidden field), `turnstile_token`, `utm?`, `marketing_opt_in?`.
 
-`country` is the **confirmed** value the person selects — prefilled from `CF-IPCountry` as a suggestion, always overridable, and detection never decides it (ADR-018, `docs/modules/platform.md#geo`). `region` is collected — and **required** — only when `country` is `CA`, because Quebec changes giveaway eligibility; a Canadian signup with no region is rejected `invalid_input`. It is ignored for every other country.
+**No country, region or other location is accepted** (ADR-026). A request that still carries `country` or `region` is handled exactly like one that does not, and neither value is stored. `marketing_opt_in` is the separate, optional, unticked marketing checkbox (ADR-027). Ticked, it records a *pending* opt-in and the wording version, which becomes consent only when the address is verified. Whether it is ticked never changes the response, the waitlist place or the giveaway.
 
-Order of operations, and it is load-bearing: verify Turnstile → rate-limit → validate → **normalise the email** → blocklist and MX → upsert the subscriber → attribute the referral edge → run fraud signals (flag only) → decide giveaway eligibility and stamp the rules version → queue the verification mail → respond.
+Order of operations, and it is load-bearing: verify Turnstile → rate-limit → validate → **normalise the email** → blocklist and MX → upsert the subscriber → attribute the referral edge → run fraud signals (flag only) → record a pending marketing opt-in if ticked → queue the verification mail → respond. Giveaway entry happens at verification (E7-01, E7-03), not here.
 
 Returns `{ status: "pending" }`. The status code, response keys and values are identical whether the normalised address is unknown, pending or already verified. **Never returns a position, a count, a rank or an address-membership signal** — a public response cannot disclose another person's status.
 
@@ -64,7 +63,7 @@ Idempotent on `email_normalised`: a repeat signup for a `pending` row re-sends t
 Non-mutating: renders a confirmation form carrying the bearer token. Mail scanners and prefetchers can GET repeatedly without consuming it.
 
 ### `POST /verify` *(page route)*
-Body: `token`. Token-authenticated and therefore exempt from Turnstile-first. Consumes the token and, in one transaction, sets `verified`, confirms referral edges, settles cheap rewards, holds high-value rewards and assigns access windows, then renders the success page. **A replayed token renders the same success page**. Invalid and expired tokens render identical generic failure copy and the same request-new-link control.
+Body: `token`. Token-authenticated and therefore exempt from Turnstile-first. Consumes the token and, in one transaction, sets `verified`, turns a pending marketing opt-in into consent (audited), confirms referral edges, settles cheap rewards, holds high-value rewards and assigns access windows, then renders the success page. **A replayed token renders the same success page**. Invalid and expired tokens render identical generic failure copy and the same request-new-link control.
 
 ### `POST /api/resend-verification`
 Body: `email`, `turnstile_token`. Turnstile is verified first. Rate-limited hard: **one attempt per normalised address and five per hashed IP prefix in 15 minutes** (two per prefix when Turnstile is unavailable). **Always returns the same `200` response whether or not the address exists, is pending, or is already verified** — an enumeration oracle on a waitlist is a real leak. After rate limiting, the resend decision has a fixed **500 ms response deadline**: a response is held until that deadline, and work still unsettled then finishes without changing the identical accepted response. A pending address receives a fresh token and queued verification mail; a verified address receives neither.
@@ -77,8 +76,8 @@ The only cacheable route. Returns the **anonymised top-10** snapshot: a determin
 
 ### `GET /me?t=…` and `POST /me?t=…` *(page route)*
 `GET` authenticates the signed, expiring status link. No password, no session.
-It renders the bearer's own status: verified state, confirmed referrals, tier,
-wave, giveaway entries and eligibility. **A tampered or expired token renders
+It renders the bearer's own status: verified state, confirmed referrals, own
+rank, tier, wave, giveaway entries and the current marketing preference. **A tampered or expired token renders
 the identical re-request page, never someone else's data.** `POST` is that
 page's one-click recovery action and carries `turnstile_token`. Turnstile is
 verified first, before flag, rate-limit, token or email work. Provider timeout
@@ -88,11 +87,13 @@ its bound subscriber, rate-limited per subscriber and truncated, hashed IP
 prefix. Unknown, tampered and cross-purpose tokens queue nothing and receive
 the same acknowledgement.
 
-### `POST /api/amoe`
-The alternative method of entry required in several jurisdictions. Same eligibility rules, no referral requirement, rate-limited, and recorded with its `rules_version`.
+### `POST /api/me/marketing`
+Body: `t` (the signed status token), `marketing` (`on` · `off`), `turnstile_token`. Turnstile is verified first and the route is rate-limited. A tampered or expired token gets the identical response, and nothing changes. `on` records marketing consent with source `member_status`; `off` withdraws it. Both are audited, and **neither touches waitlist status, referral edges, wave or giveaway entries** (ADR-027). Built by S-01.
+
+*There is no separate alternative-method-of-entry route.* The ordinary verified signup is the free entry route (ADR-026, E7-04).
 
 ### `GET /unsubscribe?t=…` and `POST /api/unsubscribe`
-One-click from the mail (RFC 8058 `List-Unsubscribe-Post`) and a confirmable page. The `unsubscribe` token resolves its originating template server-side from its bound `email_send` row; a request-supplied template is rejected. Writes one global suppression. **Suppression is re-checked at dispatch**, so a send already queued still stops.
+One-click from the mail (RFC 8058 `List-Unsubscribe-Post`) and a confirmable page. The `unsubscribe` token resolves its originating template server-side from its bound `email_send` row; a request-supplied template is rejected. **From a marketing message it withdraws marketing consent only** — the waitlist place and giveaway entries stay (ADR-027). From a transactional message, or through "leave the waitlist" on the page, it writes one global suppression. **Suppression and marketing consent are both re-checked at dispatch**, so a send already queued still stops.
 
 ### `POST /api/dsr/export` and `POST /api/dsr/delete`
 Data-subject access and erasure. Both require a signed link sent to the address, both are audited, and deletion **anonymises rather than drops** rows whose absence would corrupt referral edges — the edge survives with its subject nulled, so counts stay defensible and no personal data remains. `docs/legal/compliance.md` carries the reasoning.

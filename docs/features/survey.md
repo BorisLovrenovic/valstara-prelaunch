@@ -31,4 +31,4 @@ Skipped → **no penalty and no nagging.** A skipped survey is a valid state, no
 - [ ] An unverified subscriber cannot submit
 
 ## Telemetry
-Survey completion rate, per-question skip rate, answer distribution by country and source, completion versus subsequent referral activity.
+Survey completion rate, per-question skip rate, answer distribution by source, completion versus subsequent referral activity.

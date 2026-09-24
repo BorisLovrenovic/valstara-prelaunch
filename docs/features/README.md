@@ -13,7 +13,7 @@ Flags exist for one reason: **so a mechanic can be switched off during an incide
 | `signup.enabled` | on | `signup.md` | The kill switch. Off yields an honest paused message, never a broken form |
 | `referral.enabled` | on | `referral.md` | Off stops new attribution; existing edges are untouched |
 | `leaderboard.public` | on | `leaderboard.md` | **Off during a credibility incident.** The weekly-email top-10 is the fallback surface |
-| `giveaway.open` | **off** | `giveaway.md` | **Stays off until the rules pages are published and the ESP tiers are upgraded** |
+| `giveaway.open` | **off** | `giveaway.md` | **Stays off until the global rules page is published (ADR-026) and the ESP tiers are upgraded** |
 | `survey.enabled` | on | `survey.md` | Off skips the two questions on the verification success page |
 | `member.dashboard` | on | `member-status.md` | Off falls back to the status summary in email only — this is cut-list item 3 |
 | `email.broadcast` | **off** | `email-campaign.md` | **Off until domain authentication is verified end to end.** Transactional mail is unaffected |

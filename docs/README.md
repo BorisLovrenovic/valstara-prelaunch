@@ -37,7 +37,7 @@ docs/
     overview.md                    principles, context, the five runtime flows
     modules.md                     code boundaries, repository layout, dependency direction
     fallbacks.md                   degradation and failure matrix — every row testable
-    adr/                           24 decision records + template
+    adr/                           27 decision records (26 accepted, 1 superseded) + template
   features/
     README.md                      flag registry, cross-cutting acceptance criteria, cut list
     *.md                           one spec per feature
@@ -53,11 +53,15 @@ docs/
     ci-cd.md                       pipelines, deploy, rollback, backups
     prompts/                       ★ the six agent prompts
   security/threat-model.md         threats, CI security gates, secret handling
-  legal/compliance.md              GDPR, ePrivacy, giveaway jurisdictions, Article 27
+  legal/compliance.md              GDPR, ePrivacy, the global giveaway under Hong Kong law, Article 27
   testing/strategy.md              test tiers, invariants, definition of done
   ops/
     runbook.md                     by symptom
     launch-cutover.md              the host swap and the trust-page port
+  prerequisites/
+    founder-prerequisites.md       what the founder must supply, with instructions
+    p4-rules-page-draft.md         the founder-approved text E7-02 publishes at /giveaway/rules
+    p4-research-brief.md           the P4 research prompt (historical — superseded by ADR-026)
 ```
 
 ## What this site is not

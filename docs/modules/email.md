@@ -30,6 +30,7 @@ interface EmailProvider {
 ## Rules
 - **`businessKey` is unique.** One email per key, enforced by the database. A retry with the same key never produces a second send.
 - **Suppression is checked at dispatch, not only at queue time.** A suppression written after queueing must still stop the send — that is the whole point of checking twice.
+- **Broadcast (marketing) sends also re-check current marketing consent at dispatch** (ADR-027). A withdrawal written after queueing stops a broadcast but never a transactional message. An unsubscribe from a marketing message withdraws consent; an unsubscribe from a transactional message, or leaving the waitlist, writes `suppression`.
 - Each queued message has an `unsubscribe`-purpose token bound to its `email_send` row. The binding resolves the originating template server-side when the token is consumed; a request body never supplies the recorded source.
 - **A send failure never rolls back or blocks the caller's transaction.** The subscriber row is committed first, always.
 - **Transactional and broadcast use different providers and different domains** — asserted by a config test, because the isolation is the entire rationale.

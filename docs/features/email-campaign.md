@@ -12,9 +12,11 @@ Six transactional templates through **Resend on `send.valstara.com`**, broadcast
 3. **Welcome** — referral link, status link, trust-page link
 4. **Milestone reached** — tier confirmation, and **plainly states which reward is settled and which is held**
 5. **Status link** — re-issued on request
-6. **Giveaway entry receipt** — entries, jurisdiction, and a link to the rules that govern them
+6. **Giveaway entry receipt** — entries, and a link to the immutable global rules version that governs them
 
 Broadcasts (Brevo) are composed from a shared layout: the **weekly update** (including the top-10 block that is the leaderboard's fallback surface), the **launch announcement**, and the one-off **SubSlush migration send**.
+
+**Who receives what (ADR-027).** The weekly update and any other marketing go **only to verified, unsuppressed subscribers with current marketing consent**, re-checked at dispatch. The single launch-access notification that joining the waitlist promises goes to every verified, unsuppressed subscriber as a message they requested (the privacy audit, E11-05, confirms this classification). Unsubscribing from a marketing message withdraws marketing consent only; the person keeps their waitlist place and giveaway entries.
 
 ## The migration send
 **From `subslush.com`, not `valstara.com`.** That domain has history with those exact recipients; a rebrand email from an unrecognised domain is indistinguishable from phishing. `send.valstara.com` warms in parallel on verification traffic — low volume, high engagement, near-zero complaints. SPF and DKIM per subdomain; DMARC `p=none` → `quarantine`. **Staged by recency in batches, watching rates between them.** The ~100 addresses are validated first.

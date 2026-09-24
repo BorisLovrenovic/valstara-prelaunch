@@ -51,10 +51,11 @@ valstara-prelaunch/
       waitlist.astro  leaderboard.astro  me.astro
       verify.astro                 consumes a verification token
       unsubscribe.astro
-      giveaway/rules/[jurisdiction].astro
+      giveaway/rules/index.astro            the global rules page (ADR-026)
+      giveaway/rules/[rulesVersion].astro   immutable revisions
       api/
         signup.ts  resend-verification.ts  survey.ts
-        leaderboard.ts  amoe.ts  unsubscribe.ts
+        leaderboard.ts  unsubscribe.ts  me/marketing.ts
         dsr/export.ts  dsr/delete.ts
         admin/*.ts
     islands/
@@ -91,10 +92,10 @@ valstara-prelaunch/
 
 | Module | Owns | Key rule | Detail |
 |---|---|---|---|
-| **subscriber** | The waitlist row: raw and normalised email, status, country, source, UTM, wave, provenance | **Normalisation happens before any uniqueness check.** The normalised address is the unique key; the raw address is what gets displayed and mailed | `docs/modules/subscriber.md` |
+| **subscriber** | The waitlist row: raw and normalised email, status, source, UTM, wave, provenance, marketing-consent state | **Normalisation happens before any uniqueness check.** The normalised address is the unique key; the raw address is what gets displayed and mailed | `docs/modules/subscriber.md` |
 | **verification** | Single-use verification tokens, hashed at rest, with an expiry and a consumption record | A token is consumed exactly once; a replay is a no-op, never an error the visitor sees | `docs/modules/verification.md` |
 | **referral** | Referral codes, the referral **edge** table, tier and milestone state, reward state | `confirmed_referrals` is **derived from edges and recomputable**, never blindly incremented | `docs/modules/referral.md` |
-| **giveaway** | Eligibility by jurisdiction, the entry ledger, AMOE entries, the draw record | Eligibility is decided **at point of entry** and recorded with the rules version in force | `docs/modules/giveaway.md` |
+| **giveaway** | Entry eligibility (no location), the entry ledger, the draw record, the award-time checks | Every entry stamps the global rules version and hash; location is collected only from provisional winners (ADR-026) | `docs/modules/giveaway.md` |
 | **fraud** | Blocklist, MX results, velocity and self-referral signals, flags and their review state | Signals **flag, never auto-ban.** Every disqualification is a human decision and is audited | `docs/modules/fraud.md` |
 
 ### Cross-cutting services — no domain data of their own
@@ -105,7 +106,6 @@ valstara-prelaunch/
 | **flags** | Campaign flags with code-registered fail-safe defaults | A lookup failure returns the code default — fail-safe, never fail-open |
 | **audit** | Append-only event log | Append-only by database permission, not convention |
 | **analytics** | Server-side funnel events to Umami; the event schema | **Never carries an email address, a referral code or an IP** |
-| **geo** | `CF-IPCountry` → a prefill suggestion | Returns a *suggestion*. It has no method that can decide eligibility |
 | **turnstile** | Server-side token verification | The only consumer of the Turnstile secret |
 | **ratelimit** | Per-IP-prefix and per-identity windows | Backed by the database; batch-capped cleanup |
 | **verification-rate** | Rolling verification-rate calculation, provider breakdown and collapse alert | Runs hourly; reports P1 only after the configured cohort is large enough |

@@ -6,7 +6,7 @@ Status: authoritative. **The QA gates later are audits, not the safety net.** Th
 
 | Tier | Runs against | Covers |
 |---|---|---|
-| **Unit** | Nothing external | Normalisation, signing, token hashing, tier computation, eligibility tables, copy scanning |
+| **Unit** | Nothing external | Normalisation, signing, token hashing, tier computation, eligibility rules, copy scanning |
 | **Module contract** | A disposable PostgreSQL | Each module's documented interface and its rules — the "Contract tests" line of every `docs/modules/*.md` |
 | **Integration** | The local Compose stack | Route → module → database → queued email, end to end |
 | **Build-time assertion** | The Astro build | Metadata completeness, frontmatter validity, **the representative-named assertion**, token placeholders |

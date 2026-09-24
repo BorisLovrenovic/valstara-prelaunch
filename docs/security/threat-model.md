@@ -50,9 +50,9 @@ A waitlist full of fake addresses corrupts every metric, burns email quota, and 
 
 ## T6 — Giveaway non-compliance
 
-Several target jurisdictions regulate prize draws directly: Italy requires local data hosting and a ministry notification, Poland permits and bank guarantees, Spain requires the draw to occur in Spain plus a 10% prize tax, and Quebec has its own regime.
+**Founder decision, 2026-09-25 (ADR-026): this risk is accepted, not engineered away.** The giveaway is one global draw under Hong Kong law with no country excluded. Some countries regulate or prohibit free chance draws open to their residents (the P4 research found Belgium prohibits them, and Portugal, Italy, Spain and Poland require authorisation or charge prize taxes), and a governing-law clause does not remove a consumer's home-country protections. The most likely enforcement comes through vendors rather than regulators.
 
-**Controls:** exclusion **at point of entry**, enforced in code and table-tested per jurisdiction. Per-jurisdiction rules pages with all required sections, schema-validated. `rules_version` stamped on every accrual. **A reproducible draw** — seed and snapshot hash recorded, result unpublished until it reproduces. AMOE wherever required, with equal weight.
+**Controls that reduce the accepted risk at no cost to reach:** small prizes (each ≤ €449, pool below US$5,000), which keep several regimes from being triggered at all · no purchase necessary, with the ordinary verified signup as the free route · 18+ and one registration per person · honest odds wording · one schema-validated global rules page, prize limits enforced at build time, and every revision immutable with its hash · `rules_version` and hash stamped on every accrual · **a reproducible draw** — hash committed before the seed, reserve list, result unpublished until it reproduces · award-time **sanctions screening**, 18+ confirmation and the Canadian skill-testing question, collected from provisional winners only.
 
 ---
 

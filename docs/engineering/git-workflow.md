@@ -24,7 +24,7 @@ Conventional Commits, **always including the ticket ID**:
 ```
 feat(referral): server-side ref capture with a signed field [E4-02]
 fix(email): re-check suppression at dispatch [E8-01]
-docs(adr): amend ADR-018 with the Quebec case [E7-01]
+docs(adr): record the prize limits in ADR-026 [E7-02]
 ```
 
 The ticket ID in square brackets is mandatory — it is how work traces back to the plan.

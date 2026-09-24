@@ -13,7 +13,7 @@ The pre-launch site sits on the **root domain**, and the trust and legal pages a
 | `/` | Waitlist landing page | Storefront home. **Same URL, new content** |
 | `/legit`, `/guarantee`, `/about` | Trust content | Ported to the storefront, same URLs |
 | `/terms`, `/privacy` | Legal | Ported and revised in place |
-| `/giveaway/rules/*` | Per-jurisdiction rules | Kept live for the statutory retention period, then `410` |
+| `/giveaway/rules` and `/giveaway/rules/<rules_version>` | The global rules page and its immutable revisions (ADR-026) | Public for 12 months after the final award, then `410` |
 | `/waitlist`, `/leaderboard`, `/me` | Campaign mechanics | `301` to `/` and the account area |
 
 ## User flows
