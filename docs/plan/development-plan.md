@@ -1172,6 +1172,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Tests:** The status table · the no-location scan · consent independence · the flag-off path.
 **Docs:** `docs/architecture/adr/026-global-giveaway-hong-kong-law.md` · `docs/modules/giveaway.md` · `docs/legal/compliance.md#4-giveaway--one-global-draw-under-hong-kong-law`
 
+**Scope amendment (founder-authorised 2026-09-25):** stamping `subscriber.giveaway_rules_version` on first entry, and the 'nothing accrues with the flag off' assertion, moved to E7-03, which owns `accrue()`. E7-01 is limited to the eligibility decision.
+
 ### E7-02 — The global rules page (Hong Kong law)
 **Model:** Tier A — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
@@ -1212,6 +1214,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Tests:** Concurrent double accrual · the ineligible rejection · rules version stamped on first accrual only, never overwritten · the flag-off path · a mid-campaign rules-revision scenario · the voiding scope.
 **Docs:** `docs/modules/giveaway.md` · `docs/data/model.md#giveaway_entry`
+
+**Scope amendment (founder-authorised 2026-09-25):** receives from E7-01 the one-time stamping of `subscriber.giveaway_rules_version` on first accrual (never overwritten), its column grant, and the 'nothing accrues with `giveaway.open` off' assertion.
 
 ### E7-04 — The free entry route and its disclosure
 **Model:** Tier A — Medium · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
