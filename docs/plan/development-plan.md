@@ -1161,16 +1161,15 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E7-01 — Entry eligibility: verified, 18+, one person
 **Model:** Tier A — Medium · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
 
-**Build:** The single eligibility rule for the global giveaway (ADR-026), in `src/server/giveaway`. A subscriber may accrue entries when they are `verified` and the giveaway is open. **There is no location input:** the function takes no country, region or header. When a subscriber first becomes an entrant, the current global `rules_version` from E7-02 is written to `subscriber.giveaway_rules_version`. The 18+ requirement is a rules condition confirmed with provisional winners at award time (E7-06), not collected at entry. One registration per natural person is enforced by the existing normalisation and fraud controls (E3-01, E5).
+**Build:** The single eligibility rule for the global giveaway (ADR-026), in `src/server/giveaway`. `isEligible(subscriberId)` returns true only when the subscriber is `verified` and the giveaway is open. **There is no location input:** the function takes no country, region or header. The 18+ requirement is a rules condition confirmed with provisional winners at award time (E7-06), not collected at entry. One registration per natural person is enforced by the existing normalisation and fraud controls (E3-01, E5).
 
 **Acceptance criteria:**
 - **The eligibility function has no location parameter, and a scan finds no location read anywhere in the giveaway module**
 - `pending`, `expired`, `unsubscribed`, `bounced` and `disqualified` subscribers are not eligible — a table test covers every status
 - **Entry never depends on marketing consent** — asserted with consent absent and with it present (ADR-027)
-- The rules version in force is written to `subscriber.giveaway_rules_version` once, on first entry, and never overwritten
-- With `giveaway.open` off, nothing accrues and the waitlist is unaffected
+- With `giveaway.open` off, `isEligible` returns false for every subscriber and the waitlist is unaffected
 
-**Tests:** The status table · the no-location scan · consent independence · first-entry rules-version stamping · the flag-off path.
+**Tests:** The status table · the no-location scan · consent independence · the flag-off path.
 **Docs:** `docs/architecture/adr/026-global-giveaway-hong-kong-law.md` · `docs/modules/giveaway.md` · `docs/legal/compliance.md#4-giveaway--one-global-draw-under-hong-kong-law`
 
 ### E7-02 — The global rules page (Hong Kong law)
@@ -1200,16 +1199,18 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E7-03 — The entry ledger
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
 
-**Build:** `accrue()` writes `giveaway_entry` with `rules_version`, `rules_sha256` and `source_edge_id`, and is idempotent through the unique constraint. One base entry on verification, plus one entry for each confirmed referral (a unique referred person who verifies). A forward-only migration adds `giveaway_entry.rules_sha256` as not-null, with its constraint (standing rule 19).
+**Build:** `accrue()` writes `giveaway_entry` with `rules_version`, `rules_sha256` and `source_edge_id`, and is idempotent through the unique constraint. In the same transaction as a subscriber's first accrual, it writes the current global `rules_version` to `subscriber.giveaway_rules_version` once and never overwrites it. One base entry on verification, plus one entry for each confirmed referral (a unique referred person who verifies). A forward-only migration adds `giveaway_entry.rules_sha256` as not-null, with its constraint, and grants the application permission to update `subscriber.giveaway_rules_version` (standing rule 19).
 
 **Acceptance criteria:**
 - **No entry accrues for a subscriber E7-01 finds ineligible**
 - **A retry never double-credits** — asserted under genuine concurrency against a real database
 - Every accrual stores the `rules_version` and `rules_sha256` in force
+- The current global rules version is stamped on the subscriber's first accrual only, and never overwritten
 - **Entries already accrued keep their rules version when the rules change** — asserted
+- With `giveaway.open` off, nothing accrues
 - Voiding a referrer's entries **leaves the entries of the people they referred intact**
 
-**Tests:** Concurrent double accrual · the ineligible rejection · a mid-campaign rules-revision scenario · the voiding scope.
+**Tests:** Concurrent double accrual · the ineligible rejection · rules version stamped on first accrual only, never overwritten · the flag-off path · a mid-campaign rules-revision scenario · the voiding scope.
 **Docs:** `docs/modules/giveaway.md` · `docs/data/model.md#giveaway_entry`
 
 ### E7-04 — The free entry route and its disclosure

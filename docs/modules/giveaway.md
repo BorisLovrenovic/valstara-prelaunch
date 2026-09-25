@@ -25,6 +25,7 @@ interface GiveawayService {
 
 ## Rules
 - **No location input anywhere in eligibility or accrual.** Eligibility is: `verified`, and the giveaway is open. 18+ is a rules condition confirmed with provisional winners at award time; one registration per person is enforced by normalisation and the fraud controls.
+- E7-01 implements the eligibility decision only. E7-03 writes `subscriber.giveaway_rules_version` once in the first-accrual transaction and owns the application grant for that column.
 - **Entry never depends on marketing consent** (ADR-027). The ordinary verified signup is the free entry route; there is no separate AMOE route.
 - **Every accrual stamps `rules_version` and `rules_sha256`** from the single global rules page. Entries keep the rules that were in force when they accrued.
 - **No entry accrues for an unverified subscriber.**
