@@ -15,9 +15,6 @@ const componentsDirectory = join(projectRoot, 'src/components');
 const fixtureRoot = join(projectRoot, 'test/fixtures/interface-primitives');
 const fixtureConfig =
   '../../../scripts/fixtures/interface-primitives.astro.config.mjs';
-const browserOrigin = 'http://host.docker.internal:43222';
-const browserPort = 43_223;
-const browserServerEndpoint = `ws://127.0.0.1:${browserPort}/`;
 const browserContainer = `valstara-primitives-playwright-${process.pid}`;
 const fixtureServerStartupTimeoutMilliseconds = 30_000;
 const serverOutputLimit = 16_384;
@@ -25,6 +22,7 @@ const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
 
 let browser;
+let browserOrigin;
 let browserServer;
 let browserServerError;
 let server;
@@ -76,7 +74,7 @@ async function startBrowserServer() {
       '--add-host',
       'host.docker.internal:host-gateway',
       '--publish',
-      `127.0.0.1:${browserPort}:3000`,
+      '127.0.0.1::3000',
       '--volume',
       `${projectRoot}:/work:ro`,
       '--workdir',
@@ -106,7 +104,14 @@ async function startBrowserServer() {
 
   for (let attempt = 0; attempt < 720; attempt += 1) {
     if (output.includes('Listening on')) {
-      return;
+      const { stdout } = await executeFile('docker', [
+        'port',
+        browserContainer,
+        '3000/tcp',
+      ]);
+      const port = /^127\.0\.0\.1:(\d+)\s*$/mu.exec(stdout)?.[1];
+      assert.ok(port, `Docker did not publish the browser port: ${stdout}`);
+      return `ws://127.0.0.1:${port}/`;
     }
     if (browserServerError !== undefined) {
       throw new Error(
@@ -145,15 +150,19 @@ async function waitForFixtureServer() {
         `Interface primitive fixture server exited before startup.\n${serverOutput || '(no server output)'}`,
       );
     }
-    try {
-      const response = await globalThis.fetch('http://127.0.0.1:43222', {
-        signal: globalThis.AbortSignal.timeout(1_000),
-      });
-      if (response.ok) {
-        return;
+    const port = /local: http:\/\/localhost:(\d+)/u.exec(serverOutput)?.[1];
+    if (port !== undefined) {
+      try {
+        const response = await globalThis.fetch(`http://127.0.0.1:${port}`, {
+          signal: globalThis.AbortSignal.timeout(1_000),
+        });
+        if (response.ok) {
+          browserOrigin = `http://host.docker.internal:${port}`;
+          return;
+        }
+      } catch {
+        // The fixture server may still be finishing startup.
       }
-    } catch {
-      // The standalone fixture server has not started yet.
     }
     await new Promise((resolvePromise) =>
       globalThis.setTimeout(resolvePromise, 25),
@@ -182,7 +191,7 @@ before(async () => {
     process.execPath,
     [join(projectRoot, 'scripts/fixtures/run-interface-primitives-server.mjs')],
     {
-      env: { ...process.env, HOST: '0.0.0.0', PORT: '43222' },
+      env: { ...process.env, HOST: '0.0.0.0', PORT: '0' },
       stdio: ['ignore', 'pipe', 'pipe'],
     },
   );
@@ -197,7 +206,7 @@ before(async () => {
     serverError = error;
   });
   await waitForFixtureServer();
-  await startBrowserServer();
+  const browserServerEndpoint = await startBrowserServer();
   browser = await chromium.connect(browserServerEndpoint);
 });
 
