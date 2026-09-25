@@ -10,6 +10,8 @@ None.
 1. **Privacy policy** — what is collected, why, the lawful basis, retention periods, the named EU representative, the named UK representative, and how to exercise rights. It states the ADR-027 split plainly: joining and entering run on contract, marketing on separate optional consent, and withdrawing marketing never affects the waitlist or entries. It also says that only a country of residence is collected from provisional winners, at award time; no postal address is collected (ADR-026).
 2. **Terms** — site terms for a pre-launch waitlist. Distinct from the store's terms, which are the storefront's.
 3. **Giveaway rules** — **one global page under Hong Kong law** at `/giveaway/rules` (ADR-026), carrying every section listed in `docs/legal/compliance.md#4`, including the disqualification rule and the promoter's identity.
+
+The rules source is a versioned Markdown file in `src/content/giveaway-rules/`. Its frontmatter records the `rulesVersion`, prize values, conservative USD/EUR conversion assumption and SHA-256 of the rendered rules article. The build checks all required sections, statements, prize limits and the hash. `/giveaway/rules` serves the latest published revision; `/giveaway/rules/<rules_version>` keeps each published revision at its permanent URL. New revisions are appended as new files, while CI rejects edits or deletion of files already present on the base branch. The server's `currentRules()` reads that same validated collection for the entry ledger.
 4. **Rights** — a request from `/me` or by email triggers a signed confirmation link; export returns the subject's data, erasure removes it.
 
 ## Content sourcing — a named dependency

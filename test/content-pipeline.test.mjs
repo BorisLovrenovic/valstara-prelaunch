@@ -28,6 +28,7 @@ const expectedTargets = new Map([
   ['about.md', '/about'],
   ['terms.md', '/terms'],
   ['privacy.md', '/privacy'],
+  ['VAL-GW-LAUNCH-20260925-r1.md', '/giveaway/rules'],
 ]);
 
 async function markdownFiles(directory) {
@@ -67,6 +68,9 @@ async function withFixture(run) {
   try {
     await mkdir(join(root, 'src', 'content'), { recursive: true });
     await mkdir(join(root, 'src', 'pages'), { recursive: true });
+    await mkdir(join(root, 'src', 'server', 'giveaway'), {
+      recursive: true,
+    });
     await cp(
       join(projectRoot, 'astro.config.mjs'),
       join(root, 'astro.config.mjs'),
@@ -74,6 +78,10 @@ async function withFixture(run) {
     await cp(
       join(projectRoot, 'src', 'content.config.ts'),
       join(root, 'src', 'content.config.ts'),
+    );
+    await cp(
+      join(projectRoot, 'src', 'server', 'giveaway', 'rules.ts'),
+      join(root, 'src', 'server', 'giveaway', 'rules.ts'),
     );
     await symlink(
       join(projectRoot, 'node_modules'),
@@ -108,8 +116,12 @@ test('the port checklist is complete for every production content file', async (
   await assertPortTargets(join(projectRoot, 'src', 'content'));
 });
 
-test('both collection schemas require a port target in their own route set', () => {
-  assert.deepEqual(Object.keys(collections).sort(), ['legal', 'trust']);
+test('content collection schemas require a port target in their own route set', () => {
+  assert.deepEqual(Object.keys(collections).sort(), [
+    'giveawayRules',
+    'legal',
+    'trust',
+  ]);
   for (const [collection, valid, invalid] of [
     [collections.trust, '/legit', '/privacy'],
     [collections.legal, '/privacy', '/about'],

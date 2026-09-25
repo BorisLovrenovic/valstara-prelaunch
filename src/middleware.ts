@@ -16,6 +16,13 @@ function configuredMiddleware(): ReturnType<typeof createAdminAuthMiddleware> {
   return middleware;
 }
 
-export const onRequest = defineMiddleware(async (context, next) =>
-  configuredMiddleware()(context, next),
-);
+export const onRequest = defineMiddleware(async (context, next) => {
+  if (
+    context.isPrerendered &&
+    (context.url.pathname === '/giveaway/rules' ||
+      context.url.pathname.startsWith('/giveaway/rules/'))
+  ) {
+    return next();
+  }
+  return configuredMiddleware()(context, next);
+});

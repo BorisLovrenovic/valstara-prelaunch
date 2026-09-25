@@ -30,6 +30,8 @@ Status: authoritative. This describes the **store launch**, which happens after 
 | `/legit`, `/guarantee`, `/about` | Trust content | Ported, same URLs |
 | `/terms`, `/privacy` | Legal | Ported and revised in place |
 | `/giveaway/rules`, `/giveaway/rules/<rules_version>` | The global rules page and its immutable revisions (ADR-026) | **Kept live** for 12 months after the final award, then `410`; revisions kept internally for 6 years |
+
+Port the versioned Markdown sources from `src/content/giveaway-rules/` and preserve the recorded SHA-256 of each rendered rules article. The first published revision is `VAL-GW-LAUNCH-20260925-r1`; both its permanent URL and the current URL must remain directly served after cutover.
 | `/waitlist`, `/leaderboard`, `/me` | Campaign mechanics | `301` to `/` and the account area |
 | `/verify`, `/api/*` | Campaign endpoints | Gone. **Any live verification token becomes unusable — send the final reminder before this** |
 

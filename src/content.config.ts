@@ -1,6 +1,7 @@
 import { defineCollection } from 'astro/content/config';
 import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
+import { giveawayRulesSchema } from './server/giveaway/rules.ts';
 
 const trust = defineCollection({
   loader: glob({
@@ -22,4 +23,12 @@ const legal = defineCollection({
   }),
 });
 
-export const collections = { trust, legal };
+const giveawayRules = defineCollection({
+  loader: glob({
+    base: './src/content/giveaway-rules',
+    pattern: '*.md',
+  }),
+  schema: giveawayRulesSchema,
+});
+
+export const collections = { trust, legal, giveawayRules };

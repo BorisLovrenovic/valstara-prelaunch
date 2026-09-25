@@ -1,0 +1,67 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import type { RulesRevision } from '../server/giveaway/rules.ts';
+
+interface Props {
+  revision: RulesRevision;
+}
+
+const { revision } = Astro.props;
+---
+
+<BaseLayout title={revision.title} description={revision.description}>
+  <article
+    class="rules-content"
+    data-rules-version={revision.rulesVersion}
+    data-rules-sha256={revision.sha256}
+    set:html={revision.html}
+  />
+</BaseLayout>
+
+<style is:global>
+  .rules-content {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: 70ch;
+    margin-inline: auto;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .rules-content h1,
+  .rules-content h2 {
+    margin-block: var(--space-3) 0;
+    line-height: var(--leading-4);
+  }
+
+  .rules-content h1 {
+    font-size: var(--step-5);
+    line-height: var(--leading-5);
+  }
+
+  .rules-content h2 {
+    font-size: var(--step-4);
+  }
+
+  .rules-content p,
+  .rules-content ul,
+  .rules-content ol {
+    margin-block: 0;
+  }
+
+  .rules-content ul,
+  .rules-content ol {
+    padding-inline-start: var(--space-3);
+  }
+
+  .rules-content a {
+    color: var(--ink-600);
+  }
+
+  .rules-content a:focus-visible {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+</style>

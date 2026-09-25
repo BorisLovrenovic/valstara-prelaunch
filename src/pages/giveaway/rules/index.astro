@@ -1,0 +1,10 @@
+---
+import RulesPage from '../../../layouts/giveaway-rules-page.astro';
+import { currentRules } from '../../../server/giveaway/rules-catalog.ts';
+
+export const prerender = true;
+
+const revision = currentRules();
+---
+
+<RulesPage revision={revision} />
