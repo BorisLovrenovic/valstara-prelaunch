@@ -308,9 +308,18 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
   // The pages built through E6-02 are present, so the gate is proving something
   // rather than passing over an empty set. This explicit inventory also fails
   // when a new route appears without joining the accessibility pass.
-  assert.deepEqual(routes, ['/', '/leaderboard', '/me', '/verify']);
+  assert.deepEqual(routes, [
+    '/',
+    '/giveaway/rules',
+    '/leaderboard',
+    '/me',
+    '/verify',
+  ]);
 
-  for (const route of routes) {
+  for (const route of [
+    ...routes,
+    '/giveaway/rules/VAL-GW-LAUNCH-20260925-r1',
+  ]) {
     for (const colorScheme of themes) {
       const context = await browser.newContext({ colorScheme });
       const page = await context.newPage();

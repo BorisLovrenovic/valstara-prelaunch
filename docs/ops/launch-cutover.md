@@ -33,6 +33,8 @@ Status: authoritative. This describes the **store launch**, which happens after 
 | `/waitlist`, `/leaderboard`, `/me` | Campaign mechanics | `301` to `/` and the account area |
 | `/verify`, `/api/*` | Campaign endpoints | Gone. **Any live verification token becomes unusable — send the final reminder before this** |
 
+Port the versioned Markdown sources from `src/content/giveaway-rules/` and preserve the recorded SHA-256 of each rendered rules article. The first published revision is `VAL-GW-LAUNCH-20260925-r1`; both its permanent URL and the current URL must remain directly served after cutover.
+
 ---
 
 ## The handoff sequence
