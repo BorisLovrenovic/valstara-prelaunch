@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
@@ -8,11 +9,6 @@ import test, { after, before } from 'node:test';
 import { chromium } from 'playwright';
 
 const execFileAsync = promisify(execFile);
-const appPort = 43_224;
-const browserPort = 43_225;
-const hostOrigin = `http://127.0.0.1:${appPort}`;
-const browserOrigin = `http://host.docker.internal:${appPort}`;
-const browserServerEndpoint = `ws://127.0.0.1:${browserPort}/`;
 const browserContainer = `valstara-layout-playwright-${process.pid}`;
 const appServerStartupTimeoutMilliseconds = 30_000;
 const serverOutputLimit = 16_384;
@@ -26,12 +22,24 @@ const permanentFooterUrls = [
   '/privacy',
 ];
 
+let appPort;
 let browser;
+let browserOrigin;
 let browserServer;
 let browserServerError;
 let server;
 let serverError;
 let serverOutput = '';
+
+async function availablePort() {
+  const socket = createNetServer();
+  socket.listen(0, '0.0.0.0');
+  await once(socket, 'listening');
+  const { port } = socket.address();
+  socket.close();
+  await once(socket, 'close');
+  return port;
+}
 
 async function waitForAppServer() {
   const deadline =
@@ -50,14 +58,15 @@ async function waitForAppServer() {
       );
     }
     try {
-      const response = await globalThis.fetch(hostOrigin, {
+      const response = await globalThis.fetch(`http://127.0.0.1:${appPort}`, {
         signal: globalThis.AbortSignal.timeout(1_000),
       });
       if (response.ok) {
+        browserOrigin = `http://host.docker.internal:${appPort}`;
         return;
       }
     } catch {
-      // The standalone server has not started yet.
+      // The app server may still be finishing startup.
     }
     await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
   }
@@ -78,7 +87,7 @@ async function startBrowserServer() {
       '--add-host',
       'host.docker.internal:host-gateway',
       '--publish',
-      `127.0.0.1:${browserPort}:3000`,
+      '127.0.0.1::3000',
       '--volume',
       `${projectRoot}:/work:ro`,
       '--workdir',
@@ -108,7 +117,14 @@ async function startBrowserServer() {
 
   for (let attempt = 0; attempt < 720; attempt += 1) {
     if (output.includes('Listening on')) {
-      return;
+      const { stdout } = await execFileAsync('docker', [
+        'port',
+        browserContainer,
+        '3000/tcp',
+      ]);
+      const port = /^127\.0\.0\.1:(\d+)\s*$/mu.exec(stdout)?.[1];
+      assert.ok(port, `Docker did not publish the browser port: ${stdout}`);
+      return `ws://127.0.0.1:${port}/`;
     }
     if (browserServerError !== undefined) {
       throw new Error(
@@ -131,35 +147,45 @@ async function startBrowserServer() {
 
 before(async () => {
   await execFileAsync('npm', ['run', 'build']);
-  server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-    env: {
-      ...process.env,
-      ADMIN_CREDENTIAL: 'layout-rendered-admin-credential-32-chars',
-      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
-      DATABASE_URL:
-        'postgresql://unused:unused@127.0.0.1:5434/unused-layout-test',
-      HOST: '0.0.0.0',
-      IP_PREFIX_PEPPER: 'layout-rendered-page-prefix-pepper',
-      REFERRAL_SIGNING_SECRET: 'layout-rendered-page-referral-secret',
-      PORT: String(appPort),
-      RESEND_API_KEY: 'layout-rendered-page-resend-key',
-      RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
-      TURNSTILE_SECRET_KEY: 'layout-rendered-page-turnstile-secret',
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  server.stdout.setEncoding('utf8');
-  server.stderr.setEncoding('utf8');
-  const captureServerOutput = (chunk) => {
-    serverOutput = `${serverOutput}${chunk}`.slice(-serverOutputLimit);
-  };
-  server.stdout.on('data', captureServerOutput);
-  server.stderr.on('data', captureServerOutput);
-  server.once('error', (error) => {
-    serverError = error;
-  });
-  await waitForAppServer();
-  await startBrowserServer();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    appPort = await availablePort();
+    serverOutput = '';
+    serverError = undefined;
+    server = spawn(process.execPath, ['dist/server/entry.mjs'], {
+      env: {
+        ...process.env,
+        ADMIN_CREDENTIAL: 'layout-rendered-admin-credential-32-chars',
+        ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+        DATABASE_URL:
+          'postgresql://unused:unused@127.0.0.1:5434/unused-layout-test',
+        HOST: '0.0.0.0',
+        IP_PREFIX_PEPPER: 'layout-rendered-page-prefix-pepper',
+        REFERRAL_SIGNING_SECRET: 'layout-rendered-page-referral-secret',
+        PORT: String(appPort),
+        RESEND_API_KEY: 'layout-rendered-page-resend-key',
+        RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
+        TURNSTILE_SECRET_KEY: 'layout-rendered-page-turnstile-secret',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    server.stdout.setEncoding('utf8');
+    server.stderr.setEncoding('utf8');
+    const captureServerOutput = (chunk) => {
+      serverOutput = `${serverOutput}${chunk}`.slice(-serverOutputLimit);
+    };
+    server.stdout.on('data', captureServerOutput);
+    server.stderr.on('data', captureServerOutput);
+    server.once('error', (error) => {
+      serverError = error;
+    });
+    try {
+      await waitForAppServer();
+      break;
+    } catch (error) {
+      if (!serverOutput.includes('EADDRINUSE') || attempt === 2) throw error;
+    }
+  }
+  const browserServerEndpoint = await startBrowserServer();
   browser = await chromium.connect(browserServerEndpoint);
 });
 
