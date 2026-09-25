@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { marketingOptInCopy } from '../src/copy/marketing.ts';
+import { marketingOptInCopy, marketingOptInWordingByVersion } from '../src/copy/marketing.ts';
 
 import {
   POST as signupPost,
@@ -79,6 +79,47 @@ test('legacy location fields are ignored and marketing opt-in never changes the 
   assert.equal((received[1] as { marketingOptInVersion: string | null }).marketingOptInVersion, 'v1');
   assert.equal('country' in (received[1] as object), false);
   assert.equal('region' in (received[1] as object), false);
+});
+
+test('a form left open across a marketing copy version change keeps its shown version and accepted response', async () => {
+  const received: Array<string | null> = [];
+  const route = createSignupRoute(deps({
+    async signup(input) {
+      received.push(input.marketingOptInVersion ?? null);
+      return { kind: 'created', subscriber: pendingSubscriber };
+    },
+  }));
+  const copy = marketingOptInCopy as { version: string; wording: string };
+  const wordingByVersion = marketingOptInWordingByVersion as Record<string, string>;
+  const originalVersion = copy.version;
+  const originalWording = copy.wording;
+  try {
+    // A cached form still submits v1 after a deployment starts rendering v2.
+    wordingByVersion.v2 = 'New marketing opt-in wording.';
+    copy.version = 'v2';
+    copy.wording = wordingByVersion.v2;
+    const unticked = await route(routeContext(makeRequest()));
+    const ticked = await route(routeContext(makeRequest({
+      email: 'person@example.test',
+      turnstile_token: 'valid-token',
+      marketing_opt_in: originalVersion,
+    })));
+    assert.equal(ticked.status, 200);
+    const untickedBody = await unticked.json();
+    assert.deepEqual(await ticked.json(), untickedBody);
+    const current = await route(routeContext(makeRequest({
+      email: 'person@example.test',
+      turnstile_token: 'valid-token',
+      marketing_opt_in: copy.version,
+    })));
+    assert.equal(current.status, 200);
+    assert.deepEqual(await current.json(), untickedBody);
+    assert.deepEqual(received, [null, originalVersion, 'v2']);
+  } finally {
+    copy.version = originalVersion;
+    copy.wording = originalWording;
+    delete wordingByVersion.v2;
+  }
 });
 
 // --- Order of operations ----------------------------------------------------

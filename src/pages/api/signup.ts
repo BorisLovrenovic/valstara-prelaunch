@@ -3,7 +3,8 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
 import { setTimeout as systemSleep } from 'node:timers/promises';
 
-import { signupCopy, signupFormCopy } from '../../copy/signup.ts';
+import { marketingOptInWordingByVersion } from '../../copy/marketing.ts';
+import { signupCopy } from '../../copy/signup.ts';
 import { getConfig } from '../../server/config.ts';
 import { DatabaseUnavailableError } from '../../server/db/errors.ts';
 import { createFraudFlagRepository } from '../../server/db/fraud-flag.ts';
@@ -170,7 +171,8 @@ function validateBody(formData: FormData): ValidBody | null {
   const marketingOptIn = formData.get('marketing_opt_in');
   if (
     marketingOptIn !== null &&
-    marketingOptIn !== signupFormCopy.marketing.version
+    (typeof marketingOptIn !== 'string' ||
+      !Object.hasOwn(marketingOptInWordingByVersion, marketingOptIn))
   ) {
     return null;
   }
