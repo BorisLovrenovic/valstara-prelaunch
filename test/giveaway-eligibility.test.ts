@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import test from 'node:test';
+import ts from 'typescript';
 
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool } from '../src/server/db/pool.ts';
@@ -24,11 +25,26 @@ test('eligibility reads no location field from the giveaway module', async () =>
   );
   for (const name of names) {
     const source = await readFile(new URL(name, directory), 'utf8');
-    assert.doesNotMatch(
+    const parsed = ts.createSourceFile(
+      name,
       source,
-      /(?:\.\s*|\[\s*['"])(?:country|region|location|cf-ipcountry)\b/iu,
-      `${name} reads a location field`,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
     );
+    const locationInput = /country|region|location/iu;
+    function scan(node: ts.Node): void {
+      if (
+        (ts.isIdentifier(node) && locationInput.test(node.text)) ||
+        (ts.isStringLiteralLike(node) && locationInput.test(node.text))
+      ) {
+        assert.fail(
+          `${name} references a location input: ${node.getText(parsed)}`,
+        );
+      }
+      ts.forEachChild(node, scan);
+    }
+    scan(parsed);
   }
   const eligibility = await readFile(
     new URL('eligibility.ts', directory),
