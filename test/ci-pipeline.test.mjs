@@ -132,6 +132,20 @@ test('changed-line coverage passes at 80% and fails below it', () => {
   assert.throws(() => assertCoverage(passing, 81), /below 81%/);
 });
 
+test('changed-line coverage ignores deletion-only hunks but still checks added lines', () => {
+  const changed = parseChangedLines(
+    '+++ b/src/removed.ts\n@@ -3,2 +2,0 @@\n' +
+    '+++ b/src/changed.ts\n@@ -4,1 +4,1 @@\n',
+  );
+  assert.equal(changed.has('src/removed.ts'), false);
+  assert.deepEqual([...changed.get('src/changed.ts') ?? []], [4]);
+  const result = changedCoverage(changed, new Map(), {
+    includedRoots: ['src/'],
+    includedExtensions: ['.ts', '.astro'],
+  });
+  assert.deepEqual(result.filesWithoutCoverage, ['src/changed.ts']);
+});
+
 test('an uncovered Astro change fails closed without LCOV entries', async () => {
   const config = JSON.parse(await readFile(configUrl, 'utf8'));
   const changed = parseChangedLines(

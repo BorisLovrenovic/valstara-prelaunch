@@ -26,6 +26,10 @@ export function parseChangedLines(diff) {
 
     const start = Number(match[1]);
     const count = match[2] === undefined ? 1 : Number(match[2]);
+    // A deletion-only hunk has no changed lines in the new source to cover.
+    if (count === 0) {
+      continue;
+    }
     const lines = changed.get(currentFile) ?? new Set();
 
     for (let offset = 0; offset < count; offset += 1) {
