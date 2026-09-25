@@ -51,9 +51,9 @@ Two rules make that safe, and they are what a reviewer checks:
 ### `POST /api/signup`
 Body: `email`, `ref` (the **signed** hidden field), `turnstile_token`, `utm?`, `marketing_opt_in?`.
 
-**No country, region or other location is accepted** (ADR-026). A request that still carries `country` or `region` is handled exactly like one that does not, and neither value is stored. `marketing_opt_in` is the separate, optional, unticked marketing checkbox (ADR-027). Ticked, it records a *pending* opt-in and the wording version, which becomes consent only when the address is verified. Whether it is ticked never changes the response, the waitlist place or the giveaway.
+**No country, region or other location is accepted** (ADR-026). A request that still carries `country` or `region` is handled exactly like one that does not, and neither value is stored. `marketing_opt_in` is the separate, optional, unticked marketing checkbox (ADR-027); its checked value is the version of the wording shown. Ticked, it records a *pending* opt-in and that version, replacing an earlier pending version on a repeat ticked submission. Verification copies the stored version into consent and clears both pending fields. Whether it is ticked never changes the response, the waitlist place or the giveaway.
 
-Order of operations, and it is load-bearing: verify Turnstile → rate-limit → validate → **normalise the email** → blocklist and MX → upsert the subscriber → attribute the referral edge → run fraud signals (flag only) → record a pending marketing opt-in if ticked → queue the verification mail → respond. Giveaway entry happens at verification (E7-01, E7-03), not here.
+Order of operations, and it is load-bearing: verify Turnstile → rate-limit → validate → **normalise the email** → blocklist and MX → upsert the subscriber and record a pending marketing opt-in if ticked → attribute the referral edge → run fraud signals (flag only) → queue the verification mail → respond. Giveaway entry happens at verification (E7-01, E7-03), not here.
 
 Returns `{ status: "pending" }`. The status code, response keys and values are identical whether the normalised address is unknown, pending or already verified. **Never returns a position, a count, a rank or an address-membership signal** — a public response cannot disclose another person's status.
 
@@ -88,7 +88,7 @@ prefix. Unknown, tampered and cross-purpose tokens queue nothing and receive
 the same acknowledgement.
 
 ### `POST /api/me/marketing`
-Body: `t` (the signed status token), `marketing` (`on` · `off`), `turnstile_token`. Turnstile is verified first and the route is rate-limited. A tampered or expired token gets the identical response, and nothing changes. `on` records marketing consent with source `member_status`; `off` withdraws it. Both are audited, and **neither touches waitlist status, referral edges, wave or giveaway entries** (ADR-027). Built by S-01.
+Body: `t` (the signed status token), `marketing` (`on` · `off`), `turnstile_token`. Turnstile is verified first. The route is limited per truncated, hashed IP prefix and per authenticated subscriber, with a stricter prefix limit on provider timeout. A tampered or expired token gets the identical accepted response, and nothing changes. With `member.dashboard` off, the route reports `unavailable` and writes nothing. `on` records the current copy-layer wording version with source `member_status`; `off` withdraws it. Each change is audited in the same transaction, and **neither touches waitlist status, referral edges, wave or giveaway entries** (ADR-027). Built by S-01.
 
 *There is no separate alternative-method-of-entry route.* The ordinary verified signup is the free entry route (ADR-026, E7-04).
 

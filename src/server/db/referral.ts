@@ -20,7 +20,6 @@ export interface ReferralStatusAward {
 export interface ReferralSubscriber {
   readonly access_window: AccessWindow | null;
   readonly confirmed_referrals: number;
-  readonly giveaway_eligible: boolean | null;
   readonly referral_code: string | null;
   readonly referral_tier: number;
   readonly status: string;
@@ -298,7 +297,7 @@ export function createReferralRepository(
       return database.readOne<ReferralSubscriber>({
         text: `
           SELECT status, referral_code, confirmed_referrals, referral_tier,
-                 access_window, giveaway_eligible
+                 access_window
           FROM subscriber
           WHERE id = $1
         `,
@@ -401,7 +400,7 @@ export function createReferralRepository(
       return database.readOne<ReferralSubscriber>({
         text: `
           SELECT status, referral_code, confirmed_referrals, referral_tier,
-                 access_window, giveaway_eligible
+                 access_window
           FROM subscriber
           WHERE id = $1
           FOR UPDATE

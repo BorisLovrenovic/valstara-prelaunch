@@ -24,7 +24,6 @@ const applicationRolePassword =
 function request(): Request {
   return new Request('http://valstara.test/api/signup', {
     body: new URLSearchParams({
-      country: 'GB',
       email: 'person@example.test',
       turnstile_token: 'valid-token',
     }),
@@ -156,13 +155,13 @@ test('E5-03 purges only hashes past 90 days and honours the batch limit', async 
     await owner.execute({
       text: `
         INSERT INTO subscriber (
-          id, email, email_normalised, email_domain, status, country,
+          id, email, email_normalised, email_domain, status,
           signup_ip_prefix_hash, created_at
         )
         VALUES
-          ($1, 'expired-a@example.test', 'expired-a@example.test', 'example.test', 'pending', 'GB', decode('aa', 'hex'), $4),
-          ($2, 'expired-b@example.test', 'expired-b@example.test', 'example.test', 'pending', 'GB', decode('bb', 'hex'), $4),
-          ($3, 'retained@example.test', 'retained@example.test', 'example.test', 'pending', 'GB', decode('cc', 'hex'), $5)
+          ($1, 'expired-a@example.test', 'expired-a@example.test', 'example.test', 'pending', decode('aa', 'hex'), $4),
+          ($2, 'expired-b@example.test', 'expired-b@example.test', 'example.test', 'pending', decode('bb', 'hex'), $4),
+          ($3, 'retained@example.test', 'retained@example.test', 'example.test', 'pending', decode('cc', 'hex'), $5)
       `,
       values: [randomUUID(), randomUUID(), randomUUID(), expiredAt, retainedAt],
     });

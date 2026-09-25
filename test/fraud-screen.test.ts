@@ -337,7 +337,6 @@ test('the timeout path completes signup and persists a no_mx review flag', async
     });
 
     const outcome = await signup({
-      country: 'GB',
       email: 'person@slow.example',
       verificationUrl: (token) => `https://valstara.test/verify?token=${token}`,
     });

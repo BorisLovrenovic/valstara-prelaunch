@@ -160,6 +160,28 @@ test('expired and tampered status tokens have the identical rejected authenticat
   }
 });
 
+test('a status token used before expiry is rejected once its expiry passes', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const subscriberId = await seedSubscriber(fixture.database, 'used-before-expiry');
+    await seedStatusToken(fixture.database, {
+      expiresAt: new Date('2026-09-22T12:01:00.000Z'),
+      subscriberId,
+      token: 'used-before-expiry-token',
+    });
+    let time = now;
+    const service = createStatusLinkService(fixture.applicationDatabase, {
+      clock: () => time,
+      flags: { isEnabled: async () => true },
+    });
+    assert.equal((await service.authenticate('used-before-expiry-token')).kind, 'authenticated');
+    time = new Date('2026-09-22T12:01:00.000Z');
+    assert.deepEqual(await service.authenticate('used-before-expiry-token'), { kind: 'rejected' });
+  } finally {
+    await fixture.dispose();
+  }
+});
+
 test('a rejected Turnstile challenge stops recovery before flag, rate-limit, token, or email work', async () => {
   const calls: string[] = [];
   const recover = createStatusLinkRecoveryBoundary({

@@ -1,4 +1,3 @@
-import { CANADA_COUNTRY_CODE } from '../copy/country.ts';
 import { signupFormCopy } from '../copy/signup.ts';
 import type { SignupErrorCode } from '../pages/api/signup.ts';
 
@@ -9,7 +8,7 @@ import type { SignupErrorCode } from '../pages/api/signup.ts';
  * browser bundle.
  */
 
-export type SignupFieldName = 'email' | 'country' | 'region';
+export type SignupFieldName = 'email';
 
 export interface SignupClientError {
   readonly field: SignupFieldName;
@@ -18,17 +17,13 @@ export interface SignupClientError {
 
 export interface SignupFieldValues {
   readonly email: string;
-  readonly country: string;
-  readonly region: string;
 }
 
 /**
  * The inline validation the island runs before it sends a request. It blocks
  * only on empty required fields — exactly the states the server also rejects
- * with `invalid_input` (an empty email, no country, or a Canadian signup with no
- * region). It deliberately does **not** judge email *shape*: that is the
- * server's `invalid_email`, so a good address the server would accept is never
- * blocked here. The region rule mirrors the route: required only for Canada.
+ * with `invalid_input` (an empty email). It deliberately does **not** judge
+ * email shape: that is the server's `invalid_email`.
  */
 export function collectClientErrors(
   values: SignupFieldValues,
@@ -37,15 +32,6 @@ export function collectClientErrors(
 
   if (values.email.trim() === '') {
     errors.push({ field: 'email', message: signupFormCopy.emailRequired });
-  }
-  if (values.country.trim() === '') {
-    errors.push({ field: 'country', message: signupFormCopy.countryRequired });
-  }
-  if (
-    values.country.trim().toUpperCase() === CANADA_COUNTRY_CODE &&
-    values.region.trim() === ''
-  ) {
-    errors.push({ field: 'region', message: signupFormCopy.regionRequired });
   }
 
   return errors;

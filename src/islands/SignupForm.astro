@@ -2,27 +2,13 @@
 import Button from '../components/button.astro';
 import Field from '../components/field.astro';
 import Input from '../components/input.astro';
-import Select from '../components/select.astro';
-import {
-  CANADA_COUNTRY_CODE,
-  canadaRegionOptions,
-  countryFieldCopy,
-  countryOptions,
-  regionFieldCopy,
-} from '../copy/country.ts';
 import { landingCopy } from '../copy/landing.ts';
 import { signupFormCopy } from '../copy/signup.ts';
 import { getConfig } from '../server/config.ts';
 
-interface Props {
-  // A geo *suggestion* (E3-04), or null when detection gave nothing to trust.
-  // The island never re-reads a header; it only leaves this server-chosen value
-  // in place, so detection prefills but never decides.
-  suggestedCountry: string | null;
-  signedReferralCapture: string | null;
-}
+interface Props { signedReferralCapture: string | null; }
 
-const { suggestedCountry, signedReferralCapture } = Astro.props;
+const { signedReferralCapture } = Astro.props;
 
 // The public Turnstile site key is rendered into the page so the widget can
 // mount client-side (ADR-006). It is public, not a secret — a temporary
@@ -61,75 +47,10 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     >
     </p>
 
-    <Field controlId="signup-country" label={countryFieldCopy.label}>
-      <Select
-        id="signup-country"
-        name="country"
-        autocomplete="country"
-        required
-        aria-describedby="signup-country-error"
-      >
-        <option value="" disabled selected={suggestedCountry === null}>
-          {countryFieldCopy.placeholder}
-        </option>
-        {
-          countryOptions.map((option) => (
-            <option
-              value={option.code}
-              selected={option.code === suggestedCountry}
-            >
-              {option.name}
-            </option>
-          ))
-        }
-      </Select>
-    </Field>
-    <p
-      class="signup-error"
-      id="signup-country-error"
-      data-error-for="country"
-      role="alert"
-      aria-atomic="true"
-      hidden
-    >
-    </p>
-
-    {
-      /*
-      The region field is collected only for Canada, because Quebec changes
-      giveaway eligibility (ADR-018). It is always in the DOM and revealed by CSS
-      `:has()` when Canada is chosen — no client JavaScript in the reveal, so the
-      country selector stays zero-JS (E3-04). It is *required there* by the
-      server; the island's inline validation mirrors that rule and never accepts
-      what the server would reject.
-    */
-    }
-    <div class="signup-region" data-region-for={CANADA_COUNTRY_CODE}>
-      <Field controlId="signup-region" label={regionFieldCopy.label}>
-        <Select
-          id="signup-region"
-          name="region"
-          autocomplete="address-level1"
-          aria-describedby="signup-region-error"
-        >
-          <option value="">{regionFieldCopy.placeholder}</option>
-          {
-            canadaRegionOptions.map((option) => (
-              <option value={option.code}>{option.name}</option>
-            ))
-          }
-        </Select>
-      </Field>
-      <p
-        class="signup-error"
-        id="signup-region-error"
-        data-error-for="region"
-        role="alert"
-        aria-atomic="true"
-        hidden
-      >
-      </p>
-    </div>
+    <label class="signup-marketing">
+      <input type="checkbox" name="marketing_opt_in" value={signupFormCopy.marketing.version} />
+      <span>{signupFormCopy.marketing.wording}</span>
+    </label>
 
     {
       /*
@@ -168,6 +89,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     </p>
 
     <Button type="submit" data-submit>{landingCopy.form.submit}</Button>
+    <p class="signup-age">{signupFormCopy.ageStatement}</p>
   </form>
 
   <div
@@ -333,8 +255,6 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
       const values = {
         email: this.#fieldValue('#signup-email'),
-        country: this.#fieldValue('#signup-country'),
-        region: this.#fieldValue('#signup-region'),
       };
       const errors = collectClientErrors(values);
       this.#renderFieldErrors(errors);
@@ -467,7 +387,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
     #renderFieldErrors(errors: readonly SignupClientError[]): void {
       const errored = new Set(errors.map((entry) => entry.field));
-      for (const field of ['email', 'country', 'region'] as const) {
+      for (const field of ['email'] as const) {
         if (!errored.has(field)) {
           this.#clearFieldError(field);
         }
@@ -533,14 +453,8 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
 {
   /*
-    All styles are global and hand-scoped under the custom element. A scoped
-    style block would make Astro stamp a data-astro-cid attribute on every
-    element the component renders — the form, the selects and each option —
-    and the country selector's server-rendered markup (E3-04) is asserted
-    against verbatim, so it must stay attribute-clean. Global-and-hand-scoped
-    keeps that markup clean while confining these rules to the island. Values
-    are tokens only (standing rule 16). This is a template comment, not an HTML
-    one, so its text never reaches the page.
+    All styles are global and hand-scoped under the custom element. Values are
+    tokens only (standing rule 16).
   */
 }
 <style is:global>
@@ -560,22 +474,22 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     margin-block-start: var(--space-2);
   }
 
-  /*
-    The Canada-only region field. Hidden until Canada is the selected country,
-    revealed with `:has()` on the live `:checked` option — no JavaScript, so the
-    reveal itself stays zero-JS (E3-04). The `CA` literal is Canada's ISO 3166-1
-    alpha-2 code (CANADA_COUNTRY_CODE, ADR-018); a stylesheet selector cannot
-    read the constant, so the field also carries it as `data-region-for` for the
-    markup and tests to reconcile against.
-  */
-  .signup-region {
-    display: none;
+  valstara-signup-form .signup-marketing {
+    display: flex;
+    gap: var(--space-2);
+    align-items: start;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
   }
 
-  valstara-signup-form
-    form:has(#signup-country option[value='CA']:checked)
-    .signup-region {
-    display: block;
+  valstara-signup-form .signup-age {
+    margin: 0;
+    color: var(--ink-600);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
   }
 
   valstara-signup-form .signup-error {

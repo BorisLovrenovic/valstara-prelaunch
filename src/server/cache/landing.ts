@@ -2,9 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { campaignFlagRegistry } from '../flags/registry.ts';
 import type { Flag } from '../flags/types.ts';
-import { geoCountryHeaderName } from '../geo/suggest-country.ts';
-
-export const landingCacheVary = `${geoCountryHeaderName}, X-Valstara-Flag-Generation`;
+export const landingCacheVary = 'X-Valstara-Flag-Generation';
 
 export function landingFlagGeneration(flags: readonly Flag[]): string {
   const state = flags

@@ -6,7 +6,6 @@ export type FraudReviewOutcome = 'dismissed' | 'upheld';
 
 export interface OpenFraudFlagRow {
   readonly confirmed_referrals: number;
-  readonly country: string | null;
   readonly detail: AuditDetail;
   readonly email_domain: string;
   readonly id: string;
@@ -73,7 +72,6 @@ export function createFraudReviewRepository(
               END AS priority,
               s.status,
               s.email_domain,
-              s.country,
               s.confirmed_referrals,
               s.referral_tier,
               s.verified_at,

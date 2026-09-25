@@ -1,9 +1,7 @@
 ---
 import Accordion from '../components/accordion.astro';
-import { countryOptions } from '../copy/country.ts';
 import { landingCopy } from '../copy/landing.ts';
 import SignupForm from '../islands/SignupForm.astro';
-import { suggestCountry } from '../server/geo/suggest-country.ts';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getFlagService } from '../server/flags/app-service.ts';
 import { getConfig } from '../server/config.ts';
@@ -41,18 +39,6 @@ Astro.response.headers.set(
 Astro.response.headers.set('Vary', landingCacheVary);
 Astro.response.headers.set('X-Valstara-Flag-Generation', flagGeneration);
 
-// Geo is a *suggestion*, read only through the geo module — the page never
-// reads the Cloudflare country header itself (the module's interface is the
-// guardrail, and a scan enforces that it is the sole reader). A code we do not
-// offer, or a missing/sentinel header, resolves to `null` and the selector
-// renders unfilled rather than guessing. Detection only prefills; the confirmed
-// value the person submits is what is stored.
-const detectedCountry = suggestCountry(Astro.request.headers);
-const suggestedCountry =
-  detectedCountry !== null &&
-  countryOptions.some((option) => option.code === detectedCountry)
-    ? detectedCountry
-    : null;
 ---
 
 <BaseLayout
@@ -69,10 +55,7 @@ const suggestedCountry =
 
       {
         signupEnabled ? (
-          <SignupForm
-            suggestedCountry={suggestedCountry}
-            signedReferralCapture={signedReferralCapture}
-          />
+          <SignupForm signedReferralCapture={signedReferralCapture} />
         ) : (
           <div class="lp-paused">
             <p class="lp-paused__title">{landingCopy.paused.heading}</p>

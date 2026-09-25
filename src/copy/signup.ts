@@ -1,3 +1,5 @@
+import { marketingOptInCopy } from './marketing.ts';
+
 export const signupCopy = {
   // Identical accepted copy for unknown, pending, and verified addresses: no
   // membership or position signal leaves the public route.
@@ -6,7 +8,7 @@ export const signupCopy = {
   paused:
     "We're not taking new signups right now. Check back in a little while — the waitlist will reopen soon.",
   // Errors, in brand voice: plain, specific, no vendor names, no machinery terms.
-  invalidInput: 'Enter a valid email address and select your country.',
+  invalidInput: 'Enter a valid email address.',
   invalidEmail: 'Enter a valid email address.',
   blockedDomain: 'Use a permanent email address to join the waitlist.',
   challengeFailed: "We couldn't confirm that request. Please try again.",
@@ -32,6 +34,6 @@ export const signupFormCopy = {
   connection:
     "We couldn't reach the waitlist just now — check your connection and try again.",
   emailRequired: 'Enter your email address.',
-  countryRequired: 'Select your country.',
-  regionRequired: 'Select your province or territory.',
+  marketing: marketingOptInCopy,
+  ageStatement: 'Open to people aged 18 and over.',
 } as const;

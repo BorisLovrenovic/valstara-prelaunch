@@ -3,8 +3,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
 import { setTimeout as systemSleep } from 'node:timers/promises';
 
-import { CANADA_COUNTRY_CODE } from '../../copy/country.ts';
-import { signupCopy } from '../../copy/signup.ts';
+import { signupCopy, signupFormCopy } from '../../copy/signup.ts';
 import { getConfig } from '../../server/config.ts';
 import { DatabaseUnavailableError } from '../../server/db/errors.ts';
 import { createFraudFlagRepository } from '../../server/db/fraud-flag.ts';
@@ -39,7 +38,6 @@ const ipRateLimitMaxAttempts = 5;
 // counter with confirmed signups from the same prefix.
 const strictIpRateLimitMaxAttempts = 2;
 const maxEmailLength = 254;
-const maxRegionLength = 64;
 export const signupResponseTargetMs = 500;
 
 /**
@@ -156,8 +154,7 @@ function dependencyError(error: unknown): Response {
 
 interface ValidBody {
   readonly email: string;
-  readonly country: string;
-  readonly region: string | undefined;
+  readonly marketingOptInVersion: string | null;
 }
 
 function validateBody(formData: FormData): ValidBody | null {
@@ -170,42 +167,17 @@ function validateBody(formData: FormData): ValidBody | null {
     return null;
   }
 
-  const rawCountry = formData.get('country');
-  if (typeof rawCountry !== 'string') {
-    return null;
-  }
-  const country = rawCountry.trim().toUpperCase();
-  if (!/^[A-Z]{2}$/u.test(country)) {
-    return null;
-  }
-
-  const rawRegion = formData.get('region');
-  let region: string | undefined;
-  if (rawRegion !== null) {
-    if (typeof rawRegion !== 'string') {
-      return null;
-    }
-    const trimmed = rawRegion.trim();
-    if (trimmed.length > maxRegionLength) {
-      return null;
-    }
-    region = trimmed === '' ? undefined : trimmed;
-  }
-
-  // The region is collected — and required — only for Canada, because Quebec
-  // changes giveaway eligibility (ADR-018, E3-04). A Canadian signup with no
-  // region is incomplete: the eligibility decision (E7-01) has nothing to read.
-  // This is where "required there" is enforced: a CSS-hidden control cannot
-  // carry HTML `required` without breaking a no-JS submit, so the server is the
-  // only honest place to require it, and E3-05's inline validation must never
-  // accept what the server would reject.
-  if (country === CANADA_COUNTRY_CODE && region === undefined) {
+  const marketingOptIn = formData.get('marketing_opt_in');
+  if (
+    marketingOptIn !== null &&
+    marketingOptIn !== signupFormCopy.marketing.version
+  ) {
     return null;
   }
 
   // The raw email keeps its exact form for normalisation (which rejects
   // surrounding whitespace as a malformed address → invalid_email).
-  return { country, email: rawEmail, region };
+  return { email: rawEmail, marketingOptInVersion: marketingOptIn };
 }
 
 export function createSignupRoute(
@@ -293,10 +265,9 @@ export function createSignupRoute(
     let outcome: SignupOutcome;
     try {
       outcome = await dependencies.signup({
-        country: body.country,
         email: body.email,
+        marketingOptInVersion: body.marketingOptInVersion,
         referralCode: referralCapture?.ref ?? null,
-        region: body.region,
         signupIpPrefixHash: prefixHash,
         utm: referralCapture?.utm ?? null,
         verificationUrl: (token) => {

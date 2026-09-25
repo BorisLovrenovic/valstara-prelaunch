@@ -7,6 +7,7 @@ import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
 import { createReferralService } from '../server/referral/service.ts';
+import { createMarketingService } from '../server/subscriber/marketing.ts';
 import type { ReferralStatus } from '../server/referral/status.ts';
 import { hashedIpPrefix } from '../server/ratelimit/ip-prefix.ts';
 import { currentSurveyVersion } from '../server/survey/questions.ts';
@@ -26,6 +27,7 @@ let dashboardStatus: ReferralStatus | null = null;
 let replacementRequested = false;
 let challengeFailed = false;
 let surveyEnabled = false;
+let marketingEnabled = false;
 const token = Astro.url.searchParams.get('t') ?? '';
 
 if (Astro.request.method === 'POST') {
@@ -71,9 +73,10 @@ if (Astro.request.method === 'POST') {
     });
     authentication = await statusLinks.authenticate(token);
     if (authentication.kind === 'authenticated') {
-      [dashboardStatus, surveyEnabled] = await Promise.all([
+      [dashboardStatus, surveyEnabled, marketingEnabled] = await Promise.all([
         createReferralService(database).status(authentication.subscriberId),
         flags.isEnabled('survey.enabled'),
+        createMarketingService(database, { flags }).preference(authentication.subscriberId),
       ]);
     }
   } finally {
@@ -132,17 +135,37 @@ unsubscribeUrl.searchParams.set('t', token);
             <dt>{memberStatusCopy.authenticated.entries}</dt>
             <dd class="tabular-figure">{dashboardStatus.giveawayEntries}</dd>
           </div>
-          <div>
-            <dt>{memberStatusCopy.authenticated.eligibility}</dt>
-            <dd>
-              {dashboardStatus.giveawayEligible === null
-                ? memberStatusCopy.authenticated.eligibilityPending
-                : dashboardStatus.giveawayEligible
-                  ? memberStatusCopy.authenticated.eligibilityYes
-                  : memberStatusCopy.authenticated.eligibilityNo}
-            </dd>
-          </div>
         </dl>
+
+        <section class="member-status-section">
+          <h2>{memberStatusCopy.marketing.heading}</h2>
+          <p>{marketingEnabled ? memberStatusCopy.marketing.enabled : memberStatusCopy.marketing.disabled}</p>
+          {!marketingEnabled ? <p>{memberStatusCopy.marketing.wording}</p> : null}
+          <form
+            action="/api/me/marketing"
+            data-marketing-form
+            data-unavailable-message={memberStatusCopy.marketing.unavailable}
+            method="post"
+          >
+            <input name="t" type="hidden" value={token} />
+            <div
+              class="cf-turnstile"
+              data-sitekey={config.turnstileSiteKey}
+              data-response-field-name="turnstile_token"
+            />
+            <noscript><p>{memberStatusCopy.marketing.javaScriptRequired}</p></noscript>
+            <button name="marketing" type="submit" value={marketingEnabled ? 'off' : 'on'}>
+              {marketingEnabled ? memberStatusCopy.marketing.turnOff : memberStatusCopy.marketing.turnOn}
+            </button>
+            <p aria-live="polite" data-marketing-status />
+          </form>
+          <script
+            is:inline
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+            async
+            defer
+          />
+        </section>
 
         <section class="member-status-section">
           <h2>{memberStatusCopy.referral.heading}</h2>
@@ -321,6 +344,32 @@ unsubscribeUrl.searchParams.set('t', token);
           : (payload.error?.message ?? surveyForm.dataset.unavailableMessage);
       } catch {
         status.textContent = surveyForm.dataset.unavailableMessage ?? '';
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  }
+
+  const marketingForm = document.querySelector('[data-marketing-form]');
+  if (marketingForm instanceof HTMLFormElement) {
+    marketingForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submit = marketingForm.querySelector('[type="submit"]');
+      const status = marketingForm.querySelector('[data-marketing-status]');
+      if (!(submit instanceof HTMLButtonElement) || !(status instanceof HTMLElement)) return;
+      submit.disabled = true;
+      try {
+        const body = new FormData(marketingForm);
+        body.set('marketing', submit.value);
+        const response = await fetch(marketingForm.action, { body, method: 'POST' });
+        const payload = await response.json();
+        if (response.ok) {
+          window.location.reload();
+          return;
+        }
+        status.textContent = payload.error?.message ?? '';
+      } catch {
+        status.textContent = marketingForm.dataset.unavailableMessage ?? '';
       } finally {
         submit.disabled = false;
       }

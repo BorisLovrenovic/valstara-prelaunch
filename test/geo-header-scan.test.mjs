@@ -3,13 +3,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
-// The geo module's whole value is that `CF-IPCountry` is turned into a
-// *suggestion* in one place, so no consumer can quietly let detection decide the
-// country (`docs/modules/platform.md#geo`). This scan enforces that: the header
-// name may appear only inside the geo module. If any route, page or component
-// starts reading it directly, this fails.
+// S-01 removes location at signup. Any source reader of the country header is
+// now a regression, including a resurrected geo module.
 const SRC_ROOT = fileURLToPath(new URL('../src', import.meta.url));
-const GEO_MODULE = 'server/geo/suggest-country.ts';
 const HEADER_PATTERN = /CF-IPCountry/iu;
 
 function sourceFiles(directory) {
@@ -25,26 +21,18 @@ function sourceFiles(directory) {
   return files;
 }
 
-test('CF-IPCountry is referenced only inside the geo module', () => {
+test('nothing in application source reads CF-IPCountry', () => {
   const offenders = [];
   for (const file of sourceFiles(SRC_ROOT)) {
     if (!HEADER_PATTERN.test(readFileSync(file, 'utf8'))) {
       continue;
     }
-    const relative = file.slice(SRC_ROOT.length + 1);
-    if (relative !== GEO_MODULE) {
-      offenders.push(relative);
-    }
+    offenders.push(file.slice(SRC_ROOT.length + 1));
   }
 
   assert.deepEqual(
     offenders,
     [],
-    `only ${GEO_MODULE} may read CF-IPCountry; found it in: ${offenders.join(', ')}`,
+    `CF-IPCountry readers found in: ${offenders.join(', ')}`,
   );
-});
-
-test('the geo module does reference the header — the scan is not vacuous', () => {
-  const source = readFileSync(`${SRC_ROOT}/${GEO_MODULE}`, 'utf8');
-  assert.match(source, HEADER_PATTERN);
 });

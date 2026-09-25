@@ -95,7 +95,6 @@ test('the shared computation preserves the exact count and derives reward status
       ],
       {
         accessWindow: 'wave-2',
-        giveawayEligible: true,
         giveawayEntries: 8,
         ownRank: 4,
       },
@@ -103,7 +102,6 @@ test('the shared computation preserves the exact count and derives reward status
     {
       accessWindow: 'wave-2',
       confirmedReferrals: 12,
-      giveawayEligible: true,
       giveawayEntries: 8,
       ownRank: 4,
       referralLink: 'https://valstara.com/?ref=ABCDEF234567',
@@ -135,7 +133,7 @@ test('status returns the exact stored count, a settled-only tier, and each activ
     await fixture.database.execute({
       text: `
         UPDATE subscriber
-        SET access_window = 'wave-2', giveaway_eligible = true,
+        SET access_window = 'wave-2',
             verified_at = $2
         WHERE id = $1
       `,
@@ -160,8 +158,8 @@ test('status returns the exact stored count, a settled-only tier, and each activ
     await fixture.database.execute({
       text: `
         INSERT INTO giveaway_entry (
-          id, subscriber_id, method, entries, jurisdiction, rules_version
-        ) VALUES ($1, $2, 'base', 8, 'SE', '2026-09')
+          id, subscriber_id, method, entries, rules_version
+        ) VALUES ($1, $2, 'base', 8, '2026-09')
       `,
       values: [randomUUID(), subscriberId],
     });
@@ -204,7 +202,6 @@ test('status returns the exact stored count, a settled-only tier, and each activ
     assert.deepEqual(status, {
       accessWindow: 'wave-2',
       confirmedReferrals: 12,
-      giveawayEligible: true,
       giveawayEntries: 8,
       ownRank: 3,
       referralLink: 'https://valstara.com/?ref=ABCDEF234567',

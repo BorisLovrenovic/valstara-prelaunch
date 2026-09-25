@@ -105,13 +105,12 @@ function inputFor(
 ): SignupInput {
   return {
     email,
-    country: 'CA',
     verificationUrl: (token) => `http://valstara.test/verify?token=${token}`,
     ...extra,
   };
 }
 
-test('a first signup creates a pending subscriber with country and region, one token, one queued email, and sends once', async () => {
+test('a first signup creates a pending subscriber, one token, one queued email, and sends once', async () => {
   const fixture = await createDatabaseFixture();
   const sent: VerificationTestMail[] = [];
   const signup = createSignupService(fixture.database, {
@@ -124,23 +123,17 @@ test('a first signup creates a pending subscriber with country and region, one t
   });
 
   try {
-    const outcome = await signup(
-      inputFor('New.User@Example.test', { region: 'Quebec' }),
-    );
+    const outcome = await signup(inputFor('New.User@Example.test'));
     assert.equal(outcome.kind, 'created');
 
     const subscriber = await fixture.database.readOne<{
-      country: string;
       email: string;
       email_normalised: string;
-      region: string;
       status: string;
     }>({
-      text: 'SELECT country, email, email_normalised, region, status FROM subscriber',
+      text: 'SELECT email, email_normalised, status FROM subscriber',
     });
     assert.equal(subscriber?.status, 'pending');
-    assert.equal(subscriber?.country, 'CA');
-    assert.equal(subscriber?.region, 'Quebec');
     assert.equal(subscriber?.email, 'New.User@Example.test'); // raw preserved
     assert.equal(subscriber?.email_normalised, 'new.user@example.test');
 

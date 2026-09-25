@@ -68,7 +68,6 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
 function signupRequest(email: string): Request {
   return new Request('http://valstara.test/api/signup', {
     body: new URLSearchParams({
-      country: 'GB',
       email,
       turnstile_token: 'duplicate-identity-route-token',
     }),
@@ -126,7 +125,6 @@ test('a cross-domain normalised local-part match flags the new subscriber withou
     });
 
     const outcome = await signup({
-      country: 'GB',
       email: 'SHARED+campaign@new.example',
       verificationUrl: (token) => `https://valstara.test/verify?token=${token}`,
     });
@@ -170,7 +168,6 @@ test('a cross-domain normalised local-part match flags the new subscriber withou
     );
 
     const repeat = await signup({
-      country: 'GB',
       email: 'shared@new.example',
       verificationUrl: (token) => `https://valstara.test/verify?token=${token}`,
     });
@@ -281,7 +278,6 @@ test('a duplicate-identity signal failure cannot reject the signup', async () =>
       sendVerificationMail: async () => undefined,
     });
     const outcome = await signup({
-      country: 'GB',
       email: 'accepted@failure.example',
       verificationUrl: () => 'https://valstara.test/verify',
     });

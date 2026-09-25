@@ -41,6 +41,7 @@ The waitlist row.
 | `marketing_consent_version` | text null | The version of the opt-in wording the person agreed to |
 | `marketing_consent_source` | text null | `signup` · `member_status`. `marketing_consent_at`, `_version` and `_source` are all null or all set (check constraint) |
 | `marketing_opt_in_pending` | boolean not null default false | The box was ticked at signup and is waiting for verification. **No marketing consent exists until verification confirms it** |
+| `marketing_opt_in_pending_version` | text null | The wording version shown at the latest ticked signup while the row is pending. Non-null exactly when `marketing_opt_in_pending` is true; copied to `marketing_consent_version` at verification, then cleared (S-01 founder amendment, 2026-09-25) |
 | `signup_ip_prefix_hash` | bytea | See *IP handling*. Purged at 90 days |
 | `verified_at` `unsubscribed_at` `expired_at` `disqualified_at` | timestamptz | |
 | `disqualification_previous_status` | text null | Status restored only by reversing the flag that disqualified the subscriber |

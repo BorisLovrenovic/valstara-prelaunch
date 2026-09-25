@@ -194,6 +194,21 @@ async function openForm({
   return { context, page };
 }
 
+test('the rendered form has no location field, an unticked versioned opt-in, and the 18+ statement beside submit', async () => {
+  const { context, page } = await openForm({ javaScriptEnabled: false });
+  try {
+    assert.equal(await page.locator('[name="country"], [name="region"]').count(), 0);
+    const optIn = page.locator('[name="marketing_opt_in"]');
+    assert.equal(await optIn.count(), 1);
+    assert.equal(await optIn.isChecked(), false);
+    assert.equal(await optIn.inputValue(), 'v1');
+    assert.match(await page.locator('label.signup-marketing').textContent(), /weekly updates and product news/u);
+    assert.equal(await page.locator('[data-submit] + .signup-age').textContent(), 'Open to people aged 18 and over.');
+  } finally {
+    await context.close();
+  }
+});
+
 test('the no-JS form explains the requirement and the real route rejects its empty token', async () => {
   const { context, page } = await openForm({ javaScriptEnabled: false });
   assert.match(
@@ -202,7 +217,6 @@ test('the no-JS form explains the requirement and the real route rejects its emp
   );
 
   await page.fill('#signup-email', 'nojs@gmail.com');
-  await page.selectOption('#signup-country', 'US');
   const responsePromise = page.waitForResponse('**/api/signup');
   await page.click('[data-submit]');
   const response = await responsePromise;
@@ -227,7 +241,6 @@ test('submission waits for delayed Turnstile resolution and posts the resolved t
   });
 
   await page.fill('#signup-email', 'delayed@example.com');
-  await page.selectOption('#signup-country', 'US');
   await page.click('[data-submit]');
   await page.waitForTimeout(100);
   assert.equal(
@@ -256,7 +269,6 @@ for (const turnstileMode of ['expired', 'error']) {
       requestSeen = true;
     });
     await page.fill('#signup-email', `${turnstileMode}@example.com`);
-    await page.selectOption('#signup-country', 'US');
     await page.click('[data-submit]');
     await page.waitForSelector('[data-form-error]:not([hidden])');
     assert.match(
@@ -284,7 +296,6 @@ test('a double click submits exactly once', async () => {
   });
 
   await page.fill('#signup-email', 'twice@example.com');
-  await page.selectOption('#signup-country', 'US');
   const submit = page.locator('[data-submit]');
   await submit.click();
   await submit.click({ force: true }).catch(() => {});
@@ -308,7 +319,6 @@ test('a pending response hides the form and shows the success message', async ()
   );
 
   await page.fill('#signup-email', 'pending@example.com');
-  await page.selectOption('#signup-country', 'US');
   await page.click('[data-submit]');
 
   await page.waitForSelector('[data-success]:not([hidden])');
@@ -363,7 +373,6 @@ test('each server error code renders its message at the right target', async () 
     );
 
     await page.fill('#signup-email', 'err@example.com');
-    await page.selectOption('#signup-country', 'US');
     await page.click('[data-submit]');
 
     await page.waitForSelector(`${scenario.target}:not([hidden])`);
@@ -411,7 +420,6 @@ test('the island carries a signed ref hidden field through unchanged', async () 
   });
 
   await page.fill('#signup-email', 'ref@example.com');
-  await page.selectOption('#signup-country', 'US');
   const request = page.waitForRequest('**/api/signup');
   await page.click('[data-submit]');
   await request;
@@ -436,7 +444,6 @@ test('the form flow sets no cookie and writes no storage', async () => {
   );
 
   await page.fill('#signup-email', 'storage@example.com');
-  await page.selectOption('#signup-country', 'US');
   await page.click('[data-submit]');
   await page.waitForSelector('[data-success]:not([hidden])');
 

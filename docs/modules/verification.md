@@ -65,6 +65,7 @@ message.
 ## Rules
 - **Only the SHA-256 of the token is stored.** The plaintext exists in the emailed URL and nowhere else — not in a log line, not in an audit detail, not in an analytics event.
 - **`consume()` is single-use and returns `already` on replay**, which the caller renders as success. A person clicking their confirmation link twice has not made a mistake.
+- A reusable `status` token still expires on schedule even if it was consumed on an earlier visit. Its expiry is checked before replay classification.
 - **`expired` and `invalid` produce the identical customer-facing response.** Distinguishing them tells an attacker which tokens exist.
 - Tokens carry a **purpose**, and a token issued for one purpose is invalid for another — asserted by test, because a status link that could verify an address would be an account-takeover primitive.
 - Expiry is configuration: 7 days for `verify`, 30 for `status`, 90 for `unsubscribe`.

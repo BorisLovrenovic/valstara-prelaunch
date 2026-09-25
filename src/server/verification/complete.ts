@@ -1,4 +1,5 @@
 import type { DatabasePool } from '../db/pool.ts';
+import { createAuditService } from '../audit/service.ts';
 import { createReferralRepository } from '../db/referral.ts';
 import { createVerificationCompletionRepository } from '../db/verification-completion.ts';
 import { withTransaction } from '../db/transaction.ts';
@@ -91,6 +92,19 @@ export function createVerificationCompletionService(
           throw new Error(
             'A fresh verification token did not verify a pending subscriber.',
           );
+        }
+        const consentVersion = await completion.promotePendingMarketingConsent(
+          subscriberId,
+          verificationTime,
+        );
+        if (consentVersion !== null) {
+          await createAuditService(connection).record({
+            action: 'consent.marketing_granted',
+            actor: 'subscriber',
+            detail: { source: 'signup', version: consentVersion },
+            subjectId: subscriberId,
+            subjectType: 'subscriber',
+          });
         }
         await dependencies.afterStep?.('verified');
 

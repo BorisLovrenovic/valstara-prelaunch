@@ -82,10 +82,10 @@ async function insertOpenFlag(
   await database.execute({
     text: `
       INSERT INTO subscriber (
-        id, email, email_normalised, email_domain, status, country,
+        id, email, email_normalised, email_domain, status,
         confirmed_referrals, referral_tier, verified_at
       )
-      VALUES ($1, $2, $2, 'review.example', 'verified', 'GB', 3, 1, $3)
+      VALUES ($1, $2, $2, 'review.example', 'verified', 3, 1, $3)
     `,
     values: [subscriberId, email, new Date('2026-09-15T10:00:00.000Z')],
   });
@@ -354,8 +354,8 @@ test('E5-05 upholding disqualifies only through review, isolates referred people
       await fixture.database.execute({
         text: `
           INSERT INTO giveaway_entry (
-            id, subscriber_id, method, entries, jurisdiction, rules_version, source_edge_id
-          ) VALUES ($1, $2, $3, 1, 'GB', 'test-rules', $4)
+            id, subscriber_id, method, entries, rules_version, source_edge_id
+          ) VALUES ($1, $2, $3, 1, 'test-rules', $4)
         `,
         values: [id, subscriberId, method, sourceEdgeId],
       });
@@ -510,8 +510,8 @@ test('E5-05 reversing an upheld review restores the recorded state and audits th
       values: [edgeId, flag.subscriberId, referredId],
     });
     await fixture.database.execute({
-      text: `INSERT INTO giveaway_entry (id, subscriber_id, method, entries, jurisdiction, rules_version, source_edge_id)
-             VALUES ($1, $2, 'referral', 1, 'GB', 'test-rules', $3)`,
+      text: `INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version, source_edge_id)
+             VALUES ($1, $2, 'referral', 1, 'test-rules', $3)`,
       values: [entryId, flag.subscriberId, edgeId],
     });
     const review = createFraudReviewService(fixture.applicationDatabase);
@@ -651,7 +651,6 @@ test('E5-04 fraud response is decision-ready and redacts raw IP addresses and to
         readonly raisedAt: string;
         readonly subscriber: {
           readonly confirmedReferrals: number;
-          readonly country: string | null;
           readonly createdAt: string;
           readonly emailDomain: string;
           readonly id: string;
@@ -685,7 +684,6 @@ test('E5-04 fraud response is decision-ready and redacts raw IP addresses and to
         raisedAt: '2026-09-16T10:00:00.000Z',
         subscriber: {
           confirmedReferrals: 3,
-          country: 'GB',
           emailDomain: 'review.example',
           id: flag.subscriberId,
           referralTier: 1,

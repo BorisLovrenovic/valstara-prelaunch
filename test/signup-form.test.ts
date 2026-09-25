@@ -11,34 +11,10 @@ import { signupErrorCatalogue } from '../src/pages/api/signup.ts';
 
 test('inline validation blocks exactly the empty required fields the server rejects', () => {
   assert.deepEqual(
-    collectClientErrors({ email: '', country: '', region: '' }),
-    [
-      { field: 'email', message: signupFormCopy.emailRequired },
-      { field: 'country', message: signupFormCopy.countryRequired },
-    ],
+    collectClientErrors({ email: '' }),
+    [{ field: 'email', message: signupFormCopy.emailRequired }],
   );
-
-  // Region is required only for Canada — and case-insensitively, mirroring the
-  // route which upper-cases the country before it decides.
-  assert.deepEqual(
-    collectClientErrors({ email: 'a@b.co', country: 'CA', region: '' }),
-    [{ field: 'region', message: signupFormCopy.regionRequired }],
-  );
-  assert.deepEqual(
-    collectClientErrors({ email: 'a@b.co', country: 'ca', region: '' }),
-    [{ field: 'region', message: signupFormCopy.regionRequired }],
-  );
-
-  // A non-Canadian signup never requires a region.
-  assert.deepEqual(
-    collectClientErrors({ email: 'a@b.co', country: 'US', region: '' }),
-    [],
-  );
-  // Canada with a region, and a complete non-Canadian signup, both pass.
-  assert.deepEqual(
-    collectClientErrors({ email: 'a@b.co', country: 'CA', region: 'QC' }),
-    [],
-  );
+  assert.deepEqual(collectClientErrors({ email: 'a@b.co' }), []);
 });
 
 test('inline validation never blocks an address the server would accept', () => {
@@ -54,7 +30,7 @@ test('inline validation never blocks an address the server would accept', () => 
   ];
   for (const email of serverAcceptable) {
     assert.deepEqual(
-      collectClientErrors({ email, country: 'US', region: '' }),
+      collectClientErrors({ email }),
       [],
       `${email} must not be blocked inline`,
     );

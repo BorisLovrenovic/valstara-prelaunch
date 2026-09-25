@@ -20,7 +20,6 @@ export interface OpenFraudFlag {
   readonly raisedAt: Date;
   readonly subscriber: {
     readonly confirmedReferrals: number;
-    readonly country: string | null;
     readonly createdAt: Date;
     readonly emailDomain: string;
     readonly id: string;
@@ -77,7 +76,6 @@ export function createFraudReviewService(
         raisedAt: row.raised_at,
         subscriber: {
           confirmedReferrals: row.confirmed_referrals,
-          country: row.country,
           createdAt: row.subscriber_created_at,
           emailDomain: row.email_domain,
           id: row.subscriber_id,

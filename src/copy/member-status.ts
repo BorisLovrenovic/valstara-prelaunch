@@ -1,11 +1,9 @@
+import { marketingOptInCopy } from './marketing.ts';
+
 export const memberStatusCopy = {
   authenticated: {
     body: 'This private page shows the waitlist details attached to this link.',
     confirmedReferrals: 'Confirmed referrals',
-    eligibility: 'Giveaway eligibility',
-    eligibilityNo: 'Not eligible under the current rules',
-    eligibilityPending: 'Not decided yet',
-    eligibilityYes: 'Eligible under the current rules',
     entries: 'Giveaway entries',
     heading: 'Your waitlist status',
     rank: 'Your rank',
@@ -45,6 +43,21 @@ export const memberStatusCopy = {
   survey: {
     heading: 'Update your launch preferences',
     submit: 'Save updated preferences',
+  },
+  marketing: {
+    heading: 'Marketing email',
+    enabled: 'On',
+    disabled: 'Off',
+    wording: marketingOptInCopy.wording,
+    turnOn: 'Turn on marketing email',
+    turnOff: 'Turn off marketing email',
+    saved: 'Your marketing email preference is updated.',
+    paused: 'This preference is unavailable right now. Please try again later.',
+    invalidInput: 'Choose an email preference and try again.',
+    challengeFailed: 'That security check did not go through. Please try again.',
+    rateLimited: 'Too many attempts — try again in a few minutes.',
+    unavailable: 'We could not save that preference right now. Please try again later.',
+    javaScriptRequired: 'JavaScript is required to complete the security check.',
   },
   unsubscribe: {
     body: 'You can stop waitlist emails at any time.',

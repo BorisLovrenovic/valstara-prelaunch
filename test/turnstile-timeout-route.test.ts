@@ -14,7 +14,6 @@ const applicationRolePassword =
 function makeRequest(email: string): Request {
   return new Request('http://valstara.test/api/signup', {
     body: new URLSearchParams({
-      country: 'GB',
       email,
       turnstile_token: 'a-token',
     }),

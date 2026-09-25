@@ -51,8 +51,7 @@ export type SignupOutcome =
 
 export interface SignupInput {
   readonly email: string;
-  readonly country: string;
-  readonly region?: string | undefined;
+  readonly marketingOptInVersion?: string | null;
   readonly referralCode?: string | null;
   readonly utm?: UtmParameters | null;
   readonly signupIpPrefixHash?: Buffer | null;
@@ -84,8 +83,7 @@ export interface SignupServiceDependencies {
 async function upsertSubscriber(
   database: DatabasePool,
   email: NormalisedEmail,
-  country: string,
-  region: string | null,
+  marketingOptInVersion: string | null,
   utm: UtmParameters | null,
   signupIpPrefixHash: Buffer | null,
 ): Promise<SignupSubscriber> {
@@ -93,12 +91,11 @@ async function upsertSubscriber(
     const repository = createSubscriberRepository(connection);
     const subscriberId = randomUUID();
     const inserted = await repository.insertPending({
-      country,
       email: email.raw,
       emailDomain: email.domain,
       emailNormalised: email.normalised,
       id: subscriberId,
-      region,
+      marketingOptInVersion,
       signupIpPrefixHash,
       utm,
     });
@@ -114,6 +111,9 @@ async function upsertSubscriber(
       throw new Error('Conflicting subscriber row could not be read back.');
     }
 
+    if (existing.status === 'pending' && marketingOptInVersion !== null) {
+      await repository.setPendingMarketingOptIn(existing.id, marketingOptInVersion);
+    }
     return { created: false, id: existing.id, status: existing.status };
   });
 }
@@ -147,13 +147,10 @@ export function createSignupService(
       return { kind: screen.reject };
     }
 
-    const region =
-      input.region !== undefined && input.region !== '' ? input.region : null;
     const subscriber = await upsertSubscriber(
       database,
       normalised,
-      input.country,
-      region,
+      input.marketingOptInVersion ?? null,
       input.utm ?? null,
       input.signupIpPrefixHash ?? null,
     );

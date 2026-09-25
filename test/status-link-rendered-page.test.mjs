@@ -107,11 +107,11 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     `
       INSERT INTO subscriber (
         id, email, email_normalised, email_domain, status, verified_at,
-        referral_code, confirmed_referrals, access_window, giveaway_eligible
+        referral_code, confirmed_referrals, access_window
       )
       VALUES (
         $1, $2, $2, 'example.test', 'verified', CURRENT_TIMESTAMP,
-        'STATUS234567', 12, 'wave-2', true
+        'STATUS234567', 12, 'wave-2'
       )
     `,
     [subscriberId, 'status-owner@example.test'],
@@ -120,11 +120,11 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     `
       INSERT INTO subscriber (
         id, email, email_normalised, email_domain, status, verified_at,
-        referral_code, confirmed_referrals, access_window, giveaway_eligible
+        referral_code, confirmed_referrals, access_window
       )
       VALUES (
         $1, $2, $2, 'example.test', 'verified', CURRENT_TIMESTAMP,
-        'OTHER2345678', 3, 'wave-3', false
+        'OTHER2345678', 3, 'wave-3'
       )
     `,
     [otherSubscriberId, 'other-status-owner@example.test'],
@@ -142,8 +142,8 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
   await fixture.database.query(
     `
       INSERT INTO giveaway_entry (
-        id, subscriber_id, method, entries, jurisdiction, rules_version
-      ) VALUES ($1, $2, 'base', 8, 'SE', '2026-09')
+        id, subscriber_id, method, entries, rules_version
+      ) VALUES ($1, $2, 'base', 8, '2026-09')
     `,
     [randomUUID(), subscriberId],
   );
@@ -214,7 +214,8 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
       'Referral tier',
       'wave-2',
       'Giveaway entries',
-      'Eligible under the current rules',
+      'Marketing email',
+      'Turn on marketing email',
       'https://valstara.com/?ref=STATUS234567',
       'Settled rewards are already earned',
       'Held rewards wait for a qualifying first order after launch',
@@ -233,6 +234,22 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     assert.match(authenticatedBody, />12<\/dd>/u);
     assert.match(authenticatedBody, />1<\/dd>/u);
     assert.match(authenticatedBody, />8<\/dd>/u);
+    assert.doesNotMatch(authenticatedBody, /Giveaway eligibility|Eligible under the current rules/u);
+    assert.match(authenticatedBody, /action="\/api\/me\/marketing"/u);
+    assert.match(authenticatedBody, /data-response-field-name="turnstile_token"/u);
+    await fixture.database.query(
+      `UPDATE subscriber
+       SET marketing_consent_at = $2, marketing_consent_version = 'v1',
+           marketing_consent_source = 'member_status'
+       WHERE id = $1`,
+      [subscriberId, new Date('2026-09-25T10:00:00.000Z')],
+    );
+    const optedIn = await globalThis.fetch(
+      `http://127.0.0.1:${port}/me?t=${encodeURIComponent(validToken)}`,
+    );
+    const optedInBody = await optedIn.text();
+    assert.match(optedInBody, /Turn off marketing email/u);
+    assert.doesNotMatch(optedInBody, /Turn on marketing email/u);
     assert.match(authenticatedBody, /data-copy-referral/u);
     assert.match(authenticatedBody, /action="\/api\/survey"/u);
     assert.match(

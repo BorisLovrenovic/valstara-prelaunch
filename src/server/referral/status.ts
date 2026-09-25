@@ -20,7 +20,6 @@ export interface ReferralStatusReward {
 export interface ReferralStatus {
   readonly accessWindow: AccessWindow | null;
   readonly confirmedReferrals: number;
-  readonly giveawayEligible: boolean | null;
   readonly giveawayEntries: number;
   readonly ownRank: number | null;
   readonly referralLink: string;
@@ -31,7 +30,6 @@ export interface ReferralStatus {
 
 export interface ReferralStatusDetails {
   readonly accessWindow: AccessWindow | null;
-  readonly giveawayEligible: boolean | null;
   readonly giveawayEntries: number;
   readonly ownRank: number | null;
 }
@@ -58,7 +56,6 @@ export function computeReferralStatus(
   return {
     accessWindow: details.accessWindow,
     confirmedReferrals,
-    giveawayEligible: details.giveawayEligible,
     giveawayEntries: details.giveawayEntries,
     ownRank: details.ownRank,
     referralLink: referralLink.toString(),
