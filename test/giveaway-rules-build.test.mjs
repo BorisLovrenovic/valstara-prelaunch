@@ -132,19 +132,19 @@ test(
       let current;
       for (let attempt = 0; attempt < 100; attempt += 1) {
         try {
-        current = await globalThis.fetch(`${origin}/giveaway/rules`, {
-          redirect: 'manual',
-        });
+          current = await globalThis.fetch(`${origin}/giveaway/rules`, {
+            redirect: 'manual',
+          });
           break;
         } catch {
           await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
         }
       }
       assert.ok(current, `Rules server did not start: ${output}`);
-    const permanent = await globalThis.fetch(
-      `${origin}/giveaway/rules/${rulesVersion}`,
-      { redirect: 'manual' },
-    );
+      const permanent = await globalThis.fetch(
+        `${origin}/giveaway/rules/${rulesVersion}`,
+        { redirect: 'manual' },
+      );
       assert.equal(current.status, 200, output);
       assert.equal(permanent.status, 200, output);
       assert.doesNotMatch(current.url, new RegExp(`${rulesVersion}$`, 'u'));
