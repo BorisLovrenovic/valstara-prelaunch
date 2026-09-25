@@ -76,9 +76,9 @@ async function insertEntrant(
   await database.execute({
     text: `
       INSERT INTO giveaway_entry (
-        id, subscriber_id, method, entries, jurisdiction, rules_version
+        id, subscriber_id, method, entries, rules_version
       )
-      VALUES ($1, $2, 'base', $3, 'GB', 'review-v1')
+      VALUES ($1, $2, 'base', $3, 'review-v1')
     `,
     values: [randomUUID(), subscriberId, entries],
   });

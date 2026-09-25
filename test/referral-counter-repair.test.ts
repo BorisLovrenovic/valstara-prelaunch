@@ -295,7 +295,6 @@ test('a real database signup can attribute a referral while counter repair runs'
     const [, outcome] = await Promise.all([
       repair.run(1_000),
       signup({
-        country: 'SE',
         email: 'concurrent-referral@example.test',
         referralCode: referrerCode,
         verificationUrl: () => 'https://valstara.com/verify',

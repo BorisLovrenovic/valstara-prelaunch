@@ -230,7 +230,6 @@ test('the signup call site binds the normalised key before it touches the unique
   // first. Raw local part 'u.s.e.r+promo' normalises to 'user'.
   const result = await signup({
     email: 'u.s.e.r+promo@gmail.com',
-    country: 'GB',
     verificationUrl: (token) => `http://valstara.test/verify?token=${token}`,
   });
   assert.equal(result.kind, 'created');
@@ -317,7 +316,6 @@ test('the three Gmail variants collide on one subscriber row', async () => {
       results.push(
         await signup({
           email: raw,
-          country: 'GB',
           verificationUrl: (token) =>
             `http://valstara.test/verify?token=${token}`,
         }),
@@ -361,12 +359,10 @@ test('a non-Gmail dotted address is stored as a distinct row', async () => {
   try {
     const dotted = await signup({
       email: 'u.s.e.r@example.com',
-      country: 'GB',
       verificationUrl: (token) => `http://valstara.test/verify?token=${token}`,
     });
     const undotted = await signup({
       email: 'user@example.com',
-      country: 'GB',
       verificationUrl: (token) => `http://valstara.test/verify?token=${token}`,
     });
 

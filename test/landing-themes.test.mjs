@@ -220,7 +220,7 @@ test('the landing page renders every section, in light and dark, at both extreme
   assert.notEqual(backgroundsByTheme.light, backgroundsByTheme.dark);
 });
 
-test('the ref-less landing response is cacheable by country and flag generation while ref bypasses', async () => {
+test('the ref-less landing response varies only by flag generation while ref bypasses', async () => {
   const cacheable = await globalThis.fetch(hostOrigin, {
     headers: { 'CF-IPCountry': 'SE' },
   });
@@ -228,10 +228,7 @@ test('the ref-less landing response is cacheable by country and flag generation 
     cacheable.headers.get('cache-control'),
     'public, max-age=0, s-maxage=300',
   );
-  assert.equal(
-    cacheable.headers.get('vary'),
-    'CF-IPCountry, X-Valstara-Flag-Generation',
-  );
+  assert.equal(cacheable.headers.get('vary'), 'X-Valstara-Flag-Generation');
   assert.match(
     cacheable.headers.get('x-valstara-flag-generation') ?? '',
     /^[a-f0-9]{16}$/u,

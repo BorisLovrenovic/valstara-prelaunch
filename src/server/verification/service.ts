@@ -153,6 +153,11 @@ async function consumeWithSubscriber(
   if (existing === null || existing.purpose !== purpose) {
     return { outcome: 'invalid', subscriberId: null };
   }
+  // Status links are reusable bearer credentials, but never beyond expiry.
+  // Verification-token replays retain their existing success semantics.
+  if (purpose === 'status' && existing.expires_at <= now) {
+    return { outcome: 'expired', subscriberId: null };
+  }
   if (existing.consumed_at !== null) {
     return { outcome: 'already', subscriberId: existing.subscriber_id };
   }

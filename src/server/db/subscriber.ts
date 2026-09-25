@@ -6,8 +6,7 @@ export interface PendingSubscriberInsert {
   readonly email: string;
   readonly emailNormalised: string;
   readonly emailDomain: string;
-  readonly country: string;
-  readonly region: string | null;
+  readonly marketingOptInVersion: string | null;
   readonly signupIpPrefixHash: Buffer | null;
   readonly utm: UtmParameters | null;
 }
@@ -34,6 +33,10 @@ export interface SubscriberRepository {
   /** Inserts a `pending` row, doing nothing on the `email_normalised` conflict; returns rows affected. */
   insertPending(input: PendingSubscriberInsert): Promise<number>;
   findByNormalised(emailNormalised: string): Promise<SubscriberIdentity | null>;
+  setPendingMarketingOptIn(
+    subscriberId: string,
+    version: string,
+  ): Promise<void>;
   insertVerificationToken(input: VerificationTokenInsert): Promise<void>;
   insertQueuedVerificationEmail(
     input: QueuedVerificationEmailInsert,
@@ -58,8 +61,8 @@ export function createSubscriberRepository(
             email,
             email_normalised,
             email_domain,
-            country,
-            region,
+            marketing_opt_in_pending,
+            marketing_opt_in_pending_version,
             signup_ip_prefix_hash,
             utm,
             status
@@ -72,8 +75,8 @@ export function createSubscriberRepository(
           input.email,
           input.emailNormalised,
           input.emailDomain,
-          input.country,
-          input.region,
+          input.marketingOptInVersion !== null,
+          input.marketingOptInVersion,
           input.signupIpPrefixHash,
           input.utm === null ? null : JSON.stringify(input.utm),
         ],
@@ -83,6 +86,18 @@ export function createSubscriberRepository(
       return database.readOne<SubscriberIdentity>({
         text: 'SELECT id, status FROM subscriber WHERE email_normalised = $1',
         values: [emailNormalised],
+      });
+    },
+    async setPendingMarketingOptIn(subscriberId, version) {
+      await database.execute({
+        text: `
+          UPDATE subscriber
+          SET marketing_opt_in_pending = true,
+              marketing_opt_in_pending_version = $2,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND status = 'pending' AND marketing_consent_at IS NULL
+        `,
+        values: [subscriberId, version],
       });
     },
     async insertVerificationToken(input) {

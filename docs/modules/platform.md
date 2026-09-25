@@ -21,7 +21,7 @@ The five small modules, documented together because each is a few hundred lines 
 
 ## `geo` — retired
 
-**Removed by S-01 (ADR-026, 2026-09-25).** No country is collected at signup, so the application reads no `CF-IPCountry` header and has no geo module. A scan asserts that nothing reads the header. The only location data the campaign holds is a provisional winner's country and address, collected at award time by the giveaway module (E7-06).
+**Removed by S-01 (ADR-026, 2026-09-25).** No country is collected at signup, so the application reads no `CF-IPCountry` header and has no geo module. A scan asserts that nothing reads the header. The only location data the campaign holds is a provisional winner's country of residence, collected at award time by the giveaway module (E7-06). No postal address is collected.
 
 ---
 

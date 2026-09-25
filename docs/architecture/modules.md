@@ -66,7 +66,7 @@ valstara-prelaunch/
       db/                          the ONLY place SQL lives; migrations + ledger
       subscriber/  verification/  referral/  fraud/  giveaway/
       email/                       service + providers/{resend,brevo}
-      flags/  audit/  analytics/  geo/  turnstile/  ratelimit/  admin-auth/  content/
+      flags/  audit/  analytics/  turnstile/  ratelimit/  admin-auth/  content/
       config.ts                    validated env; fails fast at boot
     copy/                          interface strings
     content/                       trust + legal prose as Markdown (ADR-017)

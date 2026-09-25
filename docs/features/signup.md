@@ -8,7 +8,7 @@ One form, one required field. The visitor gives an email address, may tick a sep
 
 ## User flows
 1. **Land** — from social, search, or a referral link carrying `?ref=CODE`. The referral code is read **server-side during the rendering request** and returned as a signed, expiring hidden field (ADR-008).
-2. **Marketing opt-in** — an optional, **unticked** checkbox with versioned wording, separate from the submit action. It becomes consent only when the address is verified, and leaving it unticked changes nothing about the waitlist or the giveaway (ADR-027).
+2. **Marketing opt-in** — an optional, **unticked** checkbox with versioned wording, separate from the submit action. Retained rendered wording versions remain accepted when a form is left open across a deployment; the submitted version is recorded. It becomes consent only when the address is verified, and leaving it unticked changes nothing about the waitlist or the giveaway (ADR-027).
 3. **Age** — the statement "Open to people aged 18 and over." sits next to the submit button. Age is confirmed with provisional giveaway winners at award time, never collected here.
 4. **Submit** — Turnstile runs invisibly; the token is verified **server-side**.
 5. **Response** — "any next step will arrive by email". The same accepted response covers a new, pending or verified address. **No position, no count, no rank and no membership signal.**

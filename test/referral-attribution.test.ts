@@ -227,7 +227,6 @@ test('self-referral is flagged while the repeat signup remains accepted and has 
     });
 
     const result = await signup({
-      country: 'GB',
       email: `${subscriberId}@example.test`,
       referralCode: 'ABCDEFGHJKMN',
       verificationUrl: (token) => `https://valstara.test/verify?token=${token}`,
@@ -279,7 +278,6 @@ test('unknown codes and disabled attribution leave a signup unattributed', async
       },
     });
     const result = await signup({
-      country: 'GB',
       email: 'flag-off@example.test',
       referralCode: 'UNKNOWNCODE1',
       verificationUrl: (token) => `https://valstara.test/verify?token=${token}`,

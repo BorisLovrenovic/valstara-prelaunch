@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      22,
+      23,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -241,6 +241,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0020-top-twenty-review-gate.sql',
       '0021-survey-capture-permissions.sql',
       '0022-member-dashboard-status-permissions.sql',
+      '0023-hong-kong-giveaway-and-marketing-consent.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -268,6 +269,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0020-top-twenty-review-gate.sql',
         '0021-survey-capture-permissions.sql',
         '0022-member-dashboard-status-permissions.sql',
+        '0023-hong-kong-giveaway-and-marketing-consent.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -395,10 +397,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          22,
+          23,
         );
 
-        assert.equal(appliedCount, 22);
+        assert.equal(appliedCount, 23);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -424,6 +426,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0020-top-twenty-review-gate.sql',
             '0021-survey-capture-permissions.sql',
             '0022-member-dashboard-status-permissions.sql',
+            '0023-hong-kong-giveaway-and-marketing-consent.sql',
           ],
         );
       } finally {
@@ -615,16 +618,16 @@ test('unique keys reject duplicates at the database level', async () => {
 
     await database.execute({
       text: `
-        INSERT INTO giveaway_entry (id, subscriber_id, method, entries, jurisdiction, rules_version)
-        VALUES ($1, $2, 'base', 1, 'SE', 'v1')
+        INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version)
+        VALUES ($1, $2, 'base', 1, 'v1')
       `,
       values: [entryId, referrerId],
     });
     await assert.rejects(
       database.execute({
         text: `
-          INSERT INTO giveaway_entry (id, subscriber_id, method, entries, jurisdiction, rules_version)
-          VALUES ($1, $2, 'base', 1, 'SE', 'v1')
+          INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version)
+          VALUES ($1, $2, 'base', 1, 'v1')
         `,
         values: [randomUUID(), referrerId],
       }),
@@ -871,16 +874,16 @@ test('all unique constraints and the write-once trigger hold across seeded gener
 
           await database.execute({
             text: `
-              INSERT INTO giveaway_entry (id, subscriber_id, method, entries, jurisdiction, rules_version)
-              VALUES ($1, $2, 'base', 1, 'SE', 'v1')
+              INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version)
+              VALUES ($1, $2, 'base', 1, 'v1')
             `,
             values: [entryId, subscriberId],
           });
           await assert.rejects(
             database.execute({
               text: `
-                INSERT INTO giveaway_entry (id, subscriber_id, method, entries, jurisdiction, rules_version)
-                VALUES ($1, $2, 'base', 1, 'SE', 'v1')
+                INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version)
+                VALUES ($1, $2, 'base', 1, 'v1')
               `,
               values: [duplicateEntryId, subscriberId],
             }),

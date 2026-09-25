@@ -71,10 +71,10 @@ async function createDatabaseFixture() {
     `
       INSERT INTO subscriber (
         id, email, email_normalised, email_domain, status, verified_at,
-        referral_code, confirmed_referrals, access_window, giveaway_eligible
+        referral_code, confirmed_referrals, access_window
       ) VALUES (
         $1, $2, $2, 'example.test', 'verified', CURRENT_TIMESTAMP,
-        'A11Y23456789', 3, 'wave-1', true
+        'A11Y23456789', 3, 'wave-1'
       )
     `,
     [subscriberId, 'dashboard-accessibility@example.test'],
@@ -478,8 +478,7 @@ test('tab order follows the visual reading order with no focus trap', async () =
   assert.equal(positiveTabindex, 0, 'no element uses a positive tabindex');
 
   // Tag every focusable in DOM order, and record each one's on-screen box. A
-  // control that renders no box — a `display:none` element, such as the
-  // Canada-only region select before Canada is chosen — is not in the tab order
+  // control that renders no box is not in the tab order
   // and the keyboard walk below never reaches it, so it is excluded here: "tab
   // order follows reading order" ranges over the controls that are actually
   // tabbable.

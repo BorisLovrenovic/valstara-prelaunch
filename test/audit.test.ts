@@ -96,6 +96,8 @@ test('the required audit action registry is complete', () => {
     'draw.executed',
     'giveaway.top_twenty_reviewed',
     'giveaway.top_twenty_review_invalidated',
+    'consent.marketing_granted',
+    'consent.marketing_withdrawn',
     'dsr.requested',
     'dsr.fulfilled',
     'handoff.frozen',

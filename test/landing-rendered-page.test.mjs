@@ -236,13 +236,12 @@ test('the landing page ships only the theme toggle and signup form islands', asy
 });
 
 test('the landing cache header follows flag state and a ref, from the rendered page', async () => {
-  // Default flag state, no ref: the page is edge-cacheable, keyed on country and
-  // the flag generation. This is the fast path E12 relies on for the spike.
+  // Default flag state, no ref: the page is edge-cacheable by flag generation.
   const [cacheable, referred] = await renderLanding({
     paths: ['/', '/?ref=signed-ref'],
   });
   assert.equal(cacheable.cacheControl, 'public, max-age=0, s-maxage=300');
-  assert.equal(cacheable.vary, 'CF-IPCountry, X-Valstara-Flag-Generation');
+  assert.equal(cacheable.vary, 'X-Valstara-Flag-Generation');
   assert.match(cacheable.flagGeneration ?? '', /^[a-f0-9]{16}$/u);
 
   // A signed referral is per-request and must never be served from cache.

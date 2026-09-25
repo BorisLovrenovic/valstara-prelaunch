@@ -448,7 +448,6 @@ function createReferralServiceWithRepository(
         awards,
         {
           accessWindow: subscriber.access_window,
-          giveawayEligible: subscriber.giveaway_eligible,
           giveawayEntries,
           ownRank,
         },
