@@ -6,7 +6,10 @@ export interface MarketingPreferenceRow {
 }
 
 export interface MarketingRepository {
-  findPreference(subscriberId: string, lock?: boolean): Promise<MarketingPreferenceRow | null>;
+  findPreference(
+    subscriberId: string,
+    lock?: boolean,
+  ): Promise<MarketingPreferenceRow | null>;
   grant(subscriberId: string, version: string, now: Date): Promise<void>;
   withdraw(subscriberId: string, now: Date): Promise<void>;
 }

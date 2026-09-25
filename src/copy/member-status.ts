@@ -54,10 +54,13 @@ export const memberStatusCopy = {
     saved: 'Your marketing email preference is updated.',
     paused: 'This preference is unavailable right now. Please try again later.',
     invalidInput: 'Choose an email preference and try again.',
-    challengeFailed: 'That security check did not go through. Please try again.',
+    challengeFailed:
+      'That security check did not go through. Please try again.',
     rateLimited: 'Too many attempts — try again in a few minutes.',
-    unavailable: 'We could not save that preference right now. Please try again later.',
-    javaScriptRequired: 'JavaScript is required to complete the security check.',
+    unavailable:
+      'We could not save that preference right now. Please try again later.',
+    javaScriptRequired:
+      'JavaScript is required to complete the security check.',
   },
   unsubscribe: {
     body: 'You can stop waitlist emails at any time.',

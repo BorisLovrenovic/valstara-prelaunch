@@ -228,10 +228,7 @@ test('the ref-less landing response varies only by flag generation while ref byp
     cacheable.headers.get('cache-control'),
     'public, max-age=0, s-maxage=300',
   );
-  assert.equal(
-    cacheable.headers.get('vary'),
-    'X-Valstara-Flag-Generation',
-  );
+  assert.equal(cacheable.headers.get('vary'), 'X-Valstara-Flag-Generation');
   assert.match(
     cacheable.headers.get('x-valstara-flag-generation') ?? '',
     /^[a-f0-9]{16}$/u,

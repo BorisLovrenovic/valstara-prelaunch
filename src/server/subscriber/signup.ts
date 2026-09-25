@@ -112,7 +112,10 @@ async function upsertSubscriber(
     }
 
     if (existing.status === 'pending' && marketingOptInVersion !== null) {
-      await repository.setPendingMarketingOptIn(existing.id, marketingOptInVersion);
+      await repository.setPendingMarketingOptIn(
+        existing.id,
+        marketingOptInVersion,
+      );
     }
     return { created: false, id: existing.id, status: existing.status };
   });

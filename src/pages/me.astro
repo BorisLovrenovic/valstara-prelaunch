@@ -76,7 +76,9 @@ if (Astro.request.method === 'POST') {
       [dashboardStatus, surveyEnabled, marketingEnabled] = await Promise.all([
         createReferralService(database).status(authentication.subscriberId),
         flags.isEnabled('survey.enabled'),
-        createMarketingService(database, { flags }).preference(authentication.subscriberId),
+        createMarketingService(database, { flags }).preference(
+          authentication.subscriberId,
+        ),
       ]);
     }
   } finally {
@@ -139,8 +141,14 @@ unsubscribeUrl.searchParams.set('t', token);
 
         <section class="member-status-section">
           <h2>{memberStatusCopy.marketing.heading}</h2>
-          <p>{marketingEnabled ? memberStatusCopy.marketing.enabled : memberStatusCopy.marketing.disabled}</p>
-          {!marketingEnabled ? <p>{memberStatusCopy.marketing.wording}</p> : null}
+          <p>
+            {marketingEnabled
+              ? memberStatusCopy.marketing.enabled
+              : memberStatusCopy.marketing.disabled}
+          </p>
+          {!marketingEnabled ? (
+            <p>{memberStatusCopy.marketing.wording}</p>
+          ) : null}
           <form
             action="/api/me/marketing"
             data-marketing-form
@@ -153,9 +161,17 @@ unsubscribeUrl.searchParams.set('t', token);
               data-sitekey={config.turnstileSiteKey}
               data-response-field-name="turnstile_token"
             />
-            <noscript><p>{memberStatusCopy.marketing.javaScriptRequired}</p></noscript>
-            <button name="marketing" type="submit" value={marketingEnabled ? 'off' : 'on'}>
-              {marketingEnabled ? memberStatusCopy.marketing.turnOff : memberStatusCopy.marketing.turnOn}
+            <noscript>
+              <p>{memberStatusCopy.marketing.javaScriptRequired}</p>
+            </noscript>
+            <button
+              name="marketing"
+              type="submit"
+              value={marketingEnabled ? 'off' : 'on'}
+            >
+              {marketingEnabled
+                ? memberStatusCopy.marketing.turnOff
+                : memberStatusCopy.marketing.turnOn}
             </button>
             <p aria-live="polite" data-marketing-status />
           </form>
@@ -356,12 +372,19 @@ unsubscribeUrl.searchParams.set('t', token);
       event.preventDefault();
       const submit = marketingForm.querySelector('[type="submit"]');
       const status = marketingForm.querySelector('[data-marketing-status]');
-      if (!(submit instanceof HTMLButtonElement) || !(status instanceof HTMLElement)) return;
+      if (
+        !(submit instanceof HTMLButtonElement) ||
+        !(status instanceof HTMLElement)
+      )
+        return;
       submit.disabled = true;
       try {
         const body = new FormData(marketingForm);
         body.set('marketing', submit.value);
-        const response = await fetch(marketingForm.action, { body, method: 'POST' });
+        const response = await fetch(marketingForm.action, {
+          body,
+          method: 'POST',
+        });
         const payload = await response.json();
         if (response.ok) {
           window.location.reload();

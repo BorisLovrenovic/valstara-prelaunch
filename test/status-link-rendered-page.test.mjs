@@ -234,9 +234,15 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     assert.match(authenticatedBody, />12<\/dd>/u);
     assert.match(authenticatedBody, />1<\/dd>/u);
     assert.match(authenticatedBody, />8<\/dd>/u);
-    assert.doesNotMatch(authenticatedBody, /Giveaway eligibility|Eligible under the current rules/u);
+    assert.doesNotMatch(
+      authenticatedBody,
+      /Giveaway eligibility|Eligible under the current rules/u,
+    );
     assert.match(authenticatedBody, /action="\/api\/me\/marketing"/u);
-    assert.match(authenticatedBody, /data-response-field-name="turnstile_token"/u);
+    assert.match(
+      authenticatedBody,
+      /data-response-field-name="turnstile_token"/u,
+    );
     await fixture.database.query(
       `UPDATE subscriber
        SET marketing_consent_at = $2, marketing_consent_version = 'v1',

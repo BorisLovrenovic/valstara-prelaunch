@@ -10,10 +10,9 @@ import {
 import { signupErrorCatalogue } from '../src/pages/api/signup.ts';
 
 test('inline validation blocks exactly the empty required fields the server rejects', () => {
-  assert.deepEqual(
-    collectClientErrors({ email: '' }),
-    [{ field: 'email', message: signupFormCopy.emailRequired }],
-  );
+  assert.deepEqual(collectClientErrors({ email: '' }), [
+    { field: 'email', message: signupFormCopy.emailRequired },
+  ]);
   assert.deepEqual(collectClientErrors({ email: 'a@b.co' }), []);
 });
 

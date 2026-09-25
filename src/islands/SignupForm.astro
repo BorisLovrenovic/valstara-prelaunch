@@ -6,7 +6,9 @@ import { landingCopy } from '../copy/landing.ts';
 import { signupFormCopy } from '../copy/signup.ts';
 import { getConfig } from '../server/config.ts';
 
-interface Props { signedReferralCapture: string | null; }
+interface Props {
+  signedReferralCapture: string | null;
+}
 
 const { signedReferralCapture } = Astro.props;
 
@@ -48,7 +50,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     </p>
 
     <label class="signup-marketing">
-      <input type="checkbox" name="marketing_opt_in" value={signupFormCopy.marketing.version} />
+      <input
+        type="checkbox"
+        name="marketing_opt_in"
+        value={signupFormCopy.marketing.version}
+      />
       <span>{signupFormCopy.marketing.wording}</span>
     </label>
 

@@ -33,7 +33,10 @@ export interface SubscriberRepository {
   /** Inserts a `pending` row, doing nothing on the `email_normalised` conflict; returns rows affected. */
   insertPending(input: PendingSubscriberInsert): Promise<number>;
   findByNormalised(emailNormalised: string): Promise<SubscriberIdentity | null>;
-  setPendingMarketingOptIn(subscriberId: string, version: string): Promise<void>;
+  setPendingMarketingOptIn(
+    subscriberId: string,
+    version: string,
+  ): Promise<void>;
   insertVerificationToken(input: VerificationTokenInsert): Promise<void>;
   insertQueuedVerificationEmail(
     input: QueuedVerificationEmailInsert,

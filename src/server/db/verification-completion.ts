@@ -3,7 +3,10 @@ import type { DatabaseConnection } from './pool.ts';
 export interface VerificationCompletionRepository {
   hasSurveyResponse(subscriberId: string): Promise<boolean>;
   markVerified(subscriberId: string, now: Date): Promise<number>;
-  promotePendingMarketingConsent(subscriberId: string, now: Date): Promise<string | null>;
+  promotePendingMarketingConsent(
+    subscriberId: string,
+    now: Date,
+  ): Promise<string | null>;
 }
 
 export function createVerificationCompletionRepository(
@@ -35,7 +38,9 @@ export function createVerificationCompletionRepository(
       });
     },
     async promotePendingMarketingConsent(subscriberId, now) {
-      const pending = await database.readOne<{ marketing_opt_in_pending_version: string }>({
+      const pending = await database.readOne<{
+        marketing_opt_in_pending_version: string;
+      }>({
         text: `
           SELECT marketing_opt_in_pending_version
           FROM subscriber
@@ -61,7 +66,8 @@ export function createVerificationCompletionRepository(
         `,
         values: [subscriberId, now],
       });
-      if (updated !== 1) throw new Error('Pending marketing consent was not promoted.');
+      if (updated !== 1)
+        throw new Error('Pending marketing consent was not promoted.');
       return pending.marketing_opt_in_pending_version;
     },
   };

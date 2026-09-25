@@ -135,10 +135,10 @@ test('changed-line coverage passes at 80% and fails below it', () => {
 test('changed-line coverage ignores deletion-only hunks but still checks added lines', () => {
   const changed = parseChangedLines(
     '+++ b/src/removed.ts\n@@ -3,2 +2,0 @@\n' +
-    '+++ b/src/changed.ts\n@@ -4,1 +4,1 @@\n',
+      '+++ b/src/changed.ts\n@@ -4,1 +4,1 @@\n',
   );
   assert.equal(changed.has('src/removed.ts'), false);
-  assert.deepEqual([...changed.get('src/changed.ts') ?? []], [4]);
+  assert.deepEqual([...(changed.get('src/changed.ts') ?? [])], [4]);
   const result = changedCoverage(changed, new Map(), {
     includedRoots: ['src/'],
     includedExtensions: ['.ts', '.astro'],

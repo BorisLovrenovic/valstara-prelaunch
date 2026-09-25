@@ -31,16 +31,21 @@ export interface MarketingService {
 
 export function createMarketingService(
   database: DatabasePool,
-  dependencies: { readonly flags: Pick<FlagService, 'isEnabled'>; readonly clock?: () => Date },
+  dependencies: {
+    readonly flags: Pick<FlagService, 'isEnabled'>;
+    readonly clock?: () => Date;
+  },
 ): MarketingService {
   const clock = dependencies.clock ?? (() => new Date());
   return {
     async preference(subscriberId) {
-      const row = await createMarketingRepository(database).findPreference(subscriberId);
+      const row =
+        await createMarketingRepository(database).findPreference(subscriberId);
       return row?.status === 'verified' && row.marketing_consent_at !== null;
     },
     async change(input) {
-      if (!(await dependencies.flags.isEnabled('member.dashboard'))) return 'disabled';
+      if (!(await dependencies.flags.isEnabled('member.dashboard')))
+        return 'disabled';
       if (input.ipPrefixHash === '') return 'rate_limited';
 
       return withTransaction(database, async (connection) => {
@@ -52,14 +57,19 @@ export function createMarketingService(
           now,
           windowThreshold,
         );
-        if (ipCount > (input.challengeTimedOut ? marketingStrictIpLimit : marketingIpLimit)) {
+        if (
+          ipCount >
+          (input.challengeTimedOut ? marketingStrictIpLimit : marketingIpLimit)
+        ) {
           return 'rate_limited';
         }
 
-        const authentication = await createVerificationService(connection, { clock })
-          .consumeForPurpose(input.token, 'status');
+        const authentication = await createVerificationService(connection, {
+          clock,
+        }).consumeForPurpose(input.token, 'status');
         if (
-          (authentication.outcome !== 'verified' && authentication.outcome !== 'already') ||
+          (authentication.outcome !== 'verified' &&
+            authentication.outcome !== 'already') ||
           authentication.subscriberId === null
         ) {
           return 'accepted';
@@ -78,8 +88,11 @@ export function createMarketingService(
         if (preference?.status !== 'verified') return 'accepted';
 
         if (input.challengeTimedOut) {
-          await createFraudFlagRepository(connection).insertChallengeTimeoutFlag({
-            id: randomUUID(), subscriberId,
+          await createFraudFlagRepository(
+            connection,
+          ).insertChallengeTimeoutFlag({
+            id: randomUUID(),
+            subscriberId,
           });
         }
 

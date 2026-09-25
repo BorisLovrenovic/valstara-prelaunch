@@ -197,13 +197,22 @@ async function openForm({
 test('the rendered form has no location field, an unticked versioned opt-in, and the 18+ statement beside submit', async () => {
   const { context, page } = await openForm({ javaScriptEnabled: false });
   try {
-    assert.equal(await page.locator('[name="country"], [name="region"]').count(), 0);
+    assert.equal(
+      await page.locator('[name="country"], [name="region"]').count(),
+      0,
+    );
     const optIn = page.locator('[name="marketing_opt_in"]');
     assert.equal(await optIn.count(), 1);
     assert.equal(await optIn.isChecked(), false);
     assert.equal(await optIn.inputValue(), 'v1');
-    assert.match(await page.locator('label.signup-marketing').textContent(), /weekly updates and product news/u);
-    assert.equal(await page.locator('[data-submit] + .signup-age').textContent(), 'Open to people aged 18 and over.');
+    assert.match(
+      await page.locator('label.signup-marketing').textContent(),
+      /weekly updates and product news/u,
+    );
+    assert.equal(
+      await page.locator('[data-submit] + .signup-age').textContent(),
+      'Open to people aged 18 and over.',
+    );
   } finally {
     await context.close();
   }
