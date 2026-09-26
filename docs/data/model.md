@@ -36,7 +36,7 @@ The waitlist row.
 | `confirmed_referrals` | int not null default 0 | **Derived** from `referral_edge`; recomputable |
 | `access_window` | text | `wave-1`…`wave-4`. Assigned at verification from tier and verification order; band thresholds are config (ADR-025) |
 | `subslush_customer` | boolean not null default false | Provenance. Becomes the `subslush-legacy` group at handoff |
-| `giveaway_rules_version` | text | **The global rules version in force when the subscriber first became a giveaway entrant** (E7-01). Written once and never overwritten; null until then. Distinct from `giveaway_entry.rules_version`, which stamps each accrual |
+| `giveaway_rules_version` | text | **The global rules version in force when the subscriber first became a giveaway entrant** (E7-03, on first accrual). Written once and never overwritten; null until then. Distinct from `giveaway_entry.rules_version`, which stamps each accrual |
 | `marketing_consent_at` | timestamptz null | **When the current marketing consent took effect** — at verification for a signup opt-in, or immediately for an opt-in from `/me`. Null means no marketing consent (ADR-027) |
 | `marketing_consent_version` | text null | The version of the opt-in wording the person agreed to |
 | `marketing_consent_source` | text null | `signup` · `member_status`. `marketing_consent_at`, `_version` and `_source` are all null or all set (check constraint) |
