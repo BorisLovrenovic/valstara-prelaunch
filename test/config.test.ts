@@ -8,6 +8,7 @@ import {
   appEnvironmentKeys,
   ConfigurationError,
   getDatabaseUrl,
+  getGiveawayEntryPeriodStart,
   getIpVelocityConfiguration,
   getP1AlertConfiguration,
   getVerificationRateConfiguration,
@@ -93,7 +94,40 @@ test('E1-12 validates and types the complete application environment', () => {
       collapsePercent: 50,
       minimumSignups: 50,
     },
+    waitlistLiveAt: null,
   });
+});
+
+test('E7-03 validates launch time and uses the later of launch and published start', () => {
+  assert.equal(getGiveawayEntryPeriodStart({ NODE_ENV: 'production' }), null);
+  assert.equal(
+    getGiveawayEntryPeriodStart({ NODE_ENV: 'test' })?.toISOString(),
+    '2026-10-01T00:00:00.000Z',
+  );
+  assert.equal(
+    getGiveawayEntryPeriodStart({
+      WAITLIST_LIVE_AT: '2026-09-30T12:00:00.000Z',
+    })?.toISOString(),
+    '2026-10-01T00:00:00.000Z',
+  );
+  assert.equal(
+    getGiveawayEntryPeriodStart({
+      WAITLIST_LIVE_AT: '2026-10-02T12:00:00.000Z',
+    })?.toISOString(),
+    '2026-10-02T12:00:00.000Z',
+  );
+  for (const value of [
+    '2026-10-02T12:00:00Z',
+    '2026-02-30T12:00:00.000Z',
+    '2026-10-02T14:00:00.000+02:00',
+  ]) {
+    assert.throws(
+      () => validateConfig(withVariable('WAITLIST_LIVE_AT', value)),
+      (error) =>
+        error instanceof ConfigurationError &&
+        error.variableName === 'WAITLIST_LIVE_AT',
+    );
+  }
 });
 
 test('a database-only process validates only its required connection URL', () => {

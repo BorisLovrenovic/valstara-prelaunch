@@ -34,6 +34,15 @@ COPY --chown=node:node --from=build /app/dist ./dist
 COPY --chown=node:node --from=build /app/src/server/config.ts ./src/server/config.ts
 COPY --chown=node:node --from=build /app/src/server/db ./src/server/db
 COPY --chown=node:node --from=build /app/src/server/subscriber ./src/server/subscriber
+COPY --chown=node:node --from=build /app/src/server/giveaway ./src/server/giveaway
+COPY --chown=node:node --from=build /app/src/server/flags ./src/server/flags
+COPY --chown=node:node --from=build /app/src/server/audit ./src/server/audit
+COPY --chown=node:node --from=build /app/src/server/referral ./src/server/referral
+COPY --chown=node:node --from=build /app/src/server/fraud ./src/server/fraud
+COPY --chown=node:node --from=build /app/src/server/ratelimit ./src/server/ratelimit
+COPY --chown=node:node --from=build /app/src/server/verification ./src/server/verification
+COPY --chown=node:node --from=build /app/src/server/verification-rate ./src/server/verification-rate
+COPY --chown=node:node --from=build /app/src/content/giveaway-rules ./src/content/giveaway-rules
 COPY --chown=node:node package.json ./package.json
 
 USER node

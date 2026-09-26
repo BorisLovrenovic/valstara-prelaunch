@@ -354,8 +354,8 @@ test('E5-05 upholding disqualifies only through review, isolates referred people
       await fixture.database.execute({
         text: `
           INSERT INTO giveaway_entry (
-            id, subscriber_id, method, entries, rules_version, source_edge_id
-          ) VALUES ($1, $2, $3, 1, 'test-rules', $4)
+            id, subscriber_id, method, entries, rules_version, rules_sha256, source_edge_id
+          ) VALUES ($1, $2, $3, 1, 'test-rules', decode(repeat('ab', 32), 'hex'), $4)
         `,
         values: [id, subscriberId, method, sourceEdgeId],
       });
@@ -510,8 +510,8 @@ test('E5-05 reversing an upheld review restores the recorded state and audits th
       values: [edgeId, flag.subscriberId, referredId],
     });
     await fixture.database.execute({
-      text: `INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version, source_edge_id)
-             VALUES ($1, $2, 'referral', 1, 'test-rules', $3)`,
+      text: `INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version, rules_sha256, source_edge_id)
+             VALUES ($1, $2, 'referral', 1, 'test-rules', decode(repeat('ab', 32), 'hex'), $3)`,
       values: [entryId, flag.subscriberId, edgeId],
     });
     const review = createFraudReviewService(fixture.applicationDatabase);

@@ -207,6 +207,7 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
     'VERIFICATION_RATE_COHORT_HOURS',
     'VERIFICATION_RATE_COLLAPSE_PERCENT',
     'VERIFICATION_RATE_MINIMUM_SIGNUPS',
+    'WAITLIST_LIVE_AT',
   ]);
   assert.equal(config.services.postgres.ports, undefined);
   assert.equal(config.services.umami.ports, undefined);

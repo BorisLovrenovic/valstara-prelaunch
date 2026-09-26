@@ -142,8 +142,8 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
   await fixture.database.query(
     `
       INSERT INTO giveaway_entry (
-        id, subscriber_id, method, entries, rules_version
-      ) VALUES ($1, $2, 'base', 8, '2026-09')
+        id, subscriber_id, method, entries, rules_version, rules_sha256
+      ) VALUES ($1, $2, 'base', 8, '2026-09', decode(repeat('ab', 32), 'hex'))
     `,
     [randomUUID(), subscriberId],
   );

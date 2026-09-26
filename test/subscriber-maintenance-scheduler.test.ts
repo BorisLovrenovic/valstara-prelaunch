@@ -35,6 +35,56 @@ test('verification-token retention failure is reported as P1', async () => {
   ]);
 });
 
+test('giveaway reconciliation failure is reported as P2', async () => {
+  const occurredAt = new Date('2026-10-02T12:00:00.000Z');
+  const alerts: unknown[] = [];
+  const report = createMaintenanceFailureReporter(
+    {
+      async send(alert) {
+        alerts.push(alert);
+      },
+    },
+    { clock: () => occurredAt },
+  );
+  await report('giveaway_entry_reconciliation');
+  assert.deepEqual(alerts, [
+    {
+      detail: { job: 'giveaway_entry_reconciliation' },
+      event: 'verification_maintenance_failed',
+      occurredAt,
+      severity: 'P2',
+    },
+  ]);
+});
+
+test('giveaway reconciliation is scheduled on every maintenance cycle with the batch cap', async () => {
+  const limits: number[] = [];
+  const noOp = { async run() {} };
+  const scheduler = createVerificationMaintenanceScheduler(
+    {
+      expiry: noOp,
+      giveawayEntryReconciliation: {
+        async run(limit) {
+          limits.push(limit);
+        },
+      },
+      rateLimitRetention: noOp,
+      referralCounterRepair: noOp,
+      reminder: noOp,
+      strandedReferral: noOp,
+      verificationRate: noOp,
+      verificationTokenRetention: noOp,
+    },
+    { clock: () => new Date('2026-10-02T12:00:00.000Z') },
+  );
+  await scheduler.runCycle();
+  await scheduler.runCycle();
+  assert.deepEqual(limits, [
+    verificationMaintenanceBatchLimit,
+    verificationMaintenanceBatchLimit,
+  ]);
+});
+
 test('verification-token retention passes the 30-day cutoff and scheduler batch cap to purgeExpired', async () => {
   const now = new Date('2026-09-10T12:00:00.000Z');
   let values: readonly unknown[] | undefined;
