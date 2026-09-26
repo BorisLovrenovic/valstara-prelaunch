@@ -49,9 +49,14 @@ function startServer(databaseUrl) {
       HOST: '127.0.0.1',
       PORT: String(port),
     },
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'pipe'],
   });
-  return { port, server };
+  let standardError = '';
+  server.stderr.setEncoding('utf8');
+  server.stderr.on('data', (chunk) => {
+    standardError = (standardError + chunk).slice(-8_192);
+  });
+  return { port, server, standardError: () => standardError };
 }
 
 async function createDatabaseFixture() {
@@ -133,17 +138,31 @@ async function renderLanding({ flags = [], paths = ['/'] } = {}) {
       [key, enabled, 'landing-rendered-page-test'],
     );
   }
-  const { port, server } = startServer(fixture.databaseUrl);
+  const { port, server, standardError } = startServer(fixture.databaseUrl);
   try {
     const responses = [];
     for (const path of paths) {
       responses.push(await fetchLanding(port, path));
     }
     return paths.length === 1 ? responses[0] : responses;
+  } catch (error) {
+    if (server.exitCode !== null || server.signalCode !== null) {
+      throw new Error(
+        `Landing test server exited (code ${server.exitCode}, signal ${server.signalCode}): ${standardError()}`,
+        { cause: error },
+      );
+    }
+    throw error;
   } finally {
-    server.kill('SIGTERM');
-    await once(server, 'exit');
-    await fixture.dispose();
+    try {
+      if (server.exitCode === null && server.signalCode === null) {
+        const exited = once(server, 'exit');
+        server.kill('SIGTERM');
+        await exited;
+      }
+    } finally {
+      await fixture.dispose();
+    }
   }
 }
 
