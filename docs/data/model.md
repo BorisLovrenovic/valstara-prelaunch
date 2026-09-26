@@ -105,7 +105,7 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 ## `giveaway_entry`
 
-`id` · `subscriber_id` · `method` (`base` · `referral`) · `entries` int · `rules_version` text · `rules_sha256` bytea not null, exactly 32 bytes (added by E7-03) · `source_edge_id` uuid null · `voided_at` · `voided_by_disqualification_flag_id` uuid null → `fraud_flag` · `created_at`. Unique with `NULLS NOT DISTINCT` on `(subscriber_id, method, source_edge_id)` so a retry cannot double-credit when `source_edge_id` is null.
+`id` · `subscriber_id` · `method` (`base` · `referral`) · `entries` int **always 1, enforced by a validated check constraint (E7-04)** · `rules_version` text · `rules_sha256` bytea not null, exactly 32 bytes (added by E7-03) · `source_edge_id` uuid null · `voided_at` · `voided_by_disqualification_flag_id` uuid null → `fraud_flag` · `created_at`. Unique with `NULLS NOT DISTINCT` on `(subscriber_id, method, source_edge_id)` so a retry cannot double-credit when `source_edge_id` is null.
 
 **`rules_version` and `rules_sha256` are stamped at accrual.** There is one global rules page (ADR-026) and no jurisdiction column; S-01 dropped `jurisdiction` and the `amoe` method, because the ordinary verified signup is the free entry route. Entries keep the rules that were in force when they accrued — that is what makes a mid-campaign rules revision survivable (`docs/architecture/fallbacks.md`).
 

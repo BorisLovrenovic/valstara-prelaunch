@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
+import { seedGiveawayEntryRows } from './helpers/giveaway-entry-rows.ts';
 
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
@@ -73,14 +74,8 @@ async function insertEntrant(
     `,
     values: [subscriberId, email],
   });
-  await database.execute({
-    text: `
-      INSERT INTO giveaway_entry (
-        id, subscriber_id, method, entries, rules_version, rules_sha256
-      )
-      VALUES ($1, $2, 'base', $3, 'review-v1', decode(repeat('ab', 32), 'hex'))
-    `,
-    values: [randomUUID(), subscriberId, entries],
+  await seedGiveawayEntryRows(database, subscriberId, entries, {
+    rulesVersion: 'review-v1',
   });
   return subscriberId;
 }

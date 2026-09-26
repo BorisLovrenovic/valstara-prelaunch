@@ -8,7 +8,7 @@
 
 ## User flows
 1. **Entry** — a subscriber verified within the entry period is an entrant; entries accrue while `giveaway.open` is on, and any missed while it was off are added when it opens. **No purchase, referral or marketing consent is needed**: the ordinary verified signup is the free entry route, and a "No purchase necessary" line sits beside the signup call to action (E7-04).
-2. **Entries** — one base entry on verification, plus one per confirmed referral (a unique referred person who verifies). Every entry has the same weight and stamps the `rules_version` and rules hash in force.
+2. **Entries** — one base entry on verification, plus one per confirmed referral (a unique referred person who verifies). Every ledger row has exactly one unit, enforced by a check constraint, and stamps the `rules_version` and rules hash in force. E7-05 proves equal weight in draw selection.
 3. **Rules** — one page at `/giveaway/rules`, governed by Hong Kong law, with every revision immutable at `/giveaway/rules/<rules_version>`.
 4. **Draw** — executed against a snapshot of the entry ledger. The snapshot hash is committed before the seed exists, winners are selected with **one prize per person**, and an ordered reserve list is produced in the same execution. **The result is not published until it reproduces.**
 5. **Review** — the top 20 by raw, non-voided entries are reviewed manually before any award. A membership change invalidates the completed review; E7-05 calls E5-07's server-side current-review precondition before draw publication.

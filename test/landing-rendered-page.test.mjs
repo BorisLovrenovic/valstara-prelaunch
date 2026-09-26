@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { readdir } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import test, { before } from 'node:test';
 
 import { Pool } from 'pg';
 
 import { landingCopy } from '../src/copy/landing.ts';
+import { signupFormCopy } from '../src/copy/signup.ts';
 
 const executeFile = promisify(execFile);
 
@@ -220,6 +222,33 @@ test('with signup.enabled off, an honest paused message replaces the form', asyn
   assert.equal(setCookie, null);
 });
 
+test('free-entry disclosure appears beside the signup action when the giveaway is open', async () => {
+  const open = await renderLanding({
+    flags: [signupOn, { enabled: true, key: 'giveaway.open' }],
+  });
+  const disclosure = open.body.indexOf(signupFormCopy.freeEntryDisclosure);
+  const button = open.body.lastIndexOf(landingCopy.form.submit, disclosure);
+  const rulesLink = open.body.indexOf('href="/giveaway/rules"', disclosure);
+  assert.ok(button >= 0);
+  assert.ok(disclosure > button);
+  assert.ok(rulesLink > disclosure);
+  assert.ok(rulesLink - button < 600);
+  assert.ok(rendersCopy(open.body, signupFormCopy.giveawayRulesLink));
+  assert.equal(open.setCookie, null);
+
+  const closed = await renderLanding({ flags: [signupOn] });
+  assert.ok(!closed.body.includes(signupFormCopy.freeEntryDisclosure));
+});
+
+test('there is no separate AMOE POST route', async () => {
+  const routes = await readdir(new URL('../src/pages/api/', import.meta.url));
+  assert.ok(!routes.some((route) => /^amoe\./u.test(route)));
+  await assert.rejects(
+    readdir(new URL('../src/pages/api/amoe/', import.meta.url)),
+    { code: 'ENOENT' },
+  );
+});
+
 test('the landing page ships only the theme toggle and signup form islands', async () => {
   // Measured from the built-and-served output. The landing page carries two
   // islands — the theme toggle (its inline bootstrap plus its island script) and
@@ -268,7 +297,7 @@ test('the landing cache header follows flag state and a ref, from the rendered p
 
   // A non-default flag state must bypass the cache too — otherwise a stale edge
   // copy outlives a flag flip. `giveaway.open` defaults off, so turning it on is
-  // a non-default state that does not change the rendered form: this proves the
+  // a non-default state: this proves the
   // bypass is driven by the flag generation itself, and it fails if the page
   // stops consulting `hasNonDefaultFlagState`.
   const flagged = await renderLanding({

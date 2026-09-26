@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+import { createSignupRoute } from '../src/pages/api/signup.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import { createFlagService } from '../src/server/flags/service.ts';
@@ -9,6 +11,7 @@ import { createGiveawayAccrualService } from '../src/server/giveaway/accrue.ts';
 import { createGiveawayEntryReconciliationJob } from '../src/server/giveaway/reconcile.ts';
 import { currentRulesFromFiles } from '../src/server/giveaway/current-rules-file.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
+import { createSignupService } from '../src/server/subscriber/signup.ts';
 
 const baseUrl =
   process.env.TEST_DATABASE_URL ??
@@ -87,13 +90,14 @@ async function subscriber(
 
 async function entries(database: DatabasePool, subscriberId: string) {
   return database.list<{
+    entries: number;
     method: string;
     rules_version: string;
     rules_sha256: Buffer;
     source_edge_id: string | null;
   }>(
     {
-      text: `SELECT method, rules_version, rules_sha256, source_edge_id::text
+      text: `SELECT entries, method, rules_version, rules_sha256, source_edge_id::text
            FROM giveaway_entry WHERE subscriber_id = $1 ORDER BY method, rules_version`,
       values: [subscriberId],
     },
@@ -177,6 +181,8 @@ test('concurrent retries write one base and one confirmed-edge entry with first 
     assert.equal(referrerEntries.length, 1);
     assert.equal(referredEntries[0].method, 'base');
     assert.equal(referrerEntries[0].method, 'referral');
+    assert.equal(referredEntries[0].entries, 1);
+    assert.equal(referrerEntries[0].entries, 1);
     assert.equal(referrerEntries[0].source_edge_id, edgeId);
     for (const entry of [...referredEntries, ...referrerEntries]) {
       assert.equal(entry.rules_version, firstRules.rulesVersion);
@@ -236,6 +242,149 @@ test('concurrent retries write one base and one confirmed-edge entry with first 
       values: [referrer],
     });
     assert.equal(stamp?.giveaway_rules_version, firstRules.rulesVersion);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('a direct signup without referral, purchase or marketing consent earns one base entry after verification', async () => {
+  const f = await fixture();
+  try {
+    let verificationUrl: string | null = null;
+    const signup = createSignupService(f.app, {
+      clock: () => fixedTime,
+      raiseFraudFlag: async () => undefined,
+      screenEmailDomain: async () => ({ flags: [] }),
+      async sendVerificationMail(mail) {
+        verificationUrl = mail.verificationUrl;
+      },
+    });
+    const route = createSignupRoute({
+      isSignupEnabled: async () => true,
+      verifyTurnstile: async () => 'verified',
+      consumeIpRateLimit: async () => 'ok',
+      signup,
+      flagChallengeTimeout: async () => undefined,
+      ipPrefixPepper: 'e7-04-test-pepper',
+      monotonicClock: () => 0,
+      sleep: async () => undefined,
+    });
+    const request = new Request('https://valstara.test/api/signup', {
+      method: 'POST',
+      body: new URLSearchParams({
+        email: 'free-entry@example.test',
+        turnstile_token: 'e7-04-test-challenge',
+      }),
+    });
+    const response = await route({
+      clientAddress: '203.0.113.10',
+      request,
+    } as never);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).status, 'pending');
+    const pending = await f.owner.readOne<{ id: string; status: string }>({
+      text: `SELECT id::text, status FROM subscriber
+             WHERE email_normalised = 'free-entry@example.test'`,
+    });
+    assert.equal(pending?.status, 'pending');
+    assert.ok(pending);
+    const subscriberId = pending.id;
+    assert.deepEqual(await entries(f.owner, subscriberId), []);
+    assert.ok(verificationUrl);
+    const token = new URL(verificationUrl).searchParams.get('token');
+    assert.ok(token);
+
+    const flags = createFlagService(f.app);
+    await flags.set('giveaway.open', true, 'e7-04-test');
+    const complete = createVerificationCompletionService(f.app, {
+      clock: () => fixedTime,
+      giveaway: { flags, currentRules: () => firstRules },
+    });
+    assert.equal((await complete(token)).outcome, 'verified');
+    const record = await f.owner.readOne<{
+      marketing_consent_at: Date | null;
+      referred_by_id: string | null;
+      status: string;
+    }>({
+      text: `SELECT marketing_consent_at, referred_by_id::text, status
+             FROM subscriber WHERE id = $1`,
+      values: [subscriberId],
+    });
+    assert.equal(record?.status, 'verified');
+    assert.equal(record?.marketing_consent_at, null);
+    assert.equal(record?.referred_by_id, null);
+    const ledger = await entries(f.owner, subscriberId);
+    assert.equal(ledger.length, 1);
+    assert.equal(ledger[0]?.method, 'base');
+    assert.equal(ledger[0]?.entries, 1);
+    assert.equal(ledger[0]?.source_edge_id, null);
+    assert.equal((await complete(token)).outcome, 'already');
+    assert.equal((await entries(f.owner, subscriberId)).length, 1);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('the validated database constraint rejects non-unit rows, including pre-existing rows', async () => {
+  const f = await fixture();
+  try {
+    const id = await subscriber(f.owner, 'verified');
+    const insert = (value: number) =>
+      f.owner.execute({
+        text: `INSERT INTO giveaway_entry
+                 (id, subscriber_id, method, entries, rules_version, rules_sha256)
+               VALUES ($1, $2, 'base', $3, $4, $5)`,
+        values: [
+          randomUUID(),
+          id,
+          value,
+          firstRules.rulesVersion,
+          Buffer.from(firstRules.sha256, 'hex'),
+        ],
+      });
+    await assert.rejects(insert(2), {
+      code: '23514',
+      constraint: 'giveaway_entry_one_unit',
+    });
+    await assert.rejects(
+      f.owner.execute({
+        text: `INSERT INTO giveaway_entry
+                 (id, subscriber_id, method, entries, rules_version, rules_sha256)
+               VALUES ($1, $2, 'amoe', 1, $3, $4)`,
+        values: [
+          randomUUID(),
+          id,
+          firstRules.rulesVersion,
+          Buffer.from(firstRules.sha256, 'hex'),
+        ],
+      }),
+      { code: '23514', constraint: 'giveaway_entry_method_check' },
+    );
+    await f.owner.execute({
+      text: 'ALTER TABLE giveaway_entry DROP CONSTRAINT giveaway_entry_one_unit',
+    });
+    await insert(2);
+    const migration = await readFile(
+      new URL(
+        '../src/server/db/migrations/0026-giveaway-entry-one-unit.sql',
+        import.meta.url,
+      ),
+      'utf8',
+    );
+    await assert.rejects(f.owner.execute({ text: migration }), {
+      code: '23514',
+      constraint: 'giveaway_entry_one_unit',
+    });
+    await f.owner.execute({
+      text: 'UPDATE giveaway_entry SET entries = 1 WHERE subscriber_id = $1',
+      values: [id],
+    });
+    await f.owner.execute({ text: migration });
+    const constraint = await f.owner.readOne<{ convalidated: boolean }>({
+      text: `SELECT convalidated FROM pg_constraint
+             WHERE conname = 'giveaway_entry_one_unit'`,
+    });
+    assert.equal(constraint?.convalidated, true);
   } finally {
     await f.dispose();
   }

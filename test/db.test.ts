@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      25,
+      26,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -244,6 +244,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0023-hong-kong-giveaway-and-marketing-consent.sql',
       '0024-giveaway-entry-ledger.sql',
       '0025-giveaway-entry-integrity.sql',
+      '0026-giveaway-entry-one-unit.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -274,6 +275,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0023-hong-kong-giveaway-and-marketing-consent.sql',
         '0024-giveaway-entry-ledger.sql',
         '0025-giveaway-entry-integrity.sql',
+        '0026-giveaway-entry-one-unit.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -401,10 +403,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          25,
+          26,
         );
 
-        assert.equal(appliedCount, 25);
+        assert.equal(appliedCount, 26);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -433,6 +435,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0023-hong-kong-giveaway-and-marketing-consent.sql',
             '0024-giveaway-entry-ledger.sql',
             '0025-giveaway-entry-integrity.sql',
+            '0026-giveaway-entry-one-unit.sql',
           ],
         );
       } finally {

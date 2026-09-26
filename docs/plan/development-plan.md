@@ -1224,16 +1224,18 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E7-04 — The free entry route and its disclosure
 **Model:** Tier A — Medium · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
 
-**Build:** **There is no separate AMOE endpoint** (ADR-026, ADR-027). The ordinary verified signup is the free entry route, and this ticket proves and discloses it. A direct signup with no referral, no purchase and no marketing consent receives the same one base entry as anyone else, and every entry is the same unit in the draw. A "No purchase necessary" line, with a link to `/giveaway/rules`, sits next to the primary signup call to action and beside every giveaway claim, from the copy layer.
+**Build:** **There is no separate AMOE endpoint** (ADR-026, ADR-027). The ordinary verified signup is the free entry route, and this ticket proves and discloses it. A direct signup with no referral, no purchase and no marketing consent receives the same one base entry as anyone else. Every base and referral ledger row is exactly one unit, enforced by a validated database check constraint. A "No purchase necessary" line, with a link to `/giveaway/rules`, sits next to the primary signup call to action and beside every giveaway claim, from the copy layer.
 
 **Acceptance criteria:**
 - **Entry is reachable without a referral, without a purchase and without marketing consent** — asserted end to end
-- **Every entry carries equal weight** — base and referral entries are identical units in the draw — asserted
+- **Every ledger row is one unit** — base and referral accrual each produce one row with `entries = 1`; the database rejects any other value, including during migration validation
 - The disclosure renders next to the primary call to action and links to the current rules page
 - No `POST /api/amoe` route exists, and the `amoe` method value is absent (S-01 removed it)
 
-**Tests:** End-to-end entry with no referral and no consent · equal weight · disclosure presence · route absence.
+**Tests:** End-to-end entry with no referral and no consent · one-unit base and referral rows and constraint validation · disclosure presence · route absence.
 **Docs:** `docs/features/giveaway.md` · `docs/legal/compliance.md`
+
+**Founder-authorised 2026-09-26:** E7-04 proves the ledger side of equal weight. A forward-only migration adds and validates a check constraint requiring `giveaway_entry.entries = 1`; tests assert one unit for both base and referral accrual and database rejection of any other value. The assertion that draw selection treats base and referral rows indistinguishably moves to E7-05.
 
 ### E7-05 — The reproducible draw
 **Model:** Tier B — **Extra High** · **Priority:** Highest · **Flag:** `giveaway.open` · **Area:** backend
@@ -1249,11 +1251,14 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 - **No person wins more than one prize** — asserted
 - **The draw refuses to execute unless the current rules revision lists the bundle contents** — so a "to be announced" prize can never be awarded
 - Selection is proportional to entries and **verifiably so** — tested statistically over a seeded run
+- Base and referral ledger rows are indistinguishable to selection; every row has equal draw weight — asserted by the seeded proportionality test
 - The top-20 review gate (E5-07) must have passed
 - The whole execution is audited with an actor
 
 **Tests:** Reproduction including reserves · commit-before-seed ordering · refusal while bundle contents are unannounced · refusal to publish on a mismatch · refusal of a second execution · one prize per person · a seeded statistical proportionality test · the review-gate precondition.
 **Docs:** `docs/modules/giveaway.md` · `docs/features/giveaway.md`
+
+**Founder-authorised 2026-09-26:** The seeded proportionality test also asserts that every ledger row has equal weight in the draw: selection is proportional to the number of rows a person holds, with base and referral rows indistinguishable. E7-04 enforces one unit per row in the database.
 
 ### E7-06 — Award-time checks, notification and the award record
 **Model:** Tier B — Medium · **Priority:** High · **Flag:** `giveaway.open` · **Area:** backend
