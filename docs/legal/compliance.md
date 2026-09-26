@@ -77,7 +77,7 @@ Article 5(3) applies to **storing information on, or accessing information alrea
 
 | Rule | What it means in practice |
 |---|---|
-| **No purchase necessary** | The ordinary verified signup is the free entry route. Entry never requires a purchase, a referral or marketing consent. Every entry carries equal weight |
+| **No purchase necessary** | The ordinary verified signup is the free entry route. Entry never requires a purchase, a referral or marketing consent. The signup call to action links to the current rules page while the giveaway is open. Each base or referral ledger row is exactly one entry, enforced by a database check constraint; E7-05 verifies equal weight in the draw |
 | **18 or over** | Stated on the signup form and in the rules; confirmed with each provisional winner at award time |
 | **One registration per natural person** | One base entry on verification, plus entries for unique referred people who themselves verify. Multiple identities, self-referral and automation are grounds for disqualification |
 | **One prize per person** | Once a person is selected, their remaining entries leave the pool for later selections |

@@ -36,4 +36,6 @@ export const signupFormCopy = {
   emailRequired: 'Enter your email address.',
   marketing: marketingOptInCopy,
   ageStatement: 'Open to people aged 18 and over.',
+  freeEntryDisclosure: 'No purchase necessary.',
+  giveawayRulesLink: 'See the giveaway rules.',
 } as const;

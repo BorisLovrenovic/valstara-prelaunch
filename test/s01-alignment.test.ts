@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { seedGiveawayEntryRows } from './helpers/giveaway-entry-rows.ts';
 
 import { createMarketingRoute } from '../src/pages/api/me/marketing.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
@@ -382,11 +383,7 @@ test('marketing route grants and withdraws consent without changing waitlist or 
         VALUES ($1, $2, $3, 'confirmed', 'settled')`,
       values: [randomUUID(), id, otherId],
     });
-    await f.owner.execute({
-      text: `INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version, rules_sha256)
-        VALUES ($1, $2, 'base', 3, 'v1', decode(repeat('ab', 32), 'hex'))`,
-      values: [randomUUID(), id],
-    });
+    await seedGiveawayEntryRows(f.owner, id, 3, { rulesVersion: 'v1' });
     await seedStatusToken(
       f.owner,
       id,
@@ -409,6 +406,10 @@ test('marketing route grants and withdraws consent without changing waitlist or 
       referral_code: string;
     }>({
       text: 'SELECT status, access_window, referral_code FROM subscriber WHERE id = $1',
+      values: [id],
+    });
+    const referralEdgesBefore = await f.owner.readOne<{ count: string }>({
+      text: 'SELECT count(*)::text AS count FROM referral_edge WHERE referrer_id = $1',
       values: [id],
     });
     const responseOn = await route(routeContext('valid-status-token', 'on'));
@@ -443,12 +444,12 @@ test('marketing route grants and withdraws consent without changing waitlist or 
           values: [id],
         })
       )?.count,
-      '1',
+      referralEdgesBefore?.count,
     );
     assert.equal(
       (
         await f.owner.readOne<{ entries: number }>({
-          text: 'SELECT entries FROM giveaway_entry WHERE subscriber_id = $1',
+          text: 'SELECT sum(entries)::integer AS entries FROM giveaway_entry WHERE subscriber_id = $1',
           values: [id],
         })
       )?.entries,

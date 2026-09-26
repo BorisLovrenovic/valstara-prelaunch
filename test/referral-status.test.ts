@@ -7,6 +7,7 @@ import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import { createFlagService } from '../src/server/flags/service.ts';
 import { createReferralService } from '../src/server/referral/service.ts';
 import { computeReferralStatus } from '../src/server/referral/status.ts';
+import { seedGiveawayEntryRows } from './helpers/giveaway-entry-rows.ts';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
@@ -155,13 +156,8 @@ test('status returns the exact stored count, a settled-only tier, and each activ
       `,
       values: [earlierTiedSubscriberId, new Date('2026-09-14T11:00:00.000Z')],
     });
-    await fixture.database.execute({
-      text: `
-        INSERT INTO giveaway_entry (
-          id, subscriber_id, method, entries, rules_version, rules_sha256
-        ) VALUES ($1, $2, 'base', 8, '2026-09', decode(repeat('ab', 32), 'hex'))
-      `,
-      values: [randomUUID(), subscriberId],
+    await seedGiveawayEntryRows(fixture.database, subscriberId, 8, {
+      rulesVersion: '2026-09',
     });
     await fixture.database.execute({
       text: `

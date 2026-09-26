@@ -18,6 +18,8 @@ import {
 const flags = await getFlagService().list();
 const signupEnabled =
   flags.find((flag) => flag.key === 'signup.enabled')?.enabled ?? true;
+const giveawayEnabled =
+  flags.find((flag) => flag.key === 'giveaway.open')?.enabled ?? false;
 const flagGeneration = landingFlagGeneration(flags);
 const referralEnabled =
   flags.find((flag) => flag.key === 'referral.enabled')?.enabled ?? true;
@@ -54,7 +56,10 @@ Astro.response.headers.set('X-Valstara-Flag-Generation', flagGeneration);
 
       {
         signupEnabled ? (
-          <SignupForm signedReferralCapture={signedReferralCapture} />
+          <SignupForm
+            signedReferralCapture={signedReferralCapture}
+            giveawayEnabled={giveawayEnabled}
+          />
         ) : (
           <div class="lp-paused">
             <p class="lp-paused__title">{landingCopy.paused.heading}</p>

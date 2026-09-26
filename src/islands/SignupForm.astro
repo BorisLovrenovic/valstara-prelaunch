@@ -8,9 +8,10 @@ import { getConfig } from '../server/config.ts';
 
 interface Props {
   signedReferralCapture: string | null;
+  giveawayEnabled: boolean;
 }
 
-const { signedReferralCapture } = Astro.props;
+const { signedReferralCapture, giveawayEnabled } = Astro.props;
 
 // The public Turnstile site key is rendered into the page so the widget can
 // mount client-side (ADR-006). It is public, not a secret — a temporary
@@ -96,6 +97,14 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
     <Button type="submit" data-submit>{landingCopy.form.submit}</Button>
     <p class="signup-age">{signupFormCopy.ageStatement}</p>
+    {
+      giveawayEnabled && (
+        <p class="signup-age">
+          {signupFormCopy.freeEntryDisclosure}{' '}
+          <a href="/giveaway/rules">{signupFormCopy.giveawayRulesLink}</a>
+        </p>
+      )
+    }
   </form>
 
   <div

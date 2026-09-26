@@ -9,6 +9,7 @@ import {
   rankingBatchMaximum,
 } from '../src/server/referral/ranking.ts';
 import { createLeaderboardSnapshotCache } from '../src/server/leaderboard/snapshot.ts';
+import { seedGiveawayEntryRows } from './helpers/giveaway-entry-rows.ts';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
@@ -96,26 +97,15 @@ async function insertSubscriber(
   });
 
   if (input.entries > 0) {
-    await database.execute({
-      text: `
-        INSERT INTO giveaway_entry (
-          id, subscriber_id, method, entries, rules_version, rules_sha256
-        )
-        VALUES ($1, $2, 'base', $3, 'ranking-v1', decode(repeat('ab', 32), 'hex'))
-      `,
-      values: [randomUUID(), id, input.entries],
+    await seedGiveawayEntryRows(database, id, input.entries, {
+      rulesVersion: 'ranking-v1',
     });
   }
   if ((input.voidedEntries ?? 0) > 0) {
-    await database.execute({
-      text: `
-        INSERT INTO giveaway_entry (
-          id, subscriber_id, method, entries, rules_version, rules_sha256,
-          voided_at
-        )
-        VALUES ($1, $2, 'referral', $3, 'ranking-v1', decode(repeat('ab', 32), 'hex'), $4)
-      `,
-      values: [randomUUID(), id, input.voidedEntries, input.verifiedAt],
+    await seedGiveawayEntryRows(database, id, input.voidedEntries ?? 0, {
+      includeBase: false,
+      rulesVersion: 'ranking-v1',
+      voidedAt: input.verifiedAt,
     });
   }
 

@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import test from 'node:test';
 
 import { Pool } from 'pg';
+import { seedGiveawayEntryRows } from './helpers/giveaway-entry-rows.ts';
 
 const executeFile = promisify(execFile);
 const defaultDatabaseUrl =
@@ -139,13 +140,16 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     `,
     [randomUUID(), subscriberId, randomUUID()],
   );
-  await fixture.database.query(
-    `
-      INSERT INTO giveaway_entry (
-        id, subscriber_id, method, entries, rules_version, rules_sha256
-      ) VALUES ($1, $2, 'base', 8, '2026-09', decode(repeat('ab', 32), 'hex'))
-    `,
-    [randomUUID(), subscriberId],
+  await seedGiveawayEntryRows(
+    {
+      async readOne({ text, values }) {
+        const result = await fixture.database.query(text, values);
+        return result.rows[0] ?? null;
+      },
+    },
+    subscriberId,
+    8,
+    { rulesVersion: '2026-09' },
   );
   await fixture.database.query(
     `
