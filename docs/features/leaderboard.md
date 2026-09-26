@@ -8,7 +8,7 @@ A public top-10 by confirmed referrals, **cached and anonymised**. It exists to 
 
 ## User flows
 1. **Snapshot** — a job recomputes the ranked top 10 every 5 minutes into a cached structure. **The public route never runs a live query**; the leaderboard is the one route a viral spike can hammer. Each entry has a deterministic SHA-256-derived display handle; the subscriber UUID is discarded before the snapshot is retained.
-2. **Render** — the island shows rank, an anonymised display value and the confirmed count, with a visible "as of" timestamp.
+2. **Render** — the island shows rank, an anonymised display value and the confirmed count, with a visible "as of" timestamp. Its live polls bypass the browser's HTTP cache so a response cached before a flag change cannot delay the kill switch by another polling interval.
 
 The public leaderboard never identifies its visitor and never reads or validates a `status` token. **Founder-authorised 2026-09-21:** own-rank moved to `/me`; E6-04 authenticates the bearer and E6-05 computes the subscriber's rank server-side through the shared referral-status computation, independently of this snapshot and of `leaderboard.public`.
 

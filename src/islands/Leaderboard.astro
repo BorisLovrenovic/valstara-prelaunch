@@ -73,6 +73,7 @@ import { leaderboardCopy } from '../copy/leaderboard.ts';
           return;
         }
         const response = await globalThis.fetch(endpoint, {
+          cache: 'no-store',
           headers: { Accept: 'application/json' },
         });
         const body: unknown = await response.json().catch(() => null);
