@@ -34,9 +34,12 @@ export async function currentDrawRulesFromFiles(
     const following = frontmatter.slice(
       (contentLine.index ?? 0) + contentLine[0].length,
     );
-    listed = /^\n[ \t]+-[ \t]+\S+/u.test(following);
+    const list = following.match(/^(?:\n[ \t]+-[ \t]+[^\n]+)+/u)?.[0];
+    const items = [...(list ?? '').matchAll(/^[ \t]+-[ \t]+([^\n]+)$/gmu)];
+    listed = items.length > 0 && items.every((item) => isListedItem(item[1]));
   } else if (contents.startsWith('[') && contents.endsWith(']')) {
-    listed = contents.slice(1, -1).trim().length > 0;
+    const items = contents.slice(1, -1).split(',');
+    listed = items.every(isListedItem);
   } else if (
     contents !== "'to be announced'" &&
     contents !== '"to be announced"'
@@ -49,4 +52,14 @@ export async function currentDrawRulesFromFiles(
     rulesSha256: rules.sha256,
     bundleContentsListed: listed,
   };
+}
+
+function isListedItem(item: string): boolean {
+  const value = item
+    .trim()
+    .replace(/[ \t]+#.*$/u, '')
+    .trim()
+    .replace(/^(['"])(.*)\1$/u, '$2')
+    .trim();
+  return value !== '' && value.toLowerCase() !== 'to be announced';
 }

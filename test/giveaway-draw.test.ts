@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import type { ChainInfo, RandomnessBeacon } from 'drand-client';
@@ -9,6 +12,7 @@ import { BeaconUnavailableError } from '../src/server/giveaway/beacon.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import { createTopTwentyReviewGate } from '../src/server/fraud/top-twenty-review.ts';
+import { currentDrawRulesFromFiles } from '../src/server/giveaway/current-draw-rules.ts';
 import {
   createDrawService,
   DrawRefusedError,
@@ -340,6 +344,82 @@ test('E7-05 refuses flag-off, unannounced bundles and an unreviewed top twenty w
       text: 'SELECT count(*)::text AS count FROM giveaway_draw',
     });
     assert.equal(count?.count, '0');
+  } finally {
+    await f.close();
+  }
+});
+
+test('E7-05 refuses a draw when the current rules list a placeholder bundle item', async () => {
+  const f = await fixture();
+  const directory = await mkdtemp(join(tmpdir(), 'valstara-draw-rules-'));
+  try {
+    await reviewedEntrants(f);
+    const version = 'VAL-GW-LAUNCH-20270401-r2';
+    const service = createDrawService(
+      f.app,
+      { isEnabled: async () => true },
+      { send: async () => undefined },
+      {
+        clock: () => originalCommit,
+        config: drand,
+        currentRules: () => currentDrawRulesFromFiles(directory),
+        fetch: relayRequest({ outage: false, latestRound: 100, calls: 0 }),
+        periodStart: new Date('2026-10-01T00:00:00.000Z'),
+        drawOpensAt: originalCommit,
+        reconcile: async () => undefined,
+      },
+    );
+    for (const contents of [
+      '\n  - to be announced',
+      '\n  - Product A\n  - "to be announced"',
+      '\n  - "to be announced" # product details pending',
+      " ['to be announced']",
+    ]) {
+      await writeFile(
+        join(directory, `${version}.md`),
+        `---\nrulesVersion: ${version}\n` +
+          `sha256: '${'ab'.repeat(32)}'\nprizeCount: 2\n` +
+          `bundleContents:${contents}\n---\n`,
+      );
+      assert.equal(
+        (await currentDrawRulesFromFiles(directory)).bundleContentsListed,
+        false,
+      );
+      await assert.rejects(service.executeDraw('operator'), /bundle contents/u);
+    }
+    const count = await f.owner.readOne<{ count: string }>({
+      text: 'SELECT count(*)::text AS count FROM giveaway_draw',
+    });
+    assert.equal(count?.count, '0');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+    await f.close();
+  }
+});
+
+test('E7-05 keeps a committed draw pending if its top-twenty review is invalidated before publication', async () => {
+  const f = await fixture();
+  try {
+    await reviewedEntrants(f);
+    const state = { outage: false, latestRound: 100, calls: 0 };
+    const alerts: Alert[] = [];
+    const now = { value: originalCommit };
+    const service = setup(f, state, alerts, now);
+    const commitment = await service.executeDraw('operator');
+    await f.owner.execute({
+      text: `UPDATE top_twenty_review_batch
+             SET invalidated_at = CURRENT_TIMESTAMP
+             WHERE invalidated_at IS NULL`,
+    });
+    now.value = new Date(commitment.targetRoundAt.getTime() + 1_000);
+    assert.equal(await service.advancePending(), false);
+    const draw = await f.owner.readOne<{ state: string; seed: string | null }>({
+      text: 'SELECT state, seed FROM giveaway_draw WHERE id = $1',
+      values: [commitment.id],
+    });
+    assert.equal(draw?.state, 'pending');
+    assert.ok(draw?.seed);
+    assert.equal(alerts[0]?.detail.reason, 'top_twenty_review_required');
   } finally {
     await f.close();
   }
