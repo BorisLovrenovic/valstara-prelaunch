@@ -78,6 +78,7 @@ test('E1-12 validates and types the complete application environment', () => {
       totpSecret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
     },
     databaseUrl: validEnvironment.DATABASE_URL,
+    drand: null,
     host: '127.0.0.1',
     ipPrefixPepper: 'local-test-prefix-pepper',
     ipVelocity: { threshold: 10, windowMinutes: 60 },
@@ -96,6 +97,30 @@ test('E1-12 validates and types the complete application environment', () => {
     },
     waitlistLiveAt: null,
   });
+});
+
+test('E7-05 requires two distinct drand relay origins', () => {
+  const configured = {
+    ...validEnvironment,
+    DRAND_CHAIN_HASH: 'ab'.repeat(32),
+    DRAND_CHAIN_PUBLIC_KEY: 'cd'.repeat(48),
+    DRAND_RELAY_URLS: 'https://relay-one.test,https://relay-two.test/',
+  };
+  assert.deepEqual(validateConfig(configured).drand, {
+    chainHash: configured.DRAND_CHAIN_HASH,
+    publicKey: configured.DRAND_CHAIN_PUBLIC_KEY,
+    relays: ['https://relay-one.test', 'https://relay-two.test'],
+  });
+  assert.throws(
+    () =>
+      validateConfig({
+        ...configured,
+        DRAND_RELAY_URLS: 'https://relay-one.test,https://relay-one.test/',
+      }),
+    (error) =>
+      error instanceof ConfigurationError &&
+      error.variableName === 'DRAND_RELAY_URLS',
+  );
 });
 
 test('E7-03 validates launch time and uses the later of launch and published start', () => {

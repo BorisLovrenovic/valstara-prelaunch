@@ -47,6 +47,11 @@ export function defineAdminRouteRegistry(
 // src/pages/api/admin, then exercises every entry through the prefix middleware.
 export const adminRouteRegistry = defineAdminRouteRegistry([
   {
+    source: 'src/pages/api/admin/draw.ts',
+    pathname: '/api/admin/draw',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+  {
     source: 'src/pages/api/admin/fraud.ts',
     pathname: '/api/admin/fraud',
     methods: [{ method: 'GET', audit: 'read-only' }],

@@ -22,6 +22,9 @@ const optionalKeys = [
   'VERIFICATION_RATE_COLLAPSE_PERCENT',
   'VERIFICATION_RATE_MINIMUM_SIGNUPS',
   'WAITLIST_LIVE_AT',
+  'DRAND_CHAIN_HASH',
+  'DRAND_CHAIN_PUBLIC_KEY',
+  'DRAND_RELAY_URLS',
 ] as const;
 export const p1AlertEnvironmentKeys = [
   'P1_ALERT_WEBHOOK_TOKEN',
@@ -68,6 +71,7 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     turnstileSiteKey: turnstileSiteKey(environment),
     verificationRate: verificationRate(environment),
     waitlistLiveAt: waitlistLiveAt(environment),
+    drand: drandConfiguration(environment),
   };
   return Object.freeze(config);
 }
@@ -380,4 +384,79 @@ export interface AppConfig {
   readonly turnstileSiteKey: string;
   readonly verificationRate: VerificationRateConfiguration;
   readonly waitlistLiveAt: Date | null;
+  readonly drand: DrandConfiguration | null;
+}
+
+export interface DrandConfiguration {
+  readonly chainHash: string;
+  readonly publicKey: string;
+  readonly relays: readonly string[];
+}
+
+export function getDrandConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): DrandConfiguration | null {
+  return drandConfiguration(environment);
+}
+
+function drandConfiguration(
+  environment: NodeJS.ProcessEnv,
+): DrandConfiguration | null {
+  const hash = environment.DRAND_CHAIN_HASH;
+  const key = environment.DRAND_CHAIN_PUBLIC_KEY;
+  const rawRelays = environment.DRAND_RELAY_URLS;
+  if (!hash && !key && !rawRelays) return null;
+  if (!hash || !/^[a-f0-9]{64}$/u.test(hash)) {
+    return invalid(
+      'DRAND_CHAIN_HASH',
+      'must be a 64-character lowercase hex chain hash',
+    );
+  }
+  if (!key || !/^[a-f0-9]{96,192}$/u.test(key) || key.length % 2 !== 0) {
+    return invalid(
+      'DRAND_CHAIN_PUBLIC_KEY',
+      'must be an even-length lowercase hex public key',
+    );
+  }
+  const relays = (rawRelays ?? '').split(',').map((value) => value.trim());
+  if (relays.length < 2) {
+    return invalid(
+      'DRAND_RELAY_URLS',
+      'requires at least two distinct HTTPS relay URLs',
+    );
+  }
+  const origins: string[] = [];
+  for (const relay of relays) {
+    let url: URL;
+    try {
+      url = new URL(relay);
+    } catch {
+      return invalid('DRAND_RELAY_URLS', 'contains an invalid URL');
+    }
+    if (
+      url.protocol !== 'https:' ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      url.pathname !== '/'
+    ) {
+      return invalid(
+        'DRAND_RELAY_URLS',
+        'requires HTTPS origins without paths or credentials',
+      );
+    }
+    origins.push(url.origin);
+  }
+  if (new Set(origins).size !== origins.length) {
+    return invalid(
+      'DRAND_RELAY_URLS',
+      'requires at least two distinct HTTPS relay URLs',
+    );
+  }
+  return Object.freeze({
+    chainHash: hash,
+    publicKey: key,
+    relays: Object.freeze(origins),
+  });
 }

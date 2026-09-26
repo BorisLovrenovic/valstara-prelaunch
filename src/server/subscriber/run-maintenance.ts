@@ -1,5 +1,6 @@
 import {
   getDatabaseUrl,
+  getDrandConfiguration,
   getP1AlertConfiguration,
   getVerificationRateConfiguration,
 } from '../config.ts';
@@ -14,6 +15,8 @@ import { createVerificationTokenRetentionJob } from '../verification/retention.t
 import { createFlagService } from '../flags/service.ts';
 import { createGiveawayEntryReconciliationJob } from '../giveaway/reconcile.ts';
 import { currentRulesFromFiles } from '../giveaway/current-rules-file.ts';
+import { createDrawService } from '../giveaway/draw.ts';
+import { createDrawWorker } from '../giveaway/draw-worker.ts';
 
 import { createUnverifiedExpiryJob } from './expiry.ts';
 import {
@@ -82,4 +85,12 @@ const stop = (): void => {
 process.once('SIGINT', stop);
 process.once('SIGTERM', stop);
 
-await scheduler.run();
+const drawWorker = createDrawWorker(
+  createDrawService(database, createFlagService(database), alerts, {
+    config: getDrandConfiguration(),
+  }),
+  alerts,
+  clock,
+);
+
+await Promise.all([scheduler.run(), drawWorker.run()]);

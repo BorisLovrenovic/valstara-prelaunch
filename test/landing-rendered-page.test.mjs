@@ -33,7 +33,8 @@ const defaultDatabaseUrl =
 const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 
-let nextPort = 43_240;
+// Stay outside Linux's usual ephemeral client-port range during the full suite.
+let nextPort = 62_000;
 
 function startServer(databaseUrl) {
   const port = (nextPort += 1);
