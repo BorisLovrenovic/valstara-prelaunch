@@ -200,6 +200,9 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   assert.equal(config.services.maintenance.ports, undefined);
   assert.deepEqual(Object.keys(config.services.maintenance.environment), [
     'DATABASE_URL',
+    'DRAND_CHAIN_HASH',
+    'DRAND_CHAIN_PUBLIC_KEY',
+    'DRAND_RELAY_URLS',
     'NODE_ENV',
     'P1_ALERT_WEBHOOK_TOKEN',
     'P1_ALERT_WEBHOOK_URL',

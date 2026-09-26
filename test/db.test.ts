@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      26,
+      31,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -245,6 +245,11 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0024-giveaway-entry-ledger.sql',
       '0025-giveaway-entry-integrity.sql',
       '0026-giveaway-entry-one-unit.sql',
+      '0027-reproducible-draw.sql',
+      '0028-draw-entry-lock.sql',
+      '0029-draw-evidence-write-once.sql',
+      '0030-draw-commit-order.sql',
+      '0031-draw-ledger-closure.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -276,6 +281,11 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0024-giveaway-entry-ledger.sql',
         '0025-giveaway-entry-integrity.sql',
         '0026-giveaway-entry-one-unit.sql',
+        '0027-reproducible-draw.sql',
+        '0028-draw-entry-lock.sql',
+        '0029-draw-evidence-write-once.sql',
+        '0030-draw-commit-order.sql',
+        '0031-draw-ledger-closure.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -293,6 +303,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'email_send',
         'fraud_flag',
         'giveaway_draw',
+        'giveaway_draw_selection',
+        'giveaway_draw_snapshot_row',
         'giveaway_entry',
         'migration_ledger',
         'milestone_award',
@@ -403,10 +415,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          26,
+          31,
         );
 
-        assert.equal(appliedCount, 26);
+        assert.equal(appliedCount, 31);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -436,6 +448,11 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0024-giveaway-entry-ledger.sql',
             '0025-giveaway-entry-integrity.sql',
             '0026-giveaway-entry-one-unit.sql',
+            '0027-reproducible-draw.sql',
+            '0028-draw-entry-lock.sql',
+            '0029-draw-evidence-write-once.sql',
+            '0030-draw-commit-order.sql',
+            '0031-draw-ledger-closure.sql',
           ],
         );
       } finally {
