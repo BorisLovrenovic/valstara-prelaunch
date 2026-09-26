@@ -64,6 +64,7 @@ services:
       VERIFICATION_RATE_MINIMUM_SIGNUPS: ${VERIFICATION_RATE_MINIMUM_SIGNUPS:-50}
       ASTRO_TELEMETRY_DISABLED: '1'
       NODE_ENV: development
+      WAITLIST_LIVE_AT: ${WAITLIST_LIVE_AT:-}
       # Same install as migrate — pin npm the same way (see the migrate service).
       NPM_CONFIG_MAXSOCKETS: '4'
       NPM_CONFIG_AUDIT: 'false'
@@ -118,6 +119,7 @@ services:
     environment:
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:-valstara-app-local-only}@postgres:5432/valstara_waitlist
       NODE_ENV: development
+      WAITLIST_LIVE_AT: ${WAITLIST_LIVE_AT:-}
       P1_ALERT_WEBHOOK_TOKEN: ${P1_ALERT_WEBHOOK_TOKEN:-local-only-alert-token}
       P1_ALERT_WEBHOOK_URL: ${P1_ALERT_WEBHOOK_URL:-http://127.0.0.1:9/local-only-alert-sink}
       VERIFICATION_RATE_BASELINE_DAYS: ${VERIFICATION_RATE_BASELINE_DAYS:-7}

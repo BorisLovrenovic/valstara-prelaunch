@@ -1,10 +1,14 @@
 import { createAuditService, type AuditService } from '../audit/service.ts';
+import { ConfigurationError, getGiveawayEntryPeriodStart } from '../config.ts';
 import {
   createCampaignFlagRepository,
   type CampaignFlagRepository,
 } from '../db/campaign-flags.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
+import { currentRulesFromFiles } from '../giveaway/current-rules-file.ts';
+import { createGiveawayEntryReconciliationJob } from '../giveaway/reconcile.ts';
+import type { CurrentGiveawayRules } from '../giveaway/accrue.ts';
 
 import {
   campaignFlagKeys,
@@ -34,8 +38,14 @@ const systemClock: FlagClock = {
   now: () => Date.now(),
 };
 
-export function createFlagService(database: DatabasePool): FlagService {
-  return createFlagServiceWithDependencies(
+export function createFlagService(
+  database: DatabasePool,
+  giveaway: {
+    currentRules?: () => Promise<CurrentGiveawayRules>;
+    periodStart?: Date;
+  } = {},
+): FlagService {
+  const service = createFlagServiceWithDependencies(
     createCampaignFlagRepository(database),
     async (operation) => {
       await withTransaction(database, async (connection) => {
@@ -46,6 +56,34 @@ export function createFlagService(database: DatabasePool): FlagService {
       });
     },
   );
+  return {
+    ...service,
+    async set(key, enabled, actor) {
+      const periodStart = giveaway.periodStart ?? getGiveawayEntryPeriodStart();
+      if (key === 'giveaway.open' && enabled && periodStart === null) {
+        throw new ConfigurationError(
+          'WAITLIST_LIVE_AT',
+          'is required before giveaway.open is enabled',
+        );
+      }
+      await service.set(key, enabled, actor);
+      if (key === 'giveaway.open' && enabled) {
+        const job = createGiveawayEntryReconciliationJob(
+          database,
+          service,
+          giveaway.currentRules ?? currentRulesFromFiles,
+          periodStart,
+        );
+        let checked: number;
+        do {
+          ({ checked } = await job.run(1_000));
+        } while (
+          checked === 1_000 &&
+          (await service.isEnabled('giveaway.open'))
+        );
+      }
+    },
+  };
 }
 
 export function createFlagServiceWithDependencies(

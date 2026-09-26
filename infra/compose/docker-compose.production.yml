@@ -67,6 +67,7 @@ services:
       ASTRO_TELEMETRY_DISABLED: '1'
       HOST: '0.0.0.0'
       NODE_ENV: production
+      WAITLIST_LIVE_AT: ${WAITLIST_LIVE_AT:-}
       PORT: '4321'
     depends_on:
       postgres:
@@ -85,6 +86,7 @@ services:
     environment:
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:?VALSTARA_APP_DB_PASSWORD is required}@postgres:5432/valstara_waitlist
       NODE_ENV: production
+      WAITLIST_LIVE_AT: ${WAITLIST_LIVE_AT:-}
       P1_ALERT_WEBHOOK_TOKEN: ${P1_ALERT_WEBHOOK_TOKEN:?P1_ALERT_WEBHOOK_TOKEN is required}
       P1_ALERT_WEBHOOK_URL: ${P1_ALERT_WEBHOOK_URL:?P1_ALERT_WEBHOOK_URL is required}
       VERIFICATION_RATE_BASELINE_DAYS: ${VERIFICATION_RATE_BASELINE_DAYS:-7}

@@ -158,8 +158,8 @@ test('status returns the exact stored count, a settled-only tier, and each activ
     await fixture.database.execute({
       text: `
         INSERT INTO giveaway_entry (
-          id, subscriber_id, method, entries, rules_version
-        ) VALUES ($1, $2, 'base', 8, '2026-09')
+          id, subscriber_id, method, entries, rules_version, rules_sha256
+        ) VALUES ($1, $2, 'base', 8, '2026-09', decode(repeat('ab', 32), 'hex'))
       `,
       values: [randomUUID(), subscriberId],
     });

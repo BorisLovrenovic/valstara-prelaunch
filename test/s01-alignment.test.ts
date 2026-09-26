@@ -183,8 +183,8 @@ test('S-01 migration removes location and AMOE and enforces both consent checks'
     );
     await assert.rejects(
       f.owner.execute({
-        text: `INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version)
-        VALUES ($1, $2, 'amoe', 1, 'v1')`,
+        text: `INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version, rules_sha256)
+        VALUES ($1, $2, 'amoe', 1, 'v1', decode(repeat('ab', 32), 'hex'))`,
         values: [randomUUID(), id],
       }),
       { code: '23514' },
@@ -207,7 +207,7 @@ test('S-01 migration refuses a nonempty entry ledger without changing its schema
   const directory = await mkdtemp(join(tmpdir(), 'valstara-s01-migrations-'));
   try {
     for (const filename of await readdir(migrationDirectory)) {
-      if (/^\d{4}-.*\.sql$/u.test(filename) && !filename.startsWith('0023-')) {
+      if (/^\d{4}-.*\.sql$/u.test(filename) && filename < '0023-') {
         await cp(join(migrationDirectory, filename), join(directory, filename));
       }
     }
@@ -383,8 +383,8 @@ test('marketing route grants and withdraws consent without changing waitlist or 
       values: [randomUUID(), id, otherId],
     });
     await f.owner.execute({
-      text: `INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version)
-        VALUES ($1, $2, 'base', 3, 'v1')`,
+      text: `INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version, rules_sha256)
+        VALUES ($1, $2, 'base', 3, 'v1', decode(repeat('ab', 32), 'hex'))`,
       values: [randomUUID(), id],
     });
     await seedStatusToken(

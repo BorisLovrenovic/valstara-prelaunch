@@ -14,7 +14,8 @@ export type MaintenanceJobName =
   | 'referral_counter_repair'
   | 'stranded_referral'
   | 'verification_rate'
-  | 'verification_token_retention';
+  | 'verification_token_retention'
+  | 'giveaway_entry_reconciliation';
 
 export interface MaintenanceJob {
   run(limit: number): Promise<unknown>;
@@ -25,6 +26,7 @@ export interface VerificationRateJob {
 }
 
 export interface VerificationMaintenanceJobs {
+  readonly giveawayEntryReconciliation?: MaintenanceJob;
   readonly expiry: MaintenanceJob;
   readonly ipPrefixRetention?: MaintenanceJob;
   readonly rateLimitRetention: MaintenanceJob;
@@ -57,7 +59,8 @@ export function createMaintenanceFailureReporter(
 
   return async (job) => {
     const severity =
-      job === 'referral_counter_repair'
+      job === 'referral_counter_repair' ||
+      job === 'giveaway_entry_reconciliation'
         ? 'P2'
         : job === 'verification_rate' ||
             job === 'rate_limit_retention' ||
@@ -123,6 +126,12 @@ export function createVerificationMaintenanceScheduler(
   async function runCycle(): Promise<void> {
     const now = clock();
     await runJob('reminder', jobs.reminder);
+    if (jobs.giveawayEntryReconciliation !== undefined) {
+      await runJob(
+        'giveaway_entry_reconciliation',
+        jobs.giveawayEntryReconciliation,
+      );
+    }
     await runVerificationRateJob();
 
     const day = now.toISOString().slice(0, 10);

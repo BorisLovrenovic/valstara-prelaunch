@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      23,
+      25,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -242,6 +242,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0021-survey-capture-permissions.sql',
       '0022-member-dashboard-status-permissions.sql',
       '0023-hong-kong-giveaway-and-marketing-consent.sql',
+      '0024-giveaway-entry-ledger.sql',
+      '0025-giveaway-entry-integrity.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -270,6 +272,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0021-survey-capture-permissions.sql',
         '0022-member-dashboard-status-permissions.sql',
         '0023-hong-kong-giveaway-and-marketing-consent.sql',
+        '0024-giveaway-entry-ledger.sql',
+        '0025-giveaway-entry-integrity.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -397,10 +401,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          23,
+          25,
         );
 
-        assert.equal(appliedCount, 23);
+        assert.equal(appliedCount, 25);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -427,6 +431,8 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0021-survey-capture-permissions.sql',
             '0022-member-dashboard-status-permissions.sql',
             '0023-hong-kong-giveaway-and-marketing-consent.sql',
+            '0024-giveaway-entry-ledger.sql',
+            '0025-giveaway-entry-integrity.sql',
           ],
         );
       } finally {
@@ -618,16 +624,16 @@ test('unique keys reject duplicates at the database level', async () => {
 
     await database.execute({
       text: `
-        INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version)
-        VALUES ($1, $2, 'base', 1, 'v1')
+        INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version, rules_sha256)
+        VALUES ($1, $2, 'base', 1, 'v1', decode(repeat('ab', 32), 'hex'))
       `,
       values: [entryId, referrerId],
     });
     await assert.rejects(
       database.execute({
         text: `
-          INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version)
-          VALUES ($1, $2, 'base', 1, 'v1')
+          INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version, rules_sha256)
+          VALUES ($1, $2, 'base', 1, 'v1', decode(repeat('ab', 32), 'hex'))
         `,
         values: [randomUUID(), referrerId],
       }),
@@ -874,16 +880,16 @@ test('all unique constraints and the write-once trigger hold across seeded gener
 
           await database.execute({
             text: `
-              INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version)
-              VALUES ($1, $2, 'base', 1, 'v1')
+              INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version, rules_sha256)
+              VALUES ($1, $2, 'base', 1, 'v1', decode(repeat('ab', 32), 'hex'))
             `,
             values: [entryId, subscriberId],
           });
           await assert.rejects(
             database.execute({
               text: `
-                INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version)
-                VALUES ($1, $2, 'base', 1, 'v1')
+                INSERT INTO giveaway_entry (id, subscriber_id, method, entries, rules_version, rules_sha256)
+                VALUES ($1, $2, 'base', 1, 'v1', decode(repeat('ab', 32), 'hex'))
               `,
               values: [duplicateEntryId, subscriberId],
             }),

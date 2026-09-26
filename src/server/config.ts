@@ -21,6 +21,7 @@ const optionalKeys = [
   'VERIFICATION_RATE_COHORT_HOURS',
   'VERIFICATION_RATE_COLLAPSE_PERCENT',
   'VERIFICATION_RATE_MINIMUM_SIGNUPS',
+  'WAITLIST_LIVE_AT',
 ] as const;
 export const p1AlertEnvironmentKeys = [
   'P1_ALERT_WEBHOOK_TOKEN',
@@ -66,6 +67,7 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     turnstileSecretKey: requiredValue(environment, 'TURNSTILE_SECRET_KEY'),
     turnstileSiteKey: turnstileSiteKey(environment),
     verificationRate: verificationRate(environment),
+    waitlistLiveAt: waitlistLiveAt(environment),
   };
   return Object.freeze(config);
 }
@@ -113,6 +115,37 @@ export function getIpVelocityConfiguration(
   environment: NodeJS.ProcessEnv = process.env,
 ): IpVelocityConfiguration {
   return ipVelocity(environment);
+}
+
+export const giveawayPublishedStart = new Date('2026-10-01T00:00:00.000Z');
+
+/** Production must record the actual launch time before opening the draw. */
+export function getGiveawayEntryPeriodStart(
+  environment: NodeJS.ProcessEnv = process.env,
+): Date | null {
+  const liveAt = waitlistLiveAt(environment);
+  if (liveAt === null) {
+    return nodeEnvironment(environment) === 'production'
+      ? null
+      : giveawayPublishedStart;
+  }
+  return liveAt > giveawayPublishedStart ? liveAt : giveawayPublishedStart;
+}
+
+function waitlistLiveAt(environment: NodeJS.ProcessEnv): Date | null {
+  const value = environment.WAITLIST_LIVE_AT;
+  if (value === undefined || value === '') return null;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value)) {
+    return invalid(
+      'WAITLIST_LIVE_AT',
+      'must be a UTC ISO timestamp with milliseconds',
+    );
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString() !== value) {
+    return invalid('WAITLIST_LIVE_AT', 'must be a valid UTC timestamp');
+  }
+  return parsed;
 }
 
 export function getP1AlertConfiguration(
@@ -346,4 +379,5 @@ export interface AppConfig {
   readonly turnstileSecretKey: string;
   readonly turnstileSiteKey: string;
   readonly verificationRate: VerificationRateConfiguration;
+  readonly waitlistLiveAt: Date | null;
 }

@@ -10,6 +10,11 @@ import {
   type AccessWindow,
 } from '../referral/config.ts';
 import { createReferralService } from '../referral/service.ts';
+import {
+  createGiveawayAccrualServiceInTransaction,
+  type CurrentGiveawayRules,
+} from '../giveaway/accrue.ts';
+import type { FlagService } from '../flags/types.ts';
 
 import { createVerificationService } from './service.ts';
 import type { ConsumeResult } from './types.ts';
@@ -26,6 +31,10 @@ export interface VerificationCompletionDependencies {
   readonly accessWindowBands?: readonly AccessWindowBand[];
   readonly clock?: () => Date;
   readonly referralEnabled?: boolean;
+  readonly giveaway?: {
+    flags: Pick<FlagService, 'isEnabled'>;
+    currentRules: () => CurrentGiveawayRules;
+  };
   /** Test-only fault injection that proves the whole completion rolls back. */
   readonly afterStep?: (step: VerificationCompletionStep) => Promise<void>;
 }
@@ -134,6 +143,16 @@ export function createVerificationCompletionService(
       await dependencies.afterStep?.('referral-code');
       await referral.confirm(subscriberId, clock());
       await dependencies.afterStep?.('referral-confirmed');
+      if (
+        consumed.outcome === 'verified' &&
+        dependencies.giveaway !== undefined
+      ) {
+        await createGiveawayAccrualServiceInTransaction(
+          connection,
+          dependencies.giveaway.flags,
+          dependencies.giveaway.currentRules,
+        ).accrueForVerification(subscriberId);
+      }
 
       const subscriber = await repository.findSubscriber(subscriberId);
       if (subscriber === null || subscriber.status !== 'verified') {

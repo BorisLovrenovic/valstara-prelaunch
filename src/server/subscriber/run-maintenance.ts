@@ -11,6 +11,9 @@ import { createReferralCounterRepairJob } from '../referral/counter-repair.ts';
 import { createAlertWebhookTransport } from '../verification-rate/p1-webhook.ts';
 import { createVerificationRateMonitor } from '../verification-rate/service.ts';
 import { createVerificationTokenRetentionJob } from '../verification/retention.ts';
+import { createFlagService } from '../flags/service.ts';
+import { createGiveawayEntryReconciliationJob } from '../giveaway/reconcile.ts';
+import { currentRulesFromFiles } from '../giveaway/current-rules-file.ts';
 
 import { createUnverifiedExpiryJob } from './expiry.ts';
 import {
@@ -45,6 +48,11 @@ async function reportVerificationRateCollapse(alert: {
 
 const scheduler = createVerificationMaintenanceScheduler(
   {
+    giveawayEntryReconciliation: createGiveawayEntryReconciliationJob(
+      database,
+      createFlagService(database),
+      currentRulesFromFiles,
+    ),
     expiry: createUnverifiedExpiryJob(database, { clock }),
     ipPrefixRetention: createIpPrefixRetentionJob(database, { clock }),
     rateLimitRetention: createRateLimitRetentionJob(database, { clock }),

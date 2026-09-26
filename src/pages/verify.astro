@@ -5,6 +5,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
+import { currentRules } from '../server/giveaway/rules-catalog.ts';
 import {
   createVerificationCompletionService,
   type VerificationCompletion,
@@ -38,6 +39,7 @@ if (Astro.request.method === 'POST') {
   try {
     completion = await createVerificationCompletionService(database, {
       referralEnabled,
+      giveaway: { flags: getFlagService(), currentRules },
     })(authenticatedToken);
   } finally {
     await database.close();
