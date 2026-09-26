@@ -372,6 +372,8 @@ test('E7-05 refuses a draw when the current rules list a placeholder bundle item
     for (const contents of [
       '\n  - to be announced',
       '\n  - Product A\n  - "to be announced"',
+      '\n  - Product A\n\n  - to be announced',
+      '\n  - Product A\n  # bundle still incomplete\n  - to be announced',
       '\n  - "to be announced" # product details pending',
       " ['to be announced']",
     ]) {

@@ -212,7 +212,7 @@ test('the current published revision cannot start a draw while its bundle is una
       join(directory, `${version}.md`),
       `---\nrulesVersion: ${version}\n` +
         `sha256: '${'ab'.repeat(32)}'\nprizeCount: 5\nbundleContents:\n` +
-        `  - Product A\n  - Product B\n---\n`,
+        `  - Product A\n\n  # both products are confirmed\n  - Product B\n---\n`,
     );
     assert.equal(
       (await currentDrawRulesFromFiles(directory)).bundleContentsListed,

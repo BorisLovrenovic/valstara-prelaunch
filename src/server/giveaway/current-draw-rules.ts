@@ -34,9 +34,21 @@ export async function currentDrawRulesFromFiles(
     const following = frontmatter.slice(
       (contentLine.index ?? 0) + contentLine[0].length,
     );
-    const list = following.match(/^(?:\n[ \t]+-[ \t]+[^\n]+)+/u)?.[0];
-    const items = [...(list ?? '').matchAll(/^[ \t]+-[ \t]+([^\n]+)$/gmu)];
-    listed = items.length > 0 && items.every((item) => isListedItem(item[1]));
+    const items: string[] = [];
+    let validList = true;
+    for (const line of following.split('\n').slice(1)) {
+      if (/^[ \t]*(?:#.*)?$/u.test(line)) continue;
+      const item = line.match(/^[ \t]*-[ \t]+(.+)$/u);
+      if (item !== null) {
+        items.push(item[1]);
+      } else if (/^[^\s]/u.test(line)) {
+        break;
+      } else {
+        validList = false;
+        break;
+      }
+    }
+    listed = validList && items.length > 0 && items.every(isListedItem);
   } else if (contents.startsWith('[') && contents.endsWith(']')) {
     const items = contents.slice(1, -1).split(',');
     listed = items.every(isListedItem);
