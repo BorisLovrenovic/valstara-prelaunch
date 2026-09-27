@@ -43,6 +43,7 @@ COPY --chown=node:node --from=build /app/src/server/ratelimit ./src/server/ratel
 COPY --chown=node:node --from=build /app/src/server/verification ./src/server/verification
 COPY --chown=node:node --from=build /app/src/server/verification-rate ./src/server/verification-rate
 COPY --chown=node:node --from=build /app/src/content/giveaway-rules ./src/content/giveaway-rules
+COPY --chown=node:node --from=build /app/src/content/giveaway-award-catalog.json ./src/content/giveaway-award-catalog.json
 COPY --chown=node:node package.json ./package.json
 
 USER node
