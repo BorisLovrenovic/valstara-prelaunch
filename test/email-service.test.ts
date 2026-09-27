@@ -320,7 +320,7 @@ test('E8-01 retry reproduces tokens and URLs; outage preserves queued row and bo
     assert.equal(row?.attempts, 1);
     assert.equal(
       row?.next_attempt_at.toISOString(),
-      new Date(now.getTime() + backoffMs(1)).toISOString(),
+      new Date(now.getTime() + 60_000).toISOString(),
     );
     assert.equal(row?.payload.token_id, issued.id);
     const recovered = harness(f.app);
@@ -341,7 +341,11 @@ test('E8-01 retry reproduces tokens and URLs; outage preserves queued row and bo
       recovered.sent[0]?.headers['List-Unsubscribe-Post'],
       'List-Unsubscribe=One-Click',
     );
-    assert.ok(backoffMs(30) <= maxBackoffMs);
+    assert.deepEqual(
+      [1, 2, 3, 6, 7, 8, 30].map((attempt) => backoffMs(attempt)),
+      [60_000, 120_000, 240_000, 1_920_000, 3_600_000, 3_600_000, 3_600_000],
+    );
+    assert.equal(maxBackoffMs, 3_600_000);
   } finally {
     await f.close();
   }
