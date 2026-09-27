@@ -95,12 +95,14 @@ async function createDatabaseFixture() {
     databaseUrl: databaseUrl.toString(),
     async dispose() {
       await database.end();
-      await admin.query(
-        'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1',
-        [databaseName],
-      );
-      await admin.query(`DROP DATABASE "${databaseName}"`);
-      await admin.end();
+      try {
+        // Every client belongs to this fixture or its stopped child server.
+        // Let DROP DATABASE expose a leaked connection instead of terminating
+        // it and surfacing an unrelated asynchronous pool error.
+        await admin.query(`DROP DATABASE "${databaseName}"`);
+      } finally {
+        await admin.end();
+      }
     },
   };
 }
