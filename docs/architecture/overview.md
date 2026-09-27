@@ -37,14 +37,14 @@ Each is re-derived from this campaign and traces to an ADR.
 ```mermaid
 C4Context
   Person(visitor, "Visitor", "Lands from social, search or a referral link. Signs up, verifies, refers")
-  Person(subslush, "SubSlush customer", "~100 existing customers migrated by a one-off announcement")
+  Person(subslush, "SubSlush customer", "~100 existing customers, invited by a manual founder email outside this system (ADR-028)")
   Person(founder, "Founder / operator", "Reviews fraud flags, runs the draw, exports the list")
 
   System(prelaunch, "Valstara pre-launch site", "Astro + Node adapter. Waitlist, referral engine, giveaway, trust and legal pages")
 
   System_Ext(cf, "Cloudflare", "DNS, CDN, proxy, Turnstile, Web Analytics")
   System_Ext(resend, "Resend", "Transactional email on send.valstara.com")
-  System_Ext(brevo, "Brevo", "Broadcast email on mail.valstara.com, and the subslush.com migration send")
+  System_Ext(brevo, "Brevo", "Broadcast email on mail.valstara.com")
   System_Ext(umami, "Umami", "Self-hosted, cookieless product analytics")
   System_Ext(trustpilot, "Trustpilot", "Profile claimed; linked, rating withheld")
   System_Ext(store, "Valstara storefront", "Separate repository. Receives the list at launch")
@@ -53,7 +53,7 @@ C4Context
   Rel(cf, prelaunch, "Proxied origin requests")
   Rel(prelaunch, resend, "Verification, welcome, milestone, status-link mail")
   Rel(prelaunch, brevo, "Contact sync; weekly and launch broadcasts")
-  Rel(brevo, subslush, "Migration announcement, sent FROM subslush.com")
+  Rel(subslush, cf, "Signs up like any visitor")
   Rel(prelaunch, umami, "Page and server-side funnel events, cookieless")
   Rel(founder, prelaunch, "Admin routes: flag review, export, draw")
   Rel(prelaunch, store, "One-off list handoff at launch")
@@ -186,15 +186,13 @@ flowchart LR
   subgraph Broadcast
     B[Weekly update · launch announcement]
     B --> BV[Brevo — mail.valstara.com]
-    M[SubSlush migration announcement] --> BS[Brevo — subslush.com]
   end
   RS --> SUP[(Suppression list)]
   BV --> SUP
-  BS --> SUP
   SUP --> ALL[No send to a suppressed address, from either provider]
 ```
 
-**The migration send goes from `subslush.com`, not from `valstara.com`.** That domain has history with those exact recipients; a rebrand announcement from an unrecognised domain is indistinguishable from phishing, which is the one failure mode a trust-positioned brand cannot afford. `send.valstara.com` warms in parallel on verification traffic — low volume, high engagement, near-zero complaints. → ADR-010
+**The SubSlush announcement is not sent by this system.** The founder sends it manually, and `subslush.com` is kept separate from Valstara's domain, DNS and email providers. `send.valstara.com` warms on verification traffic — low volume, high engagement, near-zero complaints. → ADR-028
 
 ---
 

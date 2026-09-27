@@ -119,6 +119,8 @@ Rationale is **failure isolation**, not deliverability theory. Spam complaints h
 
 ### The SubSlush migration send
 
+*(Superseded 2026-09-27 by ADR-028: the founder sends the announcement manually, and `subslush.com` is kept separate from Valstara's domain, DNS and email providers.)*
+
 **Send it from `subslush.com`, not valstara.com.** That domain has history with these exact recipients, and a rebrand email from an unrecognised domain is indistinguishable from phishing — the one failure mode a trust-positioned brand cannot afford. Warm `send.valstara.com` in parallel on verification traffic: low volume, high engagement, near-zero complaints. SPF + DKIM per subdomain, DMARC `p=none` → `quarantine`. Stage the send by recency in batches, watching rates between them. Validate the ~100 addresses first (~$1).
 
 ### Analytics — cookieless, no consent banner
@@ -226,7 +228,7 @@ Plus, deferred to store launch as a consequence of the separate repo: **~15–25
 
 ## Named risks
 
-1. **The SubSlush migration send lands in spam** — highest impact, unrepeatable. Send from subslush.com, full authentication, staged batches, validate first.
+1. **The SubSlush migration send lands in spam** — highest impact, unrepeatable. Send from subslush.com, full authentication, staged batches, validate first. *(Superseded 2026-09-27 by ADR-028: a manual founder send outside the system.)*
 2. **Verification email failure kills the funnel silently** — looks identical to poor conversion. Alert on verification *rate*; weekly seed tests into Gmail, Outlook, GMX and Web.de.
 3. **GDPR exposure** — Article 27 EU representative plus a UK one, named in the privacy policy before the first signup. Exclude Italy, Poland, Spain, Quebec and the Nordics from the giveaway at point of entry (Italy: local data hosting and ministry notification; Poland: permits and bank guarantees; Spain: draw must occur in Spain plus 10% prize tax). *(Superseded 2026-09-25 by ADR-026: no country is collected and the giveaway is one global draw under Hong Kong law.)* The Article 27 representatives are unaffected and still required.
 4. **Referral fraud discredits the leaderboard** — reputational, not financial. Reward-gate, review the top 20 manually, publish the disqualification rule.

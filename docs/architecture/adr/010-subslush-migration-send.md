@@ -1,6 +1,6 @@
 # ADR-010: The SubSlush migration send goes from `subslush.com`
 
-- Status: Accepted
+- Status: Superseded by ADR-028 (2026-09-27)
 - Date: 2026-08-25
 - Deciders: founder
 

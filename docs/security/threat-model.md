@@ -24,11 +24,9 @@ Reputational, not financial. A leaderboard that visibly rewards a cheat is worse
 
 ## T3 — The sending reputation is destroyed
 
-The campaign's single unrecoverable technical failure. It has two shapes.
+The campaign's single unrecoverable technical failure. (The SubSlush announcement is a manual founder send outside this system, ADR-028, and is not a shape of this threat.)
 
-**Shape one: the migration send lands in spam.** Unrepeatable — those ~100 recipients get one announcement. **Controls:** send from `subslush.com`, full authentication per domain, validate the addresses first, **stage by recency and stop between batches**.
-
-**Shape two: verification mail quietly stops arriving.** It looks exactly like poor conversion. **Controls:** transactional and broadcast are split across providers and domains so a marketing complaint cannot touch verification; **verification *rate* is alerted on hourly**; weekly seed tests round-trip into Gmail, Outlook, GMX and Web.de.
+**Verification mail quietly stops arriving.** It looks exactly like poor conversion. **Controls:** transactional and broadcast are split across providers and domains so a marketing complaint cannot touch verification; **verification *rate* is alerted on hourly**; weekly seed tests round-trip into Gmail, Outlook, GMX and Web.de.
 
 ---
 

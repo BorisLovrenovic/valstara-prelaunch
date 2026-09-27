@@ -32,7 +32,8 @@ Architecture decision records for the Valstara pre-launch site. One file per sig
 | 013 | No device fingerprinting | Accepted |
 | **Email** | | |
 | 009 | Split providers — Resend transactional, Brevo broadcast | Accepted |
-| 010 | The SubSlush migration send goes from `subslush.com` | Accepted |
+| 010 | The SubSlush migration send goes from `subslush.com` | Superseded by 028 |
+| 028 | The SubSlush announcement is sent manually, outside the Valstara email system | Accepted |
 | **Content, brand and presentation** | | |
 | 014 | English only, served at the root | Accepted |
 | 015 | Design tokens in one framework-free CSS file | Accepted |
@@ -50,7 +51,7 @@ Architecture decision records for the Valstara pre-launch site. One file per sig
 | 021 | Launch is a host cutover at the DNS layer, not a deploy | Accepted |
 | 022 | The waitlist database is frozen read-only for 90 days after handoff | Accepted |
 
-26 Accepted · 1 Superseded · 0 Proposed.
+26 Accepted · 2 Superseded · 0 Proposed.
 
 ## Open items
 
