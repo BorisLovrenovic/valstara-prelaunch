@@ -85,3 +85,41 @@ test('award deadlines still expire when catalog-backed initialization fails', as
     },
   ]);
 });
+
+test('draw worker shutdown finishes its active cycle before stopping', async () => {
+  let started!: () => void;
+  let finish!: () => void;
+  const cycleStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const cycleCanFinish = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  let cycles = 0;
+  const worker = createDrawWorker(
+    {
+      async advancePending() {
+        cycles += 1;
+        started();
+        await cycleCanFinish;
+        return false;
+      },
+    },
+    { send: async () => undefined },
+  );
+  const shutdown = new AbortController();
+  const running = worker.run(shutdown.signal);
+
+  await cycleStarted;
+  shutdown.abort();
+  let stopped = false;
+  void running.then(() => {
+    stopped = true;
+  });
+  await Promise.resolve();
+  assert.equal(stopped, false);
+
+  finish();
+  await running;
+  assert.equal(cycles, 1);
+});

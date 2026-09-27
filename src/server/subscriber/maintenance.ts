@@ -40,7 +40,10 @@ export interface VerificationMaintenanceJobs {
 export interface VerificationMaintenanceDependencies {
   readonly clock?: () => Date;
   readonly reportFailure?: (job: MaintenanceJobName) => Promise<void> | void;
-  readonly sleep?: (milliseconds: number) => Promise<void>;
+  readonly sleep?: (
+    milliseconds: number,
+    signal?: AbortSignal,
+  ) => Promise<void>;
 }
 
 export interface MaintenanceFailureReporterDependencies {
@@ -84,7 +87,7 @@ export function createMaintenanceFailureReporter(
 }
 
 export interface VerificationMaintenanceScheduler {
-  run(cycles?: number): Promise<void>;
+  run(cycles?: number, signal?: AbortSignal): Promise<void>;
   runCycle(): Promise<void>;
 }
 
@@ -94,7 +97,10 @@ export function createVerificationMaintenanceScheduler(
 ): VerificationMaintenanceScheduler {
   const clock = dependencies.clock ?? (() => new Date());
   const reportFailure = dependencies.reportFailure ?? (() => undefined);
-  const sleep = dependencies.sleep ?? systemSleep;
+  const sleep =
+    dependencies.sleep ??
+    ((milliseconds: number, signal?: AbortSignal) =>
+      systemSleep(milliseconds, undefined, { signal }));
   let expiryDay: string | null = null;
   let ipPrefixRetentionDay: string | null = null;
   let rateLimitRetentionDay: string | null = null;
@@ -175,11 +181,21 @@ export function createVerificationMaintenanceScheduler(
   }
 
   return {
-    async run(cycles = Number.POSITIVE_INFINITY) {
-      for (let cycle = 0; cycle < cycles; cycle += 1) {
+    async run(cycles = Number.POSITIVE_INFINITY, signal?: AbortSignal) {
+      for (let cycle = 0; cycle < cycles && !signal?.aborted; cycle += 1) {
         await runCycle();
-        if (cycle + 1 < cycles) {
-          await sleep(HOUR_MS);
+        if (cycle + 1 < cycles && !signal?.aborted) {
+          try {
+            await sleep(HOUR_MS, signal);
+          } catch (error) {
+            if (
+              !signal?.aborted ||
+              !(error instanceof Error) ||
+              error.name !== 'AbortError'
+            ) {
+              throw error;
+            }
+          }
         }
       }
     },

@@ -79,9 +79,8 @@ const scheduler = createVerificationMaintenanceScheduler(
   { clock, reportFailure },
 );
 
-const stop = (): void => {
-  void database.close().finally(() => process.exit(0));
-};
+const shutdown = new AbortController();
+const stop = (): void => shutdown.abort();
 
 process.once('SIGINT', stop);
 process.once('SIGTERM', stop);
@@ -95,4 +94,17 @@ const drawWorker = createDrawWorker(
   createAwardService(database, { flags: createFlagService(database), clock }),
 );
 
-await Promise.all([scheduler.run(), drawWorker.run()]);
+const running = [
+  scheduler.run(undefined, shutdown.signal),
+  drawWorker.run(shutdown.signal),
+];
+
+try {
+  await Promise.all(running);
+} finally {
+  shutdown.abort();
+  await Promise.allSettled(running);
+  process.off('SIGINT', stop);
+  process.off('SIGTERM', stop);
+  await database.close();
+}

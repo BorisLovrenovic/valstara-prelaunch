@@ -49,10 +49,21 @@ export function createDrawWorker(
         }
       }
     },
-    async run(): Promise<void> {
-      while (true) {
+    async run(signal?: AbortSignal): Promise<void> {
+      while (!signal?.aborted) {
         await this.runCycle();
-        await sleep(pollMilliseconds);
+        if (signal?.aborted) break;
+        try {
+          await sleep(pollMilliseconds, undefined, { signal });
+        } catch (error) {
+          if (
+            !signal?.aborted ||
+            !(error instanceof Error) ||
+            error.name !== 'AbortError'
+          ) {
+            throw error;
+          }
+        }
       }
     },
   };

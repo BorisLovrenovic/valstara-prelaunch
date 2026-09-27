@@ -92,7 +92,7 @@ export function createResendVerificationRoute(
   const clock = dependencies.clock ?? (() => new Date());
   const monotonicClock =
     dependencies.monotonicClock ??
-    (() => Number(process.hrtime.bigint() / 1_000_000n));
+    (() => Number(process.hrtime.bigint()) / 1_000_000);
   const sleep = dependencies.sleep ?? systemSleep;
 
   return async ({ clientAddress, request }) => {
@@ -162,8 +162,8 @@ export function createResendVerificationRoute(
         }
       })();
 
-      const remaining =
-        resendVerificationResponseTargetMs - (monotonicClock() - startedAt);
+      const deadline = startedAt + resendVerificationResponseTargetMs;
+      const remaining = deadline - monotonicClock();
       if (remaining <= 0) {
         // A known-address operation must never make this route take longer
         // than the public response deadline. Its outcome remains private and
@@ -172,7 +172,17 @@ export function createResendVerificationRoute(
         return acceptedResponse();
       }
 
-      const responseDeadline = sleep(remaining);
+      const responseDeadline = (async () => {
+        // Timers can wake before a fractional deadline. Check the monotonic
+        // clock again so both known and unknown addresses keep the same floor.
+        for (
+          let delay = remaining;
+          delay > 0;
+          delay = deadline - monotonicClock()
+        ) {
+          await sleep(Math.ceil(delay));
+        }
+      })();
       const finishedBeforeDeadline = await Promise.race([
         resendWork.then(
           () => true,

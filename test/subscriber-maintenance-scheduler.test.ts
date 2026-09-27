@@ -250,3 +250,49 @@ test('maintenance reports failures through its runner seam and retries expiry', 
   assert.equal(expiryAttempts, 2);
   assert.equal(retentionAttempts, 2);
 });
+
+test('maintenance shutdown finishes its active cycle before stopping', async () => {
+  let started!: () => void;
+  let finish!: () => void;
+  const cycleStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const cycleCanFinish = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  let cycles = 0;
+  const noOp = { async run() {} };
+  const scheduler = createVerificationMaintenanceScheduler(
+    {
+      expiry: noOp,
+      rateLimitRetention: noOp,
+      referralCounterRepair: noOp,
+      reminder: {
+        async run() {
+          cycles += 1;
+          started();
+          await cycleCanFinish;
+        },
+      },
+      strandedReferral: noOp,
+      verificationRate: noOp,
+      verificationTokenRetention: noOp,
+    },
+    { clock: () => new Date('2026-09-27T12:00:00.000Z') },
+  );
+  const shutdown = new AbortController();
+  const running = scheduler.run(undefined, shutdown.signal);
+
+  await cycleStarted;
+  shutdown.abort();
+  let stopped = false;
+  void running.then(() => {
+    stopped = true;
+  });
+  await Promise.resolve();
+  assert.equal(stopped, false);
+
+  finish();
+  await running;
+  assert.equal(cycles, 1);
+});
