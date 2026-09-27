@@ -1,14 +1,20 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 
 import type { DatabasePool } from '../db/pool.ts';
 import { createFraudFlagRepository } from '../db/fraud-flag.ts';
 import { createRateLimitBucketRepository } from '../db/rate-limit-bucket.ts';
 import { createStatusLinkRepository } from '../db/status-link.ts';
 import { withTransaction } from '../db/transaction.ts';
+import { createEmailQueue } from '../email/queue.ts';
 import type { FlagService } from '../flags/types.ts';
 import type { TurnstileOutcome } from '../turnstile/verify.ts';
 
 import { createVerificationService } from './service.ts';
+import {
+  deriveEmailToken,
+  emailTokenSecret,
+  hashEmailToken,
+} from './token-derivation.ts';
 
 export const statusLinkRecoveryWindowMilliseconds = 15 * 60 * 1_000;
 export const statusLinkRecoverySubscriberLimit = 1;
@@ -45,10 +51,6 @@ export interface StatusLinkRecoveryBoundaryDependencies {
 export interface StatusLinkServiceDependencies {
   readonly clock?: () => Date;
   readonly flags: Pick<FlagService, 'isEnabled'>;
-}
-
-function tokenHash(token: string): Buffer {
-  return createHash('sha256').update(token).digest();
 }
 
 /**
@@ -104,7 +106,7 @@ export function createStatusLinkService(
 
       return withTransaction(database, async (connection) => {
         const statusLinks = createStatusLinkRepository(connection);
-        const token = await statusLinks.findToken(tokenHash(input.token));
+        const token = await statusLinks.findToken(hashEmailToken(input.token));
         const now = clock();
 
         // Recovery deliberately recognises only an expired status token. The
@@ -113,7 +115,8 @@ export function createStatusLinkService(
         if (
           token === null ||
           token.purpose !== 'status' ||
-          token.expires_at > now
+          token.expires_at > now ||
+          !validCurrentToken(input.token, token.id)
         ) {
           return 'accepted';
         }
@@ -143,11 +146,19 @@ export function createStatusLinkService(
         }
 
         const emailId = randomUUID();
-        await statusLinks.queueEmail({
-          businessKey: `status-link:${token.subscriber_id}:${emailId}`,
-          id: emailId,
-          subscriberId: token.subscriber_id,
-        });
+        const issued = await createVerificationService(connection, {
+          clock,
+        }).issue(token.subscriber_id, 'status');
+        await createEmailQueue(database, clock).queue(
+          {
+            businessKey: `status-link:${token.subscriber_id}:${emailId}`,
+            subscriberId: token.subscriber_id,
+            template: 'status_link',
+            provider: 'resend',
+            payload: { token_id: issued.id },
+          },
+          connection,
+        );
         if (input.challengeTimedOut) {
           await createFraudFlagRepository(
             connection,
@@ -160,4 +171,12 @@ export function createStatusLinkService(
       });
     },
   };
+}
+
+function validCurrentToken(token: string, id: string): boolean {
+  const expected = Buffer.from(deriveEmailToken(id, emailTokenSecret()));
+  const supplied = Buffer.from(token);
+  return (
+    expected.length === supplied.length && timingSafeEqual(expected, supplied)
+  );
 }

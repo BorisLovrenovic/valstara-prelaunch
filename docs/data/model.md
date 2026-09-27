@@ -72,6 +72,8 @@ Indexes: `email_normalised` (unique) · `referral_code` (unique) ·
 
 For `unsubscribe` tokens, E8-01 adds the token-to-`email_send` binding with the token-minting path. The bound send row is the authoritative originating-template source used by E6-06; no caller-controlled value may determine a suppression's `source`.
 
+E8-01 derives verify, status and unsubscribe token plaintext as base64url `HMAC-SHA256(EMAIL_TOKEN_SECRET, token_id)`. The database stores only `SHA-256(token)` and the UUID token ID; the server secret is separate from the IP pepper and never enters the database or logs. This permits retry reconstruction from an ID without persisting plaintext. Rotating the secret invalidates all outstanding tokens; this is an accepted operational cost.
+
 The same table shape backs the signed status link for `/me` with a longer expiry and a `purpose` discriminator (`verify` · `status` · `unsubscribe`), so there is one token lifecycle to reason about rather than three.
 
 `GET /verify?token=` never reads or mutates this table; it renders a confirmation form so mail scanners and prefetchers are inert. Only the token-authenticated `POST /verify` consumes. Invalid and expired posts render identical copy and the same request-new-link control. `src/server/verification/retention.ts` invokes `purgeExpired()` daily through the maintenance scheduler with the shared 1,000-row batch cap, deleting rows 30 days after expiry; failure follows the P1 compliance-alert path.
@@ -166,7 +168,11 @@ surface is the E5-01 CLI, not a public or admin HTTP route.
 
 ## `email_send`
 
-`id` · `subscriber_id` · `template` · `provider` · `business_key` text **unique** · `provider_message_id` · `state` (`queued` · `sent` · `delivered` · `bounced` · `complained` · `failed`) · `attempts` int · `last_error` · `created_at` · `updated_at`.
+`id` · `subscriber_id` · `template` · `provider` · `business_key` text **unique** · `payload` jsonb **not null** · `unsubscribe_token_id` uuid foreign key to an unsubscribe-purpose `verification_token` · `provider_message_id` · `state` (`queued` · `sent` · `delivered` · `bounced` · `complained` · `failed`) · `attempts` int · `next_attempt_at` · `last_error` · `created_at` · `updated_at`.
+
+`payload` holds references only, such as `token_id`, `tier` or `award_id`, with a database check rejecting email addresses, token plaintext and copy text. The unsubscribe-token foreign key is purpose-checked in the database. E8-01's forward-only migration marks old queued rows that have no reconstructible payload `failed` with `last_error = 'legacy_unrecoverable'` before enforcing the new contract; there is no production data yet.
+
+The unsubscribe binding is unique per send and subject-bound. When the token-retention sweep removes an expired unsubscribe token, a still-queued send becomes failed with `unsubscribe_token_expired`; the reference is then cleared without deleting email history. Dispatch checks token expiry and the current secret before sending, so rotation or an expired link never produces mail with a broken link.
 
 **`business_key` is the idempotency primitive** — e.g. `verify:{subscriber_id}:{token_id}`, `milestone:{subscriber_id}:{tier}`. A retry with the same key never produces a second email.
 

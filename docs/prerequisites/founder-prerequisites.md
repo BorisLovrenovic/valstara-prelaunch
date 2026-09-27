@@ -10,7 +10,7 @@
 
 | # | Item | Status | Gates | Do by |
 |---|------|--------|-------|-------|
-| **P1** | DNS records + email authentication | 🔴 Outstanding | **Epic E8 entirely** | **Today — hard 12-week clock** |
+| **P1** | DNS records + email authentication | ✅ Satisfied 2026-09-27 | —; E8 unblocked | Done |
 | **P2** | EU + UK Article 27 representatives | 🔴 Outstanding | Privacy policy → **the first signup** | **Today — longest lead time** |
 | **P4** | Giveaway prize + final text of the one global rules page (Hong Kong law) | ✅ Supplied 2026-09-25 | Publishing E7-02's page | Done |
 | **P5** | Upgrade Resend + Brevo past free tiers | 🔴 Outstanding | Turning `giveaway.open` on | Before E7 exit |
@@ -18,16 +18,16 @@
 | **P6** | Provision the production VPS | ⚪ Deferred (by design) | Epic E12 | Before E12 |
 | **P3a** | Brand token values | ✅ Satisfied | — | Done |
 
-**Two items are urgent today: P1 (its clock is already running and cannot be shortened) and P2 (nothing can go live until it exists).**
+**P1 is complete; sender-reputation warming continues through E11-08/E12-07. P2 remains urgent because nothing can go live until it exists.**
 
 ---
 
 ## P1 — DNS records and email authentication
 
-- **Status:** 🔴 Outstanding
+- **Status:** ✅ **Satisfied 2026-09-27.** SPF, DKIM and DMARC `p=none` are published for both Valstara sending domains; Resend and Brevo each report their domain as verified.
 - **Nature:** DNS/configuration (founder + domain registrar + ESP dashboards)
-- **Gates:** **Epic E8 entirely** — the email service, both providers, all templates, and every transactional and broadcast send. Indirectly, E6-06 (unsubscribe), which now sequences after E8-01.
-- **Deadline:** **Start today.** This is the *only* prerequisite with a hard, unshortenable clock. Sender reputation is *warmed over ~12 weeks*, not switched on — records published late cannot be compressed later without hurting deliverability.
+- **Gates:** None remaining. Epic E8 and E6-06 are unblocked.
+- **Follow-up:** Sender-reputation warming continues and is evidenced at E11-08/E12-07.
 
 ### Why this matters
 The campaign sends from **two providers across two sending domains**, deliberately isolated so neither provider's reputation can damage the other's:
@@ -47,7 +47,7 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 3. **Publish every record** at the DNS host exactly as provided, for both domains.
 4. **Set DMARC to `p=none` to start** on each domain — a TXT record at `_dmarc.<domain>` (e.g. `v=DMARC1; p=none; rua=mailto:<your-reporting-address>`). `p=none` is monitoring mode; it lets you collect reports and confirm alignment before tightening later. This matches the plan's stated `p=none` baseline.
 5. **Verify in each dashboard.** Wait for propagation, then confirm Resend and Brevo both report each domain as **verified / authenticated**.
-6. **Begin warming.** Start sending at low volume and ramp over the weeks. This is *why* the item must start now — the reputation curve is the 12-week clock.
+6. **Continue warming.** Start sending at low volume and ramp over the weeks; the reputation curve remains a campaign-open concern.
 
 ### How the build confirms it
 - **E8-02** verifies SPF, DKIM and DMARC for `send.valstara.com` as a **startup/health check**, surfaced on the admin health view — not a one-time manual step.

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "astro build",
     "backup:drill": "sh infra/backups/restore-drill.sh",
-    "coverage": "node scripts/ci/run-coverage.mjs",
+    "coverage": "EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node scripts/ci/run-coverage.mjs",
     "ci:red-paths": "node --test test/ci-red-paths.test.mjs",
     "ci:security-red-paths": "node --test test/security-gates.test.mjs",
     "db:migrate": "tsx src/server/db/run-migrations.ts",
@@ -15,10 +15,10 @@
     "fraud:allow-domain": "tsx scripts/allow-domain.ts",
     "lint": "eslint .",
     "security": "node scripts/ci/security-gates.mjs",
-    "test:a11y": "node --test test/accessibility.test.mjs",
-    "test:privacy": "node scripts/ci/security-gates.mjs && node --test --test-concurrency=1 test/e1-11-rendered-page.test.mjs test/signup-form-rendered-page.test.mjs",
+    "test:a11y": "EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test test/accessibility.test.mjs",
+    "test:privacy": "node scripts/ci/security-gates.mjs && EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test --test-concurrency=1 test/e1-11-rendered-page.test.mjs test/signup-form-rendered-page.test.mjs",
     "preview": "astro preview",
-    "test": "tsx --test --test-concurrency=1",
+    "test": "EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 tsx --test --test-concurrency=1",
     "test:production-stack": "node infra/compose/assert-production-stack.mjs",
     "test:stack": "node infra/compose/assert-stack.mjs",
     "typecheck": "astro check"

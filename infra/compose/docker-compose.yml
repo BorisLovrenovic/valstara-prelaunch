@@ -53,6 +53,8 @@ services:
       ADMIN_CREDENTIAL: ${ADMIN_CREDENTIAL:?ADMIN_CREDENTIAL is required}
       ADMIN_TOTP_SECRET: ${ADMIN_TOTP_SECRET:?ADMIN_TOTP_SECRET is required}
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:-valstara-app-local-only}@postgres:5432/valstara_waitlist
+      EMAIL_BASE_URL: ${EMAIL_BASE_URL:-http://localhost:4321}
+      EMAIL_TOKEN_SECRET: ${EMAIL_TOKEN_SECRET:-local-only-email-token-secret-32-chars}
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY is required}
       IP_PREFIX_PEPPER: ${IP_PREFIX_PEPPER:?IP_PREFIX_PEPPER is required}
       REFERRAL_SIGNING_SECRET: ${REFERRAL_SIGNING_SECRET:?REFERRAL_SIGNING_SECRET is required}
@@ -123,6 +125,8 @@ services:
     command: ['node', '/workspace/src/server/subscriber/run-maintenance.ts']
     environment:
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:-valstara-app-local-only}@postgres:5432/valstara_waitlist
+      EMAIL_BASE_URL: ${EMAIL_BASE_URL:-http://localhost:4321}
+      EMAIL_TOKEN_SECRET: ${EMAIL_TOKEN_SECRET:-local-only-email-token-secret-32-chars}
       NODE_ENV: development
       WAITLIST_LIVE_AT: ${WAITLIST_LIVE_AT:-}
       DRAND_CHAIN_HASH: ${DRAND_CHAIN_HASH:-}

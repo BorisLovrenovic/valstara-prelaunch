@@ -7,12 +7,22 @@ import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import { createStrandedReferralReconciliationJob } from '../src/server/referral/reconcile-stranded.ts';
 import { createReferralService } from '../src/server/referral/service.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
+import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
 const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const now = new Date('2026-09-08T12:00:00.000Z');
+const tokenIds = new Map<string, string>();
+
+function tokenValue(label: string): string {
+  const hex = createHash('sha256').update(label).digest('hex');
+  const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+  const token = deriveEmailToken(id, process.env.EMAIL_TOKEN_SECRET!);
+  tokenIds.set(token, id);
+  return token;
+}
 
 interface DatabaseFixture {
   readonly applicationDatabase: DatabasePool;
@@ -64,7 +74,7 @@ test('the application role completes verification and replay through the E3 tran
     await seedVerificationToken(
       fixture.database,
       subscriberId,
-      'application-role-completion-token',
+      tokenValue('application-role-completion-token'),
     );
 
     const complete = createVerificationCompletionService(
@@ -72,11 +82,11 @@ test('the application role completes verification and replay through the E3 tran
       { clock: () => now },
     );
     assert.equal(
-      (await complete('application-role-completion-token')).outcome,
+      (await complete(tokenValue('application-role-completion-token'))).outcome,
       'verified',
     );
     assert.equal(
-      (await complete('application-role-completion-token')).outcome,
+      (await complete(tokenValue('application-role-completion-token'))).outcome,
       'already',
     );
 
@@ -99,8 +109,16 @@ test('concurrent verifications receive distinct recorded orders at a wave bounda
   try {
     const firstId = await insertSubscriber(fixture.database, 'pending');
     const secondId = await insertSubscriber(fixture.database, 'pending');
-    await seedVerificationToken(fixture.database, firstId, 'wave-token-one');
-    await seedVerificationToken(fixture.database, secondId, 'wave-token-two');
+    await seedVerificationToken(
+      fixture.database,
+      firstId,
+      tokenValue('wave-token-one'),
+    );
+    await seedVerificationToken(
+      fixture.database,
+      secondId,
+      tokenValue('wave-token-two'),
+    );
 
     const complete = createVerificationCompletionService(fixture.database, {
       accessWindowBands: [
@@ -112,8 +130,8 @@ test('concurrent verifications receive distinct recorded orders at a wave bounda
       clock: () => now,
     });
     const results = await Promise.all([
-      complete('wave-token-one'),
-      complete('wave-token-two'),
+      complete(tokenValue('wave-token-one')),
+      complete(tokenValue('wave-token-two')),
     ]);
 
     assert.deepEqual(results.map((result) => result.accessWindow).sort(), [
@@ -169,6 +187,8 @@ async function seedVerificationToken(
   subscriberId: string,
   token: string,
 ): Promise<void> {
+  const tokenId = tokenIds.get(token);
+  assert.ok(tokenId, 'fixture token must be HMAC-derived from its recorded id');
   await database.execute({
     text: `
       INSERT INTO verification_token (
@@ -177,7 +197,7 @@ async function seedVerificationToken(
       VALUES ($1, $2, $3, 'verify', $4)
     `,
     values: [
-      randomUUID(),
+      tokenId,
       subscriberId,
       createHash('sha256').update(token).digest(),
       new Date('2026-09-15T12:00:00.000Z'),
@@ -227,13 +247,13 @@ test('verification commits the referral completion together and holds high-value
     await seedVerificationToken(
       fixture.database,
       referredId,
-      'completion-token',
+      tokenValue('completion-token'),
     );
 
     const complete = createVerificationCompletionService(fixture.database, {
       clock: () => now,
     });
-    const result = await complete('completion-token');
+    const result = await complete(tokenValue('completion-token'));
 
     assert.equal(result.outcome, 'verified');
     assert.match(
@@ -415,7 +435,11 @@ test('an induced failure rolls back every E3-07 transition', async () => {
     }
     const referredId = await insertSubscriber(fixture.database, 'pending');
     await seedAttributedEdge(fixture.database, referrerId, referredId);
-    await seedVerificationToken(fixture.database, referredId, 'rollback-token');
+    await seedVerificationToken(
+      fixture.database,
+      referredId,
+      tokenValue('rollback-token'),
+    );
 
     const complete = createVerificationCompletionService(fixture.database, {
       afterStep: async (step) => {
@@ -425,7 +449,7 @@ test('an induced failure rolls back every E3-07 transition', async () => {
       },
       clock: () => now,
     });
-    await assert.rejects(complete('rollback-token'), /induced/u);
+    await assert.rejects(complete(tokenValue('rollback-token')), /induced/u);
 
     const subscriber = await fixture.database.readOne<{
       access_window: string | null;
@@ -494,12 +518,16 @@ test('with referral.enabled off, verification still confirms and settles an exis
     }
     const referredId = await insertSubscriber(fixture.database, 'pending');
     await seedAttributedEdge(fixture.database, referrerId, referredId);
-    await seedVerificationToken(fixture.database, referredId, 'flag-off-token');
+    await seedVerificationToken(
+      fixture.database,
+      referredId,
+      tokenValue('flag-off-token'),
+    );
 
     const result = await createVerificationCompletionService(fixture.database, {
       clock: () => now,
       referralEnabled: false,
-    })('flag-off-token');
+    })(tokenValue('flag-off-token'));
     assert.equal(result.outcome, 'verified');
     assert.equal(result.referralCode, null);
 
@@ -560,7 +588,11 @@ test('a replay repairs an edge previously stranded while referral.enabled was of
     const referrerId = await insertSubscriber(fixture.database, 'verified');
     const referredId = await insertSubscriber(fixture.database, 'verified');
     await seedAttributedEdge(fixture.database, referrerId, referredId);
-    await seedVerificationToken(fixture.database, referredId, 'stranded-token');
+    await seedVerificationToken(
+      fixture.database,
+      referredId,
+      tokenValue('stranded-token'),
+    );
     await fixture.database.execute({
       text: 'UPDATE verification_token SET consumed_at = $2 WHERE subscriber_id = $1',
       values: [referredId, now],
@@ -569,7 +601,7 @@ test('a replay repairs an edge previously stranded while referral.enabled was of
     const result = await createVerificationCompletionService(fixture.database, {
       clock: () => now,
       referralEnabled: false,
-    })('stranded-token');
+    })(tokenValue('stranded-token'));
     assert.equal(result.outcome, 'already');
     assert.equal(result.referralCode, null);
 

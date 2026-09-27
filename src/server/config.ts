@@ -4,6 +4,8 @@ const requiredKeys = [
   'ADMIN_CREDENTIAL',
   'ADMIN_TOTP_SECRET',
   'DATABASE_URL',
+  'EMAIL_BASE_URL',
+  'EMAIL_TOKEN_SECRET',
   'IP_PREFIX_PEPPER',
   'REFERRAL_SIGNING_SECRET',
   'RESEND_API_KEY',
@@ -58,6 +60,8 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
   const config: AppConfig = {
     adminAuth: adminAuth(environment),
     databaseUrl: databaseUrl(environment),
+    emailBaseUrl: emailBaseUrl(environment),
+    emailTokenSecret: emailTokenSecret(environment),
     host: host(environment),
     ipPrefixPepper: requiredValue(environment, 'IP_PREFIX_PEPPER'),
     ipVelocity: ipVelocity(environment),
@@ -239,6 +243,40 @@ function databaseUrl(environment: NodeJS.ProcessEnv): string {
   return value;
 }
 
+function emailTokenSecret(environment: NodeJS.ProcessEnv): string {
+  const value = requiredValue(environment, 'EMAIL_TOKEN_SECRET');
+  if (value.length < 32) {
+    return invalid('EMAIL_TOKEN_SECRET', 'must contain at least 32 characters');
+  }
+  return value;
+}
+
+function emailBaseUrl(environment: NodeJS.ProcessEnv): string {
+  const raw = requiredValue(environment, 'EMAIL_BASE_URL');
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return invalid('EMAIL_BASE_URL', 'must be an absolute URL');
+  }
+  if (
+    !['http:', 'https:'].includes(parsed.protocol) ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.pathname !== '/' ||
+    (nodeEnvironment(environment) === 'production' &&
+      parsed.protocol !== 'https:')
+  ) {
+    return invalid(
+      'EMAIL_BASE_URL',
+      'must be a bare HTTPS origin in production',
+    );
+  }
+  return parsed.origin;
+}
+
 function recipient(environment: NodeJS.ProcessEnv): string {
   const value = requiredValue(environment, 'RESEND_TEST_RECIPIENT');
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value)
@@ -376,6 +414,8 @@ export interface AdminAuthConfiguration {
 export interface AppConfig {
   readonly adminAuth: AdminAuthConfiguration;
   readonly databaseUrl: string;
+  readonly emailBaseUrl: string;
+  readonly emailTokenSecret: string;
   readonly host: string | undefined;
   readonly ipPrefixPepper: string;
   readonly ipVelocity: IpVelocityConfiguration;

@@ -10,6 +10,7 @@ import test, { after, before } from 'node:test';
 import axe from 'axe-core';
 import { chromium } from 'playwright';
 import { Pool } from 'pg';
+import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 
 const execFileAsync = promisify(execFile);
 const appPort = 45_000 + (process.pid % 1_000) * 2;
@@ -24,7 +25,11 @@ const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
 const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
-const authenticatedStatusToken = 'accessibility-authenticated-status-token';
+const authenticatedStatusTokenId = randomUUID();
+const authenticatedStatusToken = deriveEmailToken(
+  authenticatedStatusTokenId,
+  process.env.EMAIL_TOKEN_SECRET,
+);
 
 // WCAG 2.2 AA is the standard docs/legal/compliance.md#6-accessibility commits
 // to. These are the axe tags that make up A and AA across 2.0, 2.1 and 2.2.
@@ -86,7 +91,7 @@ async function createDatabaseFixture() {
       ) VALUES ($1, $2, $3, 'status', '2099-01-01T00:00:00.000Z')
     `,
     [
-      randomUUID(),
+      authenticatedStatusTokenId,
       subscriberId,
       createHash('sha256').update(authenticatedStatusToken).digest(),
     ],

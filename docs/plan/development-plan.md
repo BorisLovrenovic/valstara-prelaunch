@@ -45,7 +45,7 @@ Five items no agent can complete. Each gates something, and the gate is stated s
 
 | # | Item | Nature | Gates | Start by |
 |---|---|---|---|---|
-| **P1** | **DNS records and email authentication** — the `send.` and `mail.` subdomains of `valstara.com`; SPF, DKIM, DMARC `p=none`. `subslush.com` is out of scope (ADR-028) | Configuration | E8 entirely. **The only item with a hard 12-week clock** — reputation is warmed, not switched on | **Today** |
+| **P1** | ~~DNS records and email authentication~~ — **SATISFIED 2026-09-27.** SPF, DKIM and DMARC `p=none` are published for `send.valstara.com` and `mail.valstara.com`; Resend and Brevo report their respective domains as verified. `subslush.com` is out of scope (ADR-028). Sender-reputation warming continues | Configuration | Nothing. E8 is unblocked; warming is evidenced at E11-08/E12-07 | Done |
 | **P2** | **Appoint the EU and UK Article 27 representatives** | Procurement, €200–500/yr each | **The privacy policy, which gates the first signup.** E9-03 asserts their presence at build time and the signup route is unreachable while it fails | **Today** |
 | **P3a** | ~~Brand token values~~ — **SATISFIED.** In the repository at `docs/brand/identity-guidelines.md` §5 (colour) and §6 (typography), LOCKED | — | Nothing. E2-01 is unblocked | Done |
 | **P3b** | **Trust-page prose** — `/legit`, `/guarantee`, `/about` | Founder input from the brand and store documentation | E9-02. **A page shell with placeholder text is not a deliverable** | Before E9 |
@@ -1298,7 +1298,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Scope change (founder-authorised 2026-09-27, ADR-028):** E8-08, the SubSlush migration send, is removed. `subslush.com` is kept fully separate from Valstara's domain, DNS and email providers, and the founder sends the one announcement to existing SubSlush customers manually, outside this system. Nothing in E8 builds, tests or authenticates anything for it. The remaining ticket numbers are unchanged.
 
-**BLOCKED on P1.** Domain authentication has a hard 12-week clock and no ticket can shorten it.
+**P1 satisfied 2026-09-27 (founder-authorised).** Sender-reputation warming continues and is evidenced at E11-08/E12-07.
 
 ### E8-01 — The email service
 **Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** backend
@@ -1313,13 +1313,15 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 - Each unsubscribe token resolves its source template through its bound `email_send` row, never from caller input
 - **A provider outage leaves the subscriber row committed** and the send queued — asserted
 - Dispatch is batch-capped with bounded backoff, and a permanent failure raises an operator task
-- Every message carries a plain-text alternative and a working one-click unsubscribe
+- The `Message` type requires a plain-text body. Dispatch refuses to send a message without a text alternative or a bound `unsubscribe` token. For a valid message, dispatch builds RFC 8058 `List-Unsubscribe` and `List-Unsubscribe-Post` headers from the bound token and a configured base URL, with no literal URL in code. **E6-06 proves the one-click route works; E8-03 supplies real plain-text alternatives for every template.**
 - **No vendor SDK is imported outside `providers/`** — the boundary gate passes
 
-**Tests:** Concurrent duplicate-key attempt · the queue-then-suppress race · the queue-then-withdraw race for broadcast versus transactional · unsubscribe-token binding to an `email_send` template · outage isolation · batch cap · backoff bounds.
+**Tests:** Concurrent duplicate-key attempt · the queue-then-suppress race · the queue-then-withdraw race for broadcast versus transactional · unsubscribe-token binding to an `email_send` template · outage isolation · batch cap · backoff bounds · fixture messages proving dispatch refuses missing text or bound token and builds both RFC 8058 headers for a valid message.
 **Docs:** `docs/modules/email.md` · `docs/architecture/adr/009-split-email-providers.md`
 
 **Existing queue handoff (founder-authorised 2026-09-27):** E8-01 takes over every existing direct `email_send` insert for verification, status links and giveaway winner notifications, moving each onto `EmailService.queue()`. E7-06 only queues winner notification records; E8-01 owns their operational dispatch.
+
+**Durable payload and staged dispatch (founder-authorised 2026-09-27):** Verify, status and unsubscribe tokens are base64url HMAC-SHA256 of their token ID under the required `EMAIL_TOKEN_SECRET`; only SHA-256 of the resulting token is stored. Rotation invalidates outstanding tokens. `email_send.payload` is not-null JSONB containing references only, with a database check forbidding email addresses, tokens and copy text. `email_send.unsubscribe_token_id` references an unsubscribe-purpose token minted at queue time. Legacy queued rows without reconstructible payload are marked `failed` with `last_error = 'legacy_unrecoverable'`. Dispatch reconstructs tokens and message content from references, reads the recipient, re-checks suppression and broadcast consent, and uses the business key as provider idempotency key. An unregistered provider or renderer leaves a row queued, consumes no attempt and appears in the health signal. E8-01 proves dispatch through injected fixture providers and renderers; the existing E1-11 direct test sender remains until E8-02 removes it. Tests additionally assert identical retry URLs, hash-only storage, payload rejection of personal data, and invalidation on secret rotation.
 
 ### E6-06 — Unsubscribe and preferences
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
@@ -1338,6 +1340,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Tests:** The one-click POST path · single-use consumption · marketing-only withdrawal leaving entries intact · cross-provider global suppression · source-template resolution from the bound `email_send` row, including rejection of a form-supplied template.
 **Docs:** `docs/modules/email.md` · `docs/legal/compliance.md`
 
+**Criterion ownership (founder-authorised 2026-09-27):** E6-06 proves the unsubscribe link actually works through its one-click POST tests. E8-01 builds and tests the bound-token headers; E8-03 embeds the route URL in each template.
+
 ### E8-02 — The Resend provider and domain authentication
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
 
@@ -1352,6 +1356,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Tests:** Domain assertion · the authentication check with a deliberately broken record · the sandbox-key rejection.
 **Docs:** `docs/modules/email.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
+
+**Provider registration (founder-authorised 2026-09-27):** Register the Resend provider with E8-01's dispatcher and remove the E1-11 direct test-mode sender at the same time, so no mail is sent twice.
 
 ### E8-03 — The seven transactional templates
 **Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
@@ -1371,7 +1377,11 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Tests:** Template rendering with plain-text parity · the copy scan over templates · required-element presence per template · parity between the email and `/me` renderings from one `ReferralService.status` result.
 **Docs:** `docs/features/email-campaign.md` · `docs/brand/copy-rules.md#email-copy`
 
+**Criterion ownership (founder-authorised 2026-09-27):** E8-03 supplies and tests a real plain-text alternative for every template. E8-01 requires a text body at the `Message` boundary and refuses to dispatch without one.
+
 **Provisional winner notification (founder-authorised 2026-09-27):** E8-03's seventh template has a plain-text alternative, copy from the copy layer, a status link, the response deadline and a link to the governing rules version. E7-06 queues this notification; E8-01 dispatches it.
+
+**Renderer registration (founder-authorised 2026-09-27):** Register the seven real renderers with E8-01's dispatcher. Until a renderer is registered, its queued rows remain queued without an attempt and are counted in the health signal.
 
 ### E8-04 — Rendering QA and seed tests
 **Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend

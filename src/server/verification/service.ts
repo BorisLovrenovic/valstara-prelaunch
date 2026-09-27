@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 
 import type { DatabaseConnection } from '../db/pool.ts';
 import {
@@ -12,6 +12,11 @@ import type {
   TokenPurpose,
   VerificationCompletionConsumeResult,
 } from './types.ts';
+import {
+  deriveEmailToken,
+  emailTokenSecret,
+  hashEmailToken,
+} from './token-derivation.ts';
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
 
@@ -25,6 +30,7 @@ export const purposeLifetimeMs: Readonly<Record<TokenPurpose, number>> = {
 
 export interface IssuedToken {
   /** The plaintext token — it exists only here and in the emailed URL. */
+  readonly id: string;
   readonly token: string;
   readonly expiresAt: Date;
 }
@@ -44,6 +50,7 @@ export interface VerificationService {
 
 export interface VerificationServiceDependencies {
   readonly clock?: () => Date;
+  readonly tokenSecret?: string;
 }
 
 /**
@@ -57,15 +64,6 @@ export function customerOutcome(result: ConsumeResult): CustomerOutcome {
 
 // SHA-256 of the token. Only this ever reaches the database — never the
 // plaintext (ADR-011, standing rule 6 on double opt-in tokens).
-function tokenHash(token: string): Buffer {
-  return createHash('sha256').update(token).digest();
-}
-
-// 256 bits from the CSPRNG, url-safe. Unguessable and non-sequential.
-function createToken(): string {
-  return randomBytes(32).toString('base64url');
-}
-
 /**
  * The verification-token domain module (E3-06). It owns single-use, hashed,
  * expiring tokens with a purpose discriminator and per-purpose expiry. All SQL
@@ -85,42 +83,46 @@ export function createVerificationService(
   return createVerificationServiceWithRepository(
     createVerificationTokenRepository(database),
     clock,
+    dependencies.tokenSecret ?? emailTokenSecret(),
   );
 }
 
 function createVerificationServiceWithRepository(
   repository: VerificationTokenRepository,
   clock: () => Date,
+  secret: string,
 ): VerificationService {
   return {
     async issue(subscriberId, purpose) {
-      const token = createToken();
+      const id = randomUUID();
+      const token = deriveEmailToken(id, secret);
       const expiresAt = new Date(
         clock().getTime() + purposeLifetimeMs[purpose],
       );
 
       await repository.insert({
         expiresAt,
-        id: randomUUID(),
+        id,
         purpose,
         subscriberId,
-        tokenHash: tokenHash(token),
+        tokenHash: hashEmailToken(token),
       });
 
-      return { expiresAt, token };
+      return { expiresAt, id, token };
     },
 
     async consume(token, purpose) {
-      return (await consumeWithSubscriber(repository, token, purpose, clock))
-        .outcome;
+      return (
+        await consumeWithSubscriber(repository, token, purpose, clock, secret)
+      ).outcome;
     },
 
     async consumeForVerification(token) {
-      return consumeWithSubscriber(repository, token, 'verify', clock);
+      return consumeWithSubscriber(repository, token, 'verify', clock, secret);
     },
 
     async consumeForPurpose(token, purpose) {
-      return consumeWithSubscriber(repository, token, purpose, clock);
+      return consumeWithSubscriber(repository, token, purpose, clock, secret);
     },
 
     async purgeExpired(before, limit) {
@@ -134,24 +136,34 @@ async function consumeWithSubscriber(
   token: string,
   purpose: TokenPurpose,
   clock: () => Date,
+  secret: string,
 ): Promise<VerificationCompletionConsumeResult> {
   if (token === '') {
     return { outcome: 'invalid', subscriberId: null };
   }
 
   const now = clock();
-  const hash = tokenHash(token);
-  const consumed = await repository.consumeFresh(hash, purpose, now);
+  const hash = hashEmailToken(token);
   const existing = await repository.findByHash(hash);
+
+  if (existing === null || existing.purpose !== purpose) {
+    return { outcome: 'invalid', subscriberId: null };
+  }
+  const expected = Buffer.from(deriveEmailToken(existing.id, secret));
+  const supplied = Buffer.from(token);
+  if (
+    expected.length !== supplied.length ||
+    !timingSafeEqual(expected, supplied)
+  ) {
+    return { outcome: 'invalid', subscriberId: null };
+  }
+  const consumed = await repository.consumeFresh(hash, purpose, now);
 
   if (consumed === 1) {
     if (existing === null) {
       throw new Error('A consumed verification token could not be read.');
     }
     return { outcome: 'verified', subscriberId: existing.subscriber_id };
-  }
-  if (existing === null || existing.purpose !== purpose) {
-    return { outcome: 'invalid', subscriberId: null };
   }
   // Status links are reusable bearer credentials, but never beyond expiry.
   // Verification-token replays retain their existing success semantics.

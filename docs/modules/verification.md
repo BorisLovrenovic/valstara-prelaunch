@@ -37,9 +37,11 @@ interface StatusLinkService {
 `DatabaseConnection` (not a pool), so a caller inside a transaction — the
 `/verify` transaction (E3-07) — can bind the service to its own connection and
 consume a token atomically with the other state transitions. The clock is
-injected; nothing calls `Date.now()`. The token is 256 bits from the CSPRNG,
-base64url-encoded, generated in this module and hashed (SHA-256) before it
-reaches the data layer.
+injected; nothing calls `Date.now()`. The token is base64url HMAC-SHA256 of its
+UUID token ID under the required `EMAIL_TOKEN_SECRET`, generated in this module
+and hashed (SHA-256) before it reaches the data layer. The secret is separate
+from the IP pepper and is never stored or logged. Rotating it invalidates
+outstanding tokens, an accepted cost.
 
 `consumeForVerification()` is the E3-07 transaction-only variant. It returns a
 subscriber id only for `verified` and `already`, so the completion service can

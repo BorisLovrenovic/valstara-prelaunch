@@ -130,22 +130,6 @@ export function createGiveawayAwardRepository(db: DatabaseConnection) {
         ],
       });
     },
-    queueNotice(input: {
-      id: string;
-      subscriberId: string;
-      key: string;
-      at: Date;
-    }): Promise<number> {
-      return db.execute({
-        text: `INSERT INTO email_send
-                 (id, subscriber_id, template, provider, business_key,
-                  state, created_at, updated_at)
-               VALUES ($1, $2, 'giveaway_winner', 'resend', $3,
-                       'queued', $4, $4)
-               ON CONFLICT (business_key) DO NOTHING`,
-        values: [input.id, input.subscriberId, input.key, input.at],
-      });
-    },
     nextReserve(drawId: string): Promise<AwardSelection | null> {
       return db.readOne<AwardSelection>({
         text: `SELECT s.position::text, s.entry_id::text,

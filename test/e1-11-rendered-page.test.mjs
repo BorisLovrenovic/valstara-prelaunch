@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import test from 'node:test';
 
 import { Pool } from 'pg';
+import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 
 const executeFile = promisify(execFile);
 const defaultDatabaseUrl =
@@ -112,7 +113,7 @@ test('scanner GETs are inert, then token-authenticated POST verifies and replays
   const fixture = await createDatabaseFixture();
   const subscriberId = randomUUID();
   const tokenId = randomUUID();
-  const token = 'valid-thin-verification-token';
+  const token = deriveEmailToken(tokenId, process.env.EMAIL_TOKEN_SECRET);
   await fixture.database.query(
     `
       INSERT INTO subscriber (id, email, email_normalised, email_domain, status)
@@ -125,7 +126,11 @@ test('scanner GETs are inert, then token-authenticated POST verifies and replays
       'example.test',
     ],
   );
-  const expiredToken = 'expired-thin-verification-token';
+  const expiredTokenId = randomUUID();
+  const expiredToken = deriveEmailToken(
+    expiredTokenId,
+    process.env.EMAIL_TOKEN_SECRET,
+  );
   await fixture.database.query(
     `
       INSERT INTO verification_token (
@@ -134,7 +139,7 @@ test('scanner GETs are inert, then token-authenticated POST verifies and replays
       VALUES ($1, $2, $3, 'verify', $4)
     `,
     [
-      randomUUID(),
+      expiredTokenId,
       subscriberId,
       createHash('sha256').update(expiredToken).digest(),
       new Date('2000-01-01T00:00:00.000Z'),
@@ -226,7 +231,7 @@ test('with survey.enabled off, the rendered verification success page omits the 
   const fixture = await createDatabaseFixture();
   const subscriberId = randomUUID();
   const tokenId = randomUUID();
-  const token = 'survey-disabled-verification-token';
+  const token = deriveEmailToken(tokenId, process.env.EMAIL_TOKEN_SECRET);
   await fixture.database.query(
     `INSERT INTO campaign_flag (key, enabled, updated_by) VALUES ($1, $2, $3)`,
     ['survey.enabled', false, 'e3-07-rendered-page-test'],

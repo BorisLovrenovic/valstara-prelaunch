@@ -37,6 +37,8 @@ const environment = {
   P1_ALERT_WEBHOOK_TOKEN: 'production-stack-test-alert-token',
   P1_ALERT_WEBHOOK_URL: 'https://alerts.example.test/valstara',
   REFERRAL_SIGNING_SECRET: 'production-stack-test-referral-secret',
+  EMAIL_BASE_URL: 'https://valstara.com',
+  EMAIL_TOKEN_SECRET: 'production-stack-email-token-secret-32-chars',
   RESEND_API_KEY: 'production-stack-test-resend-key',
   RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
   SITE_HOST: 'valstara.com',
