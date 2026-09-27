@@ -100,7 +100,8 @@ export function availableProducts(
   );
   const bundle = catalog.bundleProductIds.map((id) => byId.get(id)!);
   const available = (product: AwardProduct) =>
-    product.availableGlobally && !product.unavailableCountries.includes(country);
+    product.availableGlobally &&
+    !product.unavailableCountries.includes(country);
   return {
     original: bundle.filter(available),
     unavailable: bundle.filter((product) => !available(product)),
