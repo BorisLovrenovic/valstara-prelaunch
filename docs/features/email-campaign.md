@@ -1,18 +1,19 @@
 # Feature: Email
 
 ## Summary
-Six transactional templates through **Resend on `send.valstara.com`**, broadcasts through **Brevo on `mail.valstara.com`**, and the SubSlush migration announcement through Brevo **from `subslush.com`**. The split is failure isolation, not deliverability theory: a spam complaint on the marketing list must never stop new signups from being able to verify (ADR-009, ADR-010).
+Seven transactional templates through **Resend on `send.valstara.com`**, broadcasts through **Brevo on `mail.valstara.com`**, and the SubSlush migration announcement through Brevo **from `subslush.com`**. The split is failure isolation, not deliverability theory: a spam complaint on the marketing list must never stop new signups from being able to verify (ADR-009, ADR-010).
 
 ## Feature flag
 `email.broadcast` — **default off** until domain authentication is verified end to end. **Transactional mail has no flag** — verification cannot be switched off.
 
-## The six transactional templates
+## The seven transactional templates
 1. **Verification** — the only mail an unverified row may receive, besides its reminders
 2. **Verification reminder** — the ladder at +1h, +24h, +72h
 3. **Welcome** — referral link, status link, trust-page link
 4. **Milestone reached** — tier confirmation, and **plainly states which reward is settled and which is held**
 5. **Status link** — re-issued on request
 6. **Giveaway entry receipt** — entries, and a link to the immutable global rules version that governs them
+7. **Provisional winner notification** — status link, Section 9 response deadline and the governing rules-version link; E7-06 queues the record, E8-01 dispatches it and E8-03 renders it with a plain-text alternative from the copy layer
 
 Broadcasts (Brevo) are composed from a shared layout: the **weekly update** (including the top-10 block that is the leaderboard's fallback surface), the **launch announcement**, and the one-off **SubSlush migration send**.
 

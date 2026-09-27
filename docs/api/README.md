@@ -92,6 +92,10 @@ Body: `t` (the signed status token), `marketing` (`on` · `off`), `turnstile_tok
 
 *There is no separate alternative-method-of-entry route.* The ordinary verified signup is the free entry route (ADR-026, E7-04).
 
+### `GET /giveaway/award?award=…&t=…` and `POST /giveaway/award?award=…&t=…` *(page route)*
+
+`GET` authenticates the reusable signed status token and displays only the current provisional winner's award. `POST` reads `turnstile_token` and verifies it server-side before award work, then rate-limits by truncated, hashed IP prefix and authenticated subscriber. The `checks` form accepts only country of residence, age confirmation, optional Canadian mathematical answer and separate optional publicity permission. A failed Section 9 check or response deadline advances the prize to the next reserve. A passing response confirms the award against its committed snapshot. If a catalog product is unavailable, the confirmed winner's `substitution` form offers validated replacement product IDs or an explicit cash decline. The substitution deadline is separate; silence settles cash for unavailable products only and never changes the winner. Both forms return no other person's data and use `Cache-Control: private, no-store` with `Referrer-Policy: no-referrer`. With `giveaway.open` off, no award write occurs.
+
 ### `GET /unsubscribe?t=…` and `POST /api/unsubscribe`
 One-click from the mail (RFC 8058 `List-Unsubscribe-Post`) and a confirmable page. The `unsubscribe` token resolves its originating template server-side from its bound `email_send` row; a request-supplied template is rejected. **From a marketing message it withdraws marketing consent only** — the waitlist place and giveaway entries stay (ADR-027). From a transactional message, or through "leave the waitlist" on the page, it writes one global suppression. **Suppression and marketing consent are both re-checked at dispatch**, so a send already queued still stops.
 

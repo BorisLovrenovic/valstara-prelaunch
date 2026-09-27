@@ -1164,7 +1164,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Build:** The single eligibility rule for the global giveaway (ADR-026), in `src/server/giveaway`. `isEligible(subscriberId)` returns true only when the subscriber is `verified` and the giveaway is open. **There is no location input:** the function takes no country, region or header. The 18+ requirement is a rules condition confirmed with provisional winners at award time (E7-06), not collected at entry. One registration per natural person is enforced by the existing normalisation and fraud controls (E3-01, E5).
 
 **Acceptance criteria:**
-- **The eligibility function has no location parameter, and a scan finds no location read anywhere in the giveaway module**
+- **The eligibility function has no location parameter, and a scan finds no location read in eligibility or entry accrual paths**
 - `pending`, `expired`, `unsubscribed`, `bounced` and `disqualified` subscribers are not eligible — a table test covers every status
 - **Entry never depends on marketing consent** — asserted with consent absent and with it present (ADR-027)
 - With `giveaway.open` off, `isEligible` returns false for every subscriber and the waitlist is unaffected
@@ -1173,6 +1173,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Docs:** `docs/architecture/adr/026-global-giveaway-hong-kong-law.md` · `docs/modules/giveaway.md` · `docs/legal/compliance.md#4-giveaway--one-global-draw-under-hong-kong-law`
 
 **Scope amendment (founder-authorised 2026-09-25):** stamping `subscriber.giveaway_rules_version` on first entry, and the 'nothing accrues with the flag off' assertion, moved to E7-03, which owns `accrue()`. E7-01 is limited to the eligibility decision.
+
+**Location-scan clarification (founder-authorised 2026-09-27):** The no-location scan covers eligibility and entry accrual paths, not the whole `src/server/giveaway` directory. E7-06 must collect country of residence from provisional winners in that module after the draw. Its separate winner-only test asserts that boundary; eligibility and entry still never read location.
 
 ### E7-02 — The global rules page (Hong Kong law)
 **Model:** Tier A — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
@@ -1280,6 +1282,12 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Tests:** Winner-only collection · sanctions replacement, including an empty list · the Canadian skill-testing question · deadline expiry with an injected clock · the snapshot reference · idempotent notification · the substitution path.
 **Docs:** `docs/features/giveaway.md` · `docs/legal/compliance.md#4-giveaway--one-global-draw-under-hong-kong-law` · `docs/data/model.md`
 
+**Notification scope (founder-authorised 2026-09-27):** "Notify provisional winners" means queueing only in E7-06, following the E3 verification and status-link precedent. Insert a `queued` `email_send` row through `src/server/db` with a deterministic business key per provisional winner per draw; `uq_email_send_business_key` makes concurrent repeats no-ops. Operational dispatch belongs to E8-01. The response deadline starts at the recorded notification time, using the injected clock. E7-06 does not build `src/server/email`, `queue()`, `dispatch()`, a provider or a template renderer.
+
+**Substitution source (founder-authorised 2026-09-27):** A founder-approved award catalog in this repository is the authority for each bundle product's retail value and regional availability and for eligible replacement products. The award flow validates choices and cash amounts against that catalog. It may remain empty until the founder lists the bundle contents, but an award requiring product checks cannot proceed without approved entries.
+
+**Substitution timing (founder-authorised 2026-09-27):** The 14-day response window applies only to the Section 9 checks: age, country of residence and, for Canada, the skill-testing answer. Passing confirms the award against its snapshot. An unavailable bundle product opens a separate substitution offer on the confirmed award, with a configurable 14-day deadline from the recorded offer time. A winner may choose catalog-validated replacement goods so the bundle retains at least its stated retail value, or explicitly decline for cash equal only to the unavailable product value. No choice by the offer deadline settles that same cash amount. None of these substitution outcomes forfeits the award or advances to a reserve. Audit the offer, choice, decline and expiry-to-cash. Test expiry with an injected clock.
+
 ---
 
 ## Epic E8 — Email
@@ -1308,6 +1316,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Tests:** Concurrent duplicate-key attempt · the queue-then-suppress race · the queue-then-withdraw race for broadcast versus transactional · unsubscribe-token binding to an `email_send` template · outage isolation · batch cap · backoff bounds.
 **Docs:** `docs/modules/email.md` · `docs/architecture/adr/009-split-email-providers.md`
+
+**Existing queue handoff (founder-authorised 2026-09-27):** E8-01 takes over every existing direct `email_send` insert for verification, status links and giveaway winner notifications, moving each onto `EmailService.queue()`. E7-06 only queues winner notification records; E8-01 owns their operational dispatch.
 
 ### E6-06 — Unsubscribe and preferences
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
@@ -1341,13 +1351,13 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Tests:** Domain assertion · the authentication check with a deliberately broken record · the sandbox-key rejection.
 **Docs:** `docs/modules/email.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
 
-### E8-03 — The six transactional templates
+### E8-03 — The seven transactional templates
 **Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
-**Build:** Verification, verification reminder, welcome, milestone reached, status link, and giveaway entry receipt (entries, and a link to the immutable global rules version that governs them — no jurisdiction). One shared layout, tokens where email clients support them, **plain-text alternative for every one.** All copy from the copy layer. The welcome and milestone templates render referral status from `ReferralService.status`, including a plain settled-versus-held distinction. Those renderings and the cross-surface parity assertion were assigned here by founder authorisation on 2026-09-14.
+**Build:** Verification, verification reminder, welcome, milestone reached, status link, giveaway entry receipt (entries, and a link to the immutable global rules version that governs them — no jurisdiction), and provisional winner notification. One shared layout, tokens where email clients support them, **plain-text alternative for every one.** All copy from the copy layer. The welcome and milestone templates render referral status from `ReferralService.status`, including a plain settled-versus-held distinction. Those renderings and the cross-surface parity assertion were assigned here by founder authorisation on 2026-09-14.
 
 **Acceptance criteria:**
-- All six exist with plain-text alternatives
+- All seven exist with plain-text alternatives
 - **The verification mail says what it is in the first line** — its only job is one click
 - **The milestone mail plainly states which reward is settled and which is held**
 - The welcome and milestone referral sections render directly from `ReferralService.status`
@@ -1358,6 +1368,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Tests:** Template rendering with plain-text parity · the copy scan over templates · required-element presence per template · parity between the email and `/me` renderings from one `ReferralService.status` result.
 **Docs:** `docs/features/email-campaign.md` · `docs/brand/copy-rules.md#email-copy`
+
+**Provisional winner notification (founder-authorised 2026-09-27):** E8-03's seventh template has a plain-text alternative, copy from the copy layer, a status link, the response deadline and a link to the governing rules version. E7-06 queues this notification; E8-01 dispatches it.
 
 ### E8-04 — Rendering QA and seed tests
 **Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend

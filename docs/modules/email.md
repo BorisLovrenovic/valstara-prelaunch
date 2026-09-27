@@ -28,6 +28,7 @@ interface EmailProvider {
 ```
 
 ## Rules
+- **E7-06 queues provisional winner notices directly in `email_send`**, following the existing verification and status-link pattern. Each uses a deterministic business key; concurrent repeats are no-ops. The recorded notification time starts the award response deadline. E8-01 takes over all existing direct inserts (verification, status link and giveaway winner notification) through `queue()` and owns operational dispatch. E8-03 supplies the seventh template, with a plain-text alternative, status link, response deadline and governing rules-version link.
 - **`businessKey` is unique.** One email per key, enforced by the database. A retry with the same key never produces a second send.
 - **Suppression is checked at dispatch, not only at queue time.** A suppression written after queueing must still stop the send — that is the whole point of checking twice.
 - **Broadcast (marketing) sends also re-check current marketing consent at dispatch** (ADR-027). A withdrawal written after queueing stops a broadcast but never a transactional message. An unsubscribe from a marketing message withdraws consent; an unsubscribe from a transactional message, or leaving the waitlist, writes `suppression`.

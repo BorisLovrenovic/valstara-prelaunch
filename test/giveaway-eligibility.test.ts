@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import ts from 'typescript';
 
@@ -18,11 +18,9 @@ const baseUrl =
 const appPassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 
-test('eligibility reads no location field from the giveaway module', async () => {
+test('eligibility and entry accrual read no location field', async () => {
   const directory = new URL('../src/server/giveaway/', import.meta.url);
-  const names = (await readdir(directory)).filter((name) =>
-    name.endsWith('.ts'),
-  );
+  const names = ['eligibility.ts', 'accrue.ts', 'reconcile.ts'];
   for (const name of names) {
     const source = await readFile(new URL(name, directory), 'utf8');
     const parsed = ts.createSourceFile(

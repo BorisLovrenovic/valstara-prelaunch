@@ -310,6 +310,7 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
   // when a new route appears without joining the accessibility pass.
   assert.deepEqual(routes, [
     '/',
+    '/giveaway/award',
     '/giveaway/rules',
     '/leaderboard',
     '/me',

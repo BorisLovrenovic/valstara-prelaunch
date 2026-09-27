@@ -1,0 +1,222 @@
+---
+import { giveawayAwardCopy as copy } from '../../copy/giveaway-award.ts';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getConfig } from '../../server/config.ts';
+import { createPool } from '../../server/db/pool.ts';
+import { getFlagService } from '../../server/flags/app-service.ts';
+import {
+  createAwardService,
+  type AwardOutcome,
+} from '../../server/giveaway/award.ts';
+import { hashedIpPrefix } from '../../server/ratelimit/ip-prefix.ts';
+import { verifyTurnstileToken } from '../../server/turnstile/verify.ts';
+
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+const config = getConfig();
+const token = Astro.url.searchParams.get('t') ?? '';
+const awardId = Astro.url.searchParams.get('award') ?? '';
+let outcome: AwardOutcome | 'challenge_failed' | 'unavailable' | null = null;
+let ownAward = null as Awaited<
+  ReturnType<ReturnType<typeof createAwardService>['ownAward']>
+>;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData().catch(() => new FormData());
+  const challengeToken = form.get('turnstile_token');
+  const challenge =
+    typeof challengeToken === 'string' && challengeToken !== ''
+      ? await verifyTurnstileToken(challengeToken).catch(
+          () => 'unavailable' as const,
+        )
+      : 'rejected';
+  if (challenge === 'rejected') {
+    outcome = 'challenge_failed';
+  } else {
+    const database = createPool(config.databaseUrl);
+    try {
+      const service = createAwardService(database, {
+        flags: getFlagService(),
+        sanctionedCountries: config.giveawaySanctionedCountries,
+        substitutionDays: config.giveawaySubstitutionDays,
+      });
+      const ipPrefixHash =
+        hashedIpPrefix(Astro.clientAddress, config.ipPrefixPepper) ?? '';
+      if (form.get('step') === 'substitution') {
+        const choice = form.get('choice');
+        outcome =
+          choice === 'decline' || choice === 'replacement'
+            ? await service.chooseSubstitution({
+                awardId,
+                token,
+                ipPrefixHash,
+                choice,
+                productIds: form
+                  .getAll('product')
+                  .filter(
+                    (value): value is string => typeof value === 'string',
+                  ),
+                challengeTimedOut: challenge === 'unavailable',
+              })
+            : 'invalid_input';
+      } else if (form.get('step') === 'checks') {
+        const country = form.get('country');
+        const skillAnswer = form.get('skill_answer');
+        outcome =
+          typeof country === 'string' && typeof skillAnswer === 'string'
+            ? await service.submitChecks({
+                awardId,
+                token,
+                ipPrefixHash,
+                country: country.trim().toUpperCase(),
+                ageConfirmed: form.get('age_confirmed') === 'yes',
+                skillAnswer,
+                publicityPermission: form.get('publicity_permission') === 'yes',
+                challengeTimedOut: challenge === 'unavailable',
+              })
+            : 'invalid_input';
+      } else {
+        outcome = 'invalid_input';
+      }
+    } catch {
+      outcome = 'unavailable';
+    } finally {
+      await database.close();
+    }
+  }
+}
+
+if (token !== '' && awardId !== '') {
+  const database = createPool(config.databaseUrl);
+  try {
+    ownAward = await createAwardService(database, {
+      flags: getFlagService(),
+      sanctionedCountries: config.giveawaySanctionedCountries,
+      substitutionDays: config.giveawaySubstitutionDays,
+    }).ownAward(awardId, token);
+  } catch {
+    outcome = 'unavailable';
+  } finally {
+    await database.close();
+  }
+}
+
+const statusMessage =
+  outcome === 'challenge_failed'
+    ? copy.challengeFailed
+    : outcome === 'rate_limited'
+      ? copy.rateLimited
+      : outcome === 'disabled' || outcome === 'unavailable'
+        ? copy.paused
+        : outcome === 'invalid_input'
+          ? copy.invalidInput
+          : outcome === 'replaced'
+            ? copy.replaced
+            : outcome === null
+              ? null
+              : copy.saved;
+---
+
+<BaseLayout title={copy.meta.title} description={copy.meta.description}>
+  <main class="award-page">
+    <h1>{copy.heading}</h1>
+    {statusMessage ? <p role="status">{statusMessage}</p> : null}
+    {
+      ownAward === null ? (
+        <p>{copy.unavailable}</p>
+      ) : ownAward.state === 'replaced' ? (
+        <p>{copy.replaced}</p>
+      ) : ownAward.state === 'notified' ? (
+        <form method="post">
+          <input name="step" type="hidden" value="checks" />
+          <label>
+            {copy.checks.country}
+            <input
+              name="country"
+              pattern="[A-Za-z]{2}"
+              required
+              maxlength="2"
+            />
+          </label>
+          <label>
+            <input name="age_confirmed" type="checkbox" value="yes" />
+            {copy.checks.age}
+          </label>
+          <label>
+            {copy.checks.skill}
+            <input name="skill_answer" inputmode="numeric" />
+          </label>
+          <label>
+            <input name="publicity_permission" type="checkbox" value="yes" />
+            {copy.checks.publicity}
+          </label>
+          <div
+            class="cf-turnstile"
+            data-sitekey={config.turnstileSiteKey}
+            data-response-field-name="turnstile_token"
+          />
+          <noscript>
+            <p>{copy.javaScriptRequired}</p>
+          </noscript>
+          <button type="submit">{copy.checks.submit}</button>
+        </form>
+      ) : ownAward.state === 'confirmed' &&
+        ownAward.substitutionState === 'offered' ? (
+        <form method="post">
+          <input name="step" type="hidden" value="substitution" />
+          <h2>{copy.substitution.heading}</h2>
+          <p>{copy.substitution.body}</p>
+          {ownAward.substitutionDeadline ? (
+            <p>{copy.substitution.deadline(ownAward.substitutionDeadline)}</p>
+          ) : null}
+          {ownAward.replacements.map((product) => (
+            <label>
+              <input name="product" type="checkbox" value={product.id} />
+              {copy.substitution.product(
+                product.name,
+                product.retailValueEurCents,
+              )}
+            </label>
+          ))}
+          <div
+            class="cf-turnstile"
+            data-sitekey={config.turnstileSiteKey}
+            data-response-field-name="turnstile_token"
+          />
+          <noscript>
+            <p>{copy.javaScriptRequired}</p>
+          </noscript>
+          <button name="choice" type="submit" value="replacement">
+            {copy.substitution.replacement}
+          </button>
+          <button name="choice" type="submit" value="decline">
+            {copy.substitution.decline}
+          </button>
+        </form>
+      ) : ownAward.state === 'confirmed' ? (
+        <p>
+          {ownAward.substitutionState === 'cash'
+            ? copy.cash
+            : ownAward.substitutionState === 'replacement'
+              ? copy.replacement
+              : copy.confirmed}
+        </p>
+      ) : (
+        <p>{copy.exhausted}</p>
+      )
+    }
+    {
+      ownAward !== null &&
+      (ownAward.state === 'notified' ||
+        (ownAward.state === 'confirmed' &&
+          ownAward.substitutionState === 'offered')) ? (
+        <script
+          is:inline
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          async
+          defer
+        />
+      ) : null
+    }
+  </main>
+</BaseLayout>

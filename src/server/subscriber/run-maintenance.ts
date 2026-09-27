@@ -17,6 +17,7 @@ import { createGiveawayEntryReconciliationJob } from '../giveaway/reconcile.ts';
 import { currentRulesFromFiles } from '../giveaway/current-rules-file.ts';
 import { createDrawService } from '../giveaway/draw.ts';
 import { createDrawWorker } from '../giveaway/draw-worker.ts';
+import { createAwardService } from '../giveaway/award.ts';
 
 import { createUnverifiedExpiryJob } from './expiry.ts';
 import {
@@ -91,6 +92,7 @@ const drawWorker = createDrawWorker(
   }),
   alerts,
   clock,
+  createAwardService(database, { flags: createFlagService(database), clock }),
 );
 
 await Promise.all([scheduler.run(), drawWorker.run()]);
