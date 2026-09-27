@@ -89,6 +89,19 @@ function routeDependencies(
   };
 }
 
+function deterministicTiming(): Pick<
+  ResendVerificationRouteDependencies,
+  'monotonicClock' | 'sleep'
+> {
+  let elapsed = 0;
+  return {
+    monotonicClock: () => elapsed,
+    async sleep(milliseconds) {
+      elapsed += milliseconds;
+    },
+  };
+}
+
 test('known and unknown addresses have the same response, status, and padded timing', async () => {
   let elapsed = 0;
   const completionTimes: number[] = [];
@@ -122,6 +135,33 @@ test('known and unknown addresses have the same response, status, and padded tim
     resendVerificationResponseTargetMs,
     resendVerificationResponseTargetMs,
   ]);
+});
+
+test('the response floor survives a timer that wakes before a fractional deadline', async () => {
+  let elapsed = 0.25;
+  const startedAt = elapsed;
+  let timerCalls = 0;
+  const route = createResendVerificationRoute(
+    routeDependencies({
+      monotonicClock: () => elapsed,
+      async resendVerification() {
+        elapsed += 0.6;
+        return { pendingSubscriberId: null };
+      },
+      async sleep(milliseconds) {
+        timerCalls += 1;
+        elapsed += Math.max(0.25, Math.trunc(milliseconds) - 0.75);
+      },
+    }),
+  );
+
+  const response = await route(
+    routeContext(makeRequest('unknown@example.test')),
+  );
+
+  assert.equal(response.status, 200);
+  assert.ok(elapsed - startedAt >= resendVerificationResponseTargetMs);
+  assert.ok(timerCalls >= 2);
 });
 
 test('known resend-work errors and unknown addresses have the same accepted response timing', async () => {
@@ -213,7 +253,7 @@ test('Turnstile is verified before rate limits and the resend service', async ()
         order.push('resend');
         return { pendingSubscriberId: null };
       },
-      sleep: async () => undefined,
+      ...deterministicTiming(),
     }),
   );
 
@@ -305,7 +345,7 @@ test('database-backed address and IP-prefix counters reject attempts beyond thei
     routeDependencies({
       ...rateLimits,
       clock: () => new Date('2026-09-09T12:00:00.000Z'),
-      sleep: async () => undefined,
+      ...deterministicTiming(),
     }),
   );
 
@@ -374,7 +414,7 @@ test('a Turnstile timeout uses the strict IP limit and flags a pending row witho
       async flagChallengeTimeout(subscriberId) {
         flagged.push(subscriberId);
       },
-      sleep: async () => undefined,
+      ...deterministicTiming(),
     }),
   );
 

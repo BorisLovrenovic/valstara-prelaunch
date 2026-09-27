@@ -130,6 +130,10 @@ test('the production image is multi-stage, health-checked, and non-root', async 
   assert.match(dockerfile, /^HEALTHCHECK /m);
   assert.match(
     dockerfile,
+    /^COPY --chown=node:node --from=build \/app\/src\/content\/giveaway-award-catalog\.json \.\/src\/content\/giveaway-award-catalog\.json$/m,
+  );
+  assert.match(
+    dockerfile,
     /CMD \["sh", "-c", "node \.\/src\/server\/config\.ts && exec node \.\/dist\/server\/entry\.mjs"\]/,
   );
 });

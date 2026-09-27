@@ -79,6 +79,8 @@ test('E1-12 validates and types the complete application environment', () => {
     },
     databaseUrl: validEnvironment.DATABASE_URL,
     drand: null,
+    giveawaySanctionedCountries: [],
+    giveawaySubstitutionDays: 14,
     host: '127.0.0.1',
     ipPrefixPepper: 'local-test-prefix-pepper',
     ipVelocity: { threshold: 10, windowMinutes: 60 },

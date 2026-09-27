@@ -53,11 +53,29 @@ test('the maintenance entry point starts with the configured draw worker', async
       errors += chunk;
     });
     try {
-      const outcome = await Promise.race([
-        once(child, 'exit').then(([code]) => `exited ${String(code)}`),
-        sleep(1_000).then(() => 'running'),
-      ]);
-      assert.equal(outcome, 'running', errors);
+      let connected = false;
+      // The child opens this connection after installing its signal handlers.
+      // Wait for that observable startup state before testing shutdown.
+      for (let attempt = 0; attempt < 200; attempt += 1) {
+        if (child.exitCode !== null || child.signalCode !== null) {
+          assert.fail(`maintenance exited before connecting: ${errors}`);
+        }
+        const sessions = await admin.list<{ pid: number }>(
+          {
+            text: `SELECT pid FROM pg_stat_activity
+                   WHERE datname = $1 AND usename = 'valstara_app'`,
+            values: [name],
+          },
+          1,
+        );
+        if (sessions.length > 0) {
+          connected = true;
+          break;
+        }
+        await sleep(50);
+      }
+      assert.equal(connected, true, `maintenance did not connect: ${errors}`);
+      assert.equal(child.exitCode, null, errors);
     } finally {
       if (child.exitCode === null && child.signalCode === null) {
         child.kill('SIGTERM');

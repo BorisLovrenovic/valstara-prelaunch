@@ -25,6 +25,8 @@ const optionalKeys = [
   'DRAND_CHAIN_HASH',
   'DRAND_CHAIN_PUBLIC_KEY',
   'DRAND_RELAY_URLS',
+  'GIVEAWAY_SANCTIONED_COUNTRIES',
+  'GIVEAWAY_SUBSTITUTION_DAYS',
 ] as const;
 export const p1AlertEnvironmentKeys = [
   'P1_ALERT_WEBHOOK_TOKEN',
@@ -72,6 +74,8 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     verificationRate: verificationRate(environment),
     waitlistLiveAt: waitlistLiveAt(environment),
     drand: drandConfiguration(environment),
+    giveawaySanctionedCountries: getGiveawaySanctionedCountries(environment),
+    giveawaySubstitutionDays: getGiveawaySubstitutionDays(environment),
   };
   return Object.freeze(config);
 }
@@ -385,6 +389,33 @@ export interface AppConfig {
   readonly verificationRate: VerificationRateConfiguration;
   readonly waitlistLiveAt: Date | null;
   readonly drand: DrandConfiguration | null;
+  readonly giveawaySanctionedCountries: readonly string[];
+  readonly giveawaySubstitutionDays: number;
+}
+
+export function getGiveawaySubstitutionDays(
+  environment: NodeJS.ProcessEnv = process.env,
+): number {
+  return positiveInteger(environment, 'GIVEAWAY_SUBSTITUTION_DAYS', 14);
+}
+
+/** ISO 3166-1 alpha-2 codes, configured by the founder; an empty list is valid. */
+export function getGiveawaySanctionedCountries(
+  environment: NodeJS.ProcessEnv = process.env,
+): readonly string[] {
+  const raw = environment.GIVEAWAY_SANCTIONED_COUNTRIES;
+  if (raw === undefined || raw.trim() === '') return Object.freeze([]);
+  const countries = raw.split(',').map((value) => value.trim());
+  if (
+    countries.some((value) => !/^[A-Z]{2}$/u.test(value)) ||
+    new Set(countries).size !== countries.length
+  ) {
+    return invalid(
+      'GIVEAWAY_SANCTIONED_COUNTRIES',
+      'must be distinct uppercase two-letter country codes separated by commas',
+    );
+  }
+  return Object.freeze(countries);
 }
 
 export interface DrandConfiguration {
