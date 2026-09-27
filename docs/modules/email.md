@@ -1,9 +1,9 @@
 # Module: email
 
-Kind: cross-cutting service. Implements ADR-009 and ADR-010.
+Kind: cross-cutting service. Implements ADR-009. ADR-028 keeps `subslush.com` out of this module entirely.
 
 ## Responsibility
-Queue, send, retry, suppress, and reconcile — across two providers on three sending domains, without either provider's reputation being able to damage the other's.
+Queue, send, retry, suppress, and reconcile — across two providers on two sending domains (`send.valstara.com`, `mail.valstara.com`), without either provider's reputation being able to damage the other's.
 
 ## Data owned
 `email_send`, `suppression`.
@@ -35,7 +35,7 @@ interface EmailProvider {
 - Each queued message has an `unsubscribe`-purpose token bound to its `email_send` row. The binding resolves the originating template server-side when the token is consumed; a request body never supplies the recorded source.
 - **A send failure never rolls back or blocks the caller's transaction.** The subscriber row is committed first, always.
 - **Transactional and broadcast use different providers and different domains** — asserted by a config test, because the isolation is the entire rationale.
-- **The migration send's `From` domain is `subslush.com`** — a constant with a test on it, because getting it wrong once is unrecoverable.
+- **No sending domain outside `valstara.com` is configured** (ADR-028). The SubSlush announcement is a manual founder send, not a module path.
 - **Vendor SDKs live only in `providers/`.** Lint-enforced.
 - Every message carries a plain-text alternative and a working RFC 8058 one-click unsubscribe.
 - **Webhook signatures are verified before the payload is parsed**, and ingestion is idempotent on the provider event id.
@@ -45,4 +45,4 @@ interface EmailProvider {
 `db`, `audit`, `subscriber`, `flags`.
 
 ## Contract tests
-Duplicate business key rejected by the database · suppression written between queue and dispatch stops the send · a provider outage leaves the subscriber row committed · config test on domains and providers · **the migration `From` domain assertion** · webhook signature verified before parse · replayed webhook is a no-op · dispatch honours its limit · quota projection triggers at the documented headroom.
+Duplicate business key rejected by the database · suppression written between queue and dispatch stops the send · a provider outage leaves the subscriber row committed · config test on domains and providers · webhook signature verified before parse · replayed webhook is a no-op · dispatch honours its limit · quota projection triggers at the documented headroom.

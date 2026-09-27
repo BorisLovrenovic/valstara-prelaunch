@@ -45,7 +45,7 @@ Five items no agent can complete. Each gates something, and the gate is stated s
 
 | # | Item | Nature | Gates | Start by |
 |---|---|---|---|---|
-| **P1** | **DNS records and email authentication** — `send.` and `mail.` subdomains plus `subslush.com`; SPF, DKIM, DMARC `p=none` | Configuration | E8 entirely. **The only item with a hard 12-week clock** — reputation is warmed, not switched on | **Today** |
+| **P1** | **DNS records and email authentication** — the `send.` and `mail.` subdomains of `valstara.com`; SPF, DKIM, DMARC `p=none`. `subslush.com` is out of scope (ADR-028) | Configuration | E8 entirely. **The only item with a hard 12-week clock** — reputation is warmed, not switched on | **Today** |
 | **P2** | **Appoint the EU and UK Article 27 representatives** | Procurement, €200–500/yr each | **The privacy policy, which gates the first signup.** E9-03 asserts their presence at build time and the signup route is unreachable while it fails | **Today** |
 | **P3a** | ~~Brand token values~~ — **SATISFIED.** In the repository at `docs/brand/identity-guidelines.md` §5 (colour) and §6 (typography), LOCKED | — | Nothing. E2-01 is unblocked | Done |
 | **P3b** | **Trust-page prose** — `/legit`, `/guarantee`, `/about` | Founder input from the brand and store documentation | E9-02. **A page shell with placeholder text is not a deliverable** | Before E9 |
@@ -1292,9 +1292,11 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 ## Epic E8 — Email
 
-**Goal:** verification mail that arrives, campaign mail that cannot damage it, and one unrepeatable migration send done carefully. *10 tickets.*
+**Goal:** verification mail that arrives, and campaign mail that cannot damage it. *9 tickets.*
 
-**Exit criteria:** both domains authenticate, a real-browser signup receives its delivered verification email and produces a verified subscriber, seed tests land in the inbox at all four major providers, the quota projection alerts a week ahead, and the migration send is staged and ready.
+**Exit criteria:** both domains authenticate, a real-browser signup receives its delivered verification email and produces a verified subscriber, seed tests land in the inbox at all four major providers, and the quota projection alerts a week ahead.
+
+**Scope change (founder-authorised 2026-09-27, ADR-028):** E8-08, the SubSlush migration send, is removed. `subslush.com` is kept fully separate from Valstara's domain, DNS and email providers, and the founder sends the one announcement to existing SubSlush customers manually, outside this system. Nothing in E8 builds, tests or authenticates anything for it. The remaining ticket numbers are unchanged.
 
 **BLOCKED on P1.** Domain authentication has a hard 12-week clock and no ticket can shorten it.
 
@@ -1432,22 +1434,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Tests:** Snapshot parity with the site · the flag-off scenario · the recipient-set assertion.
 **Docs:** `docs/features/email-campaign.md` · `docs/features/leaderboard.md`
 
-### E8-08 — The SubSlush migration send
-**Model:** Tier B — High · **Priority:** Highest · **Flag:** `email.broadcast` · **Area:** backend
-**Why this tier:** one send, to the most valuable ~100 addresses in the campaign, unrepeatable, and the failure mode is being mistaken for phishing.
-
-**Build:** The staged migration send through Brevo **from `subslush.com`**. Addresses validated first. **Staged by recency in batches, with rates checked between them and an explicit go/no-go before each subsequent batch.** The mail **asks recipients to opt in** rather than assuming it.
-
-**Acceptance criteria:**
-- **The `From` domain is `subslush.com`** — a constant with a test on it
-- `subslush.com` authenticates: SPF, DKIM, DMARC verified before the first batch
-- **Batches are staged by recency and a subsequent batch cannot send without an explicit go decision** — enforced, not procedural
-- Rates per batch are recorded and visible before the next decision
-- **The mail asks for opt-in**; an address that does not opt in is not added to the Valstara list
-- The send is idempotent per recipient — a retry never double-sends
-
-**Tests:** The `From`-domain assertion · the batch-gate enforcement · per-recipient idempotency · the opt-in path.
-**Docs:** `docs/architecture/adr/010-subslush-migration-send.md` · `docs/legal/compliance.md#5-marketing-consent-and-the-subslush-list`
+### E8-08 — Removed
+Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The SubSlush announcement is sent manually by the founder, outside this system. Do not build it.
 
 ### E8-09 — Quota projection and the free-tier gate
 **Model:** Tier A — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
@@ -1806,7 +1794,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 - All flags at their intended state — **`giveaway.open` off unless P4 and P5 are complete**
 - **Both Article 27 representatives named**, and the build assertion passing
-- **SPF, DKIM and DMARC verified on all three sending domains**, and a seed test landing in the inbox at all four providers
+- **SPF, DKIM and DMARC verified on both sending domains** (`send.valstara.com`, `mail.valstara.com`), and a seed test landing in the inbox at all four providers
 - **Both ESP tiers upgraded past the free caps**
 - The global giveaway rules page published, its current `rules_version` and SHA-256 recorded, and the prize pool within the ADR-026 limits
 - MFA active on the admin account
@@ -1939,7 +1927,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Build:** Install live provider keys on the host. Deploy Umami to production behind the proxy. Then verify a single checklist, **every item evidenced rather than asserted**:
 
 - **Live Resend and Brevo keys on the host; no sandbox key present** — and no live key in the repository or any developer environment
-- **SPF, DKIM and DMARC verify on all three sending domains from the production host**, and a seed test round-trips to the inbox at all four major providers
+- **SPF, DKIM and DMARC verify on both sending domains from the production host**, and a seed test round-trips to the inbox at all four major providers
 - Umami serving first-party through the proxy, **setting no cookie** — the privacy gate re-run against production
 - MFA active on the admin account; admin routes unreachable except as documented
 - Backups running on schedule with the E12-04 restore evidence recorded
@@ -1970,14 +1958,14 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 | E6 Leaderboard, survey, member area | 5 | Snapshot, island, survey, status link, dashboard |
 | S-01 Standalone | 1 | **Align built work with the Hong Kong giveaway strategy** (ADR-026, ADR-027) — runs before E7 |
 | E7 Giveaway | 6 | Entry eligibility, **one global rules page**, entry ledger, free entry route, **reproducible draw**, awards |
-| E8 Email | 10 | Service, unsubscribe, Resend, templates, seed tests, Brevo, bounces, weekly, **migration send**, quotas |
+| E8 Email | 9 | Service, unsubscribe, Resend, templates, seed tests, Brevo, bounces, weekly, quotas |
 | E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, **the representative gate**, inventory, DSR, SEO, OG, llms.txt |
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
-| **Total** | **97** | |
+| **Total** | **96** | |
 
-**Tier distribution:** Tier B Extra High 4 · Tier B High 16 · Tier B Medium 30 · Tier A High 16 · Tier A Medium 31. *(2026-09-25: S-01 added at Tier B High; E7-01 moved from Tier B High to Tier A Medium once jurisdiction gating was removed; E7-06 moved from Tier A Medium to Tier B Medium because it now collects provisional winners' countries of residence and runs the sanctions check.)*
+**Tier distribution:** Tier B Extra High 4 · Tier B High 15 · Tier B Medium 30 · Tier A High 16 · Tier A Medium 31. *(2026-09-25: S-01 added at Tier B High; E7-01 moved from Tier B High to Tier A Medium once jurisdiction gating was removed; E7-06 moved from Tier A Medium to Tier B Medium because it now collects provisional winners' countries of residence and runs the sanctions check. 2026-09-27: E8-08 removed from Tier B High by ADR-028.)*
 
 **Tier B carries the personal data, the privacy properties, the fraud invariants, the prize draw, the sending reputation and the handoff** — the places where a mistake is expensive, subtle, or discovered too late to fix. Tier A carries the well-specified majority.
 

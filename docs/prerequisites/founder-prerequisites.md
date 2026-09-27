@@ -30,22 +30,21 @@
 - **Deadline:** **Start today.** This is the *only* prerequisite with a hard, unshortenable clock. Sender reputation is *warmed over ~12 weeks*, not switched on — records published late cannot be compressed later without hurting deliverability.
 
 ### Why this matters
-The campaign sends from **two providers across three sending domains**, deliberately isolated so neither provider's reputation can damage the other's:
+The campaign sends from **two providers across two sending domains**, deliberately isolated so neither provider's reputation can damage the other's:
 
 | Sending domain | Provider | Role | Plan ref |
 |----------------|----------|------|----------|
 | `send.valstara.com` | **Resend** | Transactional mail (verification, welcome, status, receipts) | E8-02 |
 | `mail.valstara.com` | **Brevo** | Broadcast / weekly mail | E8-05 |
-| `subslush.com` | **Brevo** | The one-off SubSlush migration send, from the predecessor business | E8-09, ADR-010 |
 
 Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — fatal for a double-opt-in campaign whose entire honesty model rests on verification emails arriving.
 
 ### Exactly what to do
-1. **Create the subdomains.** At the DNS host for `valstara.com`, create `send.valstara.com` and `mail.valstara.com`. Ensure you also control DNS for `subslush.com`.
+1. **Create the subdomains.** At the DNS host for `valstara.com`, create `send.valstara.com` and `mail.valstara.com`. `subslush.com` is out of scope: it is kept separate from Valstara, and the SubSlush announcement is sent manually (ADR-028).
 2. **Get the exact records from each ESP.** Do **not** hand-write DKIM — the values are provider-generated:
    - In the **Resend** dashboard, add `send.valstara.com` as a domain. Resend gives you the exact SPF (TXT), DKIM (CNAME/TXT) and return-path records to publish.
-   - In the **Brevo** dashboard, add `mail.valstara.com` **and** `subslush.com` as sending domains. Brevo gives you its own SPF/DKIM records for each.
-3. **Publish every record** at the DNS host exactly as provided, for all three domains.
+   - In the **Brevo** dashboard, add `mail.valstara.com` as a sending domain. Brevo gives you its own SPF/DKIM records.
+3. **Publish every record** at the DNS host exactly as provided, for both domains.
 4. **Set DMARC to `p=none` to start** on each domain — a TXT record at `_dmarc.<domain>` (e.g. `v=DMARC1; p=none; rua=mailto:<your-reporting-address>`). `p=none` is monitoring mode; it lets you collect reports and confirm alignment before tightening later. This matches the plan's stated `p=none` baseline.
 5. **Verify in each dashboard.** Wait for propagation, then confirm Resend and Brevo both report each domain as **verified / authenticated**.
 6. **Begin warming.** Start sending at low volume and ramp over the weeks. This is *why* the item must start now — the reputation curve is the 12-week clock.
@@ -55,7 +54,7 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 - **Campaign-open sequencing gate #2** (`docs/engineering/ci-cd.md`): *"SPF, DKIM and DMARC verify on every sending domain, and the seed test round-trips"* before the public DNS record points at the site.
 
 ### Source docs
-`docs/plan/development-plan.md` §2 (P1) and Epic E8 · `docs/modules/email.md` · `docs/architecture/adr/009-split-email-providers.md` · `docs/architecture/adr/010-subslush-migration-send.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
+`docs/plan/development-plan.md` §2 (P1) and Epic E8 · `docs/modules/email.md` · `docs/architecture/adr/009-split-email-providers.md` · `docs/architecture/adr/028-subslush-announcement-sent-manually.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
 
 ---
 
@@ -120,7 +119,7 @@ The plan makes this a *hard build gate* rather than a checklist because a checkl
 - **Campaign-open sequencing gate #2** (`docs/engineering/ci-cd.md`): *"SPF, DKIM and DMARC verify on every sending domain, and the seed test round-trips"* before the public DNS record points at the site.
 
 ### Source docs
-`docs/plan/development-plan.md` §2 (P1) and Epic E8 · `docs/modules/email.md` · `docs/architecture/adr/009-split-email-providers.md` · `docs/architecture/adr/010-subslush-migration-send.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
+`docs/plan/development-plan.md` §2 (P1) and Epic E8 · `docs/modules/email.md` · `docs/architecture/adr/009-split-email-providers.md` · `docs/architecture/adr/028-subslush-announcement-sent-manually.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
 
 ---
 
@@ -198,11 +197,11 @@ The plan makes this a *hard build gate* rather than a checklist because a checkl
 - **Deadline:** **Before the giveaway opens — not when the limits are hit.** Upgrading reactively means dropped mail at the worst possible moment.
 
 ### Why this matters
-Free-tier caps are **Resend 100/day** and **Brevo 300/day**. A viral signup spike or the migration send will blow through these instantly, and once mail starts failing during a launch there is no recovery. The caps are treated as configuration, not hard-coded assumptions, so the upgrade is purely a purchasing action on your accounts.
+Free-tier caps are **Resend 100/day** and **Brevo 300/day**. A viral signup spike will blow through these instantly, and once mail starts failing during a launch there is no recovery. The caps are treated as configuration, not hard-coded assumptions, so the upgrade is purely a purchasing action on your accounts.
 
 ### Exactly what to do
 1. **Upgrade the Resend plan** to a tier whose daily/volume allowance covers the expected transactional load (verification + lifecycle mail) with headroom.
-2. **Upgrade the Brevo plan** to a tier covering the broadcast list and the migration send with headroom.
+2. **Upgrade the Brevo plan** to a tier covering the broadcast list with headroom.
 3. **Install live API keys on the production host only** — never a sandbox key in production, and no live key in the repository or any developer environment.
 4. Confirm the configured daily-cap values reflect the new tiers.
 

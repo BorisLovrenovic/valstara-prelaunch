@@ -24,7 +24,7 @@ The ticket lives in `docs/plan/development-plan.md`, which is the **single sourc
    - Touching **subscribers, tokens or verification** → `docs/modules/subscriber.md`, `docs/modules/verification.md`, ADR-011.
    - Touching **referrals or rewards** → `docs/modules/referral.md`, ADR-008, ADR-012.
    - Touching **the giveaway** → `docs/modules/giveaway.md`, ADR-018, `docs/legal/compliance.md#4-giveaway--jurisdiction-exclusions`.
-   - Touching **email** → `docs/modules/email.md`, ADR-009, ADR-010.
+   - Touching **email** → `docs/modules/email.md`, ADR-009, ADR-028.
    - Touching **personal data of any kind** → `docs/data/model.md#ip-handling`, `docs/legal/compliance.md`, `docs/security/threat-model.md`.
    - Implementing any **failure or degradation behaviour** → the matching rows of `docs/architecture/fallbacks.md`.
    - Touching the **API surface** → `docs/api/README.md` and its closed code set.

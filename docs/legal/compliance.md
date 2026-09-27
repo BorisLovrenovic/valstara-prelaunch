@@ -106,7 +106,7 @@ E7-02 publishes the approved P4 text from `src/content/giveaway-rules/VAL-GW-LAU
 
 ## 5. Marketing consent and the SubSlush list
 
-The ~100 SubSlush addresses are **existing customers of the predecessor business**. The migration announcement is sent under that relationship, from `subslush.com`, and it **asks them to opt in to the Valstara list rather than assuming it**. An address that does not opt in is not migrated.
+The ~100 SubSlush addresses are **existing customers of the predecessor business**. The founder sends the announcement manually under that relationship, outside the Valstara system and its email providers (ADR-028). It **asks them to opt in to the Valstara list rather than assuming it**: a recipient joins only by signing up through the normal double opt-in. The SubSlush list is never imported.
 
 That is a stricter reading than the soft-opt-in rules of some jurisdictions require. It is the right one for a brand whose entire proposition is trustworthiness, and it costs perhaps a few dozen addresses.
 

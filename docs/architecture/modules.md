@@ -117,7 +117,7 @@ valstara-prelaunch/
 | Module | Wraps | Declares |
 |---|---|---|
 | **email/providers/resend** | Resend | Transactional · `send.valstara.com` · per-message idempotency |
-| **email/providers/brevo** | Brevo | Broadcast · `mail.valstara.com` and `subslush.com` · list sync · priced per send |
+| **email/providers/brevo** | Brevo | Broadcast · `mail.valstara.com` · list sync · priced per send |
 
 Both implement the same interface and **declare their capabilities** rather than having them assumed: `supports_broadcast`, `supports_contact_sync`, `sending_domain`, `daily_free_cap`, `webhook_events`. The acceptance test for the abstraction is the same one the storefront uses: **swapping a provider touches its own module and a config entry, and nothing else.**
 

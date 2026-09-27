@@ -66,7 +66,6 @@ Everything else announces itself. These two look exactly like ordinary underperf
 | Failure | Detection | Fallback | Visitor sees | Alert |
 |---|---|---|---|---|
 | **★ Deliverability degrades on `send.`** | Bounce and complaint rates; verification rate | **A domain reputation problem is a business emergency, not a technical one.** Pause non-essential sends, investigate immediately | Missing confirmation mail | **P1** |
-| **★ SubSlush migration send lands in spam** | Open and click rates per batch | **Stop between batches.** The send is staged by recency precisely so this is catchable after batch one rather than after all of it | Nothing | **P1** |
 | Brevo unavailable or over quota | API errors | Broadcast delays; **transactional mail is unaffected, which is the entire reason the providers are split** | A late weekly update | P2 |
 | Free-tier cliff hit mid-campaign | Quota warnings; a daily projection against the cap | **Pre-empted, not handled** — the upgrade happens before the giveaway opens, and the projection alerts a week ahead | Nothing, if pre-empted | **P1** if hit |
 | Contact sync to Brevo fails | Sync job result | **PostgreSQL is the source of truth**; the sync is resumable and idempotent on the normalised email | Nothing | P2 |
