@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import type { QueuedEmailRow } from '../src/server/db/email.ts';
+import { emailCopy } from '../src/copy/email.ts';
+import { memberStatusCopy } from '../src/copy/member-status.ts';
 import { presentReferralStatus } from '../src/server/referral/status-presentation.ts';
 import type { ReferralStatus } from '../src/server/referral/status.ts';
 import { prepareDispatchMessage } from '../src/server/email/service.ts';
@@ -120,6 +122,31 @@ test('E8-03 registers seven real transactional renderers with HTML and plain tex
 });
 
 test('E8-03 required links and plain-text parity hold for each template', async () => {
+  const expectedParagraphs: Record<string, readonly string[]> = {
+    verification_test: [emailCopy.verify.firstLine, emailCopy.verify.body],
+    verification_reminder: [
+      emailCopy.reminder.firstLine,
+      emailCopy.reminder.body,
+    ],
+    welcome: [
+      emailCopy.welcome.firstLine,
+      emailCopy.welcome.body,
+      memberStatusCopy.rewards.intro,
+    ],
+    milestone_reached: [
+      emailCopy.milestone.firstLine(1),
+      emailCopy.milestone.body,
+    ],
+    status_link: [emailCopy.statusLink.firstLine, emailCopy.statusLink.body],
+    giveaway_entry_receipt: [
+      emailCopy.receipt.firstLine,
+      emailCopy.receipt.count(6, rulesVersion),
+    ],
+    giveaway_winner: [
+      emailCopy.winner.firstLine,
+      emailCopy.winner.deadline(deadline),
+    ],
+  };
   for (const { template, payload, verified } of cases) {
     const renderer = renderers.get(template);
     assert.ok(renderer, template);
@@ -134,6 +161,18 @@ test('E8-03 required links and plain-text parity hold for each template', async 
     assert.match(message.from, /@send\.valstara\.com/u);
     assert.ok(message.subject.length > 8);
     assert.ok(message.html);
+    const paragraphs = expectedParagraphs[template];
+    assert.ok(paragraphs, template);
+    assert.deepEqual(
+      message.text.split('\n\n').slice(0, paragraphs.length),
+      paragraphs,
+      `${template} plain-text prose`,
+    );
+    assert.deepEqual(
+      [...message.html.matchAll(/<p>([^<]*)<\/p>/gu)].map((match) => match[1]),
+      paragraphs,
+      `${template} HTML prose`,
+    );
     const pageUrl = new URL('/unsubscribe', baseUrl);
     pageUrl.searchParams.set('t', 'unsubscribe-signature');
     assert.ok(message.text.includes(pageUrl.toString()), template);
@@ -159,6 +198,13 @@ test('E8-03 required links and plain-text parity hold for each template', async 
     }
     assert.equal(message.text.includes('/me?t='), verified, template);
     assert.equal(message.html.includes('/me?t='), verified, template);
+    if (template === 'welcome') {
+      const trustUrl = new URL('/legit', baseUrl).toString();
+      assert.ok(message.text.includes(`${emailCopy.trust}: ${trustUrl}`));
+      assert.ok(
+        message.html.includes(`<a href="${trustUrl}">${emailCopy.trust}</a>`),
+      );
+    }
     if (!verified) {
       assert.ok(message.text.includes('/verify?token=verify-signature'));
       assert.ok(message.html.includes('/verify?token=verify-signature'));
@@ -191,6 +237,20 @@ test('E8-03 verification begins with its purpose; milestone distinguishes held a
 
 test('E8-03 welcome and milestone use the same referral presentation as /me', async () => {
   const view = presentReferralStatus(referralStatus);
+  assert.deepEqual(
+    view.fields.map(({ label, value }) => [label, value]),
+    [
+      [
+        memberStatusCopy.authenticated.status,
+        memberStatusCopy.authenticated.statusValues.verified,
+      ],
+      [memberStatusCopy.authenticated.confirmedReferrals, '3'],
+      [memberStatusCopy.authenticated.rank, '4'],
+      [memberStatusCopy.authenticated.tier, '1'],
+      [memberStatusCopy.authenticated.wave, 'wave-2'],
+      [memberStatusCopy.authenticated.entries, '6'],
+    ],
+  );
   for (const template of ['welcome', 'milestone_reached']) {
     const message = await renderers.get(template)!.render({
       email: 'reader@example.test',
@@ -200,7 +260,9 @@ test('E8-03 welcome and milestone use the same referral presentation as /me', as
     });
     for (const field of view.fields) {
       assert.ok(message.text.includes(`${field.label}: ${field.value}`));
-      assert.ok(message.html?.includes(field.value));
+      assert.ok(
+        message.html?.includes(`<li>${field.label}: ${field.value}</li>`),
+      );
     }
     for (const reward of view.rewards) {
       assert.ok(
@@ -213,9 +275,9 @@ test('E8-03 welcome and milestone use the same referral presentation as /me', as
   }
   const memberPage = readFileSync('src/pages/me.astro', 'utf8');
   assert.match(memberPage, /presentReferralStatus\(dashboardStatus\)/u);
-  for (const field of Object.keys(view.values)) {
-    assert.ok(memberPage.includes(`dashboardView.values.${field}`));
-  }
+  assert.match(memberPage, /dashboardView\.fields\.map\(\(field\) =>/u);
+  assert.match(memberPage, /<dt>\{field\.label\}<\/dt>/u);
+  assert.match(memberPage, /<dd[^>]*>\s*\{field\.value\}\s*<\/dd>/u);
 });
 
 test('E8-03 receipt and winner use immutable rules links and the winner deadline', async () => {

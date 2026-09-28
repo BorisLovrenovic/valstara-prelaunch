@@ -117,34 +117,14 @@ const dashboardView =
         <p>{memberStatusCopy.authenticated.body}</p>
 
         <dl class="member-status-summary">
-          <div>
-            <dt>{memberStatusCopy.authenticated.status}</dt>
-            <dd>{dashboardView.values.subscriberStatus}</dd>
-          </div>
-          <div>
-            <dt>{memberStatusCopy.authenticated.confirmedReferrals}</dt>
-            <dd class="tabular-figure">
-              {dashboardView.values.confirmedReferrals}
-            </dd>
-          </div>
-          <div>
-            <dt>{memberStatusCopy.authenticated.rank}</dt>
-            <dd class="tabular-figure">{dashboardView.values.ownRank}</dd>
-          </div>
-          <div>
-            <dt>{memberStatusCopy.authenticated.tier}</dt>
-            <dd class="tabular-figure">{dashboardView.values.tier}</dd>
-          </div>
-          <div>
-            <dt>{memberStatusCopy.authenticated.wave}</dt>
-            <dd>{dashboardView.values.accessWindow}</dd>
-          </div>
-          <div>
-            <dt>{memberStatusCopy.authenticated.entries}</dt>
-            <dd class="tabular-figure">
-              {dashboardView.values.giveawayEntries}
-            </dd>
-          </div>
+          {dashboardView.fields.map((field) => (
+            <div>
+              <dt>{field.label}</dt>
+              <dd class:list={[field.tabular && 'tabular-figure']}>
+                {field.value}
+              </dd>
+            </div>
+          ))}
         </dl>
 
         <section class="member-status-section">

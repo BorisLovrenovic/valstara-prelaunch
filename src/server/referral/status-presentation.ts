@@ -23,20 +23,32 @@ export function presentReferralStatus(status: ReferralStatus) {
       {
         label: memberStatusCopy.authenticated.status,
         value: values.subscriberStatus,
+        tabular: false,
       },
       {
         label: memberStatusCopy.authenticated.confirmedReferrals,
         value: values.confirmedReferrals,
+        tabular: true,
       },
-      { label: memberStatusCopy.authenticated.rank, value: values.ownRank },
-      { label: memberStatusCopy.authenticated.tier, value: values.tier },
+      {
+        label: memberStatusCopy.authenticated.rank,
+        value: values.ownRank,
+        tabular: true,
+      },
+      {
+        label: memberStatusCopy.authenticated.tier,
+        value: values.tier,
+        tabular: true,
+      },
       {
         label: memberStatusCopy.authenticated.wave,
         value: values.accessWindow,
+        tabular: false,
       },
       {
         label: memberStatusCopy.authenticated.entries,
         value: values.giveawayEntries,
+        tabular: true,
       },
     ],
     referralLink: status.referralLink,
