@@ -16,11 +16,7 @@ export interface SubscriberMaintenanceRepository {
     now: Date,
     limit: number,
   ): Promise<readonly DueVerificationReminder[]>;
-  queueVerificationReminder(
-    id: string,
-    subscriberId: string,
-    businessKey: string,
-  ): Promise<number>;
+  lockPendingSubscriber(subscriberId: string): Promise<boolean>;
 }
 
 export function createSubscriberMaintenanceRepository(
@@ -78,19 +74,12 @@ export function createSubscriberMaintenanceRepository(
       );
     },
 
-    async queueVerificationReminder(id, subscriberId, businessKey) {
-      return database.execute({
-        text: `
-          INSERT INTO email_send (
-            id, subscriber_id, template, provider, business_key, state
-          )
-          SELECT $1, id, 'verification_reminder', 'resend', $3, 'queued'
-          FROM subscriber
-          WHERE id = $2 AND status = 'pending'
-          ON CONFLICT (business_key) DO NOTHING
-        `,
-        values: [id, subscriberId, businessKey],
+    async lockPendingSubscriber(subscriberId) {
+      const row = await database.readOne<{ status: string }>({
+        text: 'SELECT status FROM subscriber WHERE id = $1 FOR UPDATE',
+        values: [subscriberId],
       });
+      return row?.status === 'pending';
     },
   };
 }

@@ -180,6 +180,8 @@ export async function assertStack() {
     'ADMIN_CREDENTIAL',
     'ADMIN_TOTP_SECRET',
     'DATABASE_URL',
+    'EMAIL_BASE_URL',
+    'EMAIL_TOKEN_SECRET',
     'IP_PREFIX_PEPPER',
     'RESEND_API_KEY',
     'RESEND_TEST_RECIPIENT',

@@ -16,19 +16,6 @@ export interface SubscriberIdentity {
   readonly status: string;
 }
 
-export interface VerificationTokenInsert {
-  readonly id: string;
-  readonly subscriberId: string;
-  readonly tokenHash: Buffer;
-  readonly expiresAt: Date;
-}
-
-export interface QueuedVerificationEmailInsert {
-  readonly id: string;
-  readonly subscriberId: string;
-  readonly businessKey: string;
-}
-
 export interface SubscriberRepository {
   /** Inserts a `pending` row, doing nothing on the `email_normalised` conflict; returns rows affected. */
   insertPending(input: PendingSubscriberInsert): Promise<number>;
@@ -36,10 +23,6 @@ export interface SubscriberRepository {
   setPendingMarketingOptIn(
     subscriberId: string,
     version: string,
-  ): Promise<void>;
-  insertVerificationToken(input: VerificationTokenInsert): Promise<void>;
-  insertQueuedVerificationEmail(
-    input: QueuedVerificationEmailInsert,
   ): Promise<void>;
 }
 
@@ -98,42 +81,6 @@ export function createSubscriberRepository(
           WHERE id = $1 AND status = 'pending' AND marketing_consent_at IS NULL
         `,
         values: [subscriberId, version],
-      });
-    },
-    async insertVerificationToken(input) {
-      await database.execute({
-        text: `
-          INSERT INTO verification_token (
-            id,
-            subscriber_id,
-            token_hash,
-            purpose,
-            expires_at
-          )
-          VALUES ($1, $2, $3, 'verify', $4)
-        `,
-        values: [
-          input.id,
-          input.subscriberId,
-          input.tokenHash,
-          input.expiresAt,
-        ],
-      });
-    },
-    async insertQueuedVerificationEmail(input) {
-      await database.execute({
-        text: `
-          INSERT INTO email_send (
-            id,
-            subscriber_id,
-            template,
-            provider,
-            business_key,
-            state
-          )
-          VALUES ($1, $2, 'verification_test', 'resend', $3, 'queued')
-        `,
-        values: [input.id, input.subscriberId, input.businessKey],
       });
     },
   };

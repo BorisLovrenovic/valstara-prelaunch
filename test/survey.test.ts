@@ -10,12 +10,22 @@ import {
 } from '../src/server/survey/questions.ts';
 import { createSurveyService } from '../src/server/survey/service.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
+import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
 const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const now = new Date('2026-09-22T12:00:00.000Z');
+const tokenIds = new Map<string, string>();
+
+function tokenValue(label: string): string {
+  const digest = createHash('sha256').update(label).digest('hex');
+  const id = `${digest.slice(0, 8)}-${digest.slice(8, 12)}-${digest.slice(12, 16)}-${digest.slice(16, 20)}-${digest.slice(20, 32)}`;
+  const token = deriveEmailToken(id, process.env.EMAIL_TOKEN_SECRET!);
+  tokenIds.set(token, id);
+  return token;
+}
 
 interface DatabaseFixture {
   readonly applicationDatabase: DatabasePool;
@@ -95,7 +105,7 @@ async function seedStatusToken(
       VALUES ($1, $2, $3, 'status', $4)
     `,
     values: [
-      randomUUID(),
+      tokenIds.get(token)!,
       subscriberId,
       createHash('sha256').update(token).digest(),
       new Date('2026-10-22T12:00:00.000Z'),
@@ -116,7 +126,7 @@ async function seedConsumedVerificationToken(
       VALUES ($1, $2, $3, 'verify', $4, $5)
     `,
     values: [
-      randomUUID(),
+      tokenIds.get(token)!,
       subscriberId,
       createHash('sha256').update(token).digest(),
       new Date('2026-10-22T12:00:00.000Z'),
@@ -157,7 +167,7 @@ test('answers validate and persist against their named version across a question
       fixture.database,
       'verified',
     );
-    const earlierToken = 'earlier-version-survey-status-token';
+    const earlierToken = tokenValue('earlier-version-survey-status-token');
     await seedStatusToken(fixture.database, earlierSubscriberId, earlierToken);
     const capture = createSurveyService(fixture.applicationDatabase, {
       clock: () => now,
@@ -193,7 +203,9 @@ test('answers validate and persist against their named version across a question
       fixture.database,
       'verified',
     );
-    const currentToken = 'changed-current-version-survey-status-token';
+    const currentToken = tokenValue(
+      'changed-current-version-survey-status-token',
+    );
     await seedStatusToken(fixture.database, currentSubscriberId, currentToken);
     assert.equal(
       await capture({
@@ -272,7 +284,7 @@ test('a full skip is stored explicitly and does not denormalise categories', asy
   const fixture = await createDatabaseFixture();
   try {
     const subscriberId = await insertSubscriber(fixture.database, 'verified');
-    const token = 'survey-skip-status-token';
+    const token = tokenValue('survey-skip-status-token');
     await seedStatusToken(fixture.database, subscriberId, token);
     const capture = createSurveyService(fixture.applicationDatabase, {
       clock: () => now,
@@ -312,7 +324,9 @@ test('a full skip is stored explicitly and does not denormalise categories', asy
       },
     );
 
-    const verificationReplayToken = 'survey-skip-verification-replay';
+    const verificationReplayToken = tokenValue(
+      'survey-skip-verification-replay',
+    );
     await seedConsumedVerificationToken(
       fixture.database,
       subscriberId,
@@ -336,7 +350,7 @@ test('an unverified subscriber cannot submit a survey', async () => {
   const fixture = await createDatabaseFixture();
   try {
     const subscriberId = await insertSubscriber(fixture.database, 'pending');
-    const token = 'pending-survey-status-token';
+    const token = tokenValue('pending-survey-status-token');
     await seedStatusToken(fixture.database, subscriberId, token);
     const capture = createSurveyService(fixture.applicationDatabase, {
       clock: () => now,
@@ -360,7 +374,7 @@ test('resubmission replaces one response, updates the handoff field, and audits 
   const fixture = await createDatabaseFixture();
   try {
     const subscriberId = await insertSubscriber(fixture.database, 'verified');
-    const token = 'replacement-survey-status-token';
+    const token = tokenValue('replacement-survey-status-token');
     await seedStatusToken(fixture.database, subscriberId, token);
     const capture = createSurveyService(fixture.applicationDatabase, {
       clock: () => now,
@@ -438,7 +452,7 @@ test('survey.enabled off is graceful and writes no survey response', async () =>
   const fixture = await createDatabaseFixture();
   try {
     const subscriberId = await insertSubscriber(fixture.database, 'verified');
-    const token = 'disabled-survey-status-token';
+    const token = tokenValue('disabled-survey-status-token');
     await seedStatusToken(fixture.database, subscriberId, token);
     const capture = createSurveyService(fixture.applicationDatabase, {
       clock: () => now,
@@ -462,7 +476,7 @@ test('invalid versions write nothing and per-subscriber attempts are bounded', a
   const fixture = await createDatabaseFixture();
   try {
     const subscriberId = await insertSubscriber(fixture.database, 'verified');
-    const token = 'rate-limited-survey-status-token';
+    const token = tokenValue('rate-limited-survey-status-token');
     await seedStatusToken(fixture.database, subscriberId, token);
     const capture = createSurveyService(fixture.applicationDatabase, {
       clock: () => now,

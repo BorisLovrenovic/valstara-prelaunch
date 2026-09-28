@@ -17,6 +17,8 @@ import type { DatabasePool, DatabaseConnection } from '../db/pool.ts';
 import { createRateLimitBucketRepository } from '../db/rate-limit-bucket.ts';
 import { createFraudFlagRepository } from '../db/fraud-flag.ts';
 import { withTransaction } from '../db/transaction.ts';
+import { createEmailQueue } from '../email/queue.ts';
+import { createEmailRepository } from '../db/email.ts';
 import type { FlagService } from '../flags/types.ts';
 import { createVerificationService } from '../verification/service.ts';
 
@@ -184,15 +186,23 @@ export function createAwardService(
     selection: AwardSelection,
     now: Date,
   ): Promise<void> {
-    const inserted = await createGiveawayAwardRepository(
+    const businessKey = `giveaway-winner:${drawId}:${selection.entry_id}`;
+    if (await createEmailRepository(connection).findByBusinessKey(businessKey))
+      return;
+    const status = await createVerificationService(connection, {
+      clock: () => now,
+    }).issue(selection.subscriber_id, 'status');
+    const inserted = await createEmailQueue(database, () => now).queue(
+      {
+        subscriberId: selection.subscriber_id,
+        businessKey,
+        template: 'giveaway_winner',
+        provider: 'resend',
+        payload: { award_id: awardId, token_id: status.id },
+      },
       connection,
-    ).queueNotice({
-      id: randomUUID(),
-      subscriberId: selection.subscriber_id,
-      key: `giveaway-winner:${drawId}:${selection.entry_id}`,
-      at: now,
-    });
-    if (inserted === 1) {
+    );
+    if (inserted) {
       await audit(connection, 'giveaway.award_notified', awardId, {
         draw_id: drawId,
         selection_position: Number(selection.position),

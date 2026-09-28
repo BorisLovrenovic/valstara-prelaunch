@@ -64,7 +64,11 @@ test('the integrated QA privacy and accessibility commands are runnable scripts'
 
   assert.equal(
     packageJson.scripts['test:a11y'],
-    'node --test test/accessibility.test.mjs',
+    'EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test test/accessibility.test.mjs',
+  );
+  assert.match(
+    packageJson.scripts['test:privacy'],
+    /EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http:\/\/localhost:4321 node --test/u,
   );
   assert.match(packageJson.scripts['test:privacy'], /security-gates\.mjs/u);
   assert.match(

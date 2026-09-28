@@ -12,6 +12,7 @@ import { createGiveawayEntryReconciliationJob } from '../src/server/giveaway/rec
 import { currentRulesFromFiles } from '../src/server/giveaway/current-rules-file.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
 import { createSignupService } from '../src/server/subscriber/signup.ts';
+import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 
 const baseUrl =
   process.env.TEST_DATABASE_URL ??
@@ -449,7 +450,8 @@ test('verification transaction credits the verified person and their referrer on
     const referrer = await subscriber(f.owner, 'verified');
     const referred = await subscriber(f.owner, 'pending');
     const edgeId = randomUUID();
-    const token = 'e7-03-verification-token';
+    const tokenId = randomUUID();
+    const token = deriveEmailToken(tokenId, process.env.EMAIL_TOKEN_SECRET!);
     await f.owner.execute({
       text: `INSERT INTO referral_edge (id, referrer_id, referred_id, state, reward_state)
              VALUES ($1, $2, $3, 'attributed', 'none')`,
@@ -460,7 +462,7 @@ test('verification transaction credits the verified person and their referrer on
                (id, subscriber_id, token_hash, purpose, expires_at)
              VALUES ($1, $2, $3, 'verify', $4)`,
       values: [
-        randomUUID(),
+        tokenId,
         referred,
         createHash('sha256').update(token).digest(),
         new Date('2026-10-02T12:00:00.000Z'),
@@ -482,13 +484,17 @@ test('verification transaction credits the verified person and their referrer on
 
     await flags.set('giveaway.open', false, 'e7-03-test');
     const later = await subscriber(f.owner, 'pending');
-    const laterToken = 'e7-03-flag-off-token';
+    const laterTokenId = randomUUID();
+    const laterToken = deriveEmailToken(
+      laterTokenId,
+      process.env.EMAIL_TOKEN_SECRET!,
+    );
     await f.owner.execute({
       text: `INSERT INTO verification_token
                (id, subscriber_id, token_hash, purpose, expires_at)
              VALUES ($1, $2, $3, 'verify', $4)`,
       values: [
-        randomUUID(),
+        laterTokenId,
         later,
         createHash('sha256').update(laterToken).digest(),
         new Date('2026-10-02T12:00:00.000Z'),

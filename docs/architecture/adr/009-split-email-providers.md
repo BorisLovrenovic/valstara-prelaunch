@@ -23,3 +23,5 @@ The campaign sends two very different kinds of mail: verification, which must ar
 Two vendor integrations behind one interface (`docs/modules/email.md`), and a config test asserting the two never converge on one domain or provider.
 
 **Free-tier cliffs must be pre-empted**: Resend free is 100/day, Brevo free is 300/day. **Upgrade before the giveaway opens, not when the limits hit** — a daily projection alerts at a week's headroom.
+
+**E8-01 dispatch sequencing (founder-authorised 2026-09-27):** The email service takes injected provider and renderer registries. Missing registrations leave queued rows untouched and visible in a health count. E8-02 registers Resend and removes the legacy direct test sender; E8-03 registers the real renderers. Retry content is reconstructed from reference-only payloads and HMAC-derived token IDs under `EMAIL_TOKEN_SECRET`; only token hashes are stored. Secret rotation invalidates outstanding links.

@@ -471,7 +471,7 @@ test('through the application role, only a pending subscriber receives a newly q
     const emailCount = await fixture.database.readOne<{ count: string }>({
       text: 'SELECT count(*)::text AS count FROM email_send',
     });
-    assert.equal(tokenCount?.count, '1');
+    assert.equal(tokenCount?.count, '2');
     assert.equal(emailCount?.count, '1');
   } finally {
     await fixture.dispose();

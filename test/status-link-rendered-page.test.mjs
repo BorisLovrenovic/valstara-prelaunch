@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import { Pool } from 'pg';
 import { seedGiveawayEntryRows } from './helpers/giveaway-entry-rows.ts';
+import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 
 const executeFile = promisify(execFile);
 const defaultDatabaseUrl =
@@ -102,8 +103,16 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
   const fixture = await createDatabaseFixture();
   const subscriberId = randomUUID();
   const otherSubscriberId = randomUUID();
-  const expiredToken = 'rendered-expired-status-token';
-  const validToken = 'rendered-valid-status-token';
+  const expiredTokenId = randomUUID();
+  const validTokenId = randomUUID();
+  const expiredToken = deriveEmailToken(
+    expiredTokenId,
+    process.env.EMAIL_TOKEN_SECRET,
+  );
+  const validToken = deriveEmailToken(
+    validTokenId,
+    process.env.EMAIL_TOKEN_SECRET,
+  );
   await fixture.database.query(
     `
       INSERT INTO subscriber (
@@ -159,7 +168,7 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
       VALUES ($1, $2, $3, 'status', $4)
     `,
     [
-      randomUUID(),
+      expiredTokenId,
       subscriberId,
       createHash('sha256').update(expiredToken).digest(),
       new Date('2000-01-01T00:00:00.000Z'),
@@ -173,7 +182,7 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
       VALUES ($1, $2, $3, 'status', $4)
     `,
     [
-      randomUUID(),
+      validTokenId,
       subscriberId,
       createHash('sha256').update(validToken).digest(),
       new Date('2099-01-01T00:00:00.000Z'),

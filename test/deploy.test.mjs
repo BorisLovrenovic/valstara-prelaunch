@@ -173,6 +173,7 @@ async function compose(project, environment, arguments_) {
         productionComposeUrl.pathname,
         'logs',
         'migrate',
+        'app',
       ],
       { env: environment },
     );
@@ -343,6 +344,8 @@ test(
       P1_ALERT_WEBHOOK_TOKEN: 'local-production-drill-alert-token',
       P1_ALERT_WEBHOOK_URL: 'https://alerts.example.test/valstara',
       REFERRAL_SIGNING_SECRET: 'local-production-drill-referral-secret',
+      EMAIL_BASE_URL: 'https://valstara.com',
+      EMAIL_TOKEN_SECRET: 'local-production-drill-email-token-secret-32-chars',
       SITE_HOST: 'valstara.com',
       UMAMI_APP_SECRET: 'local-production-drill-umami-secret',
       UMAMI_DB_PASSWORD: 'local-production-drill-umami-password',

@@ -11,8 +11,9 @@ Queue, send, retry, suppress, and reconcile — across two providers on two send
 ## Exposed interface
 ```ts
 interface EmailService {
-  queue(template: TemplateId, subscriberId: string, businessKey: string, data: object): Promise<void>
+  queue(input: { template: TemplateId; subscriberId: string; businessKey: string; provider: ProviderId; payload: ReferencePayload }, transaction?: DatabaseConnection): Promise<boolean>
   dispatch(limit: number): Promise<DispatchSummary>     // batch-capped
+  health(): Promise<{ unregisteredQueued: number }>
   suppress(emailNormalised: string, reason: SuppressionReason, source: string): Promise<void>
   isSuppressed(emailNormalised: string): Promise<boolean>
   ingestWebhook(provider: ProviderId, payload: unknown, signature: string): Promise<void>
@@ -23,21 +24,31 @@ interface EmailProvider {
   readonly id: ProviderId
   readonly sendingDomain: string
   readonly capabilities: { broadcast: boolean; contactSync: boolean; dailyFreeCap: number }
-  send(message: Message): Promise<{ providerMessageId: string }>
+  send(input: { message: Message; idempotencyKey: string; headers: Record<string, string> }): Promise<{ providerMessageId: string }>
 }
 ```
 
+E8-01 dispatch takes injected `EmailProvider` and template-renderer registries.
+The renderer produces a typed `Message` with a required plain-text body.
+Its delivered subset is `queue({ template, subscriberId, businessKey, provider,
+payload }, transaction?)`, `dispatch(limit)` and `health()`; the remaining
+target-state methods arrive with their owning tickets. `queue()` returns whether
+it inserted a row, so the award workflow audits a notification only once.
+
 ## Rules
-- **E7-06 queues provisional winner notices directly in `email_send`**, following the existing verification and status-link pattern. Each uses a deterministic business key; concurrent repeats are no-ops. The recorded notification time starts the award response deadline. E8-01 takes over all existing direct inserts (verification, status link and giveaway winner notification) through `queue()` and owns operational dispatch. E8-03 supplies the seventh template, with a plain-text alternative, status link, response deadline and governing rules-version link.
+- **E7-06's provisional winner notices use `EmailService.queue()`**, as do verification, reminder and status-link notices. Winner and reminder keys are deterministic per business event, so concurrent repeats are no-ops. The recorded notification time starts the award response deadline. E8-03 supplies the seventh renderer, with a plain-text alternative, status link, response deadline and governing rules-version link.
 - **`businessKey` is unique.** One email per key, enforced by the database. A retry with the same key never produces a second send.
+- Verify, status and unsubscribe tokens derive from token IDs with `EMAIL_TOKEN_SECRET`; only their hashes persist. Queue payloads contain reference IDs, never an address, plaintext token or copy. The service reconstructs identical tokens and messages for retries. Rotation invalidates outstanding tokens.
+- E8-01 dispatch uses injected provider and template-renderer registries. An unregistered provider or renderer leaves the row queued, consumes no attempt, and is counted in the health signal. Ready rows are selected before unregistered or paused rows, so blocked backlog cannot starve registered mail. E8-02 registers Resend and removes the direct E1-11 test sender; E8-03 registers real renderers.
+- Dispatch holds a bounded set of queued rows with `FOR UPDATE SKIP LOCKED` and retries provider failures using the same business key and deterministic message. Backoff starts at one minute, doubles to a one-hour cap, and gives up after five attempts with a sanitized error code and an operator task. Expired or invalidated tokens fail terminally before a provider call.
 - **Suppression is checked at dispatch, not only at queue time.** A suppression written after queueing must still stop the send — that is the whole point of checking twice.
-- **Broadcast (marketing) sends also re-check current marketing consent at dispatch** (ADR-027). A withdrawal written after queueing stops a broadcast but never a transactional message. An unsubscribe from a marketing message withdraws consent; an unsubscribe from a transactional message, or leaving the waitlist, writes `suppression`.
+- **Broadcast (marketing) sends also require a verified recipient and re-check current marketing consent at dispatch** (ADR-027). A withdrawal written after queueing stops a broadcast but never a transactional message. An unsubscribe from a marketing message withdraws consent; an unsubscribe from a transactional message, or leaving the waitlist, writes `suppression`.
 - Each queued message has an `unsubscribe`-purpose token bound to its `email_send` row. The binding resolves the originating template server-side when the token is consumed; a request body never supplies the recorded source.
 - **A send failure never rolls back or blocks the caller's transaction.** The subscriber row is committed first, always.
 - **Transactional and broadcast use different providers and different domains** — asserted by a config test, because the isolation is the entire rationale.
 - **No sending domain outside `valstara.com` is configured** (ADR-028). The SubSlush announcement is a manual founder send, not a module path.
 - **Vendor SDKs live only in `providers/`.** Lint-enforced.
-- Every message carries a plain-text alternative and a working RFC 8058 one-click unsubscribe.
+- E8-01's `Message` requires a plain-text body. Dispatch refuses a missing text alternative or bound `unsubscribe` token, and builds RFC 8058 `List-Unsubscribe` and `List-Unsubscribe-Post` headers from the token and a configured base URL. E6-06 proves the one-click route works; E8-03 supplies real plain-text alternatives for every template.
 - **Webhook signatures are verified before the payload is parsed**, and ingestion is idempotent on the provider event id.
 - `quotaProjection()` alerts at a week's headroom. Resend free is 100/day, Brevo free is 300/day — **upgrade before the giveaway opens, not when the limits hit.**
 

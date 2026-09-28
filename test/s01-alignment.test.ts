@@ -13,6 +13,7 @@ import { runMigrations } from '../src/server/db/migration.ts';
 import { createMarketingService } from '../src/server/subscriber/marketing.ts';
 import { createSignupService } from '../src/server/subscriber/signup.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
+import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 
 const baseUrl =
   process.env.TEST_DATABASE_URL ??
@@ -24,6 +25,15 @@ const migrationDirectory = fileURLToPath(
 );
 const signupTime = new Date('2026-09-25T10:00:00.000Z');
 const verificationTime = new Date('2026-09-25T10:05:00.000Z');
+const tokenIds = new Map<string, string>();
+
+function tokenValue(label: string): string {
+  const digest = createHash('sha256').update(label).digest('hex');
+  const id = `${digest.slice(0, 8)}-${digest.slice(8, 12)}-${digest.slice(12, 16)}-${digest.slice(16, 20)}-${digest.slice(20, 32)}`;
+  const token = deriveEmailToken(id, process.env.EMAIL_TOKEN_SECRET!);
+  tokenIds.set(token, id);
+  return token;
+}
 
 async function fixture(migrate = true) {
   const name = `valstara_s01_${randomUUID().replaceAll('-', '')}`;
@@ -102,7 +112,7 @@ async function seedStatusToken(
     text: `INSERT INTO verification_token (id, subscriber_id, token_hash, purpose, expires_at)
       VALUES ($1, $2, $3, 'status', $4)`,
     values: [
-      randomUUID(),
+      tokenIds.get(token)!,
       subscriberId,
       createHash('sha256').update(token).digest(),
       expiresAt,
@@ -387,7 +397,7 @@ test('marketing route grants and withdraws consent without changing waitlist or 
     await seedStatusToken(
       f.owner,
       id,
-      'valid-status-token',
+      tokenValue('valid-status-token'),
       new Date('2026-10-25T00:00:00.000Z'),
     );
     const flags = { isEnabled: async () => true };
@@ -412,7 +422,9 @@ test('marketing route grants and withdraws consent without changing waitlist or 
       text: 'SELECT count(*)::text AS count FROM referral_edge WHERE referrer_id = $1',
       values: [id],
     });
-    const responseOn = await route(routeContext('valid-status-token', 'on'));
+    const responseOn = await route(
+      routeContext(tokenValue('valid-status-token'), 'on'),
+    );
     assert.equal(responseOn.status, 200);
     assert.equal(
       (await subscriberRow(f.owner, id))?.marketing_consent_source,
@@ -422,7 +434,9 @@ test('marketing route grants and withdraws consent without changing waitlist or 
       (await subscriberRow(f.owner, id))?.marketing_consent_version,
       'v1',
     );
-    const responseOff = await route(routeContext('valid-status-token', 'off'));
+    const responseOff = await route(
+      routeContext(tokenValue('valid-status-token'), 'off'),
+    );
     assert.equal(responseOff.status, 200);
     assert.equal(
       (await subscriberRow(f.owner, id))?.marketing_consent_at,
@@ -475,7 +489,12 @@ test('marketing route treats tampered and expired tokens identically, protects T
   const f = await fixture();
   try {
     const id = await seedVerified(f.owner, 'token');
-    await seedStatusToken(f.owner, id, 'expired-token', verificationTime);
+    await seedStatusToken(
+      f.owner,
+      id,
+      tokenValue('expired-token'),
+      verificationTime,
+    );
     const service = createMarketingService(f.app, {
       flags: { isEnabled: async () => true },
       clock: () => verificationTime,
@@ -485,7 +504,9 @@ test('marketing route treats tampered and expired tokens identically, protects T
       change: service.change,
       ipPrefixPepper: 's01-route-pepper',
     });
-    const expired = await route(routeContext('expired-token', 'on'));
+    const expired = await route(
+      routeContext(tokenValue('expired-token'), 'on'),
+    );
     const tampered = await route(routeContext('tampered-token', 'on'));
     assert.equal(expired.status, 200);
     assert.equal(tampered.status, 200);
@@ -505,7 +526,7 @@ test('marketing route treats tampered and expired tokens identically, protects T
       ipPrefixPepper: 's01-route-pepper',
     });
     assert.equal(
-      (await rejected(routeContext('expired-token', 'on'))).status,
+      (await rejected(routeContext(tokenValue('expired-token'), 'on'))).status,
       400,
     );
     assert.equal(changed, false);
@@ -518,7 +539,9 @@ test('marketing route treats tampered and expired tokens identically, protects T
       }).change,
       ipPrefixPepper: 's01-route-pepper',
     });
-    const offResponse = await disabled(routeContext('expired-token', 'on'));
+    const offResponse = await disabled(
+      routeContext(tokenValue('expired-token'), 'on'),
+    );
     assert.equal(offResponse.status, 503);
     assert.equal((await offResponse.json()).error.code, 'unavailable');
     assert.equal(
@@ -537,7 +560,7 @@ test('marketing route applies database-backed limits and flags a recognised subs
     await seedStatusToken(
       f.owner,
       id,
-      'limited-token',
+      tokenValue('limited-token'),
       new Date('2026-10-25T00:00:00.000Z'),
     );
     const service = createMarketingService(f.app, {
@@ -550,15 +573,15 @@ test('marketing route applies database-backed limits and flags a recognised subs
       ipPrefixPepper: 's01-limited-pepper',
     });
     assert.equal(
-      (await route(routeContext('limited-token', 'on'))).status,
+      (await route(routeContext(tokenValue('limited-token'), 'on'))).status,
       200,
     );
     assert.equal(
-      (await route(routeContext('limited-token', 'off'))).status,
+      (await route(routeContext(tokenValue('limited-token'), 'off'))).status,
       200,
     );
     assert.equal(
-      (await route(routeContext('limited-token', 'on'))).status,
+      (await route(routeContext(tokenValue('limited-token'), 'on'))).status,
       429,
     );
     assert.equal(
@@ -587,7 +610,7 @@ test('a consent audit failure rolls back a member preference change', async () =
     await seedStatusToken(
       f.owner,
       id,
-      'rollback-token',
+      tokenValue('rollback-token'),
       new Date('2026-10-25T00:00:00.000Z'),
     );
     await f.owner.execute({
@@ -603,7 +626,7 @@ test('a consent audit failure rolls back a member preference change', async () =
       ipPrefixPepper: 's01-rollback-pepper',
     });
     assert.equal(
-      (await route(routeContext('rollback-token', 'on'))).status,
+      (await route(routeContext(tokenValue('rollback-token'), 'on'))).status,
       500,
     );
     assert.equal(
@@ -626,12 +649,12 @@ test('a consent audit failure rolls back verification and leaves the pending wor
           'example.test', 'pending', true, 'v1')`,
       values: [id],
     });
-    const token = 'audit-failure-verification-token';
+    const token = tokenValue('audit-failure-verification-token');
     await f.owner.execute({
       text: `INSERT INTO verification_token (id, subscriber_id, token_hash, purpose, expires_at)
         VALUES ($1, $2, $3, 'verify', $4)`,
       values: [
-        randomUUID(),
+        tokenIds.get(token)!,
         id,
         createHash('sha256').update(token).digest(),
         new Date('2026-10-01T00:00:00.000Z'),

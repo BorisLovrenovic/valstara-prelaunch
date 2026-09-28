@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      33,
+      36,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -252,6 +252,9 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0031-draw-ledger-closure.sql',
       '0032-giveaway-awards.sql',
       '0033-giveaway-award-offer.sql',
+      '0034-email-service.sql',
+      '0035-email-token-retention.sql',
+      '0036-email-suppression-read.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -290,6 +293,9 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0031-draw-ledger-closure.sql',
         '0032-giveaway-awards.sql',
         '0033-giveaway-award-offer.sql',
+        '0034-email-service.sql',
+        '0035-email-token-retention.sql',
+        '0036-email-suppression-read.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -421,10 +427,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          33,
+          36,
         );
 
-        assert.equal(appliedCount, 33);
+        assert.equal(appliedCount, 36);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -461,6 +467,9 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0031-draw-ledger-closure.sql',
             '0032-giveaway-awards.sql',
             '0033-giveaway-award-offer.sql',
+            '0034-email-service.sql',
+            '0035-email-token-retention.sql',
+            '0036-email-suppression-read.sql',
           ],
         );
       } finally {
@@ -617,7 +626,7 @@ test('unique keys reject duplicates at the database level', async () => {
     await database.execute({
       text: `
         INSERT INTO email_send (id, subscriber_id, template, provider, business_key, state)
-        VALUES ($1, $2, 'verification', 'resend', 'verify:example', 'queued')
+        VALUES ($1, $2, 'verification', 'resend', 'verify:example', 'sent')
       `,
       values: [emailSendId, referrerId],
     });
@@ -625,7 +634,7 @@ test('unique keys reject duplicates at the database level', async () => {
       database.execute({
         text: `
           INSERT INTO email_send (id, subscriber_id, template, provider, business_key, state)
-          VALUES ($1, $2, 'verification', 'resend', 'verify:example', 'queued')
+          VALUES ($1, $2, 'verification', 'resend', 'verify:example', 'sent')
         `,
         values: [randomUUID(), referrerId],
       }),
@@ -873,7 +882,7 @@ test('all unique constraints and the write-once trigger hold across seeded gener
           await database.execute({
             text: `
               INSERT INTO email_send (id, subscriber_id, template, provider, business_key, state)
-              VALUES ($1, $2, 'verification', 'resend', $3, 'queued')
+              VALUES ($1, $2, 'verification', 'resend', $3, 'sent')
             `,
             values: [emailSendId, subscriberId, businessKey],
           });
@@ -881,7 +890,7 @@ test('all unique constraints and the write-once trigger hold across seeded gener
             database.execute({
               text: `
                 INSERT INTO email_send (id, subscriber_id, template, provider, business_key, state)
-                VALUES ($1, $2, 'verification', 'resend', $3, 'queued')
+                VALUES ($1, $2, 'verification', 'resend', $3, 'sent')
               `,
               values: [duplicateEmailSendId, subscriberId, businessKey],
             }),

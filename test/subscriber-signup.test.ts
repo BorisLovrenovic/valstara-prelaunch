@@ -71,7 +71,7 @@ test('the Compose application role can complete the signup write path', async ()
   try {
     assert.equal((await signup(inputFor('role@example.test'))).kind, 'created');
     assert.equal(await rowCount(fixture.database, 'subscriber'), 1);
-    assert.equal(await rowCount(fixture.database, 'verification_token'), 1);
+    assert.equal(await rowCount(fixture.database, 'verification_token'), 2);
     assert.equal(await rowCount(fixture.database, 'email_send'), 1);
     await assert.rejects(
       fixture.applicationDatabase.execute({
@@ -137,7 +137,7 @@ test('a first signup creates a pending subscriber, one token, one queued email, 
     assert.equal(subscriber?.email, 'New.User@Example.test'); // raw preserved
     assert.equal(subscriber?.email_normalised, 'new.user@example.test');
 
-    assert.equal(await rowCount(fixture.database, 'verification_token'), 1);
+    assert.equal(await rowCount(fixture.database, 'verification_token'), 2);
     assert.equal(await rowCount(fixture.database, 'email_send'), 1);
     assert.equal(sent.length, 1);
   } finally {
@@ -241,7 +241,7 @@ test('a pending repeat inside the send window is throttled, and after the window
     const resent = await signup(inputFor('again@example.test'));
     assert.equal(resent.kind, 'existing');
     assert.equal(await rowCount(fixture.database, 'subscriber'), 1);
-    assert.equal(await rowCount(fixture.database, 'verification_token'), 2);
+    assert.equal(await rowCount(fixture.database, 'verification_token'), 4);
     assert.equal(await rowCount(fixture.database, 'email_send'), 2);
     assert.equal(sent.length, 2);
   } finally {
@@ -286,7 +286,7 @@ test('a send failure never rolls back the committed subscriber, token or queued 
     const outcome = await signup(inputFor('committed@example.test'));
     assert.equal(outcome.kind, 'created');
     assert.equal(await rowCount(fixture.database, 'subscriber'), 1);
-    assert.equal(await rowCount(fixture.database, 'verification_token'), 1);
+    assert.equal(await rowCount(fixture.database, 'verification_token'), 2);
     assert.equal(await rowCount(fixture.database, 'email_send'), 1);
   } finally {
     await fixture.dispose();

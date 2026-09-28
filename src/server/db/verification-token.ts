@@ -16,6 +16,7 @@ export interface VerificationTokenInsert {
  * `invalid` (a status link must never consume as a verify link).
  */
 export interface VerificationTokenClassification {
+  readonly id: string;
   readonly subscriber_id: string;
   readonly purpose: string;
   readonly consumed_at: Date | null;
@@ -87,7 +88,7 @@ export function createVerificationTokenRepository(
     async findByHash(tokenHash) {
       return database.readOne<VerificationTokenClassification>({
         text: `
-          SELECT subscriber_id, purpose, consumed_at, expires_at
+          SELECT id, subscriber_id, purpose, consumed_at, expires_at
           FROM verification_token
           WHERE token_hash = $1
         `,

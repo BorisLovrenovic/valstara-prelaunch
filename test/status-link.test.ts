@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
+import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 import {
   createStatusLinkRecoveryBoundary,
   createStatusLinkService,
@@ -14,6 +15,15 @@ const defaultDatabaseUrl =
 const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const now = new Date('2026-09-22T12:00:00.000Z');
+const tokenIds = new Map<string, string>();
+
+function tokenValue(label: string): string {
+  const hex = createHash('sha256').update(label).digest('hex');
+  const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+  const token = deriveEmailToken(id, process.env.EMAIL_TOKEN_SECRET!);
+  tokenIds.set(token, id);
+  return token;
+}
 
 interface DatabaseFixture {
   readonly applicationDatabase: DatabasePool;
@@ -84,6 +94,8 @@ async function seedStatusToken(
     readonly token: string;
   },
 ): Promise<void> {
+  const tokenId = tokenIds.get(input.token);
+  assert.ok(tokenId, 'fixture token must be HMAC-derived from its recorded id');
   await database.execute({
     text: `
       INSERT INTO verification_token (
@@ -92,7 +104,7 @@ async function seedStatusToken(
       VALUES ($1, $2, $3, 'status', $4)
     `,
     values: [
-      randomUUID(),
+      tokenId,
       input.subscriberId,
       createHash('sha256').update(input.token).digest(),
       input.expiresAt,
@@ -108,30 +120,39 @@ test('status bearer authentication returns only the token-bound subscriber and r
     await seedStatusToken(fixture.database, {
       expiresAt: new Date('2026-10-22T12:00:00.000Z'),
       subscriberId: firstSubscriber,
-      token: 'first-status-token',
+      token: tokenValue('first-status-token'),
     });
     await seedStatusToken(fixture.database, {
       expiresAt: new Date('2026-10-22T12:00:00.000Z'),
       subscriberId: secondSubscriber,
-      token: 'second-status-token',
+      token: tokenValue('second-status-token'),
     });
     const service = createStatusLinkService(fixture.applicationDatabase, {
       clock: () => now,
       flags: { isEnabled: async () => true },
     });
 
-    assert.deepEqual(await service.authenticate('first-status-token'), {
-      kind: 'authenticated',
-      subscriberId: firstSubscriber,
-    });
-    assert.deepEqual(await service.authenticate('first-status-token'), {
-      kind: 'authenticated',
-      subscriberId: firstSubscriber,
-    });
-    assert.notDeepEqual(await service.authenticate('first-status-token'), {
-      kind: 'authenticated',
-      subscriberId: secondSubscriber,
-    });
+    assert.deepEqual(
+      await service.authenticate(tokenValue('first-status-token')),
+      {
+        kind: 'authenticated',
+        subscriberId: firstSubscriber,
+      },
+    );
+    assert.deepEqual(
+      await service.authenticate(tokenValue('first-status-token')),
+      {
+        kind: 'authenticated',
+        subscriberId: firstSubscriber,
+      },
+    );
+    assert.notDeepEqual(
+      await service.authenticate(tokenValue('first-status-token')),
+      {
+        kind: 'authenticated',
+        subscriberId: secondSubscriber,
+      },
+    );
   } finally {
     await fixture.dispose();
   }
@@ -144,15 +165,19 @@ test('expired and tampered status tokens have the identical rejected authenticat
     await seedStatusToken(fixture.database, {
       expiresAt: now,
       subscriberId,
-      token: 'expired-status-token',
+      token: tokenValue('expired-status-token'),
     });
     const service = createStatusLinkService(fixture.applicationDatabase, {
       clock: () => now,
       flags: { isEnabled: async () => true },
     });
 
-    const expired = await service.authenticate('expired-status-token');
-    const tampered = await service.authenticate('tampered-status-token');
+    const expired = await service.authenticate(
+      tokenValue('expired-status-token'),
+    );
+    const tampered = await service.authenticate(
+      tokenValue('tampered-status-token'),
+    );
     assert.deepEqual(expired, { kind: 'rejected' });
     assert.deepEqual(expired, tampered);
   } finally {
@@ -170,7 +195,7 @@ test('a status token used before expiry is rejected once its expiry passes', asy
     await seedStatusToken(fixture.database, {
       expiresAt: new Date('2026-09-22T12:01:00.000Z'),
       subscriberId,
-      token: 'used-before-expiry-token',
+      token: tokenValue('used-before-expiry-token'),
     });
     let time = now;
     const service = createStatusLinkService(fixture.applicationDatabase, {
@@ -178,13 +203,16 @@ test('a status token used before expiry is rejected once its expiry passes', asy
       flags: { isEnabled: async () => true },
     });
     assert.equal(
-      (await service.authenticate('used-before-expiry-token')).kind,
+      (await service.authenticate(tokenValue('used-before-expiry-token'))).kind,
       'authenticated',
     );
     time = new Date('2026-09-22T12:01:00.000Z');
-    assert.deepEqual(await service.authenticate('used-before-expiry-token'), {
-      kind: 'rejected',
-    });
+    assert.deepEqual(
+      await service.authenticate(tokenValue('used-before-expiry-token')),
+      {
+        kind: 'rejected',
+      },
+    );
   } finally {
     await fixture.dispose();
   }
@@ -231,7 +259,7 @@ test('one-click recovery queues once for the expired token subject and rate-limi
     await seedStatusToken(fixture.database, {
       expiresAt: now,
       subscriberId,
-      token: 'recoverable-status-token',
+      token: tokenValue('recoverable-status-token'),
     });
     const service = createStatusLinkService(fixture.applicationDatabase, {
       clock: () => now,
@@ -242,7 +270,7 @@ test('one-click recovery queues once for the expired token subject and rate-limi
       await service.requestReplacement({
         challengeTimedOut: false,
         ipPrefixHash: 'hashed-prefix',
-        token: 'recoverable-status-token',
+        token: tokenValue('recoverable-status-token'),
       }),
       'accepted',
     );
@@ -250,7 +278,7 @@ test('one-click recovery queues once for the expired token subject and rate-limi
       await service.requestReplacement({
         challengeTimedOut: false,
         ipPrefixHash: 'hashed-prefix',
-        token: 'recoverable-status-token',
+        token: tokenValue('recoverable-status-token'),
       }),
       'rate_limited',
     );
@@ -258,7 +286,7 @@ test('one-click recovery queues once for the expired token subject and rate-limi
       await service.requestReplacement({
         challengeTimedOut: false,
         ipPrefixHash: 'other-hashed-prefix',
-        token: 'tampered-status-token',
+        token: tokenValue('tampered-status-token'),
       }),
       'accepted',
     );
@@ -290,7 +318,7 @@ test('provider-timeout recovery uses the strict IP bucket and flags the recognis
     await seedStatusToken(fixture.database, {
       expiresAt: now,
       subscriberId,
-      token: 'timeout-recovery-status-token',
+      token: tokenValue('timeout-recovery-status-token'),
     });
     const service = createStatusLinkService(fixture.applicationDatabase, {
       clock: () => now,
@@ -301,7 +329,7 @@ test('provider-timeout recovery uses the strict IP bucket and flags the recognis
       await service.requestReplacement({
         challengeTimedOut: true,
         ipPrefixHash: 'timeout-prefix',
-        token: 'timeout-recovery-status-token',
+        token: tokenValue('timeout-recovery-status-token'),
       }),
       'accepted',
     );
@@ -348,21 +376,24 @@ test('member.dashboard off is graceful and creates no consume or recovery write'
     await seedStatusToken(fixture.database, {
       expiresAt: new Date('2026-10-22T12:00:00.000Z'),
       subscriberId,
-      token: 'disabled-status-token',
+      token: tokenValue('disabled-status-token'),
     });
     const service = createStatusLinkService(fixture.applicationDatabase, {
       clock: () => now,
       flags: { isEnabled: async () => false },
     });
 
-    assert.deepEqual(await service.authenticate('disabled-status-token'), {
-      kind: 'disabled',
-    });
+    assert.deepEqual(
+      await service.authenticate(tokenValue('disabled-status-token')),
+      {
+        kind: 'disabled',
+      },
+    );
     assert.equal(
       await service.requestReplacement({
         challengeTimedOut: false,
         ipPrefixHash: 'hashed-prefix',
-        token: 'disabled-status-token',
+        token: tokenValue('disabled-status-token'),
       }),
       'disabled',
     );
