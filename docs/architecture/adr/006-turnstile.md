@@ -8,7 +8,9 @@
 A public write endpoint on the root domain of a brand about to launch, with a prize behind it. Bot signups corrupt every metric, burn email quota and make the handoff worthless.
 
 ## Decision
-**Cloudflare Turnstile**, verified **server-side on every public write route, before any other work.** Free, unmetered and already in the zone. The Article 5(3) no-banner basis is the rendered probe's confirmation that the widget performs no device storage/access. The site runs no device-fingerprinting API; Cloudflare still processes IP, TLS and user-agent signals server-side as a security processor.
+**Cloudflare Turnstile**, verified **server-side first on every public, unauthenticated write route**. A write authenticated by a single-use signed token consumes that token first, in place of Turnstile. Rate limiting applies to both kinds. This matches `docs/api/README.md` rule 2 (founder-authorised amendment 2026-09-28). `/api/unsubscribe` carries no `turnstile_token`; RFC 8058 one-click POSTs work without JavaScript. Turnstile is free, unmetered and already in the zone. The Article 5(3) no-banner basis is the rendered probe's confirmation that the widget performs no device storage/access. The site runs no device-fingerprinting API; Cloudflare still processes IP, TLS and user-agent signals server-side as a security processor.
+
+Astro's built-in origin check rejects form POSTs without an `Origin` header before a route runs. RFC 8058 mail clients need that headerless POST, so E6-06 moves the equivalent check into application middleware for every other write route and exempts only `/api/unsubscribe`. The signed, single-use token authenticates that endpoint; an integration test covers the exception and the retained cross-origin rejection elsewhere.
 
 Behaviour on failure is specified, because the two failure modes are different:
 

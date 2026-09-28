@@ -34,7 +34,7 @@ This repository builds the **Valstara pre-launch waitlist site**. You are workin
 
 ## Hard rules, in full
 
-1. Turnstile is verified **server-side on every write route, before any other work.**
+1. Every public, unauthenticated write route verifies Turnstile **server-side first**. A write authenticated by a single-use signed token consumes that token first, in place of Turnstile. Rate limiting applies to both kinds. Founder-authorised amendment 2026-09-28 (ADR-006).
 2. Email is **normalised before any uniqueness check**; the normalised form is the unique key.
 3. **One referral edge per referred person**, enforced by a database constraint. `referred_by_id` is write-once.
 4. **Referral attribution is server-side and signed.** No cookie, no client-side attribution path.

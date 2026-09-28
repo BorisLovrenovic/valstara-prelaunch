@@ -105,6 +105,7 @@ test('the required audit action registry is complete', () => {
     'giveaway.substitution_cash',
     'consent.marketing_granted',
     'consent.marketing_withdrawn',
+    'subscriber.unsubscribed',
     'dsr.requested',
     'dsr.fulfilled',
     'handoff.frozen',

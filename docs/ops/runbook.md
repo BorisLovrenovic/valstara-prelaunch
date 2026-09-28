@@ -4,6 +4,18 @@ Status: authoritative. Organised **by symptom**, because that is how a problem a
 
 ---
 
+## Unsubscribe failed to apply
+
+A P1 `operator_task` alert with task `unsubscribe_apply_failed` means the unsubscribe transaction rolled back. Check database health first. When healthy, use the alert's `unsubscribe_token_id`, or `token_sha256` if the ID is null:
+
+```sh
+npm run email:apply-unsubscribe -- --token-id <unsubscribe_token_id> --actor <name>
+npm run email:apply-unsubscribe -- --token-sha256 <token_sha256> --actor <name>
+```
+
+For `requested_action: leave_waitlist`, add `--action leave_waitlist` to the chosen command. For `message_unsubscribe`, omit that flag; the bound email send resolves whether the action withdraws marketing consent or suppresses all mail. `applied` means the preference or suppression, an explicit leave status change, and the audit event committed; `already` means a later retry applied the request and no further write occurred. Resolve this without undue delay. The alert contains a hash that identifies the token for later lookup, never the plaintext token or address.
+
+
 ## "Signups have stopped converting"
 
 **The most important entry in this file, because it is the failure that hides.**

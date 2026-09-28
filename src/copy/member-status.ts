@@ -62,10 +62,22 @@ export const memberStatusCopy = {
     javaScriptRequired:
       'JavaScript is required to complete the security check.',
   },
-  unsubscribe: {
-    body: 'You can stop waitlist emails at any time.',
-    heading: 'Email preferences',
-    link: 'Unsubscribe from waitlist emails',
+  leave: {
+    heading: 'Leave the waitlist',
+    body: 'This stops all Valstara email to this address.',
+    submit: 'Leave the waitlist and stop all email',
+    saved: 'You have left the waitlist. We will not email this address again.',
+    invalidInput: 'This request could not be used.',
+    challengeFailed:
+      'That security check did not go through. Please try again.',
+    rateLimited: 'Too many attempts. Please try again in a few minutes.',
+    unavailable: 'Your choice was not saved. Please try again.',
+    javaScriptRequired:
+      'JavaScript is required to complete the security check.',
+  },
+  left: {
+    heading: 'You have left the waitlist',
+    body: 'We will not send email to this address.',
   },
   disabled: {
     body: 'The member page is unavailable right now. Your waitlist place is unchanged.',

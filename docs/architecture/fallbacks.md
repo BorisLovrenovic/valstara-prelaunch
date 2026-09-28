@@ -70,7 +70,7 @@ Everything else announces itself. These two look exactly like ordinary underperf
 | Free-tier cliff hit mid-campaign | Quota warnings; a daily projection against the cap | **Pre-empted, not handled** — the upgrade happens before the giveaway opens, and the projection alerts a week ahead | Nothing, if pre-empted | **P1** if hit |
 | Contact sync to Brevo fails | Sync job result | **PostgreSQL is the source of truth**; the sync is resumable and idempotent on the normalised email | Nothing | P2 |
 | Bounce/complaint webhook missed | Hourly reconciliation against provider state | Suppression lags by up to an hour; **a suppressed address could receive one more send.** Documented, accepted, reconciled | Possibly one extra email | P2 |
-| Unsubscribe fails to apply | Suppression write error | **The send path re-checks suppression at dispatch**, so a failed write cannot produce a send to someone who opted out | Nothing | **P1** |
+| Unsubscribe fails to apply | Suppression or consent-withdrawal transaction error | Token consumption, preference and explicit-leave status write, and audit roll back together; the unsubscribe token stays usable for retry. The P1 alert itself is the operator task, carrying the token hash and request action even if database lookup fails; use the CLI in `docs/ops/runbook.md#unsubscribe-failed-to-apply` if the person does not retry. A database outage also stops dispatch because its suppression lookup fails closed | An honest retry message; the page keeps the action available | **P1** |
 
 ---
 

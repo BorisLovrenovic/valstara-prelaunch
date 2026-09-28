@@ -319,6 +319,7 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
     '/giveaway/rules',
     '/leaderboard',
     '/me',
+    '/unsubscribe',
     '/verify',
   ]);
 

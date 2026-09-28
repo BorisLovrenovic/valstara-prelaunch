@@ -10,6 +10,7 @@
     "ci:red-paths": "node --test test/ci-red-paths.test.mjs",
     "ci:security-red-paths": "node --test test/security-gates.test.mjs",
     "db:migrate": "tsx src/server/db/run-migrations.ts",
+    "email:apply-unsubscribe": "tsx scripts/apply-unsubscribe.ts",
     "dev": "astro dev",
     "format": "prettier --check .",
     "fraud:allow-domain": "tsx scripts/allow-domain.ts",

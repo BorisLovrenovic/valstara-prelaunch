@@ -53,6 +53,7 @@ days and changes only `pending` rows strictly past it.
 - **`referred_by_id` is write-once**, enforced in the schema. Reassignment is a defect, not a feature.
 - **`disqualify()` requires an actor and writes an audit record.** There is no code path that sets `disqualified` without one.
 - **`anonymise()` never deletes the row** where referral edges reference it — it nulls the personal fields, so counts stay defensible and no personal data remains.
+- E6-06's explicit `leave_waitlist` action writes global suppression and moves a `verified` subscriber to `unsubscribed`, stamping `unsubscribed_at` in the same audited transaction. A message unsubscribe without an explicit leave action follows its email type and does not change waitlist status.
 - `referral_tier` and `confirmed_referrals` are **caches** owned by the referral module. This module never writes them directly.
 - Every sweep is batch-capped and takes an explicit limit.
 - **Only `verified` is a counted subscriber status.** The canonical value lives

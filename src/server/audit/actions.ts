@@ -22,6 +22,7 @@ export const auditActions = [
   'giveaway.substitution_cash',
   'consent.marketing_granted',
   'consent.marketing_withdrawn',
+  'subscriber.unsubscribed',
   'dsr.requested',
   'dsr.fulfilled',
   'handoff.frozen',

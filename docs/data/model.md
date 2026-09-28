@@ -199,6 +199,8 @@ The unsubscribe binding is unique per send and subject-bound. When the token-ret
 
 **Append-only, enforced by database permissions** — the application role holds `INSERT` and `SELECT` only. Records: disqualifications, flag decisions, exports, draw execution, flag changes, DSR requests and their fulfilment, and the handoff freeze. **`detail` never contains a token, a secret or a full IP address**; a redaction test asserts this over every call site.
 
+E6-06 also records `consent.marketing_withdrawn` or `subscriber.unsubscribed` with the originating `email_send` ID and server-resolved template for email links, or source `member_status` for the `/me` leave action. Token consumption, preference or suppression write, an explicit leave's `status = 'unsubscribed'` and `unsubscribed_at` stamp, and the audit insert share one transaction.
+
 ## `rate_limit_bucket`
 
 `key` pk (hashed IP prefix or normalised email + route) · `window_start` · `count`. `src/server/ratelimit/retention.ts` deletes buckets older than seven days once per UTC day through the maintenance scheduler. Each run is batch-capped; a failed run raises the compliance-alert path.

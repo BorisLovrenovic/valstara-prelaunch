@@ -17,6 +17,38 @@ export interface P1AlertTransportDependencies {
   readonly fetch?: typeof globalThis.fetch;
 }
 
+export interface UnsubscribeOperatorTask {
+  readonly kind: 'operator_task';
+  readonly task: 'unsubscribe_apply_failed';
+  readonly unsubscribe_token_id: string | null;
+  readonly email_send_id: string | null;
+  readonly token_sha256: string;
+  readonly requested_action: 'message_unsubscribe' | 'leave_waitlist';
+  readonly occurred_at: string;
+}
+
+export function createUnsubscribeOperatorTaskTransport(
+  configuration: P1AlertConfiguration,
+  dependencies: P1AlertTransportDependencies = {},
+): { send(task: UnsubscribeOperatorTask): Promise<void> } {
+  const request = dependencies.fetch ?? globalThis.fetch;
+  return {
+    async send(task) {
+      const response = await request(configuration.url, {
+        body: JSON.stringify({ severity: 'P1', ...task }),
+        headers: {
+          Authorization: `Bearer ${configuration.token}`,
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (!response.ok)
+        throw new Error('The P1 alert webhook rejected the operator task.');
+    },
+  };
+}
+
 export function createAlertWebhookTransport(
   configuration: P1AlertConfiguration,
   dependencies: P1AlertTransportDependencies = {},
