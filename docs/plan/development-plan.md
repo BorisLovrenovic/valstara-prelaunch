@@ -1312,7 +1312,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 ## Epic E8 — Email
 
-**Goal:** verification mail that arrives, and campaign mail that cannot damage it. *9 tickets.*
+**Goal:** verification mail that arrives, and campaign mail that cannot damage it. *10 tickets.*
 
 **Exit criteria:** both domains authenticate, a real-browser signup receives its delivered verification email and produces a verified subscriber, seed tests land in the inbox at all four major providers, and the quota projection alerts a week ahead.
 
@@ -1397,7 +1397,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 - The welcome and milestone referral sections render directly from `ReferralService.status`
 - The email and `/me` renderings derive from one `ReferralService.status` result shape, so field-level divergence is impossible by construction
 - **Subject lines are descriptive, not curiosity-baiting** — the copy rules bind here as on the site
-- Every mail carries the status link and a working one-click unsubscribe
+- Every mail to a verified subscriber carries the status link; every mail carries a working one-click unsubscribe
 - No forbidden copy string — the scan covers templates
 
 **Tests:** Template rendering with plain-text parity · the copy scan over templates · required-element presence per template · parity between the email and `/me` renderings from one `ReferralService.status` result.
@@ -1408,6 +1408,25 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Provisional winner notification (founder-authorised 2026-09-27):** E8-03's seventh template has a plain-text alternative, copy from the copy layer, a status link, the response deadline and a link to the governing rules version. E7-06 queues this notification; E8-01 dispatches it.
 
 **Renderer registration (founder-authorised 2026-09-27):** Register the seven real renderers with E8-01's dispatcher. Until a renderer is registered, its queued rows remain queued without an attempt and are counted in the health signal.
+
+**Status-link exemption and renderer contract (founder-authorised 2026-09-28; unsubscribe URL correction also authorised 2026-09-28):** Verification and verification-reminder mail have only the verify-link call to action, no `/me` status link, and still carry an unsubscribe link. The required-element test asserts the status link on the other five templates and its absence on these two. Extend E8-01's `TemplateRenderer.render()` input with `unsubscribePageUrl: string`. Dispatch builds the body confirmation-page URL (`GET /unsubscribe?t=…`) and the header one-click URL (`POST /api/unsubscribe?token=…`) once from the same bound token and configured base URL. The template receives only `unsubscribePageUrl`; it neither mints tokens nor builds unsubscribe URLs. Test every template's HTML and plain-text body link, the matching token in the `List-Unsubscribe` header, and that opening the page with GET does not consume the token. Update E8-01's fixture-renderer tests.
+
+**Template-only scope (founder-authorised 2026-09-28):** E8-03 owns the seven renderers and tests them with fixture payloads. E8-03a owns the missing welcome, milestone and giveaway entry-receipt queue producers and their live event wiring.
+
+### E8-03a — Transactional queue producers
+**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** `giveaway.open` (receipt only) · **Area:** backend
+
+**Build:** Queue the three messages without existing producers through `EmailService.queue()` inside each triggering event's transaction. Each producer mints a `status`-purpose token and stores its `status_token_id` in a reference-only payload. Welcome queues once on the first transition to `verified` in E3-07, with business key `welcome:{subscriber_id}` and no flag. Milestone reached queues once per tier in E4-05's tier transition, with business key `milestone:{subscriber_id}:{tier}` and payload `{ tier, status_token_id }`; render time reads `ReferralService.status`. Giveaway entry receipt queues once per subscriber per rules version when the first entry under that version accrues in E7-03, with business key `giveaway-receipt:{subscriber_id}:{rules_version}` and payload `{ rules_version, status_token_id }`. It is behind `giveaway.open`; later entries under the same version queue nothing and appear on `/me`. The required reference-payload schema change ships with these producers.
+
+**Acceptance criteria:**
+- Each producer queues exactly one row per business key under genuine concurrency
+- A queue failure never rolls back its triggering event
+- Payloads contain no personal data
+- With `giveaway.open` off, no receipt is queued
+- E6-05's dashboard-flag-off welcome parity is proven end to end from verification to rendered mail
+
+**Tests:** Concurrent duplicate-event test for each producer · triggering event commits on queue failure · one receipt per rules version and none for later entries · receipt flag-off path · E6-05 welcome parity end to end.
+**Docs:** `docs/modules/email.md` · `docs/features/email-campaign.md` · `docs/data/model.md` (the three business-key formats).
 
 ### E8-04 — Rendering QA and seed tests
 **Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** frontend
@@ -2004,14 +2023,16 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 | E6 Leaderboard, survey, member area | 5 | Snapshot, island, survey, status link, dashboard |
 | S-01 Standalone | 1 | **Align built work with the Hong Kong giveaway strategy** (ADR-026, ADR-027) — runs before E7 |
 | E7 Giveaway | 6 | Entry eligibility, **one global rules page**, entry ledger, free entry route, **reproducible draw**, awards |
-| E8 Email | 9 | Service, unsubscribe, Resend, templates, seed tests, Brevo, bounces, weekly, quotas |
+| E8 Email | 10 | Service, unsubscribe, Resend, templates, transactional queue producers, seed tests, Brevo, bounces, weekly, quotas |
 | E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, **the representative gate**, inventory, DSR, SEO, OG, llms.txt |
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
-| **Total** | **96** | |
+| **Total** | **97** | |
 
 **Model distribution (2026-09-28, the 34 tickets not yet merged):** GPT-6 Astra 16 (Extra High 1 · High 8 · Medium 6 · Light 1) · GPT-6 Sol 16 (High 10 · Medium 6) · GPT-6 Luna 2 (High 2). **Astra carries the operations and audit work of E11 and E12**, plus E9-05 and E10-01; **Sol carries the code of E8–E10**; Luna carries two small tickets whose dangerous failures an existing gate already catches (§3).
+
+E8-03a was added after that model distribution was recorded, with an explicit founder assignment of Tier B — Medium (2026-09-28).
 
 **Tier distribution before 2026-09-28** (all 96 tickets as first planned; the merged ones keep these tiers): Tier B Extra High 4 · Tier B High 15 · Tier B Medium 30 · Tier A High 16 · Tier A Medium 31. *(2026-09-25: S-01 added at Tier B High; E7-01 moved from Tier B High to Tier A Medium once jurisdiction gating was removed; E7-06 moved from Tier A Medium to Tier B Medium because it now collects provisional winners' countries of residence and runs the sanctions check. 2026-09-27: E8-08 removed from Tier B High by ADR-028.)*
 

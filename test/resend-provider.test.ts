@@ -10,6 +10,7 @@ import {
   domainAuthenticationHealth,
 } from '../src/server/email/domain-authentication.ts';
 import { createResendProvider } from '../src/server/email/providers/resend.ts';
+import { createTransactionalTemplateData } from '../src/server/email/transactional-template-data.ts';
 import {
   createResendDispatcher,
   runResendDispatch,
@@ -396,6 +397,61 @@ test('registered Resend dispatches once and retries a provider outage through th
       values: [`verify:${subscriberId}:${retryToken.id}`],
     });
     assert.deepEqual(queued, { state: 'queued', attempts: 1 });
+
+    // E8-03: the production dispatcher registers the real renderer without
+    // a fixture map, and sends its plain-text and HTML alternatives.
+    rejectSends = false;
+    const realRendererDispatcher = createResendDispatcher(
+      app,
+      {
+        emailTokenSecret: tokenSecret,
+        emailBaseUrl: 'https://valstara.test',
+        resendApiKey: 'secret-fixture-key',
+        resendSendingDomain: 'send.valstara.com',
+      } as AppConfig,
+      { send: async () => undefined },
+      clock,
+    );
+    const realToken = await createVerificationService(app, {
+      clock,
+      tokenSecret,
+    }).issue(subscriberId, 'verify');
+    await realRendererDispatcher.queue({
+      template: 'verification_test',
+      subscriberId,
+      provider: 'resend',
+      businessKey: `verify:${subscriberId}:${realToken.id}`,
+      payload: { token_id: realToken.id },
+    });
+    assert.equal((await realRendererDispatcher.dispatch(1)).sent, 1);
+    const realSend = sends.at(-1) as {
+      subject: string;
+      text: string;
+      html: string;
+      headers: Record<string, string>;
+    };
+    assert.equal(realSend.subject, 'Verify your Valstara email address');
+    assert.match(realSend.text, /\/verify\?token=/u);
+    assert.match(realSend.text, /\/unsubscribe\?t=/u);
+    assert.match(realSend.html, /\/unsubscribe\?t=/u);
+    assert.match(
+      realSend.headers['List-Unsubscribe'],
+      /\/api\/unsubscribe\?token=/u,
+    );
+    await owner.execute({
+      text: `UPDATE subscriber SET status = 'verified', verified_at = $2,
+        referral_code = 'E803REFCODE1' WHERE id = $1`,
+      values: [subscriberId, clock()],
+    });
+    const statusToken = await createVerificationService(app, {
+      clock,
+      tokenSecret,
+    }).issue(subscriberId, 'status');
+    const statusData = await createTransactionalTemplateData(
+      app,
+    ).referralStatus(statusToken.id);
+    assert.equal(statusData.subscriberStatus, 'verified');
+    assert.match(statusData.referralLink, /ref=E803REFCODE1/u);
   } finally {
     globalThis.fetch = originalFetch;
     await app.close();

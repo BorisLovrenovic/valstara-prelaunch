@@ -119,6 +119,11 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     validTokenId,
     process.env.EMAIL_TOKEN_SECRET,
   );
+  const unsubscribeTokenId = randomUUID();
+  const unsubscribeToken = deriveEmailToken(
+    unsubscribeTokenId,
+    process.env.EMAIL_TOKEN_SECRET,
+  );
   await fixture.database.query(
     `
       INSERT INTO subscriber (
@@ -194,10 +199,31 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
       new Date('2099-01-01T00:00:00.000Z'),
     ],
   );
+  await fixture.database.query(
+    `INSERT INTO verification_token
+      (id, subscriber_id, token_hash, purpose, expires_at)
+      VALUES ($1, $2, $3, 'unsubscribe', $4)`,
+    [
+      unsubscribeTokenId,
+      subscriberId,
+      createHash('sha256').update(unsubscribeToken).digest(),
+      new Date('2099-01-01T00:00:00.000Z'),
+    ],
+  );
   const { port, server } = startServer(fixture.databaseUrl);
 
   try {
     await waitForServer(port);
+    const confirmation = await globalThis.fetch(
+      `http://127.0.0.1:${port}/unsubscribe?t=${encodeURIComponent(unsubscribeToken)}`,
+    );
+    assert.equal(confirmation.status, 200);
+    assert.match(await confirmation.text(), /Choose what to stop/u);
+    const afterGet = await fixture.database.query(
+      'SELECT consumed_at FROM verification_token WHERE id = $1',
+      [unsubscribeTokenId],
+    );
+    assert.equal(afterGet.rows[0]?.consumed_at, null);
     const expired = await globalThis.fetch(
       `http://127.0.0.1:${port}/me?t=${encodeURIComponent(expiredToken)}`,
     );

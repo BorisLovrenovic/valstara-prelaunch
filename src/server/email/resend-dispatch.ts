@@ -5,6 +5,8 @@ import type { DatabasePool } from '../db/pool.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 
 import { createResendProvider } from './providers/resend.ts';
+import { createTransactionalTemplateData } from './transactional-template-data.ts';
+import { createTransactionalRenderers } from './transactional-templates.ts';
 import {
   createEmailService,
   maxDispatchBatch,
@@ -21,7 +23,7 @@ export function createResendDispatcher(
   >,
   alerts: AlertTransport,
   clock: () => Date,
-  renderers: ReadonlyMap<string, TemplateRenderer> = new Map(),
+  renderers?: ReadonlyMap<string, TemplateRenderer>,
 ) {
   return createEmailService(database, {
     clock,
@@ -33,7 +35,13 @@ export function createResendDispatcher(
         createResendProvider(config.resendApiKey, config.resendSendingDomain),
       ],
     ]),
-    renderers,
+    renderers:
+      renderers ??
+      createTransactionalRenderers({
+        baseUrl: config.emailBaseUrl,
+        sendingDomain: config.resendSendingDomain,
+        data: createTransactionalTemplateData(database),
+      }),
     isBroadcastEnabled: async () => false,
     operatorTask: async ({ emailSendId, code }) => {
       await alerts.send({
