@@ -153,6 +153,16 @@ test('maintenance validates Resend dispatch settings without unrelated app secre
       error instanceof ConfigurationError &&
       error.variableName === 'RESEND_API_KEY',
   );
+  assert.throws(
+    () =>
+      getResendDispatchConfiguration({
+        ...environment,
+        RESEND_TEST_RECIPIENT: '',
+      }),
+    (error) =>
+      error instanceof ConfigurationError &&
+      error.variableName === 'RESEND_TEST_RECIPIENT',
+  );
 });
 
 test('E8-02 rejects production sandbox configuration and live mode outside production', () => {
@@ -170,16 +180,18 @@ test('E8-02 rejects production sandbox configuration and live mode outside produ
         error.variableName === 'RESEND_KEY_MODE',
     );
   }
-  assert.throws(
-    () =>
-      validateConfig({
-        ...production,
-        RESEND_TEST_RECIPIENT: 'delivered@example.test',
-      }),
-    (error) =>
-      error instanceof ConfigurationError &&
-      error.variableName === 'RESEND_TEST_RECIPIENT',
-  );
+  for (const recipient of ['', 'delivered@example.test']) {
+    assert.throws(
+      () =>
+        validateConfig({
+          ...production,
+          RESEND_TEST_RECIPIENT: recipient,
+        }),
+      (error) =>
+        error instanceof ConfigurationError &&
+        error.variableName === 'RESEND_TEST_RECIPIENT',
+    );
+  }
   for (const domain of ['resend.dev', 'mail.valstara.com']) {
     assert.throws(
       () => validateConfig({ ...production, RESEND_SENDING_DOMAIN: domain }),

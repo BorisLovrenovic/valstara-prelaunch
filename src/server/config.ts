@@ -171,10 +171,13 @@ function resendConfiguration(
     return invalid('RESEND_KEY_MODE', 'must be test or live');
   }
 
-  const testRecipient = optionalValue(environment, 'RESEND_TEST_RECIPIENT');
-  if (runtime === 'production' && testRecipient !== undefined) {
+  if (
+    runtime === 'production' &&
+    environment.RESEND_TEST_RECIPIENT !== undefined
+  ) {
     return invalid('RESEND_TEST_RECIPIENT', 'must not be set in production');
   }
+  const testRecipient = optionalValue(environment, 'RESEND_TEST_RECIPIENT');
 
   const sendingDomain = requiredValue(environment, 'RESEND_SENDING_DOMAIN');
   if (sendingDomain !== productionResendSendingDomain) {
