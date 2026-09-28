@@ -114,12 +114,7 @@ const running = [
   scheduler.run(undefined, shutdown.signal),
   drawWorker.run(shutdown.signal),
   runResendDispatch(
-    createResendDispatcher(
-      database,
-      resendConfiguration,
-      alerts,
-      clock,
-    ),
+    createResendDispatcher(database, resendConfiguration, alerts, clock),
     alerts,
     clock,
     shutdown.signal,

@@ -231,16 +231,13 @@ function optionalValue(
 function dnsTarget(
   environment: NodeJS.ProcessEnv,
   key:
-    | 'RESEND_RSEND_CNAME_EXPECTED_TARGET'
-    | 'RESEND_SEND_CNAME_EXPECTED_TARGET',
+    'RESEND_RSEND_CNAME_EXPECTED_TARGET' | 'RESEND_SEND_CNAME_EXPECTED_TARGET',
 ): string {
   const value = requiredValue(environment, key)
     .toLowerCase()
     .replace(/\.$/u, '');
   if (
-    !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/u.test(
-      value,
-    )
+    !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/u.test(value)
   ) {
     return invalid(key, 'must be a DNS hostname');
   }

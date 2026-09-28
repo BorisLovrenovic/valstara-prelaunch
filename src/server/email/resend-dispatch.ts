@@ -17,10 +17,7 @@ export function createResendDispatcher(
   database: DatabasePool,
   config: Pick<
     AppConfig,
-    | 'emailBaseUrl'
-    | 'emailTokenSecret'
-    | 'resendApiKey'
-    | 'resendSendingDomain'
+    'emailBaseUrl' | 'emailTokenSecret' | 'resendApiKey' | 'resendSendingDomain'
   >,
   alerts: AlertTransport,
   clock: () => Date,
@@ -30,7 +27,12 @@ export function createResendDispatcher(
     clock,
     tokenSecret: config.emailTokenSecret,
     baseUrl: config.emailBaseUrl,
-    providers: new Map([['resend', createResendProvider(config.resendApiKey, config.resendSendingDomain)]]),
+    providers: new Map([
+      [
+        'resend',
+        createResendProvider(config.resendApiKey, config.resendSendingDomain),
+      ],
+    ]),
     renderers,
     isBroadcastEnabled: async () => false,
     operatorTask: async ({ emailSendId, code }) => {

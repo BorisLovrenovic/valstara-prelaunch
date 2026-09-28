@@ -20,8 +20,7 @@ export interface AuthenticationRecordHealth {
   readonly reason: DomainAuthReason;
 }
 
-export interface DmarcAuthenticationRecordHealth
-  extends AuthenticationRecordHealth {
+export interface DmarcAuthenticationRecordHealth extends AuthenticationRecordHealth {
   readonly policy: 'none' | 'quarantine' | 'reject' | null;
 }
 
@@ -107,14 +106,13 @@ export async function domainAuthenticationHealth(
   const hasSpf =
     spfRecords !== null &&
     spfRecords.filter((record) => /^v=spf1(?:\s|$)/u.test(record)).length === 1;
-  const spf =
-    !sendHealth.passed
-      ? sendHealth
-      : !rsendHealth.passed
-        ? rsendHealth
-        : hasSpf
-          ? { passed: true, reason: 'ok' as const }
-          : { passed: false, reason: 'spf_txt_missing_or_invalid' as const };
+  const spf = !sendHealth.passed
+    ? sendHealth
+    : !rsendHealth.passed
+      ? rsendHealth
+      : hasSpf
+        ? { passed: true, reason: 'ok' as const }
+        : { passed: false, reason: 'spf_txt_missing_or_invalid' as const };
 
   const dkim =
     dkimRecords === null || dkimRecords.length === 0
@@ -125,7 +123,8 @@ export async function domainAuthenticationHealth(
         : { passed: false, reason: 'dkim_mismatch' as const };
 
   const dmarcRecordsWithVersion =
-    dmarcRecords?.filter((record) => /^v=DMARC1(?:\s*;|$)/iu.test(record)) ?? [];
+    dmarcRecords?.filter((record) => /^v=DMARC1(?:\s*;|$)/iu.test(record)) ??
+    [];
   const policyMatch =
     dmarcRecordsWithVersion.length === 1
       ? /(?:^|;)\s*p=(none|quarantine|reject)(?:;|$)/iu.exec(
@@ -133,10 +132,7 @@ export async function domainAuthenticationHealth(
         )
       : null;
   const policy = (policyMatch?.[1]?.toLowerCase() ?? null) as
-    | 'none'
-    | 'quarantine'
-    | 'reject'
-    | null;
+    'none' | 'quarantine' | 'reject' | null;
   const dmarc: DmarcAuthenticationRecordHealth =
     dmarcRecords === null || dmarcRecords.length === 0
       ? { passed: false, reason: 'dmarc_missing', policy: null }

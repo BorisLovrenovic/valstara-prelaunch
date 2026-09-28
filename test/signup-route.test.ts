@@ -652,8 +652,7 @@ test('the default POST route verifies Turnstile and queues one mail without a di
   process.env.RESEND_API_KEY = 'route-test-resend-key';
   process.env.RESEND_DKIM_EXPECTED_VALUE = 'p=test-public-key';
   process.env.RESEND_KEY_MODE = 'test';
-  process.env.RESEND_RSEND_CNAME_EXPECTED_TARGET =
-    'rsend-euw1.forge.rmta.net';
+  process.env.RESEND_RSEND_CNAME_EXPECTED_TARGET = 'rsend-euw1.forge.rmta.net';
   process.env.RESEND_SEND_CNAME_EXPECTED_TARGET = 'send.forge.rmta.net';
   process.env.RESEND_SENDING_DOMAIN = 'send.valstara.com';
   const requests: string[] = [];
