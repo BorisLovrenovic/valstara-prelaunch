@@ -184,3 +184,10 @@ Three things must be true before the DNS record points at this site publicly, an
 1. **The privacy policy names both representatives**, and the build-time assertion for it passes.
 2. **SPF, DKIM and DMARC verify on every sending domain**, and the seed test round-trips.
 3. **The ESP tiers are upgraded past the free caps** before `giveaway.open` is turned on.
+
+E8-02 runs `domainAuthenticationHealth()` for `send.valstara.com` when the
+maintenance process starts. A failed SPF, DKIM or DMARC check does not prevent
+boot; it emits a sanitized code and a P1 alert through the existing operator
+webhook. E10-05 later surfaces the exported result in the admin health view
+(founder-authorised 2026-09-28). The send path uses the Resend provider through
+E8-01's dispatcher; the direct E1-11 test-mode sender is removed.

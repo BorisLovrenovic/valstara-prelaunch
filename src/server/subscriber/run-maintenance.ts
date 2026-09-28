@@ -2,9 +2,15 @@ import {
   getDatabaseUrl,
   getDrandConfiguration,
   getP1AlertConfiguration,
+  getResendDispatchConfiguration,
   getVerificationRateConfiguration,
 } from '../config.ts';
 import { createPool } from '../db/pool.ts';
+import { checkDomainAuthenticationAtStartup } from '../email/domain-authentication.ts';
+import {
+  createResendDispatcher,
+  runResendDispatch,
+} from '../email/resend-dispatch.ts';
 import { createRateLimitRetentionJob } from '../ratelimit/retention.ts';
 import { createIpPrefixRetentionJob } from '../fraud/retention.ts';
 import { createStrandedReferralReconciliationJob } from '../referral/reconcile-stranded.ts';
@@ -30,6 +36,7 @@ const database = createPool(getDatabaseUrl());
 const clock = (): Date => new Date();
 const alerts = createAlertWebhookTransport(getP1AlertConfiguration());
 const reportFailure = createMaintenanceFailureReporter(alerts, { clock });
+const resendConfiguration = getResendDispatchConfiguration();
 
 async function reportVerificationRateCollapse(alert: {
   readonly baselineRate: number;
@@ -95,8 +102,28 @@ const drawWorker = createDrawWorker(
 );
 
 const running = [
+  checkDomainAuthenticationAtStartup({
+    alerts,
+    clock,
+    configuration: {
+      ...resendConfiguration.resendDomainAuthentication,
+      sendingDomain: resendConfiguration.resendSendingDomain,
+    },
+    writeLog: (line) => process.stderr.write(line),
+  }),
   scheduler.run(undefined, shutdown.signal),
   drawWorker.run(shutdown.signal),
+  runResendDispatch(
+    createResendDispatcher(
+      database,
+      resendConfiguration,
+      alerts,
+      clock,
+    ),
+    alerts,
+    clock,
+    shutdown.signal,
+  ),
 ];
 
 try {

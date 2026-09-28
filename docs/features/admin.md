@@ -22,7 +22,7 @@ Authentication failures are generic, `no-store`, and never echo a credential,
 TOTP, token, raw IP address or configuration detail.
 
 ## User flows
-1. **Health** — verification rate against baseline, leaderboard snapshot age, email queue depth, quota projections. **The one screen that answers "is the campaign silently broken".**
+1. **Health** — verification rate against baseline, leaderboard snapshot age, email queue depth, domain authentication status (E8-02), seed-test results (E8-04), quota consumption and projection (E8-09), purge-job status, and open flag count. E8-02, E8-04 and E8-09 export their results; E10-05 owns this view and tests that every named metric is present (founder-authorised 2026-09-28). **The one screen that answers "is the campaign silently broken".**
 2. **Fraud queue** — open flags with their evidence; dismiss or uphold.
 3. **Flags** — read and set campaign flags. This is the incident lever.
 4. **Export** — the CSV, streamed and batch-capped, with the row count audited.

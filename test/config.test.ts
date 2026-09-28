@@ -11,6 +11,8 @@ import {
   getGiveawayEntryPeriodStart,
   getIpVelocityConfiguration,
   getP1AlertConfiguration,
+  getResendDispatchConfiguration,
+  productionResendSendingDomain,
   getVerificationRateConfiguration,
   turnstileTestSiteKey,
   validateConfig,
@@ -31,7 +33,11 @@ const validEnvironment: NodeJS.ProcessEnv = {
   NODE_ENV: 'test',
   PORT: '4321',
   RESEND_API_KEY: 'local-test-resend-key',
-  RESEND_TEST_RECIPIENT: 'delivered@resend.dev',
+  RESEND_DKIM_EXPECTED_VALUE: 'p=local-test-public-key',
+  RESEND_KEY_MODE: 'test',
+  RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+  RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+  RESEND_SENDING_DOMAIN: 'send.valstara.com',
   TURNSTILE_SECRET_KEY: 'local-test-turnstile-secret',
 };
 
@@ -92,7 +98,14 @@ test('E1-12 validates and types the complete application environment', () => {
     nodeEnvironment: 'test',
     port: 4321,
     resendApiKey: 'local-test-resend-key',
-    resendTestRecipient: 'delivered@resend.dev',
+    resendDomainAuthentication: {
+      dkimExpectedValue: 'p=local-test-public-key',
+      rsendCnameExpectedTarget: 'rsend-euw1.forge.rmta.net',
+      sendCnameExpectedTarget: 'send.forge.rmta.net',
+    },
+    resendKeyMode: 'test',
+    resendSendingDomain: productionResendSendingDomain,
+    resendTestRecipient: undefined,
     turnstileSecretKey: 'local-test-turnstile-secret',
     turnstileSiteKey: turnstileTestSiteKey,
     verificationRate: {
@@ -102,6 +115,100 @@ test('E1-12 validates and types the complete application environment', () => {
       minimumSignups: 50,
     },
     waitlistLiveAt: null,
+  });
+});
+
+test('maintenance validates Resend dispatch settings without unrelated app secrets', () => {
+  const environment = {
+    EMAIL_BASE_URL: 'https://valstara.com',
+    EMAIL_TOKEN_SECRET: 'maintenance-email-secret-32-characters',
+    NODE_ENV: 'production',
+    RESEND_API_KEY: 'maintenance-resend-key',
+    RESEND_DKIM_EXPECTED_VALUE: 'p=maintenance-public-key',
+    RESEND_KEY_MODE: 'live',
+    RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+    RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+    RESEND_SENDING_DOMAIN: 'send.valstara.com',
+  };
+  assert.deepEqual(getResendDispatchConfiguration(environment), {
+    emailBaseUrl: 'https://valstara.com',
+    emailTokenSecret: 'maintenance-email-secret-32-characters',
+    resendApiKey: 'maintenance-resend-key',
+    resendDomainAuthentication: {
+      dkimExpectedValue: 'p=maintenance-public-key',
+      rsendCnameExpectedTarget: 'rsend-euw1.forge.rmta.net',
+      sendCnameExpectedTarget: 'send.forge.rmta.net',
+    },
+    resendKeyMode: 'live',
+    resendSendingDomain: 'send.valstara.com',
+    resendTestRecipient: undefined,
+  });
+  assert.throws(
+    () =>
+      getResendDispatchConfiguration({
+        ...environment,
+        RESEND_API_KEY: '',
+      }),
+    (error) =>
+      error instanceof ConfigurationError &&
+      error.variableName === 'RESEND_API_KEY',
+  );
+});
+
+test('E8-02 rejects production sandbox configuration and live mode outside production', () => {
+  const production = {
+    ...validEnvironment,
+    EMAIL_BASE_URL: 'https://valstara.com',
+    NODE_ENV: 'production',
+    RESEND_KEY_MODE: 'live',
+  };
+  for (const value of [undefined, 'test', 'unexpected']) {
+    assert.throws(
+      () => validateConfig({ ...production, RESEND_KEY_MODE: value }),
+      (error) =>
+        error instanceof ConfigurationError &&
+        error.variableName === 'RESEND_KEY_MODE',
+    );
+  }
+  assert.throws(
+    () =>
+      validateConfig({
+        ...production,
+        RESEND_TEST_RECIPIENT: 'delivered@example.test',
+      }),
+    (error) =>
+      error instanceof ConfigurationError &&
+      error.variableName === 'RESEND_TEST_RECIPIENT',
+  );
+  for (const domain of ['resend.dev', 'mail.valstara.com']) {
+    assert.throws(
+      () => validateConfig({ ...production, RESEND_SENDING_DOMAIN: domain }),
+      (error) =>
+        error instanceof ConfigurationError &&
+        error.variableName === 'RESEND_SENDING_DOMAIN',
+    );
+  }
+  assert.throws(
+    () => validateConfig({ ...validEnvironment, RESEND_KEY_MODE: 'live' }),
+    (error) =>
+      error instanceof ConfigurationError &&
+      error.variableName === 'RESEND_KEY_MODE',
+  );
+});
+
+test('E8-02 valid production Resend configuration boots', async () => {
+  const environment: NodeJS.ProcessEnv = {
+    ...process.env,
+    ...validEnvironment,
+    EMAIL_BASE_URL: 'https://valstara.com',
+    NODE_ENV: 'production',
+    RESEND_KEY_MODE: 'live',
+  };
+  delete environment.RESEND_TEST_RECIPIENT;
+  assert.equal(validateConfig(environment).resendKeyMode, 'live');
+  await execFileAsync(process.execPath, ['./src/server/config.ts'], {
+    cwd: new URL('..', import.meta.url),
+    env: environment,
   });
 });
 
@@ -303,7 +410,10 @@ for (const key of [
   'EMAIL_TOKEN_SECRET',
   'IP_PREFIX_PEPPER',
   'RESEND_API_KEY',
-  'RESEND_TEST_RECIPIENT',
+  'RESEND_DKIM_EXPECTED_VALUE',
+  'RESEND_RSEND_CNAME_EXPECTED_TARGET',
+  'RESEND_SEND_CNAME_EXPECTED_TARGET',
+  'RESEND_SENDING_DOMAIN',
   'TURNSTILE_SECRET_KEY',
 ] as const) {
   test(`E1-12 rejects a missing ${key} at boot with a named error`, async () => {
@@ -337,7 +447,6 @@ const malformedCases = [
   ['PORT', '0'],
   ['PORT', 'not-a-port'],
   ['RESEND_API_KEY', 'key\nwith-control'],
-  ['RESEND_TEST_RECIPIENT', 'not-an-address'],
   ['TURNSTILE_SECRET_KEY', 'secret-with-padding '],
 ] as const;
 

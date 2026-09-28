@@ -25,3 +25,5 @@ Two vendor integrations behind one interface (`docs/modules/email.md`), and a co
 **Free-tier cliffs must be pre-empted**: Resend free is 100/day, Brevo free is 300/day. **Upgrade before the giveaway opens, not when the limits hit** — a daily projection alerts at a week's headroom.
 
 **E8-01 dispatch sequencing (founder-authorised 2026-09-27):** The email service takes injected provider and renderer registries. Missing registrations leave queued rows untouched and visible in a health count. E8-02 registers Resend and removes the legacy direct test sender; E8-03 registers the real renderers. Retry content is reconstructed from reference-only payloads and HMAC-derived token IDs under `EMAIL_TOKEN_SECRET`; only token hashes are stored. Secret rotation invalidates outstanding links.
+
+**Domain-authentication signal (founder-authorised 2026-09-28):** E8-02 checks SPF, DKIM and DMARC at maintenance startup and exports a per-domain health result with sanitized reason codes and an injected-clock check time. A failed check raises P1 without blocking boot. E10-05 owns presenting that result alongside the later seed-test and quota results.

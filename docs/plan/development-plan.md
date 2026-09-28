@@ -18,7 +18,7 @@ Four rules follow, and they are binding:
 4. **Changes are made here first, then implemented.** Never the reverse.
 
 ### Ticket anatomy
-Every ticket carries: **Model** tier and reasoning level · **Priority** · **Flag** · **Area** · why that tier where it is not obvious · **Build** · **Acceptance criteria** (the contract) · **Tests** · **Docs** it must read. Each is sized for **one focused agent run producing one PR.**
+Every ticket carries: **Model** and reasoning level (§3) · **Priority** · **Flag** · **Area** · why that model where it is not obvious · **Build** · **Acceptance criteria** (the contract) · **Tests** · **Docs** it must read. Each is sized for **one focused agent run producing one PR.**
 
 ### The campaign clock
 This plan is written against a **12-week campaign**, and three of its constraints are calendar constraints rather than engineering ones: the Article 27 appointments, the DNS and email authentication warm-up, and the ESP tier upgrades. They are in §2 as founder prerequisites, not as tickets, because no agent can complete them.
@@ -59,7 +59,33 @@ Five items no agent can complete. Each gates something, and the gate is stated s
 
 ## 3. Model assignment policy
 
-**Two tiers, bound once, referenced everywhere.**
+**Rebound by benchmark evidence — founder-authorised 2026-09-28.** Every ticket not merged by that date (E8-02 to E12-07, 34 tickets) names a concrete Codex model and reasoning level on its **Model** line. Tickets merged before it keep the tier they were built under, as history; the tier policy is kept below because §6 and the prompt guide still use it.
+
+### Models for E8–E12
+
+The Codex roster on 2026-09-28 was GPT-5.6 Luna, Terra and Sol, and GPT-6 Luna, Sol and Astra. The roster was first written down with a "GPT-6 Terra", but no such model is published: the small GPT-6 model is Luna. If GPT-6 Luna is unavailable, use GPT-5.6 Luna at High for the two Luna tickets. Reasoning levels are Light, Medium, High and Extra High; in the CLI, Light is `low` and Extra High is `xhigh`.
+
+| Model | Use for | Evidence |
+|---|---|---|
+| **GPT-6 Sol** | Code written into this repository: routes, modules, templates, their tests and docs | Same score as Astra on real-repository coding (DeepSWE 69 vs 68), at about 40% of Astra's cost and a quarter less time per task |
+| **GPT-6 Astra** | Terminal and operations work (the stack, the host, drills, load, backups, Cloudflare) and audits of the whole system | Leads every Sol level on terminal tasks (Terminal-Bench 4.0 at Light/Medium/High/Extra High: 42/49/54/60% vs Sol 9/19/26/30%) and on factual reliability (AA-Omniscience 41–44 vs 27) |
+| **GPT-6 Luna** | Small, low-stakes tickets with no terminal work, no audit and no new factual claim, where an existing gate catches the dangerous failure | 14–16 points below Sol on the Coding Agent Index (41 vs 57). It is cheaper, not faster: it writes more tokens per task |
+| GPT-5.6 Sol, Terra, Luna | Not used | GPT-6 Sol matches or beats GPT-5.6 Sol and Terra at every level for less; GPT-6 Luna matches or beats GPT-5.6 Luna from Light to High |
+
+**Two tickets are exceptions to "code goes to Sol":** E9-05, because its erasure design spans every table and conflicts with the append-only audit log and six-year award retention, and E11-06, because it is the campaign's unrecoverable output and includes the scratch-database rehearsals. Both go to Astra.
+
+**Reasoning level:**
+- **GPT-6 Sol — Medium** for contained, fully specified work; **High** when the ticket spans several modules or owns a privacy, security or sending-reputation property. Never Light: Light to Medium is Sol's largest step (+6 on the Intelligence Index, +10 on Terminal-Bench). Never Extra High: Astra at Light scores higher (46 vs 44; 42% vs 30%) and finishes sooner, so escalate to Astra instead.
+- **GPT-6 Astra — Light** for routine operations against a clear spec; **Medium** for audits and procedures led by reasoning, where its general score levels off (50, 51, 52 at Medium, High, Extra High); **High** for terminal-heavy, high-stakes work; **Extra High** only for E11-05, whose failure is retroactive and whose work is inspection of running systems.
+- **GPT-6 Luna — High**, where its agentic score levels off (AutomationBench 40, 48, 48 at Medium, High, Extra High).
+
+**Escalation rule:** on a second failed attempt at the same ticket, move one step up this ladder: GPT-6 Luna High → GPT-6 Sol Medium → GPT-6 Sol High → GPT-6 Astra Light → Astra Medium → Astra High → Astra Extra High. Each step is stronger on both the Intelligence Index (32, 40, 43, 46, 50, 51, 52) and Terminal-Bench 4.0 (5, 19, 26, 42, 49, 54, 60%). **A third failure is a signal that the ticket is wrong, not the agent** — stop and revisit the plan entry.
+
+**Evidence and its limits.** Artificial Analysis Coding Agent Index v1.5 on the Codex harness, Intelligence Index v4.3 per reasoning level, Terminal-Bench 4.0 and AA-Omniscience, with the arena.ai Agent and Code leaderboards as a cross-check; all retrieved 2026-09-28. The Coding Agent Index is published only at max effort, which is not selectable here, so the per-level figures come from the Intelligence Index and Terminal-Bench. Benchmarks measure general ability, not this repository: revise from real runs, starting with review blockers per ticket.
+
+**Not changed by this binding:** pre-PR reviews, fix runs, CI triage and the QA gates (§6, `docs/engineering/prompts/00-USAGE.md`) still name tiers under the binding below. Where the review rule asks whether "the ticket was Tier B", an E8–E12 ticket counts as Tier B when it is assigned GPT-6 Astra, or GPT-6 Sol at High.
+
+### The tier policy (tickets merged before 2026-09-28, reviews and QA gates)
 
 | Tier | Bound to | Use for |
 |---|---|---|
@@ -67,15 +93,9 @@ Five items no agent can complete. Each gates something, and the gate is stated s
 | **Tier B** | The founder's strongest implementation model | Money-adjacent logic, personal data, privacy properties, concurrency, security, and anything architecture-bearing that later tickets inherit |
 | **Second-model QA** | A model from a **different family** | The dual QA gates only |
 
-> **Binding.** The tier → model binding is carried over from the founder's existing setup and is **the only line to change if the roster changes.** Editing it here changes every ticket at once; editing a ticket's tier does not.
+> **Binding.** The tier → model binding is carried over from the founder's existing setup. Before 2026-09-28 it was the only line to change if the roster changed; since then it governs only the merged tickets and the review, fix, triage and QA-gate roles.
 
-**This policy is reasoned from task characteristics, not from a benchmark.** The principle is conventional and defensible: **route to Tier B where a mistake is expensive, subtle, or hard to detect after the fact.** Revise once real evidence accumulates from actual runs.
-
-Reasoning levels: **Medium** for well-specified work · **High** for multi-file integration or novel design · **Extra High** for the four deepest tickets, marked where they occur.
-
-**Where a ticket sits between Tier A at maximum effort and Tier B at moderate effort, choose Tier B at moderate.** Depth of reasoning is a weaker lever than the model's reliability on work where mistakes are expensive.
-
-**Escalation rule:** on a second failed attempt at the same ticket, bump one step. **A third failure is a signal that the ticket is wrong, not the agent** — stop and revisit the plan entry.
+This policy was reasoned from task characteristics, not from a benchmark: **route to Tier B where a mistake is expensive, subtle, or hard to detect after the fact.** Reasoning levels: **Medium** for well-specified work · **High** for multi-file integration or novel design · **Extra High** for the four deepest tickets. Where a ticket sat between Tier A at maximum effort and Tier B at moderate effort, Tier B at moderate was chosen. Escalation stepped Tier A Medium → Tier A High → Tier B Medium → Tier B High.
 
 ---
 
@@ -1345,24 +1365,28 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Recovery and member action (founder-authorised 2026-09-28):** A failed unsubscribe transaction emits a P1 `operator_task` alert containing `token_sha256` and request action, even if database lookup fails; bound IDs may then be null. The operator CLI applies by token ID or hash, requires `--action leave_waitlist` for an explicit leave task, and records its actor. `/me` offers its own Turnstile-first, rate-limited leave action authenticated by the reusable status token, using the same transactional suppression and audit service. An explicit leave also sets a verified subscriber's status to `unsubscribed` and stamps `unsubscribed_at` in that transaction, so leaving removes draw eligibility. The member page does not pass that status token to `/unsubscribe`.
 
 ### E8-02 — The Resend provider and domain authentication
-**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 
 **Build:** `providers/resend.ts` on `send.valstara.com`, declaring its capabilities. Verify **SPF, DKIM and DMARC** for the domain as a startup or health check, not as a one-time manual step.
 
 **Acceptance criteria:**
 - **The sending domain is asserted in configuration and tested** — transactional mail cannot go out on the broadcast domain
-- **SPF, DKIM and DMARC verification is a checked condition**, surfaced on the admin health view
+- **SPF, DKIM and DMARC verification is a checked condition**, exported as a health result that E10-05 surfaces; a failure raises P1
 - Capabilities are declared, not assumed
 - The API key is validated at boot (E1-12) and appears in no log
-- **A sandbox key cannot be present in production** — asserted by the config validation
+- **Production configuration requires `RESEND_KEY_MODE=live`, no `RESEND_TEST_RECIPIENT`, and the From domain `send.valstara.com`; outside production, `RESEND_KEY_MODE=live` is rejected. The marker cannot prove the installed key's identity; E12-07 evidences a sending-only, domain-restricted key in the Resend dashboard.**
 
-**Tests:** Domain assertion · the authentication check with a deliberately broken record · the sandbox-key rejection.
+**Tests:** Domain assertion · exact configured DNS match · changed DKIM key · wrong return-path CNAME · missing DMARC · each production configuration rejection · valid production configuration boot.
 **Docs:** `docs/modules/email.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
 
 **Provider registration (founder-authorised 2026-09-27):** Register the Resend provider with E8-01's dispatcher and remove the E1-11 direct test-mode sender at the same time, so no mail is sent twice.
 
+**Health-result ownership (founder-authorised 2026-09-28):** E8-02 exports `domainAuthenticationHealth()` with per-domain SPF, DKIM and DMARC pass/fail, sanitized reason codes and `checkedAt` from an injected clock. Run it at startup; failure does not block boot, and instead logs a sanitized code and raises P1 through the existing alert path. E10-05 owns rendering this result in the admin health view.
+
+**Production-key and DNS criteria (founder-authorised 2026-09-28):** Resend exposes no sandbox marker in an API key, so boot validates the explicit configuration marker and From-domain isolation described above; E12-07 verifies the actual key in the dashboard. Domain health uses public DNS without a domain-read credential and compares DKIM and both return-path CNAMEs exactly with non-secret configured expected values. It also requires the resolved send return-path TXT to start with `v=spf1`, and reports a present `v=DMARC1` policy, including valid `p=none`. Missing or mismatched records produce distinct sanitized codes and P1.
+
 ### E8-03 — The seven transactional templates
-**Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
 **Build:** Verification, verification reminder, welcome, milestone reached, status link, giveaway entry receipt (entries, and a link to the immutable global rules version that governs them — no jurisdiction), and provisional winner notification. One shared layout, tokens where email clients support them, **plain-text alternative for every one.** All copy from the copy layer. The welcome and milestone templates render referral status from `ReferralService.status`, including a plain settled-versus-held distinction. Those renderings and the cross-surface parity assertion were assigned here by founder authorisation on 2026-09-14.
 
@@ -1386,7 +1410,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Renderer registration (founder-authorised 2026-09-27):** Register the seven real renderers with E8-01's dispatcher. Until a renderer is registered, its queued rows remain queued without an attempt and are counted in the health signal.
 
 ### E8-04 — Rendering QA and seed tests
-**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Build:** A rendering pass across Gmail, Outlook, Apple Mail, GMX and Web.de, evidenced. Then a **weekly automated seed test** into those providers, recording where each lands.
 
@@ -1394,13 +1418,15 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 - Every template renders correctly at all five providers — **evidenced in the PR**, both themes where the client supports it
 - **The weekly seed test runs automatically and records inbox-versus-spam placement per provider**
 - A seed test landing in spam **alerts** — this is one of the two silent-failure guards
-- Results are visible on the admin health view
+- Results are exported as a health result that E10-05 surfaces
 
 **Tests:** The seed harness itself; an induced spam-placement alert.
 **Docs:** `docs/architecture/fallbacks.md#the-two-silent-failures` · `docs/ops/runbook.md`
 
+**Health-result ownership (founder-authorised 2026-09-28):** E8-04 exports seed-test results as a health result; E10-05 owns displaying them.
+
 ### E8-05 — The Brevo provider and contact sync
-**Model:** Tier A — High · **Priority:** High · **Flag:** `email.broadcast` · **Area:** backend
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `email.broadcast` · **Area:** backend
 
 **Build:** `providers/brevo.ts` on `mail.valstara.com`. **Idempotent, resumable contact sync keyed on `email_normalised`**, syncing only verified, unsuppressed subscribers **with current marketing consent** (ADR-027). A withdrawal removes the contact from broadcast lists on the next sync, and dispatch re-checks consent regardless.
 
@@ -1415,8 +1441,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Docs:** `docs/modules/email.md`
 
 ### E8-06 — Bounce and complaint handling
-**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
-**Why this tier:** an unhandled complaint stream is how a sending reputation dies, and webhook handling is where signature and idempotency mistakes hide.
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this model:** an unhandled complaint stream is how a sending reputation dies, and webhook handling is where signature and idempotency mistakes hide.
 
 **Build:** `/api/webhooks/{provider}` — **signature verified before the payload is parsed**, idempotent on the provider event id, writing hard bounces and complaints into `suppression`. Plus an **hourly reconciliation** against provider state for missed webhooks.
 
@@ -1432,7 +1458,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Docs:** `docs/modules/email.md` · `docs/architecture/fallbacks.md#email`
 
 ### E8-07 — The weekly campaign update
-**Model:** Tier A — Medium · **Priority:** Medium · **Flag:** `email.broadcast` · **Area:** frontend
+**Model:** GPT-6 Sol — Medium · **Priority:** Medium · **Flag:** `email.broadcast` · **Area:** frontend
 
 **Build:** The weekly broadcast composed from a shared layout, **including the top-10 block that is the leaderboard's designed fallback surface** when `leaderboard.public` is off.
 
@@ -1450,7 +1476,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The SubSlush announcement is sent manually by the founder, outside this system. Do not build it.
 
 ### E8-09 — Quota projection and the free-tier gate
-**Model:** Tier A — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
 
 **Build:** A daily projection of send volume against each provider's cap, **alerting at a week's headroom.** Plus a hard precondition: **`giveaway.open` cannot be turned on while either provider is on its free tier.**
 
@@ -1458,10 +1484,12 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 - **The projection alerts at a week of headroom**, per provider — pre-empted, not handled
 - **`giveaway.open` refuses to turn on while a provider is on a free tier** — enforced in code, because "upgrade before the giveaway opens" is exactly the kind of instruction that gets skipped
 - Resend's 100/day and Brevo's 300/day free caps are configuration, not hard-coded assumptions
-- Current consumption and projection appear on the admin health view
+- Current consumption and projection are exported as a health result that E10-05 surfaces
 
 **Tests:** Projection triggering at the threshold · the flag precondition refusing · configuration override.
 **Docs:** `docs/features/email-campaign.md` · `docs/architecture/adr/009-split-email-providers.md`
+
+**Health-result ownership (founder-authorised 2026-09-28):** E8-09 exports quota consumption and projection as a health result; E10-05 owns displaying them.
 
 ---
 
@@ -1488,7 +1516,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/architecture/adr/017-content-files.md` · `docs/modules/platform.md#content`
 
 ### E9-02 — Trust pages at permanent URLs
-**Model:** Tier A — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
 **Build:** `/legit`, `/guarantee`, `/about` from content files. **BLOCKED if P3 prose is outstanding** — a page shell with placeholder text is not a deliverable.
 
@@ -1503,8 +1531,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/features/trust-pages.md` · `docs/brand/copy-rules.md#claims-that-must-stay-true`
 
 ### E9-03 — Legal pages and the representative gate
-**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
-**Why this tier:** this ticket implements the gate that makes a legal obligation unforgettable, and the gate has to be un-bypassable to be worth anything.
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this model:** this ticket implements the gate that makes a legal obligation unforgettable, and the gate has to be un-bypassable to be worth anything.
 
 **Build:** `/terms` and `/privacy` from content files. **A build-time assertion that neither the EU nor the UK representative field is a placeholder**, and **the signup route is unreachable while that assertion fails.**
 
@@ -1522,7 +1550,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/legal/compliance.md` · `docs/architecture/adr/019-article-27-representatives.md`
 
 ### E9-04 — The cookie and storage inventory
-**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Build:** A published inventory page listing every cookie and storage value — **which is exactly one, the theme preference** — with the reasoning for why no banner is required, and the CI gates that keep it true.
 
@@ -1536,8 +1564,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/legal/compliance.md#3-eprivacy--why-there-is-no-banner`
 
 ### E9-05 — Data-subject rights
-**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** security
-**Why this tier:** erasure that corrupts referral edges, or export that returns someone else's data, are both serious and both easy to get wrong.
+**Model:** GPT-6 Astra — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this model:** erasure that corrupts referral edges, or export that returns someone else's data, are both serious and both easy to get wrong.
 
 **Build:** `POST /api/dsr/export` and `POST /api/dsr/delete`, each gated by a signed link sent to the address, each audited. **Erasure anonymises referral edges rather than dropping them.**
 
@@ -1552,7 +1580,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/legal/compliance.md#2-lawful-basis-and-the-record-of-processing` · `docs/features/legal-and-dsr.md`
 
 ### E9-06 — SEO foundations
-**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Build:** Per-page title, description and canonical, **enforced at build time.** Sitemap **generated from the route set.** `robots.txt` allowing the trust and legal pages and excluding `/me`, `/verify`, `/api` and the admin routes. Organisation structured data.
 
@@ -1567,7 +1595,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/features/seo.md`
 
 ### E9-07 — OG images and social cards
-**Model:** Tier A — Medium · **Priority:** Medium · **Flag:** — · **Area:** frontend
+**Model:** GPT-6 Luna — High · **Priority:** Medium · **Flag:** — · **Area:** frontend
+**Why this model:** cosmetic, build-time output with a typed fallback. There is no terminal work, no audit and no new factual claim, so GPT-6 Luna's weaknesses are not exercised (§3).
 
 **Build:** An OG image per page type, generated at build from tokens and the page's own title, with a typed fallback per page kind.
 
@@ -1581,7 +1610,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/features/seo.md`
 
 ### E9-08 — `llms.txt` and the Trustpilot link
-**Model:** Tier A — Medium · **Priority:** Low · **Flag:** `trustpilot.widget` · **Area:** frontend
+**Model:** GPT-6 Luna — High · **Priority:** Low · **Flag:** `trustpilot.widget` · **Area:** frontend
+**Why this model:** `llms.txt` summarises existing content, and the widget's dangerous failures (an off-origin request with the flag off, a fourth island) are already caught by the third-party-request gate and the island-count test (§3).
 
 **Build:** Ship `llms.txt`. Link the claimed Trustpilot profile. **The widget stays behind its flag, off, and displays no rating until the review count justifies it.**
 
@@ -1603,7 +1633,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Exit criteria:** the funnel is computable from server events alone, no event carries personal data, and the admin health view answers "is the campaign silently broken".
 
 ### E10-01 — Umami deployment and the cookieless proof
-**Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** infra
+**Model:** GPT-6 Astra — Medium · **Priority:** High · **Flag:** — · **Area:** infra
+**Why this model:** most of the work is compose and proxy configuration in the terminal, where GPT-6 Astra leads every Sol level, and the cookieless proof must inspect a third-party tracker script rather than trust it (§3).
 
 **Build:** Umami in Compose with its own database, behind the proxy, on a first-party path. Wire the client script. **Deploying it to the VPS is E12-07**; everything this ticket asserts — the cookieless proof — is verifiable locally and is the part that matters.
 
@@ -1618,8 +1649,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/features/analytics.md` · `docs/architecture/adr/007-cookieless-analytics.md`
 
 ### E10-02 — The event schema and registry
-**Model:** Tier B — Medium · **Priority:** High · **Flag:** — · **Area:** backend
-**Why this tier:** the personal-data assertion over the registry is a privacy control, and it is the kind that decays silently as events are added.
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** backend
+**Why this model:** the personal-data assertion over the registry is a privacy control, and it is the kind that decays silently as events are added.
 
 **Build:** `src/server/analytics` with the registered event set from `docs/features/analytics.md#the-event-schema`. **An unregistered event throws in development and is dropped in production.**
 
@@ -1633,7 +1664,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/modules/analytics.md`
 
 ### E10-03 — Server-side funnel events
-**Model:** Tier A — Medium · **Priority:** High · **Flag:** — · **Area:** backend
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** backend
 
 **Build:** Emit the server-side events at their state transitions: `signup_submitted`, `signup_rejected`, `verified`, `referral_confirmed`, `survey_completed`, `giveaway_entered`, `unsubscribed`.
 
@@ -1647,8 +1678,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/features/analytics.md`
 
 ### E10-04 — The CSV export
-**Model:** Tier B — Medium · **Priority:** High · **Flag:** — · **Area:** admin
-**Why this tier:** it is the one route that emits the entire list, on a box with hard memory limits and no swap.
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** admin
+**Why this model:** it is the one route that emits the entire list, on a box with hard memory limits and no swap.
 
 **Build:** `GET /api/admin/export.csv` — **streamed, batch-capped**, audited with a row count. The export set is exactly *verified, unsuppressed, not disqualified*, and every row carries its marketing-consent state (ADR-027).
 
@@ -1663,17 +1694,19 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/features/admin.md` · `docs/data/model.md`
 
 ### E10-05 — The health view
-**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
+**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
 
-**Build:** `GET /api/admin/health`, consuming E5-03a's authentication boundary: verification rate against baseline (from E3-10's verification-rate health result), snapshot age, email queue depth, quota projection, purge-job status, open flag count. Authentication split founder-authorised 2026-09-16.
+**Build:** `GET /api/admin/health`, consuming E5-03a's authentication boundary: verification rate against baseline (from E3-10's verification-rate health result), snapshot age, email queue depth, domain authentication status (E8-02), seed-test results (E8-04), quota consumption and projection (E8-09), purge-job status, open flag count. Authentication split founder-authorised 2026-09-16.
 
 **Acceptance criteria:**
 - **The health view answers "is the campaign silently broken"** in one screen — it carries both silent-failure guards
 - The route is registered with and protected by E5-03a's existing admin authentication boundary
 - **No health response contains a raw IP address or a token**
 
-**Tests:** Health-view completeness against the named metrics · the response-content assertion. E5-03a's generated registry test automatically covers this route's authentication.
+**Tests:** Health-view completeness against the named metrics, including domain authentication status, seed-test results, and quota consumption and projection · the response-content assertion. E5-03a's generated registry test automatically covers this route's authentication.
 **Docs:** `docs/features/admin.md` · `docs/security/threat-model.md#t7--admin-compromise`
+
+**Health-result integration (founder-authorised 2026-09-28):** Consume E8-02's domain-authentication health result, E8-04's seed-test health result, and E8-09's quota-consumption-and-projection health result; their owning tickets export the results, not this route.
 
 ---
 
@@ -1684,7 +1717,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Exit criteria:** every drill passed, every claim on the site true, the handoff rehearsed twice, and the launch gate verified line by line.
 
 ### E11-01 — Load test at 10× expected peak
-**Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** infra
 
 **Build:** Load-test the **signup endpoint at 10× expected peak** against the local production-Compose stack, plus the leaderboard route at spike volume. Confirm every sweep and export is batch-capped and that no query holds a result set in memory.
 
@@ -1701,7 +1734,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/architecture/adr/003-self-hosted-vps.md` · `docs/security/threat-model.md#t8--the-box-goes-down-under-a-viral-spike`
 
 ### E11-02 — Chaos drills
-**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** infra
 
 **Build:** Execute and record all eight drills in `docs/architecture/fallbacks.md#chaos-drills`.
 
@@ -1715,7 +1748,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/architecture/fallbacks.md`
 
 ### E11-03 — Accessibility audit
-**Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Build:** A manual audit beyond the automated gate: keyboard-only traversal of the full signup and verification journey, screen-reader passes on the form and its error states, contrast verified in both themes at real sizes, reduced-motion respected.
 
@@ -1730,8 +1763,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/testing/strategy.md` · `docs/legal/compliance.md#6-accessibility`
 
 ### E11-04 — Claims and copy audit
-**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
-**Why this tier:** an unverifiable claim on a trust brand is disproportionately expensive, and this is the last check before anyone sees it.
+**Model:** GPT-6 Astra — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Why this model:** an unverifiable claim on a trust brand is disproportionately expensive, and this is the last check before anyone sees it.
 
 **Build:** Audit every customer-visible claim: **every giveaway claim matches the current global rules page** (ADR-026) · every number shown is the real number · no countdown, no scarcity, no inflated position, no pre-checked box · the guarantee and sourcing statements match the source documents exactly · the data claims describe what actually happens.
 
@@ -1746,8 +1779,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/brand/copy-rules.md` · `docs/architecture/adr/024-no-dark-patterns.md`
 
 ### E11-05 — Privacy audit
-**Model:** Tier B — **Extra High** · **Priority:** Highest · **Flag:** — · **Area:** security
-**Why this tier:** the no-banner position rests on a property that must hold across every page and every dependency, and a single violation invalidates it retroactively — after data has already been collected.
+**Model:** GPT-6 Astra — **Extra High** · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this model:** the no-banner position rests on a property that must hold across every page and every dependency, and a single violation invalidates it retroactively — after data has already been collected.
 
 **Build:** Exhaustively verify, across **every rendered page** including email-linked pages and error pages: **no non-essential cookie, no storage identifier beyond the one, no third-party request, no fingerprinting API, no personal data in any analytics event, no full IP anywhere, and no public response carrying another person's data.** Enumerate every registered route and assert its response shape.
 
@@ -1765,8 +1798,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/security/threat-model.md#t4--a-privacy-failure-forces-a-consent-banner` · `docs/legal/compliance.md#3-eprivacy--why-there-is-no-banner`
 
 ### E11-06 — The handoff export and two rehearsed imports
-**Model:** Tier B — **Extra High** · **Priority:** Highest · **Flag:** — · **Area:** backend
-**Why this tier:** this is the campaign's entire output. A non-idempotent import discovered on launch day means duplicate customers in the production commerce database.
+**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this model:** this is the campaign's entire output. A non-idempotent import discovered on launch day means duplicate customers in the production commerce database.
 
 **Build:** `scripts/export-handoff.ts` producing the export set and payload per `docs/data/model.md#the-launch-day-handoff-contract`, and `scripts/import-rehearsal.ts` performing the idempotent import keyed on `email_normalised` against a scratch database. **Rehearse twice.**
 
@@ -1785,7 +1818,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/data/model.md#the-launch-day-handoff-contract` · `docs/ops/launch-cutover.md`
 
 ### E11-07 — Cutover rehearsal and the port checklist
-**Model:** Tier A — High · **Priority:** High · **Flag:** — · **Area:** docs
+**Model:** GPT-6 Astra — Medium · **Priority:** High · **Flag:** — · **Area:** docs
 
 **Build:** Complete and verify the port checklist: the token file, every content file with its storefront target, and the font layer. Rehearse the cutover sequence in `docs/ops/launch-cutover.md` end to end, without executing the DNS change.
 
@@ -1800,7 +1833,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/ops/launch-cutover.md` · `docs/brand/tokens.md#port-checklist`
 
 ### E11-08 — Campaign launch readiness gate
-**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** docs
+**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** docs
 
 **Build:** A single verified checklist, **every item evidenced rather than asserted**:
 
@@ -1841,7 +1874,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Prerequisite: the VPS is provisioned and reachable.** No ticket here starts before it is.
 
 ### E12-01 — Provision the host and run the production stack on it
-**Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Model:** GPT-6 Astra — Light · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Why this model:** routine host work against an existing assertion script. Astra at Light beats every Sol level on terminal tasks and finishes faster than Sol at High (§3).
 
 **Build:** Provision the VPS. Install Docker and Compose. Bring up `infra/compose/docker-compose.production.yml` **unchanged** — it has been running locally since E1-06, and any edit needed here is a defect in that file, to be fixed there and re-verified locally first. Create `infra/ENV.md` entries for the host and every production-only variable.
 
@@ -1856,8 +1890,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/architecture/adr/003-self-hosted-vps.md` · `infra/ENV.md`
 
 ### E12-02 — Deploy from GHCR against the real host, with the migration audit
-**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
-**Why this tier:** the first real pull-migrate-restart against live data paths; a mis-recorded migration here is the failure E1-07 exists to prevent, now with somewhere to actually happen.
+**Model:** GPT-6 Astra — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Why this model:** the first real pull-migrate-restart against live data paths; a mis-recorded migration here is the failure E1-07 exists to prevent, now with somewhere to actually happen.
 
 **Build:** Run `infra/deploy/deploy.sh` on the host against a real GHCR image. Confirm the migration audit record is written to persistent storage. Then run the E1-11 thin slice end to end against the deployed site.
 
@@ -1871,7 +1905,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/engineering/ci-cd.md#deploy-and-the-migration-audit`
 
 ### E12-03 — The timed rollback drill
-**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Model:** GPT-6 Astra — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
 **Why this ticket exists:** this is the RTO. E1-07 proved the rollback *logic* locally; the number is dominated by a real registry pull to a real host, and an unmeasured RTO is a guess written down.
 
 **Build:** Deploy release A, deploy release B, then roll back to A with `rollback.sh`. Time it with a monotonic clock, from command to the previous release verifiably serving. Repeat from a cold local image cache, which is the honest worst case.
@@ -1886,8 +1920,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/engineering/ci-cd.md#rollback`
 
 ### E12-04 — Backups to R2, and a restore proven from the remote
-**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
-**Why this tier:** the waitlist is the campaign's only durable asset, and a backup that has only ever been restored from a local repository has not been tested against the failure that matters — losing the box.
+**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Why this model:** the waitlist is the campaign's only durable asset, and a backup that has only ever been restored from a local repository has not been tested against the failure that matters — losing the box.
 
 **Build:** Point the E1-08 pgBackRest configuration at Cloudflare R2. Enable the schedule. Move the repository passphrase off the host. Then restore **from R2** into a scratch container and verify against known rows.
 
@@ -1902,8 +1936,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/engineering/ci-cd.md#backups` · `docs/architecture/adr/003-self-hosted-vps.md`
 
 ### E12-05 — Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics
-**Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
-**Why this tier:** an origin reachable around the proxy defeats the caching the spike plan depends on and exposes the box directly.
+**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** security
+**Why this model:** an origin reachable around the proxy defeats the caching the spike plan depends on and exposes the box directly.
 
 **Build:** Put the zone in front of the host, proxied. Restrict the origin to Cloudflare. Move Turnstile and Web Analytics to production keys. Implement and verify the recorded landing-cache contract: a ref-less/default-flag response is cached with `X-Valstara-Flag-Generation` in the custom key (no country since ADR-026); `?ref=` and non-default flag states remain `private, no-store`. Verify static-asset cache behaviour as well.
 
@@ -1918,7 +1952,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/architecture/adr/003-self-hosted-vps.md` · `docs/architecture/adr/006-turnstile.md` · `docs/architecture/adr/007-cookieless-analytics.md`
 
 ### E12-06 — Chaos drills and the capacity run on the real box
-**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** infra
 
 **Build:** Execute drills 7, 9 and 10 from `docs/architecture/fallbacks.md#chaos-drills` — restore from R2, a host OOM against real limits, and the Cloudflare-absent path — plus drills 1–6 and 8 re-run on the host. Then the capacity run: the signup endpoint at 10× expected peak against the VPS, and the leaderboard under spike load.
 
@@ -1934,7 +1968,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/architecture/fallbacks.md` · `docs/security/threat-model.md#t8--the-box-goes-down-under-a-viral-spike`
 
 ### E12-07 — Production readiness gate
-**Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** docs
+**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** docs
 
 **Build:** Install live provider keys on the host. Deploy Umami to production behind the proxy. Then verify a single checklist, **every item evidenced rather than asserted**:
 
@@ -1977,11 +2011,13 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
 | **Total** | **96** | |
 
-**Tier distribution:** Tier B Extra High 4 · Tier B High 15 · Tier B Medium 30 · Tier A High 16 · Tier A Medium 31. *(2026-09-25: S-01 added at Tier B High; E7-01 moved from Tier B High to Tier A Medium once jurisdiction gating was removed; E7-06 moved from Tier A Medium to Tier B Medium because it now collects provisional winners' countries of residence and runs the sanctions check. 2026-09-27: E8-08 removed from Tier B High by ADR-028.)*
+**Model distribution (2026-09-28, the 34 tickets not yet merged):** GPT-6 Astra 16 (Extra High 1 · High 8 · Medium 6 · Light 1) · GPT-6 Sol 16 (High 10 · Medium 6) · GPT-6 Luna 2 (High 2). **Astra carries the operations and audit work of E11 and E12**, plus E9-05 and E10-01; **Sol carries the code of E8–E10**; Luna carries two small tickets whose dangerous failures an existing gate already catches (§3).
 
-**Tier B carries the personal data, the privacy properties, the fraud invariants, the prize draw, the sending reputation and the handoff** — the places where a mistake is expensive, subtle, or discovered too late to fix. Tier A carries the well-specified majority.
+**Tier distribution before 2026-09-28** (all 96 tickets as first planned; the merged ones keep these tiers): Tier B Extra High 4 · Tier B High 15 · Tier B Medium 30 · Tier A High 16 · Tier A Medium 31. *(2026-09-25: S-01 added at Tier B High; E7-01 moved from Tier B High to Tier A Medium once jurisdiction gating was removed; E7-06 moved from Tier A Medium to Tier B Medium because it now collects provisional winners' countries of residence and runs the sanctions check. 2026-09-27: E8-08 removed from Tier B High by ADR-028.)*
 
-**The four Extra High tickets** are the ones where a subtle error invalidates a whole class of work: reward gating (E4-06), the reproducible draw (E7-05), the privacy audit (E11-05), and the handoff rehearsal (E11-06).
+Under the tier policy, **Tier B carried the personal data, the privacy properties, the fraud invariants, the prize draw, the sending reputation and the handoff** — the places where a mistake is expensive, subtle, or discovered too late to fix. Tier A carried the well-specified majority.
+
+**The four deepest tickets** are the ones where a subtle error invalidates a whole class of work: reward gating (E4-06), the reproducible draw (E7-05), the privacy audit (E11-05), and the handoff rehearsal (E11-06). The first two were built at Tier B Extra High. Under the 2026-09-28 binding, E11-05 runs at GPT-6 Astra Extra High and E11-06 at GPT-6 Astra High, because Extra High adds one point on the Intelligence Index over High and E11-06 is not mainly terminal work (§3).
 
 ---
 
