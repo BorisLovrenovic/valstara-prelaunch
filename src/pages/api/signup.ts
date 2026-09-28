@@ -25,7 +25,6 @@ import {
   type SignupInput,
   type SignupOutcome,
 } from '../../server/subscriber/signup.ts';
-import { createResendTestMailSender } from '../../server/subscriber/verification-mail.ts';
 import {
   verifyTurnstileToken,
   type TurnstileOutcome,
@@ -375,10 +374,7 @@ function defaultDependencies(): SignupRouteDependencies {
         raiseFraudFlag: (subscriberId, kind, detail) =>
           getFraudService().raise(subscriberId, kind, detail),
         screenEmailDomain: (domain) => getFraudService().screen({ domain }),
-        sendVerificationMail: createResendTestMailSender(
-          config.resendApiKey,
-          config.resendTestRecipient,
-        ),
+        sendVerificationMail: async () => undefined,
       })(input),
   };
 }

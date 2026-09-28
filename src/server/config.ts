@@ -9,13 +9,18 @@ const requiredKeys = [
   'IP_PREFIX_PEPPER',
   'REFERRAL_SIGNING_SECRET',
   'RESEND_API_KEY',
-  'RESEND_TEST_RECIPIENT',
+  'RESEND_DKIM_EXPECTED_VALUE',
+  'RESEND_RSEND_CNAME_EXPECTED_TARGET',
+  'RESEND_SEND_CNAME_EXPECTED_TARGET',
+  'RESEND_SENDING_DOMAIN',
   'TURNSTILE_SECRET_KEY',
 ] as const;
 const optionalKeys = [
   'HOST',
   'NODE_ENV',
   'PORT',
+  'RESEND_KEY_MODE',
+  'RESEND_TEST_RECIPIENT',
   'TURNSTILE_SITE_KEY',
   'IP_VELOCITY_WINDOW_MINUTES',
   'IP_VELOCITY_THRESHOLD',
@@ -43,6 +48,7 @@ export const p1AlertEnvironmentKeys = [
 // E12-05 swaps in alongside the production Turnstile secret. Overridable by env
 // today so the founder can drop the real value in without a code change.
 export const turnstileTestSiteKey = '1x00000000000000000000AA';
+export const productionResendSendingDomain = 'send.valstara.com';
 
 export const appEnvironmentKeys = [...requiredKeys, ...optionalKeys] as const;
 
@@ -57,6 +63,7 @@ export class ConfigurationError extends Error {
 }
 
 export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
+  const resend = resendConfiguration(environment);
   const config: AppConfig = {
     adminAuth: adminAuth(environment),
     databaseUrl: databaseUrl(environment),
@@ -71,8 +78,11 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     ),
     nodeEnvironment: nodeEnvironment(environment),
     port: port(environment),
-    resendApiKey: requiredValue(environment, 'RESEND_API_KEY'),
-    resendTestRecipient: recipient(environment),
+    resendApiKey: resend.apiKey,
+    resendDomainAuthentication: resend.domainAuthentication,
+    resendKeyMode: resend.keyMode,
+    resendSendingDomain: resend.sendingDomain,
+    resendTestRecipient: resend.testRecipient,
     turnstileSecretKey: requiredValue(environment, 'TURNSTILE_SECRET_KEY'),
     turnstileSiteKey: turnstileSiteKey(environment),
     verificationRate: verificationRate(environment),
@@ -115,6 +125,123 @@ export function getDatabaseUrl(
   environment: NodeJS.ProcessEnv = process.env,
 ): string {
   return databaseUrl(environment);
+}
+
+export function getResendDispatchConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): Pick<
+  AppConfig,
+  | 'emailBaseUrl'
+  | 'emailTokenSecret'
+  | 'resendApiKey'
+  | 'resendDomainAuthentication'
+  | 'resendKeyMode'
+  | 'resendSendingDomain'
+  | 'resendTestRecipient'
+> {
+  const resend = resendConfiguration(environment);
+  return Object.freeze({
+    emailBaseUrl: emailBaseUrl(environment),
+    emailTokenSecret: emailTokenSecret(environment),
+    resendApiKey: resend.apiKey,
+    resendDomainAuthentication: resend.domainAuthentication,
+    resendKeyMode: resend.keyMode,
+    resendSendingDomain: resend.sendingDomain,
+    resendTestRecipient: resend.testRecipient,
+  });
+}
+
+function resendConfiguration(
+  environment: NodeJS.ProcessEnv,
+): ResendConfiguration {
+  const runtime = nodeEnvironment(environment);
+  const keyMode = environment.RESEND_KEY_MODE;
+  if (runtime === 'production' && keyMode !== 'live') {
+    return invalid('RESEND_KEY_MODE', 'must be live in production');
+  }
+  if (runtime !== 'production' && keyMode === 'live') {
+    return invalid('RESEND_KEY_MODE', 'must not be live outside production');
+  }
+  if (
+    keyMode !== undefined &&
+    keyMode !== '' &&
+    keyMode !== 'test' &&
+    keyMode !== 'live'
+  ) {
+    return invalid('RESEND_KEY_MODE', 'must be test or live');
+  }
+
+  if (
+    runtime === 'production' &&
+    environment.RESEND_TEST_RECIPIENT !== undefined
+  ) {
+    return invalid('RESEND_TEST_RECIPIENT', 'must not be set in production');
+  }
+  const testRecipient = optionalValue(environment, 'RESEND_TEST_RECIPIENT');
+
+  const sendingDomain = requiredValue(environment, 'RESEND_SENDING_DOMAIN');
+  if (sendingDomain !== productionResendSendingDomain) {
+    return invalid(
+      'RESEND_SENDING_DOMAIN',
+      `must be ${productionResendSendingDomain}`,
+    );
+  }
+
+  return Object.freeze({
+    apiKey: requiredValue(environment, 'RESEND_API_KEY'),
+    domainAuthentication: Object.freeze({
+      dkimExpectedValue: requiredValue(
+        environment,
+        'RESEND_DKIM_EXPECTED_VALUE',
+      ),
+      rsendCnameExpectedTarget: dnsTarget(
+        environment,
+        'RESEND_RSEND_CNAME_EXPECTED_TARGET',
+      ),
+      sendCnameExpectedTarget: dnsTarget(
+        environment,
+        'RESEND_SEND_CNAME_EXPECTED_TARGET',
+      ),
+    }),
+    keyMode: keyMode === 'live' ? 'live' : 'test',
+    sendingDomain,
+    testRecipient,
+  });
+}
+
+function optionalValue(
+  environment: NodeJS.ProcessEnv,
+  key: OptionalEnvironmentKey,
+): string | undefined {
+  const value = environment[key];
+  if (value === undefined || value === '') return undefined;
+  const hasControlCharacter = [...value].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint !== undefined && (codePoint <= 31 || codePoint === 127);
+  });
+  if (value !== value.trim() || hasControlCharacter) {
+    return invalid(
+      key,
+      'must not contain whitespace padding or control characters',
+    );
+  }
+  return value;
+}
+
+function dnsTarget(
+  environment: NodeJS.ProcessEnv,
+  key:
+    'RESEND_RSEND_CNAME_EXPECTED_TARGET' | 'RESEND_SEND_CNAME_EXPECTED_TARGET',
+): string {
+  const value = requiredValue(environment, key)
+    .toLowerCase()
+    .replace(/\.$/u, '');
+  if (
+    !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/u.test(value)
+  ) {
+    return invalid(key, 'must be a DNS hostname');
+  }
+  return value;
 }
 
 export function getVerificationRateConfiguration(
@@ -277,13 +404,6 @@ function emailBaseUrl(environment: NodeJS.ProcessEnv): string {
   return parsed.origin;
 }
 
-function recipient(environment: NodeJS.ProcessEnv): string {
-  const value = requiredValue(environment, 'RESEND_TEST_RECIPIENT');
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value)
-    ? value
-    : invalid('RESEND_TEST_RECIPIENT', 'must be a valid email address');
-}
-
 function nodeEnvironment(environment: NodeJS.ProcessEnv): NodeEnvironment {
   const value = environment.NODE_ENV ?? 'development';
   return value === 'development' || value === 'production' || value === 'test'
@@ -411,6 +531,20 @@ export interface AdminAuthConfiguration {
   readonly totpSecret: string;
 }
 
+export interface ResendDomainAuthenticationConfiguration {
+  readonly dkimExpectedValue: string;
+  readonly rsendCnameExpectedTarget: string;
+  readonly sendCnameExpectedTarget: string;
+}
+
+interface ResendConfiguration {
+  readonly apiKey: string;
+  readonly domainAuthentication: ResendDomainAuthenticationConfiguration;
+  readonly keyMode: 'live' | 'test';
+  readonly sendingDomain: typeof productionResendSendingDomain;
+  readonly testRecipient: string | undefined;
+}
+
 export interface AppConfig {
   readonly adminAuth: AdminAuthConfiguration;
   readonly databaseUrl: string;
@@ -423,7 +557,10 @@ export interface AppConfig {
   readonly nodeEnvironment: NodeEnvironment;
   readonly port: number | undefined;
   readonly resendApiKey: string;
-  readonly resendTestRecipient: string;
+  readonly resendDomainAuthentication: ResendDomainAuthenticationConfiguration;
+  readonly resendKeyMode: 'live' | 'test';
+  readonly resendSendingDomain: typeof productionResendSendingDomain;
+  readonly resendTestRecipient: string | undefined;
   readonly turnstileSecretKey: string;
   readonly turnstileSiteKey: string;
   readonly verificationRate: VerificationRateConfiguration;

@@ -624,7 +624,7 @@ test('every code the route can return is in the documented closed set with the s
 
 // --- Default wiring against a real database ---------------------------------
 
-test('the default POST route verifies Turnstile server-side then sends, writing exactly one row', async () => {
+test('the default POST route verifies Turnstile and queues one mail without a direct provider send', async () => {
   const databaseName = `valstara_e302route_${randomUUID().replaceAll('-', '')}`;
   const adminUrl = new URL(
     process.env.TEST_DATABASE_URL ??
@@ -650,16 +650,17 @@ test('the default POST route verifies Turnstile server-side then sends, writing 
   process.env.REFERRAL_SIGNING_SECRET = 'route-test-referral-signing-secret';
   process.env.TURNSTILE_SECRET_KEY = 'route-test-turnstile-secret';
   process.env.RESEND_API_KEY = 'route-test-resend-key';
-  process.env.RESEND_TEST_RECIPIENT = 'delivered@resend.dev';
+  process.env.RESEND_DKIM_EXPECTED_VALUE = 'p=test-public-key';
+  process.env.RESEND_KEY_MODE = 'test';
+  process.env.RESEND_RSEND_CNAME_EXPECTED_TARGET = 'rsend-euw1.forge.rmta.net';
+  process.env.RESEND_SEND_CNAME_EXPECTED_TARGET = 'send.forge.rmta.net';
+  process.env.RESEND_SENDING_DOMAIN = 'send.valstara.com';
   const requests: string[] = [];
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = input instanceof Request ? input.url : input.toString();
     requests.push(url);
     if (url.includes('challenges.cloudflare.com')) {
       return Response.json({ success: true });
-    }
-    if (url === 'https://api.resend.com/emails') {
-      return new Response(null, { status: 200 });
     }
     throw new Error(`Unexpected provider request: ${url}`);
   }) as typeof globalThis.fetch;
@@ -680,10 +681,12 @@ test('the default POST route verifies Turnstile server-side then sends, writing 
       text: 'SELECT count(*)::text AS count FROM subscriber',
     });
     assert.equal(count?.count, '1');
-    // Turnstile is verified before the mail is sent.
+    const queued = await database.readOne<{ count: string }>({
+      text: "SELECT count(*)::text AS count FROM email_send WHERE state = 'queued'",
+    });
+    assert.equal(queued?.count, '1');
     assert.deepEqual(requests, [
       'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-      'https://api.resend.com/emails',
     ]);
   } finally {
     globalThis.fetch = originalFetch;
@@ -694,7 +697,11 @@ test('the default POST route verifies Turnstile server-side then sends, writing 
       'IP_PREFIX_PEPPER',
       'TURNSTILE_SECRET_KEY',
       'RESEND_API_KEY',
-      'RESEND_TEST_RECIPIENT',
+      'RESEND_DKIM_EXPECTED_VALUE',
+      'RESEND_KEY_MODE',
+      'RESEND_RSEND_CNAME_EXPECTED_TARGET',
+      'RESEND_SEND_CNAME_EXPECTED_TARGET',
+      'RESEND_SENDING_DOMAIN',
     ]) {
       if (originalEnv[key] === undefined) {
         delete process.env[key];

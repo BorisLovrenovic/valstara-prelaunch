@@ -51,7 +51,11 @@ test('a provider-unreachable signup, through the default wiring, commits the row
   process.env.REFERRAL_SIGNING_SECRET = 'timeout-route-referral-secret';
   process.env.TURNSTILE_SECRET_KEY = 'timeout-route-test-turnstile-secret';
   process.env.RESEND_API_KEY = 'timeout-route-test-resend-key';
-  process.env.RESEND_TEST_RECIPIENT = 'delivered@resend.dev';
+  process.env.RESEND_DKIM_EXPECTED_VALUE = 'p=test-public-key';
+  process.env.RESEND_KEY_MODE = 'test';
+  process.env.RESEND_RSEND_CNAME_EXPECTED_TARGET = 'rsend-euw1.forge.rmta.net';
+  process.env.RESEND_SEND_CNAME_EXPECTED_TARGET = 'send.forge.rmta.net';
+  process.env.RESEND_SENDING_DOMAIN = 'send.valstara.com';
 
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = input instanceof Request ? input.url : input.toString();
@@ -108,7 +112,11 @@ test('a provider-unreachable signup, through the default wiring, commits the row
       'REFERRAL_SIGNING_SECRET',
       'TURNSTILE_SECRET_KEY',
       'RESEND_API_KEY',
-      'RESEND_TEST_RECIPIENT',
+      'RESEND_DKIM_EXPECTED_VALUE',
+      'RESEND_KEY_MODE',
+      'RESEND_RSEND_CNAME_EXPECTED_TARGET',
+      'RESEND_SEND_CNAME_EXPECTED_TARGET',
+      'RESEND_SENDING_DOMAIN',
     ]) {
       if (originalEnv[key] === undefined) {
         delete process.env[key];
