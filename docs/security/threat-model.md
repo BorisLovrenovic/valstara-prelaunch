@@ -42,7 +42,7 @@ The site operates with no banner because Article 5(3) device storage/access is a
 
 A waitlist full of fake addresses corrupts every metric, burns email quota, and makes the handoff worthless.
 
-**Controls:** Turnstile verified **server-side** on every write route, before any other work; **fail closed on invalid, accept-and-flag on provider timeout**. Rate limits per IP prefix and per identity. Blocklist and MX. **Double opt-in is the real filter** — a bot-created row that never verifies is never counted, never exported, and expires.
+**Controls:** Turnstile verified **server-side first** on public, unauthenticated write routes; writes authenticated by a single-use signed token consume that token in place of Turnstile (founder-authorised 2026-09-28). Both kinds are rate-limited. Invalid challenges fail closed; provider timeouts accept under strict limits and flag. Cross-origin form writes are rejected in middleware except the RFC 8058 `/api/unsubscribe` route, whose signed single-use token is the authenticator. Blocklist and MX. **Double opt-in is the real filter** — a bot-created row that never verifies is never counted, never exported, and expires.
 
 ---
 

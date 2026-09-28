@@ -73,6 +73,8 @@ function startServer(databaseUrl) {
         DATABASE_URL: databaseUrl,
         HOST: '127.0.0.1',
         IP_PREFIX_PEPPER: 'status-link-prefix-pepper',
+        P1_ALERT_WEBHOOK_URL: 'http://127.0.0.1:43290/alert',
+        P1_ALERT_WEBHOOK_TOKEN: 'status-link-alert-test-token',
         PORT: String(port),
         REFERRAL_SIGNING_SECRET: 'status-link-referral-secret',
         RESEND_API_KEY: 'status-link-resend-key',
@@ -237,7 +239,7 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
       'Launch discount',
       'Held',
       'Update your launch preferences',
-      'Unsubscribe from waitlist emails',
+      'Leave the waitlist and stop all email',
     ]) {
       assert.ok(
         authenticatedBody.includes(expected),
@@ -271,10 +273,7 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     assert.doesNotMatch(optedInBody, /Turn on marketing email/u);
     assert.match(authenticatedBody, /data-copy-referral/u);
     assert.match(authenticatedBody, /action="\/api\/survey"/u);
-    assert.match(
-      authenticatedBody,
-      /href="http:\/\/127\.0\.0\.1:\d+\/unsubscribe\?t=/u,
-    );
+    assert.match(authenticatedBody, /action="\/api\/me\/leave"/u);
     for (const forbidden of [
       subscriberId,
       otherSubscriberId,
@@ -344,6 +343,36 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     assert.deepEqual(sends.rows, [
       { subscriber_id: subscriberId, template: 'status_link' },
     ]);
+
+    const left = await globalThis.fetch(
+      `http://127.0.0.1:${port}/api/me/leave`,
+      {
+        method: 'POST',
+        headers: { Origin: `http://127.0.0.1:${port}` },
+        body: new globalThis.URLSearchParams({
+          t: validToken,
+          turnstile_token: 'leave-turnstile-token',
+        }),
+      },
+    );
+    assert.equal(left.status, 200);
+    assert.equal((await left.json()).status, 'accepted');
+    const suppression = await fixture.database.query(
+      'SELECT email_normalised, source FROM suppression',
+    );
+    assert.deepEqual(suppression.rows, [
+      {
+        email_normalised: 'status-owner@example.test',
+        source: 'member_status',
+      },
+    ]);
+    const afterLeave = await globalThis.fetch(
+      `http://127.0.0.1:${port}/me?t=${encodeURIComponent(validToken)}`,
+    );
+    assert.equal(afterLeave.status, 200);
+    const afterLeaveBody = await afterLeave.text();
+    assert.match(afterLeaveBody, /You have left the waitlist/u);
+    assert.doesNotMatch(afterLeaveBody, /data-member-dashboard/u);
 
     await fixture.database.query(
       `

@@ -88,7 +88,7 @@ These are not restated per ticket. **Violating one fails review.** They are the 
 3. **A high-value referral reward can never settle from a verification alone** (ADR-012).
 4. **Referral attribution is server-side and signed** — no cookie, no client-side path (ADR-008).
 5. **Email is normalised before any uniqueness check.**
-6. **Turnstile is verified server-side on every write route, before any other work** (ADR-006).
+6. **Every public, unauthenticated write route verifies Turnstile server-side first. A write authenticated by a single-use signed token consumes that token first, in place of Turnstile. Rate limiting applies to both kinds** (ADR-006; founder-authorised amendment 2026-09-28).
 7. **No code path sets `disqualified` without a recorded human actor.**
 8. **One email per business key; suppression re-checked at dispatch.**
 9. **A full IP address is never stored, logged or returned** — truncate, then hash.
@@ -1341,6 +1341,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Docs:** `docs/modules/email.md` · `docs/legal/compliance.md`
 
 **Criterion ownership (founder-authorised 2026-09-27):** E6-06 proves the unsubscribe link actually works through its one-click POST tests. E8-01 builds and tests the bound-token headers; E8-03 embeds the route URL in each template.
+
+**Recovery and member action (founder-authorised 2026-09-28):** A failed unsubscribe transaction emits a P1 `operator_task` alert containing `token_sha256` and request action, even if database lookup fails; bound IDs may then be null. The operator CLI applies by token ID or hash, requires `--action leave_waitlist` for an explicit leave task, and records its actor. `/me` offers its own Turnstile-first, rate-limited leave action authenticated by the reusable status token, using the same transactional suppression and audit service. An explicit leave also sets a verified subscriber's status to `unsubscribed` and stamps `unsubscribed_at` in that transaction, so leaving removes draw eligibility. The member page does not pass that status token to `/unsubscribe`.
 
 ### E8-02 — The Resend provider and domain authentication
 **Model:** Tier B — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend

@@ -20,6 +20,7 @@ const migrationModuleUrl = new URL(
   import.meta.url,
 ).href;
 const drillCommandTimeoutMs = 45_000;
+const drillImageBuildTimeoutMs = 5 * 60_000;
 const checksumMismatchProgram = `
 import { createHash } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -397,35 +398,49 @@ test(
         deployedDockerfile,
         `FROM ${initialImage}\nUSER root\nCOPY --chown=node:node 9999-local-deployment-drill.sql /app/src/server/db/migrations/9999-local-deployment-drill.sql\nUSER node\n`,
       );
-      await runChecked('docker', ['build', '--tag', sourceImage, '.']);
-      await runChecked('docker', [
-        'build',
-        '--file',
-        initialDockerfile,
-        '--tag',
-        initialImage,
-        directory,
-      ]);
-      await runChecked('docker', [
-        'build',
-        '--tag',
-        deployedImage,
-        '--file',
-        deployedDockerfile,
-        directory,
-      ]);
+      await runChecked('docker', ['build', '--tag', sourceImage, '.'], {
+        timeoutMs: drillImageBuildTimeoutMs,
+      });
+      await runChecked(
+        'docker',
+        [
+          'build',
+          '--file',
+          initialDockerfile,
+          '--tag',
+          initialImage,
+          directory,
+        ],
+        { timeoutMs: drillImageBuildTimeoutMs },
+      );
+      await runChecked(
+        'docker',
+        [
+          'build',
+          '--tag',
+          deployedImage,
+          '--file',
+          deployedDockerfile,
+          directory,
+        ],
+        { timeoutMs: drillImageBuildTimeoutMs },
+      );
       await writeFile(
         unhealthyDockerfile,
         `FROM ${deployedImage}\nHEALTHCHECK --interval=1s --timeout=1s --start-period=0s --retries=1 CMD ["sh", "-c", "exit 1"]\n`,
       );
-      await runChecked('docker', [
-        'build',
-        '--file',
-        unhealthyDockerfile,
-        '--tag',
-        unhealthyImage,
-        directory,
-      ]);
+      await runChecked(
+        'docker',
+        [
+          'build',
+          '--file',
+          unhealthyDockerfile,
+          '--tag',
+          unhealthyImage,
+          directory,
+        ],
+        { timeoutMs: drillImageBuildTimeoutMs },
+      );
 
       for (const image of [initialImage, deployedImage, unhealthyImage]) {
         await runChecked('docker', ['push', image]);

@@ -45,6 +45,8 @@ An Article 27 representative is a **natural or legal person established in the E
 
 **Withdrawal is one click** and is as easy as giving it. Every marketing mail carries an RFC 8058 one-click unsubscribe that withdraws marketing consent, and `/me` has a marketing on/off control. **Withdrawing marketing consent never removes a person from the waitlist or the giveaway.** Leaving the waitlist entirely is a separate, explicit action that suppresses all mail.
 
+E6-06's email unsubscribe POST consumes a single-use signed token without Turnstile or JavaScript. `/me` offers a separate Turnstile-checked leave action using the reusable status token; explicit leave also changes a verified subscriber to `unsubscribed`, ending draw eligibility. Token consumption, consent withdrawal or global suppression, and its audit event commit together. On failure they all roll back, the link remains usable, and the person sees an honest retry message. A P1 operator-task alert carries the token hash and request action so it can be applied manually if the person does not retry (founder-authorised 2026-09-28).
+
 **Erasure anonymises referral edges rather than dropping them.** The edge survives with its subject nulled, so counts stay defensible and no personal data remains. The reasoning is recorded here because it is the kind of decision a supervisory authority would ask about.
 
 ---

@@ -138,6 +138,10 @@ on and the other cannot.
 definition on a developer machine and proves the *path*: the script pulls,
 applies migrations, health-gates the candidate, and restores the previous
 release when the candidate fails. It is automated and runs unattended.
+The drill bounds cold image builds separately from deployment commands: image
+assembly may take up to five minutes, while pulls, migrations, and health-gated
+operations retain their 45-second command deadline. The build limit is a test
+harness guard, not a recovery-time target.
 
 **It does not produce an RTO.** Its duration is dominated by whatever the local
 image cache already holds, so a local figure must never be recorded as the

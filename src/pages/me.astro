@@ -5,6 +5,7 @@ import { verificationCopy } from '../copy/verification.ts';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
+import { createUnsubscribeRepository } from '../server/db/unsubscribe.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
 import { createReferralService } from '../server/referral/service.ts';
 import { createMarketingService } from '../server/subscriber/marketing.ts';
@@ -28,6 +29,7 @@ let replacementRequested = false;
 let challengeFailed = false;
 let surveyEnabled = false;
 let marketingEnabled = false;
+let leftWaitlist = false;
 const token = Astro.url.searchParams.get('t') ?? '';
 
 if (Astro.request.method === 'POST') {
@@ -73,21 +75,27 @@ if (Astro.request.method === 'POST') {
     });
     authentication = await statusLinks.authenticate(token);
     if (authentication.kind === 'authenticated') {
-      [dashboardStatus, surveyEnabled, marketingEnabled] = await Promise.all([
-        createReferralService(database).status(authentication.subscriberId),
-        flags.isEnabled('survey.enabled'),
-        createMarketingService(database, { flags }).preference(
-          authentication.subscriberId,
-        ),
-      ]);
+      const subject = await createUnsubscribeRepository(database).statusSubject(
+        authentication.subscriberId,
+      );
+      if (subject?.status === 'unsubscribed') {
+        leftWaitlist = true;
+      } else if (subject?.status !== 'verified') {
+        authentication = { kind: 'rejected' };
+      } else {
+        [dashboardStatus, surveyEnabled, marketingEnabled] = await Promise.all([
+          createReferralService(database).status(authentication.subscriberId),
+          flags.isEnabled('survey.enabled'),
+          createMarketingService(database, { flags }).preference(
+            authentication.subscriberId,
+          ),
+        ]);
+      }
     }
   } finally {
     await database.close();
   }
 }
-
-const unsubscribeUrl = new URL('/unsubscribe', Astro.url);
-unsubscribeUrl.searchParams.set('t', token);
 ---
 
 <BaseLayout
@@ -95,7 +103,12 @@ unsubscribeUrl.searchParams.set('t', token);
   description={memberStatusCopy.meta.description}
 >
   {
-    authentication.kind === 'authenticated' && dashboardStatus !== null ? (
+    authentication.kind === 'authenticated' && leftWaitlist ? (
+      <section class="member-status-boundary">
+        <h1>{memberStatusCopy.left.heading}</h1>
+        <p>{memberStatusCopy.left.body}</p>
+      </section>
+    ) : authentication.kind === 'authenticated' && dashboardStatus !== null ? (
       <div class="member-status-boundary" data-member-dashboard>
         <h1>{memberStatusCopy.authenticated.heading}</h1>
         <p>{memberStatusCopy.authenticated.body}</p>
@@ -268,11 +281,26 @@ unsubscribeUrl.searchParams.set('t', token);
         ) : null}
 
         <section class="member-status-section">
-          <h2>{memberStatusCopy.unsubscribe.heading}</h2>
-          <p>{memberStatusCopy.unsubscribe.body}</p>
-          <a href={unsubscribeUrl.toString()}>
-            {memberStatusCopy.unsubscribe.link}
-          </a>
+          <h2>{memberStatusCopy.leave.heading}</h2>
+          <p>{memberStatusCopy.leave.body}</p>
+          <form
+            action="/api/me/leave"
+            data-leave-form
+            data-unavailable-message={memberStatusCopy.leave.unavailable}
+            method="post"
+          >
+            <input name="t" type="hidden" value={token} />
+            <div
+              class="cf-turnstile"
+              data-sitekey={config.turnstileSiteKey}
+              data-response-field-name="turnstile_token"
+            />
+            <noscript>
+              <p>{memberStatusCopy.leave.javaScriptRequired}</p>
+            </noscript>
+            <button type="submit">{memberStatusCopy.leave.submit}</button>
+            <p aria-live="polite" data-leave-status />
+          </form>
         </section>
       </div>
     ) : authentication.kind === 'disabled' ? (
@@ -394,6 +422,35 @@ unsubscribeUrl.searchParams.set('t', token);
       } catch {
         status.textContent = marketingForm.dataset.unavailableMessage ?? '';
       } finally {
+        submit.disabled = false;
+      }
+    });
+  }
+
+  const leaveForm = document.querySelector('[data-leave-form]');
+  if (leaveForm instanceof HTMLFormElement) {
+    leaveForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submit = leaveForm.querySelector('[type="submit"]');
+      const status = leaveForm.querySelector('[data-leave-status]');
+      if (
+        !(submit instanceof HTMLButtonElement) ||
+        !(status instanceof HTMLElement)
+      )
+        return;
+      submit.disabled = true;
+      try {
+        const response = await fetch(leaveForm.action, {
+          body: new FormData(leaveForm),
+          method: 'POST',
+        });
+        const payload = await response.json();
+        status.textContent = response.ok
+          ? payload.message
+          : (payload.error?.message ?? leaveForm.dataset.unavailableMessage);
+        if (!response.ok) submit.disabled = false;
+      } catch {
+        status.textContent = leaveForm.dataset.unavailableMessage ?? '';
         submit.disabled = false;
       }
     });
