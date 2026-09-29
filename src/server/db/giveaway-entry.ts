@@ -20,6 +20,10 @@ export interface GiveawayEntryRepository {
     rulesVersion: string;
     rulesSha256: Buffer;
   }): Promise<number>;
+  hasEntryForRulesVersion(
+    subscriberId: string,
+    rulesVersion: string,
+  ): Promise<boolean>;
   stampFirstRulesVersion(
     subscriberId: string,
     rulesVersion: string,
@@ -95,6 +99,16 @@ export function createGiveawayEntryRepository(
           input.sourceEdgeId,
         ],
       });
+    },
+    async hasEntryForRulesVersion(subscriberId, rulesVersion) {
+      const row = await database.readOne<{ present: boolean }>({
+        text: `SELECT EXISTS (
+          SELECT 1 FROM giveaway_entry
+          WHERE subscriber_id = $1 AND rules_version = $2
+        ) AS present`,
+        values: [subscriberId, rulesVersion],
+      });
+      return row?.present ?? false;
     },
     stampFirstRulesVersion(subscriberId, rulesVersion) {
       return database.execute({

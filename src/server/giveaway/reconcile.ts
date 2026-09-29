@@ -3,6 +3,7 @@ import { ConfigurationError, getGiveawayEntryPeriodStart } from '../config.ts';
 import { createGiveawayEntryRepository } from '../db/giveaway-entry.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
+import { createTransactionalEmailProducers } from '../email/producers.ts';
 import type { FlagService } from '../flags/types.ts';
 
 import {
@@ -18,7 +19,9 @@ export function createGiveawayEntryReconciliationJob(
   flags: Pick<FlagService, 'isEnabled'>,
   currentRules: () => Promise<CurrentGiveawayRules>,
   periodStart: Date | null = getGiveawayEntryPeriodStart(),
+  clock: () => Date = () => new Date(),
 ): { run(limit: number): Promise<{ checked: number; accrued: number }> } {
+  const receipt = createTransactionalEmailProducers(database, clock).receipt;
   return {
     async run(limit) {
       if (
@@ -53,6 +56,7 @@ export function createGiveawayEntryReconciliationJob(
             flags,
             () => rules,
             periodStart,
+            receipt,
           );
           for (const candidate of candidates) {
             if (

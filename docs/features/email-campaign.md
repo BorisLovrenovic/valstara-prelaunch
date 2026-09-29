@@ -15,7 +15,7 @@ Seven transactional templates through **Resend on `send.valstara.com`**, and bro
 6. **Giveaway entry receipt** — entries, and a link to the immutable global rules version that governs them
 7. **Provisional winner notification** — status link, Section 9 response deadline and the governing rules-version link; E7-06 queues the record, E8-01 dispatches it and E8-03 renders it with a plain-text alternative from the copy layer
 
-E8-03 supplies and registers all seven renderers. E8-03a, added by founder authorisation on 2026-09-28, will queue welcome, milestone and entry-receipt mail from their event transactions. Until then, E8-03 proves those renderers with fixture payloads.
+E8-03 supplies and registers all seven renderers. E8-03a queues welcome on first verification, milestone reached on each newly awarded tier, and one entry receipt per subscriber per rules revision on its first entry under that revision. Receipt queueing follows `giveaway.open`; welcome and milestone are transactional and have no flag. All three queue from the triggering transaction, with isolated queue failure so the event still commits. Later entries under the same revision appear on `/me` without a second receipt.
 
 Broadcasts (Brevo) are composed from a shared layout: the **weekly update** (including the top-10 block that is the leaderboard's fallback surface), and the **launch announcement**.
 

@@ -4,6 +4,10 @@ import { createReferralRepository } from '../db/referral.ts';
 import { createVerificationCompletionRepository } from '../db/verification-completion.ts';
 import { withTransaction } from '../db/transaction.ts';
 import {
+  createTransactionalEmailProducers,
+  type TransactionalEmailProducers,
+} from '../email/producers.ts';
+import {
   accessWindowBands,
   accessWindowForVerificationOrder,
   type AccessWindowBand,
@@ -28,6 +32,7 @@ export interface VerificationCompletion {
 }
 
 export interface VerificationCompletionDependencies {
+  readonly emailProducers?: TransactionalEmailProducers;
   readonly accessWindowBands?: readonly AccessWindowBand[];
   readonly clock?: () => Date;
   readonly referralEnabled?: boolean;
@@ -53,6 +58,9 @@ export function createVerificationCompletionService(
 ): (token: string) => Promise<VerificationCompletion> {
   const clock = dependencies.clock ?? (() => new Date());
   const referralEnabled = dependencies.referralEnabled ?? true;
+  const producers =
+    dependencies.emailProducers ??
+    createTransactionalEmailProducers(database, clock);
 
   return async (token) => {
     if (token === '') {
@@ -84,7 +92,9 @@ export function createVerificationCompletionService(
       }
 
       const subscriberId = consumed.subscriberId;
-      const referral = createReferralService(connection);
+      const referral = createReferralService(connection, {
+        milestoneEmail: producers.milestone,
+      });
       const completion = createVerificationCompletionRepository(connection);
       const repository = createReferralRepository(connection);
 
@@ -151,6 +161,8 @@ export function createVerificationCompletionService(
           connection,
           dependencies.giveaway.flags,
           dependencies.giveaway.currentRules,
+          undefined,
+          producers.receipt,
         ).accrueForVerification(subscriberId);
       }
 
@@ -162,6 +174,9 @@ export function createVerificationCompletionService(
       }
 
       const status = await verification.issue(subscriberId, 'status');
+      if (consumed.outcome === 'verified') {
+        await producers.welcome(connection, subscriberId);
+      }
       return {
         accessWindow: subscriber.access_window,
         outcome: consumed.outcome,
