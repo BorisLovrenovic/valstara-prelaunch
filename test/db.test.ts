@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      40,
+      42,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -203,7 +203,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
           ORDER BY table_name
         `,
       },
-      22,
+      24,
     );
     const giveawayRulesVersionColumn = await fixture.database.readOne<{
       data_type: string;
@@ -259,6 +259,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0038-leave-waitlist.sql',
       '0039-transactional-producer-payload.sql',
       '0040-email-seed-test.sql',
+      '0041-brevo-contact-sync.sql',
+      '0042-brevo-seed-test.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -304,6 +306,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0038-leave-waitlist.sql',
         '0039-transactional-producer-payload.sql',
         '0040-email-seed-test.sql',
+        '0041-brevo-contact-sync.sql',
+        '0042-brevo-seed-test.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -316,8 +320,10 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       tables.map((row) => row.table_name),
       [
         'audit_log',
+        'brevo_contact_sync',
         'campaign_flag',
         'domain_allow',
+        'email_broadcast_seed_test',
         'email_seed_test',
         'email_send',
         'fraud_flag',
@@ -436,10 +442,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          40,
+          42,
         );
 
-        assert.equal(appliedCount, 40);
+        assert.equal(appliedCount, 42);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -483,6 +489,8 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0038-leave-waitlist.sql',
             '0039-transactional-producer-payload.sql',
             '0040-email-seed-test.sql',
+            '0041-brevo-contact-sync.sql',
+            '0042-brevo-seed-test.sql',
           ],
         );
       } finally {

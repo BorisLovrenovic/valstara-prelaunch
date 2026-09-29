@@ -67,6 +67,7 @@ export interface EmailServiceDependencies {
   readonly operatorTask: (input: {
     readonly emailSendId: string;
     readonly code: string;
+    readonly provider: string;
   }) => Promise<void>;
 }
 
@@ -331,7 +332,11 @@ export function createEmailService(
                 ? error.message
                 : 'render_failed';
             await repo.markFailed(row.id, now, code);
-            await dependencies.operatorTask({ emailSendId: row.id, code });
+            await dependencies.operatorTask({
+              emailSendId: row.id,
+              code,
+              provider: row.provider,
+            });
             summary.failed += 1;
             continue;
           }
@@ -349,6 +354,7 @@ export function createEmailService(
               await dependencies.operatorTask({
                 emailSendId: row.id,
                 code: 'provider_unavailable',
+                provider: row.provider,
               });
               summary.failed += 1;
             } else {

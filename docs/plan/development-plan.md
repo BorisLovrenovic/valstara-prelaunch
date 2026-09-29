@@ -1448,6 +1448,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Evidence without live sending (founder-authorised 2026-09-29):** mail from `send.valstara.com` to a real inbox is live sending, and live sending keys stay off local machines until E12-07 (`infra/ENV.md`). E8-04 therefore proves the harness against injected mailbox fakes: the weekly schedule, placement recorded per provider, the spam-placement alert and the health result. Nothing is sent, no seed mailbox is used, and E8-04 does not depend on P7. The first live seed run, from the production host with the live key, is E12-07's. So is the manual rendering check: every transactional template, delivered to the seed mailboxes, viewed in all five clients. Apple Mail is a client, not a mailbox provider, so it is a rendering target only.
 
+**Brevo broadcast seed extension (founder-authorised 2026-09-29):** E8-05 extends the weekly seed harness with an internal Brevo probe to the same four seed mailboxes. It runs independently of `email.broadcast`, which gates customer campaign sends, so the provider can be checked before enabling the flag. Inspect delivered raw MIME: a real `text/plain` part must be present, no tracking pixel may be injected, and the first-party probe link must not be rewritten. Failures alert P1. Local tests use injected mailbox messages; the first live Brevo seed and account-level tracking verification remain E12-07's. This does not add a broadcast campaign template before E8-07.
+
 ### E8-05 — The Brevo provider and contact sync
 **Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `email.broadcast` · **Area:** backend
 
@@ -1462,6 +1464,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Tests:** Idempotent resync · a partial-failure resume · the verified-and-consented-only assertion · withdrawal removal · flag isolation from transactional.
 **Docs:** `docs/modules/email.md`
+
+**Header contract and MIME evidence (founder-authorised 2026-09-29):** The founder's real `POST /v3/smtp/email` send delivered exactly one `List-Unsubscribe` — the E8-01 bound-token header, unchanged — and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`. Both were covered by Brevo's DKIM signature for `mail.valstara.com`; SPF, DKIM and DMARC passed. E8-05 passes both headers in Brevo's `headers` payload and tests that payload. The same send showed Brevo converted `textContent`-only input to HTML-only output, so the provider must send both `htmlContent` and `textContent`. It also showed an injected open-tracking pixel. Account-level open and click tracking must be disabled on both providers. E8-04's broadcast seed extension checks delivered Brevo output; E12-07 confirms both account settings and obtains the first live seed evidence.
 
 ### E8-06 — Bounce and complaint handling
 **Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** backend
@@ -1479,6 +1483,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Tests:** Signature-before-parse · replay · bounce-type handling · a dropped-webhook reconciliation scenario.
 **Docs:** `docs/modules/email.md` · `docs/architecture/fallbacks.md#email`
+
+**Brevo one-click contract (founder-authorised 2026-09-29):** The real E8-05 send confirmed that Brevo preserves the application's bound RFC 8058 headers, so E8-06's one-click route and marketing-only withdrawal contract remain the paths for Brevo broadcasts. No Brevo-managed unsubscribe event is added to this ticket.
 
 ### E8-07 — The weekly campaign update
 **Model:** GPT-6 Sol — Medium · **Priority:** Medium · **Flag:** `email.broadcast` · **Area:** frontend
@@ -1998,6 +2004,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 - **Live Resend and Brevo keys on the host; no sandbox key present** — and no live key in the repository or any developer environment
 - **SPF, DKIM and DMARC verify on both sending domains from the production host**, and a seed test round-trips to the inbox at all four major providers. This is the first live seed run; E8-04 and E11-08 defer it here (founder-authorised 2026-09-29)
 - **Every transactional template renders correctly in Gmail, Outlook, Apple Mail, GMX and Web.de** — checked manually on the messages delivered to the seed mailboxes from the production host, in both themes where the client supports them. Moved here from E8-04 (founder-authorised 2026-09-29)
+- **The first live Brevo broadcast seed lands with a real plain-text MIME part, no tracking pixel and no rewritten first-party link**, and account-level open/click tracking is confirmed off for both providers (founder-authorised 2026-09-29)
 - Umami serving first-party through the proxy, **setting no cookie** — the privacy gate re-run against production
 - MFA active on the admin account; admin routes unreachable except as documented
 - Backups running on schedule with the E12-04 restore evidence recorded

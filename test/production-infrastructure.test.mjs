@@ -215,6 +215,9 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   assert.equal(config.services.app.ports, undefined);
   assert.equal(config.services.maintenance.ports, undefined);
   assert.deepEqual(Object.keys(config.services.maintenance.environment), [
+    'BREVO_API_KEY',
+    'BREVO_LIST_ID',
+    'BREVO_SENDING_DOMAIN',
     'DATABASE_URL',
     'DRAND_CHAIN_HASH',
     'DRAND_CHAIN_PUBLIC_KEY',

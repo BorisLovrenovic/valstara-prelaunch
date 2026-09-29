@@ -8,6 +8,7 @@ import {
   appEnvironmentKeys,
   ConfigurationError,
   getDatabaseUrl,
+  getBrevoConfiguration,
   getGiveawayEntryPeriodStart,
   getIpVelocityConfiguration,
   getP1AlertConfiguration,
@@ -81,6 +82,7 @@ async function assertBootRejects(
 
 test('E1-12 validates and types the complete application environment', () => {
   assert.deepEqual(validateConfig(validEnvironment), {
+    brevo: null,
     adminAuth: {
       credential: 'local-test-admin-credential-32-chars',
       totpSecret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
@@ -163,6 +165,37 @@ test('maintenance validates Resend dispatch settings without unrelated app secre
       error instanceof ConfigurationError &&
       error.variableName === 'RESEND_TEST_RECIPIENT',
   );
+});
+
+test('Brevo configuration fails closed on partial or wrong-domain settings', () => {
+  assert.equal(getBrevoConfiguration({}), null);
+  assert.deepEqual(
+    getBrevoConfiguration({
+      BREVO_API_KEY: 'local-only-key',
+      BREVO_LIST_ID: '42',
+      BREVO_SENDING_DOMAIN: 'mail.valstara.com',
+    }),
+    {
+      apiKey: 'local-only-key',
+      listId: 42,
+      sendingDomain: 'mail.valstara.com',
+    },
+  );
+  for (const environment of [
+    { BREVO_API_KEY: 'local-only-key' },
+    {
+      BREVO_API_KEY: 'local-only-key',
+      BREVO_LIST_ID: '0',
+      BREVO_SENDING_DOMAIN: 'mail.valstara.com',
+    },
+    {
+      BREVO_API_KEY: 'local-only-key',
+      BREVO_LIST_ID: '42',
+      BREVO_SENDING_DOMAIN: 'send.valstara.com',
+    },
+  ]) {
+    assert.throws(() => getBrevoConfiguration(environment), ConfigurationError);
+  }
 });
 
 test('E8-02 rejects production sandbox configuration and live mode outside production', () => {

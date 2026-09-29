@@ -60,6 +60,20 @@ production secret manager; if it fails, restore that hook or re-authorize the
 account, then let the next hourly cycle retry. Do not enter seed credentials in
 the repository or a local environment.
 
+When `email.broadcast` is on, `email_broadcast_seed_test` also sends one Brevo
+probe per mailbox and UTC week. It inspects the raw message for a genuine
+plain-text MIME part, an injected tracking image and rewritten links.
+`broadcast_seed_content_failed` and `broadcast_seed_test` maintenance failure
+are P1. Turn `email.broadcast` off, confirm open and click tracking are disabled
+in both provider accounts, inspect the affected mailbox and sending domain,
+then allow the next hourly check to record a clean delivery. The first live
+Brevo seed is E12-07's; local tests use injected messages.
+
+`brevo_contact_sync_failed` is P2. Check Brevo availability and list
+configuration, then leave the job to resume its bounded batches. PostgreSQL
+consent and suppression stay authoritative; dispatch rechecks both even if
+list removal is delayed. The alert contains no address.
+
 ---
 
 ## "The leaderboard looks wrong"

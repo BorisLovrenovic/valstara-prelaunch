@@ -1,5 +1,6 @@
 import {
   getDatabaseUrl,
+  getBrevoConfiguration,
   getDrandConfiguration,
   getP1AlertConfiguration,
   getResendDispatchConfiguration,
@@ -18,6 +19,15 @@ import {
   createSeedTestService,
 } from '../email/seed-test.ts';
 import { createResendProvider } from '../email/providers/resend.ts';
+import { createBrevoProvider } from '../email/providers/brevo.ts';
+import {
+  createBrevoContactSyncJob,
+  runBrevoContactSync,
+} from '../email/brevo-sync.ts';
+import {
+  createBroadcastSeedSender,
+  createBroadcastSeedTest,
+} from '../email/broadcast-seed.ts';
 import {
   createResendDispatcher,
   runResendDispatch,
@@ -48,6 +58,16 @@ const clock = (): Date => new Date();
 const alerts = createAlertWebhookTransport(getP1AlertConfiguration());
 const reportFailure = createMaintenanceFailureReporter(alerts, { clock });
 const resendConfiguration = getResendDispatchConfiguration();
+const brevoConfiguration = getBrevoConfiguration();
+const brevoProvider =
+  brevoConfiguration === null
+    ? null
+    : createBrevoProvider(
+        brevoConfiguration.apiKey,
+        brevoConfiguration.sendingDomain,
+        brevoConfiguration.listId,
+      );
+const broadcastFlags = createFlagService(database);
 const seedConfiguration = getSeedTestConfiguration();
 const seedTest =
   seedConfiguration === null
@@ -63,6 +83,25 @@ const seedTest =
         ),
         createImapSeedMailbox(seedConfiguration),
         createSeedTestAlert(alerts),
+        clock,
+      );
+const broadcastSeedTest =
+  seedConfiguration === null || brevoProvider === null
+    ? undefined
+    : createBroadcastSeedTest(
+        database,
+        createBroadcastSeedSender(
+          brevoProvider,
+          {
+            gmail: seedConfiguration.gmail.address,
+            outlook: seedConfiguration.outlook.address,
+            gmx: seedConfiguration.gmx.address,
+            web_de: seedConfiguration.web_de.address,
+          },
+          resendConfiguration.emailBaseUrl,
+        ),
+        createImapSeedMailbox(seedConfiguration),
+        alerts,
         clock,
       );
 
@@ -111,6 +150,7 @@ const scheduler = createVerificationMaintenanceScheduler(
       clock,
     }),
     seedTest,
+    broadcastSeedTest,
   },
   { clock, reportFailure },
 );
@@ -143,7 +183,23 @@ const running = [
   scheduler.run(undefined, shutdown.signal),
   drawWorker.run(shutdown.signal),
   runResendDispatch(
-    createResendDispatcher(database, resendConfiguration, alerts, clock),
+    createResendDispatcher(
+      database,
+      resendConfiguration,
+      alerts,
+      clock,
+      undefined,
+      {
+        provider: brevoProvider,
+        isEnabled: () => broadcastFlags.isEnabled('email.broadcast'),
+      },
+    ),
+    alerts,
+    clock,
+    shutdown.signal,
+  ),
+  runBrevoContactSync(
+    createBrevoContactSyncJob(database, broadcastFlags, brevoProvider, clock),
     alerts,
     clock,
     shutdown.signal,

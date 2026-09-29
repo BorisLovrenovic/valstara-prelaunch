@@ -5,11 +5,13 @@ import type { SeedProvider } from '../db/seed-test.ts';
 import type { SeedTestConfiguration } from '../config.ts';
 import type { EmailProvider } from './service.ts';
 import type { SeedMailbox, SeedSender } from './seed-test.ts';
+import type { BroadcastSeedMailbox } from './broadcast-seed.ts';
 
 type SeedImapClient = Pick<
   ImapFlow,
   'connect' | 'logout' | 'getMailboxLock' | 'search'
->;
+> &
+  Partial<Pick<ImapFlow, 'fetchOne'>>;
 
 export interface SeedAdapterDependencies {
   readonly fetch?: typeof globalThis.fetch;
@@ -42,7 +44,7 @@ export function createResendSeedSender(
 export function createImapSeedMailbox(
   configuration: SeedTestConfiguration,
   dependencies: SeedAdapterDependencies = {},
-): SeedMailbox {
+): SeedMailbox & BroadcastSeedMailbox {
   const request = dependencies.fetch ?? globalThis.fetch;
   const makeClient =
     dependencies.imapClient ?? ((input) => new ImapFlow(input));
@@ -125,28 +127,72 @@ export function createImapSeedMailbox(
     }
   }
 
+  async function source(
+    client: SeedImapClient,
+    path: string,
+    marker: string,
+  ): Promise<Buffer | null> {
+    const lock = await client.getMailboxLock(path, { readOnly: true });
+    try {
+      const matches = await client.search({ subject: marker }, { uid: true });
+      if (!Array.isArray(matches) || matches.length === 0) return null;
+      if (client.fetchOne === undefined)
+        throw new Error('seed_source_unavailable');
+      const message = await client.fetchOne(
+        matches[0]!,
+        { source: true },
+        { uid: true },
+      );
+      if (!message || !Buffer.isBuffer(message.source))
+        throw new Error('seed_source_unavailable');
+      if (message.source.length > 1024 * 1024)
+        throw new Error('seed_source_too_large');
+      return message.source;
+    } finally {
+      lock.release();
+    }
+  }
+
+  async function clientFor(provider: SeedProvider): Promise<SeedImapClient> {
+    const mailbox = configuration[provider];
+    const auth =
+      provider === 'outlook'
+        ? { user: mailbox.username, accessToken: await outlookAccessToken() }
+        : { user: mailbox.username, pass: configuration[provider].password };
+    return makeClient({
+      host: mailbox.host,
+      port: 993,
+      secure: true,
+      auth,
+      logger: false,
+      disableAutoIdle: true,
+      connectionTimeout: 10_000,
+      socketTimeout: 10_000,
+    });
+  }
+
   return {
     async placement(provider: SeedProvider, marker: string) {
       const mailbox = configuration[provider];
-      const auth =
-        provider === 'outlook'
-          ? { user: mailbox.username, accessToken: await outlookAccessToken() }
-          : { user: mailbox.username, pass: configuration[provider].password };
-      const client = makeClient({
-        host: mailbox.host,
-        port: 993,
-        secure: true,
-        auth,
-        logger: false,
-        disableAutoIdle: true,
-        connectionTimeout: 10_000,
-        socketTimeout: 10_000,
-      });
+      const client = await clientFor(provider);
       await client.connect();
       try {
         if (await contains(client, mailbox.spamPath, marker)) return 'spam';
         if (await contains(client, mailbox.inboxPath, marker)) return 'inbox';
         return null;
+      } finally {
+        await client.logout();
+      }
+    },
+    async source(provider: SeedProvider, marker: string) {
+      const mailbox = configuration[provider];
+      const client = await clientFor(provider);
+      await client.connect();
+      try {
+        return (
+          (await source(client, mailbox.spamPath, marker)) ??
+          (await source(client, mailbox.inboxPath, marker))
+        );
       } finally {
         await client.logout();
       }

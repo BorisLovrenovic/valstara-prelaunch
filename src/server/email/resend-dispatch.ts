@@ -5,6 +5,7 @@ import type { DatabasePool } from '../db/pool.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 
 import { createResendProvider } from './providers/resend.ts';
+import type { BrevoContactProvider } from './providers/brevo.ts';
 import { createTransactionalTemplateData } from './transactional-template-data.ts';
 import { createTransactionalRenderers } from './transactional-templates.ts';
 import {
@@ -24,6 +25,10 @@ export function createResendDispatcher(
   alerts: AlertTransport,
   clock: () => Date,
   renderers?: ReadonlyMap<string, TemplateRenderer>,
+  broadcast?: {
+    readonly provider: BrevoContactProvider | null;
+    readonly isEnabled: () => Promise<boolean>;
+  },
 ) {
   return createEmailService(database, {
     clock,
@@ -34,6 +39,7 @@ export function createResendDispatcher(
         'resend',
         createResendProvider(config.resendApiKey, config.resendSendingDomain),
       ],
+      ...(broadcast?.provider ? [['brevo', broadcast.provider] as const] : []),
     ]),
     renderers:
       renderers ??
@@ -42,13 +48,13 @@ export function createResendDispatcher(
         sendingDomain: config.resendSendingDomain,
         data: createTransactionalTemplateData(database),
       }),
-    isBroadcastEnabled: async () => false,
-    operatorTask: async ({ emailSendId, code }) => {
+    isBroadcastEnabled: broadcast?.isEnabled ?? (async () => false),
+    operatorTask: async ({ emailSendId, code, provider }) => {
       await alerts.send({
         event: 'email_send_operator_task',
         detail: { email_send_id: emailSendId, code },
         occurredAt: clock(),
-        severity: 'P1',
+        severity: provider === 'brevo' ? 'P2' : 'P1',
       });
     },
   });
