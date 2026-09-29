@@ -4,7 +4,10 @@ import test from 'node:test';
 
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
-import { createBrevoContactSyncJob, runBrevoContactSync } from '../src/server/email/brevo-sync.ts';
+import {
+  createBrevoContactSyncJob,
+  runBrevoContactSync,
+} from '../src/server/email/brevo-sync.ts';
 import { createEmailService } from '../src/server/email/service.ts';
 import { createBrevoProvider } from '../src/server/email/providers/brevo.ts';
 import { createResendProvider } from '../src/server/email/providers/resend.ts';
@@ -294,8 +297,16 @@ test('a Brevo sync outage raises a sanitized P2 and does not stop the loop', asy
   const alerts: unknown[] = [];
   const controller = new AbortController();
   await runBrevoContactSync(
-    { async run() { throw new Error('private provider body'); } },
-    { send: async (alert) => { alerts.push(alert); } },
+    {
+      async run() {
+        throw new Error('private provider body');
+      },
+    },
+    {
+      send: async (alert) => {
+        alerts.push(alert);
+      },
+    },
     () => now,
     controller.signal,
     async (delay) => {
@@ -303,11 +314,13 @@ test('a Brevo sync outage raises a sanitized P2 and does not stop the loop', asy
       controller.abort();
     },
   );
-  assert.deepEqual(alerts, [{
-    event: 'brevo_contact_sync_failed',
-    detail: { code: 'contact_sync_unavailable' },
-    occurredAt: now,
-    severity: 'P2',
-  }]);
+  assert.deepEqual(alerts, [
+    {
+      event: 'brevo_contact_sync_failed',
+      detail: { code: 'contact_sync_unavailable' },
+      occurredAt: now,
+      severity: 'P2',
+    },
+  ]);
   assert.doesNotMatch(JSON.stringify(alerts), /private provider body/u);
 });

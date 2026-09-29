@@ -260,7 +260,9 @@ test('IMAP probe checks junk before inbox and closes the connection', async () =
 test('Brevo seed inspection retrieves raw delivered MIME from the matching mailbox', async () => {
   let path = '';
   const paths: string[] = [];
-  const source = Buffer.from('MIME-Version: 1.0\r\nContent-Type: text/plain\r\n\r\nseed');
+  const source = Buffer.from(
+    'MIME-Version: 1.0\r\nContent-Type: text/plain\r\n\r\nseed',
+  );
   const client = {
     async connect() {},
     async logout() {},
@@ -269,7 +271,9 @@ test('Brevo seed inspection retrieves raw delivered MIME from the matching mailb
       paths.push(selected);
       return { release() {} };
     },
-    async search() { return path === 'INBOX' ? [17] : []; },
+    async search() {
+      return path === 'INBOX' ? [17] : [];
+    },
     async fetchOne(uid: number) {
       assert.equal(uid, 17);
       return { source };
