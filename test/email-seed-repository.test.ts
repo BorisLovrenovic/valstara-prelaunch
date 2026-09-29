@@ -7,7 +7,9 @@ import { createPool } from '../src/server/db/pool.ts';
 import { createSeedTestRepository } from '../src/server/db/seed-test.ts';
 import { seedTestHealth } from '../src/server/email/seed-test.ts';
 
-test('seed records are durable, one per week and provider, and readable by the app role', async () => {
+test('UTC Monday seed records survive a west-of-UTC local timezone', async () => {
+  const timezoneVariable = 'TZ';
+  const originalTimezone = process.env[timezoneVariable];
   const name = `valstara_e804_${randomUUID().replaceAll('-', '')}`;
   const adminUrl = new URL(
     process.env.TEST_DATABASE_URL ??
@@ -24,6 +26,7 @@ test('seed records are durable, one per week and provider, and readable by the a
   const owner = createPool(ownerUrl.toString());
   let app: ReturnType<typeof createPool> | null = null;
   try {
+    process.env[timezoneVariable] = 'America/Los_Angeles';
     await runMigrations(owner, {
       applicationRolePassword: appUrl.password,
       release: 'e8-04-test',
@@ -37,12 +40,15 @@ test('seed records are durable, one per week and provider, and readable by the a
       repository.ensure(week, 'gmail', randomUUID()),
     ]);
     assert.equal(first.marker, second.marker);
+    assert.equal(first.week_start, '2026-09-28');
     const sentAt = new Date('2026-09-29T09:00:00.000Z');
     await repository.markSent(week, 'gmail', sentAt);
     await repository.markPlacement(week, 'gmail', 'spam', sentAt);
     await repository.markAlerted(week, 'gmail', sentAt);
     const row = (await repository.latest())[0];
     assert.equal(row?.placement, 'spam');
+    assert.deepEqual(row?.sent_at, sentAt);
+    assert.deepEqual(row?.checked_at, sentAt);
     assert.deepEqual(row?.alerted_at, sentAt);
     const health = await seedTestHealth(repository, () => sentAt);
     assert.equal(health.state, 'incomplete');
@@ -62,6 +68,8 @@ test('seed records are durable, one per week and provider, and readable by the a
       ),
     );
   } finally {
+    if (originalTimezone === undefined) delete process.env[timezoneVariable];
+    else process.env[timezoneVariable] = originalTimezone;
     await app?.close();
     await owner.close();
     await admin.list(

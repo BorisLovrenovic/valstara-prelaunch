@@ -33,6 +33,7 @@ export interface SeedTestRepository {
 // pg parses DATE as local midnight; text keeps the UTC week key timezone-free.
 const columns =
   'week_start::text AS week_start, provider, marker, placement, sent_at, checked_at, alerted_at';
+const weekKey = (weekStart: Date): string => weekStart.toISOString().slice(0, 10);
 
 export function createSeedTestRepository(
   database: DatabaseConnection,
@@ -42,12 +43,12 @@ export function createSeedTestRepository(
       await database.execute({
         text: `INSERT INTO email_seed_test (week_start, provider, marker)
           VALUES ($1, $2, $3) ON CONFLICT (week_start, provider) DO NOTHING`,
-        values: [weekStart, provider, marker],
+        values: [weekKey(weekStart), provider, marker],
       });
       const row = await database.readOne<SeedRow>({
         text: `SELECT ${columns} FROM email_seed_test
           WHERE week_start = $1 AND provider = $2`,
-        values: [weekStart, provider],
+        values: [weekKey(weekStart), provider],
       });
       if (row === null) throw new Error('seed_record_unavailable');
       return row;
@@ -56,7 +57,7 @@ export function createSeedTestRepository(
       await database.execute({
         text: `UPDATE email_seed_test SET sent_at = COALESCE(sent_at, $3)
           WHERE week_start = $1 AND provider = $2`,
-        values: [weekStart, provider, at],
+        values: [weekKey(weekStart), provider, at],
       });
     },
     async markPlacement(weekStart, provider, placement, at) {
@@ -65,14 +66,14 @@ export function createSeedTestRepository(
           alerted_at = CASE WHEN placement <> $3 THEN NULL ELSE alerted_at END
           WHERE week_start = $1 AND provider = $2
             AND placement NOT IN ('inbox', 'spam')`,
-        values: [weekStart, provider, placement, at],
+        values: [weekKey(weekStart), provider, placement, at],
       });
     },
     async markAlerted(weekStart, provider, at) {
       await database.execute({
         text: `UPDATE email_seed_test SET alerted_at = COALESCE(alerted_at, $3)
           WHERE week_start = $1 AND provider = $2`,
-        values: [weekStart, provider, at],
+        values: [weekKey(weekStart), provider, at],
       });
     },
     latest() {
