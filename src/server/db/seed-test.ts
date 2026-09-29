@@ -33,7 +33,8 @@ export interface SeedTestRepository {
 // pg parses DATE as local midnight; text keeps the UTC week key timezone-free.
 const columns =
   'week_start::text AS week_start, provider, marker, placement, sent_at, checked_at, alerted_at';
-const weekKey = (weekStart: Date): string => weekStart.toISOString().slice(0, 10);
+const weekKey = (weekStart: Date): string =>
+  weekStart.toISOString().slice(0, 10);
 
 export function createSeedTestRepository(
   database: DatabaseConnection,
