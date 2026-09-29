@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { once } from 'node:events';
 import {
   cp,
   mkdtemp,
@@ -114,14 +113,17 @@ test(
   'current and versioned URLs serve identical immutable rules HTML and matching SHA-256',
   { timeout: 30_000 },
   async () => {
-    const port = 43_762;
-    const origin = `http://127.0.0.1:${port}`;
-    const server = spawn('node', ['dist/server/entry.mjs'], {
+    const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
       cwd: projectRoot,
-      env: { ...process.env, HOST: '127.0.0.1', PORT: String(port) },
+      env: { ...process.env, HOST: '127.0.0.1', PORT: '0' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+    const closed = new Promise((resolve) => server.once('close', resolve));
     let output = '';
+    let serverError;
+    server.once('error', (error) => {
+      serverError = error;
+    });
     server.stdout.on('data', (chunk) => {
       output += chunk.toString();
     });
@@ -130,20 +132,43 @@ test(
     });
     try {
       let current;
-      for (let attempt = 0; attempt < 100; attempt += 1) {
-        try {
-          current = await globalThis.fetch(`${origin}/giveaway/rules`, {
-            redirect: 'manual',
-          });
-          break;
-        } catch {
-          await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
+      let origin;
+      for (let attempt = 0; attempt < 400; attempt += 1) {
+        if (serverError !== undefined) {
+          throw new Error(
+            `Rules server could not start: ${serverError.message}`,
+            {
+              cause: serverError,
+            },
+          );
         }
+        if (server.exitCode !== null || server.signalCode !== null) {
+          throw new Error(`Rules server exited before startup: ${output}`);
+        }
+        const port = /Server listening on http:\/\/127\.0\.0\.1:(\d+)/u.exec(
+          output,
+        )?.[1];
+        if (port !== undefined) {
+          origin = `http://127.0.0.1:${port}`;
+          try {
+            current = await globalThis.fetch(`${origin}/giveaway/rules`, {
+              redirect: 'manual',
+              signal: globalThis.AbortSignal.timeout(1_000),
+            });
+            break;
+          } catch {
+            // The server may still be finishing startup.
+          }
+        }
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
       }
       assert.ok(current, `Rules server did not start: ${output}`);
       const permanent = await globalThis.fetch(
         `${origin}/giveaway/rules/${rulesVersion}`,
-        { redirect: 'manual' },
+        {
+          redirect: 'manual',
+          signal: globalThis.AbortSignal.timeout(5_000),
+        },
       );
       assert.equal(current.status, 200, output);
       assert.equal(permanent.status, 200, output);
@@ -176,8 +201,8 @@ test(
       assert.doesNotMatch(currentArticle[3], /dummy product|TODO|TBD/iu);
       assert.doesNotMatch(currentArticle[3], /<script\b|<iframe\b/iu);
     } finally {
-      server.kill();
-      await once(server, 'exit');
+      if (server.exitCode === null && server.signalCode === null) server.kill();
+      await closed;
     }
   },
 );
