@@ -16,7 +16,8 @@ export type MaintenanceJobName =
   | 'verification_rate'
   | 'verification_token_retention'
   | 'giveaway_entry_reconciliation'
-  | 'seed_test';
+  | 'seed_test'
+  | 'broadcast_seed_test';
 
 export interface MaintenanceJob {
   run(limit: number): Promise<unknown>;
@@ -37,6 +38,7 @@ export interface VerificationMaintenanceJobs {
   readonly verificationRate: VerificationRateJob;
   readonly verificationTokenRetention: MaintenanceJob;
   readonly seedTest?: VerificationRateJob;
+  readonly broadcastSeedTest?: VerificationRateJob;
 }
 
 export interface VerificationMaintenanceDependencies {
@@ -71,7 +73,8 @@ export function createMaintenanceFailureReporter(
             job === 'rate_limit_retention' ||
             job === 'ip_prefix_retention' ||
             job === 'verification_token_retention' ||
-            job === 'seed_test'
+            job === 'seed_test' ||
+            job === 'broadcast_seed_test'
           ? 'P1'
           : 'P3';
     if (severity === 'P1' || severity === 'P2') {
@@ -147,6 +150,13 @@ export function createVerificationMaintenanceScheduler(
         await jobs.seedTest.run();
       } catch {
         await reportFailure('seed_test');
+      }
+    }
+    if (jobs.broadcastSeedTest !== undefined) {
+      try {
+        await jobs.broadcastSeedTest.run();
+      } catch {
+        await reportFailure('broadcast_seed_test');
       }
     }
 

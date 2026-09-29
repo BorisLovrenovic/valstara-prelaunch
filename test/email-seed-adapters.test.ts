@@ -257,6 +257,31 @@ test('IMAP probe checks junk before inbox and closes the connection', async () =
   assert.equal(closed, true);
 });
 
+test('Brevo seed inspection retrieves raw delivered MIME from the matching mailbox', async () => {
+  let path = '';
+  const paths: string[] = [];
+  const source = Buffer.from('MIME-Version: 1.0\r\nContent-Type: text/plain\r\n\r\nseed');
+  const client = {
+    async connect() {},
+    async logout() {},
+    async getMailboxLock(selected: string) {
+      path = selected;
+      paths.push(selected);
+      return { release() {} };
+    },
+    async search() { return path === 'INBOX' ? [17] : []; },
+    async fetchOne(uid: number) {
+      assert.equal(uid, 17);
+      return { source };
+    },
+  };
+  const mailbox = createImapSeedMailbox(configuration, {
+    imapClient: () => client as never,
+  });
+  assert.deepEqual(await mailbox.source('gmx', 'seed-marker'), source);
+  assert.deepEqual(paths, ['Junk', 'INBOX']);
+});
+
 test('Outlook access token refresh must rotate through the configured secret-manager hook', async () => {
   const calls: Array<{
     url: string;

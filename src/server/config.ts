@@ -36,6 +36,9 @@ const optionalKeys = [
   'GIVEAWAY_SANCTIONED_COUNTRIES',
   'GIVEAWAY_SUBSTITUTION_DAYS',
   'SEED_TEST_CONFIG_PATH',
+  'BREVO_API_KEY',
+  'BREVO_LIST_ID',
+  'BREVO_SENDING_DOMAIN',
 ] as const;
 export const p1AlertEnvironmentKeys = [
   'P1_ALERT_WEBHOOK_TOKEN',
@@ -51,6 +54,7 @@ export const p1AlertEnvironmentKeys = [
 // today so the founder can drop the real value in without a code change.
 export const turnstileTestSiteKey = '1x00000000000000000000AA';
 export const productionResendSendingDomain = 'send.valstara.com';
+export const productionBrevoSendingDomain = 'mail.valstara.com';
 
 export const appEnvironmentKeys = [...requiredKeys, ...optionalKeys] as const;
 
@@ -69,6 +73,7 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
   const config: AppConfig = {
     adminAuth: adminAuth(environment),
     databaseUrl: databaseUrl(environment),
+    brevo: getBrevoConfiguration(environment),
     emailBaseUrl: emailBaseUrl(environment),
     emailTokenSecret: emailTokenSecret(environment),
     host: host(environment),
@@ -94,6 +99,44 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     giveawaySubstitutionDays: getGiveawaySubstitutionDays(environment),
   };
   return Object.freeze(config);
+}
+
+export interface BrevoConfiguration {
+  readonly apiKey: string;
+  readonly listId: number;
+  readonly sendingDomain: typeof productionBrevoSendingDomain;
+}
+
+/** Live Brevo credentials arrive at E12-07. The off flag is safe without them. */
+export function getBrevoConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): BrevoConfiguration | null {
+  const key = optionalValue(environment, 'BREVO_API_KEY');
+  const rawListId = optionalValue(environment, 'BREVO_LIST_ID');
+  const domain = optionalValue(environment, 'BREVO_SENDING_DOMAIN');
+  if (key === undefined && rawListId === undefined && domain === undefined)
+    return null;
+  if (key === undefined)
+    return invalid('BREVO_API_KEY', 'is required when Brevo is configured');
+  if (rawListId === undefined)
+    return invalid('BREVO_LIST_ID', 'is required when Brevo is configured');
+  if (domain !== productionBrevoSendingDomain)
+    return invalid(
+      'BREVO_SENDING_DOMAIN',
+      `must be ${productionBrevoSendingDomain}`,
+    );
+  const listId = Number(rawListId);
+  if (
+    !Number.isSafeInteger(listId) ||
+    listId < 1 ||
+    String(listId) !== rawListId
+  )
+    return invalid('BREVO_LIST_ID', 'must be a positive integer');
+  return Object.freeze({
+    apiKey: key,
+    listId,
+    sendingDomain: productionBrevoSendingDomain,
+  });
 }
 
 function adminAuth(environment: NodeJS.ProcessEnv): AdminAuthConfiguration {
@@ -703,6 +746,7 @@ interface ResendConfiguration {
 export interface AppConfig {
   readonly adminAuth: AdminAuthConfiguration;
   readonly databaseUrl: string;
+  readonly brevo: BrevoConfiguration | null;
   readonly emailBaseUrl: string;
   readonly emailTokenSecret: string;
   readonly host: string | undefined;

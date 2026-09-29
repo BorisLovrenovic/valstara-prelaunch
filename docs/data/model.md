@@ -188,6 +188,23 @@ progress. The table contains no recipient address, mailbox credential, message
 body or subscriber reference. App-role writes are limited to the placement and
 timestamp fields; the provider and marker are immutable after insert.
 
+## `email_broadcast_seed_test`
+
+One Brevo broadcast MIME inspection record per `(week_start, provider)` for the
+same four seed mailboxes. It stores a random marker, send/check/alert timestamps,
+and one state: `pending`, `passed`, `missing_plain_part`, `tracking_pixel`,
+`rewritten_link` or `missing`. It stores no mailbox address, MIME source or
+subscriber data. This internal probe runs before customer broadcasts are enabled.
+
+## `brevo_contact_sync`
+
+`email_normalised` is the primary key and a foreign key to `subscriber`;
+`email`, `listed` and `synced_at` record the last **successfully applied** Brevo
+broadcast-list state. The table is a retry cache, not the consent authority.
+The authoritative eligibility query joins `subscriber` to `suppression` and
+requires verified status plus current marketing consent. A provider failure
+leaves this row unchanged so the next bounded batch resumes the contact.
+
 ## `suppression`
 
 `email_normalised` pk · `reason` (`unsubscribe` · `bounce_hard` · `complaint` · `manual`) · `source` · `created_at`. **Checked at dispatch, not only at queue time** — a suppression written after queueing must still stop the send.

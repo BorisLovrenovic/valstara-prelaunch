@@ -4,6 +4,10 @@ export const emailCopy = {
     subject: (marker: string) => `Valstara delivery seed ${marker}`,
     text: (marker: string) =>
       `Valstara delivery seed ${marker}. This mailbox is used for delivery monitoring.`,
+    broadcastText: (marker: string, url: string) =>
+      `Valstara broadcast seed ${marker}. Link: ${url}`,
+    broadcastHtml: (marker: string, url: string) =>
+      `<p>Valstara broadcast seed ${marker}.</p><a href="${url}">Valstara</a>`,
   },
   unsubscribe: 'Unsubscribe from Valstara email',
   status: 'View your waitlist status',

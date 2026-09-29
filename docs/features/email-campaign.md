@@ -41,4 +41,4 @@ Provider down → the row is committed; the send queues and retries with backoff
 - [ ] A send failure **never rolls back or blocks the subscriber write** — asserted by test
 
 ## Telemetry
-Delivery, open, click, bounce and complaint rates per template and per domain; verification rate per mailbox provider; quota consumption against projection.
+Delivery, bounce and complaint rates per template and per domain; verification rate per mailbox provider; quota consumption against projection. Open and click tracking stay disabled in both provider accounts; the Brevo broadcast seed checks delivered mail for a tracking pixel or rewritten link (founder-authorised 2026-09-29).
