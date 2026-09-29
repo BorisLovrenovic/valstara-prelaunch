@@ -230,6 +230,7 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
     'RESEND_RSEND_CNAME_EXPECTED_TARGET',
     'RESEND_SENDING_DOMAIN',
     'RESEND_SEND_CNAME_EXPECTED_TARGET',
+    'SEED_TEST_CONFIG_PATH',
     'VERIFICATION_RATE_BASELINE_DAYS',
     'VERIFICATION_RATE_COHORT_HOURS',
     'VERIFICATION_RATE_COLLAPSE_PERCENT',
@@ -239,6 +240,12 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   assert.equal(config.services.postgres.ports, undefined);
   assert.equal(config.services.umami.ports, undefined);
   assert.equal(config.networks.backend.internal, true);
+  assert.notEqual(config.networks.outbound.internal, true);
+  assert.deepEqual(Object.keys(config.services.maintenance.networks), [
+    'backend',
+    'outbound',
+  ]);
+  assert.deepEqual(Object.keys(config.services.postgres.networks), ['backend']);
   assert.deepEqual(Object.keys(config.services.caddy.ports).length, 2);
 });
 

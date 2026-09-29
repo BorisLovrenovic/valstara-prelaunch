@@ -74,6 +74,10 @@ verification-maintenance process, Umami and Caddy. Every service has a hard
 memory limit with its memory-plus-swap limit set to the same value. Only Caddy
 publishes host ports; the app, maintenance process, PostgreSQL and Umami remain
 on an internal Docker network.
+The maintenance process also joins an outbound bridge so its Resend dispatch,
+weekly IMAP seed probes and Outlook OAuth refresh can reach their external
+services. That bridge publishes no host port; PostgreSQL remains on the
+internal network only.
 
 Caddy terminates TLS with a mounted Cloudflare Origin CA certificate. It
 matches the immediate socket peer against Cloudflare's published address

@@ -39,6 +39,7 @@ table and fails if it differs from `src/server/config.ts`.
 | `RESEND_SEND_CNAME_EXPECTED_TARGET`  | Exact public CNAME target expected for `send.send.valstara.com`                                       | App and maintenance boot, health check  | Required non-secret public configuration                                                                                                                               |
 | `RESEND_SENDING_DOMAIN`              | Restricts transactional From addresses and DNS health checks to `send.valstara.com`                   | App and maintenance boot, dispatch      | Required; any other domain is rejected                                                                                                                                 |
 | `RESEND_TEST_RECIPIENT`              | Optional local test-delivery override marker                                                          | App and maintenance boot                | Must be absent in production                                                                                                                                           |
+| `SEED_TEST_CONFIG_PATH`              | Absolute path to the four seed mailbox credentials and Outlook OAuth rotation hook                    | Maintenance boot, weekly seed test      | Optional until E12-07; points to a production secret-manager mount. Never set locally                                                                                  |
 | `TURNSTILE_SECRET_KEY`               | Verifies every public write challenge server-side                                                     | App boot, signup route                  | Turnstile test key locally; live key in production                                                                                                                     |
 | `TURNSTILE_SITE_KEY`                 | Public Turnstile site key rendered into the signup form island (E3-05)                                | App boot, signup form                   | Optional; defaults to Cloudflare's always-pass test key. **Temporary placeholder — the founder provisions the real key, and E12-05 swaps it in.** Public, not a secret |
 | `VERIFICATION_RATE_BASELINE_DAYS`    | Prior whole days used as the rolling verification-rate baseline                                       | App boot, maintenance, admin health     | Optional; defaults to `7`                                                                                                                                              |
@@ -52,6 +53,37 @@ intended configuration and boot enforces its environment rules, but it cannot
 prove which key is installed. E12-07 supplies that evidence in the Resend
 dashboard by checking that the production key is sending-only and restricted to
 `send.valstara.com`.
+
+`SEED_TEST_CONFIG_PATH` points to a secret-manager-mounted JSON file with
+exactly `gmail`, `outlook`, `gmx` and `web_de`. Each mailbox has `address`,
+`host`, `username`, `inboxPath` and `spamPath`; Gmail, GMX and Web.de also have
+`password`. Outlook instead has `oauth` containing `clientId`, `clientSecret`,
+`refreshToken`, `rotationUrl` and `rotationToken`. The Outlook account must
+grant delegated IMAP access and `offline_access`.
+
+The HTTPS rotation hook accepts an authenticated POST with
+`{ "refresh_token": "..." }`, writes the replacement to the production secret
+manager, and responds with success only after that write is durable and the
+mounted file has been refreshed. The maintenance process keeps the replacement
+in memory and reads the refreshed file again on restart. A failed rotation
+stops the probe and raises P1 through the maintenance failure path. Provision
+the four mailboxes and hook at E12-07; no seed credentials are needed for
+E8-04's fake mailbox tests. The variable is absent locally and never reaches
+a browser.
+The required IMAP hosts are `imap.gmail.com`, `outlook.office365.com`,
+`imap.gmx.net` and `imap.web.de`, respectively, all on TLS port 993. Each
+username equals its seed address. Gmail uses an app password, not the account
+password. The configured mailbox address must belong to its named provider.
+
+`SEED_TEST_SECRETS_HOST_DIR` is the production Compose host directory mounted
+read-only at `/run/seed-secrets` in the maintenance container; it defaults to
+`/var/lib/valstara/seed-secrets`. E12-07 sets `SEED_TEST_CONFIG_PATH` to
+`/run/seed-secrets/config.json` after the secret manager has populated that
+file. The rotation hook is responsible for updating the secret manager and
+this mounted file atomically before it acknowledges the request.
+The mounted directory and file must be readable by the image's `node` user
+(UID 1000) and inaccessible to other host users; the maintenance container
+mounts them read-only.
 
 All remaining variables below configure infrastructure, one-shot processes, or
 tooling and therefore are not part of the long-running application's boot
@@ -73,6 +105,8 @@ and telemetry switches are neither live nor sandbox credentials.
 | `EMAIL_TOKEN_SECRET`                 | Server-only HMAC-SHA256 key for reconstructible email tokens                                                   | App, maintenance            | Local-only Compose default; production requires a separately generated secret | Yes                           |
 | `EMAIL_BASE_URL`                     | Public origin for one-click unsubscribe headers                                                                | App, maintenance            | `http://localhost:4321` locally                                               | No                            |
 | `RESEND_API_KEY`                     | Resend API key for E8-02 transactional dispatch                                                                | App, maintenance            | None                                                                          | Yes                           |
+| `SEED_TEST_CONFIG_PATH`              | Mounted file with four IMAP seed accounts and Outlook OAuth rotation credentials                               | Maintenance                 | Empty until E12-07; then `/run/seed-secrets/config.json`                      | No                            |
+| `SEED_TEST_SECRETS_HOST_DIR`         | Host directory synchronized from the production secret manager                                                 | Production Compose          | `/var/lib/valstara/seed-secrets`                                              | No                            |
 | `RESEND_DKIM_EXPECTED_VALUE`         | Exact expected public DKIM TXT value for domain health                                                         | App, maintenance            | Local placeholder; production requires the current public value               | No                            |
 | `RESEND_KEY_MODE`                    | Declares test or live Resend configuration                                                                     | App, maintenance            | `test` locally; production requires `live`                                    | No                            |
 | `RESEND_RSEND_CNAME_EXPECTED_TARGET` | Expected `rsend.send` return-path CNAME target                                                                 | App, maintenance            | `rsend-euw1.forge.rmta.net`                                                   | No                            |

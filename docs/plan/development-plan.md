@@ -52,6 +52,7 @@ Five items no agent can complete. Each gates something, and the gate is stated s
 | **P4** | **Giveaway prize and the final text of the single global rules page (Hong Kong law)** — **supplied 2026-09-25:** 5 bundles at €300 (€1,500), entries 1 Oct 2026 – 1 Mar 2027, draw 1 Apr 2027, the promoter **3NITY DIGITAL LIMITED** (Business Registration No. 79886556) with its registered address and contacts, and the layered substitution rule. The approved text is in `docs/prerequisites/p4-rules-page-draft.md`. **P4 is complete.** Bundle contents (due before the draw) and the sanctions list (due before the first award) are deliberately **not** blockers (ADR-026) | Founder input. One global page under Hong Kong law — no per-country rules or local review (founder decision, 2026-09-25, ADR-026) | Nothing now — satisfied | Done |
 | **P6** | **Provision the production VPS** | Purchase and provisioning | **E12 entirely.** Nothing before E12 requires it — founder decision, 2026-08-27: the site is built and verified locally first, then the host is provisioned once | Before E12 |
 | **P5** | **Upgrade Resend and Brevo past the free tiers** | Purchase — Resend free is 100/day, Brevo 300/day | **Turning `giveaway.open` on.** Upgrade *before* the giveaway opens, not when the limits hit | Before E7 exit |
+| **P7** | **Create the four seed mailboxes** — one each at Gmail, Outlook.com, GMX and Web.de, IMAP access enabled, used for seed tests and nothing else. Outlook.com allows IMAP only through OAuth, not a password. Credentials go to the production secret manager; none is committed (founder-authorised 2026-09-29) | Account setup, free | **E12-07:** the first live seed run and the rendering check | Before E12 |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
 
@@ -1314,7 +1315,9 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Goal:** verification mail that arrives, and campaign mail that cannot damage it. *10 tickets.*
 
-**Exit criteria:** both domains authenticate, a real-browser signup receives its delivered verification email and produces a verified subscriber, seed tests land in the inbox at all four major providers, and the quota projection alerts a week ahead.
+**Exit criteria:** both domains authenticate, a real-browser signup receives its delivered verification email and produces a verified subscriber, the weekly seed harness is scheduled with its spam alert drilled, and the quota projection alerts a week ahead.
+
+**Seed and rendering evidence moved (founder-authorised 2026-09-29):** a seed test landing in the inbox at all four major providers is live sending from `send.valstara.com`, and live sending keys stay off local machines until E12-07 (`infra/ENV.md`). The first live inbox landing and the manual rendering check in real email clients are therefore both E12-07's, not E8 exit criteria.
 
 **Scope change (founder-authorised 2026-09-27, ADR-028):** E8-08, the SubSlush migration send, is removed. `subslush.com` is kept fully separate from Valstara's domain, DNS and email providers, and the founder sends the one announcement to existing SubSlush customers manually, outside this system. Nothing in E8 builds, tests or authenticates anything for it. The remaining ticket numbers are unchanged.
 
@@ -1431,11 +1434,10 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E8-04 — Rendering QA and seed tests
 **Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** frontend
 
-**Build:** A rendering pass across Gmail, Outlook, Apple Mail, GMX and Web.de, evidenced. Then a **weekly automated seed test** into those providers, recording where each lands.
+**Build:** A **weekly automated seed test** into the four mailbox providers — Gmail, Outlook, GMX and Web.de — recording where each lands. The rendering pass across five clients (those four plus Apple Mail) is no longer part of this ticket: it is a manual check at E12-07 (see the note below).
 
 **Acceptance criteria:**
-- Every template renders correctly at all five providers — **evidenced in the PR**, both themes where the client supports it
-- **The weekly seed test runs automatically and records inbox-versus-spam placement per provider**
+- **The weekly seed test runs automatically and records inbox-versus-spam placement for each of the four providers** — proven against injected mailbox fakes; the first live run is E12-07's
 - A seed test landing in spam **alerts** — this is one of the two silent-failure guards
 - Results are exported as a health result that E10-05 surfaces
 
@@ -1443,6 +1445,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Docs:** `docs/architecture/fallbacks.md#the-two-silent-failures` · `docs/ops/runbook.md`
 
 **Health-result ownership (founder-authorised 2026-09-28):** E8-04 exports seed-test results as a health result; E10-05 owns displaying them.
+
+**Evidence without live sending (founder-authorised 2026-09-29):** mail from `send.valstara.com` to a real inbox is live sending, and live sending keys stay off local machines until E12-07 (`infra/ENV.md`). E8-04 therefore proves the harness against injected mailbox fakes: the weekly schedule, placement recorded per provider, the spam-placement alert and the health result. Nothing is sent, no seed mailbox is used, and E8-04 does not depend on P7. The first live seed run, from the production host with the live key, is E12-07's. So is the manual rendering check: every transactional template, delivered to the seed mailboxes, viewed in all five clients. Apple Mail is a client, not a mailbox provider, so it is a rendering target only.
 
 ### E8-05 — The Brevo provider and contact sync
 **Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `email.broadcast` · **Area:** backend
@@ -1858,7 +1862,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 
 - All flags at their intended state — **`giveaway.open` off unless P4 and P5 are complete**
 - **Both Article 27 representatives named**, and the build assertion passing
-- **SPF, DKIM and DMARC verified on both sending domains** (`send.valstara.com`, `mail.valstara.com`), and a seed test landing in the inbox at all four providers
+- **SPF, DKIM and DMARC verified on both sending domains** (`send.valstara.com`, `mail.valstara.com`), and the seed harness scheduled with its spam alert drilled. The first live inbox landing at all four providers is E12-07's, because live keys stay off local machines until then (founder-authorised 2026-09-29)
 - **Both ESP tiers upgraded past the free caps**
 - The global giveaway rules page published, its current `rules_version` and SHA-256 recorded, and the prize pool within the ADR-026 limits
 - MFA active on the admin account
@@ -1992,7 +1996,8 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Build:** Install live provider keys on the host. Deploy Umami to production behind the proxy. Then verify a single checklist, **every item evidenced rather than asserted**:
 
 - **Live Resend and Brevo keys on the host; no sandbox key present** — and no live key in the repository or any developer environment
-- **SPF, DKIM and DMARC verify on both sending domains from the production host**, and a seed test round-trips to the inbox at all four major providers
+- **SPF, DKIM and DMARC verify on both sending domains from the production host**, and a seed test round-trips to the inbox at all four major providers. This is the first live seed run; E8-04 and E11-08 defer it here (founder-authorised 2026-09-29)
+- **Every transactional template renders correctly in Gmail, Outlook, Apple Mail, GMX and Web.de** — checked manually on the messages delivered to the seed mailboxes from the production host, in both themes where the client supports them. Moved here from E8-04 (founder-authorised 2026-09-29)
 - Umami serving first-party through the proxy, **setting no cookie** — the privacy gate re-run against production
 - MFA active on the admin account; admin routes unreachable except as documented
 - Backups running on schedule with the E12-04 restore evidence recorded

@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 
 const requiredKeys = [
   'ADMIN_CREDENTIAL',
@@ -34,6 +35,7 @@ const optionalKeys = [
   'DRAND_RELAY_URLS',
   'GIVEAWAY_SANCTIONED_COUNTRIES',
   'GIVEAWAY_SUBSTITUTION_DAYS',
+  'SEED_TEST_CONFIG_PATH',
 ] as const;
 export const p1AlertEnvironmentKeys = [
   'P1_ALERT_WEBHOOK_TOKEN',
@@ -535,6 +537,159 @@ export interface ResendDomainAuthenticationConfiguration {
   readonly dkimExpectedValue: string;
   readonly rsendCnameExpectedTarget: string;
   readonly sendCnameExpectedTarget: string;
+}
+
+export interface SeedMailboxConfiguration {
+  readonly address: string;
+  readonly host: string;
+  readonly inboxPath: string;
+  readonly spamPath: string;
+  readonly username: string;
+  readonly password?: string;
+}
+
+export interface SeedTestConfiguration {
+  readonly gmail: SeedMailboxConfiguration & { readonly password: string };
+  readonly gmx: SeedMailboxConfiguration & { readonly password: string };
+  readonly web_de: SeedMailboxConfiguration & { readonly password: string };
+  readonly outlook: SeedMailboxConfiguration & {
+    readonly oauth: {
+      readonly clientId: string;
+      readonly clientSecret: string;
+      readonly refreshToken: string;
+      readonly rotationUrl: string;
+      readonly rotationToken: string;
+    };
+  };
+}
+
+/** Seed credentials are optional until E12-07; an incomplete set fails startup. */
+export function getSeedTestConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+  readSecret: (path: string) => string = (path) => readFileSync(path, 'utf8'),
+): SeedTestConfiguration | null {
+  const path = environment.SEED_TEST_CONFIG_PATH;
+  if (path === undefined || path === '') return null;
+  if (environment.NODE_ENV !== 'production') {
+    return invalid('SEED_TEST_CONFIG_PATH', 'requires production');
+  }
+  if (!path.startsWith('/'))
+    return invalid('SEED_TEST_CONFIG_PATH', 'must be absolute');
+  let raw: string;
+  try {
+    raw = readSecret(path);
+  } catch {
+    return invalid('SEED_TEST_CONFIG_PATH', 'must be a readable secret file');
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return invalid('SEED_TEST_CONFIG_PATH', 'must contain valid JSON');
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return invalid(
+      'SEED_TEST_CONFIG_PATH',
+      'must contain four mailbox objects',
+    );
+  }
+  const object = parsed as Record<string, unknown>;
+  if (Object.keys(object).sort().join(',') !== 'gmail,gmx,outlook,web_de') {
+    return invalid(
+      'SEED_TEST_CONFIG_PATH',
+      'must contain four mailbox objects',
+    );
+  }
+  const read = (provider: string): Record<string, unknown> => {
+    const value = object[provider];
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return invalid('SEED_TEST_CONFIG_PATH', 'has an invalid mailbox');
+    }
+    return value as Record<string, unknown>;
+  };
+  const string = (value: unknown): string => {
+    if (
+      typeof value !== 'string' ||
+      value.length === 0 ||
+      value.trim() !== value
+    ) {
+      return invalid('SEED_TEST_CONFIG_PATH', 'has an empty or invalid field');
+    }
+    return value;
+  };
+  const common = (provider: string): SeedMailboxConfiguration => {
+    const value = read(provider);
+    const address = string(value.address);
+    const host = string(value.host);
+    const inboxPath = string(value.inboxPath);
+    const spamPath = string(value.spamPath);
+    const username = string(value.username);
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(address) ||
+      !/^[a-z0-9.-]+$/u.test(host) ||
+      inboxPath === spamPath ||
+      username !== address
+    ) {
+      return invalid(
+        'SEED_TEST_CONFIG_PATH',
+        'has an invalid mailbox address or path',
+      );
+    }
+    return { address, host, inboxPath, spamPath, username };
+  };
+  const expected = {
+    gmail: { host: 'imap.gmail.com', domains: ['gmail.com', 'googlemail.com'] },
+    outlook: { host: 'outlook.office365.com', domains: ['outlook.com'] },
+    gmx: { host: 'imap.gmx.net', domains: ['gmx.com', 'gmx.net', 'gmx.de'] },
+    web_de: { host: 'imap.web.de', domains: ['web.de'] },
+  } as const;
+  for (const provider of Object.keys(expected) as (keyof typeof expected)[]) {
+    const mailbox = common(provider);
+    if (
+      mailbox.host !== expected[provider].host ||
+      !expected[provider].domains.some((domain) =>
+        mailbox.address.toLowerCase().endsWith(`@${domain}`),
+      )
+    ) {
+      return invalid(
+        'SEED_TEST_CONFIG_PATH',
+        'has a mismatched provider mailbox',
+      );
+    }
+  }
+  const passwordMailbox = (provider: 'gmail' | 'gmx' | 'web_de') => ({
+    ...common(provider),
+    password: string(read(provider).password),
+  });
+  const oauth = read('outlook').oauth;
+  if (typeof oauth !== 'object' || oauth === null || Array.isArray(oauth)) {
+    return invalid(
+      'SEED_TEST_CONFIG_PATH',
+      'requires Outlook OAuth credentials',
+    );
+  }
+  const o = oauth as Record<string, unknown>;
+  const rotationUrl = string(o.rotationUrl);
+  try {
+    if (new URL(rotationUrl).protocol !== 'https:') throw new Error();
+  } catch {
+    return invalid('SEED_TEST_CONFIG_PATH', 'requires an HTTPS rotation URL');
+  }
+  return {
+    gmail: passwordMailbox('gmail'),
+    gmx: passwordMailbox('gmx'),
+    web_de: passwordMailbox('web_de'),
+    outlook: {
+      ...common('outlook'),
+      oauth: {
+        clientId: string(o.clientId),
+        clientSecret: string(o.clientSecret),
+        refreshToken: string(o.refreshToken),
+        rotationUrl,
+        rotationToken: string(o.rotationToken),
+      },
+    },
+  };
 }
 
 interface ResendConfiguration {

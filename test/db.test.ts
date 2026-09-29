@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      39,
+      40,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -203,7 +203,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
           ORDER BY table_name
         `,
       },
-      21,
+      22,
     );
     const giveawayRulesVersionColumn = await fixture.database.readOne<{
       data_type: string;
@@ -258,6 +258,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0037-unsubscribe.sql',
       '0038-leave-waitlist.sql',
       '0039-transactional-producer-payload.sql',
+      '0040-email-seed-test.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -302,6 +303,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0037-unsubscribe.sql',
         '0038-leave-waitlist.sql',
         '0039-transactional-producer-payload.sql',
+        '0040-email-seed-test.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -316,6 +318,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'audit_log',
         'campaign_flag',
         'domain_allow',
+        'email_seed_test',
         'email_send',
         'fraud_flag',
         'giveaway_award',
@@ -433,10 +436,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          39,
+          40,
         );
 
-        assert.equal(appliedCount, 39);
+        assert.equal(appliedCount, 40);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -479,6 +482,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0037-unsubscribe.sql',
             '0038-leave-waitlist.sql',
             '0039-transactional-producer-payload.sql',
+            '0040-email-seed-test.sql',
           ],
         );
       } finally {

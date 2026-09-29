@@ -105,6 +105,7 @@ services:
       RESEND_RSEND_CNAME_EXPECTED_TARGET: ${RESEND_RSEND_CNAME_EXPECTED_TARGET:?RESEND_RSEND_CNAME_EXPECTED_TARGET is required}
       RESEND_SEND_CNAME_EXPECTED_TARGET: ${RESEND_SEND_CNAME_EXPECTED_TARGET:?RESEND_SEND_CNAME_EXPECTED_TARGET is required}
       RESEND_SENDING_DOMAIN: ${RESEND_SENDING_DOMAIN:?RESEND_SENDING_DOMAIN is required}
+      SEED_TEST_CONFIG_PATH: ${SEED_TEST_CONFIG_PATH:-}
       WAITLIST_LIVE_AT: ${WAITLIST_LIVE_AT:-}
       DRAND_CHAIN_HASH: ${DRAND_CHAIN_HASH:-}
       DRAND_CHAIN_PUBLIC_KEY: ${DRAND_CHAIN_PUBLIC_KEY:-}
@@ -120,6 +121,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    volumes:
+      - ${SEED_TEST_SECRETS_HOST_DIR:-/var/lib/valstara/seed-secrets}:/run/seed-secrets:ro
     healthcheck:
       test: ['CMD', 'node', '-e', 'process.kill(1, 0)']
       interval: 5s
@@ -129,6 +132,7 @@ services:
     memswap_limit: ${MAINTENANCE_MEM_LIMIT:-128m}
     networks:
       - backend
+      - outbound
 
   umami:
     image: ghcr.io/umami-software/umami:3.3.0
@@ -194,6 +198,7 @@ networks:
   edge:
   backend:
     internal: true
+  outbound:
 
 secrets:
   caddy_origin_cert:

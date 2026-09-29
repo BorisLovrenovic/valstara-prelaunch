@@ -1,5 +1,10 @@
 export const emailCopy = {
   senderName: 'Valstara',
+  seed: {
+    subject: (marker: string) => `Valstara delivery seed ${marker}`,
+    text: (marker: string) =>
+      `Valstara delivery seed ${marker}. This mailbox is used for delivery monitoring.`,
+  },
   unsubscribe: 'Unsubscribe from Valstara email',
   status: 'View your waitlist status',
   referral: 'Your referral link',

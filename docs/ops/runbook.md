@@ -38,6 +38,28 @@ campaign open and confirm receipt outside the application.
 
 **Resolve:** a stuck queue drains once the dispatcher is restarted; the sends are idempotent, so nothing double-sends. **A deliverability problem is a business emergency** — pause broadcast sends immediately (`email.broadcast` off), verify SPF/DKIM/DMARC on the sending domain, and do not send anything else from that domain until the seed test lands in the inbox.
 
+### Weekly seed placement alert
+
+The maintenance process creates one seed record per UTC week and provider in
+`email_seed_test`. It sends from `hello@send.valstara.com` once per provider
+using `seed:<Monday UTC date>:<provider>` as the provider idempotency key, then
+checks the configured spam and inbox IMAP folders hourly. The result is
+`pending`, `inbox`, `spam` or `missing`. `missing` means no match after two hours;
+polling continues, so a delayed inbox arrival updates the record. The table
+contains a random message marker and placement timestamps, never mailbox
+credentials or addresses. E10-05 displays `seedTestHealth()`. No credentials
+or live send are used until E12-07.
+
+`email_seed_placement_failed` is P1 for spam or missing; a mailbox, OAuth,
+rotation-hook, database or sender error is reported as P1 `seed_test` maintenance
+failure. Check the affected provider's seed mailbox and the Resend sending
+domain's SPF, DKIM and DMARC. If spam or missing is real, turn
+`email.broadcast` off and investigate delivery before sending more non-essential
+mail. The Outlook refresh-token rotation hook must durably update the
+production secret manager; if it fails, restore that hook or re-authorize the
+account, then let the next hourly cycle retry. Do not enter seed credentials in
+the repository or a local environment.
+
 ---
 
 ## "The leaderboard looks wrong"

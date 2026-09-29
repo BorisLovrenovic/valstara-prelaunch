@@ -35,8 +35,8 @@ Provider down → the row is committed; the send queues and retries with backoff
 - [ ] Every mail to a verified subscriber carries the status link; every mail carries a working one-click unsubscribe (RFC 8058) and a plain-text alternative. Verification and verification-reminder mail have only the verify-link call to action and no status link (founder-authorised 2026-09-28)
 - [ ] Transactional and broadcast use **different domains and different providers** — asserted by config test
 - [ ] SPF, DKIM and DMARC verified per sending domain before the flag can be turned on
-- [ ] Every template renders correctly in Gmail, Outlook, Apple Mail, GMX and Web.de — evidenced
-- [ ] Weekly seed tests run into those providers and their results are recorded
+- [ ] Every template renders correctly in Gmail, Outlook, Apple Mail, GMX and Web.de — checked manually at E12-07 on messages delivered to the seed mailboxes (moved from E8-04, founder-authorised 2026-09-29)
+- [ ] Weekly seed tests run into the four mailbox providers — Gmail, Outlook, GMX and Web.de — and their results are recorded. Apple Mail is a client, not a provider. The first live seed run is at E12-07, because live sending keys stay off local machines until then (founder-authorised 2026-09-29)
 - [ ] **Quota projection alerts at a week's headroom**, per provider
 - [ ] A send failure **never rolls back or blocks the subscriber write** — asserted by test
 

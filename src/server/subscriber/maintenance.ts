@@ -15,7 +15,8 @@ export type MaintenanceJobName =
   | 'stranded_referral'
   | 'verification_rate'
   | 'verification_token_retention'
-  | 'giveaway_entry_reconciliation';
+  | 'giveaway_entry_reconciliation'
+  | 'seed_test';
 
 export interface MaintenanceJob {
   run(limit: number): Promise<unknown>;
@@ -35,6 +36,7 @@ export interface VerificationMaintenanceJobs {
   readonly strandedReferral: MaintenanceJob;
   readonly verificationRate: VerificationRateJob;
   readonly verificationTokenRetention: MaintenanceJob;
+  readonly seedTest?: VerificationRateJob;
 }
 
 export interface VerificationMaintenanceDependencies {
@@ -68,7 +70,8 @@ export function createMaintenanceFailureReporter(
         : job === 'verification_rate' ||
             job === 'rate_limit_retention' ||
             job === 'ip_prefix_retention' ||
-            job === 'verification_token_retention'
+            job === 'verification_token_retention' ||
+            job === 'seed_test'
           ? 'P1'
           : 'P3';
     if (severity === 'P1' || severity === 'P2') {
@@ -139,6 +142,13 @@ export function createVerificationMaintenanceScheduler(
       );
     }
     await runVerificationRateJob();
+    if (jobs.seedTest !== undefined) {
+      try {
+        await jobs.seedTest.run();
+      } catch {
+        await reportFailure('seed_test');
+      }
+    }
 
     const day = now.toISOString().slice(0, 10);
     if (expiryDay !== day && (await runJob('expiry', jobs.expiry))) {
