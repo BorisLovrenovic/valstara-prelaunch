@@ -8,6 +8,7 @@ import {
 import { createFraudFlagRepository } from '../db/fraud-flag.ts';
 import type { DatabaseConnection, DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
+import { createTransactionalEmailProducers } from '../email/producers.ts';
 
 import {
   referralCodeAlphabet,
@@ -33,9 +34,15 @@ export const referralStatusRewardMaximumLimit = 100;
 export const referralCounterRepairMaximumLimit = 1_000;
 
 export interface ReferralServiceDependencies {
+  readonly clock?: () => Date;
   readonly createCode?: () => string;
   readonly rewardClassifications?: RewardClassifications;
   readonly tiers?: readonly MilestoneTier[];
+  readonly milestoneEmail?: (
+    connection: DatabaseConnection,
+    subscriberId: string,
+    tier: number,
+  ) => Promise<boolean>;
 }
 
 export interface MilestoneBackfillResult {
@@ -92,11 +99,20 @@ export function createReferralService(
   const rewardClassifications =
     dependencies.rewardClassifications ?? milestoneRewardClassifications;
   const tiers = dependencies.tiers ?? milestoneTiers;
+  const milestoneEmail =
+    dependencies.milestoneEmail ??
+    (isDatabasePool(database)
+      ? createTransactionalEmailProducers(
+          database,
+          dependencies.clock ?? (() => new Date()),
+        ).milestone
+      : undefined);
   return createReferralServiceWithRepository(
     createReferralRepository(database),
     createCode,
     rewardClassifications,
     tiers,
+    milestoneEmail,
     isDatabasePool(database)
       ? (operation) =>
           withTransaction(database, async (connection) => operation(connection))
@@ -132,6 +148,7 @@ function createReferralServiceWithRepository(
   createCode: () => string,
   rewardClassifications: RewardClassifications,
   tiers: readonly MilestoneTier[],
+  milestoneEmail: ReferralServiceDependencies['milestoneEmail'],
   runTransaction: ReferralTransaction,
 ): ReferralService {
   return {
@@ -225,6 +242,7 @@ function createReferralServiceWithRepository(
             )
           ) {
             awarded += 1;
+            await milestoneEmail?.(connection, subscriberId, tier.number);
             if (subscriber.access_window !== null) {
               await promoteSubscriberAccessWindow(
                 connection,
@@ -310,6 +328,11 @@ function createReferralServiceWithRepository(
             now,
           ))
         ) {
+          await milestoneEmail?.(
+            connection,
+            edge.referrer_id,
+            reachedTier.number,
+          );
           if (current.access_window !== null) {
             await promoteSubscriberAccessWindow(
               connection,

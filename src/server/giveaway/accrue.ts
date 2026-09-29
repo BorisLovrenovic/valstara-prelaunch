@@ -4,6 +4,10 @@ import { getGiveawayEntryPeriodStart } from '../config.ts';
 import { createGiveawayEntryRepository } from '../db/giveaway-entry.ts';
 import type { DatabaseConnection, DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
+import {
+  createTransactionalEmailProducers,
+  type TransactionalEmailProducers,
+} from '../email/producers.ts';
 import type { FlagService } from '../flags/types.ts';
 
 import { createGiveawayEligibilityService } from './eligibility.ts';
@@ -29,7 +33,11 @@ export function createGiveawayAccrualService(
   flags: Pick<FlagService, 'isEnabled'>,
   currentRules: () => CurrentGiveawayRules,
   periodStart: Date | null = getGiveawayEntryPeriodStart(),
+  clock: () => Date = () => new Date(),
+  receiptEmail?: TransactionalEmailProducers['receipt'],
 ): GiveawayAccrualService {
+  const receipt =
+    receiptEmail ?? createTransactionalEmailProducers(database, clock).receipt;
   return {
     accrue(subscriberId, method, sourceEdgeId) {
       return withTransaction(database, (connection) =>
@@ -38,6 +46,7 @@ export function createGiveawayAccrualService(
           flags,
           currentRules,
           periodStart,
+          receipt,
         ).accrue(subscriberId, method, sourceEdgeId),
       );
     },
@@ -48,6 +57,7 @@ export function createGiveawayAccrualService(
           flags,
           currentRules,
           periodStart,
+          receipt,
         ).accrueForVerification(referredId),
       );
     },
@@ -60,6 +70,11 @@ export function createGiveawayAccrualServiceInTransaction(
   flags: Pick<FlagService, 'isEnabled'>,
   currentRules: () => CurrentGiveawayRules,
   periodStart: Date | null = getGiveawayEntryPeriodStart(),
+  receipt?: (
+    connection: DatabaseConnection,
+    subscriberId: string,
+    rulesVersion: string,
+  ) => Promise<boolean>,
 ): GiveawayAccrualService {
   const repository = createGiveawayEntryRepository(database);
   const eligibility = createGiveawayEligibilityService(database, flags);
@@ -99,6 +114,10 @@ export function createGiveawayAccrualServiceInTransaction(
     if (!/^[a-f0-9]{64}$/u.test(rules.sha256)) {
       throw new Error('The current giveaway rules hash is invalid.');
     }
+    const alreadyEnteredUnderVersion = await repository.hasEntryForRulesVersion(
+      subscriberId,
+      rules.rulesVersion,
+    );
     const inserted = await repository.insertEntry({
       id: randomUUID(),
       subscriberId,
@@ -118,6 +137,13 @@ export function createGiveawayAccrualServiceInTransaction(
       throw new Error(
         'The subscriber first-entry rules version could not be recorded.',
       );
+    }
+    if (
+      inserted === 1 &&
+      !alreadyEnteredUnderVersion &&
+      receipt !== undefined
+    ) {
+      await receipt(database, subscriberId, rules.rulesVersion);
     }
     return inserted === 1;
   }

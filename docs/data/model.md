@@ -170,11 +170,13 @@ surface is the E5-01 CLI, not a public or admin HTTP route.
 
 `id` · `subscriber_id` · `template` · `provider` · `business_key` text **unique** · `payload` jsonb **not null** · `unsubscribe_token_id` uuid foreign key to an unsubscribe-purpose `verification_token` · `provider_message_id` · `state` (`queued` · `sent` · `delivered` · `bounced` · `complained` · `failed`) · `attempts` int · `next_attempt_at` · `last_error` · `created_at` · `updated_at`.
 
-`payload` holds references only, such as `token_id`, `tier` or `award_id`, with a database check rejecting email addresses, token plaintext and copy text. The unsubscribe-token foreign key is purpose-checked in the database. E8-01's forward-only migration marks old queued rows that have no reconstructible payload `failed` with `last_error = 'legacy_unrecoverable'` before enforcing the new contract; there is no production data yet.
+`payload` holds references only, such as `token_id`, `tier` or `award_id`, with a database check rejecting email addresses, token plaintext and copy text. E8-03a extends the check for UUID `status_token_id` and a validated `rules_version` reference. Welcome has `{ status_token_id }`; milestone has `{ tier, status_token_id }`; entry receipt has `{ rules_version, status_token_id }`. The unsubscribe-token foreign key is purpose-checked in the database. E8-01's forward-only migration marks old queued rows that have no reconstructible payload `failed` with `last_error = 'legacy_unrecoverable'` before enforcing the new contract; there is no production data yet.
 
 The unsubscribe binding is unique per send and subject-bound. When the token-retention sweep removes an expired unsubscribe token, a still-queued send becomes failed with `unsubscribe_token_expired`; the reference is then cleared without deleting email history. Dispatch checks token expiry and the current secret before sending, so rotation or an expired link never produces mail with a broken link.
 
 **`business_key` is the idempotency primitive** — e.g. `verify:{subscriber_id}:{token_id}`, `milestone:{subscriber_id}:{tier}`. A retry with the same key never produces a second email.
+
+E8-03a's producer keys are `welcome:{subscriber_id}`, `milestone:{subscriber_id}:{tier}`, and `giveaway-receipt:{subscriber_id}:{rules_version}`. The database uniqueness constraint applies to all three.
 
 ## `suppression`
 

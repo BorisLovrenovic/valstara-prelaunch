@@ -18,3 +18,26 @@ export async function withTransaction<Result>(
     connection.release();
   }
 }
+
+/** Isolate an optional write while retaining the caller's transaction. */
+export async function tryInSavepoint(
+  connection: DatabaseConnection,
+  operation: () => Promise<boolean>,
+): Promise<boolean> {
+  await connection.execute({ text: 'SAVEPOINT optional_email_queue' });
+  try {
+    const result = await operation();
+    await connection.execute({
+      text: 'RELEASE SAVEPOINT optional_email_queue',
+    });
+    return result;
+  } catch {
+    await connection.execute({
+      text: 'ROLLBACK TO SAVEPOINT optional_email_queue',
+    });
+    await connection.execute({
+      text: 'RELEASE SAVEPOINT optional_email_queue',
+    });
+    return false;
+  }
+}
