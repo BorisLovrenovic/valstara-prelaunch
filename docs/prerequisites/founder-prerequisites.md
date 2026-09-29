@@ -14,6 +14,7 @@
 | **P2** | EU + UK Article 27 representatives | 🔴 Outstanding | Privacy policy → **the first signup** | **Today — longest lead time** |
 | **P4** | Giveaway prize + final text of the one global rules page (Hong Kong law) | ✅ Supplied 2026-09-25 | Publishing E7-02's page | Done |
 | **P5** | Upgrade Resend + Brevo past free tiers | 🔴 Outstanding | Turning `giveaway.open` on | Before E7 exit |
+| **P7** | The four seed mailboxes (Gmail, Outlook.com, GMX, Web.de) | 🔴 Outstanding | E12-07: the first live seed run and the rendering check | Before E12 |
 | **P3b** | Trust-page prose (`/legit`, `/guarantee`, `/about`) | 🔴 Outstanding | E9-02 | Before E9 |
 | **P6** | Provision the production VPS | ⚪ Deferred (by design) | Epic E12 | Before E12 |
 | **P3a** | Brand token values | ✅ Satisfied | — | Done |
@@ -249,6 +250,31 @@ By founder decision (2026-08-27), the entire site is **built and verified locall
 
 ### Source docs
 `docs/plan/development-plan.md` §2 (P6), Epic E12
+
+---
+
+## P7 — The four seed mailboxes
+
+- **Status:** 🔴 Outstanding
+- **Nature:** Account setup (free)
+- **Gates:** E12-07 — the first live seed run and the manual rendering check.
+- **Deadline:** Before E12.
+
+### Why this matters
+Seed tests guard against the campaign's most dangerous silent failure: verification mail that stops arriving. They mail inboxes Valstara controls and record whether each message lands in the inbox or in spam, per provider. That needs one real mailbox at each of the four providers the plan names: Gmail, Outlook, GMX and Web.de. Apple Mail is an email app, not a provider, so it needs no seed mailbox. It is used only to view messages for the rendering check.
+
+### Exactly what to do
+1. **Create one new mailbox each** at Gmail, Outlook.com, GMX and Web.de. Use them for seed tests and nothing else: no newsletters and no personal mail, so each provider's filtering reflects a fresh recipient.
+2. **Enable IMAP access** in each account's settings, where the provider requires it.
+3. **Set up sign-in the seed harness can use:** an app password or OAuth, whichever the provider requires for IMAP. **Outlook.com allows IMAP only through OAuth**, not a password.
+4. **Keep the credentials in your password manager.** They move into the production secret manager at E12. Never commit them or put them in a local `.env`.
+5. **For the E12-07 rendering check**, have Apple Mail on a Mac signed in to one of the seed mailboxes.
+
+### How the build confirms it
+E8-04 builds the weekly seed harness and proves it against simulated mailboxes. **Nothing is sent and no seed mailbox is used**, because live sending keys stay off local machines until E12-07. At E12-07 the production host sends the first live seed test and delivers every transactional template to these mailboxes. You then check by hand how each one looks in Gmail, Outlook, Apple Mail, GMX and Web.de. From then on, the weekly harness records inbox-versus-spam placement (founder-authorised 2026-09-29).
+
+### Source docs
+`docs/plan/development-plan.md` §2 (P7), E12-07, E8-04 · `docs/architecture/fallbacks.md#the-two-silent-failures`
 
 ---
 

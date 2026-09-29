@@ -3,10 +3,21 @@ import {
   getDrandConfiguration,
   getP1AlertConfiguration,
   getResendDispatchConfiguration,
+  getSeedTestConfiguration,
   getVerificationRateConfiguration,
 } from '../config.ts';
 import { createPool } from '../db/pool.ts';
+import { createSeedTestRepository } from '../db/seed-test.ts';
 import { checkDomainAuthenticationAtStartup } from '../email/domain-authentication.ts';
+import {
+  createImapSeedMailbox,
+  createResendSeedSender,
+} from '../email/seed-adapters.ts';
+import {
+  createSeedTestAlert,
+  createSeedTestService,
+} from '../email/seed-test.ts';
+import { createResendProvider } from '../email/providers/resend.ts';
 import {
   createResendDispatcher,
   runResendDispatch,
@@ -37,6 +48,23 @@ const clock = (): Date => new Date();
 const alerts = createAlertWebhookTransport(getP1AlertConfiguration());
 const reportFailure = createMaintenanceFailureReporter(alerts, { clock });
 const resendConfiguration = getResendDispatchConfiguration();
+const seedConfiguration = getSeedTestConfiguration();
+const seedTest =
+  seedConfiguration === null
+    ? undefined
+    : createSeedTestService(
+        createSeedTestRepository(database),
+        createResendSeedSender(
+          createResendProvider(
+            resendConfiguration.resendApiKey,
+            resendConfiguration.resendSendingDomain,
+          ),
+          seedConfiguration,
+        ),
+        createImapSeedMailbox(seedConfiguration),
+        createSeedTestAlert(alerts),
+        clock,
+      );
 
 async function reportVerificationRateCollapse(alert: {
   readonly baselineRate: number;
@@ -82,6 +110,7 @@ const scheduler = createVerificationMaintenanceScheduler(
     verificationTokenRetention: createVerificationTokenRetentionJob(database, {
       clock,
     }),
+    seedTest,
   },
   { clock, reportFailure },
 );

@@ -178,6 +178,16 @@ The unsubscribe binding is unique per send and subject-bound. When the token-ret
 
 E8-03a's producer keys are `welcome:{subscriber_id}`, `milestone:{subscriber_id}:{tier}`, and `giveaway-receipt:{subscriber_id}:{rules_version}`. The database uniqueness constraint applies to all three.
 
+## `email_seed_test`
+
+One internal delivery placement record per `(week_start, provider)` for Gmail,
+Outlook, GMX and Web.de. `week_start` is a Monday UTC date; `marker` is a unique
+random UUID used only to find that week's message. `placement` is `pending`,
+`inbox`, `spam` or `missing`; `sent_at`, `checked_at` and `alerted_at` record
+progress. The table contains no recipient address, mailbox credential, message
+body or subscriber reference. App-role writes are limited to the placement and
+timestamp fields; the provider and marker are immutable after insert.
+
 ## `suppression`
 
 `email_normalised` pk · `reason` (`unsubscribe` · `bounce_hard` · `complaint` · `manual`) · `source` · `created_at`. **Checked at dispatch, not only at queue time** — a suppression written after queueing must still stop the send.
