@@ -30,6 +30,12 @@ interface EmailProvider {
 
 E8-01 dispatch takes injected `EmailProvider` and template-renderer registries.
 The renderer produces a typed `Message` with a required plain-text body.
+Founder-authorised 2026-09-28, with a same-day URL correction: its `render()`
+input also includes `unsubscribePageUrl: string`. Dispatch derives both the
+body confirmation URL (`GET /unsubscribe?t=…`) and the RFC 8058 header URL
+(`POST /api/unsubscribe?token=…`) once from the same bound token and configured
+base URL. The template receives only the confirmation URL and does not mint
+tokens or construct unsubscribe URLs. Each template's HTML and plain-text body uses it.
 Its delivered subset is `queue({ template, subscriberId, businessKey, provider,
 payload }, transaction?)`, `dispatch(limit)` and `health()`; the remaining
 target-state methods arrive with their owning tickets. `queue()` returns whether
@@ -54,6 +60,8 @@ it inserted a row, so the award workflow audits a notification only once.
 - **No sending domain outside `valstara.com` is configured** (ADR-028). The SubSlush announcement is a manual founder send, not a module path.
 - **Vendor SDKs live only in `providers/`.** Lint-enforced.
 - E8-01's `Message` requires a plain-text body. Dispatch refuses a missing text alternative or bound `unsubscribe` token, and builds RFC 8058 `List-Unsubscribe` and `List-Unsubscribe-Post` headers from the token and a configured base URL. E6-06 proves the one-click route works; E8-03 supplies real plain-text alternatives for every template.
+- E8-03 registers seven real transactional renderers. They use the queued reference payload and the shared copy layer; welcome and milestone read current `ReferralService.status` through the status-token subject. Verification and reminder use the existing `verification_test` and `verification_reminder` queue identifiers. E8-03a later supplies the three missing queue producers and widens the reference-payload constraint for their fields.
+- Verification and verification-reminder mail contain no `/me` link while the recipient is unverified; the other five transactional templates carry one (founder-authorised 2026-09-28). All seven contain the bound confirmation-page URL in both HTML and plain text. Its token matches the `List-Unsubscribe` header token, and a GET of the page does not consume it.
 - **Webhook signatures are verified before the payload is parsed**, and ingestion is idempotent on the provider event id.
 - `quotaProjection()` alerts at a week's headroom. Resend free is 100/day, Brevo free is 300/day — **upgrade before the giveaway opens, not when the limits hit.**
 

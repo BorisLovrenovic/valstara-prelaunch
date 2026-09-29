@@ -69,4 +69,4 @@ Plain, specific, no apology theatre, no vendor names, no machinery terms.
 > not "Invalid token."
 
 ## Email copy
-Subject lines are descriptive, not curiosity-baiting. The verification mail's only job is to get one click, so it says what it is in the first line. **Every mail carries a one-click unsubscribe and a plain-text alternative**, and the unsubscribe is as easy as the signup was.
+Subject lines are descriptive, not curiosity-baiting. The verification mail's only job is to get one click, so it says what it is in the first line. Verification and verification-reminder mail carry no status-page link before the address is verified (founder-authorised 2026-09-28). **Every mail carries a one-click unsubscribe and a plain-text alternative**, and the unsubscribe is as easy as the signup was.

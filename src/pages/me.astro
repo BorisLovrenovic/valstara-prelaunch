@@ -8,6 +8,7 @@ import { createPool } from '../server/db/pool.ts';
 import { createUnsubscribeRepository } from '../server/db/unsubscribe.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
 import { createReferralService } from '../server/referral/service.ts';
+import { presentReferralStatus } from '../server/referral/status-presentation.ts';
 import { createMarketingService } from '../server/subscriber/marketing.ts';
 import type { ReferralStatus } from '../server/referral/status.ts';
 import { hashedIpPrefix } from '../server/ratelimit/ip-prefix.ts';
@@ -96,6 +97,8 @@ if (Astro.request.method === 'POST') {
     await database.close();
   }
 }
+const dashboardView =
+  dashboardStatus === null ? null : presentReferralStatus(dashboardStatus);
 ---
 
 <BaseLayout
@@ -108,48 +111,20 @@ if (Astro.request.method === 'POST') {
         <h1>{memberStatusCopy.left.heading}</h1>
         <p>{memberStatusCopy.left.body}</p>
       </section>
-    ) : authentication.kind === 'authenticated' && dashboardStatus !== null ? (
+    ) : authentication.kind === 'authenticated' && dashboardView !== null ? (
       <div class="member-status-boundary" data-member-dashboard>
         <h1>{memberStatusCopy.authenticated.heading}</h1>
         <p>{memberStatusCopy.authenticated.body}</p>
 
         <dl class="member-status-summary">
-          <div>
-            <dt>{memberStatusCopy.authenticated.status}</dt>
-            <dd>
-              {
-                memberStatusCopy.authenticated.statusValues[
-                  dashboardStatus.subscriberStatus
-                ]
-              }
-            </dd>
-          </div>
-          <div>
-            <dt>{memberStatusCopy.authenticated.confirmedReferrals}</dt>
-            <dd class="tabular-figure">{dashboardStatus.confirmedReferrals}</dd>
-          </div>
-          <div>
-            <dt>{memberStatusCopy.authenticated.rank}</dt>
-            <dd class="tabular-figure">
-              {dashboardStatus.ownRank ??
-                memberStatusCopy.authenticated.rankUnavailable}
-            </dd>
-          </div>
-          <div>
-            <dt>{memberStatusCopy.authenticated.tier}</dt>
-            <dd class="tabular-figure">{dashboardStatus.tier}</dd>
-          </div>
-          <div>
-            <dt>{memberStatusCopy.authenticated.wave}</dt>
-            <dd>
-              {dashboardStatus.accessWindow ??
-                memberStatusCopy.authenticated.wavePending}
-            </dd>
-          </div>
-          <div>
-            <dt>{memberStatusCopy.authenticated.entries}</dt>
-            <dd class="tabular-figure">{dashboardStatus.giveawayEntries}</dd>
-          </div>
+          {dashboardView.fields.map((field) => (
+            <div>
+              <dt>{field.label}</dt>
+              <dd class:list={[field.tabular && 'tabular-figure']}>
+                {field.value}
+              </dd>
+            </div>
+          ))}
         </dl>
 
         <section class="member-status-section">
@@ -204,7 +179,7 @@ if (Astro.request.method === 'POST') {
               data-referral-link
               readonly
               type="url"
-              value={dashboardStatus.referralLink}
+              value={dashboardView.referralLink}
             />
             <button
               data-copy-failed={memberStatusCopy.referral.copyFailed}
@@ -221,17 +196,15 @@ if (Astro.request.method === 'POST') {
         <section class="member-status-section">
           <h2>{memberStatusCopy.rewards.heading}</h2>
           <p>{memberStatusCopy.rewards.intro}</p>
-          {dashboardStatus.rewards.length === 0 ? (
+          {dashboardView.rewards.length === 0 ? (
             <p>{memberStatusCopy.rewards.empty}</p>
           ) : (
             <ul class="reward-list">
-              {dashboardStatus.rewards.map((reward) => (
+              {dashboardView.rewards.map((reward) => (
                 <li>
-                  <span>{memberStatusCopy.rewards.kinds[reward.kind]}</span>
-                  <span>{memberStatusCopy.rewards.tier(reward.tier)}</span>
-                  <strong>
-                    {memberStatusCopy.rewards.states[reward.state]}
-                  </strong>
+                  <span>{reward.label}</span>
+                  <span>{reward.tier}</span>
+                  <strong>{reward.state}</strong>
                 </li>
               ))}
             </ul>

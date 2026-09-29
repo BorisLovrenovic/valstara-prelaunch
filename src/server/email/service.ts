@@ -35,6 +35,7 @@ export interface TemplateRenderer {
     readonly email: string;
     readonly payload: Readonly<Record<string, unknown>>;
     readonly token: (id: string) => Promise<string>;
+    readonly unsubscribePageUrl: string;
   }): Promise<Message>;
 }
 
@@ -88,10 +89,29 @@ export function unsubscribeHeaders(
   baseUrl: string,
   token: string,
 ): Readonly<Record<string, string>> {
-  const target = new URL('/api/unsubscribe', baseUrl);
-  target.searchParams.set('token', token);
+  const { headerUrl } = unsubscribeTargets(baseUrl, token);
+  return unsubscribeHeadersForUrl(headerUrl);
+}
+
+function unsubscribeTargets(
+  baseUrl: string,
+  token: string,
+): {
+  headerUrl: string;
+  pageUrl: string;
+} {
+  const header = new URL('/api/unsubscribe', baseUrl);
+  header.searchParams.set('token', token);
+  const page = new URL('/unsubscribe', baseUrl);
+  page.searchParams.set('t', token);
+  return { headerUrl: header.toString(), pageUrl: page.toString() };
+}
+
+function unsubscribeHeadersForUrl(
+  headerUrl: string,
+): Readonly<Record<string, string>> {
   return {
-    'List-Unsubscribe': `<${target.toString()}>`,
+    'List-Unsubscribe': `<${headerUrl}>`,
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
   };
 }
@@ -112,16 +132,18 @@ export async function prepareDispatchMessage(input: {
   if (row.unsubscribe_token_id === null)
     throw new Error('unsubscribe_token_missing');
   const unsubscribe = await token(row.unsubscribe_token_id, 'unsubscribe');
+  const targets = unsubscribeTargets(baseUrl, unsubscribe);
   const message = await renderer.render({
     email: recipient,
     payload: row.payload,
     token: (id) => token(id),
+    unsubscribePageUrl: targets.pageUrl,
   });
   if (typeof message.text !== 'string' || message.text.trim() === '') {
     throw new Error('text_alternative_missing');
   }
   if (message.to !== recipient) throw new Error('recipient_mismatch');
-  return { message, headers: unsubscribeHeaders(baseUrl, unsubscribe) };
+  return { message, headers: unsubscribeHeadersForUrl(targets.headerUrl) };
 }
 
 export function createEmailService(

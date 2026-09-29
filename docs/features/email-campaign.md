@@ -15,6 +15,8 @@ Seven transactional templates through **Resend on `send.valstara.com`**, and bro
 6. **Giveaway entry receipt** — entries, and a link to the immutable global rules version that governs them
 7. **Provisional winner notification** — status link, Section 9 response deadline and the governing rules-version link; E7-06 queues the record, E8-01 dispatches it and E8-03 renders it with a plain-text alternative from the copy layer
 
+E8-03 supplies and registers all seven renderers. E8-03a, added by founder authorisation on 2026-09-28, will queue welcome, milestone and entry-receipt mail from their event transactions. Until then, E8-03 proves those renderers with fixture payloads.
+
 Broadcasts (Brevo) are composed from a shared layout: the **weekly update** (including the top-10 block that is the leaderboard's fallback surface), and the **launch announcement**.
 
 **Who receives what (ADR-027).** The weekly update and any other marketing go **only to verified, unsuppressed subscribers with current marketing consent**, re-checked at dispatch. The single launch-access notification that joining the waitlist promises goes to every verified, unsuppressed subscriber as a message they requested (the privacy audit, E11-05, confirms this classification). Unsubscribing from a marketing message withdraws marketing consent only; the person keeps their waitlist place and giveaway entries.
@@ -30,7 +32,7 @@ Provider down → the row is committed; the send queues and retries with backoff
 ## Acceptance criteria
 - [ ] **One email per business key**, enforced by a unique constraint — a retry never double-sends
 - [ ] **Suppression is checked at dispatch, not only at queue time** — asserted by test
-- [ ] Every mail carries a working one-click unsubscribe (RFC 8058) and a plain-text alternative
+- [ ] Every mail to a verified subscriber carries the status link; every mail carries a working one-click unsubscribe (RFC 8058) and a plain-text alternative. Verification and verification-reminder mail have only the verify-link call to action and no status link (founder-authorised 2026-09-28)
 - [ ] Transactional and broadcast use **different domains and different providers** — asserted by config test
 - [ ] SPF, DKIM and DMARC verified per sending domain before the flag can be turned on
 - [ ] Every template renders correctly in Gmail, Outlook, Apple Mail, GMX and Web.de — evidenced

@@ -165,9 +165,12 @@ function harness(
   };
   const renderer = (kind: 'transactional' | 'broadcast'): TemplateRenderer => ({
     kind,
-    async render({ email, payload, token }) {
+    async render({ email, payload, token, unsubscribePageUrl }) {
       const id = payload.token_id;
       assert.ok(typeof id === 'string');
+      const confirmation = new URL(unsubscribePageUrl);
+      assert.equal(confirmation.pathname, '/unsubscribe');
+      assert.ok(confirmation.searchParams.get('t'));
       const url = new URL('/verify', baseUrl);
       url.searchParams.set('token', await token(id));
       return {

@@ -6,6 +6,7 @@ import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import { createVerificationService } from '../src/server/verification/service.ts';
 import { createAwardService } from '../src/server/giveaway/award.ts';
+import { createTransactionalTemplateData } from '../src/server/email/transactional-template-data.ts';
 import {
   availableProducts,
   validateAwardCatalog,
@@ -240,9 +241,33 @@ test('notifications are one row per winner under real concurrency; only winner c
       awardRow?.entry_snapshot_hash.toString('hex'),
       'cd'.repeat(32),
     );
+    const queuedNotice = await db.owner.readOne<{
+      payload: { award_id: string; token_id: string };
+    }>({
+      text: `SELECT payload FROM email_send WHERE template = 'giveaway_winner'`,
+    });
+    assert.ok(queuedNotice);
+    const templateData = createTransactionalTemplateData(db.app);
+    const winnerDetails = await templateData.winnerDetails(
+      queuedNotice.payload.award_id,
+      queuedNotice.payload.token_id,
+    );
+    assert.equal(winnerDetails.rulesVersion, rulesVersion);
+    assert.ok(winnerDetails.deadline > timestamp);
+    assert.equal(
+      await templateData.receiptEntries(
+        queuedNotice.payload.token_id,
+        rulesVersion,
+      ),
+      1,
+    );
     const outsiderToken = await createVerificationService(db.app, {
       clock: () => timestamp,
     }).issue(outsider, 'status');
+    await assert.rejects(
+      templateData.winnerDetails(awardRow!.id, outsiderToken.id),
+      /email_template_winner_missing/u,
+    );
     assert.equal(await award.ownAward(awardRow!.id, outsiderToken.token), null);
     assert.equal(
       await award.submitChecks({
