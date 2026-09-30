@@ -143,9 +143,7 @@ export function createEmailReconciliationJob(
   }
 
   return {
-    async run(
-      limit: number,
-    ): Promise<{
+    async run(limit: number): Promise<{
       resendGaps: number;
       brevoScanned: number;
       brevoPaused: boolean;
