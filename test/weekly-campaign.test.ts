@@ -3,7 +3,10 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 
 import { createLeaderboardRoute } from '../src/pages/api/leaderboard.ts';
-import { createLeaderboardSnapshotRepository } from '../src/server/db/leaderboard-snapshot.ts';
+import {
+  createLeaderboardSnapshotRepository,
+  withLeaderboardPublicationLock,
+} from '../src/server/db/leaderboard-snapshot.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool } from '../src/server/db/pool.ts';
 import { createEmailService } from '../src/server/email/service.ts';
@@ -83,7 +86,7 @@ test('E8-07 serializes weekly selection with a delayed site cache publication', 
           await publicationGate;
         }
       },
-      (operation) => store.withPublication(operation),
+      (operation, onFailure) => store.withPublication(operation, onFailure),
     );
     await cache.refresh();
     now = new Date('2026-10-06T08:59:59Z');
@@ -136,6 +139,108 @@ test('E8-07 serializes weekly selection with a delayed site cache publication', 
       values: ['2026-W41'],
     });
     assert.equal(run?.snapshot_id, cache.read()?.id);
+  } finally {
+    await app?.close();
+    await owner.close();
+    await admin.execute({ text: `DROP DATABASE "${name}" WITH (FORCE)` });
+    await admin.close();
+  }
+});
+
+test('E8-07 keeps the site and weekly selection on the served snapshot after commit fails', async () => {
+  const name = `valstara_e807_commit_${randomUUID().replaceAll('-', '')}`;
+  const admin = createPool(adminUrl);
+  await admin.execute({ text: `CREATE DATABASE "${name}"` });
+  const ownerUrl = new URL(adminUrl);
+  ownerUrl.pathname = `/${name}`;
+  const appUrl = new URL(ownerUrl);
+  appUrl.username = 'valstara_app';
+  appUrl.password = appPassword;
+  const owner = createPool(ownerUrl.toString());
+  let app: ReturnType<typeof createPool> | undefined;
+  try {
+    await runMigrations(owner, {
+      applicationRolePassword: appPassword,
+      release: 'e8-07-commit-test',
+    });
+    app = createPool(appUrl.toString());
+    let now = new Date('2026-10-06T08:59:58Z');
+    const clock = () => now;
+    const store = createSharedLeaderboardSnapshotStore(
+      app,
+      {
+        async leaderboardCandidates() {
+          return [];
+        },
+      },
+      clock,
+    );
+    const first = await store.refresh();
+    let failCommit = false;
+    const failingPool = new Proxy(app, {
+      get(target, property, receiver) {
+        if (property !== 'connect')
+          return Reflect.get(target, property, receiver);
+        return async () => {
+          const connection = await target.connect();
+          return {
+            execute: async (statement: {
+              text: string;
+              values?: readonly unknown[];
+            }) => {
+              if (statement.text === 'COMMIT' && failCommit) {
+                failCommit = false;
+                throw new Error('injected commit failure');
+              }
+              return connection.execute(statement);
+            },
+            readOne: connection.readOne.bind(connection),
+            list: connection.list.bind(connection),
+            release: () => connection.release(),
+          };
+        };
+      },
+    });
+    const cache = createPersistedSnapshotCache(
+      (connection) => store.latest(connection),
+      (id, connection) => store.publishServed(id, connection),
+      (operation, onFailure) =>
+        withLeaderboardPublicationLock(failingPool, operation, onFailure),
+    );
+    await cache.refresh();
+    now = new Date('2026-10-06T08:59:59Z');
+    const second = await store.refresh();
+    failCommit = true;
+    await assert.rejects(cache.refresh(), /injected commit failure/u);
+    assert.equal(cache.read()?.id, first.id);
+    assert.equal((await store.served())?.id, first.id);
+
+    now = new Date('2026-10-06T09:00:00Z');
+    const job = createWeeklyCampaignJob({
+      database: app,
+      flags: { isEnabled: async () => true },
+      snapshot: store,
+      email: {
+        async queue() {
+          assert.fail('there is no audience');
+        },
+      },
+      alerts: {
+        async send() {
+          assert.fail('no alert expected');
+        },
+      },
+      clock,
+      tokenSecret: secret,
+      schedule,
+    });
+    assert.equal((await job.run()).state, 'completed');
+    const run = await owner.readOne<{ snapshot_id: string }>({
+      text: 'SELECT snapshot_id FROM weekly_campaign_run WHERE iso_week = $1',
+      values: ['2026-W41'],
+    });
+    assert.equal(run?.snapshot_id, first.id);
+    assert.notEqual(run?.snapshot_id, second.id);
   } finally {
     await app?.close();
     await owner.close();
@@ -252,7 +357,7 @@ test('E8-07 shares one persisted snapshot and queues only the eligible weekly au
           ? Promise.reject(new Error('refresh stopped'))
           : store.forSite('2026-W41', connection),
       (id, connection) => store.publishServed(id, connection),
-      (operation) => store.withPublication(operation),
+      (operation, onFailure) => store.withPublication(operation, onFailure),
     );
     await cache.refresh();
     const route = createLeaderboardRoute({

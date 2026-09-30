@@ -45,8 +45,9 @@ export function createSharedLeaderboardSnapshotStore(
   return {
     withPublication<Result>(
       operation: (connection: DatabaseConnection) => Promise<Result>,
+      onFailure?: () => void,
     ): Promise<Result> {
-      return withLeaderboardPublicationLock(database, operation);
+      return withLeaderboardPublicationLock(database, operation, onFailure);
     },
     async refresh(): Promise<SharedLeaderboardSnapshot> {
       const computed = await computation.refresh();
@@ -108,6 +109,7 @@ export function createPersistedSnapshotCache(
   publish: (id: string, connection: DatabaseConnection) => Promise<void>,
   serialize: <Result>(
     operation: (connection: DatabaseConnection) => Promise<Result>,
+    onFailure: () => void,
   ) => Promise<Result>,
   schedule: (
     callback: () => void,
@@ -118,15 +120,25 @@ export function createPersistedSnapshotCache(
   },
 ) {
   let current: SharedLeaderboardSnapshot | null = null;
-  const refresh = (): Promise<SharedLeaderboardSnapshot | null> =>
-    serialize(async (connection) => {
-      const loaded = await load(connection);
-      if (loaded !== null) {
-        await publish(loaded.id, connection);
-        current = loaded;
-      }
-      return current;
-    });
+  const refresh = (): Promise<SharedLeaderboardSnapshot | null> => {
+    let previous: SharedLeaderboardSnapshot | null = null;
+    let changed = false;
+    return serialize(
+      async (connection) => {
+        const loaded = await load(connection);
+        if (loaded !== null) {
+          await publish(loaded.id, connection);
+          previous = current;
+          current = loaded;
+          changed = true;
+        }
+        return current;
+      },
+      () => {
+        if (changed) current = previous;
+      },
+    );
+  };
   const start = () => {
     void refresh().catch(() => undefined);
     const timer = schedule(() => {

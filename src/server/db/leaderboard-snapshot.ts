@@ -16,13 +16,18 @@ export const maxSnapshotPurgeBatch = 100;
 export async function withLeaderboardPublicationLock<Result>(
   database: DatabasePool,
   operation: (connection: DatabaseConnection) => Promise<Result>,
+  onFailure?: () => void,
 ): Promise<Result> {
-  return withTransaction(database, async (connection) => {
-    await connection.readOne({
-      text: "SELECT pg_advisory_xact_lock(hashtext('valstara:leaderboard-publication'))",
-    });
-    return operation(connection);
-  });
+  return withTransaction(
+    database,
+    async (connection) => {
+      await connection.readOne({
+        text: "SELECT pg_advisory_xact_lock(hashtext('valstara:leaderboard-publication'))",
+      });
+      return operation(connection);
+    },
+    onFailure,
+  );
 }
 
 export function createLeaderboardSnapshotRepository(db: DatabaseConnection) {

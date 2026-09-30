@@ -36,7 +36,7 @@ export function getLeaderboardSnapshot(): ReturnType<
       );
     },
     (id, connection) => store!.publishServed(id, connection),
-    (operation) => store!.withPublication(operation),
+    (operation, onFailure) => store!.withPublication(operation, onFailure),
   );
   if (!started) {
     snapshot.start();
