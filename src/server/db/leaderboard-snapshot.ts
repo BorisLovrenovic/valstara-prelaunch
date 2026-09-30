@@ -25,6 +25,35 @@ export function createLeaderboardSnapshotRepository(db: DatabaseConnection) {
         values: [id],
       });
     },
+    served(): Promise<PersistedLeaderboardSnapshot | null> {
+      return db.readOne({
+        text: `SELECT s.id, s.as_of, s.entries FROM leaderboard_served_snapshot p
+          JOIN leaderboard_snapshot s ON s.id = p.snapshot_id WHERE p.singleton`,
+      });
+    },
+    forSite(
+      isoWeek: string | null,
+    ): Promise<PersistedLeaderboardSnapshot | null> {
+      return db.readOne({
+        text: `SELECT s.id, s.as_of, s.entries FROM leaderboard_snapshot s
+          WHERE s.id = COALESCE(
+            (SELECT r.snapshot_id FROM weekly_campaign_run r
+              WHERE r.iso_week = $1 AND r.state IN ('started', 'completed')),
+            (SELECT p.snapshot_id FROM leaderboard_served_snapshot p
+              WHERE p.singleton AND $1::text IS NOT NULL),
+            (SELECT latest.id FROM leaderboard_snapshot latest
+              ORDER BY latest.as_of DESC, latest.id DESC LIMIT 1))`,
+        values: [isoWeek],
+      });
+    },
+    async publishServed(id: string): Promise<void> {
+      await db.execute({
+        text: `INSERT INTO leaderboard_served_snapshot (singleton, snapshot_id)
+          VALUES (true, $1) ON CONFLICT (singleton) DO UPDATE
+          SET snapshot_id = EXCLUDED.snapshot_id`,
+        values: [id],
+      });
+    },
     async insert(row: PersistedLeaderboardSnapshot): Promise<void> {
       await db.execute({
         text: 'INSERT INTO leaderboard_snapshot (id, as_of, entries) VALUES ($1, $2, $3::jsonb)',

@@ -58,6 +58,17 @@ export function createSharedLeaderboardSnapshotStore(
     async latest(): Promise<SharedLeaderboardSnapshot | null> {
       return fromStored(await repository.latest());
     },
+    async served(): Promise<SharedLeaderboardSnapshot | null> {
+      return fromStored(await repository.served());
+    },
+    async publishServed(id: string): Promise<void> {
+      await repository.publishServed(id);
+    },
+    async forSite(
+      isoWeek: string | null,
+    ): Promise<SharedLeaderboardSnapshot | null> {
+      return fromStored(await repository.forSite(isoWeek));
+    },
     async byId(id: string): Promise<SharedLeaderboardSnapshot | null> {
       return fromStored(await repository.byId(id));
     },
@@ -70,6 +81,7 @@ export function createSharedLeaderboardSnapshotStore(
 
 export function createPersistedSnapshotCache(
   load: () => Promise<SharedLeaderboardSnapshot | null>,
+  publish: (id: string) => Promise<void>,
   schedule: (
     callback: () => void,
     milliseconds: number,
@@ -81,7 +93,10 @@ export function createPersistedSnapshotCache(
   let current: SharedLeaderboardSnapshot | null = null;
   const refresh = async (): Promise<SharedLeaderboardSnapshot | null> => {
     const loaded = await load();
-    if (loaded !== null) current = loaded;
+    if (loaded !== null) {
+      await publish(loaded.id);
+      current = loaded;
+    }
     return current;
   };
   const start = () => {

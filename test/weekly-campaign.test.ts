@@ -10,6 +10,7 @@ import { createEmailService } from '../src/server/email/service.ts';
 import {
   createWeeklyCampaignJob,
   weeklyWindow,
+  type WeeklyCampaignDependencies,
 } from '../src/server/email/weekly-campaign.ts';
 import { createWeeklyTemplate } from '../src/server/email/weekly-template.ts';
 import {
@@ -138,8 +139,12 @@ test('E8-07 shares one persisted snapshot and queues only the eligible weekly au
     );
 
     let failLoad = false;
-    const cache = createPersistedSnapshotCache(() =>
-      failLoad ? Promise.reject(new Error('refresh stopped')) : store.latest(),
+    const cache = createPersistedSnapshotCache(
+      () =>
+        failLoad
+          ? Promise.reject(new Error('refresh stopped'))
+          : store.forSite('2026-W41'),
+      (id) => store.publishServed(id),
     );
     await cache.refresh();
     const route = createLeaderboardRoute({
@@ -153,6 +158,9 @@ test('E8-07 shares one persisted snapshot and queues only the eligible weekly au
     };
     assert.equal(page.snapshot_id, snapshot.id);
     assert.equal(page.entries[0]?.confirmed_referrals, 7);
+    sourceCount = 8;
+    const aheadOfSite = await store.refresh();
+    assert.notEqual(aheadOfSite.id, cache.read()?.id);
 
     const renderer = createWeeklyTemplate({
       baseUrl: 'https://valstara.com',
@@ -201,7 +209,7 @@ test('E8-07 shares one persisted snapshot and queues only the eligible weekly au
     const alerts: { severity: string; event: string }[] = [];
     let calls = 0;
     let failSecond = true;
-    const job = createWeeklyCampaignJob({
+    const jobDependencies: WeeklyCampaignDependencies = {
       database: app,
       flags: { isEnabled: async () => enabled },
       snapshot: store,
@@ -220,7 +228,8 @@ test('E8-07 shares one persisted snapshot and queues only the eligible weekly au
       clock,
       tokenSecret: secret,
       schedule,
-    });
+    };
+    const job = createWeeklyCampaignJob(jobDependencies);
     assert.equal((await job.run()).state, 'paused');
     enabled = true;
     assert.equal((await job.run()).state, 'early');
@@ -233,6 +242,10 @@ test('E8-07 shares one persisted snapshot and queues only the eligible weekly au
       '0',
     );
     now = new Date('2026-10-06T09:00:00Z');
+    failLoad = false;
+    await cache.refresh();
+    failLoad = true;
+    assert.equal(cache.read()?.id, snapshot.id);
     await assert.rejects(job.run(1), /partial failure/u);
     assert.equal(
       (
@@ -265,10 +278,18 @@ test('E8-07 shares one persisted snapshot and queues only the eligible weekly au
       queued.every(
         (row) =>
           row.business_key === `weekly:2026-W41:${row.subscriber_id}` &&
-          row.payload.snapshot_id === snapshot.id &&
           row.expires_at.toISOString() === '2026-10-07T09:00:00.000Z',
       ),
     );
+    assert.equal(
+      queued[0]?.payload.snapshot_id,
+      cache.read()?.id,
+      'the queued ID must match the lagging site cache, not the newest row',
+    );
+    failLoad = false;
+    await cache.refresh();
+    failLoad = true;
+    assert.equal(cache.read()?.id, queued[0]?.payload.snapshot_id);
     await assert.rejects(
       app.execute({
         text: 'UPDATE weekly_campaign_run SET snapshot_id = $2 WHERE iso_week = $1',
@@ -417,10 +438,33 @@ test('E8-07 shares one persisted snapshot and queues only the eligible weekly au
 
     now = new Date('2026-10-29T09:00:00Z');
     const fresh = await store.refresh();
-    assert.equal(await store.purge(100), 1);
+    assert.equal(await store.purge(100), 2);
     assert.equal(await store.byId(snapshot.id), null);
     assert.equal((await store.byId(newer.id))?.id, newer.id);
     assert.equal((await store.byId(fresh.id))?.id, fresh.id);
+
+    now = new Date('2026-11-09T08:00:00Z');
+    const restartedJob = createWeeklyCampaignJob(jobDependencies);
+    assert.equal((await restartedJob.run()).state, 'early');
+    const missedAfterRestart = await owner.readOne<{
+      state: string;
+      alerted_at: Date | null;
+    }>({
+      text: 'SELECT state, alerted_at FROM weekly_campaign_run WHERE iso_week = $1',
+      values: ['2026-W45'],
+    });
+    assert.equal(missedAfterRestart?.state, 'skipped');
+    assert.notEqual(missedAfterRestart.alerted_at, null);
+    assert.equal(alerts.length, 4);
+    assert.equal(
+      (
+        await owner.readOne<{ count: string }>({
+          text: `SELECT COUNT(*)::text AS count FROM email_send
+            WHERE business_key LIKE 'weekly:2026-W45:%'`,
+        })
+      )?.count,
+      '0',
+    );
   } finally {
     await app?.close();
     await owner.close();

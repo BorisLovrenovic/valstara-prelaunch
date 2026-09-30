@@ -55,6 +55,7 @@ services:
       DATABASE_URL: postgresql://valstara_app:${VALSTARA_APP_DB_PASSWORD:-valstara-app-local-only}@postgres:5432/valstara_waitlist
       EMAIL_BASE_URL: ${EMAIL_BASE_URL:-http://localhost:4321}
       EMAIL_TOKEN_SECRET: ${EMAIL_TOKEN_SECRET:-local-only-email-token-secret-32-chars}
+      WEEKLY_SEND_UTC: ${WEEKLY_SEND_UTC:-2@09:00}
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY is required}
       IP_PREFIX_PEPPER: ${IP_PREFIX_PEPPER:?IP_PREFIX_PEPPER is required}
       REFERRAL_SIGNING_SECRET: ${REFERRAL_SIGNING_SECRET:?REFERRAL_SIGNING_SECRET is required}

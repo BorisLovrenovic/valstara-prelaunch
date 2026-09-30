@@ -14,6 +14,16 @@ export function createWeeklyCampaignRepository(db: DatabaseConnection) {
         values: [isoWeek],
       });
     },
+    firstRunWeek(): Promise<{ iso_week: string } | null> {
+      return db.readOne({
+        text: 'SELECT iso_week FROM weekly_campaign_run ORDER BY iso_week',
+      });
+    },
+    firstSnapshot(): Promise<{ as_of: Date } | null> {
+      return db.readOne({
+        text: 'SELECT as_of FROM leaderboard_snapshot ORDER BY as_of, id',
+      });
+    },
     async start(isoWeek: string, snapshotId: string, now: Date): Promise<void> {
       await db.execute({
         text: `INSERT INTO weekly_campaign_run (iso_week, state, snapshot_id, recorded_at)

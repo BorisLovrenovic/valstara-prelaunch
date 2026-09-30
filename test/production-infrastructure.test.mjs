@@ -199,6 +199,7 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
     'RESEND_SENDING_DOMAIN',
     'RESEND_SEND_CNAME_EXPECTED_TARGET',
     'TURNSTILE_SECRET_KEY',
+    'WEEKLY_SEND_UTC',
   ]) {
     assert.notEqual(
       config.services.app.environment[key],

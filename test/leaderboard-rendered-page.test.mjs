@@ -196,6 +196,7 @@ before(async () => {
       RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
       RESEND_SENDING_DOMAIN: 'send.valstara.com',
       TURNSTILE_SECRET_KEY: 'leaderboard-turnstile-secret',
+      WEEKLY_SEND_UTC: '2@09:00',
     },
     stdio: 'ignore',
   });

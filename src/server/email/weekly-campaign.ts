@@ -14,6 +14,7 @@ import { createEmailRepository } from '../db/email.ts';
 
 const dayMs = 24 * 60 * 60 * 1_000;
 export const maxWeeklyBatchesPerRun = 100;
+const maxMissedWeeksPerRun = 12;
 
 export interface WeeklySendSchedule {
   readonly isoWeekday: number;
@@ -60,7 +61,10 @@ export function weeklyWindow(now: Date, schedule: WeeklySendSchedule) {
 export interface WeeklyCampaignDependencies {
   readonly database: DatabasePool;
   readonly flags: Pick<FlagService, 'isEnabled'>;
-  readonly snapshot: { latest(): Promise<SharedLeaderboardSnapshot | null> };
+  readonly snapshot: {
+    latest(): Promise<SharedLeaderboardSnapshot | null>;
+    served(): Promise<SharedLeaderboardSnapshot | null>;
+  };
   readonly email: {
     queue(
       input: QueueEmailInput,
@@ -91,6 +95,36 @@ export function createWeeklyCampaignJob(
     await repository.markAlerted(isoWeek, clock());
   }
 
+  async function checkPastWindows(
+    now: Date,
+    currentWeek: string,
+  ): Promise<void> {
+    const firstRun = await repository.firstRunWeek();
+    const firstSnapshot =
+      firstRun === null ? await repository.firstSnapshot() : null;
+    for (let weeksAgo = 1; weeksAgo <= maxMissedWeeksPerRun; weeksAgo += 1) {
+      const past = weeklyWindow(
+        new Date(now.getTime() - weeksAgo * 7 * dayMs),
+        dependencies.schedule,
+      );
+      if (past.isoWeek >= currentWeek || now < past.endsAt) continue;
+      if (firstRun !== null && past.isoWeek < firstRun.iso_week) break;
+      if (
+        firstRun === null &&
+        (firstSnapshot === null || firstSnapshot.as_of >= past.endsAt)
+      )
+        break;
+      const run = await repository.run(past.isoWeek);
+      if (
+        run?.state === 'completed' &&
+        (await repository.unsent(past.isoWeek)) === 0
+      )
+        continue;
+      if (run?.state !== 'skipped') await repository.skip(past.isoWeek, now);
+      await notifyMissed(past.isoWeek);
+    }
+  }
+
   return {
     async run(limit = maxWeeklyQueueBatch): Promise<{
       queued: number;
@@ -102,6 +136,7 @@ export function createWeeklyCampaignJob(
         return { queued: 0, state: 'paused' };
       const now = clock();
       const window = weeklyWindow(now, dependencies.schedule);
+      await checkPastWindows(now, window.isoWeek);
       if (now < window.startsAt) return { queued: 0, state: 'early' };
       let run = await repository.run(window.isoWeek);
       if (run?.state === 'skipped') {
@@ -120,7 +155,9 @@ export function createWeeklyCampaignJob(
       }
       if (run?.state === 'completed') return { queued: 0, state: 'completed' };
       if (run === null) {
-        const snapshot = await dependencies.snapshot.latest();
+        const snapshot =
+          (await dependencies.snapshot.served()) ??
+          (await dependencies.snapshot.latest());
         if (snapshot === null) throw new Error('weekly_snapshot_unavailable');
         await repository.start(window.isoWeek, snapshot.id, now);
         run = await repository.run(window.isoWeek);

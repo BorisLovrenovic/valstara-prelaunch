@@ -184,9 +184,14 @@ E8-07 adds `weekly:{ISO-8601 UTC week}:{subscriber_id}`. Its payload is `{ snaps
 
 E8-07's persisted source for both the public leaderboard cache and weekly email. `id` UUID primary key · `as_of` timestamptz · `entries` JSONB containing at most ten objects, each with **only** contiguous `rank`, a twelve-character SHA-256-derived `display_handle`, and exact nonnegative `confirmed_referrals`. A database check rejects extra fields, so an address, referral code or signup time cannot enter the row. Maintenance computes it every five minutes regardless of `leaderboard.public`; the web process loads the latest row into its in-process cache. A batch-capped daily sweep purges rows older than 14 days. The email resolves its queued `snapshot_id` on every render, preserving retry content.
 
+## `leaderboard_served_snapshot`
+
+One permissioned singleton pointer to the snapshot ID actually loaded by the web cache. The weekly job selects this ID when starting a run; if the web cache has not started, it selects the latest persisted snapshot. From the scheduled time, the web cache holds the published ID until a run exists; during the remainder of the 24-hour window, it loads the run's fixed ID. Purging a referenced snapshot clears the pointer by foreign key.
+
 ## `weekly_campaign_run`
 
 One row per ISO UTC week, holding `state` (`started`, `completed`, `skipped`), the fixed `snapshot_id` for that week's send, `recorded_at` and `alerted_at`. It records missed 24-hour windows and deduplicates the P2 alert across maintenance restarts. The snapshot foreign key clears on the 14-day purge while the run record remains. The audience is selected afresh from verified, unsuppressed, currently marketing-consented subscribers at queue time; dispatch independently re-checks it.
+The hourly job also checks up to 12 preceding ISO weeks, back to the first recorded run. If no run exists yet, it uses retained snapshot history to decide whether the previous window was active. Unrecorded expired windows are skipped and alerted; they never queue late mail.
 
 ## `email_seed_test`
 

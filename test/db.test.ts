@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      47,
+      48,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -203,7 +203,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
           ORDER BY table_name
         `,
       },
-      28,
+      29,
     );
     const giveawayRulesVersionColumn = await fixture.database.readOne<{
       data_type: string;
@@ -266,6 +266,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0045-weekly-campaign-snapshot.sql',
       '0046-weekly-run-integrity.sql',
       '0047-weekly-expiry-observation.sql',
+      '0048-leaderboard-served-snapshot.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -318,6 +319,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0045-weekly-campaign-snapshot.sql',
         '0046-weekly-run-integrity.sql',
         '0047-weekly-expiry-observation.sql',
+        '0048-leaderboard-served-snapshot.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -345,6 +347,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'giveaway_draw_selection',
         'giveaway_draw_snapshot_row',
         'giveaway_entry',
+        'leaderboard_served_snapshot',
         'leaderboard_snapshot',
         'migration_ledger',
         'milestone_award',
@@ -456,10 +459,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          47,
+          48,
         );
 
-        assert.equal(appliedCount, 47);
+        assert.equal(appliedCount, 48);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -510,6 +513,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0045-weekly-campaign-snapshot.sql',
             '0046-weekly-run-integrity.sql',
             '0047-weekly-expiry-observation.sql',
+            '0048-leaderboard-served-snapshot.sql',
           ],
         );
       } finally {
