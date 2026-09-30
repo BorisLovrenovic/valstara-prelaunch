@@ -36,6 +36,8 @@ const composeEnvironment = {
   P1_ALERT_WEBHOOK_TOKEN: 'test-alert-token',
   P1_ALERT_WEBHOOK_URL: 'https://alerts.example.test/valstara',
   RESEND_API_KEY: 'test-resend-key',
+  RESEND_WEBHOOK_SECRET: 'whsec_dGVzdC1yZXNlbmQtd2ViaG9vay1zZWNyZXQ=',
+  BREVO_WEBHOOK_TOKEN: 'production-infra-brevo-webhook-token-32-chars',
   RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
   RESEND_KEY_MODE: 'live',
   RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
@@ -50,6 +52,7 @@ const composeEnvironment = {
   VALSTARA_DB_USER: 'valstara',
   VALSTARA_IMAGE: `ghcr.io/example/valstara-prelaunch:${sha}`,
   VALSTARA_RELEASE: sha,
+  WEEKLY_SEND_UTC: '2@09:00',
 };
 
 async function renderedProductionCompose() {
@@ -244,6 +247,7 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
     'VERIFICATION_RATE_COLLAPSE_PERCENT',
     'VERIFICATION_RATE_MINIMUM_SIGNUPS',
     'WAITLIST_LIVE_AT',
+    'WEEKLY_SEND_UTC',
   ]);
   assert.equal(config.services.postgres.ports, undefined);
   assert.equal(config.services.umami.ports, undefined);

@@ -12,6 +12,9 @@ import { Pool } from 'pg';
 
 import { leaderboardCopy } from '../src/copy/leaderboard.ts';
 import { flagCacheTtlMilliseconds } from '../src/server/flags/service.ts';
+import { createPool } from '../src/server/db/pool.ts';
+import { createRankingIntegrityService } from '../src/server/referral/ranking.ts';
+import { createSharedLeaderboardSnapshotStore } from '../src/server/leaderboard/persisted.ts';
 
 const execFileAsync = promisify(execFile);
 const appPort = 43_280;
@@ -73,6 +76,16 @@ async function createDatabaseFixture() {
         new Date('2026-09-21T10:01:00.000Z'),
       ],
     );
+    const snapshotDatabase = createPool(databaseUrl.toString());
+    try {
+      await createSharedLeaderboardSnapshotStore(
+        snapshotDatabase,
+        createRankingIntegrityService(snapshotDatabase),
+        () => new Date('2026-09-21T10:02:00.000Z'),
+      ).refresh();
+    } finally {
+      await snapshotDatabase.close();
+    }
   } catch (error) {
     await database.end();
     await admin.query(`DROP DATABASE "${databaseName}"`);

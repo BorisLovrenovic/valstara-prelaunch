@@ -18,7 +18,10 @@ export type MaintenanceJobName =
   | 'giveaway_entry_reconciliation'
   | 'seed_test'
   | 'broadcast_seed_test'
-  | 'email_reconciliation';
+  | 'email_reconciliation'
+  | 'weekly_campaign'
+  | 'leaderboard_snapshot'
+  | 'leaderboard_snapshot_purge';
 
 export interface MaintenanceJob {
   run(limit: number): Promise<unknown>;
@@ -41,6 +44,8 @@ export interface VerificationMaintenanceJobs {
   readonly seedTest?: VerificationRateJob;
   readonly broadcastSeedTest?: VerificationRateJob;
   readonly emailReconciliation?: MaintenanceJob;
+  readonly weeklyCampaign?: MaintenanceJob;
+  readonly leaderboardSnapshotPurge?: MaintenanceJob;
 }
 
 export interface VerificationMaintenanceDependencies {
@@ -70,7 +75,10 @@ export function createMaintenanceFailureReporter(
     const severity =
       job === 'referral_counter_repair' ||
       job === 'giveaway_entry_reconciliation' ||
-      job === 'email_reconciliation'
+      job === 'email_reconciliation' ||
+      job === 'weekly_campaign' ||
+      job === 'leaderboard_snapshot' ||
+      job === 'leaderboard_snapshot_purge'
         ? 'P2'
         : job === 'verification_rate' ||
             job === 'rate_limit_retention' ||
@@ -116,13 +124,15 @@ export function createVerificationMaintenanceScheduler(
   let referralCounterRepairDay: string | null = null;
   let strandedReferralDay: string | null = null;
   let verificationTokenRetentionDay: string | null = null;
+  let leaderboardSnapshotPurgeDay: string | null = null;
 
   async function runJob(
     name: Exclude<MaintenanceJobName, 'verification_rate'>,
     job: MaintenanceJob,
+    limit = verificationMaintenanceBatchLimit,
   ): Promise<boolean> {
     try {
-      await job.run(verificationMaintenanceBatchLimit);
+      await job.run(limit);
       return true;
     } catch {
       await reportFailure(name);
@@ -165,8 +175,22 @@ export function createVerificationMaintenanceScheduler(
     if (jobs.emailReconciliation !== undefined) {
       await runJob('email_reconciliation', jobs.emailReconciliation);
     }
+    if (jobs.weeklyCampaign !== undefined) {
+      await runJob('weekly_campaign', jobs.weeklyCampaign, 100);
+    }
 
     const day = now.toISOString().slice(0, 10);
+    if (
+      leaderboardSnapshotPurgeDay !== day &&
+      jobs.leaderboardSnapshotPurge !== undefined &&
+      (await runJob(
+        'leaderboard_snapshot_purge',
+        jobs.leaderboardSnapshotPurge,
+        100,
+      ))
+    ) {
+      leaderboardSnapshotPurgeDay = day;
+    }
     if (expiryDay !== day && (await runJob('expiry', jobs.expiry))) {
       expiryDay = day;
     }

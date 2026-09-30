@@ -7,6 +7,7 @@ import {
   getResendDispatchConfiguration,
   getSeedTestConfiguration,
   getVerificationRateConfiguration,
+  getWeeklySendConfiguration,
 } from '../config.ts';
 import { createPool } from '../db/pool.ts';
 import { createSeedTestRepository } from '../db/seed-test.ts';
@@ -47,6 +48,13 @@ import { currentRulesFromFiles } from '../giveaway/current-rules-file.ts';
 import { createDrawService } from '../giveaway/draw.ts';
 import { createDrawWorker } from '../giveaway/draw-worker.ts';
 import { createAwardService } from '../giveaway/award.ts';
+import { createRankingIntegrityService } from '../referral/ranking.ts';
+import {
+  createSharedLeaderboardSnapshotStore,
+  runSharedSnapshotRefresh,
+} from '../leaderboard/persisted.ts';
+import { createWeeklyCampaignJob } from '../email/weekly-campaign.ts';
+import { createEmailQueue } from '../email/queue.ts';
 
 import { createUnverifiedExpiryJob } from './expiry.ts';
 import {
@@ -71,6 +79,11 @@ const brevoProvider =
         brevoConfiguration.listId,
       );
 const broadcastFlags = createFlagService(database);
+const sharedSnapshot = createSharedLeaderboardSnapshotStore(
+  database,
+  createRankingIntegrityService(database),
+  clock,
+);
 const seedConfiguration = getSeedTestConfiguration();
 const seedTest =
   seedConfiguration === null
@@ -161,6 +174,27 @@ const scheduler = createVerificationMaintenanceScheduler(
       clock,
       webhookConfiguration.resendWebhookGapMinutes,
     ),
+    weeklyCampaign: createWeeklyCampaignJob({
+      database,
+      flags: broadcastFlags,
+      snapshot: sharedSnapshot,
+      email: createEmailQueue(database, clock),
+      alerts,
+      clock,
+      tokenSecret: resendConfiguration.emailTokenSecret,
+      schedule: getWeeklySendConfiguration(),
+    }),
+    leaderboardSnapshotPurge: {
+      async run(limit) {
+        let removed = 0;
+        for (let batch = 0; batch < 1_000; batch += 1) {
+          const count = await sharedSnapshot.purge(limit);
+          removed += count;
+          if (count < limit) break;
+        }
+        return removed;
+      },
+    },
   },
   { clock, reportFailure },
 );
@@ -181,6 +215,9 @@ const drawWorker = createDrawWorker(
 );
 
 const running = [
+  runSharedSnapshotRefresh(sharedSnapshot, shutdown.signal, () =>
+    reportFailure('leaderboard_snapshot'),
+  ),
   checkDomainAuthenticationAtStartup({
     alerts,
     clock,

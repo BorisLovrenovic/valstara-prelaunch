@@ -54,4 +54,13 @@ export const emailCopy = {
       `Respond by ${date.toISOString()} to complete the winner checks in Section 9 of the giveaway rules.`,
     action: 'Respond to your provisional award',
   },
+  weekly: {
+    subject: 'Your weekly Valstara waitlist update',
+    firstLine: 'Here is this week’s Valstara waitlist update.',
+    leaderboardHeading: 'Top 10 by confirmed referrals',
+    snapshotAsOf: (asOf: string) => `Leaderboard as of ${asOf}.`,
+    empty: 'No confirmed referrals are on the leaderboard yet.',
+    entry: (rank: number, handle: string, count: number) =>
+      `${rank}. ${handle}: ${count} confirmed ${count === 1 ? 'referral' : 'referrals'}`,
+  },
 } as const;

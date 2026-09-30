@@ -362,6 +362,7 @@ test(
       VALSTARA_DB_USER: 'valstara',
       VALSTARA_IMAGE: initialImage,
       VALSTARA_RELEASE: initialRelease,
+      WEEKLY_SEND_UTC: '2@09:00',
     };
 
     try {

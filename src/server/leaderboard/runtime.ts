@@ -3,13 +3,12 @@ import { createPool, type DatabasePool } from '../db/pool.ts';
 import { createRankingIntegrityService } from '../referral/ranking.ts';
 
 import {
-  createLeaderboardSnapshotCache,
-  startLeaderboardSnapshotScheduler,
-  type LeaderboardSnapshotCache,
-} from './snapshot.ts';
+  createPersistedSnapshotCache,
+  createSharedLeaderboardSnapshotStore,
+} from './persisted.ts';
 
 let database: DatabasePool | undefined;
-let snapshot: LeaderboardSnapshotCache | undefined;
+let snapshot: ReturnType<typeof createPersistedSnapshotCache> | undefined;
 let started = false;
 
 function getDatabase(): DatabasePool {
@@ -17,12 +16,18 @@ function getDatabase(): DatabasePool {
   return database;
 }
 
-export function getLeaderboardSnapshot(): LeaderboardSnapshotCache {
-  snapshot ??= createLeaderboardSnapshotCache(
-    createRankingIntegrityService(getDatabase()),
+export function getLeaderboardSnapshot(): ReturnType<
+  typeof createPersistedSnapshotCache
+> {
+  snapshot ??= createPersistedSnapshotCache(() =>
+    createSharedLeaderboardSnapshotStore(
+      getDatabase(),
+      createRankingIntegrityService(getDatabase()),
+      () => new Date(),
+    ).latest(),
   );
   if (!started) {
-    startLeaderboardSnapshotScheduler(snapshot);
+    snapshot.start();
     started = true;
   }
   return snapshot;
