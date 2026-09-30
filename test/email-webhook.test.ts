@@ -172,6 +172,21 @@ test('E8-06 authenticates Brevo before body read and Resend before JSON parse', 
   assert.deepEqual(await receiver.handle('brevo', accepted), { status: 200 });
   assert.equal(ingests, 1);
 
+  const unauthenticatedMalformed = new Request(
+    'https://example.test/api/webhooks/resend',
+    {
+      method: 'POST',
+      headers: signature('{}', 'msg_invalid'),
+      body: '{',
+    },
+  );
+  assert.deepEqual(await receiver.handle('resend', unauthenticatedMalformed), {
+    status: 401,
+    code: 'unauthorized',
+  });
+  assert.equal(ingests, 1);
+  assert.equal(alerts.length, 0);
+
   const invalid = new Request('https://example.test/api/webhooks/resend', {
     method: 'POST',
     headers: signature('{', 'msg_verified'),
