@@ -108,7 +108,7 @@ The plan makes this a *hard build gate* rather than a checklist because a checkl
 | Draw date | 1 April 2027 |
 | Winner deadlines | Notified within 7 days of the draw; 14 days to reply |
 | Promoter | **3NITY DIGITAL LIMITED**, Business Registration No. 79886556, Unit B, 12/F, Hang Seng Causeway Bay Building, 28 Yee Wo Street, Causeway Bay, Hong Kong |
-| Contacts | Customer support: hello@subslush.com · Legal and payment enquiries: compliance@subslush.com |
+| Contacts | support@valstara.com for every enquiry (founder decision 2026-10-01; replaced the subslush.com addresses) |
 | Sanctions list | **Not set yet — deliberately not a blocker.** Configuration that may be empty; add it before the first award (April 2027) |
 
 ### Still to supply (neither is a blocker)
@@ -173,7 +173,7 @@ The plan makes this a *hard build gate* rather than a checklist because a checkl
 | Draw date | 1 April 2027 |
 | Winner deadlines | Notified within 7 days of the draw; 14 days to reply |
 | Promoter | **3NITY DIGITAL LIMITED**, Business Registration No. 79886556, Unit B, 12/F, Hang Seng Causeway Bay Building, 28 Yee Wo Street, Causeway Bay, Hong Kong |
-| Contacts | Customer support: hello@subslush.com · Legal and payment enquiries: compliance@subslush.com |
+| Contacts | support@valstara.com for every enquiry (founder decision 2026-10-01; replaced the subslush.com addresses) |
 | Sanctions list | **Not set yet — deliberately not a blocker.** Configuration that may be empty; add it before the first award (April 2027) |
 
 ### Still to supply

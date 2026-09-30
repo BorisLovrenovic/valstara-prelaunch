@@ -66,7 +66,7 @@ const requiredStatements = [
   /3NITY DIGITAL LIMITED/iu,
   /79886556/u,
   /a person reviews every case before anyone is disqualified/iu,
-  /compliance@subslush\.com within 14 days/iu,
+  /(?:compliance@subslush\.com|support@valstara\.com) within 14 days/iu,
   /separate permission/iu,
 ] as const;
 

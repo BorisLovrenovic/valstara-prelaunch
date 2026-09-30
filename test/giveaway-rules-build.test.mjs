@@ -15,7 +15,8 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const rulesVersion = 'VAL-GW-LAUNCH-20260925-r1';
+const rulesVersion = 'VAL-GW-LAUNCH-20261001-r1';
+const earlierRulesVersion = 'VAL-GW-LAUNCH-20260925-r1';
 const contentPath = join(
   'src',
   'content',
@@ -115,7 +116,24 @@ test(
   async () => {
     const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
       cwd: projectRoot,
-      env: { ...process.env, HOST: '127.0.0.1', PORT: '0' },
+      env: {
+        ...process.env,
+        ADMIN_CREDENTIAL: 'giveaway-rules-test-admin-credential',
+        ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+        DATABASE_URL:
+          'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres',
+        IP_PREFIX_PEPPER: 'giveaway-rules-test-prefix-pepper',
+        REFERRAL_SIGNING_SECRET: 'giveaway-rules-test-referral-secret',
+        RESEND_API_KEY: 'giveaway-rules-test-resend-key',
+        RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
+        RESEND_KEY_MODE: 'test',
+        RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+        RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+        RESEND_SENDING_DOMAIN: 'send.valstara.com',
+        TURNSTILE_SECRET_KEY: 'giveaway-rules-test-turnstile-secret',
+        HOST: '127.0.0.1',
+        PORT: '0',
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     const closed = new Promise((resolve) => server.once('close', resolve));
@@ -172,6 +190,11 @@ test(
       );
       assert.equal(current.status, 200, output);
       assert.equal(permanent.status, 200, output);
+      const earlier = await globalThis.fetch(
+        `${origin}/giveaway/rules/${earlierRulesVersion}`,
+        { redirect: 'manual', signal: globalThis.AbortSignal.timeout(5_000) },
+      );
+      assert.equal(earlier.status, 200, output);
       assert.doesNotMatch(current.url, new RegExp(`${rulesVersion}$`, 'u'));
       assert.match(permanent.url, new RegExp(`${rulesVersion}$`, 'u'));
       const currentPage = await current.text();
@@ -186,6 +209,12 @@ test(
       assert.equal(permanentArticle[1], rulesVersion);
       assert.equal(currentArticle[2], permanentArticle[2]);
       assert.equal(currentArticle[3], permanentArticle[3]);
+      assert.match(currentArticle[3], /support@valstara\.com/u);
+      assert.doesNotMatch(currentArticle[3], /@subslush\.com/u);
+      const earlierArticle = articlePattern.exec(await earlier.text());
+      assert.ok(earlierArticle);
+      assert.equal(earlierArticle[1], earlierRulesVersion);
+      assert.match(earlierArticle[3], /compliance@subslush\.com/u);
       assert.equal(
         createHash('sha256').update(currentArticle[3], 'utf8').digest('hex'),
         currentArticle[2],

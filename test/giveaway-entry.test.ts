@@ -40,8 +40,8 @@ const fixedTime = new Date('2026-10-01T12:00:00.000Z');
 
 test('maintenance reads the published revision and hash used by Astro', async () => {
   assert.deepEqual(await currentRulesFromFiles(), {
-    rulesVersion: firstRules.rulesVersion,
-    sha256: '4939edb92290dbd64444f85cc9f1c74d1bc335a9e5cee73753d844a702acc729',
+    rulesVersion: 'VAL-GW-LAUNCH-20261001-r1',
+    sha256: 'ec15b24d6e3158443fc238f3b0aa3af0bac93e4861955c29fb5ebfd217b7d0ce',
   });
 });
 
