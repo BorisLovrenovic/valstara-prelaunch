@@ -17,7 +17,7 @@ interface EmailService {
   suppress(emailNormalised: string, reason: SuppressionReason, source: string): Promise<void>
   isSuppressed(emailNormalised: string): Promise<boolean>
   ingestWebhook(provider: ProviderId, payload: unknown, signature: string): Promise<void>
-  quotaProjection(): Promise<ProviderQuota[]>
+  quotaProjection(): Promise<EmailQuotaHealth>
 }
 
 interface EmailProvider {
@@ -72,7 +72,10 @@ it inserted a row, so the award workflow audits a notification only once.
 - **Webhook authentication precedes parsing (founder-authorised 2026-09-30).** Resend's Svix signature covers the raw body and its Svix event ID is the idempotency key. Brevo supplies `BREVO_WEBHOOK_TOKEN` as a bearer header; a constant-time check occurs before reading the body. Brevo ingests only `hard_bounce` and `spam`, deduplicating on SHA-256 of `provider | message-id | event` (neither recipient nor timestamp is part of the key). Brevo message IDs are canonicalized by removing surrounding angle brackets because its send response and webhook/report formats differ; only the resulting key is stored. Soft bounces do not suppress. Brevo `unsubscribed` is not ingested; the application's bound one-click link handles marketing withdrawal.
 - **Reconciliation is hourly (founder-authorised 2026-09-30).** Brevo reads its transactional event and blocklist APIs with the existing key in bounded batches; its event-report hard-bounce filter is `hardBounces`, distinct from the webhook's `hard_bounce`, and blocklist spam complaints use `contactFlaggedAsSpam`. Each stream resumes from a persisted offset within a rolling three-calendar-day window and resets at the next UTC date. Resend uses no read credential: `sent` rows without any terminal event after a configurable two-hour default window are marked as webhook gaps and reported in one sanitized P2 operator task with counts and `email_send` IDs for dashboard replay. Thus Brevo suppression can lag about one hour, and a Resend gap about three hours. Resend's own suppression list and roughly one-day webhook retries prevent a Resend re-send to a bounced or complaining address while local recovery is pending. A lost complaint or bounce after a recorded delivery cannot be found by gap detection; failed-webhook alerts and weekly dashboard review cover it.
 - **Webhook failures (founder-authorised 2026-09-30).** Every non-2xx Resend response increments a sanitized reason counter. Any failure after valid signature authentication raises P1 because an event could not be stored. Repeated authentication failures raise P2. The runbook requires weekly review and replay of failed Resend deliveries.
-- `quotaProjection()` alerts at a week's headroom. Resend free is 100/day, Brevo free is 300/day — **upgrade before the giveaway opens, not when the limits hit.**
+- The daily maintenance quota check alerts at a week's headroom. Resend free is 100/day, Brevo free is 300/day — **upgrade before the giveaway opens, not when the limits hit.**
+- E8-09 quota health uses seven complete UTC days with zeroes for missing days. Its forecast is the busiest daily count plus `7 × max(0, least-squares daily slope)`; Brevo's floor is the current verified, unsuppressed, marketing-consented audience. It reports tier, configured daily cap, seven complete daily totals, today's consumption, forecast and alert state per provider. Accepted `email_send` rows use their immutable acceptance timestamp; Resend and Brevo seed rows use `sent_at`. Failed or unaccepted sends and contact sync do not count. Maintenance runs the check daily with an injected clock. Forecast ≥ cap alerts P2, deduplicated per provider per UTC day; an observed day ≥ cap alerts P1. Tier settings default to free, paid with a cap at or below the free cap fails boot, and `giveaway.open` refuses an enable while either tier is free, auditing the actor. Disabling remains available.
+
+`EmailService.quotaProjection()` is the read-only health seam for E10-05. Maintenance uses `createEmailQuotaService(database, configuration, alerts, clock).run()` for the daily alert check. The health read sends no alert.
 
 ## Dependencies
 `db`, `audit`, `subscriber`, `flags`.

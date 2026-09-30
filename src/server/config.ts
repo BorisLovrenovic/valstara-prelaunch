@@ -43,6 +43,10 @@ const optionalKeys = [
   'BREVO_SENDING_DOMAIN',
   'RESEND_WEBHOOK_GAP_MINUTES',
   'WEEKLY_SEND_UTC',
+  'RESEND_TIER',
+  'BREVO_TIER',
+  'RESEND_DAILY_CAP',
+  'BREVO_DAILY_CAP',
 ] as const;
 export const p1AlertEnvironmentKeys = [
   'P1_ALERT_WEBHOOK_TOKEN',
@@ -59,6 +63,8 @@ export const p1AlertEnvironmentKeys = [
 export const turnstileTestSiteKey = '1x00000000000000000000AA';
 export const productionResendSendingDomain = 'send.valstara.com';
 export const productionBrevoSendingDomain = 'mail.valstara.com';
+export const resendFreeDailyCap = 100;
+export const brevoFreeDailyCap = 300;
 
 export const appEnvironmentKeys = [...requiredKeys, ...optionalKeys] as const;
 
@@ -113,6 +119,7 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
       environment.WEEKLY_SEND_UTC === undefined
         ? null
         : getWeeklySendConfiguration(environment),
+    emailQuota: getEmailQuotaConfiguration(environment),
   };
   return Object.freeze(config);
 }
@@ -826,6 +833,42 @@ export interface AppConfig {
     readonly hour: number;
     readonly minute: number;
   } | null;
+  readonly emailQuota: EmailQuotaConfiguration;
+}
+
+export interface ProviderQuotaConfiguration {
+  readonly tier: 'free' | 'paid';
+  readonly cap: number;
+}
+
+export interface EmailQuotaConfiguration {
+  readonly resend: ProviderQuotaConfiguration;
+  readonly brevo: ProviderQuotaConfiguration;
+}
+
+export function getEmailQuotaConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): EmailQuotaConfiguration {
+  const provider = (
+    tierKey: 'RESEND_TIER' | 'BREVO_TIER',
+    capKey: 'RESEND_DAILY_CAP' | 'BREVO_DAILY_CAP',
+    freeCap: number,
+  ): ProviderQuotaConfiguration => {
+    const tier = optionalValue(environment, tierKey) ?? 'free';
+    if (tier !== 'free' && tier !== 'paid')
+      return invalid(tierKey, 'must be free or paid');
+    const cap = positiveInteger(environment, capKey, freeCap);
+    if (tier === 'paid' && cap <= freeCap)
+      return invalid(
+        capKey,
+        `must exceed the free cap of ${freeCap} when ${tierKey}=paid`,
+      );
+    return Object.freeze({ tier, cap });
+  };
+  return Object.freeze({
+    resend: provider('RESEND_TIER', 'RESEND_DAILY_CAP', resendFreeDailyCap),
+    brevo: provider('BREVO_TIER', 'BREVO_DAILY_CAP', brevoFreeDailyCap),
+  });
 }
 
 export function getWeeklySendConfiguration(

@@ -10,12 +10,21 @@ import { createTransactionalEmailProducers } from '../src/server/email/producers
 import { prepareDispatchMessage } from '../src/server/email/service.ts';
 import { createTransactionalTemplateData } from '../src/server/email/transactional-template-data.ts';
 import { createTransactionalRenderers } from '../src/server/email/transactional-templates.ts';
-import { createFlagService } from '../src/server/flags/service.ts';
+import { createFlagService as createBaseFlagService } from '../src/server/flags/service.ts';
 import { createGiveawayAccrualService } from '../src/server/giveaway/accrue.ts';
 import { createReferralService } from '../src/server/referral/service.ts';
 import { presentReferralStatus } from '../src/server/referral/status-presentation.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
+
+const paidQuota = {
+  resend: { tier: 'paid' as const, cap: 101 },
+  brevo: { tier: 'paid' as const, cap: 301 },
+};
+const createFlagService = (
+  database: Parameters<typeof createBaseFlagService>[0],
+  giveaway: Parameters<typeof createBaseFlagService>[1] = {},
+) => createBaseFlagService(database, { ...giveaway, emailQuota: paidQuota });
 
 const now = new Date('2026-10-01T12:00:00.000Z');
 const clock = () => now;

@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      48,
+      49,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -203,7 +203,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
           ORDER BY table_name
         `,
       },
-      29,
+      30,
     );
     const giveawayRulesVersionColumn = await fixture.database.readOne<{
       data_type: string;
@@ -267,6 +267,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0046-weekly-run-integrity.sql',
       '0047-weekly-expiry-observation.sql',
       '0048-leaderboard-served-snapshot.sql',
+      '0049-email-quota.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -320,6 +321,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0046-weekly-run-integrity.sql',
         '0047-weekly-expiry-observation.sql',
         '0048-leaderboard-served-snapshot.sql',
+        '0049-email-quota.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -336,6 +338,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'campaign_flag',
         'domain_allow',
         'email_broadcast_seed_test',
+        'email_quota_alert',
         'email_reconciliation_cursor',
         'email_seed_test',
         'email_send',
@@ -459,10 +462,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          48,
+          49,
         );
 
-        assert.equal(appliedCount, 48);
+        assert.equal(appliedCount, 49);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -514,6 +517,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0046-weekly-run-integrity.sql',
             '0047-weekly-expiry-observation.sql',
             '0048-leaderboard-served-snapshot.sql',
+            '0049-email-quota.sql',
           ],
         );
       } finally {

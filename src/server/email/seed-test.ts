@@ -122,9 +122,10 @@ export function createSeedTestService(
       try {
         const row = await repository.ensure(weekStart, provider, makeMarker());
         const businessKey = `seed:${weekStart.toISOString().slice(0, 10)}:${provider}`;
-        const sentAt = row.sent_at ?? clock();
-        if (row.sent_at === null) {
+        let sentAt = row.sent_at;
+        if (sentAt === null) {
           await sender.send({ provider, marker: row.marker, businessKey });
+          sentAt = clock();
           await repository.markSent(weekStart, provider, sentAt);
         }
         if (row.placement === 'inbox') continue;

@@ -92,6 +92,7 @@ test('the required audit action registry is complete', () => {
     'referral.counters_repaired',
     'survey.response_replaced',
     'flag.changed',
+    'flag.enable_refused',
     'export.run',
     'draw.executed',
     'giveaway.top_twenty_reviewed',

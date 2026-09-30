@@ -13,6 +13,44 @@ import {
 
 const HOUR_MS = 60 * 60 * 1_000;
 
+test('E8-09 quota maintenance runs once per UTC day and retries a failed check', async () => {
+  let now = new Date('2026-09-30T08:00:00.000Z');
+  let attempts = 0;
+  const failures: string[] = [];
+  const noOp = { async run() {} };
+  const scheduler = createVerificationMaintenanceScheduler(
+    {
+      expiry: noOp,
+      rateLimitRetention: noOp,
+      referralCounterRepair: noOp,
+      reminder: noOp,
+      strandedReferral: noOp,
+      verificationRate: noOp,
+      verificationTokenRetention: noOp,
+      emailQuota: {
+        async run() {
+          attempts += 1;
+          if (attempts === 1) throw new Error('quota-unavailable');
+        },
+      },
+    },
+    {
+      clock: () => now,
+      reportFailure: (job) => {
+        failures.push(job);
+      },
+    },
+  );
+  await scheduler.runCycle();
+  now = new Date('2026-09-30T09:00:00.000Z');
+  await scheduler.runCycle();
+  await scheduler.runCycle();
+  now = new Date('2026-10-01T00:00:00.000Z');
+  await scheduler.runCycle();
+  assert.equal(attempts, 3);
+  assert.deepEqual(failures, ['email_quota']);
+});
+
 test('E8-07 weekly queue runs hourly and snapshot purge runs once per day with caps', async () => {
   let now = new Date('2026-10-06T09:00:00Z');
   const weeklyLimits: number[] = [];

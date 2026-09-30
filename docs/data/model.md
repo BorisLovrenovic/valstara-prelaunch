@@ -168,7 +168,7 @@ surface is the E5-01 CLI, not a public or admin HTTP route.
 
 ## `email_send`
 
-`id` · `subscriber_id` · `template` · `provider` · `business_key` text **unique** · `payload` jsonb **not null** · `unsubscribe_token_id` uuid foreign key to an unsubscribe-purpose `verification_token` · `provider_message_id` · `state` (`queued` · `sent` · `delivered` · `bounced` · `complained` · `failed`) · `attempts` int · `next_attempt_at` · `expires_at` · `last_error` · `created_at` · `updated_at`.
+`id` · `subscriber_id` · `template` · `provider` · `business_key` text **unique** · `payload` jsonb **not null** · `unsubscribe_token_id` uuid foreign key to an unsubscribe-purpose `verification_token` · `provider_message_id` · `state` (`queued` · `sent` · `delivered` · `bounced` · `complained` · `failed`) · `attempts` int · `next_attempt_at` · `expires_at` · `last_error` · `created_at` · `updated_at` · `accepted_at` (set when the provider accepts a send; write-once by trigger and requires a provider message ID; preserved across later webhook updates).
 
 `payload` holds references only, such as `token_id`, `tier` or `award_id`, with a database check rejecting email addresses, token plaintext and copy text. E8-03a extends the check for UUID `status_token_id` and a validated `rules_version` reference. Welcome has `{ status_token_id }`; milestone has `{ tier, status_token_id }`; entry receipt has `{ rules_version, status_token_id }`. The unsubscribe-token foreign key is purpose-checked in the database. E8-01's forward-only migration marks old queued rows that have no reconstructible payload `failed` with `last_error = 'legacy_unrecoverable'` before enforcing the new contract; there is no production data yet.
 
@@ -210,6 +210,10 @@ same four seed mailboxes. It stores a random marker, send/check/alert timestamps
 and one state: `pending`, `passed`, `missing_plain_part`, `tracking_pixel`,
 `rewritten_link` or `missing`. It stores no mailbox address, MIME source or
 subscriber data. This internal probe runs before customer broadcasts are enabled.
+
+## `email_quota_alert`
+
+One deduplication record per provider, UTC day and severity. It stores only the provider (`resend` or `brevo`), date, alert severity (`P1` or `P2`) and alert timestamp. The quota health query aggregates `email_send.accepted_at` and the two seed tables' `sent_at` timestamps by UTC day. No address or subscriber identifier enters this table.
 
 ## `brevo_contact_sync`
 
