@@ -17,7 +17,8 @@ export type MaintenanceJobName =
   | 'verification_token_retention'
   | 'giveaway_entry_reconciliation'
   | 'seed_test'
-  | 'broadcast_seed_test';
+  | 'broadcast_seed_test'
+  | 'email_reconciliation';
 
 export interface MaintenanceJob {
   run(limit: number): Promise<unknown>;
@@ -39,6 +40,7 @@ export interface VerificationMaintenanceJobs {
   readonly verificationTokenRetention: MaintenanceJob;
   readonly seedTest?: VerificationRateJob;
   readonly broadcastSeedTest?: VerificationRateJob;
+  readonly emailReconciliation?: MaintenanceJob;
 }
 
 export interface VerificationMaintenanceDependencies {
@@ -67,7 +69,8 @@ export function createMaintenanceFailureReporter(
   return async (job) => {
     const severity =
       job === 'referral_counter_repair' ||
-      job === 'giveaway_entry_reconciliation'
+      job === 'giveaway_entry_reconciliation' ||
+      job === 'email_reconciliation'
         ? 'P2'
         : job === 'verification_rate' ||
             job === 'rate_limit_retention' ||
@@ -158,6 +161,9 @@ export function createVerificationMaintenanceScheduler(
       } catch {
         await reportFailure('broadcast_seed_test');
       }
+    }
+    if (jobs.emailReconciliation !== undefined) {
+      await runJob('email_reconciliation', jobs.emailReconciliation);
     }
 
     const day = now.toISOString().slice(0, 10);

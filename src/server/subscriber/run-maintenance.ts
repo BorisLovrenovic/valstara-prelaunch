@@ -1,5 +1,6 @@
 import {
   getDatabaseUrl,
+  getEmailWebhookConfiguration,
   getBrevoConfiguration,
   getDrandConfiguration,
   getP1AlertConfiguration,
@@ -20,6 +21,7 @@ import {
 } from '../email/seed-test.ts';
 import { createResendProvider } from '../email/providers/resend.ts';
 import { createBrevoProvider } from '../email/providers/brevo.ts';
+import { createEmailReconciliationJob } from '../email/reconcile.ts';
 import {
   createBrevoContactSyncJob,
   runBrevoContactSync,
@@ -59,6 +61,7 @@ const alerts = createAlertWebhookTransport(getP1AlertConfiguration());
 const reportFailure = createMaintenanceFailureReporter(alerts, { clock });
 const resendConfiguration = getResendDispatchConfiguration();
 const brevoConfiguration = getBrevoConfiguration();
+const webhookConfiguration = getEmailWebhookConfiguration();
 const brevoProvider =
   brevoConfiguration === null
     ? null
@@ -151,6 +154,13 @@ const scheduler = createVerificationMaintenanceScheduler(
     }),
     seedTest,
     broadcastSeedTest,
+    emailReconciliation: createEmailReconciliationJob(
+      database,
+      brevoProvider,
+      alerts,
+      clock,
+      webhookConfiguration.resendWebhookGapMinutes,
+    ),
   },
   { clock, reportFailure },
 );

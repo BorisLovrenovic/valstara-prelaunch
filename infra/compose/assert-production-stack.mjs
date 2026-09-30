@@ -40,6 +40,8 @@ const environment = {
   EMAIL_BASE_URL: 'https://valstara.com',
   EMAIL_TOKEN_SECRET: 'production-stack-email-token-secret-32-chars',
   RESEND_API_KEY: 'production-stack-test-resend-key',
+  RESEND_WEBHOOK_SECRET: 'whsec_cHJvZHVjdGlvbi1zdGFjay13ZWJob29rLXRlc3Q=',
+  BREVO_WEBHOOK_TOKEN: 'production-stack-test-brevo-webhook-token',
   RESEND_DKIM_EXPECTED_VALUE: 'p=production-stack-test-public-key',
   RESEND_KEY_MODE: 'live',
   RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',

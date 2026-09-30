@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      42,
+      44,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -203,7 +203,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
           ORDER BY table_name
         `,
       },
-      24,
+      26,
     );
     const giveawayRulesVersionColumn = await fixture.database.readOne<{
       data_type: string;
@@ -261,6 +261,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0040-email-seed-test.sql',
       '0041-brevo-contact-sync.sql',
       '0042-brevo-seed-test.sql',
+      '0043-email-webhook-reconciliation.sql',
+      '0044-email-webhook-key-only.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -308,6 +310,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0040-email-seed-test.sql',
         '0041-brevo-contact-sync.sql',
         '0042-brevo-seed-test.sql',
+        '0043-email-webhook-reconciliation.sql',
+        '0044-email-webhook-key-only.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -324,8 +328,10 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'campaign_flag',
         'domain_allow',
         'email_broadcast_seed_test',
+        'email_reconciliation_cursor',
         'email_seed_test',
         'email_send',
+        'email_webhook_event',
         'fraud_flag',
         'giveaway_award',
         'giveaway_award_candidate',
@@ -442,10 +448,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          42,
+          44,
         );
 
-        assert.equal(appliedCount, 42);
+        assert.equal(appliedCount, 44);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -491,6 +497,8 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0040-email-seed-test.sql',
             '0041-brevo-contact-sync.sql',
             '0042-brevo-seed-test.sql',
+            '0043-email-webhook-reconciliation.sql',
+            '0044-email-webhook-key-only.sql',
           ],
         );
       } finally {

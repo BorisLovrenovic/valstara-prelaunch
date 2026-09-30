@@ -15,6 +15,10 @@ npm run email:apply-unsubscribe -- --token-sha256 <token_sha256> --actor <name>
 
 For `requested_action: leave_waitlist`, add `--action leave_waitlist` to the chosen command. For `message_unsubscribe`, omit that flag; the bound email send resolves whether the action withdraws marketing consent or suppresses all mail. `applied` means the preference or suppression, an explicit leave status change, and the audit event committed; `already` means a later retry applied the request and no further write occurred. Resolve this without undue delay. The alert contains a hash that identifies the token for later lookup, never the plaintext token or address.
 
+## Resend webhook recovery
+
+Every week, inspect the Resend dashboard's failed webhook deliveries for `https://valstara.com/api/webhooks/resend`. Replay any failed bounce, complaint or delivery event and confirm its `email_send` state and suppression outcome. An `email_webhook_ingest_failed` P1 means an authenticated event could not be stored; check database health and replay the failed delivery promptly. An `email_webhook_auth_failed` P2 means repeated signature failures; check the configured endpoint and signing-secret rotation. An `email_webhook_gap` P2 lists only `email_send` IDs and counts: find those sends in Resend, inspect their event timeline, and replay any missing event. A delivered message can receive a later complaint, so the absence of a gap is not proof that all complaint events arrived. Never copy an address, token, signature or provider payload into an alert or log.
+
 
 ## "Signups have stopped converting"
 

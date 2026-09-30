@@ -24,7 +24,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     method !== 'GET' &&
     method !== 'HEAD' &&
     method !== 'OPTIONS' &&
-    !(context.url.pathname === '/api/unsubscribe' && method === 'POST')
+    !(context.url.pathname === '/api/unsubscribe' && method === 'POST') &&
+    !(context.url.pathname.startsWith('/api/webhooks/') && method === 'POST')
   ) {
     const contentType = context.request.headers.get('content-type');
     const formLike =
