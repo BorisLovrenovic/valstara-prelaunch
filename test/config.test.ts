@@ -15,6 +15,7 @@ import {
   getResendDispatchConfiguration,
   productionResendSendingDomain,
   getVerificationRateConfiguration,
+  getWeeklySendConfiguration,
   turnstileTestSiteKey,
   validateConfig,
 } from '../src/server/config.ts';
@@ -122,7 +123,21 @@ test('E1-12 validates and types the complete application environment', () => {
       minimumSignups: 50,
     },
     waitlistLiveAt: null,
+    weeklySendUtc: null,
   });
+});
+
+test('E8-07 weekly schedule is explicit, UTC and validated', () => {
+  assert.deepEqual(getWeeklySendConfiguration({ WEEKLY_SEND_UTC: '2@09:00' }), {
+    isoWeekday: 2,
+    hour: 9,
+    minute: 0,
+  });
+  assert.throws(
+    () => getWeeklySendConfiguration({ WEEKLY_SEND_UTC: '2@24:00' }),
+    /WEEKLY_SEND_UTC/u,
+  );
+  assert.throws(() => getWeeklySendConfiguration({}), /WEEKLY_SEND_UTC/u);
 });
 
 test('maintenance validates Resend dispatch settings without unrelated app secrets', () => {

@@ -45,6 +45,7 @@ export interface QueueEmailInput {
   readonly businessKey: string;
   readonly provider: string;
   readonly payload: Readonly<Record<string, string | number>>;
+  readonly expiresAt?: Date;
 }
 
 export interface DispatchSummary {
@@ -189,6 +190,7 @@ export function createEmailService(
       payload: { ...input.payload },
       unsubscribeTokenId: unsubscribe.id,
       now: dependencies.clock(),
+      expiresAt: input.expiresAt,
     });
     return true;
   }
@@ -283,6 +285,18 @@ export function createEmailService(
           failed: 0,
         };
         for (const row of due) {
+          if (
+            row.expires_at != null &&
+            row.expires_at <= dependencies.clock()
+          ) {
+            await repo.markFailed(
+              row.id,
+              dependencies.clock(),
+              'send_window_expired',
+            );
+            summary.failed += 1;
+            continue;
+          }
           const provider = dependencies.providers.get(row.provider);
           const renderer = dependencies.renderers.get(row.template);
           if (provider === undefined || renderer === undefined) {
@@ -341,6 +355,18 @@ export function createEmailService(
             continue;
           }
           try {
+            if (
+              row.expires_at != null &&
+              row.expires_at <= dependencies.clock()
+            ) {
+              await repo.markFailed(
+                row.id,
+                dependencies.clock(),
+                'send_window_expired',
+              );
+              summary.failed += 1;
+              continue;
+            }
             const sent = await provider.send({
               message: prepared.message,
               headers: prepared.headers,

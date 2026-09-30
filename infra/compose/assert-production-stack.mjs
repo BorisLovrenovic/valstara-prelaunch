@@ -57,6 +57,7 @@ const environment = {
   VALSTARA_DB_USER: 'valstara',
   VALSTARA_IMAGE: image,
   VALSTARA_RELEASE: release,
+  WEEKLY_SEND_UTC: '2@09:00',
 };
 
 async function run(command, args, options = {}) {

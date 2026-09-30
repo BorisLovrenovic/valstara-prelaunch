@@ -42,6 +42,7 @@ const optionalKeys = [
   'BREVO_LIST_ID',
   'BREVO_SENDING_DOMAIN',
   'RESEND_WEBHOOK_GAP_MINUTES',
+  'WEEKLY_SEND_UTC',
 ] as const;
 export const p1AlertEnvironmentKeys = [
   'P1_ALERT_WEBHOOK_TOKEN',
@@ -108,6 +109,10 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     drand: drandConfiguration(environment),
     giveawaySanctionedCountries: getGiveawaySanctionedCountries(environment),
     giveawaySubstitutionDays: getGiveawaySubstitutionDays(environment),
+    weeklySendUtc:
+      environment.WEEKLY_SEND_UTC === undefined
+        ? null
+        : getWeeklySendConfiguration(environment),
   };
   return Object.freeze(config);
 }
@@ -816,6 +821,29 @@ export interface AppConfig {
   readonly drand: DrandConfiguration | null;
   readonly giveawaySanctionedCountries: readonly string[];
   readonly giveawaySubstitutionDays: number;
+  readonly weeklySendUtc: {
+    readonly isoWeekday: number;
+    readonly hour: number;
+    readonly minute: number;
+  } | null;
+}
+
+export function getWeeklySendConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): {
+  readonly isoWeekday: number;
+  readonly hour: number;
+  readonly minute: number;
+} {
+  const raw = requiredValue(environment, 'WEEKLY_SEND_UTC');
+  const match = /^([1-7])@([01][0-9]|2[0-3]):([0-5][0-9])$/u.exec(raw);
+  if (match === null)
+    return invalid('WEEKLY_SEND_UTC', 'must be ISO weekday@HH:MM in UTC');
+  return Object.freeze({
+    isoWeekday: Number(match[1]),
+    hour: Number(match[2]),
+    minute: Number(match[3]),
+  });
 }
 
 export function getGiveawaySubstitutionDays(

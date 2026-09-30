@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      44,
+      48,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -203,7 +203,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
           ORDER BY table_name
         `,
       },
-      26,
+      29,
     );
     const giveawayRulesVersionColumn = await fixture.database.readOne<{
       data_type: string;
@@ -263,6 +263,10 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0042-brevo-seed-test.sql',
       '0043-email-webhook-reconciliation.sql',
       '0044-email-webhook-key-only.sql',
+      '0045-weekly-campaign-snapshot.sql',
+      '0046-weekly-run-integrity.sql',
+      '0047-weekly-expiry-observation.sql',
+      '0048-leaderboard-served-snapshot.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -312,6 +316,10 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0042-brevo-seed-test.sql',
         '0043-email-webhook-reconciliation.sql',
         '0044-email-webhook-key-only.sql',
+        '0045-weekly-campaign-snapshot.sql',
+        '0046-weekly-run-integrity.sql',
+        '0047-weekly-expiry-observation.sql',
+        '0048-leaderboard-served-snapshot.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -339,6 +347,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'giveaway_draw_selection',
         'giveaway_draw_snapshot_row',
         'giveaway_entry',
+        'leaderboard_served_snapshot',
+        'leaderboard_snapshot',
         'migration_ledger',
         'milestone_award',
         'rate_limit_bucket',
@@ -349,6 +359,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'top_twenty_review',
         'top_twenty_review_batch',
         'verification_token',
+        'weekly_campaign_run',
       ],
     );
   } finally {
@@ -448,10 +459,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          44,
+          48,
         );
 
-        assert.equal(appliedCount, 44);
+        assert.equal(appliedCount, 48);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -499,6 +510,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0042-brevo-seed-test.sql',
             '0043-email-webhook-reconciliation.sql',
             '0044-email-webhook-key-only.sql',
+            '0045-weekly-campaign-snapshot.sql',
+            '0046-weekly-run-integrity.sql',
+            '0047-weekly-expiry-observation.sql',
+            '0048-leaderboard-served-snapshot.sql',
           ],
         );
       } finally {

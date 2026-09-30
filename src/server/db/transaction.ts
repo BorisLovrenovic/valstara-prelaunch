@@ -3,6 +3,7 @@ import type { DatabaseConnection, DatabasePool } from './pool.ts';
 export async function withTransaction<Result>(
   database: DatabasePool,
   operation: (connection: DatabaseConnection) => Promise<Result>,
+  onFailure?: () => void,
 ): Promise<Result> {
   const connection = await database.connect();
 
@@ -12,7 +13,11 @@ export async function withTransaction<Result>(
     await connection.execute({ text: 'COMMIT' });
     return result;
   } catch (error) {
-    await connection.execute({ text: 'ROLLBACK' });
+    try {
+      onFailure?.();
+    } finally {
+      await connection.execute({ text: 'ROLLBACK' });
+    }
     throw error;
   } finally {
     connection.release();

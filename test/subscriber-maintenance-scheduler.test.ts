@@ -13,6 +13,42 @@ import {
 
 const HOUR_MS = 60 * 60 * 1_000;
 
+test('E8-07 weekly queue runs hourly and snapshot purge runs once per day with caps', async () => {
+  let now = new Date('2026-10-06T09:00:00Z');
+  const weeklyLimits: number[] = [];
+  const purgeLimits: number[] = [];
+  const noOp = { async run() {} };
+  const scheduler = createVerificationMaintenanceScheduler(
+    {
+      expiry: noOp,
+      rateLimitRetention: noOp,
+      referralCounterRepair: noOp,
+      reminder: noOp,
+      strandedReferral: noOp,
+      verificationRate: noOp,
+      verificationTokenRetention: noOp,
+      weeklyCampaign: {
+        async run(limit) {
+          weeklyLimits.push(limit);
+        },
+      },
+      leaderboardSnapshotPurge: {
+        async run(limit) {
+          purgeLimits.push(limit);
+        },
+      },
+    },
+    { clock: () => now },
+  );
+  await scheduler.runCycle();
+  now = new Date('2026-10-06T10:00:00Z');
+  await scheduler.runCycle();
+  now = new Date('2026-10-07T10:00:00Z');
+  await scheduler.runCycle();
+  assert.deepEqual(weeklyLimits, [100, 100, 100]);
+  assert.deepEqual(purgeLimits, [100, 100]);
+});
+
 test('verification-token retention failure is reported as P1', async () => {
   const occurredAt = new Date('2026-09-10T12:00:00.000Z');
   const alerts: unknown[] = [];

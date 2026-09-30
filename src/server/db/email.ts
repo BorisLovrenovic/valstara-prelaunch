@@ -9,6 +9,7 @@ export interface QueuedEmailRow {
   readonly payload: Record<string, unknown>;
   readonly unsubscribe_token_id: string | null;
   readonly attempts: number;
+  readonly expires_at?: Date | null;
 }
 
 export interface EmailRecipientRow {
@@ -42,12 +43,13 @@ export function createEmailRepository(database: DatabaseConnection) {
       payload: Record<string, string | number>;
       unsubscribeTokenId: string;
       now: Date;
+      expiresAt?: Date;
     }): Promise<void> {
       await database.execute({
         text: `INSERT INTO email_send
           (id, subscriber_id, template, provider, business_key, payload,
-           unsubscribe_token_id, state, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, 'queued', $8, $8)`,
+          unsubscribe_token_id, state, created_at, updated_at, expires_at)
+          VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, 'queued', $8, $8, $9)`,
         values: [
           input.id,
           input.subscriberId,
@@ -57,6 +59,7 @@ export function createEmailRepository(database: DatabaseConnection) {
           JSON.stringify(input.payload),
           input.unsubscribeTokenId,
           input.now,
+          input.expiresAt ?? null,
         ],
       });
     },
@@ -82,7 +85,7 @@ export function createEmailRepository(database: DatabaseConnection) {
           ORDER BY created_at, id
           LIMIT $2 FOR UPDATE SKIP LOCKED
         ) SELECT e.id, e.subscriber_id, e.template, e.provider,
-          e.business_key, e.payload, e.unsubscribe_token_id, e.attempts
+          e.business_key, e.payload, e.unsubscribe_token_id, e.attempts, e.expires_at
           FROM email_send e JOIN due ON due.id = e.id
           ORDER BY e.created_at, e.id`,
           values: [now, limit, providers, templates, eligible],

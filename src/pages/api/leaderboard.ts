@@ -54,6 +54,7 @@ export function createLeaderboardRoute(
     }
 
     return jsonResponse(200, {
+      snapshot_id: 'id' in snapshot ? snapshot.id : undefined,
       as_of: snapshot.asOf,
       entries: snapshot.entries.map((entry) => ({
         confirmed_referrals: entry.confirmedReferrals,

@@ -168,7 +168,7 @@ surface is the E5-01 CLI, not a public or admin HTTP route.
 
 ## `email_send`
 
-`id` · `subscriber_id` · `template` · `provider` · `business_key` text **unique** · `payload` jsonb **not null** · `unsubscribe_token_id` uuid foreign key to an unsubscribe-purpose `verification_token` · `provider_message_id` · `state` (`queued` · `sent` · `delivered` · `bounced` · `complained` · `failed`) · `attempts` int · `next_attempt_at` · `last_error` · `created_at` · `updated_at`.
+`id` · `subscriber_id` · `template` · `provider` · `business_key` text **unique** · `payload` jsonb **not null** · `unsubscribe_token_id` uuid foreign key to an unsubscribe-purpose `verification_token` · `provider_message_id` · `state` (`queued` · `sent` · `delivered` · `bounced` · `complained` · `failed`) · `attempts` int · `next_attempt_at` · `expires_at` · `last_error` · `created_at` · `updated_at`.
 
 `payload` holds references only, such as `token_id`, `tier` or `award_id`, with a database check rejecting email addresses, token plaintext and copy text. E8-03a extends the check for UUID `status_token_id` and a validated `rules_version` reference. Welcome has `{ status_token_id }`; milestone has `{ tier, status_token_id }`; entry receipt has `{ rules_version, status_token_id }`. The unsubscribe-token foreign key is purpose-checked in the database. E8-01's forward-only migration marks old queued rows that have no reconstructible payload `failed` with `last_error = 'legacy_unrecoverable'` before enforcing the new contract; there is no production data yet.
 
@@ -177,6 +177,21 @@ The unsubscribe binding is unique per send and subject-bound. When the token-ret
 **`business_key` is the idempotency primitive** — e.g. `verify:{subscriber_id}:{token_id}`, `milestone:{subscriber_id}:{tier}`. A retry with the same key never produces a second email.
 
 E8-03a's producer keys are `welcome:{subscriber_id}`, `milestone:{subscriber_id}:{tier}`, and `giveaway-receipt:{subscriber_id}:{rules_version}`. The database uniqueness constraint applies to all three.
+
+E8-07 adds `weekly:{ISO-8601 UTC week}:{subscriber_id}`. Its payload is `{ snapshot_id, status_token_id }`, both UUID references. `expires_at` is the weekly schedule plus 24 hours; dispatch fails an expired row before any provider call. The other templates leave it null.
+
+## `leaderboard_snapshot`
+
+E8-07's persisted source for both the public leaderboard cache and weekly email. `id` UUID primary key · `as_of` timestamptz · `entries` JSONB containing at most ten objects, each with **only** contiguous `rank`, a twelve-character SHA-256-derived `display_handle`, and exact nonnegative `confirmed_referrals`. A database check rejects extra fields, so an address, referral code or signup time cannot enter the row. Maintenance computes it every five minutes regardless of `leaderboard.public`; the web process loads the latest row into its in-process cache. A batch-capped daily sweep purges rows older than 14 days. The email resolves its queued `snapshot_id` on every render, preserving retry content.
+
+## `leaderboard_served_snapshot`
+
+One permissioned singleton pointer to the snapshot ID actually loaded by the web cache. The weekly job selects this ID when starting a run; if the web cache has not started, it selects the latest persisted snapshot. From the scheduled time, the web cache holds the published ID until a run exists; during the remainder of the 24-hour window, it loads the run's fixed ID. Purging a referenced snapshot clears the pointer by foreign key.
+
+## `weekly_campaign_run`
+
+One row per ISO UTC week, holding `state` (`started`, `completed`, `skipped`), the fixed `snapshot_id` for that week's send, `recorded_at` and `alerted_at`. It records missed 24-hour windows and deduplicates the P2 alert across maintenance restarts. The snapshot foreign key clears on the 14-day purge while the run record remains. The audience is selected afresh from verified, unsuppressed, currently marketing-consented subscribers at queue time; dispatch independently re-checks it.
+The hourly job also checks up to 12 preceding ISO weeks, back to the first recorded run. If no run exists yet, it uses retained snapshot history to decide whether the previous window was active. Unrecorded expired windows are skipped and alerted; they never queue late mail.
 
 ## `email_seed_test`
 

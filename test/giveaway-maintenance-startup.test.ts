@@ -49,6 +49,7 @@ test('the maintenance entry point starts with the configured draw worker', async
           RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
           RESEND_SENDING_DOMAIN: 'send.valstara.com',
           NODE_ENV: 'test',
+          WEEKLY_SEND_UTC: '2@09:00',
         },
         stdio: ['ignore', 'ignore', 'pipe'],
       },

@@ -3,11 +3,14 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import type { AppConfig } from '../config.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
+import { createSharedLeaderboardSnapshotStore } from '../leaderboard/persisted.ts';
+import { createRankingIntegrityService } from '../referral/ranking.ts';
 
 import { createResendProvider } from './providers/resend.ts';
 import type { BrevoContactProvider } from './providers/brevo.ts';
 import { createTransactionalTemplateData } from './transactional-template-data.ts';
 import { createTransactionalRenderers } from './transactional-templates.ts';
+import { createWeeklyTemplate } from './weekly-template.ts';
 import {
   createEmailService,
   maxDispatchBatch,
@@ -43,11 +46,30 @@ export function createResendDispatcher(
     ]),
     renderers:
       renderers ??
-      createTransactionalRenderers({
-        baseUrl: config.emailBaseUrl,
-        sendingDomain: config.resendSendingDomain,
-        data: createTransactionalTemplateData(database),
-      }),
+      new Map([
+        ...createTransactionalRenderers({
+          baseUrl: config.emailBaseUrl,
+          sendingDomain: config.resendSendingDomain,
+          data: createTransactionalTemplateData(database),
+        }),
+        ...(broadcast?.provider
+          ? [
+              [
+                'weekly_campaign_update',
+                createWeeklyTemplate({
+                  baseUrl: config.emailBaseUrl,
+                  sendingDomain: broadcast.provider.sendingDomain,
+                  snapshotById: (id) =>
+                    createSharedLeaderboardSnapshotStore(
+                      database,
+                      createRankingIntegrityService(database),
+                      clock,
+                    ).byId(id),
+                }),
+              ] as const,
+            ]
+          : []),
+      ]),
     isBroadcastEnabled: broadcast?.isEnabled ?? (async () => false),
     operatorTask: async ({ emailSendId, code, provider }) => {
       await alerts.send({

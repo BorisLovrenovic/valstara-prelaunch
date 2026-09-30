@@ -1,28 +1,45 @@
-import { getConfig } from '../config.ts';
+import { getConfig, getWeeklySendConfiguration } from '../config.ts';
 import { createPool, type DatabasePool } from '../db/pool.ts';
+import { weeklyWindow } from '../email/weekly-campaign.ts';
 import { createRankingIntegrityService } from '../referral/ranking.ts';
 
 import {
-  createLeaderboardSnapshotCache,
-  startLeaderboardSnapshotScheduler,
-  type LeaderboardSnapshotCache,
-} from './snapshot.ts';
+  createPersistedSnapshotCache,
+  createSharedLeaderboardSnapshotStore,
+} from './persisted.ts';
 
 let database: DatabasePool | undefined;
-let snapshot: LeaderboardSnapshotCache | undefined;
+let snapshot: ReturnType<typeof createPersistedSnapshotCache> | undefined;
 let started = false;
+let store: ReturnType<typeof createSharedLeaderboardSnapshotStore> | undefined;
 
 function getDatabase(): DatabasePool {
   database ??= createPool(getConfig().databaseUrl);
   return database;
 }
 
-export function getLeaderboardSnapshot(): LeaderboardSnapshotCache {
-  snapshot ??= createLeaderboardSnapshotCache(
+export function getLeaderboardSnapshot(): ReturnType<
+  typeof createPersistedSnapshotCache
+> {
+  store ??= createSharedLeaderboardSnapshotStore(
+    getDatabase(),
     createRankingIntegrityService(getDatabase()),
+    () => new Date(),
+  );
+  snapshot ??= createPersistedSnapshotCache(
+    (connection) => {
+      const now = new Date();
+      const window = weeklyWindow(now, getWeeklySendConfiguration());
+      return store!.forSite(
+        now >= window.startsAt && now < window.endsAt ? window.isoWeek : null,
+        connection,
+      );
+    },
+    (id, connection) => store!.publishServed(id, connection),
+    (operation, onFailure) => store!.withPublication(operation, onFailure),
   );
   if (!started) {
-    startLeaderboardSnapshotScheduler(snapshot);
+    snapshot.start();
     started = true;
   }
   return snapshot;
