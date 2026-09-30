@@ -37,6 +37,113 @@ test('E8-07 computes ISO UTC windows at the configured boundary', () => {
   );
 });
 
+test('E8-07 serializes weekly selection with a delayed site cache publication', async () => {
+  const name = `valstara_e807_overlap_${randomUUID().replaceAll('-', '')}`;
+  const admin = createPool(adminUrl);
+  await admin.execute({ text: `CREATE DATABASE "${name}"` });
+  const ownerUrl = new URL(adminUrl);
+  ownerUrl.pathname = `/${name}`;
+  const appUrl = new URL(ownerUrl);
+  appUrl.username = 'valstara_app';
+  appUrl.password = appPassword;
+  const owner = createPool(ownerUrl.toString());
+  let app: ReturnType<typeof createPool> | undefined;
+  try {
+    await runMigrations(owner, {
+      applicationRolePassword: appPassword,
+      release: 'e8-07-overlap-test',
+    });
+    app = createPool(appUrl.toString());
+    let now = new Date('2026-10-06T08:59:58Z');
+    const clock = () => now;
+    const store = createSharedLeaderboardSnapshotStore(
+      app,
+      {
+        async leaderboardCandidates() {
+          return [];
+        },
+      },
+      clock,
+    );
+    const first = await store.refresh();
+    let allowPublication: () => void = () => undefined;
+    const publicationGate = new Promise<void>((resolve) => {
+      allowPublication = resolve;
+    });
+    let publicationStarted: () => void = () => undefined;
+    const publicationStart = new Promise<void>((resolve) => {
+      publicationStarted = resolve;
+    });
+    const cache = createPersistedSnapshotCache(
+      (connection) => store.latest(connection),
+      async (id, connection) => {
+        await store.publishServed(id, connection);
+        if (id !== first.id) {
+          publicationStarted();
+          await publicationGate;
+        }
+      },
+      (operation) => store.withPublication(operation),
+    );
+    await cache.refresh();
+    now = new Date('2026-10-06T08:59:59Z');
+    const second = await store.refresh();
+    assert.ok(second.asOf > first.asOf);
+    const refresh = cache.refresh();
+    await publicationStart;
+    assert.equal(cache.read()?.id, first.id);
+    now = new Date('2026-10-06T09:00:00Z');
+    const job = createWeeklyCampaignJob({
+      database: app,
+      flags: { isEnabled: async () => true },
+      snapshot: store,
+      email: {
+        async queue() {
+          assert.fail('there is no audience');
+        },
+      },
+      alerts: {
+        async send() {
+          assert.fail('no alert expected');
+        },
+      },
+      clock,
+      tokenSecret: secret,
+      schedule,
+    });
+    const selection = job.run();
+    try {
+      const outcome = await Promise.race([
+        selection.then(() => 'selected'),
+        new Promise<'waiting'>((resolve) =>
+          setTimeout(() => resolve('waiting'), 100),
+        ),
+      ]);
+      assert.equal(
+        outcome,
+        'waiting',
+        'selection must wait for cache publication',
+      );
+    } finally {
+      allowPublication();
+    }
+    await refresh;
+    assert.equal((await selection).state, 'completed');
+    assert.equal(cache.read()?.id, second.id);
+    assert.equal((await store.served())?.id, second.id);
+    const run = await owner.readOne<{ snapshot_id: string }>({
+      text: 'SELECT snapshot_id FROM weekly_campaign_run WHERE iso_week = $1',
+      values: ['2026-W41'],
+    });
+    assert.equal(run?.snapshot_id, cache.read()?.id);
+  } finally {
+    await app?.close();
+    await owner.close();
+    await admin.execute({ text: `DROP DATABASE "${name}" WITH (FORCE)` });
+    await admin.close();
+  }
+});
+
 test('E8-07 shares one persisted snapshot and queues only the eligible weekly audience', async () => {
   const name = `valstara_e807_${randomUUID().replaceAll('-', '')}`;
   const admin = createPool(adminUrl);
@@ -140,11 +247,12 @@ test('E8-07 shares one persisted snapshot and queues only the eligible weekly au
 
     let failLoad = false;
     const cache = createPersistedSnapshotCache(
-      () =>
+      (connection) =>
         failLoad
           ? Promise.reject(new Error('refresh stopped'))
-          : store.forSite('2026-W41'),
-      (id) => store.publishServed(id),
+          : store.forSite('2026-W41', connection),
+      (id, connection) => store.publishServed(id, connection),
+      (operation) => store.withPublication(operation),
     );
     await cache.refresh();
     const route = createLeaderboardRoute({
@@ -159,7 +267,9 @@ test('E8-07 shares one persisted snapshot and queues only the eligible weekly au
     assert.equal(page.snapshot_id, snapshot.id);
     assert.equal(page.entries[0]?.confirmed_referrals, 7);
     sourceCount = 8;
+    now = new Date('2026-10-06T08:59:59.500Z');
     const aheadOfSite = await store.refresh();
+    assert.ok(aheadOfSite.asOf > snapshot.asOf);
     assert.notEqual(aheadOfSite.id, cache.read()?.id);
 
     const renderer = createWeeklyTemplate({

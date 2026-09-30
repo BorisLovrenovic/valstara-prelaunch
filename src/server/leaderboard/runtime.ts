@@ -27,14 +27,16 @@ export function getLeaderboardSnapshot(): ReturnType<
     () => new Date(),
   );
   snapshot ??= createPersistedSnapshotCache(
-    () => {
+    (connection) => {
       const now = new Date();
       const window = weeklyWindow(now, getWeeklySendConfiguration());
       return store!.forSite(
         now >= window.startsAt && now < window.endsAt ? window.isoWeek : null,
+        connection,
       );
     },
-    (id) => store!.publishServed(id),
+    (id, connection) => store!.publishServed(id, connection),
+    (operation) => store!.withPublication(operation),
   );
   if (!started) {
     snapshot.start();

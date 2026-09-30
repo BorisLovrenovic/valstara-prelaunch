@@ -1,4 +1,5 @@
-import type { DatabaseConnection } from './pool.ts';
+import type { DatabaseConnection, DatabasePool } from './pool.ts';
+import { withTransaction } from './transaction.ts';
 
 export interface PersistedLeaderboardSnapshot {
   readonly id: string;
@@ -11,6 +12,18 @@ export interface PersistedLeaderboardSnapshot {
 }
 
 export const maxSnapshotPurgeBatch = 100;
+
+export async function withLeaderboardPublicationLock<Result>(
+  database: DatabasePool,
+  operation: (connection: DatabaseConnection) => Promise<Result>,
+): Promise<Result> {
+  return withTransaction(database, async (connection) => {
+    await connection.readOne({
+      text: "SELECT pg_advisory_xact_lock(hashtext('valstara:leaderboard-publication'))",
+    });
+    return operation(connection);
+  });
+}
 
 export function createLeaderboardSnapshotRepository(db: DatabaseConnection) {
   return {

@@ -2,7 +2,8 @@ import {
   createWeeklyCampaignRepository,
   maxWeeklyQueueBatch,
 } from '../db/weekly-campaign.ts';
-import type { DatabasePool } from '../db/pool.ts';
+import { withLeaderboardPublicationLock } from '../db/leaderboard-snapshot.ts';
+import type { DatabaseConnection, DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
 import { createVerificationService } from '../verification/service.ts';
 import type { FlagService } from '../flags/types.ts';
@@ -62,8 +63,12 @@ export interface WeeklyCampaignDependencies {
   readonly database: DatabasePool;
   readonly flags: Pick<FlagService, 'isEnabled'>;
   readonly snapshot: {
-    latest(): Promise<SharedLeaderboardSnapshot | null>;
-    served(): Promise<SharedLeaderboardSnapshot | null>;
+    latest(
+      connection: DatabaseConnection,
+    ): Promise<SharedLeaderboardSnapshot | null>;
+    served(
+      connection: DatabaseConnection,
+    ): Promise<SharedLeaderboardSnapshot | null>;
   };
   readonly email: {
     queue(
@@ -155,11 +160,17 @@ export function createWeeklyCampaignJob(
       }
       if (run?.state === 'completed') return { queued: 0, state: 'completed' };
       if (run === null) {
-        const snapshot =
-          (await dependencies.snapshot.served()) ??
-          (await dependencies.snapshot.latest());
-        if (snapshot === null) throw new Error('weekly_snapshot_unavailable');
-        await repository.start(window.isoWeek, snapshot.id, now);
+        await withLeaderboardPublicationLock(database, async (connection) => {
+          const snapshot =
+            (await dependencies.snapshot.served(connection)) ??
+            (await dependencies.snapshot.latest(connection));
+          if (snapshot === null) throw new Error('weekly_snapshot_unavailable');
+          await createWeeklyCampaignRepository(connection).start(
+            window.isoWeek,
+            snapshot.id,
+            now,
+          );
+        });
         run = await repository.run(window.isoWeek);
       }
       if (run?.snapshot_id === null || run === null)
