@@ -10,6 +10,8 @@ const requiredKeys = [
   'IP_PREFIX_PEPPER',
   'REFERRAL_SIGNING_SECRET',
   'RESEND_API_KEY',
+  'RESEND_WEBHOOK_SECRET',
+  'BREVO_WEBHOOK_TOKEN',
   'RESEND_DKIM_EXPECTED_VALUE',
   'RESEND_RSEND_CNAME_EXPECTED_TARGET',
   'RESEND_SEND_CNAME_EXPECTED_TARGET',
@@ -39,6 +41,7 @@ const optionalKeys = [
   'BREVO_API_KEY',
   'BREVO_LIST_ID',
   'BREVO_SENDING_DOMAIN',
+  'RESEND_WEBHOOK_GAP_MINUTES',
 ] as const;
 export const p1AlertEnvironmentKeys = [
   'P1_ALERT_WEBHOOK_TOKEN',
@@ -86,6 +89,14 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     nodeEnvironment: nodeEnvironment(environment),
     port: port(environment),
     resendApiKey: resend.apiKey,
+    resendWebhookSecret: webhookSecret(environment),
+    brevoWebhookToken: bearerWebhookToken(environment),
+    resendWebhookGapMinutes: positiveInteger(
+      environment,
+      'RESEND_WEBHOOK_GAP_MINUTES',
+      120,
+      1440,
+    ),
     resendDomainAuthentication: resend.domainAuthentication,
     resendKeyMode: resend.keyMode,
     resendSendingDomain: resend.sendingDomain,
@@ -196,6 +207,24 @@ export function getResendDispatchConfiguration(
   });
 }
 
+export function getEmailWebhookConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): Pick<
+  AppConfig,
+  'resendWebhookSecret' | 'brevoWebhookToken' | 'resendWebhookGapMinutes'
+> {
+  return Object.freeze({
+    resendWebhookSecret: webhookSecret(environment),
+    brevoWebhookToken: bearerWebhookToken(environment),
+    resendWebhookGapMinutes: positiveInteger(
+      environment,
+      'RESEND_WEBHOOK_GAP_MINUTES',
+      120,
+      1440,
+    ),
+  });
+}
+
 function resendConfiguration(
   environment: NodeJS.ProcessEnv,
 ): ResendConfiguration {
@@ -252,6 +281,23 @@ function resendConfiguration(
     sendingDomain,
     testRecipient,
   });
+}
+
+function webhookSecret(environment: NodeJS.ProcessEnv): string {
+  const secret = requiredValue(environment, 'RESEND_WEBHOOK_SECRET');
+  if (!/^whsec_[A-Za-z0-9+/=_-]{24,}$/u.test(secret))
+    return invalid('RESEND_WEBHOOK_SECRET', 'must be a Svix signing secret');
+  return secret;
+}
+
+function bearerWebhookToken(environment: NodeJS.ProcessEnv): string {
+  const token = requiredValue(environment, 'BREVO_WEBHOOK_TOKEN');
+  if (!/^[!-~]{32,}$/u.test(token))
+    return invalid(
+      'BREVO_WEBHOOK_TOKEN',
+      'must be at least 32 printable ASCII characters',
+    );
+  return token;
 }
 
 function optionalValue(
@@ -756,6 +802,9 @@ export interface AppConfig {
   readonly nodeEnvironment: NodeEnvironment;
   readonly port: number | undefined;
   readonly resendApiKey: string;
+  readonly resendWebhookSecret: string;
+  readonly brevoWebhookToken: string;
+  readonly resendWebhookGapMinutes: number;
   readonly resendDomainAuthentication: ResendDomainAuthenticationConfiguration;
   readonly resendKeyMode: 'live' | 'test';
   readonly resendSendingDomain: typeof productionResendSendingDomain;

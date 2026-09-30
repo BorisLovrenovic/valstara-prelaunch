@@ -139,4 +139,4 @@ envelope with `Cache-Control: no-store`.
 
 No public API · no webhook *out* to third parties · no GraphQL · no versioned `/v1` prefix — this surface has exactly one consumer and a known end date, and versioning it would be ceremony.
 
-Inbound provider webhooks (Resend and Brevo bounce/complaint events) are the exception and live at `/api/webhooks/{provider}`: **signature verified before parsing**, idempotent on the provider event id, and never trusted for anything but suppression state.
+Inbound provider webhooks (Resend and Brevo bounce/complaint events) are the exception and live at `/api/webhooks/{provider}`: **provider authentication before parsing** (Resend raw-body Svix signature; Brevo bearer token before body read), idempotent on the Resend Svix event ID or Brevo SHA-256 of provider, message ID and event, and never trusted for anything but delivery and suppression state. No Brevo-managed unsubscribe event is accepted (founder-authorised 2026-09-30).

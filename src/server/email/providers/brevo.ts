@@ -5,6 +5,32 @@ import type { EmailProvider } from '../service.ts';
 export interface BrevoContactProvider extends EmailProvider {
   upsertContact(emailNormalised: string, email: string): Promise<void>;
   removeContact(emailNormalised: string): Promise<void>;
+  listReconciliationEvents(input: {
+    event: 'hardBounces' | 'spam';
+    startDate: string;
+    endDate: string;
+    offset: number;
+    limit: number;
+  }): Promise<{
+    readonly scanned: number;
+    readonly items: readonly {
+      email: string;
+      messageId: string;
+      event: 'hard_bounce' | 'spam';
+    }[];
+  }>;
+  listBlockedContacts(input: {
+    startDate: string;
+    endDate: string;
+    offset: number;
+    limit: number;
+  }): Promise<{
+    readonly scanned: number;
+    readonly items: readonly {
+      email: string;
+      reason: 'bounce_hard' | 'complaint';
+    }[];
+  }>;
 }
 
 export interface BrevoProviderDependencies {
@@ -53,6 +79,44 @@ export function createBrevoProvider(
       throw new Error('brevo_unavailable');
     }
     return response;
+  }
+
+  async function readList(
+    path: string,
+    field: 'events' | 'contacts',
+    limit: number,
+  ): Promise<readonly unknown[]> {
+    let response: Response;
+    try {
+      response = await request(`https://api.brevo.com/v3${path}`, {
+        method: 'GET',
+        headers: { 'api-key': apiKey },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      throw new Error('brevo_reconciliation_unavailable');
+    }
+    if (!response.ok) throw new Error('brevo_reconciliation_rejected');
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      throw new Error('brevo_reconciliation_response_invalid');
+    }
+    const list =
+      typeof body === 'object' && body !== null && field in body
+        ? (body as Record<string, unknown>)[field]
+        : undefined;
+    if (!Array.isArray(list) || list.length > limit)
+      throw new Error('brevo_reconciliation_response_invalid');
+    return list;
+  }
+
+  function fromOurDomain(value: unknown): boolean {
+    return (
+      typeof value === 'string' &&
+      sender(value)?.email.split('@')[1]?.toLowerCase() === sendingDomain
+    );
   }
 
   return {
@@ -133,6 +197,92 @@ export function createBrevoProvider(
       );
       if (!response.ok && response.status !== 404)
         throw new Error('brevo_contact_remove_rejected');
+    },
+    async listReconciliationEvents(input) {
+      const params = new URLSearchParams({
+        event: input.event,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        sort: 'asc',
+        offset: String(input.offset),
+        limit: String(input.limit),
+      });
+      const rows = await readList(
+        `/smtp/statistics/events?${params}`,
+        'events',
+        input.limit,
+      );
+      const items = rows.flatMap((row) => {
+        if (typeof row !== 'object' || row === null)
+          throw new Error('brevo_reconciliation_response_invalid');
+        const event = 'event' in row ? row.event : undefined;
+        const email = 'email' in row ? row.email : undefined;
+        const messageId = 'messageId' in row ? row.messageId : undefined;
+        const from = 'from' in row ? row.from : undefined;
+        if (!fromOurDomain(from)) return [];
+        if (
+          typeof email !== 'string' ||
+          typeof messageId !== 'string' ||
+          !messageId ||
+          (event !== input.event &&
+            event !== (input.event === 'hardBounces' ? 'hard_bounce' : 'spam'))
+        )
+          throw new Error('brevo_reconciliation_response_invalid');
+        return [
+          {
+            email,
+            messageId,
+            event:
+              input.event === 'hardBounces'
+                ? ('hard_bounce' as const)
+                : ('spam' as const),
+          },
+        ];
+      });
+      return { scanned: rows.length, items };
+    },
+    async listBlockedContacts(input) {
+      const params = new URLSearchParams({
+        startDate: input.startDate,
+        endDate: input.endDate,
+        sort: 'asc',
+        offset: String(input.offset),
+        limit: String(input.limit),
+      });
+      const rows = await readList(
+        `/smtp/blockedContacts?${params}`,
+        'contacts',
+        input.limit,
+      );
+      const items: { email: string; reason: 'bounce_hard' | 'complaint' }[] =
+        rows.flatMap(
+          (row): { email: string; reason: 'bounce_hard' | 'complaint' }[] => {
+            if (typeof row !== 'object' || row === null)
+              throw new Error('brevo_reconciliation_response_invalid');
+            const email = 'email' in row ? row.email : undefined;
+            const reason = 'reason' in row ? row.reason : undefined;
+            const senderEmail =
+              'senderEmail' in row ? row.senderEmail : undefined;
+            if (
+              senderEmail !== null &&
+              senderEmail !== undefined &&
+              !fromOurDomain(senderEmail)
+            )
+              return [];
+            const code =
+              typeof reason === 'object' && reason !== null && 'code' in reason
+                ? reason.code
+                : undefined;
+            if (typeof email !== 'string')
+              throw new Error('brevo_reconciliation_response_invalid');
+            if (code === 'hardBounce' || code === 'hard_bounce')
+              return [{ email, reason: 'bounce_hard' as const }];
+            if (code === 'contactFlaggedAsSpam')
+              return [{ email, reason: 'complaint' as const }];
+            return [];
+          },
+        );
+      return { scanned: rows.length, items };
     },
   };
 }

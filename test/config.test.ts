@@ -34,6 +34,8 @@ const validEnvironment: NodeJS.ProcessEnv = {
   NODE_ENV: 'test',
   PORT: '4321',
   RESEND_API_KEY: 'local-test-resend-key',
+  RESEND_WEBHOOK_SECRET: 'whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk=',
+  BREVO_WEBHOOK_TOKEN: 'local-only-brevo-webhook-token-32-chars',
   RESEND_DKIM_EXPECTED_VALUE: 'p=local-test-public-key',
   RESEND_KEY_MODE: 'test',
   RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
@@ -100,6 +102,9 @@ test('E1-12 validates and types the complete application environment', () => {
     nodeEnvironment: 'test',
     port: 4321,
     resendApiKey: 'local-test-resend-key',
+    resendWebhookSecret: validEnvironment.RESEND_WEBHOOK_SECRET,
+    brevoWebhookToken: validEnvironment.BREVO_WEBHOOK_TOKEN,
+    resendWebhookGapMinutes: 120,
     resendDomainAuthentication: {
       dkimExpectedValue: 'p=local-test-public-key',
       rsendCnameExpectedTarget: 'rsend-euw1.forge.rmta.net',
@@ -455,6 +460,8 @@ for (const key of [
   'EMAIL_TOKEN_SECRET',
   'IP_PREFIX_PEPPER',
   'RESEND_API_KEY',
+  'RESEND_WEBHOOK_SECRET',
+  'BREVO_WEBHOOK_TOKEN',
   'RESEND_DKIM_EXPECTED_VALUE',
   'RESEND_RSEND_CNAME_EXPECTED_TARGET',
   'RESEND_SEND_CNAME_EXPECTED_TARGET',
@@ -492,6 +499,8 @@ const malformedCases = [
   ['PORT', '0'],
   ['PORT', 'not-a-port'],
   ['RESEND_API_KEY', 'key\nwith-control'],
+  ['RESEND_WEBHOOK_SECRET', 'not-a-svix-secret'],
+  ['BREVO_WEBHOOK_TOKEN', 'short'],
   ['TURNSTILE_SECRET_KEY', 'secret-with-padding '],
 ] as const;
 

@@ -57,6 +57,54 @@ test('giveaway reconciliation failure is reported as P2', async () => {
   ]);
 });
 
+test('E8-06 email reconciliation runs hourly with the batch cap and reports failure as P2', async () => {
+  const at = new Date('2026-09-30T12:00:00.000Z');
+  const limits: number[] = [];
+  const alerts: unknown[] = [];
+  const noOp = { async run() {} };
+  const report = createMaintenanceFailureReporter(
+    {
+      send: async (alert) => {
+        alerts.push(alert);
+      },
+    },
+    { clock: () => at },
+  );
+  const scheduler = createVerificationMaintenanceScheduler(
+    {
+      expiry: noOp,
+      rateLimitRetention: noOp,
+      referralCounterRepair: noOp,
+      reminder: noOp,
+      strandedReferral: noOp,
+      verificationRate: noOp,
+      verificationTokenRetention: noOp,
+      emailReconciliation: {
+        async run(limit) {
+          limits.push(limit);
+          throw new Error('provider down');
+        },
+      },
+    },
+    { clock: () => at, reportFailure: report },
+  );
+  await scheduler.runCycle();
+  await scheduler.runCycle();
+  assert.deepEqual(limits, [
+    verificationMaintenanceBatchLimit,
+    verificationMaintenanceBatchLimit,
+  ]);
+  assert.deepEqual(
+    alerts,
+    Array.from({ length: 2 }, () => ({
+      detail: { job: 'email_reconciliation' },
+      event: 'verification_maintenance_failed',
+      occurredAt: at,
+      severity: 'P2',
+    })),
+  );
+});
+
 test('giveaway reconciliation is scheduled on every maintenance cycle with the batch cap', async () => {
   const limits: number[] = [];
   const noOp = { async run() {} };

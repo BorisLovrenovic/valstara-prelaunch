@@ -209,6 +209,8 @@ leaves this row unchanged so the next bounded batch resumes the contact.
 
 `email_normalised` pk · `reason` (`unsubscribe` · `bounce_hard` · `complaint` · `manual`) · `source` · `created_at`. **Checked at dispatch, not only at queue time** — a suppression written after queueing must still stop the send.
 
+E8-06 adds `email_webhook_event`, whose sole column is an opaque idempotency key, and bounded reconciliation cursors. Resend uses its Svix event ID; Brevo stores SHA-256 of provider, message ID and event. No webhook payload, address or provider timestamp is persisted there. Authenticated bounce and complaint events write suppression and update matching `email_send` state in one transaction. Resend missing-terminal-event gap detection stamps a sent row once for one aggregated P2 task; `delivered` counts as terminal for gap detection but can later be followed by a complaint.
+
 ## `campaign_flag`
 
 `key` pk · `enabled` boolean · `updated_at` · `updated_by`. The database value is an **override**; the code-registered default is the fallback (ADR-023).
