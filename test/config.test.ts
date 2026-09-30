@@ -16,6 +16,7 @@ import {
   productionResendSendingDomain,
   getVerificationRateConfiguration,
   getWeeklySendConfiguration,
+  getEmailQuotaConfiguration,
   turnstileTestSiteKey,
   validateConfig,
 } from '../src/server/config.ts';
@@ -124,7 +125,50 @@ test('E1-12 validates and types the complete application environment', () => {
     },
     waitlistLiveAt: null,
     weeklySendUtc: null,
+    emailQuota: {
+      resend: { tier: 'free', cap: 100 },
+      brevo: { tier: 'free', cap: 300 },
+    },
   });
+});
+
+test('E8-09 quota tiers default free and reject paid with a free cap at boot', () => {
+  assert.deepEqual(getEmailQuotaConfiguration({}), {
+    resend: { tier: 'free', cap: 100 },
+    brevo: { tier: 'free', cap: 300 },
+  });
+  for (const [tierKey, capKey, freeCap] of [
+    ['RESEND_TIER', 'RESEND_DAILY_CAP', 100],
+    ['BREVO_TIER', 'BREVO_DAILY_CAP', 300],
+  ] as const) {
+    assert.throws(
+      () =>
+        validateConfig({
+          ...validEnvironment,
+          [tierKey]: 'paid',
+          [capKey]: String(freeCap),
+        }),
+      (error) =>
+        error instanceof ConfigurationError && error.variableName === capKey,
+    );
+    assert.throws(
+      () => validateConfig({ ...validEnvironment, [tierKey]: 'invalid' }),
+      (error) =>
+        error instanceof ConfigurationError && error.variableName === tierKey,
+    );
+  }
+  assert.deepEqual(
+    getEmailQuotaConfiguration({
+      RESEND_TIER: 'paid',
+      RESEND_DAILY_CAP: '250',
+      BREVO_TIER: 'paid',
+      BREVO_DAILY_CAP: '750',
+    }),
+    {
+      resend: { tier: 'paid', cap: 250 },
+      brevo: { tier: 'paid', cap: 750 },
+    },
+  );
 });
 
 test('E8-07 weekly schedule is explicit, UTC and validated', () => {

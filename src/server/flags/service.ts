@@ -1,5 +1,10 @@
 import { createAuditService, type AuditService } from '../audit/service.ts';
-import { ConfigurationError, getGiveawayEntryPeriodStart } from '../config.ts';
+import {
+  ConfigurationError,
+  getEmailQuotaConfiguration,
+  getGiveawayEntryPeriodStart,
+  type EmailQuotaConfiguration,
+} from '../config.ts';
 import {
   createCampaignFlagRepository,
   type CampaignFlagRepository,
@@ -43,6 +48,7 @@ export function createFlagService(
   giveaway: {
     currentRules?: () => Promise<CurrentGiveawayRules>;
     periodStart?: Date;
+    emailQuota?: EmailQuotaConfiguration;
   } = {},
 ): FlagService {
   const service = createFlagServiceWithDependencies(
@@ -59,6 +65,26 @@ export function createFlagService(
   return {
     ...service,
     async set(key, enabled, actor) {
+      if (key === 'giveaway.open' && enabled) {
+        const quota = giveaway.emailQuota ?? getEmailQuotaConfiguration();
+        const freeProviders = (['resend', 'brevo'] as const).filter(
+          (provider) => quota[provider].tier !== 'paid',
+        );
+        if (freeProviders.length > 0) {
+          if (actor.trim() === '')
+            throw new TypeError('A campaign flag change requires an actor.');
+          await withTransaction(database, async (connection) => {
+            await createAuditService(connection).record({
+              action: 'flag.enable_refused',
+              actor,
+              detail: { reason: 'email_free_tier', providers: freeProviders },
+              subjectId: key,
+              subjectType: 'campaign_flag',
+            });
+          });
+          throw new Error('giveaway_open_requires_paid_email_tiers');
+        }
+      }
       const periodStart = giveaway.periodStart ?? getGiveawayEntryPeriodStart();
       if (key === 'giveaway.open' && enabled && periodStart === null) {
         throw new ConfigurationError(

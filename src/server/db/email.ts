@@ -121,6 +121,7 @@ export function createEmailRepository(database: DatabaseConnection) {
     ): Promise<void> {
       await database.execute({
         text: `UPDATE email_send SET state = 'sent', attempts = attempts + 1,
+          accepted_at = COALESCE(accepted_at, $3),
           provider_message_id = $2, updated_at = $3, next_attempt_at = NULL,
           last_error = NULL WHERE id = $1 AND state = 'queued'`,
         values: [id, providerMessageId, now],

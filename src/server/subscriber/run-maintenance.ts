@@ -8,6 +8,7 @@ import {
   getSeedTestConfiguration,
   getVerificationRateConfiguration,
   getWeeklySendConfiguration,
+  getEmailQuotaConfiguration,
 } from '../config.ts';
 import { createPool } from '../db/pool.ts';
 import { createSeedTestRepository } from '../db/seed-test.ts';
@@ -55,6 +56,7 @@ import {
 } from '../leaderboard/persisted.ts';
 import { createWeeklyCampaignJob } from '../email/weekly-campaign.ts';
 import { createEmailQueue } from '../email/queue.ts';
+import { createEmailQuotaService } from '../email/quota.ts';
 
 import { createUnverifiedExpiryJob } from './expiry.ts';
 import {
@@ -184,6 +186,12 @@ const scheduler = createVerificationMaintenanceScheduler(
       tokenSecret: resendConfiguration.emailTokenSecret,
       schedule: getWeeklySendConfiguration(),
     }),
+    emailQuota: createEmailQuotaService(
+      database,
+      getEmailQuotaConfiguration(),
+      alerts,
+      clock,
+    ),
     leaderboardSnapshotPurge: {
       async run(limit) {
         let removed = 0;

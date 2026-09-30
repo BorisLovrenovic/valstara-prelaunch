@@ -31,6 +31,8 @@ Broadcasts (Brevo) are composed from a shared layout: the **weekly update** (inc
 ## Edge cases and error states
 Provider down → the row is committed; the send queues and retries with backoff. Free-tier cliff → **pre-empted, not handled**: Resend free is 100/day, Brevo free is 300/day, and both are upgraded **before the giveaway opens**. A daily projection against the cap alerts a week ahead. Bounce webhook missed → hourly reconciliation; a suppressed address could receive one more send, which is documented and accepted. Suppression written after queueing → **the dispatch path re-checks suppression**, so the send still stops. Rendering broken in one client → caught by the pre-send render pass, not by recipients.
 
+The E8-09 projection uses the last seven complete UTC days, with zeroes for days without sends: busiest day plus seven times the positive least-squares daily slope. Brevo's forecast is at least its next eligible weekly audience. Accepted sends and seed probes count on their UTC acceptance day. A forecast at the configured cap raises a daily-deduplicated P2; an observed day at the cap raises P1. Both tiers default to free in server configuration, and `giveaway.open` cannot be enabled until the founder confirms both upgrades and configures paid tiers with caps above the free limits.
+
 ## Acceptance criteria
 - [ ] **One email per business key**, enforced by a unique constraint — a retry never double-sends
 - [ ] **Suppression is checked at dispatch, not only at queue time** — asserted by test

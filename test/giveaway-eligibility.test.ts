@@ -6,11 +6,20 @@ import ts from 'typescript';
 
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool } from '../src/server/db/pool.ts';
-import { createFlagService } from '../src/server/flags/service.ts';
+import { createFlagService as createBaseFlagService } from '../src/server/flags/service.ts';
 import {
   createGiveawayEligibilityService,
   createGiveawayEligibilityServiceWithDependencies,
 } from '../src/server/giveaway/eligibility.ts';
+
+const paidQuota = {
+  resend: { tier: 'paid' as const, cap: 101 },
+  brevo: { tier: 'paid' as const, cap: 301 },
+};
+const createFlagService = (
+  database: Parameters<typeof createBaseFlagService>[0],
+  giveaway: Parameters<typeof createBaseFlagService>[1] = {},
+) => createBaseFlagService(database, { ...giveaway, emailQuota: paidQuota });
 
 const baseUrl =
   process.env.TEST_DATABASE_URL ??

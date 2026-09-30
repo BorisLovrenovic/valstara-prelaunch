@@ -383,6 +383,68 @@ test('a persisted flag change records the flag key and actor in the audit log', 
   }
 });
 
+test('E8-09 audits a free-tier giveaway refusal, permits paid enable and always permits off', async () => {
+  const fixture = await createDatabaseFixture();
+  const free = createFlagService(fixture.applicationDatabase, {
+    emailQuota: {
+      resend: { tier: 'free', cap: 100 },
+      brevo: { tier: 'paid', cap: 301 },
+    },
+  });
+  const brevoFree = createFlagService(fixture.applicationDatabase, {
+    emailQuota: {
+      resend: { tier: 'paid', cap: 101 },
+      brevo: { tier: 'free', cap: 300 },
+    },
+  });
+  const paid = createFlagService(fixture.applicationDatabase, {
+    emailQuota: {
+      resend: { tier: 'paid', cap: 101 },
+      brevo: { tier: 'paid', cap: 301 },
+    },
+  });
+  try {
+    await assert.rejects(
+      free.set('giveaway.open', true, 'operator-free'),
+      /giveaway_open_requires_paid_email_tiers/u,
+    );
+    assert.equal(await free.isEnabled('giveaway.open'), false);
+    const refusal = await fixture.database.readOne<{
+      actor: string;
+      detail: { providers: string[]; reason: string };
+    }>({
+      text: `SELECT actor, detail FROM audit_log
+        WHERE action = 'flag.enable_refused' AND subject_id = 'giveaway.open'`,
+    });
+    assert.deepEqual(refusal, {
+      actor: 'operator-free',
+      detail: { reason: 'email_free_tier', providers: ['resend'] },
+    });
+    await assert.rejects(
+      brevoFree.set('giveaway.open', true, 'operator-brevo-free'),
+      /giveaway_open_requires_paid_email_tiers/u,
+    );
+    const brevoRefusal = await fixture.database.readOne<{
+      actor: string;
+      detail: { providers: string[]; reason: string };
+    }>({
+      text: `SELECT actor, detail FROM audit_log
+        WHERE action = 'flag.enable_refused' AND actor = 'operator-brevo-free'`,
+    });
+    assert.deepEqual(brevoRefusal, {
+      actor: 'operator-brevo-free',
+      detail: { reason: 'email_free_tier', providers: ['brevo'] },
+    });
+    await paid.set('giveaway.open', true, 'operator-paid');
+    assert.equal(await paid.isEnabled('giveaway.open'), true);
+    await free.set('giveaway.open', false, 'operator-off');
+    assert.equal(await free.isEnabled('giveaway.open'), false);
+  } finally {
+    await fixture.applicationDatabase.close();
+    await fixture.dispose();
+  }
+});
+
 test('an audit insertion failure leaves the persisted flag unchanged', async () => {
   const fixture = await createDatabaseFixture();
   const service = createFlagService(fixture.applicationDatabase);

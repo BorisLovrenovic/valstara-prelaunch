@@ -21,7 +21,8 @@ export type MaintenanceJobName =
   | 'email_reconciliation'
   | 'weekly_campaign'
   | 'leaderboard_snapshot'
-  | 'leaderboard_snapshot_purge';
+  | 'leaderboard_snapshot_purge'
+  | 'email_quota';
 
 export interface MaintenanceJob {
   run(limit: number): Promise<unknown>;
@@ -46,6 +47,7 @@ export interface VerificationMaintenanceJobs {
   readonly emailReconciliation?: MaintenanceJob;
   readonly weeklyCampaign?: MaintenanceJob;
   readonly leaderboardSnapshotPurge?: MaintenanceJob;
+  readonly emailQuota?: VerificationRateJob;
 }
 
 export interface VerificationMaintenanceDependencies {
@@ -85,7 +87,8 @@ export function createMaintenanceFailureReporter(
             job === 'ip_prefix_retention' ||
             job === 'verification_token_retention' ||
             job === 'seed_test' ||
-            job === 'broadcast_seed_test'
+            job === 'broadcast_seed_test' ||
+            job === 'email_quota'
           ? 'P1'
           : 'P3';
     if (severity === 'P1' || severity === 'P2') {
@@ -125,6 +128,7 @@ export function createVerificationMaintenanceScheduler(
   let strandedReferralDay: string | null = null;
   let verificationTokenRetentionDay: string | null = null;
   let leaderboardSnapshotPurgeDay: string | null = null;
+  let emailQuotaDay: string | null = null;
 
   async function runJob(
     name: Exclude<MaintenanceJobName, 'verification_rate'>,
@@ -180,6 +184,14 @@ export function createVerificationMaintenanceScheduler(
     }
 
     const day = now.toISOString().slice(0, 10);
+    if (emailQuotaDay !== day && jobs.emailQuota !== undefined) {
+      try {
+        await jobs.emailQuota.run();
+        emailQuotaDay = day;
+      } catch {
+        await reportFailure('email_quota');
+      }
+    }
     if (
       leaderboardSnapshotPurgeDay !== day &&
       jobs.leaderboardSnapshotPurge !== undefined &&

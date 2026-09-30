@@ -95,13 +95,14 @@ export function createBroadcastSeedTest(
             makeMarker(),
           );
           if (row.state === 'passed') continue;
-          const sentAt = row.sent_at ?? clock();
-          if (row.sent_at === null) {
+          let sentAt = row.sent_at;
+          if (sentAt === null) {
             await sender.send(
               destination,
               row.marker,
               `brevo-seed:${weekStart.toISOString().slice(0, 10)}:${destination}`,
             );
+            sentAt = clock();
             await repository.markSent(weekStart, destination, sentAt);
           }
           const source = await mailbox.source(destination, row.marker);

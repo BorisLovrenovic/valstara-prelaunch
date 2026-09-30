@@ -5,6 +5,12 @@ import type { DatabaseConnection, DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
 import { createVerificationService } from '../verification/service.ts';
 import { deriveEmailToken } from '../verification/token-derivation.ts';
+import {
+  getEmailQuotaConfiguration,
+  type EmailQuotaConfiguration,
+} from '../config.ts';
+
+import { quotaHealth } from './quota.ts';
 
 export interface Message {
   readonly from: string;
@@ -64,6 +70,7 @@ export interface EmailServiceDependencies {
   readonly baseUrl: string;
   readonly providers: ReadonlyMap<string, EmailProvider>;
   readonly renderers: ReadonlyMap<string, TemplateRenderer>;
+  readonly quotaConfiguration?: EmailQuotaConfiguration;
   readonly isBroadcastEnabled: () => Promise<boolean>;
   readonly operatorTask: (input: {
     readonly emailSendId: string;
@@ -218,6 +225,13 @@ export function createEmailService(
   }
 
   return {
+    quotaProjection() {
+      return quotaHealth(
+        database,
+        dependencies.quotaConfiguration ?? getEmailQuotaConfiguration(),
+        dependencies.clock,
+      );
+    },
     queue(
       input: QueueEmailInput,
       connection?: DatabaseConnection,
@@ -372,7 +386,11 @@ export function createEmailService(
               headers: prepared.headers,
               idempotencyKey: row.business_key,
             });
-            await repo.markSent(row.id, sent.providerMessageId, now);
+            await repo.markSent(
+              row.id,
+              sent.providerMessageId,
+              dependencies.clock(),
+            );
             summary.sent += 1;
           } catch {
             if (row.attempts + 1 >= maxSendAttempts) {
