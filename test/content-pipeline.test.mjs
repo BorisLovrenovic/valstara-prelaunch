@@ -126,12 +126,16 @@ test('content collection schemas require a port target in their own route set', 
     [collections.trust, '/legit', '/privacy'],
     [collections.legal, '/privacy', '/about'],
   ]) {
+    const metadata =
+      collection === collections.trust
+        ? { title: 'Trust title', description: 'Trust description' }
+        : {};
     assert.equal(
-      collection.schema.safeParse({ portTarget: valid }).success,
+      collection.schema.safeParse({ portTarget: valid, ...metadata }).success,
       true,
     );
     assert.equal(
-      collection.schema.safeParse({ portTarget: invalid }).success,
+      collection.schema.safeParse({ portTarget: invalid, ...metadata }).success,
       false,
     );
     assert.equal(collection.schema.safeParse({}).success, false);
@@ -145,7 +149,7 @@ test(
     await withFixture(async (root) => {
       await writeFile(
         join(root, 'src', 'content', 'legit.md'),
-        '---\nportTarget: /legit\n---\nTrust prose.\n',
+        '---\nportTarget: /legit\ntitle: Trust title\ndescription: Trust description\n---\nTrust prose.\n',
       );
       await writeFile(
         join(root, 'src', 'content', 'terms.md'),
@@ -166,7 +170,7 @@ test(
     await withFixture(async (root) => {
       await writeFile(
         join(root, 'src', 'content', 'legit.md'),
-        '---\nportTarget: /legit\n---\nTrust prose.\n',
+        '---\nportTarget: /legit\ntitle: Trust title\ndescription: Trust description\n---\nTrust prose.\n',
       );
       await writeFile(
         join(root, 'src', 'content', 'terms.md'),

@@ -1,0 +1,16 @@
+---
+import { getEntry, render } from 'astro:content';
+import TrustPage from '../layouts/trust-page.astro';
+
+export const prerender = true;
+
+const entry = await getEntry('trust', 'legit');
+if (!entry || entry.data.portTarget !== '/legit') {
+  throw new Error('Missing or misrouted /legit content.');
+}
+const { Content } = await render(entry);
+---
+
+<TrustPage title={entry.data.title} description={entry.data.description}>
+  <Content />
+</TrustPage>
