@@ -1,0 +1,20 @@
+---
+import { getEntry, render } from 'astro:content';
+import { legalPageCopy } from '../copy/legal.ts';
+import TrustPage from '../layouts/trust-page.astro';
+
+export const prerender = true;
+
+const entry = await getEntry('legal', 'terms');
+if (!entry || entry.data.portTarget !== '/terms') {
+  throw new Error('Missing or misrouted /terms content.');
+}
+const { Content } = await render(entry);
+---
+
+<TrustPage
+  title={legalPageCopy.terms.title}
+  description={legalPageCopy.terms.description}
+>
+  <Content />
+</TrustPage>

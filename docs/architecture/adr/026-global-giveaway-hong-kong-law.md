@@ -30,6 +30,8 @@ Valstara is incorporated and operates in Hong Kong, and so does its payment serv
 
 Data protection is unchanged. GDPR and UK GDPR still apply, the Article 27 representatives are still required (ADR-019), and entry is separated from marketing consent (ADR-027).
 
+**Subsequent decision, 2026-10-01:** ADR-029 superseded ADR-019's representative appointment requirement for this campaign. The paragraph above records what was decided when ADR-026 was accepted.
+
 ## Alternatives rejected
 - **Per-jurisdiction exclusions and pages (ADR-018)** — several pages, translations and local reviews, and an exclusion list that suppresses referrals in every excluded market.
 - **A narrow launch in seven countries** (research report 1) — lowest legal exposure, but it blocks the referral loop almost everywhere.

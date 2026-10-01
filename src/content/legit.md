@@ -25,8 +25,6 @@ Every limited company in Hong Kong is entered on the public register kept by the
 
 The same company details appear in section 1 of the official rules for our launch giveaway, published at valstara.com/giveaway/rules. Every version of those rules stays online at its own permanent address, so no change to them can happen quietly.
 
-Before we accept a single signup, we appoint representatives for data protection in the European Union and in the United Kingdom, and we name them in our privacy notice. They act as our point of contact in those regions, both for you and for data protection authorities.
-
 ## Reviews
 
 We do not show a Trustpilot star rating on this site yet. A score built on a handful of reviews tells you very little, so we will display ours once enough customers have reviewed us for the number to mean something. We will never buy reviews.

@@ -1,22 +1,14 @@
 # Compliance
 
-Status: authoritative for **what the code must do**. It is not legal advice, and the reviewed wording of the policy, terms and rules pages is a founder input from qualified counsel.
+Status: authoritative for **what the code must do**. It is not legal advice. The founder authorised temporary draft wording for `/terms` and `/privacy` on 2026-10-01; reviewed replacement wording remains outstanding (ADR-029).
 
 Three regimes bind this campaign: **GDPR/UK GDPR** on the data, **ePrivacy** on what may be stored on a visitor's device, and **Hong Kong law** on the giveaway. Valstara is incorporated in Hong Kong and runs one global giveaway under Hong Kong law; the founder accepts residual foreign promotion-law risk as a business cost (ADR-026, 2026-09-25). Data protection is **not** part of that trade-off: GDPR and UK GDPR apply in full to people in the EU and UK.
 
 ---
 
-## 1. Article 27 representatives — the hard gate
+## 1. Article 27 founder decision
 
-An Article 27 representative is a **natural or legal person established in the EU**, designated in writing, acting as the contact point for supervisory authorities and data subjects.
-
-- It is **not** a subsidiary and creates **no taxable presence**.
-- Bought as a service — Prighter, DataRep, EDPO and similar — at roughly **€200–500/year**.
-- Must be established in a member state where the data subjects are.
-- Holds a copy of the records of processing and **must be named in the privacy policy**.
-- **UK GDPR requires a separate UK representative.** Two appointments, two fees.
-
-**This gates the privacy policy, which gates the first signup.** It is procurement, not engineering, and it has the longest lead time of any prerequisite — which is why the build enforces it: `E9-03` adds a **build-time assertion that neither representative field is a placeholder**, and the signup route is unreachable while that assertion fails. A checklist item would have been forgotten; a failing build cannot be.
+The founder decided on 2026-10-01 that Valstara will not appoint EU or UK Article 27 representatives for this pre-launch campaign (ADR-029, superseding ADR-019). The privacy notice therefore has no representative fields, and no representative-dependent build or signup gate exists. This records the decision; it does not establish an exemption from EU or UK law. The E11-05 privacy audit must record its assessment before launch.
 
 ---
 
@@ -59,7 +51,7 @@ Article 5(3) applies to **storing information on, or accessing information alrea
 - **No referral cookie.** `?ref=` is read **server-side on the rendering request** and carried as a signed hidden field — a mechanic that is both more reliable and entirely outside Article 5(3).
 - **No site-run device fingerprinting API.** The site invokes no canvas, font-enumeration, WebGL or timing-entropy API. Cloudflare's server-side security processing is disclosed separately below.
 - **No third-party script** on any page, except two sanctioned exceptions: the deliberately-flagged Trustpilot widget, which stays off until a rating is worth showing, and Cloudflare Turnstile on the signup, verification-recovery and member marketing-preference forms (ADR-006, S-01). The no-banner basis for Turnstile is specifically Article 5(3): the rendered-page probe confirms that it neither stores information on nor accesses information already stored on the visitor's device. Both exceptions are enforced by the third-party-request CI gate's allowlist; nothing else off-origin loads.
-- **One storage write exists**: the theme preference. Functional, non-identifying, and documented in the cookie and storage inventory.
+- **One storage write exists**: the theme preference. Functional, non-identifying, and documented in the inventory embedded in `/privacy`. E9-04 adds the standalone inventory page.
 
 **This is not a shortcut.** GA4 requires opt-in consent in Germany with no analytics exemption at all, and CNIL's French exemption is narrow and conditional. A banner on a page targeting 20–35% signup costs conversion directly **and corrupts the measurement it was added for**, since consented analytics only ever sees a self-selected subset. **Cookieless gives better numbers here, not worse.** GA4 and a CMP return at store launch, when ads and ecommerce attribution justify the cost.
 

@@ -326,6 +326,8 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
     '/leaderboard',
     '/legit',
     '/me',
+    '/privacy',
+    '/terms',
     '/unsubscribe',
     '/verify',
   ]);
@@ -369,12 +371,18 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
   }
 });
 
-test('trust pages fit mobile and desktop in both themes', async () => {
+test('trust and legal pages fit mobile and desktop in both themes', async () => {
   const backgrounds = new Map();
   for (const colorScheme of themes) {
     const context = await browser.newContext({ colorScheme });
     const page = await context.newPage();
-    for (const route of ['/legit', '/guarantee', '/about']) {
+    for (const route of [
+      '/legit',
+      '/guarantee',
+      '/about',
+      '/terms',
+      '/privacy',
+    ]) {
       for (const width of [320, 1440]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${browserOrigin}${route}`);
@@ -397,7 +405,13 @@ test('trust pages fit mobile and desktop in both themes', async () => {
     }
     await context.close();
   }
-  for (const route of ['/legit', '/guarantee', '/about']) {
+  for (const route of [
+    '/legit',
+    '/guarantee',
+    '/about',
+    '/terms',
+    '/privacy',
+  ]) {
     assert.notEqual(
       backgrounds.get(`${route}:light`),
       backgrounds.get(`${route}:dark`),

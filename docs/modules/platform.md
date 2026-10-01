@@ -60,7 +60,7 @@ The five small modules, documented together because each is a few hundred lines 
 
 **Responsibility:** load and validate the Markdown collections that hold trust and legal prose (ADR-017).
 
-**Collection contract:** `src/content.config.ts` registers `trust` (`legit.md`, `guarantee.md`, `about.md`) and `legal` (`terms.md`, `privacy.md`) from flat files in `src/content/`. Each file declares `portTarget` in frontmatter. The allowed targets are the permanent routes for its collection; the port checklist test also checks that each named file targets its matching route. E9-01 provides the pipeline without publishing placeholder prose or pages; E9-02 and E9-03 add the founder-approved files and routes.
+**Collection contract:** `src/content.config.ts` registers `trust` (`legit.md`, `guarantee.md`, `about.md`) and `legal` (`terms.md`, `privacy.md`) from flat files in `src/content/`. Each file declares `portTarget` in frontmatter. The allowed targets are the permanent routes for its collection; the port checklist test also checks that each named file targets its matching route. E9-01 provides the pipeline without publishing placeholder prose or pages; E9-02 adds founder-approved trust files and E9-03 adds founder-authorised draft legal files (ADR-029).
 
 **Rules**
 - **Frontmatter is schema-validated, and a validation failure fails the build.** A trust page that 404s in production is worse than a slow build.

@@ -4,7 +4,7 @@
 **One global prize draw under Hong Kong law** (ADR-026) that drives referrals and runs so the result can be reproduced and defended afterwards. No country is excluded and none is collected at entry. The rules are small and uniform: 18+, one registration per person, no purchase necessary, one prize per person, and small prizes. Location is collected only from provisional winners at award time.
 
 ## Feature flag
-`giveaway.open` — **default off.** It stays off until the global rules page is published (P4, E7-02), the representatives are named in the privacy policy, and the ESP tiers are upgraded (P5).
+`giveaway.open` — **default off.** It stays off until the global rules page is published (P4, E7-02) and the ESP tiers are upgraded (P5). ADR-029 removes the former representative prerequisite. The current published rules revision still contains the superseded representative claim; a new immutable revision is required before that claim can be corrected.
 
 ## User flows
 1. **Entry** — a subscriber verified within the entry period is an entrant; entries accrue while `giveaway.open` is on, and any missed while it was off are added when it opens. **No purchase, referral or marketing consent is needed**: the ordinary verified signup is the free entry route, and a "No purchase necessary" line sits beside the signup call to action (E7-04).

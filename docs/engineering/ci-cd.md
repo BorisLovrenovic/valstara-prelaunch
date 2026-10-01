@@ -185,7 +185,7 @@ A leaked secret means **rotate, then purge**. Committing over it is not remediat
 
 Three things must be true before the DNS record points at this site publicly, and they are gates rather than checklist items because each is unrecoverable if missed:
 
-1. **The privacy policy names both representatives**, and the build-time assertion for it passes.
+1. **The privacy notice and terms are published**, with the founder's Article 27 decision recorded in ADR-029. The E11-05 privacy audit records the assessment and the status of reviewed legal wording.
 2. **SPF, DKIM and DMARC verify on every sending domain**, and the seed test round-trips.
 3. **The ESP tiers are upgraded past the free caps** before `giveaway.open` is turned on.
 

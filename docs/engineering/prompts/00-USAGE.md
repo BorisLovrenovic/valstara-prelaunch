@@ -67,7 +67,7 @@ A review that ranges over the whole codebase always finds something true and irr
 
 Five items no agent can complete (`docs/plan/development-plan.md#2-founder-prerequisites--not-agent-tickets`): the DNS and email authentication, the Article 27 appointments, the brand token values and trust-page prose, the giveaway rules text, and the ESP tier upgrades.
 
-**A ticket blocked on one of these must report `BLOCKED:` and stop.** If an agent invents a placeholder colour, a placeholder representative name or placeholder rules text, that is a defect — and in two of those five cases it is one that ships to production and is legally significant.
+**A ticket blocked on one of these must report `BLOCKED:` and stop.** If an agent invents a placeholder colour or placeholder rules text, that is a defect. ADR-029 waived the representative prerequisite and permits visibly marked draft text on `/terms` and `/privacy` only.
 
 ## Escalation rule
 
