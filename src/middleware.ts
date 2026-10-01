@@ -52,6 +52,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       staticPath === '/about' ||
       staticPath === '/terms' ||
       staticPath === '/privacy' ||
+      staticPath === '/privacy/storage' ||
       staticPath === '/giveaway/rules' ||
       staticPath.startsWith('/giveaway/rules/'))
   ) {

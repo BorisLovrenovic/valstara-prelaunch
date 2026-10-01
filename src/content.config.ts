@@ -18,10 +18,10 @@ const trust = defineCollection({
 const legal = defineCollection({
   loader: glob({
     base: './src/content',
-    pattern: '{terms,privacy}.md',
+    pattern: '{terms,privacy,privacy-storage}.md',
   }),
   schema: z.object({
-    portTarget: z.enum(['/terms', '/privacy']),
+    portTarget: z.enum(['/terms', '/privacy', '/privacy/storage']),
   }),
 });
 

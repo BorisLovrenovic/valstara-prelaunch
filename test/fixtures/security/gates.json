@@ -43,6 +43,11 @@
     "content": "localStorage.setItem('second-theme-key', 'dark');\n",
     "diagnostic": "\\[cookie-storage\\]"
   },
+  "inventory-second-write": {
+    "path": "src/pages/ci-inventory-second-write.astro",
+    "content": "<script>localStorage.setItem('inventory-fixture', '1');</script>\n",
+    "diagnostic": "\\[cookie-storage\\]"
+  },
   "fingerprinting": {
     "path": "scripts/ci-timing-fixture.ts",
     "contentParts": ["export const entropy = performance", ".now();\\n"],

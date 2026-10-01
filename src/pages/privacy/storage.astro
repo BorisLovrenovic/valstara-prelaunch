@@ -1,0 +1,20 @@
+---
+import { getEntry, render } from 'astro:content';
+import { legalPageCopy } from '../../copy/legal.ts';
+import TrustPage from '../../layouts/trust-page.astro';
+
+export const prerender = true;
+
+const entry = await getEntry('legal', 'privacy-storage');
+if (!entry || entry.data.portTarget !== '/privacy/storage') {
+  throw new Error('Missing or misrouted /privacy/storage content.');
+}
+const { Content } = await render(entry);
+---
+
+<TrustPage
+  title={legalPageCopy.storage.title}
+  description={legalPageCopy.storage.description}
+>
+  <Content />
+</TrustPage>

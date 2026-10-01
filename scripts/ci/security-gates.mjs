@@ -281,12 +281,19 @@ async function scanCookieAndStorage(files) {
   const policy = await readJson('scripts/ci/privacy-allowlist.json');
   const issues = [];
   const pattern = /document\.cookie|Set-Cookie|localStorage|sessionStorage/g;
+  let allowedWriteCount = 0;
 
   for (const file of files.filter((candidate) =>
     candidate.path.startsWith('src/'),
   )) {
     for (const match of file.content.matchAll(pattern)) {
-      if (!themeStorageUse(file, policy, match)) {
+      if (themeStorageUse(file, policy, match)) {
+        if (
+          file.content.slice(match.index).startsWith('localStorage.setItem')
+        ) {
+          allowedWriteCount += 1;
+        }
+      } else {
         issues.push(
           issue(
             'cookie-storage',
@@ -296,6 +303,16 @@ async function scanCookieAndStorage(files) {
         );
       }
     }
+  }
+
+  if (allowedWriteCount !== 1) {
+    issues.push(
+      issue(
+        'cookie-storage',
+        'scripts/ci/privacy-allowlist.json',
+        `expected exactly one allowlisted theme storage write; found ${allowedWriteCount}`,
+      ),
+    );
   }
 
   return issues;

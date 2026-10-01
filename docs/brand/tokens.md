@@ -110,5 +110,6 @@ Kept current from the first commit, because it is what makes launch day a checkl
 | `src/styles/tokens.css` | Storefront global stylesheet, **verbatim** | E11-07 |
 | `src/content/legit.md`, `guarantee.md`, `about.md` | `/legit`, `/guarantee`, `/about` | E11-07 |
 | `src/content/terms.md`, `privacy.md` | `/terms`, `/privacy` — ported and revised in place | E11-07 |
+| `src/content/privacy-storage.md` | `/privacy/storage` — ported with the privacy notice | E11-07 |
 | `src/content/giveaway-rules/*.md` | `/giveaway/rules` and each immutable `/giveaway/rules/<rules_version>` | E11-07 |
 | Font files and `@font-face` declarations | Storefront font layer | E11-07 |
