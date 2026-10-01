@@ -44,8 +44,8 @@
     "diagnostic": "\\[cookie-storage\\]"
   },
   "inventory-second-write": {
-    "path": "src/pages/ci-inventory-second-write.astro",
-    "content": "<script>localStorage.setItem('inventory-fixture', '1');</script>\n",
+    "path": "src/islands/theme-toggle.ts",
+    "content": "const extraKey = 'inventory-fixture';\nlocalStorage.setItem('valstara-theme', 'dark');\nlocalStorage.setItem(extraKey, 'dark');\n",
     "diagnostic": "\\[cookie-storage\\]"
   },
   "fingerprinting": {

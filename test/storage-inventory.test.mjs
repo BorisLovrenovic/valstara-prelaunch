@@ -41,9 +41,14 @@ function reconcileInventory(inventory, allowlist, files) {
   const writes = files.flatMap(({ path, content }) =>
     [
       ...content.matchAll(
-        /\b(?:localStorage|sessionStorage)\.setItem\(\s*['"]([^'"]+)['"]/gu,
+        /\b(?:localStorage|sessionStorage)\.setItem\s*\(/gu,
       ),
-    ].map((match) => ({ path, key: match[1] })),
+    ].map((match) => ({
+      path,
+      key: content
+        .slice(match.index + match[0].length)
+        .match(/^\s*(['"])([^'"]+)\1/u)?.[2] ?? null,
+    })),
   );
   assert.deepEqual(
     Object.keys(allowlist).filter((key) =>
@@ -93,10 +98,15 @@ test('a planted second storage write fails the inventory reconciliation and the 
   assert.match(fixture.diagnostic, /cookie-storage/u);
   assert.throws(
     () =>
-      reconcileInventory(inventory, allowlist, [
-        ...files,
-        { path: fixture.path, content: fixture.content },
-      ]),
+      reconcileInventory(
+        inventory,
+        allowlist,
+        files.map((file) =>
+          file.path === fixture.path
+            ? { ...file, content: fixture.content }
+            : file,
+        ),
+      ),
     /Expected values to be strictly deep-equal/u,
   );
 });
