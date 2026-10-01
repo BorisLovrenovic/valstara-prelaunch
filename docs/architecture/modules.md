@@ -48,6 +48,7 @@ valstara-prelaunch/
       index.astro                  the landing page
       legit.astro  guarantee.astro  about.astro
       terms.astro  privacy.astro
+      privacy/storage.astro         standalone cookie and storage inventory
       waitlist.astro  leaderboard.astro  me.astro
       verify.astro                 consumes a verification token
       unsubscribe.astro

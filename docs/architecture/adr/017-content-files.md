@@ -5,7 +5,7 @@
 - Deciders: founder
 
 ## Context
-`/legit`, `/guarantee`, `/about`, `/terms` and `/privacy` are the only content on this site that survives into the storefront. They also take the longest to write and carry the highest conversion value.
+`/legit`, `/guarantee`, `/about`, `/terms`, `/privacy` and the `/privacy/storage` inventory are the content pages on this site that survive into the storefront. They also take the longest to write and carry the highest conversion value.
 
 ## Decision
 **All trust and legal prose lives in `src/content/` as Markdown**, never inline in `.astro` markup. Scanned. Each content file **declares the storefront route it ports to**, and that mapping is the port checklist.
@@ -20,6 +20,6 @@
 ## Consequences
 Porting is a copy operation. Frontmatter is schema-validated and **a validation failure fails the build** — a trust page that 404s in production is worse than a slow build.
 
-The content collection frontmatter field is `portTarget`. The trust collection covers `legit.md`, `guarantee.md` and `about.md`; the legal collection covers `terms.md` and `privacy.md`. Their targets are the matching permanent routes. The pipeline ships before the founder's prose, so the collections begin empty and the page tickets supply the Markdown files.
+The content collection frontmatter field is `portTarget`. The trust collection covers `legit.md`, `guarantee.md` and `about.md`; the legal collection covers `terms.md`, `privacy.md` and `privacy-storage.md`. Their targets are the matching permanent routes, including `/privacy/storage`. The pipeline ships before the founder's prose, so the collections begin empty and the page tickets supply the Markdown files.
 
 One dependency this makes explicit: **the prose is a founder input.** The guarantee's terms, the sourcing explanation and the company details come from the brand and store documentation. **This repository does not author them**, and a page shell with placeholder prose is a blocker rather than a deliverable. ADR-029 records the founder's narrow exception for temporary, visibly marked draft `/terms` and `/privacy` text.

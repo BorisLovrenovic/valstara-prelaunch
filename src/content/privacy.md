@@ -41,4 +41,6 @@ This site has one browser-storage entry:
 
 The theme choice is functional and does not identify you. The site sets no tracking cookie. It uses no advertising tracker. The signup form uses Cloudflare Turnstile to prevent abuse; our site does not add a browser-storage identifier for that purpose. This is why the site has no cookie banner.
 
+The [full cookie and storage inventory](/privacy/storage) explains the no-banner basis and the checks that keep it true.
+
 For a question about your data or to ask for access or erasure, write to support@valstara.com.

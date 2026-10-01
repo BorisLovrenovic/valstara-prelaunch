@@ -28,6 +28,7 @@ const expectedTargets = new Map([
   ['about.md', '/about'],
   ['terms.md', '/terms'],
   ['privacy.md', '/privacy'],
+  ['privacy-storage.md', '/privacy/storage'],
   ['VAL-GW-LAUNCH-20260925-r1.md', '/giveaway/rules'],
 ]);
 

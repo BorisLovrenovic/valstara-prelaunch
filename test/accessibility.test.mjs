@@ -327,6 +327,7 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
     '/legit',
     '/me',
     '/privacy',
+    '/privacy/storage',
     '/terms',
     '/unsubscribe',
     '/verify',
@@ -382,6 +383,7 @@ test('trust and legal pages fit mobile and desktop in both themes', async () => 
       '/about',
       '/terms',
       '/privacy',
+      '/privacy/storage',
     ]) {
       for (const width of [320, 1440]) {
         await page.setViewportSize({ width, height: 900 });
@@ -411,6 +413,7 @@ test('trust and legal pages fit mobile and desktop in both themes', async () => 
     '/about',
     '/terms',
     '/privacy',
+    '/privacy/storage',
   ]) {
     assert.notEqual(
       backgrounds.get(`${route}:light`),
