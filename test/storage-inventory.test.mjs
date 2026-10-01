@@ -40,14 +40,13 @@ function reconcileInventory(inventory, allowlist, files) {
   const entries = tableEntries(inventory);
   const writes = files.flatMap(({ path, content }) =>
     [
-      ...content.matchAll(
-        /\b(?:localStorage|sessionStorage)\.setItem\s*\(/gu,
-      ),
+      ...content.matchAll(/\b(?:localStorage|sessionStorage)\.setItem\s*\(/gu),
     ].map((match) => ({
       path,
-      key: content
-        .slice(match.index + match[0].length)
-        .match(/^\s*(['"])([^'"]+)\1/u)?.[2] ?? null,
+      key:
+        content
+          .slice(match.index + match[0].length)
+          .match(/^\s*(['"])([^'"]+)\1/u)?.[2] ?? null,
     })),
   );
   assert.deepEqual(
