@@ -42,7 +42,8 @@ Architecture decision records for the Valstara pre-launch site. One file per sig
 | 024 | No countdown timers, inflated positions or manufactured scarcity | Accepted |
 | **Campaign mechanics and law** | | |
 | 018 | Giveaway jurisdiction exclusions enforced at point of entry | Superseded by 026 |
-| 019 | EU and UK Article 27 representatives named before the first signup | Accepted |
+| 019 | EU and UK Article 27 representatives named before the first signup | Superseded by 029 |
+| 029 | Do not appoint Article 27 representatives for pre-launch | Accepted |
 | 020 | Build the waitlist rather than buy a hosted one | Accepted |
 | 023 | Campaign flags with code-level fail-safe defaults | Accepted |
 | 025 | Campaign business config — tier ladder, wave bands, survey v1 | Accepted |
@@ -51,13 +52,12 @@ Architecture decision records for the Valstara pre-launch site. One file per sig
 | 021 | Launch is a host cutover at the DNS layer, not a deploy | Accepted |
 | 022 | The waitlist database is frozen read-only for 90 days after handoff | Accepted |
 
-26 Accepted · 2 Superseded · 0 Proposed.
+26 Accepted · 3 Superseded · 0 Proposed.
 
 ## Open items
 
 | Ref | Item | Nature | Blocks |
 |---|---|---|---|
-| ADR-019 | Appoint the EU and UK representatives | **Procurement** — longest lead time of any prerequisite | **The privacy policy, which gates the first signup** |
 | ADR-016 | Söhne web licence price — Klim prices interactively at checkout | **Cost confirmation** | Nothing pre-launch; the campaign ships on Instrument Sans |
 | ADR-009 | Brevo tier above 100k emails/month is interpolated, not published | **Cost confirmation** | Nothing — the upgrade decision is already made |
 | ADR-003 | Cloudflare Pages as the alternative host | **Recorded alternative**, not a pending decision | Nothing |

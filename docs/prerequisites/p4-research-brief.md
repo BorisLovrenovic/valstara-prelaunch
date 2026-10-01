@@ -30,7 +30,7 @@ Optimise for **decisions the founder can act on** and for **shrinking the counse
 **Data & privacy posture (already decided):**
 - Governed by **GDPR / UK GDPR** and **ePrivacy**. Lawful basis for the email/country data is **consent** (the double opt-in *is* the consent record).
 - **No cookies, no device fingerprinting, no third-party trackers.** Country is detected from an IP-country header but is always user-overridable.
-- **EU and UK Article 27 representatives** are being appointed separately (that is prerequisite P2).
+- **Historical assumption:** EU and UK Article 27 representatives were to be appointed separately under P2. ADR-029 superseded this on 2026-10-01.
 - Truncated, hashed IP prefixes are stored for fraud prevention (legitimate interest, 90-day retention).
 
 **Geographic scope:**

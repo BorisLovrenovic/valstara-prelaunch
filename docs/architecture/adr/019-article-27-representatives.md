@@ -1,6 +1,6 @@
 # ADR-019: EU and UK Article 27 representatives named before the first signup
 
-- Status: Accepted
+- Status: Superseded by ADR-029
 - Date: 2026-08-25
 - Deciders: founder
 

@@ -48,6 +48,8 @@ Vercel is out of the pre-launch picture entirely. It returns at store launch for
 
 ### 1. Article 27 — what an EU representative actually is
 
+**Historical decision, superseded for this campaign by ADR-029 on 2026-10-01.** The founder decided not to appoint EU or UK representatives. The analysis below records the earlier decision and does not control E9-03.
+
 A **natural or legal person established in the EU**, designated in writing, acting as the contact point for supervisory authorities and data subjects. Key points:
 
 - It is **not** a subsidiary and creates no taxable presence.

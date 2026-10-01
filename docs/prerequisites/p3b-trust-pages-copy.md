@@ -12,7 +12,7 @@
 
 **Contact address, founder name and SubSlush (founder decision, 2026-10-01).** Every contact route on these pages and in the current giveaway rules is support@valstara.com. The founder is named as Boris Lovrenovic. The historical giveaway rules revision remains available at its permanent URL with its original contact addresses; current pre-launch copy makes no mention of SubSlush.
 
-**No dependency on E9-03 or E9-08 (founder decision, 2026-10-01).** E9-02 ships this copy without waiting for either ticket. The representatives paragraph on /legit states the rule the build enforces instead of pointing at a privacy notice that does not exist yet. The Trustpilot paragraph says only that no rating is shown, so the profile link stays in E9-08's scope. /guarantee no longer refers to the privacy notice.
+**No dependency on E9-03 or E9-08 (founder decision, 2026-10-01).** E9-02 shipped this copy without waiting for either ticket. ADR-029 later removed the representatives paragraph from /legit after the founder reversed the appointment decision. The Trustpilot paragraph says only that no rating is shown, so the profile link stays in E9-08's scope. /guarantee does not refer to the privacy notice.
 
 **Warranty cover per category (founder decision, 2026-09-30).** The brand guidelines, section 2.4, require warranty cover to be stated for each category and never as "varies". No per-category terms exist yet. The pre-launch /guarantee page therefore shows the three promises and the price commitment only, and says that per-category terms will be published when the store opens. The section 2.4 rule applies in full from store launch.
 
@@ -46,8 +46,6 @@ Every limited company in Hong Kong is entered on the public register kept by the
 
 The same company details appear in section 1 of the official rules for our launch giveaway, published at valstara.com/giveaway/rules. Every version of those rules stays online at its own permanent address, so no change to them can happen quietly.
 
-Before we accept a single signup, we appoint representatives for data protection in the European Union and in the United Kingdom, and we name them in our privacy notice. They act as our point of contact in those regions, both for you and for data protection authorities.
-
 ## Reviews
 
 We do not show a Trustpilot star rating on this site yet. A score built on a handful of reviews tells you very little, so we will display ours once enough customers have reviewed us for the number to mean something. We will never buy reviews.
@@ -65,15 +63,14 @@ This site sets no tracking cookies and runs no advertising trackers, which is wh
 ### Source notes
 
 1. That Valstara was founded by Boris Lovrenovic comes from the founder's instruction of 2026-10-01, recorded under "Decisions applied" above. That Valstara is a trading brand of 3NITY Digital Limited, registered in Hong Kong, comes from the brand guidelines, section 1.1 and the legal footer in section 3.4. The guidelines keep the entity name to places where it is legally required. This page names it anyway, because the question the page answers cannot be answered without it.
-2. That the company runs the waitlist and the giveaway comes from the approved giveaway rules, section 1 (`docs/prerequisites/p4-rules-page-draft.md`), and `docs/legal/compliance.md`, section 4. That it is responsible for the personal data comes from `docs/legal/compliance.md`, sections 1 and 2, where the Hong Kong company appoints Article 27 representatives as the controller established outside the EU and UK. That it will be the seller comes from the brand guidelines, sections 1.4 and 1.7.
+2. That the company runs the waitlist and the giveaway comes from the approved giveaway rules, section 1 (`docs/prerequisites/p4-rules-page-draft.md`), and `docs/legal/compliance.md`, section 4. That it is responsible for the personal data comes from `docs/legal/compliance.md`, section 2. That it will be the seller comes from the brand guidelines, sections 1.4 and 1.7.
 3. The registered name, Business Registration No. 79886556 and the registered address come from the founder's P4 submission of 2026-09-25 in `docs/prerequisites/founder-prerequisites.md`, and match section 1 of the published giveaway rules (`src/content/giveaway-rules/VAL-GW-LAUNCH-20260925-r1.md`).
 4. That a Hong Kong limited company is entered on the public Companies Registry register, and that the Business Registration Certificate is issued by the Inland Revenue Department, is public-record fact about Hong Kong law, not a repository document. The founder confirmed this paragraph on 2026-10-01. The number 79886556 comes from the same P4 submission as note 3.
 5. That the giveaway rules live at /giveaway/rules and that every version stays online at its own permanent address comes from `docs/legal/compliance.md`, section 4 ("Every published version is immutable at `/giveaway/rules/<rules_version>`").
-6. The representatives paragraph comes from `docs/legal/compliance.md`, section 1, and ADR-019. It states the rule the build enforces rather than a present fact: the signup route is unreachable until the privacy notice names both representatives (E9-03). The sentence is therefore true before and after E9-03 ships, and E9-02 does not depend on it (founder decision, 2026-10-01).
-7. The Trustpilot paragraph comes from `docs/brand/copy-rules.md`, "Claims that must stay true" ("No rating is displayed until the review count justifies it."), and ADR-024. It makes no claim about a link, so it is true before and after E9-08 adds the profile link (founder decision, 2026-10-01). "We will never buy reviews" comes from the brand guidelines, section 8.3.
-8. The contact address support@valstara.com, and its use for every kind of enquiry, comes from the founder's instruction of 2026-10-01 and the current giveaway rules revision `VAL-GW-LAUNCH-20261001-r1`. The kinds of enquiry listed (the waitlist, the giveaway, legal matters, payment enquiries, requests to review a decision) are the ones section 1 of the current rules provides a contact for.
-9. That waitlist email comes from valstara.com comes from the development plan, P1 (`send.valstara.com` and `mail.valstara.com`).
-10. No tracking cookies, no advertising trackers, no banner and the single theme-preference storage value come from `docs/legal/compliance.md`, section 3, and the permanently-out-of-scope list in `AGENTS.md` (no GA4 or Meta pixels, no consent banner). CI gates enforce all of it.
+6. The Trustpilot paragraph comes from `docs/brand/copy-rules.md`, "Claims that must stay true" ("No rating is displayed until the review count justifies it."), and ADR-024. It makes no claim about a link, so it is true before and after E9-08 adds the profile link (founder decision, 2026-10-01). "We will never buy reviews" comes from the brand guidelines, section 8.3.
+7. The contact address support@valstara.com, and its use for every kind of enquiry, comes from the founder's instruction of 2026-10-01 and the current giveaway rules revision `VAL-GW-LAUNCH-20261001-r1`. The kinds of enquiry listed (the waitlist, the giveaway, legal matters, payment enquiries, requests to review a decision) are the ones section 1 of the current rules provides a contact for.
+8. That waitlist email comes from valstara.com comes from the development plan, P1 (`send.valstara.com` and `mail.valstara.com`).
+9. No tracking cookies, no advertising trackers, no banner and the single theme-preference storage value come from `docs/legal/compliance.md`, section 3, and the permanently-out-of-scope list in `AGENTS.md` (no GA4 or Meta pixels, no consent banner). CI gates enforce all of it.
 
 ---
 

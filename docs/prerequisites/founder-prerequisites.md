@@ -11,7 +11,7 @@
 | # | Item | Status | Gates | Do by |
 |---|------|--------|-------|-------|
 | **P1** | DNS records + email authentication | ✅ Satisfied 2026-09-27 | —; E8 unblocked | Done |
-| **P2** | EU + UK Article 27 representatives | 🔴 Outstanding | Privacy policy → **the first signup** | **Today — longest lead time** |
+| **P2** | EU + UK Article 27 representatives | Waived by founder 2026-10-01 (ADR-029) | No representative gate | Done |
 | **P4** | Giveaway prize + final text of the one global rules page (Hong Kong law) | ✅ Supplied 2026-09-25 | Publishing E7-02's page | Done |
 | **P5** | Upgrade Resend + Brevo past free tiers | 🔴 Outstanding | Turning `giveaway.open` on | Before E7 exit |
 | **P7** | The four seed mailboxes (Gmail, Outlook.com, GMX, Web.de) | 🔴 Outstanding | E12-07: the first live seed run and the rendering check | Before E12 |
@@ -19,7 +19,7 @@
 | **P6** | Provision the production VPS | ⚪ Deferred (by design) | Epic E12 | Before E12 |
 | **P3a** | Brand token values | ✅ Satisfied | — | Done |
 
-**P1 is complete; sender-reputation warming continues through E11-08/E12-07. P2 remains urgent because nothing can go live until it exists.**
+**P1 is complete; sender-reputation warming continues through E11-08/E12-07. P2 is waived by the founder under ADR-029.**
 
 ---
 
@@ -61,34 +61,13 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 
 ## P2 — EU and UK Article 27 representatives
 
-- **Status:** 🔴 Outstanding
-- **Nature:** Procurement (~€200–500/year **each** — two appointments, two fees)
-- **Gates:** The **privacy policy**, which gates **the first signup**. While either representative field is a placeholder, the build fails and the signup route is unreachable.
-- **Deadline:** **Start today.** Procurement has the longest lead time of any prerequisite.
-
-### Why this matters
-An Article 27 representative is a **natural or legal person established in the EU**, designated in writing as the contact point for supervisory authorities and data subjects. Key facts:
-- It is **not** a subsidiary and creates **no taxable presence**.
-- Bought as a service — providers include **Prighter, DataRep, EDPO** and similar.
-- Must be established in a member state where the data subjects are.
-- Holds a copy of the records of processing and **must be named in the privacy policy**.
-- **UK GDPR requires a separate UK representative** — so you need **two**: one EU, one UK.
-
-The plan makes this a *hard build gate* rather than a checklist because a checklist item gets forgotten and a missing representative is a live legal exposure the moment the first person signs up.
-
-### Exactly what to do
-1. **Choose a provider** (Prighter, DataRep, EDPO, or comparable) offering both EU and UK Article 27 representation.
-2. **Purchase both appointments** — EU representative and UK representative.
-3. **Obtain the designated details for each**: the representative's **legal name**, **full address**, and the **contact route** (email/postal) that must appear in the privacy policy.
-4. **Provide those details** so they can be placed into the privacy/terms content files (consumed by E9-03). These replace the placeholder fields the build currently rejects.
-5. **File your records of processing** with each representative as their service requires.
-
-### How the build confirms it
-- **E9-03** adds a **build-time assertion that neither the EU nor the UK representative field is a placeholder**; the assertion is fixture-proven, and **the signup route is unreachable while it fails**.
-- **Campaign-open sequencing gate #1:** *"The privacy policy names both representatives, and the build-time assertion for it passes."*
+- **Status:** Waived by founder decision on 2026-10-01 (ADR-029).
+- **Decision:** Valstara will not appoint an EU or UK Article 27 representative for the pre-launch campaign.
+- **Engineering effect:** E9-03 has no representative fields, build assertion or representative-dependent signup gate.
+- **Legal text:** The founder authorised temporary draft `/terms` and `/privacy` text. Reviewed replacement wording remains outstanding and is assessed at E11-05.
 
 ### Source docs
-`docs/plan/development-plan.md` §2 (P2), E9-03 · `docs/legal/compliance.md#1` · `docs/architecture/adr/019-article-27-representatives.md`
+`docs/plan/development-plan.md` §2 (P2), E9-03 · `docs/legal/compliance.md#1` · `docs/architecture/adr/029-no-article-27-representatives.md`
 
 ---
 
@@ -126,34 +105,13 @@ The plan makes this a *hard build gate* rather than a checklist because a checkl
 
 ## P2 — EU and UK Article 27 representatives
 
-- **Status:** 🔴 Outstanding
-- **Nature:** Procurement (~€200–500/year **each** — two appointments, two fees)
-- **Gates:** The **privacy policy**, which gates **the first signup**. While either representative field is a placeholder, the build fails and the signup route is unreachable.
-- **Deadline:** **Start today.** Procurement has the longest lead time of any prerequisite.
-
-### Why this matters
-An Article 27 representative is a **natural or legal person established in the EU**, designated in writing as the contact point for supervisory authorities and data subjects. Key facts:
-- It is **not** a subsidiary and creates **no taxable presence**.
-- Bought as a service — providers include **Prighter, DataRep, EDPO** and similar.
-- Must be established in a member state where the data subjects are.
-- Holds a copy of the records of processing and **must be named in the privacy policy**.
-- **UK GDPR requires a separate UK representative** — so you need **two**: one EU, one UK.
-
-The plan makes this a *hard build gate* rather than a checklist because a checklist item gets forgotten and a missing representative is a live legal exposure the moment the first person signs up.
-
-### Exactly what to do
-1. **Choose a provider** (Prighter, DataRep, EDPO, or comparable) offering both EU and UK Article 27 representation.
-2. **Purchase both appointments** — EU representative and UK representative.
-3. **Obtain the designated details for each**: the representative's **legal name**, **full address**, and the **contact route** (email/postal) that must appear in the privacy policy.
-4. **Provide those details** so they can be placed into the privacy/terms content files (consumed by E9-03). These replace the placeholder fields the build currently rejects.
-5. **File your records of processing** with each representative as their service requires.
-
-### How the build confirms it
-- **E9-03** adds a **build-time assertion that neither the EU nor the UK representative field is a placeholder**; the assertion is fixture-proven, and **the signup route is unreachable while it fails**.
-- **Campaign-open sequencing gate #1:** *"The privacy policy names both representatives, and the build-time assertion for it passes."*
+- **Status:** Waived by founder decision on 2026-10-01 (ADR-029).
+- **Decision:** Valstara will not appoint an EU or UK Article 27 representative for the pre-launch campaign.
+- **Engineering effect:** E9-03 has no representative fields, build assertion or representative-dependent signup gate.
+- **Legal text:** The founder authorised temporary draft `/terms` and `/privacy` text. Reviewed replacement wording remains outstanding and is assessed at E11-05.
 
 ### Source docs
-`docs/plan/development-plan.md` §2 (P2), E9-03 · `docs/legal/compliance.md#1` · `docs/architecture/adr/019-article-27-representatives.md`
+`docs/plan/development-plan.md` §2 (P2), E9-03 · `docs/legal/compliance.md#1` · `docs/architecture/adr/029-no-article-27-representatives.md`
 
 ---
 

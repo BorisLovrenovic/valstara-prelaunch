@@ -21,7 +21,7 @@ Flags exist for one reason: **so a mechanic can be switched off during an incide
 
 **Three flags default off.** `trustpilot.widget` is off because a rating below the display threshold is worse than none (ADR-024) — that is a brand decision, and it is turned on by judgement rather than by a gate.
 
-**Two of the three are hard gates**, and this is the distinction that matters: `giveaway.open` and `email.broadcast` each depend on something **outside the code** — published rules pages and appointed representatives for one, verified DNS authentication and an upgraded ESP tier for the other. Neither may be turned on until its prerequisite is complete, and E8-09 enforces the ESP one in code.
+**Two of the three are hard gates**, and this is the distinction that matters: `giveaway.open` and `email.broadcast` each depend on something **outside the code** — published rules pages for one, verified DNS authentication and an upgraded ESP tier for the other. ADR-029 removed the representative prerequisite. Neither may be turned on until its remaining prerequisite is complete, and E8-09 enforces the ESP one in code.
 
 ## Not flagged, deliberately
 

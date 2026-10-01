@@ -37,7 +37,7 @@ The ticket lives in `docs/plan/development-plan.md`, which is the **single sourc
 - The ticket and its referenced docs conflict, or leave open a decision that materially changes the implementation (interface shape, data model, state machine, flag behaviour, scope).
 - **The ticket contradicts the wider plan.** Because you have read all of it, you are the check on it: flag it if this ticket's scope, interfaces, data shapes or assumptions clash with its epic's goal, the standing rules, what earlier tickets built, or what later tickets assume. **A contradiction caught now costs one question; caught six tickets later it costs a rewrite.**
 - The ID and title do not resolve to the same ticket.
-- **A founder prerequisite the ticket depends on is outstanding** — brand token values, trust-page prose, the Article 27 representatives, the giveaway rules text, an ESP upgrade, or DNS authentication. **Never invent one of these.** Two of the five are legally significant if a placeholder ships.
+- **A founder prerequisite the ticket depends on is outstanding** — brand token values, trust-page prose, giveaway rules text, an ESP upgrade, or DNS authentication. **Never invent one of these.** ADR-029 waived the former Article 27 representative prerequisite and authorised visibly marked draft legal text for E9-03 only.
 - The ticket depends on an unrecorded founder decision — an unapproved paid service, an unresolved `Proposed` ADR, a missing configuration value.
 
 End the run with:

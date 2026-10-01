@@ -16,7 +16,7 @@ You are diagnosing and **minimally** fixing a CI failure for the Valstara pre-la
 
 **Main pipeline adds:** image build and GHCR push (path-filtered). It does not deploy.
 
-**Several gates are build-time assertions**, so a "build" failure may actually be a metadata, frontmatter, placeholder or representative-name assertion firing. Read the message before assuming it is a compile error.
+**Several gates are build-time assertions**, so a "build" failure may actually be a metadata, frontmatter or placeholder assertion firing. Read the message before assuming it is a compile error. ADR-029 removed the representative-name assertion.
 
 ## Step 2 — Reproduce locally, before changing anything
 

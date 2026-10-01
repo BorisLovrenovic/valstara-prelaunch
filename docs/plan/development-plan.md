@@ -46,7 +46,7 @@ Five items no agent can complete. Each gates something, and the gate is stated s
 | # | Item | Nature | Gates | Start by |
 |---|---|---|---|---|
 | **P1** | ~~DNS records and email authentication~~ — **SATISFIED 2026-09-27.** SPF, DKIM and DMARC `p=none` are published for `send.valstara.com` and `mail.valstara.com`; Resend and Brevo report their respective domains as verified. `subslush.com` is out of scope (ADR-028). Sender-reputation warming continues | Configuration | Nothing. E8 is unblocked; warming is evidenced at E11-08/E12-07 | Done |
-| **P2** | **Appoint the EU and UK Article 27 representatives** | Procurement, €200–500/yr each | **The privacy policy, which gates the first signup.** E9-03 asserts their presence at build time and the signup route is unreachable while it fails | **Today** |
+| **P2** | **EU and UK Article 27 representatives waived by founder decision, 2026-10-01** (ADR-029) | Founder decision | No representative gate | Done |
 | **P3a** | ~~Brand token values~~ — **SATISFIED.** In the repository at `docs/brand/identity-guidelines.md` §5 (colour) and §6 (typography), LOCKED | — | Nothing. E2-01 is unblocked | Done |
 | **P3b** | **Trust-page prose** — `/legit`, `/guarantee`, `/about` | Founder input from the brand and store documentation | E9-02. **A page shell with placeholder text is not a deliverable** | Before E9 |
 | **P4** | **Giveaway prize and the final text of the single global rules page (Hong Kong law)** — **supplied 2026-09-25:** 5 bundles at €300 (€1,500), entries 1 Oct 2026 – 1 Mar 2027, draw 1 Apr 2027, the promoter **3NITY DIGITAL LIMITED** (Business Registration No. 79886556) with its registered address and contacts, and the layered substitution rule. The approved text is in `docs/prerequisites/p4-rules-page-draft.md`. **P4 is complete.** Bundle contents (due before the draw) and the sanctions list (due before the first award) are deliberately **not** blockers (ADR-026) | Founder input. One global page under Hong Kong law — no per-country rules or local review (founder decision, 2026-09-25, ADR-026) | Nothing now — satisfied | Done |
@@ -1534,9 +1534,9 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 
 ## Epic E9 — Content, trust, legal and SEO
 
-**Goal:** the pages that survive into the storefront, at their permanent URLs, plus the legal machinery that gates the first signup. *8 tickets.*
+**Goal:** the pages that survive into the storefront, at their permanent URLs, plus the legal content and rights machinery. *8 tickets.*
 
-**Exit criteria:** the trust and legal pages are live at permanent URLs with real prose, the representatives are named, data-subject rights work, and the port checklist is complete.
+**Exit criteria:** the trust and legal pages are live at permanent URLs with real prose, data-subject rights work, and the port checklist is complete.
 
 **Start this epic's content tickets early, in parallel with E3–E5.** It has the longest founder-input lead time and the highest conversion value, and it is on the never-cut list.
 
@@ -1571,22 +1571,20 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 
 ### E9-03 — Legal pages and the representative gate
 **Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** security
-**Why this model:** this ticket implements the gate that makes a legal obligation unforgettable, and the gate has to be un-bypassable to be worth anything.
+**Why this model:** these are public legal pages for a system holding personal data, and their contents must match the recorded founder decision.
 
-**Build:** `/terms` and `/privacy` from content files. **A build-time assertion that neither the EU nor the UK representative field is a placeholder**, and **the signup route is unreachable while that assertion fails.**
-
-**BLOCKED if P2 is outstanding** — which is the point.
+**Build:** `/terms` and `/privacy` from content files. Founder decision 2026-10-01 (ADR-029): do not appoint EU or UK Article 27 representatives; remove the representative assertion and its signup gate.
 
 **Acceptance criteria:**
-- **The build fails if either representative field is a placeholder** — fixture-proven
-- **The signup route is unreachable while the assertion fails** — asserted, not documented
+- Neither page names or implies an appointed EU or UK representative
+- The signup route has no representative-dependent gate
 - Every collected field, its purpose, its lawful basis and its retention period appears in the policy — **reconciled against `docs/data/model.md` by a test**
 - **The policy states the ADR-027 split plainly:** joining and entering run on contract, marketing runs on separate optional consent, and withdrawing marketing never affects the waitlist place or entries. It also names the winner-only collection of country of residence, with no postal address (ADR-026)
 - The cookie and storage inventory is published and lists **exactly one** entry
 - Pages are at their permanent URLs
 
-**Tests:** The placeholder fixture failing the build · the signup-unreachable assertion · the data-model reconciliation · the inventory count.
-**Docs:** `docs/legal/compliance.md` · `docs/architecture/adr/019-article-27-representatives.md`
+**Tests:** The no-representative-claim assertion · the signup route's independence from representative fields · the data-model reconciliation · the inventory count.
+**Docs:** `docs/legal/compliance.md` · `docs/architecture/adr/019-article-27-representatives.md` · `docs/architecture/adr/029-no-article-27-representatives.md`
 
 ### E9-04 — The cookie and storage inventory
 **Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
@@ -1877,7 +1875,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Build:** A single verified checklist, **every item evidenced rather than asserted**:
 
 - All flags at their intended state — **`giveaway.open` off unless P4 and P5 are complete**
-- **Both Article 27 representatives named**, and the build assertion passing
+- **The founder's decision not to appoint Article 27 representatives is recorded** (ADR-029); no representative assertion remains
 - **SPF, DKIM and DMARC verified on both sending domains** (`send.valstara.com`, `mail.valstara.com`), and the seed harness scheduled with its spam alert drilled. The first live inbox landing at all four providers is E12-07's, because live keys stay off local machines until then (founder-authorised 2026-09-29)
 - **Both ESP tiers upgraded past the free caps**
 - The global giveaway rules page published, its current `rules_version` and SHA-256 recorded, and the prize pool within the ADR-026 limits
@@ -1893,7 +1891,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 - **Every item verified with evidence recorded per line**
 - Any open blocker from any QA gate is closed
 - **Any `Proposed` ADR is either resolved or its feature is flag-off**
-- The founder prerequisites P1–P5 are all complete
+- The founder prerequisites P1–P5 are complete or expressly waived, including P2 under ADR-029
 
 **Tests:** The checklist is the gate.
 **Docs:** This plan · `docs/architecture/adr/README.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
@@ -2021,7 +2019,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 - The E12-03 rollback timing recorded and inside five minutes
 - Every flag at its intended state — **`giveaway.open` and `email.broadcast` off** until P4 and P5 complete
 - **The E11-08 campaign launch gate re-verified on the real host**, not on a laptop
-- Every founder prerequisite P1, P2, P3b, P4, P5 complete
+- Every founder prerequisite P1, P2, P3b, P4, P5 complete or expressly waived, including P2 under ADR-029
 
 **Acceptance criteria:**
 - **Every item verified with evidence recorded per line**
@@ -2046,7 +2044,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 | S-01 Standalone | 1 | **Align built work with the Hong Kong giveaway strategy** (ADR-026, ADR-027) — runs before E7 |
 | E7 Giveaway | 6 | Entry eligibility, **one global rules page**, entry ledger, free entry route, **reproducible draw**, awards |
 | E8 Email | 10 | Service, unsubscribe, Resend, templates, transactional queue producers, seed tests, Brevo, bounces, weekly, quotas |
-| E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, **the representative gate**, inventory, DSR, SEO, OG, llms.txt |
+| E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, legal pages, inventory, DSR, SEO, OG, llms.txt |
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
