@@ -10,6 +10,8 @@ const trust = defineCollection({
   }),
   schema: z.object({
     portTarget: z.enum(['/legit', '/guarantee', '/about']),
+    title: z.string().min(1),
+    description: z.string().min(1),
   }),
 });
 

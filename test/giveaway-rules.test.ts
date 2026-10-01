@@ -11,10 +11,10 @@ import {
   type GiveawayRulesData,
 } from '../src/server/giveaway/rules.ts';
 
-const rulesVersion = 'VAL-GW-LAUNCH-20260925-r1';
+const rulesVersion = 'VAL-GW-LAUNCH-20261001-r1';
 const source = readFileSync(
   new URL(
-    '../src/content/giveaway-rules/VAL-GW-LAUNCH-20260925-r1.md',
+    '../src/content/giveaway-rules/VAL-GW-LAUNCH-20261001-r1.md',
     import.meta.url,
   ),
   'utf8',
@@ -26,7 +26,7 @@ const approvedSource = readFileSync(
 );
 const baseData = {
   rulesVersion,
-  publishedOn: '2026-09-25',
+  publishedOn: '2026-10-01',
   revision: 1,
   portTarget: '/giveaway/rules',
   title: 'Valstara Launch Giveaway — Official Rules',
@@ -67,7 +67,7 @@ function fixture(
 test('the approved rules have every required section and statement', () => {
   const revision = validateRulesRevision(fixture());
   assert.equal(revision.rulesVersion, rulesVersion);
-  assert.equal(revision.publishedOn, '2026-09-25');
+  assert.equal(revision.publishedOn, '2026-10-01');
   assert.equal(
     body.trim(),
     approvedSource
@@ -154,6 +154,18 @@ test('required legal statements cannot be silently removed', () => {
     () => validateRulesRevision(fixture({ body: withPostalCollection })),
     /missing a required statement/u,
   );
+  assert.throws(
+    () =>
+      validateRulesRevision(
+        fixture({
+          body: body.replace(
+            'support@valstara.com within 14 days',
+            'unlisted@example.com within 14 days',
+          ),
+        }),
+      ),
+    /missing a required statement/u,
+  );
 });
 
 test('a published revision cannot change rendered content under its recorded hash', () => {
@@ -186,7 +198,7 @@ test('catalogue selects the latest appended revision and preserves old versions'
     validateRulesCatalog([first]).current.rulesVersion,
     rulesVersion,
   );
-  const nextVersion = 'VAL-GW-LAUNCH-20260925-r2';
+  const nextVersion = 'VAL-GW-LAUNCH-20261001-r2';
   const nextInput = fixture({
     data: { rulesVersion: nextVersion, revision: 2 },
   });

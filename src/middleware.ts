@@ -19,6 +19,7 @@ function configuredMiddleware(): ReturnType<typeof createAdminAuthMiddleware> {
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const method = context.request.method;
+  const staticPath = context.url.pathname.replace(/\/$/u, '');
   if (
     !context.isPrerendered &&
     method !== 'GET' &&
@@ -46,8 +47,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
   if (
     context.isPrerendered &&
-    (context.url.pathname === '/giveaway/rules' ||
-      context.url.pathname.startsWith('/giveaway/rules/'))
+    (staticPath === '/legit' ||
+      staticPath === '/guarantee' ||
+      staticPath === '/about' ||
+      staticPath === '/giveaway/rules' ||
+      staticPath.startsWith('/giveaway/rules/'))
   ) {
     return next();
   }

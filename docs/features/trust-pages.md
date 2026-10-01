@@ -16,6 +16,16 @@ None. They are content, and content that can be switched off is not trust conten
 ## Content sourcing — a named dependency
 **The prose is a founder input, not an engineering decision.** The guarantee's terms, the sourcing explanation and the company details come from the brand and store documentation, and this repository must not invent them. The build delivers: the content pipeline, the routes, the schema markup, the styling and the porting contract. **A page shell with placeholder prose is a blocker, not a deliverable** — see the founder prerequisites in the development plan.
 
+The founder-approved page copy and claim-by-claim source notes are in `docs/prerequisites/p3b-trust-pages-copy.md`. E9-02 transcribes the page sections into `src/content/legit.md`, `guarantee.md` and `about.md`; the source notes remain in the prerequisite so visitors see only page copy. The pre-launch sentence on `/guarantee` is retained without its editorial label and is removed at the storefront port. The 2026-10-01 founder revision makes these pages independent of the later privacy notice and Trustpilot link tickets.
+
+| Content file | Permanent storefront target |
+|---|---|
+| `src/content/legit.md` | `/legit` |
+| `src/content/guarantee.md` | `/guarantee` |
+| `src/content/about.md` | `/about` |
+
+Each page is prerendered from the trust content collection. The trust-page layout has no client script; the light and dark palettes follow the visitor's colour-scheme preference through `src/styles/tokens.css`.
+
 ## Edge cases and error states
 Content file missing or failing frontmatter validation → **the build fails.** A trust page that 404s in production is worse than a slow build. A claim that cannot be substantiated → it does not ship; `docs/brand/copy-rules.md` governs. Content changed after the storefront port has begun → **reconcile in this repository first**, then re-port, and record the checkpoint.
 

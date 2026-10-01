@@ -97,7 +97,9 @@ The most important asset in the brand. It is the productised form of the entire 
 Every order is fulfilled by hand, Monday to Friday, within 24 hours of purchase.
  
 **II — Protected, start to finish.**
-256-bit encryption throughout. PCI-compliant payment handling. Your data is never shared or sold.
+256-bit encryption throughout. PCI-compliant payment handling. Your data is never sold.
+
+*Amended 2026-10-01, founder-authorised. The promise previously read "never shared or sold". Email addresses necessarily reach the email providers so that mail can be delivered, and `docs/brand/copy-rules.md` forbids the "never share" claim for that reason.*
  
 **III — Resolved, replaced, or refunded.**
 If anything goes wrong at any point during your subscription period, we resolve it. If it cannot be resolved, we replace it. If it cannot be replaced, we refund you. In that order, without argument.

@@ -319,9 +319,12 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
   // when a new route appears without joining the accessibility pass.
   assert.deepEqual(routes, [
     '/',
+    '/about',
     '/giveaway/award',
     '/giveaway/rules',
+    '/guarantee',
     '/leaderboard',
+    '/legit',
     '/me',
     '/unsubscribe',
     '/verify',
@@ -363,6 +366,42 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
       );
       await context.close();
     }
+  }
+});
+
+test('trust pages fit mobile and desktop in both themes', async () => {
+  const backgrounds = new Map();
+  for (const colorScheme of themes) {
+    const context = await browser.newContext({ colorScheme });
+    const page = await context.newPage();
+    for (const route of ['/legit', '/guarantee', '/about']) {
+      for (const width of [320, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(`${browserOrigin}${route}`);
+        const metrics = await page.evaluate(() => ({
+          width: globalThis.document.documentElement.scrollWidth,
+          background: globalThis.getComputedStyle(globalThis.document.body)
+            .backgroundColor,
+          heading: globalThis.document.querySelector('h1')?.textContent,
+        }));
+        assert.ok(metrics.heading, `${route} needs a visible heading`);
+        assert.ok(
+          metrics.width <= width,
+          `${route} overflows at ${width}px in ${colorScheme}`,
+        );
+        if (width === 320) {
+          const key = `${route}:${colorScheme}`;
+          backgrounds.set(key, metrics.background);
+        }
+      }
+    }
+    await context.close();
+  }
+  for (const route of ['/legit', '/guarantee', '/about']) {
+    assert.notEqual(
+      backgrounds.get(`${route}:light`),
+      backgrounds.get(`${route}:dark`),
+    );
   }
 });
 

@@ -1,6 +1,6 @@
 # P4 — Draft text for the global giveaway rules page
 
-> **Status:** approved by the founder on 2026-09-25. This is the source text E7-02 transcribes into the `/giveaway/rules` content file. The mechanics come from ADR-026 and ADR-027; the facts come from P4 in `docs/prerequisites/founder-prerequisites.md`.
+> **Status:** approved by the founder on 2026-09-25; contact routes revised by the founder on 2026-10-01. This is the source text for the current `/giveaway/rules` revision, `VAL-GW-LAUNCH-20261001-r1`. The original `VAL-GW-LAUNCH-20260925-r1` remains unchanged at its permanent URL. The mechanics come from ADR-026 and ADR-027; the facts come from P4 in `docs/prerequisites/founder-prerequisites.md`.
 >
 > **Nothing blocks publishing.**
 >
@@ -18,8 +18,7 @@
 
 The giveaway is run by **3NITY DIGITAL LIMITED** ("we", "us"), a company registered in Hong Kong under Business Registration No. 79886556, at Unit B, 12/F, Hang Seng Causeway Bay Building, 28 Yee Wo Street, Causeway Bay, Hong Kong.
 
-- Questions about the giveaway: **hello@subslush.com**
-- Legal and payment enquiries, and requests to review a decision: **compliance@subslush.com**
+- Questions about the giveaway, legal and payment enquiries, and requests to review a decision: **support@valstara.com**
 
 Our EU and UK data-protection representatives are listed in our [Privacy Notice](/privacy). They are not the organisers of this giveaway.
 
@@ -112,7 +111,7 @@ We may remove entries, or disqualify an entrant, for:
 
 Our systems may flag unusual activity, but **a person reviews every case before anyone is disqualified.** If you are disqualified, you can't win a prize and the entries you earned from referrals are removed. The entries of people you referred are not affected.
 
-If you think we got it wrong, email **compliance@subslush.com within 14 days** of our decision and a person will review it again.
+If you think we got it wrong, email **support@valstara.com within 14 days** of our decision and a person will review it again.
 
 ## 12. Winner publicity
 
