@@ -182,6 +182,7 @@ export function createEmailService(
     ) {
       throw new RangeError('Email queue identifiers must be nonempty.');
     }
+    if ((await repo.recipient(input.subscriberId)) === null) return false;
     await repo.lockBusinessKey(input.businessKey);
     if (await repo.findByBusinessKey(input.businessKey)) return false;
     const unsubscribe = await createVerificationService(connection, {

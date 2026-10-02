@@ -59,13 +59,19 @@ export function createTopTwentyReviewRepository(
       return database.list<TopTwentyEntryRow>(
         {
           text: `
-            SELECT giveaway_entry.subscriber_id::text
-            FROM giveaway_entry
-            WHERE giveaway_entry.voided_at IS NULL
-            GROUP BY giveaway_entry.subscriber_id
-            ORDER BY
-              SUM(giveaway_entry.entries) DESC,
-              giveaway_entry.subscriber_id ASC
+            WITH review_entries AS (
+              SELECT id,subscriber_id,entries FROM giveaway_entry
+              WHERE voided_at IS NULL AND NOT EXISTS
+                (SELECT 1 FROM dsr_erasure e WHERE e.subscriber_id=giveaway_entry.subscriber_id)
+              UNION
+              SELECT s.entry_id,s.subscriber_id,1 FROM giveaway_draw_snapshot_row s
+                JOIN giveaway_draw d ON d.id=s.draw_id
+                JOIN dsr_erasure e ON e.subscriber_id=s.subscriber_id
+                WHERE d.state <> 'aborted' AND d.snapshot_committed_at IS NOT NULL
+            )
+            SELECT subscriber_id::text FROM review_entries
+            GROUP BY subscriber_id
+            ORDER BY SUM(entries) DESC, subscriber_id ASC
           `,
         },
         limit,

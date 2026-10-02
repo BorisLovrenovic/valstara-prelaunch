@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      49,
+      51,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -203,7 +203,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
           ORDER BY table_name
         `,
       },
-      30,
+      33,
     );
     const giveawayRulesVersionColumn = await fixture.database.readOne<{
       data_type: string;
@@ -268,6 +268,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0047-weekly-expiry-observation.sql',
       '0048-leaderboard-served-snapshot.sql',
       '0049-email-quota.sql',
+      '0050-data-subject-rights.sql',
+      '0051-erasure-constraints.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -322,6 +324,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0047-weekly-expiry-observation.sql',
         '0048-leaderboard-served-snapshot.sql',
         '0049-email-quota.sql',
+        '0050-data-subject-rights.sql',
+        '0051-erasure-constraints.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -337,18 +341,21 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'brevo_contact_sync',
         'campaign_flag',
         'domain_allow',
+        'dsr_erasure',
         'email_broadcast_seed_test',
         'email_quota_alert',
         'email_reconciliation_cursor',
         'email_seed_test',
         'email_send',
         'email_webhook_event',
+        'erasure_ledger',
         'fraud_flag',
         'giveaway_award',
         'giveaway_award_candidate',
         'giveaway_draw',
         'giveaway_draw_selection',
         'giveaway_draw_snapshot_row',
+        'giveaway_draw_void',
         'giveaway_entry',
         'leaderboard_served_snapshot',
         'leaderboard_snapshot',
@@ -462,10 +469,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          49,
+          51,
         );
 
-        assert.equal(appliedCount, 49);
+        assert.equal(appliedCount, 51);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -518,6 +525,8 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0047-weekly-expiry-observation.sql',
             '0048-leaderboard-served-snapshot.sql',
             '0049-email-quota.sql',
+            '0050-data-subject-rights.sql',
+            '0051-erasure-constraints.sql',
           ],
         );
       } finally {

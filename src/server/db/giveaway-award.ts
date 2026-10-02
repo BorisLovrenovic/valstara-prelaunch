@@ -72,6 +72,21 @@ export function createGiveawayAwardRepository(db: DatabaseConnection) {
         values: [id],
       });
     },
+    erasedSubject(id: string) {
+      return db.readOne({
+        text: "SELECT id FROM subscriber WHERE id=$1 AND status IN ('erasure_pending','erased')",
+        values: [id],
+      });
+    },
+    provisionalForSubject(id: string) {
+      return db.list<AwardRow>(
+        {
+          text: "SELECT * FROM giveaway_award WHERE subscriber_id=$1 AND state='notified' ORDER BY id FOR UPDATE",
+          values: [id],
+        },
+        awardBatchLimit,
+      );
+    },
     async replacedCandidate(
       awardId: string,
       subscriberId: string,
@@ -150,7 +165,7 @@ export function createGiveawayAwardRepository(db: DatabaseConnection) {
       drawId: string;
       position: string;
       outcome: 'confirmed' | 'replaced';
-      reason: 'age' | 'sanctions' | 'skill' | 'deadline' | null;
+      reason: 'age' | 'sanctions' | 'skill' | 'deadline' | 'erasure' | null;
       at: Date;
     }): Promise<number> {
       return db.execute({

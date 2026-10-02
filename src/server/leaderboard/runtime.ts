@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { getConfig, getWeeklySendConfiguration } from '../config.ts';
 import { createPool, type DatabasePool } from '../db/pool.ts';
 import { weeklyWindow } from '../email/weekly-campaign.ts';
@@ -43,4 +44,10 @@ export function getLeaderboardSnapshot(): ReturnType<
     started = true;
   }
   return snapshot;
+}
+
+export function redactLeaderboardSubject(id: string): void {
+  snapshot?.redact(
+    createHash('sha256').update(id).digest('base64url').slice(0, 12),
+  );
 }

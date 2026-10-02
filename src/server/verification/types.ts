@@ -3,7 +3,7 @@
  * is bound to exactly one purpose at issue and is invalid for any other, so a
  * status link can never be replayed as a verification.
  */
-export type TokenPurpose = 'verify' | 'status' | 'unsubscribe';
+export type TokenPurpose = 'verify' | 'status' | 'unsubscribe' | 'dsr_export' | 'dsr_delete';
 
 /**
  * The outcome of consuming a token.

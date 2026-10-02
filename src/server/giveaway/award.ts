@@ -213,7 +213,7 @@ export function createAwardService(
   async function replace(
     connection: DatabaseConnection,
     award: AwardRow,
-    reason: 'age' | 'sanctions' | 'skill' | 'deadline',
+    reason: 'age' | 'sanctions' | 'skill' | 'deadline' | 'erasure',
     now: Date,
   ): Promise<AwardOutcome> {
     const repo = createGiveawayAwardRepository(connection);
@@ -319,6 +319,19 @@ export function createAwardService(
   }
 
   return {
+    async excludeErasure(
+      connection: DatabaseConnection,
+      subscriberId: string,
+    ): Promise<void> {
+      const repo = createGiveawayAwardRepository(connection);
+      await repo.lockFlow();
+      for (;;) {
+        const rows = await repo.provisionalForSubject(subscriberId);
+        for (const award of rows)
+          await replace(connection, award, 'erasure', clock());
+        if (rows.length < awardBatchLimit) break;
+      }
+    },
     async initialize(): Promise<number> {
       if (!(await dependencies.flags.isEnabled('giveaway.open'))) return 0;
       return withTransaction(database, async (connection) => {
@@ -356,7 +369,16 @@ export function createAwardService(
             awardId: id,
             selection,
           });
-          await queueNotice(connection, id, draw.id, selection, now);
+          if (await repo.erasedSubject(selection.subscriber_id)) {
+            await replace(
+              connection,
+              (await repo.awardById(id))!,
+              'erasure',
+              now,
+            );
+          } else {
+            await queueNotice(connection, id, draw.id, selection, now);
+          }
           count += 1;
         }
         return count;

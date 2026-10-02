@@ -6,6 +6,7 @@ import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 import { createSharedLeaderboardSnapshotStore } from '../leaderboard/persisted.ts';
 import { createRankingIntegrityService } from '../referral/ranking.ts';
 
+import { dsrRenderers } from '../dsr/templates.ts';
 import { createResendProvider } from './providers/resend.ts';
 import type { BrevoContactProvider } from './providers/brevo.ts';
 import { createTransactionalTemplateData } from './transactional-template-data.ts';
@@ -47,6 +48,7 @@ export function createResendDispatcher(
     renderers:
       renderers ??
       new Map([
+        ...dsrRenderers(config.emailBaseUrl, config.resendSendingDomain),
         ...createTransactionalRenderers({
           baseUrl: config.emailBaseUrl,
           sendingDomain: config.resendSendingDomain,

@@ -250,7 +250,7 @@ export function createReferralRepository(
           FROM referral_edge edge
           JOIN subscriber referred ON referred.id = edge.referred_id
           WHERE edge.referred_id = $1
-            AND edge.state = 'attributed'
+            AND edge.referrer_id IS NOT NULL AND edge.state = 'attributed'
             AND referred.status = 'verified'
         `,
         values: [referredId],

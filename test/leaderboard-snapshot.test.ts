@@ -6,8 +6,11 @@ import {
   createDefaultLeaderboardRoute,
   createLeaderboardRoute,
 } from '../src/pages/api/leaderboard.ts';
-import type { DatabasePool } from '../src/server/db/pool.ts';
-import { flagCacheTtlMilliseconds } from '../src/server/flags/service.ts';
+import type {
+  DatabasePool,
+  DatabaseConnection,
+} from '../src/server/db/pool.ts';
+import { createPersistedSnapshotCache } from '../src/server/leaderboard/persisted.ts';
 import {
   createLeaderboardSnapshotCache,
   leaderboardRefreshIntervalMilliseconds,
@@ -129,10 +132,7 @@ test('E6-01 production route reads only the flag and supplied snapshot and expos
   const response = await route({} as Parameters<typeof route>[0]);
   const body = (await response.json()) as Record<string, unknown>;
   assert.equal(response.status, 200);
-  assert.equal(
-    response.headers.get('Cache-Control'),
-    `public, max-age=${flagCacheTtlMilliseconds / 1_000}`,
-  );
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.equal(reads, 1);
   assert.equal(databaseOperations.length, 1);
   assert.match(databaseOperations[0] ?? '', /FROM\s+campaign_flag/iu);
@@ -180,4 +180,24 @@ test('E6-01 flag-off route response is an honest 503 without reading the snapsho
       message: 'The leaderboard is paused right now.',
     },
   });
+});
+
+test('pending erasure redacts the live leaderboard cache and reranks remaining handles', async () => {
+  const store = createPersistedSnapshotCache(
+    async () => ({
+      id: 'snapshot',
+      asOf: '2026-10-02T12:00:00.000Z',
+      entries: [
+        { rank: 1, displayHandle: 'AAAAAAAAAAAA', confirmedReferrals: 5 },
+        { rank: 2, displayHandle: 'BBBBBBBBBBBB', confirmedReferrals: 4 },
+      ],
+    }),
+    async () => undefined,
+    async (operation) => operation({} as DatabaseConnection),
+  );
+  await store.refresh();
+  store.redact('AAAAAAAAAAAA');
+  assert.deepEqual(store.read()?.entries, [
+    { rank: 1, displayHandle: 'BBBBBBBBBBBB', confirmedReferrals: 4 },
+  ]);
 });

@@ -147,7 +147,20 @@ export function createPersistedSnapshotCache(
     timer.unref?.();
     return { stop: () => timer.clear() };
   };
-  return { read: () => current, refresh, start };
+  return {
+    read: () => current,
+    refresh,
+    start,
+    redact(handle: string) {
+      if (current)
+        current = {
+          ...current,
+          entries: current.entries
+            .filter((e) => e.displayHandle !== handle)
+            .map((e, i) => ({ ...e, rank: i + 1 })),
+        };
+    },
+  };
 }
 
 export async function runSharedSnapshotRefresh(

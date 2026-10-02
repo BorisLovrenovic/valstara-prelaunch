@@ -3,10 +3,7 @@ import type { APIRoute } from 'astro';
 import { leaderboardCopy } from '../../copy/leaderboard.ts';
 import { getConfig } from '../../server/config.ts';
 import { createPool, type DatabasePool } from '../../server/db/pool.ts';
-import {
-  createFlagService,
-  flagCacheTtlMilliseconds,
-} from '../../server/flags/service.ts';
+import { createFlagService } from '../../server/flags/service.ts';
 import type { FlagService } from '../../server/flags/types.ts';
 import { getLeaderboardSnapshot } from '../../server/leaderboard/runtime.ts';
 import type { LeaderboardSnapshotCache } from '../../server/leaderboard/snapshot.ts';
@@ -27,10 +24,7 @@ function jsonResponse(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      'Cache-Control':
-        status === 200
-          ? `public, max-age=${flagCacheTtlMilliseconds / 1_000}`
-          : 'no-store',
+      'Cache-Control': 'no-store',
       'Content-Type': 'application/json; charset=utf-8',
     },
   });

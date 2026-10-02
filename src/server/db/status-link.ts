@@ -21,7 +21,7 @@ export function createStatusLinkRepository(
         text: `
           SELECT id, subscriber_id, purpose, expires_at, consumed_at
           FROM verification_token
-          WHERE token_hash = $1
+          WHERE token_hash = $1 AND EXISTS (SELECT 1 FROM subscriber s WHERE s.id=verification_token.subscriber_id AND s.status NOT IN ('erasure_pending','erased'))
         `,
         values: [tokenHash],
       });

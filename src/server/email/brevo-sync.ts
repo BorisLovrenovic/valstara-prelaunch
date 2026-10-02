@@ -4,6 +4,7 @@ import {
   createBrevoContactSyncRepository,
   maxBrevoSyncBatch,
 } from '../db/brevo-contact-sync.ts';
+import { withTransaction } from '../db/transaction.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import type { FlagService } from '../flags/types.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
@@ -30,15 +31,18 @@ export function createBrevoContactSyncJob(
       const candidates = await repository.candidates(limit);
       let synced = 0;
       for (const candidate of candidates) {
-        if (candidate.eligible) {
-          await provider.upsertContact(
-            candidate.email_normalised,
-            candidate.email,
-          );
-        } else {
-          await provider.removeContact(candidate.email_normalised);
-        }
-        await repository.record(candidate, clock());
+        await withTransaction(database, async (connection) => {
+          const locked = createBrevoContactSyncRepository(connection);
+          const current = await locked.current(candidate.email_normalised);
+          if (current === null) return;
+          if (current.eligible)
+            await provider.upsertContact(
+              current.email_normalised,
+              current.email,
+            );
+          else await provider.removeContact(current.email_normalised);
+          await locked.record(current, clock());
+        });
         synced += 1;
       }
       return { synced, paused: false };

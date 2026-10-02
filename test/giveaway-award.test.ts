@@ -1,3 +1,5 @@
+import { createErasureService } from '../src/server/dsr/service.ts';
+import { withTransaction } from '../src/server/db/transaction.ts';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
@@ -566,3 +568,96 @@ test('award catalog requires founder approval, unique IDs and the stated value',
     ['one'],
   );
 });
+
+for (const retainedState of ['confirmed', 'delivered'] as const)
+  test(`E9-05 erased provisional winner advances past erased reserve; ${retainedState} award evidence is retained unchanged`, async () => {
+    const f = await fixture();
+    try {
+      const people = await Promise.all([
+        person(f.owner),
+        person(f.owner),
+        person(f.owner),
+      ]);
+      await publishedDraw(f.owner, people);
+      const awards = service(f.app, () => timestamp);
+      await awards.initialize();
+      const erasure = createErasureService(f.app, {
+        clock: () => timestamp,
+        deleteContact: async () => {},
+        alerts: { send: async () => {} },
+      });
+      await withTransaction(f.app, (c) => erasure.request(c, people[1]!));
+      await erasure.run();
+      await withTransaction(f.app, (c) => erasure.request(c, people[0]!));
+      await erasure.run();
+      const awarded = await f.owner.readOne<{
+        id: string;
+        subscriber_id: string;
+      }>({ text: 'SELECT id,subscriber_id FROM giveaway_award' });
+      assert.equal(awarded?.subscriber_id, people[2]);
+      const token = await createVerificationService(f.app, {
+        clock: () => timestamp,
+      }).issue(people[2]!, 'status');
+      assert.equal(
+        await awards.submitChecks({
+          ...common,
+          awardId: awarded!.id,
+          token: token.token,
+          country: 'SE',
+          ageConfirmed: true,
+          skillAnswer: '',
+        }),
+        'confirmed',
+      );
+      if (retainedState === 'delivered')
+        await f.owner.execute({
+          text: "UPDATE giveaway_award SET state='delivered', delivered_at=$2 WHERE id=$1",
+          values: [awarded!.id, timestamp],
+        });
+      const before = await f.owner.readOne({
+        text: 'SELECT * FROM giveaway_award WHERE id=$1',
+        values: [awarded!.id],
+      });
+      const candidate = await f.owner.readOne({
+        text: 'SELECT * FROM giveaway_award_candidate WHERE subscriber_id=$1',
+        values: [people[2]],
+      });
+      const identity = await f.owner.readOne<{ email: string }>({
+        text: 'SELECT email FROM subscriber WHERE id=$1',
+        values: [people[2]],
+      });
+      await withTransaction(f.app, (c) => erasure.request(c, people[2]!));
+      await erasure.run();
+      assert.deepEqual(
+        await f.owner.readOne({
+          text: 'SELECT * FROM giveaway_award WHERE id=$1',
+          values: [awarded!.id],
+        }),
+        before,
+      );
+      assert.deepEqual(
+        await f.owner.readOne({
+          text: 'SELECT * FROM giveaway_award_candidate WHERE subscriber_id=$1',
+          values: [people[2]],
+        }),
+        candidate,
+      );
+      assert.equal(
+        (
+          await f.owner.readOne({
+            text: 'SELECT email FROM subscriber WHERE id=$1',
+            values: [people[2]],
+          })
+        )?.email,
+        null,
+      );
+      assert.equal(JSON.stringify(before).includes(identity!.email), false);
+      const replaced = await f.owner.readOne({
+        text: 'SELECT reason FROM giveaway_award_candidate WHERE subscriber_id=$1',
+        values: [people[0]],
+      });
+      assert.equal(replaced?.reason, 'erasure');
+    } finally {
+      await f.close();
+    }
+  });

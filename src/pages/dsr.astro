@@ -1,0 +1,58 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { dsrCopy } from '../copy/dsr.ts';
+import { getConfig } from '../server/config.ts';
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+const operation =
+  Astro.url.searchParams.get('operation') === 'delete' ? 'delete' : 'export';
+const token = Astro.url.searchParams.get('t');
+const copy = dsrCopy[operation];
+---
+
+<BaseLayout title={dsrCopy.title} description={dsrCopy.description}>
+  <section>
+    <h1>{copy.heading}</h1>
+    <p>{copy.body}</p>
+    <form method="post" action={`/api/dsr/${operation}`}>
+      {
+        token !== null ? (
+          <input type="hidden" name="token" value={token} />
+        ) : (
+          <>
+            <label for="dsr-email">{dsrCopy.email}</label>
+            <input
+              id="dsr-email"
+              name="email"
+              type="email"
+              required
+              autocomplete="email"
+            />
+            <div
+              class="cf-turnstile"
+              data-sitekey={getConfig().turnstileSiteKey}
+              data-response-field-name="turnstile_token"
+            />
+            <noscript>
+              <p>{dsrCopy.noJavaScript}</p>
+            </noscript>
+          </>
+        )
+      }
+      <button type="submit"
+        >{token !== null ? copy.button : dsrCopy.request}</button
+      >
+    </form>
+    <p><a href="/privacy">{dsrCopy.privacy}</a></p>
+  </section>
+  {
+    token === null && (
+      <script
+        is:inline
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+        async
+        defer
+      />
+    )
+  }
+</BaseLayout>

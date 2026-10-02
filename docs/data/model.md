@@ -23,10 +23,10 @@ The waitlist row.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid pk | |
-| `email` | text not null | **As entered.** What we display and mail to |
-| `email_normalised` | text not null **unique** | Lowercased, `+tag` stripped, dots removed for Gmail-family domains. **The uniqueness key** |
-| `email_domain` | text not null | Denormalised for blocklist and analytics queries |
-| `status` | text not null | `pending` · `verified` · `expired` · `unsubscribed` · `bounced` · `disqualified` |
+| `email` | text; null only when erased | **As entered.** What we display and mail to |
+| `email_normalised` | text **unique**; null only when erased | Lowercased, `+tag` stripped, dots removed for Gmail-family domains. **The uniqueness key** |
+| `email_domain` | text; null only when erased | Denormalised for blocklist and analytics queries |
+| `status` | text not null | `pending` · `verified` · `expired` · `unsubscribed` · `bounced` · `disqualified` · `erasure_pending` · `erased` |
 | `category_preference` | text[] | From the survey. Carried into the handoff |
 | `source` | text | Bucketed acquisition source |
 | `utm` | jsonb | `source`, `medium`, `campaign`, `content`, `term`; null when none. Captured server-side with the signed referral field; each value is trimmed, control-character-free and capped at 128 characters, with the serialized object capped at 512 bytes. Analytics-only |
@@ -36,7 +36,7 @@ The waitlist row.
 | `confirmed_referrals` | int not null default 0 | **Derived** from `referral_edge`; recomputable |
 | `access_window` | text | `wave-1`…`wave-4`. Assigned at verification from tier and verification order; band thresholds are config (ADR-025) |
 | `subslush_customer` | boolean not null default false | Provenance. Becomes the `subslush-legacy` group at handoff |
-| `giveaway_rules_version` | text | **The global rules version in force when the subscriber first became a giveaway entrant** (E7-03, on first accrual). Written once and never overwritten; null until then. Distinct from `giveaway_entry.rules_version`, which stamps each accrual |
+| `giveaway_rules_version` | text | **The global rules version in force when the subscriber first became a giveaway entrant** (E7-03, on first accrual). Written once and never overwritten while active; nulled on erasure. Null until first accrual. Distinct from `giveaway_entry.rules_version`, which stamps each accrual |
 | `marketing_consent_at` | timestamptz null | **When the current marketing consent took effect** — at verification for a signup opt-in, or immediately for an opt-in from `/me`. Null means no marketing consent (ADR-027) |
 | `marketing_consent_version` | text null | The version of the opt-in wording the person agreed to |
 | `marketing_consent_source` | text null | `signup` · `member_status`. `marketing_consent_at`, `_version` and `_source` are all null or all set (check constraint) |
@@ -46,7 +46,7 @@ The waitlist row.
 | `verified_at` `unsubscribed_at` `expired_at` `disqualified_at` | timestamptz | |
 | `disqualification_previous_status` | text null | Status restored only by reversing the flag that disqualified the subscriber |
 | `disqualified_by_flag_id` | uuid null → `fraud_flag` | The human-reviewed flag that caused the current disqualification |
-| `created_at` `updated_at` | timestamptz not null | |
+| `created_at` `updated_at` | timestamptz; null on erasure | |
 
 Indexes: `email_normalised` (unique) · `referral_code` (unique) ·
 `referred_by_id` · `(status, created_at)` ·
@@ -65,7 +65,7 @@ Indexes: `email_normalised` (unique) · `referral_code` (unique) ·
 | `id` | uuid pk | |
 | `subscriber_id` | uuid not null → `subscriber` | |
 | `token_hash` | bytea not null unique | **SHA-256 of the token. The plaintext is never stored** — it exists only in the emailed URL |
-| `purpose` | text not null | `verify` · `status` · `unsubscribe` |
+| `purpose` | text not null | `verify` · `status` · `unsubscribe` · `dsr_export` · `dsr_delete` |
 | `expires_at` | timestamptz not null | |
 | `consumed_at` | timestamptz null | Single use. A second consume is a **no-op that reports success** |
 | `created_at` | timestamptz not null | |
@@ -85,8 +85,8 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid pk | |
-| `referrer_id` | uuid not null → `subscriber` | |
-| `referred_id` | uuid not null → `subscriber` **unique** | **One edge per referred person, forever.** The unique constraint is the anti-fraud primitive |
+| `referrer_id` | uuid nullable → `subscriber` | Nulled on erasure; when the referrer is erased, both endpoints are nulled so an immutable draw source-edge ID cannot identify the referred person | |
+| `referred_id` | uuid nullable → `subscriber` **unique** | **One edge per referred person, forever.** The unique constraint is the anti-fraud primitive |
 | `state` | text not null | `attributed` · `confirmed` · `rejected` |
 | `reward_state` | text not null | `none` · `settled` · `held` · `void` |
 | `rejected_reason` | text null | `self_referral` · `duplicate_identity` · `referrer_disqualified` · `manual` |
@@ -125,6 +125,10 @@ E7-05 records one active draw (`pending` or `published`; an attempt whose target
 
 After the future round is published, the same draw row stores its verified round number, randomness, signature, optional previous signature, the relay used, both agreeing relays, the derived SHA-256 seed, `seed_generated_at`, ordered winner IDs, `reproduced_at`, and `published_at`. `giveaway_draw_selection` retains **one row per person** in deterministic draw order, with a winner marker for the first `prize_count` rows and all remaining rows as ordered reserves. Positions may have gaps because they follow the sorted entry tickets; their order is authoritative. `attempt_count`, `next_attempt_at`, and `last_alert_at` preserve bounded retry state during a beacon outage. **Publication requires offline signature verification and exact reproduction of the snapshot hash, every entry score, winners and reserves.** No fresh draw or local seed replaces a pending one. Draw records and snapshots are retained for six years under the policy in `docs/legal/compliance.md`.
 
+**E9-05 erasure contract (founder-authorised 2026-10-01):** before commitment, erasure sets the subject's `giveaway_entry.voided_at`, excluding those entries from the snapshot. After commitment, erasure never modifies `giveaway_draw`, `giveaway_draw_snapshot_row` or `giveaway_draw_selection`. Snapshot and selection rows retain only the opaque subscriber ID as the subject reference; no mapping from that ID back to a person may remain after erasure. Their original evidence continues to reproduce exactly, including before publication.
+
+E9-05 creates a separate immutable, append-only draw-void record containing `draw_id`, opaque subscriber ID, reason `erasure`, `voided_at` and actor. Its database permissions and constraints ship with the table under standing rule 19. This appended record records erasure without changing the committed snapshot or selection.
+
 ## `giveaway_award`
 
 Created by E7-06. One row per prize: the draw, the current provisional or confirmed winner, the award state (`notified` · `confirmed` · `delivered` · `exhausted`), the winner's **country of residence — the only location data the campaign holds, collected from provisional winners at award time; no postal address, because prizes are delivered electronically** (ADR-026), the delivery timestamp field, the age confirmation, the sanctions-check and Canadian skill-testing outcomes, any substitution, and optional publicity permission. Replaced candidates and their reasons live in the candidate history. Kept 6 years with the draw records.
@@ -132,6 +136,10 @@ Created by E7-06. One row per prize: the draw, the current provisional or confir
 E7-06 stores one `giveaway_award` row per `(draw_id, prize_slot)`, with a write-protected `entry_snapshot_hash` equal to the published draw's hash and foreign keys to the selected row and entry in that snapshot. The award row records `notified_at` and the Section 9 response deadline. A separate `giveaway_award_candidate` claim is unique on `(draw_id, selection_position)` and records every checked or replaced person, so a reserve cannot be reused for another prize. On failed or missed Section 9 checks the award row moves to the next unclaimed reserve; if none remains it becomes `exhausted`. Passing checks sets `confirmed` and never reassigns the prize for substitution.
 
 `country_of_residence` is a two-letter code and is written only after status-token authentication and a Section 9 check. `substitution_state` is `none`, `offered`, `replacement`, or `cash`. An offer records its own timestamp, configured deadline and an immutable copy of the approved catalog options and values presented to that winner. A replacement stores the selected product IDs and delivered retail value; an explicit decline or offer expiry stores cash equal only to the unavailable products' value in that recorded offer, even if the catalog later changes. Both remain attached to the same confirmed winner. The award and candidate records remain in the six-year manual retention set. No postal address is stored.
+
+**E9-05 retention exception (founder-authorised 2026-10-01):** `giveaway_award` and `giveaway_award_candidate` rows for anyone who reached the award stage are retained unchanged for six years on erasure. This includes country of residence, age confirmation, check outcomes, substitution, values and timestamps. They reference only the opaque subscriber ID, never an email. Every email and other personal field outside this award-record exception is erased, winners included. GDPR Art. 17(3)(b) for sanctions checks and Art. 17(3)(e) for legal claims are the recorded bases in `docs/legal/compliance.md` §2 and `/privacy`.
+
+The award workflow adds candidate reason `erasure`: a current provisional winner who is erased is replaced by the next unclaimed reserve, and erased reserves are skipped when reached. This required replacement changes the candidate outcome through the award workflow; erasure does not scrub the retained evidence. Confirmed or delivered awards are never reassigned and their award data remains intact. Section 9 already covers advancement to the next reserve, so no rules revision is needed.
 
 ## `top_twenty_review_batch` and `top_twenty_review`
 
@@ -277,12 +285,20 @@ The pepper is a secret with a handling procedure of its own: rotating it invalid
 
 ## Retention summary
 
+**E9-05 backup and processor contract (founder-authorised 2026-10-02):** stop processing immediately, remove the local Brevo contact cache, and erase live personal data including `suppression` after Brevo confirms deletion. A new signup must complete double opt-in again. Brevo contact deletion uses DELETE by `ext_id`, with bounded retries, 404 as success and a P1 operator task after seven days. Completion requires Brevo confirmation. Resend has no deletion call and its sending-only key is unchanged. Both providers' delivery logs expire under processor retention.
+
+E9-05 creates an append-only erasure ledger whose only fields are opaque subscriber ID and `erased_at`; no email or other personal data is allowed. Permissions and constraints ship with the table. The idempotent, batch-capped re-apply command processes every ledger ID, including against a restored database where the subject is still present. No restored database serves traffic until the newest available ledger has been applied. E12-04 owns the scheduled off-host ledger copy to R2.
+
+Existing pgBackRest backups are unmodified, encrypted and beyond use, never read for ordinary processing, and expire through weekly full backup rotation with `retention-full=2`. The disclosed window is **up to 30 days**. Backup expiry and processor delivery-log retention are the only additions to the 2026-10-01 award-record exception.
+
 | Data | Retention | Mechanism |
 |---|---|---|
 | `signup_ip_prefix_hash` | 90 days | Daily purge job |
 | Unverified `pending` subscribers | Campaign-configured horizon (default 30 days) | Daily expiry sweep → `expired` |
 | Verification and status tokens | Purged 30 days after expiry | Daily, 1,000-row-capped sweep; P1 on failure |
 | `rate_limit_bucket` | 7 days | Daily cleanup |
+| Personal data in existing encrypted backups after erasure | Up to 30 days, beyond use | Weekly full backup rotation, `retention-full=2`; re-apply newest erasure ledger before restored traffic |
+| Provider delivery logs after erasure | Limited period under processor retention | Resend and Brevo processor expiry; no Resend deletion call |
 | The public giveaway rules page | 12 months after the final award, then `410` (Valstara policy, not a statute) | Manual, checklisted |
 | Every rules revision, entry snapshot, seed, reserve list and award record | 6 years internally (Valstara policy) | Manual, checklisted |
 | Marketing-consent evidence | While consent is relied on, plus the evidential period after withdrawal | Audit log |
@@ -314,3 +330,23 @@ This is what the schema exists to make trivial. Prelaunch owns the export and th
 **Groups, not metadata, are what promotions and price lists target.** Metadata carries provenance; the group carries the access it grants. Both are written, and the group assignment is the one the store actually uses.
 
 **Rehearsed twice against a scratch database before launch day** (E11-06). A rehearsal that is not idempotent — running it twice produces duplicate customers — is a blocking finding.
+
+## E9-05 erasure and export structures
+
+The final 2026-10-02 founder decision supersedes immediate local erasure and the earlier P2 failure path. The pending state preserves the original subscriber identity until Brevo DELETE by `ext_id` succeeds or returns 404. Nothing copies that identifier into retry metadata. Pending subjects are excluded from mail, sync upserts, `/me`, leaderboard and draw/award/entry eligibility. The status cannot return to active processing. A deferred database constraint requires pending-request evidence and requires an erasure-ledger entry for an erased row. The erasure transaction nulls identifying subscriber fields and referral endpoints, removes survey, milestone, email and token records, scrubs fraud evidence, deletes suppression and the Brevo cache, and clears related rate buckets. Existing confirmed edges remain countable for their surviving referrer. Immutable audit records retain only their opaque links and redacted evidence; award/candidate evidence is the explicit six-year exception.
+
+### `dsr_erasure`
+
+`subscriber_id` UUID primary key and subscriber foreign key · `requested_at` not-null timestamp · `attempts` nonnegative integer, default 0 · `next_attempt_at` not-null timestamp at or after request · nullable `escalated_at`, `deadline_alerted_at`, `completed_at`. A partial due index covers unfinished requests. The application may SELECT, INSERT and update only retry/completion fields. No email or encrypted identifier is stored. Completion is atomic with local erasure and audit. Retry delay starts at one minute and caps at one hour. Seven-day expiry raises P1; day-28 and subsequent daily P1 alerts protect the 30-day hard deadline. The operator completion CLI records its human actor.
+
+### `erasure_ledger`
+
+`subscriber_id` UUID primary key · `erased_at` not-null timestamp, and no other fields. SELECT/INSERT only for the application; UPDATE/DELETE are also rejected by an immutability trigger. No foreign key requires the subject to exist in a restored database. Re-application imports the newest available ledger and processes all IDs in bounded batches, idempotently. E12-04 owns its scheduled off-host copy.
+
+### `giveaway_draw_void`
+
+`draw_id` UUID foreign key · `subscriber_id` opaque UUID · `reason` constrained to `erasure` · `voided_at` not-null timestamp · nonempty `actor`. Primary key `(draw_id, subscriber_id)`. A trigger requires a committed snapshot row for that subject. The application has SELECT/INSERT only; UPDATE/DELETE are rejected by an immutability trigger. Original draw/snapshot/selection evidence remains unchanged. Award candidate reasons now also accept `erasure`.
+
+### Export coverage
+
+`src/server/db/dsr-export.ts` registers subject-scoped tables. Every row includes every column through `to_jsonb`, reconciled against the model and schema by test. Referral counterparts, other winners, operator identities and third-party fraud evidence are redacted. NDJSON is streamed in 100-row pages under a repeatable-read transaction, with a fulfilment audit at successful completion. DSR tokens use distinct `dsr_export` and `dsr_delete` purposes with a 24-hour lifetime. An export replay is acknowledged without exporting again; invalid/expired links use one response. No plaintext token is persisted.
