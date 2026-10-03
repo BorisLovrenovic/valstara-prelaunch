@@ -2,6 +2,7 @@
 import { layoutCopy } from '../copy/layout.ts';
 import ThemeToggle from '../islands/ThemeToggle.astro';
 import { themeBootstrapScript } from '../islands/theme-toggle.ts';
+import { canonicalUrl, jsonLd, organisationData } from '../server/seo.ts';
 import '../styles/tokens.css';
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
+const canonical = canonicalUrl(Astro.url.pathname);
 ---
 
 <!doctype html>
@@ -19,6 +21,13 @@ const { title, description } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={jsonLd(organisationData())}
+    />
+    <slot name="head" />
     <link
       rel="preload"
       href="/fonts/instrument-sans-latin-wght-normal.woff2"

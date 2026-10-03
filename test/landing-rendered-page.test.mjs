@@ -276,13 +276,25 @@ test('the landing page ships only the theme toggle and signup form islands', asy
   const turnstileLoader = scripts.filter((script) =>
     script.attributes.includes('challenges.cloudflare.com/turnstile'),
   );
+  const structuredData = scripts.filter((script) =>
+    script.attributes.includes('type="application/ld+json"'),
+  );
 
   assert.equal(theme.length, 2, 'the two theme-toggle scripts ship');
   assert.equal(signupIsland.length, 1, 'exactly one signup form island ships');
   assert.equal(turnstileLoader.length, 1, 'the Turnstile loader ships once');
   assert.equal(
+    structuredData.length,
+    1,
+    'one inert Organisation JSON-LD block ships',
+  );
+  assert.equal(JSON.parse(structuredData[0].content)['@type'], 'Organization');
+  assert.equal(
     scripts.length,
-    theme.length + signupIsland.length + turnstileLoader.length,
+    theme.length +
+      signupIsland.length +
+      turnstileLoader.length +
+      structuredData.length,
     'no other script ships (no third island)',
   );
 

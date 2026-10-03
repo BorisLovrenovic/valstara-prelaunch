@@ -1,15 +1,26 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import type { RulesRevision } from '../server/giveaway/rules.ts';
+import { jsonLd, rulesPageData, rulesPageMetadata } from '../server/seo.ts';
 
 interface Props {
   revision: RulesRevision;
 }
 
 const { revision } = Astro.props;
+const metadata = rulesPageMetadata(
+  revision,
+  Astro.url.pathname.replace(/\/+$/u, '') === '/giveaway/rules',
+);
 ---
 
-<BaseLayout title={revision.title} description={revision.description}>
+<BaseLayout title={metadata.title} description={metadata.description}>
+  <script
+    is:inline
+    slot="head"
+    type="application/ld+json"
+    set:html={jsonLd(rulesPageData(revision, Astro.url.pathname))}
+  />
   <article
     class="rules-content"
     data-rules-version={revision.rulesVersion}

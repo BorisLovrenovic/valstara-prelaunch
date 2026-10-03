@@ -1218,6 +1218,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 - The current `rules_version` and hash are available to the server from the same source that renders the page
 - Prose is in content files, never inline; structured data validates; pages are **retained, not redirected**, at store launch
 
+**Structured-data ownership (founder-authorised 2026-10-03):** E9-06 fulfils this ticket's outstanding "structured data validates" criterion for the current rules page and every published revision. The published rules content and recorded article hashes remain unchanged.
+
 **Tests:** Section completeness · the prize-limit build-failure fixture · the placeholder fixture · the "to be announced" rendering and the no-dummy-products scan · revision immutability and hash match · the required-statement checks.
 **Docs:** `docs/legal/compliance.md` · `docs/architecture/adr/026-global-giveaway-hong-kong-law.md` · `docs/features/legal-and-dsr.md` · `docs/ops/launch-cutover.md`
 
@@ -1631,7 +1633,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 ### E9-06 — SEO foundations
 **Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
-**Build:** Per-page title, description and canonical, **enforced at build time.** Sitemap **generated from the route set.** `robots.txt` allowing the trust and legal pages and excluding `/me`, `/verify`, `/api` and the admin routes. Organisation structured data.
+**Build:** Per-page title, description and canonical, **enforced at build time.** Sitemap **generated from the route set.** `robots.txt` allowing the trust and legal pages and excluding `/me`, `/verify`, `/api` and the admin routes. Organisation structured data. The current `/giveaway/rules` page and every `/giveaway/rules/<rules_version>` revision also emit schema.org WebPage JSON-LD with `name`, their own permanent `url`, `publisher` pointing to the Organisation entity, `version` from `rules_version`, and `datePublished` from validated revision frontmatter. Generate this in the layout without editing published rules content files. Do not emit Event, Offer, Product, prize, odds or date claims in structured data. The current page and each versioned URL are self-canonical, as distinct permanent records (founder-authorised 2026-10-03).
 
 **Acceptance criteria:**
 - **A page without a unique title or description fails the build**
@@ -1640,7 +1642,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 - Structured data validates
 - Canonicals point at the permanent URLs
 
-**Tests:** The missing-metadata build fixture · sitemap/route-set reconciliation · structured-data validation.
+**Tests:** The missing-metadata build fixture · sitemap/route-set reconciliation · structured-data validation covering the Organisation, current rules page and every published revision · every revision's recorded SHA-256 still matches the served article.
 **Docs:** `docs/features/seo.md`
 
 ### E9-07 — OG images and social cards

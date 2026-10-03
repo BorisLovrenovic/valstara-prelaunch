@@ -322,7 +322,15 @@ test('the built route contains the third island and no fourth', async () => {
   const leaderboard = scripts.filter((script) =>
     script.content.includes('valstara-leaderboard'),
   );
+  const structuredData = scripts.filter((script) =>
+    script.attributes.includes('type="application/ld+json"'),
+  );
   assert.equal(theme.length, 2);
   assert.equal(leaderboard.length, 1);
-  assert.equal(scripts.length, theme.length + leaderboard.length);
+  assert.equal(structuredData.length, 1);
+  assert.equal(JSON.parse(structuredData[0].content)['@type'], 'Organization');
+  assert.equal(
+    scripts.length,
+    theme.length + leaderboard.length + structuredData.length,
+  );
 });

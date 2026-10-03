@@ -150,6 +150,16 @@ test(
     assert.match(html, /three automated checks guard this/iu);
     assert.match(html, /href="\/privacy"/u);
     assert.match(privacyHtml, /href="\/privacy\/storage"/u);
-    assert.doesNotMatch(html, /<script\b|\.js(?:["?]|$)/iu);
+    const dataBlocks = [
+      ...html.matchAll(
+        /<script type="application\/ld\+json">([\s\S]*?)<\/script>/gu,
+      ),
+    ];
+    assert.equal(dataBlocks.length, 1);
+    assert.equal(JSON.parse(dataBlocks[0][1])['@type'], 'Organization');
+    assert.doesNotMatch(
+      html.replace(dataBlocks[0][0], ''),
+      /<script\b|\.js(?:["?]|$)/iu,
+    );
   },
 );
