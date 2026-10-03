@@ -9,6 +9,7 @@ import { createUnsubscribeRepository } from '../server/db/unsubscribe.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
 import { createReferralService } from '../server/referral/service.ts';
 import { presentReferralStatus } from '../server/referral/status-presentation.ts';
+import { dsrCopy } from '../copy/dsr.ts';
 import { createMarketingService } from '../server/subscriber/marketing.ts';
 import type { ReferralStatus } from '../server/referral/status.ts';
 import { hashedIpPrefix } from '../server/ratelimit/ip-prefix.ts';
@@ -254,6 +255,12 @@ const dashboardView =
         ) : null}
 
         <section class="member-status-section">
+          <p>
+            <a href="/dsr?operation=export">{dsrCopy.export.heading}</a>
+          </p>
+          <p>
+            <a href="/dsr?operation=delete">{dsrCopy.delete.heading}</a>
+          </p>
           <h2>{memberStatusCopy.leave.heading}</h2>
           <p>{memberStatusCopy.leave.body}</p>
           <form

@@ -98,7 +98,7 @@ export function createEmailRepository(database: DatabaseConnection) {
         text: `SELECT s.email, s.email_normalised, s.marketing_consent_at,
           s.status, EXISTS (SELECT 1 FROM suppression x
             WHERE x.email_normalised = s.email_normalised) AS suppressed
-          FROM subscriber s WHERE s.id = $1`,
+          FROM subscriber s WHERE s.id = $1 AND s.status NOT IN ('erasure_pending','erased') FOR SHARE OF s`,
         values: [subscriberId],
       });
     },

@@ -471,3 +471,48 @@ test('the form flow sets no cookie and writes no storage', async () => {
   );
   await context.close();
 });
+
+test('DSR request loads only approved Turnstile; emailed confirmation is inert and adds no browser storage', async () => {
+  for (const query of [
+    '?operation=delete',
+    '?operation=export&t=inert-test-token',
+  ]) {
+    const context = await browser.newContext();
+    const external = [];
+    await context.route('https://challenges.cloudflare.com/**', (route) =>
+      route.fulfill({ contentType: 'text/javascript', body: '' }),
+    );
+    const page = await context.newPage();
+    page.on('request', (request) => {
+      if (new URL(request.url()).origin !== browserOrigin)
+        external.push(new URL(request.url()).hostname);
+    });
+    try {
+      const response = await page.goto(`${browserOrigin}/dsr${query}`, {
+        waitUntil: 'load',
+      });
+      assert.equal(response.status(), 200);
+      assert.equal(response.headers()['cache-control'], 'private, no-store');
+      assert.equal(response.headers()['referrer-policy'], 'no-referrer');
+      assert.deepEqual(
+        external,
+        query.includes('&t=') ? [] : ['challenges.cloudflare.com'],
+      );
+      assert.deepEqual(await context.cookies(), []);
+      assert.deepEqual(
+        await page.evaluate(() => ({
+          local: Object.keys(globalThis.localStorage),
+          session: Object.keys(globalThis.sessionStorage),
+        })),
+        { local: [], session: [] },
+      );
+      assert.equal(await page.locator('form').getAttribute('method'), 'post');
+      assert.equal(
+        await page.locator('[name="token"]').count(),
+        query.includes('&t=') ? 1 : 0,
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});

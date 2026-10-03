@@ -320,6 +320,7 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
   assert.deepEqual(routes, [
     '/',
     '/about',
+    '/dsr',
     '/giveaway/award',
     '/giveaway/rules',
     '/guarantee',

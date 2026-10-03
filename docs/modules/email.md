@@ -82,3 +82,7 @@ it inserted a row, so the award workflow audits a notification only once.
 
 ## Contract tests
 Duplicate business key rejected by the database · suppression written between queue and dispatch stops the send · a provider outage leaves the subscriber row committed · config test on domains and providers · webhook signature verified before parse · replayed webhook is a no-op · dispatch honours its limit · quota projection triggers at the documented headroom.
+
+## E9-05 rights and pending erasure
+
+The transactional registry includes `dsr_export` and `dsr_delete`, carrying only a token ID in the durable payload. Pending or erased subscribers cannot queue or dispatch mail. Dispatch and Brevo sync hold a shared subscriber lock through the provider operation, so pending confirmation cannot commit ahead of an in-flight send or upsert. The pending transaction clears the Brevo sync cache; no retry metadata copies the address. Erasure DELETEs the Brevo contact by `ext_id`, treating 404 as success. It never broadens Resend's sending-only key. Late webhook/reconciliation events ignore addresses without an active subject, so they cannot recreate erased suppression. Processor delivery logs follow processor retention.

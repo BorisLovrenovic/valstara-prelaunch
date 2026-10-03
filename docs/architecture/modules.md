@@ -165,3 +165,7 @@ Jobs only ever **materialise, remind, expire and repair.** Nothing a customer is
 | Cloudflare Turnstile | New module behind the same `verify(token, ip)` interface | ADR-006 |
 | Umami | Analytics module is the seam; events are schema-defined, not vendor-shaped | ADR-007 |
 | Hosting (VPS → Cloudflare Pages) | **Astro adapter swap.** The API routes and data layer are the constraint — Pages means moving PostgreSQL access to a Worker-compatible driver, which is a real cost and is why the VPS is the default | ADR-003 |
+
+### Data-subject rights (E9-05)
+
+`src/server/dsr` owns signed rights-request orchestration, subject export, provider-confirmed erasure and restore/manual commands. SQL and schema live in `src/server/db/dsr*`. Erasure coordinates the entry and award locks, referral anonymisation, email/suppression deletion and append-only audit/ledger evidence. Maintenance resumes pending erasures without copying the original email. The award module retains ownership of provisional replacement.

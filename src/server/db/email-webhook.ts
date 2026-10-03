@@ -15,6 +15,14 @@ export function createEmailWebhookRepository(database: DatabaseConnection) {
       source: WebhookProvider,
       at: Date,
     ): Promise<void> {
+      // Delayed processor logs must not recreate an erased email. Lock the
+      // live subject so suppression and erasure serialize in either order.
+      const subject = await database.readOne<{ id: string }>({
+        text: `SELECT id FROM subscriber WHERE email_normalised=$1
+          AND status NOT IN ('erasure_pending','erased') FOR SHARE`,
+        values: [emailNormalised],
+      });
+      if (subject === null) return;
       await database.execute({
         text: `INSERT INTO suppression (email_normalised, reason, source, created_at)
           VALUES ($1, $2, $3, $4) ON CONFLICT (email_normalised) DO NOTHING`,

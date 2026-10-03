@@ -5,6 +5,7 @@ import type { EmailProvider } from '../service.ts';
 export interface BrevoContactProvider extends EmailProvider {
   upsertContact(emailNormalised: string, email: string): Promise<void>;
   removeContact(emailNormalised: string): Promise<void>;
+  deleteContact(emailNormalised: string): Promise<void>;
   listReconciliationEvents(input: {
     event: 'hardBounces' | 'spam';
     startDate: string;
@@ -187,6 +188,15 @@ export function createBrevoProvider(
         updateEnabled: true,
       });
       if (!response.ok) throw new Error('brevo_contact_upsert_rejected');
+    },
+    async deleteContact(emailNormalised) {
+      const response = await call(
+        `/contacts/${encodeURIComponent(emailNormalised)}?identifierType=ext_id`,
+        'DELETE',
+        undefined,
+      );
+      if (!response.ok && response.status !== 404)
+        throw new Error('brevo_contact_delete_rejected');
     },
     async removeContact(emailNormalised) {
       const identifier = encodeURIComponent(emailNormalised);

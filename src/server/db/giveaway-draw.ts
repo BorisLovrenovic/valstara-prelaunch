@@ -81,7 +81,7 @@ export function createGiveawayDrawRepository(database: DatabaseConnection) {
         {
           text: `SELECT id::text, subscriber_id::text, method,
                       source_edge_id::text, rules_version, rules_sha256
-               FROM giveaway_entry WHERE voided_at IS NULL
+               FROM giveaway_entry WHERE voided_at IS NULL AND NOT EXISTS (SELECT 1 FROM subscriber s WHERE s.id=giveaway_entry.subscriber_id AND s.status IN ('erasure_pending','erased'))
                  AND ($1::uuid IS NULL OR id > $1::uuid)
                ORDER BY id`,
           values: [afterId],
@@ -93,7 +93,7 @@ export function createGiveawayDrawRepository(database: DatabaseConnection) {
       return database
         .readOne<{ count: string }>({
           text: `SELECT count(DISTINCT subscriber_id)::text AS count
-               FROM giveaway_entry WHERE voided_at IS NULL`,
+               FROM giveaway_entry WHERE voided_at IS NULL AND NOT EXISTS (SELECT 1 FROM subscriber s WHERE s.id=giveaway_entry.subscriber_id AND s.status IN ('erasure_pending','erased'))`,
         })
         .then((row) => Number(row?.count ?? 0));
     },

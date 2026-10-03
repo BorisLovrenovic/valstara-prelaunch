@@ -190,6 +190,29 @@ const relatedPolicyFields = {
       'created_at',
     ],
   },
+  dsr_erasure: {
+    'Data-subject requests': [
+      'subscriber_id',
+      'requested_at',
+      'attempts',
+      'next_attempt_at',
+      'escalated_at',
+      'deadline_alerted_at',
+      'completed_at',
+    ],
+  },
+  erasure_ledger: {
+    'Data-subject requests': ['subscriber_id', 'erased_at'],
+  },
+  giveaway_draw_void: {
+    'Giveaway entries': [
+      'draw_id',
+      'subscriber_id',
+      'reason',
+      'voided_at',
+      'actor',
+    ],
+  },
   brevo_contact_sync: {
     'Optional marketing choice': [
       'email_normalised',

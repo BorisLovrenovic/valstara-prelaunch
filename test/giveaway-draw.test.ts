@@ -1,3 +1,5 @@
+import { createErasureService } from '../src/server/dsr/service.ts';
+import { withTransaction } from '../src/server/db/transaction.ts';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -674,6 +676,93 @@ test('E7-05 keeps the entry ledger closed after an aborted committed draw', asyn
         values: [randomUUID(), ids[0]],
       }),
       /entries are closed/u,
+    );
+  } finally {
+    await f.close();
+  }
+});
+
+test('E9-05 erasure before commitment excludes entries; post-commit erasure preserves exact publication and reproduction', async () => {
+  const f = await fixture();
+  try {
+    const ids = await reviewedEntrants(f);
+    const state = { outage: false, latestRound: 100, calls: 0 };
+    const alerts: Alert[] = [];
+    const now = { value: originalCommit };
+    const erasure = createErasureService(f.app, {
+      clock: () => now.value,
+      deleteContact: async () => {},
+      alerts: {
+        send: async (a) => {
+          alerts.push(a);
+        },
+      },
+    });
+    await withTransaction(f.app, (c) => erasure.request(c, ids[0]!));
+    await erasure.run();
+    // Before commitment the ranking changed, so a human re-reviews the new set.
+    await createTopTwentyReviewGate(f.app).reviewCurrentTopTwenty(
+      ids
+        .slice(1)
+        .map((subscriberId) => ({ subscriberId, outcome: 'cleared' })),
+      'operator',
+    );
+    const service = setup(f, state, alerts, now);
+    const committed = await service.executeDraw('operator');
+    const before = await f.owner.list(
+      {
+        text: 'SELECT * FROM giveaway_draw_snapshot_row WHERE draw_id=$1 ORDER BY entry_id',
+        values: [committed.id],
+      },
+      100,
+    );
+    assert.ok(before.length > 0);
+    assert.ok(before.every((row) => row.subscriber_id !== ids[0]));
+    await withTransaction(f.app, (c) => erasure.request(c, ids[1]!));
+    await erasure.run();
+    assert.deepEqual(
+      await f.owner.list(
+        {
+          text: 'SELECT * FROM giveaway_draw_snapshot_row WHERE draw_id=$1 ORDER BY entry_id',
+          values: [committed.id],
+        },
+        100,
+      ),
+      before,
+    );
+    assert.equal(
+      (
+        await f.app.readOne({
+          text: 'SELECT reason FROM giveaway_draw_void WHERE draw_id=$1 AND subscriber_id=$2',
+          values: [committed.id, ids[1]],
+        })
+      )?.reason,
+      'erasure',
+    );
+    await assert.rejects(
+      f.app.execute({
+        text: `INSERT INTO giveaway_draw_void(draw_id,subscriber_id,reason,voided_at,actor)
+          VALUES($1,$2,'erasure',$3,'operator')`,
+        values: [committed.id, ids[2], now.value],
+      }),
+      /recorded erasure request/,
+    );
+    await assert.rejects(
+      f.app.execute({
+        text: `INSERT INTO giveaway_draw_void(draw_id,subscriber_id,reason,voided_at,actor)
+          VALUES($1,$2,'fraud',$3,'operator')`,
+        values: [committed.id, ids[1], now.value],
+      }),
+    );
+    now.value = committed.targetRoundAt;
+    assert.equal(await service.advancePending(), true);
+    assert.equal(await service.reproduceDraw(committed.id), true);
+    await assert.rejects(
+      f.app.execute({ text: 'UPDATE giveaway_draw_void SET reason=reason' }),
+    );
+    await assert.rejects(
+      f.owner.execute({ text: 'DELETE FROM giveaway_draw_void' }),
+      /append-only/,
     );
   } finally {
     await f.close();

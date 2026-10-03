@@ -77,3 +77,7 @@ message.
 
 ## Contract tests
 Replay returns `already` · a `status` token rejected by `consume(_, 'verify')` · plaintext absent from every persisted field · expiry honoured under an injected clock · `purgeExpired()` honours its limit · a tampered token and an expired token produce identical output.
+
+## E9-05 rights links
+
+`dsr_export` and `dsr_delete` are separate single-use purposes with a 24-hour lifetime. Emailed links render an inert confirmation form; POST consumes the matching purpose before rate limiting and rights work, in the same transaction. Replay does not repeat fulfilment. Pending or erased subscribers cannot authenticate with any earlier link. Recovery is a fresh request after expiry.

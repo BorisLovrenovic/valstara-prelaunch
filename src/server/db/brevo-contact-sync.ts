@@ -22,14 +22,23 @@ export function createBrevoContactSyncRepository(database: DatabaseConnection) {
           LEFT JOIN suppression x ON x.email_normalised = s.email_normalised
           LEFT JOIN brevo_contact_sync b
             ON b.email_normalised = s.email_normalised
-          WHERE (s.status = 'verified' AND s.marketing_consent_at IS NOT NULL
+          WHERE s.status NOT IN ('erasure_pending','erased') AND ((s.status = 'verified' AND s.marketing_consent_at IS NOT NULL
             AND x.email_normalised IS NULL)
               IS DISTINCT FROM COALESCE(b.listed, false)
-            OR (b.listed AND b.email IS DISTINCT FROM s.email)
+            OR (b.listed AND b.email IS DISTINCT FROM s.email))
           ORDER BY s.email_normalised`,
         },
         limit,
       );
+    },
+    async current(email: string): Promise<BrevoSyncCandidate | null> {
+      return database.readOne<BrevoSyncCandidate>({
+        text: `SELECT s.email_normalised,s.email,
+        (s.status='verified' AND s.marketing_consent_at IS NOT NULL AND NOT EXISTS
+          (SELECT 1 FROM suppression x WHERE x.email_normalised=s.email_normalised)) AS eligible
+        FROM subscriber s WHERE s.email_normalised=$1 AND s.status NOT IN ('erasure_pending','erased') FOR SHARE OF s`,
+        values: [email],
+      });
     },
     async record(candidate: BrevoSyncCandidate, now: Date): Promise<void> {
       await database.execute({

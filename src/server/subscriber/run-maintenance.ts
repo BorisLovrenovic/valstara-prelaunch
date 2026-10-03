@@ -1,3 +1,4 @@
+import { createErasureService, runErasureJob } from '../dsr/service.ts';
 import {
   getDatabaseUrl,
   getEmailWebhookConfiguration,
@@ -223,6 +224,19 @@ const drawWorker = createDrawWorker(
 );
 
 const running = [
+  runErasureJob(
+    createErasureService(database, {
+      clock,
+      alerts,
+      deleteContact: async (email) => {
+        if (brevoProvider === null) throw new Error('brevo_unconfigured');
+        await brevoProvider.deleteContact(email);
+      },
+    }),
+    alerts,
+    clock,
+    shutdown.signal,
+  ),
   runSharedSnapshotRefresh(sharedSnapshot, shutdown.signal, () =>
     reportFailure('leaderboard_snapshot'),
   ),

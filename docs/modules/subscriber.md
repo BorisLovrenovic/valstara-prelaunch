@@ -65,3 +65,7 @@ days and changes only `pending` rows strictly past it.
 
 ## Contract tests
 `user+tag@gmail.com`, `u.s.e.r@gmail.com` and `user@gmail.com` collide on one row · a non-Gmail domain keeps its dots · double signup produces one row and one email · `referred_by_id` cannot be updated · `disqualify()` without an actor throws · `anonymise()` leaves edges intact and personal fields null · reminder offsets and business-key deduplication · reminder stop on verification · `expireUnverified()` honours its limit · expired rows fail the shared counted-status filter.
+
+## E9-05 erasure states
+
+A confirmed signed erasure request moves the subscriber to `erasure_pending` with durable retry evidence. All processing eligibility ends immediately, including `/me`. Brevo confirmation then permits `erased`: identity, preference and timestamp fields are nulled, suppression removed, and an opaque-ID erasure ledger appended atomically with fulfilment audit. Neither state can return to an active status. Re-signup creates a new identity and requires double opt-in. Award/candidate records are the documented six-year retention exception; see `docs/features/legal-and-dsr.md`.

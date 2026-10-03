@@ -149,3 +149,28 @@ In order: `signup.enabled` off → the form shows an honest paused message. `giv
 ## Restore from backup
 
 Follow the pgBackRest procedure. **Restore into a scratch container first and verify against known rows** — never restore over a live database as the first move. The restore timing is the RTO; record it.
+
+**Erasure restore gate (founder-authorised 2026-10-02, E9-05).** A restored database must not serve traffic until the E9-05 erasure re-apply command has processed every ID from the **newest available erasure ledger**, not merely the ledger inside the restored backup. Keep the application and outbound workers isolated during recovery. Obtain the newest ledger, run the current forward migrations on the isolated restored database, re-apply the ledger, verify success and record the result before enabling traffic. If the newest ledger is unavailable or re-application fails, do not enable traffic. Re-application is idempotent and must be safe to repeat against a database where an erased subject still exists. The ledger contains only opaque subscriber IDs and erasure timestamps. E12-04 owns the scheduled off-host copy to R2.
+
+Run with the restored application-role database selected by `DATABASE_URL`; the recovery command needs no provider or alert credentials:
+
+```sh
+npx tsx scripts/reapply-erasures.ts --ledger-file /secure/newest-erasure-ledger.jsonl --actor <operator>
+```
+
+The input is newline-delimited JSON, each line containing only `subscriber_id` (UUID) and `erased_at` (timestamp). The command imports and re-applies those IDs, then re-applies every ID already in the destination ledger, in bounded batches. An invalid file or failed transaction exits nonzero. Re-running is safe; this command makes no provider call. Use the newest available ledger even if it is newer than the backup. The off-host copy is E12-04's deliverable.
+
+Existing pgBackRest backups are not edited for individual erasures. They remain encrypted and beyond use, never read for ordinary processing, until normal expiry (weekly full backups, `retention-full=2`), disclosed as up to 30 days. A recovery restore does not authorise returning erased data to service.
+
+
+## Erasure requires operator completion
+
+The final founder decision of 2026-10-02 replaces the earlier P2 fallback. Signed confirmation stops processing immediately but retains the subscriber's original address until Brevo confirms contact deletion. `dsr_erasure` contains only the opaque ID and retry timestamps/counts. Maintenance retries DELETE by `ext_id` for seven days with backoff capped at one hour; 404 is success. `dsr_erasure_operator_task` is P1 and contains only the opaque subscriber ID. Find that pending subscriber through the authenticated operator database connection, delete the contact in the Brevo dashboard, then attest that deletion by running:
+
+```sh
+npx tsx scripts/complete-erasure.ts --subscriber-id <uuid> --actor <operator>
+```
+
+The command requires a pending request and audits the actor. It atomically erases personal fields, deletes suppression, appends the erasure ledger and records fulfilment. It is safe to repeat after success. Never place the email address in a command argument, log, alert or task. Do not widen the Resend key or call a Resend deletion API.
+
+`dsr_deadline_operator_task` re-alerts P1 from day 28, daily until resolved. **The hard deadline is 30 days from confirmation:** act before it; an alert is not a deadline extension. A restart resumes unfinished requests from the original pending row. If the provider DELETE succeeded but local fulfilment failed, a repeated DELETE returning 404 permits completion. A fulfilment audit failure rolls back local erasure, so never mark an external task resolved until the command or worker succeeds.

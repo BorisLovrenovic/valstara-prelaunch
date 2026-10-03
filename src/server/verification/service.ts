@@ -26,6 +26,8 @@ export const purposeLifetimeMs: Readonly<Record<TokenPurpose, number>> = {
   verify: 7 * DAY_MS,
   status: 30 * DAY_MS,
   unsubscribe: 90 * DAY_MS,
+  dsr_export: DAY_MS,
+  dsr_delete: DAY_MS,
 };
 
 export interface IssuedToken {

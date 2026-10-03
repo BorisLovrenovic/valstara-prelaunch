@@ -109,3 +109,12 @@ Executed and recorded before the campaign opens (E11). **A drill that does not b
 10. **Take Cloudflare out of the path**; confirm the origin refuses a direct connection rather than serving around the proxy.
 
 **Where each runs.** Drills 1–6 and 8 run against the local production-Compose stack in **E11-02**. Drills 7, 9 and 10 need real infrastructure — an R2 remote, real memory limits and a real proxy — and run on the host in **E12-06**. None is optional, and a drill deferred to E12 is named there rather than quietly skipped.
+
+## Data-subject erasure (E9-05)
+
+| Failure | Behaviour | Operator fallback |
+|---|---|---|
+| Rights-link request cannot be stored | Return the same bounded acknowledgement to known and unknown addresses; emit a sanitized P1 without an address. | Restore request storage and verify a fresh request can queue a purpose-bound link. |
+| Brevo deletion unavailable | Keep the constrained pending request and original subscriber identity; processing remains stopped. Retry DELETE with bounded backoff for up to seven days. Success or 404 permits atomic local fulfilment. | Day seven raises P1 with only the opaque subscriber ID. Delete in the Brevo dashboard, then run the actor-audited completion CLI. Re-alert P1 from day 28; complete within the 30-day hard deadline. |
+| Local transaction fails after Brevo deletion | Roll back local erasure, ledger and fulfilment audit together. Restart from the pending row and repeat DELETE; 404 is success. | Maintenance failure raises sanitized P1; restore database health and resume the job. |
+| Restore lacks newest ledger or re-application fails | Keep the restored database isolated from traffic and outbound workers. | Obtain the newest ledger and successfully run the idempotent re-apply command before reopening service. |
