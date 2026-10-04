@@ -1,3 +1,10 @@
 {
-  "allowlist": []
+  "allowlist": [
+    {
+      "package": "http-cache-semantics",
+      "advisory": 1240991,
+      "justification": "GHSA-ch52-4w7c-c8xp affects satisfiesWithoutRevalidation with client max-stale in a shared cache. Astro 7.2.8 only imports this package in its remote-image loader and calls storable/timeToLive; this site uses no remote images or shared response cache. test/security-gates.test.mjs verifies the pinned call path. No patched npm release exists as of 2026-10-04; review when one is published.",
+      "expiresAt": "2026-10-18"
+    }
+  ]
 }
