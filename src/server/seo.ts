@@ -21,9 +21,7 @@ export function socialPageKind(pathname: string): SocialPageKind {
   const path = socialPathname(pathname);
   if (path === '/') return 'landing';
   if (['/legit', '/guarantee', '/about'].includes(path)) return 'trust';
-  if (
-    ['/terms', '/privacy', '/privacy/storage'].includes(path)
-  ) return 'legal';
+  if (['/terms', '/privacy', '/privacy/storage'].includes(path)) return 'legal';
   if (path === '/giveaway/rules' || path.startsWith('/giveaway/rules/')) {
     return 'rules';
   }

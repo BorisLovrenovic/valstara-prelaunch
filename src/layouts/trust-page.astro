@@ -19,7 +19,9 @@ interface Props {
 const { title, description } = Astro.props;
 const canonical = canonicalUrl(Astro.url.pathname);
 const image = socialImageUrl(Astro.url.pathname);
-const fallbackImage = socialFallbackImageUrl(socialPageKind(Astro.url.pathname));
+const fallbackImage = socialFallbackImageUrl(
+  socialPageKind(Astro.url.pathname),
+);
 ---
 
 <!doctype html>
