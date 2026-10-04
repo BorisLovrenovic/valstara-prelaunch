@@ -42,7 +42,7 @@ Organic entries by landing page, trust-page-to-signup rate, social card click-th
 
 ## Social card contract (E9-07)
 
-The build emits one PNG per HTML page at `/images/og/<page-key>.png`, using that page's own SEO title and the colour and font-family tokens in `src/styles/tokens.css`. It also emits a typed fallback PNG for each page kind: landing, trust, legal, campaign and rules. Open Graph lists the page-specific image first and its page-kind fallback second; X uses the page-specific image. No image service or third-party request is used.
+The build emits one PNG per HTML page at `/images/og/<page-key>.png`, using that page's own SEO title and the colour and font-family tokens in `src/styles/tokens.css`. The renderer loads the local WOFF source declared for the `--font-sans` family before rasterising the cards. It also emits a typed fallback PNG for each page kind: landing, trust, legal, campaign and rules. Open Graph lists the page-specific image first and its page-kind fallback second; X uses the page-specific image URL. If a page PNG is absent at postbuild, the typed fallback is copied to that URL, so both card formats resolve to a served image. No image service or third-party request is used.
 
 The supported preview crops are:
 
@@ -52,4 +52,4 @@ The supported preview crops are:
 | X large summary card | 1200×628 | Near-1.91:1 landscape crop |
 | LinkedIn link preview | 1200×627 | [LinkedIn's stated link-preview frame](https://www.linkedin.com/help/linkedin/answer/a525301) |
 
-The generator preserves the full image canvas and keeps the title and wordmark within the central safe area. `scripts/ci/seo-build-check.ts` renders images during the prebuild step and the postbuild check verifies page-specific metadata and the fallback reference. `test/seo.test.ts` checks every route image, all typed fallbacks, PNG dimensions and the three platform crops.
+The generator preserves the full image canvas and keeps the title and wordmark within the central safe area. Long titles retain their final suffix, including the rules revision identifier. `scripts/ci/seo-build-check.ts` renders images during the prebuild step and the postbuild check verifies page-specific metadata and the fallback reference. `test/seo.test.ts` checks every route image, all typed fallbacks, PNG dimensions and the three platform crops.
