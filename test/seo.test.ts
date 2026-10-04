@@ -12,13 +12,23 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { checkSeoBuild } from '../scripts/ci/seo-build-check.ts';
+import sharp from 'sharp';
+import {
+  checkSeoBuild,
+  collectSeoPages,
+  generateOpenGraphImages,
+  socialCardSvg,
+} from '../scripts/ci/seo-build-check.ts';
 import {
   canonicalUrl,
   jsonLd,
   organisationData,
   organisationId,
   rulesPageData,
+  socialFallbackImageUrl,
+  socialImageUrl,
+  socialPageKind,
+  socialPageKinds,
   sitemapPaths,
   validatePageMetadata,
 } from '../src/server/seo.ts';
@@ -223,4 +233,80 @@ test('organisation and every rules-page schema have permanent URLs and only appr
     assert.equal(data.version, revision.rulesVersion);
     assert.equal(data.datePublished, revision.publishedOn);
   }
+});
+
+test('build generates page-specific PNGs and typed fallback crops from brand tokens', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'valstara-og-'));
+  try {
+    await cp(join(root, 'src/pages'), join(fixture, 'src/pages'), {
+      recursive: true,
+    });
+    await cp(join(root, 'src/content'), join(fixture, 'src/content'), {
+      recursive: true,
+    });
+    await cp(join(root, 'src/styles/tokens.css'), join(fixture, 'src/styles/tokens.css'));
+    const { pages } = await collectSeoPages(fixture);
+    await generateOpenGraphImages(fixture);
+
+    assert.ok(pages.length > 0);
+    const landingImagePath = new URL(socialImageUrl('/')).pathname;
+    const termsImagePath = new URL(socialImageUrl('/terms')).pathname;
+    assert.notDeepEqual(
+      await readFile(join(fixture, 'public', landingImagePath.slice(1))),
+      await readFile(join(fixture, 'public', termsImagePath.slice(1))),
+      'page titles produce page-specific images',
+    );
+    for (const page of pages) {
+      const imagePath = new URL(socialImageUrl(page.pathname)).pathname;
+      const metadata = await sharp(join(fixture, 'public', imagePath.slice(1))).metadata();
+      assert.equal(metadata.format, 'png', page.pathname);
+      assert.equal(metadata.width, 1200, page.pathname);
+      assert.equal(metadata.height, 630, page.pathname);
+    }
+
+    for (const kind of socialPageKinds) {
+      const fallbackPath = new URL(socialFallbackImageUrl(kind)).pathname;
+      const imagePath = join(fixture, 'public', fallbackPath.slice(1));
+      const metadata = await sharp(imagePath).metadata();
+      assert.equal(metadata.width, 1200, kind);
+      assert.equal(metadata.height, 630, kind);
+    }
+
+    const landingPath = new URL(socialImageUrl('/')).pathname;
+    const landingImage = join(fixture, 'public', landingPath.slice(1));
+    const crops = [
+      { name: 'Meta and Slack', width: 1200, height: 630 },
+      { name: 'X', width: 1200, height: 628 },
+      { name: 'LinkedIn', width: 1200, height: 627 },
+    ];
+    for (const crop of crops) {
+      const result = await sharp(landingImage)
+        .extract({ left: 0, top: 0, width: crop.width, height: crop.height })
+        .png()
+        .toBuffer({ resolveWithObject: true });
+      assert.equal(result.info.width, crop.width, crop.name);
+      assert.equal(result.info.height, crop.height, crop.name);
+      assert.ok(result.data.length > 0, crop.name);
+    }
+
+    assert.equal(socialPageKind('/giveaway/rules/VAL-GW-LAUNCH-20261001-r1'), 'rules');
+    assert.equal(socialPageKind('/privacy/storage'), 'legal');
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test('social card SVG escapes the page title and uses supplied token values', () => {
+  const svg = socialCardSvg('A <clear> & honest title', {
+    paper: '#fafafa',
+    ink: '#101014',
+    coral: '#e8654a',
+    font: 'Instrument Sans, sans-serif',
+  });
+  assert.match(svg, /A &lt;clear&gt; &amp; honest/u);
+  assert.match(svg, />title</u);
+  assert.match(svg, /fill="#fafafa"/u);
+  assert.match(svg, /fill="#e8654a"/u);
+  assert.match(svg, /font-family="Instrument Sans, sans-serif"/u);
+  assert.doesNotMatch(svg, /<clear>/u);
 });

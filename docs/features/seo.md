@@ -18,7 +18,7 @@ The pre-launch site sits on the **root domain**, and the trust and legal pages a
 
 ## User flows
 1. **Search** — trust pages rank; the landing page converts. Metadata, canonicals and structured data are per-page, not templated once and forgotten.
-2. **Social** — an OG image per page type, generated at build, correct in the four dimensions the major platforms crop to.
+2. **Social** — a page-specific Open Graph image generated at build from the page title and brand tokens, with a page-kind fallback. The shared image is 1200×630. The title sits inside a centered safe area so it survives the Facebook/Meta and Slack 1200×630 preview, X's 1200×628 preview, and LinkedIn's 1200×627 preview.
 3. **Machines** — `llms.txt` ships. **Expect nothing from it**: the largest study found no correlation with citation frequency and Google says it does not use it. One hour of cheap insurance, not a channel.
 
 ## Edge cases and error states
@@ -39,3 +39,17 @@ E9-06 runs `scripts/ci/seo-build-check.ts` at build time. Its prebuild step writ
 
 ## Telemetry
 Organic entries by landing page, trust-page-to-signup rate, social card click-through, index coverage.
+
+## Social card contract (E9-07)
+
+The build emits one PNG per HTML page at `/images/og/<page-key>.png`, using that page's own SEO title and the colour and font-family tokens in `src/styles/tokens.css`. It also emits a typed fallback PNG for each page kind: landing, trust, legal, campaign and rules. Open Graph lists the page-specific image first and its page-kind fallback second; X uses the page-specific image. No image service or third-party request is used.
+
+The supported preview crops are:
+
+| Platform preview | Crop dimensions | Evidence basis |
+|---|---:|---|
+| Facebook/Meta and Slack Open Graph | 1200×630 | Shared Open Graph canvas |
+| X large summary card | 1200×628 | Near-1.91:1 landscape crop |
+| LinkedIn link preview | 1200×627 | [LinkedIn's stated link-preview frame](https://www.linkedin.com/help/linkedin/answer/a525301) |
+
+The generator preserves the full image canvas and keeps the title and wordmark within the central safe area. `scripts/ci/seo-build-check.ts` renders images during the prebuild step and the postbuild check verifies page-specific metadata and the fallback reference. `test/seo.test.ts` checks every route image, all typed fallbacks, PNG dimensions and the three platform crops.

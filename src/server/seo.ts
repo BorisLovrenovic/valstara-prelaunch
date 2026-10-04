@@ -4,6 +4,44 @@ import type { RulesRevision } from './giveaway/rules.ts';
 export const siteOrigin = 'https://valstara.com';
 export const organisationId = `${siteOrigin}/#organization`;
 
+export const socialPageKinds = [
+  'landing',
+  'trust',
+  'legal',
+  'campaign',
+  'rules',
+] as const;
+export type SocialPageKind = (typeof socialPageKinds)[number];
+
+function socialPathname(pathname: string): string {
+  return pathname === '/' ? '/' : pathname.replace(/\/+$/u, '');
+}
+
+export function socialPageKind(pathname: string): SocialPageKind {
+  const path = socialPathname(pathname);
+  if (path === '/') return 'landing';
+  if (['/legit', '/guarantee', '/about'].includes(path)) return 'trust';
+  if (
+    ['/terms', '/privacy', '/privacy/storage'].includes(path)
+  ) return 'legal';
+  if (path === '/giveaway/rules' || path.startsWith('/giveaway/rules/')) {
+    return 'rules';
+  }
+  return 'campaign';
+}
+
+function socialImageKey(pathname: string): string {
+  return Buffer.from(pathname).toString('base64url');
+}
+
+export function socialImageUrl(pathname: string): string {
+  return `${siteOrigin}/images/og/${socialImageKey(socialPathname(pathname))}.png`;
+}
+
+export function socialFallbackImageUrl(kind: SocialPageKind): string {
+  return `${siteOrigin}/images/og/fallback/${kind}.png`;
+}
+
 export function jsonLd(value: unknown): string {
   return JSON.stringify(value).replace(/</gu, '\\u003c');
 }
