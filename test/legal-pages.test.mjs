@@ -401,7 +401,17 @@ test(
       assert.match(content, /\*\*Draft notice\.\*\*/u);
       assert.match(html, /Draft notice\./u);
       assert.match(html, /<h1[^>]*>/u);
-      assert.doesNotMatch(html, /<script\b|\.js(?:["?]|$)/iu);
+      const dataBlocks = [
+        ...html.matchAll(
+          /<script type="application\/ld\+json">([\s\S]*?)<\/script>/gu,
+        ),
+      ];
+      assert.equal(dataBlocks.length, 1);
+      assert.equal(JSON.parse(dataBlocks[0][1])['@type'], 'Organization');
+      assert.doesNotMatch(
+        html.replace(dataBlocks[0][0], ''),
+        /<script\b|\.js(?:["?]|$)/iu,
+      );
       assert.doesNotMatch(content, /representative/iu);
     }
     const signupRoute = await read('src/pages/api/signup.ts');

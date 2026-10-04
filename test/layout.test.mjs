@@ -32,9 +32,12 @@ test('the layout ships only the theme toggle island and no other client script',
   const scripts = [...source.matchAll(/<script\b[^>]*>/gu)].map(
     (match) => match[0],
   );
-  assert.equal(scripts.length, 1);
+  assert.equal(scripts.length, 2);
   assert.match(scripts[0], /\bis:inline\b/u);
-  assert.match(scripts[0], /set:html=\{themeBootstrapScript\}/u);
+  assert.match(scripts[0], /type="application\/ld\+json"/u);
+  assert.match(scripts[0], /set:html=\{jsonLd\(organisationData\(\)\)\}/u);
+  assert.match(scripts[1], /\bis:inline\b/u);
+  assert.match(scripts[1], /set:html=\{themeBootstrapScript\}/u);
 });
 
 test('the layout selectively preloads only the above-fold Instrument Sans WOFF2', async () => {

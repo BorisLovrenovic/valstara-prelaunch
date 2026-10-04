@@ -77,7 +77,17 @@ test(
       assert.match(html, new RegExp(`<title>${title}</title>`, 'u'));
       assert.ok(html.includes(`content="${description}"`));
       assert.match(html, /<h1[^>]*>/u);
-      assert.doesNotMatch(html, /<script\b|\.js(?:["?]|$)/iu);
+      const dataBlocks = [
+        ...html.matchAll(
+          /<script type="application\/ld\+json">([\s\S]*?)<\/script>/gu,
+        ),
+      ];
+      assert.equal(dataBlocks.length, 1);
+      assert.equal(JSON.parse(dataBlocks[0][1])['@type'], 'Organization');
+      assert.doesNotMatch(
+        html.replace(dataBlocks[0][0], ''),
+        /<script\b|\.js(?:["?]|$)/iu,
+      );
       assert.doesNotMatch(
         html,
         /\b(?:TODO|TBD|lorem ipsum|placeholder|dummy copy)\b/iu,

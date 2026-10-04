@@ -24,11 +24,14 @@ The pre-launch site sits on the **root domain**, and the trust and legal pages a
 ## Edge cases and error states
 A page shipped without metadata → **the build fails**; a trust page with no description is a wasted ranking opportunity that nobody notices. OG image missing → a typed fallback per page kind, never a broken card. Trustpilot script fails → **the page renders without it**; content never blocks on a third-party script. Route added without a sitemap entry → the sitemap is generated from the route set, so this cannot happen by omission.
 
+E9-06 runs `scripts/ci/seo-build-check.ts` at build time. Its prebuild step writes `public/sitemap.xml` from the page files plus every published rules revision; its postbuild step validates metadata sources for every HTML route and static page bindings, then checks the emitted heads of prerendered pages for a unique title, description and self-canonical URL. `/me` and `/verify` are excluded from the sitemap in line with `robots.txt`; API routes are not HTML pages. Canonicals use the permanent `https://valstara.com` URLs without query parameters. The rules article bytes and recorded SHA-256 remain unchanged: only head metadata differs between the current page and each immutable revision.
+
 ## Acceptance criteria
 - [ ] Every page has a unique title, description and canonical — **build-time enforced**
 - [ ] The sitemap is **generated from the route set**, not hand-maintained
 - [ ] `robots.txt` allows indexing of the trust and legal pages and excludes `/me`, `/verify` and `/api`
 - [ ] Structured data validates for the organisation and for each rules page
+- [ ] Rules-page structured data is schema.org WebPage JSON-LD generated from validated revision frontmatter. The current page and every immutable revision have their own permanent URL and self-canonical; each records its `rules_version` and `datePublished` and points to the Organisation publisher. It carries no Event, Offer, Product, prize, odds or date claims (E9-06, founder-authorised 2026-10-03).
 - [ ] OG images exist per page type and render correctly at the major platforms' crops
 - [ ] **The Trustpilot widget loads lazily and only when its flag is on**, and no Trustpilot request occurs while it is off
 - [ ] `llms.txt` ships

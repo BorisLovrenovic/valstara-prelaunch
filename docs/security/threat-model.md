@@ -84,6 +84,8 @@ Each has a planted red-path fixture; **a gate that cannot be shown to fail is no
 | Inline-prose scan | No customer-visible prose is inline in an `.astro` component; it lives in the copy layer |
 | Response-shape test | No public response carries another person's data |
 
+The `http-cache-semantics` advisory GHSA-ch52-4w7c-c8xp is excepted through 2026-10-18 because its vulnerable shared-cache reuse method is not called by the pinned Astro consumer. Astro uses the package only to calculate remote-image cache lifetime, and this site has no remote-image pipeline. A test checks the installed Astro call path; the exception must be removed when a patched release is available.
+
 ## Secret handling
 
 Never committed. Documented in `infra/ENV.md` by name and purpose. **A leaked secret means rotate, then purge** — committing over it is not remediation, and it is flagged to the founder immediately. The pgBackRest passphrase and the IP-prefix pepper have named procedures (`docs/engineering/ci-cd.md#secrets`).

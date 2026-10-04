@@ -5,6 +5,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   rm,
   symlink,
   writeFile,
@@ -97,6 +98,35 @@ test('security and privacy gates pass on the repository baseline', async () => {
   ]);
 
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+});
+
+test('the excepted cache advisory cannot reach its vulnerable Astro method', async () => {
+  const astroRoot = join(projectRoot, 'node_modules/astro');
+  const astroPackage = JSON.parse(
+    await readFile(join(astroRoot, 'package.json'), 'utf8'),
+  );
+  assert.equal(astroPackage.version, '7.2.8');
+
+  const dist = join(astroRoot, 'dist');
+  const files = (await readdir(dist, { recursive: true })).filter((file) =>
+    file.endsWith('.js'),
+  );
+  const consumers = (
+    await Promise.all(
+      files.map(async (file) => ({
+        file,
+        source: await readFile(join(dist, file), 'utf8'),
+      })),
+    )
+  ).filter(({ source }) => source.includes('http-cache-semantics'));
+  assert.deepEqual(
+    consumers.map(({ file }) => file),
+    ['assets/build/remote.js'],
+  );
+  const source = consumers[0].source;
+  assert.match(source, /policy\.storable\(\)/u);
+  assert.match(source, /policy\.timeToLive\(\)/u);
+  assert.doesNotMatch(source, /satisfiesWithoutRevalidation|max-stale/u);
 });
 
 test(
