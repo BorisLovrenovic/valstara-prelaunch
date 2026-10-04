@@ -162,12 +162,7 @@ function xml(value: string): string {
 function titleLines(title: string): string[] {
   const lines: string[] = [];
   let line = '';
-  const words = title
-    .trim()
-    .split(/\s+/u)
-    .flatMap((word) =>
-      word.length > 20 ? (word.match(/.{1,20}/gu) ?? [word]) : [word],
-    );
+  const words = title.trim().split(/\s+/u);
   for (const word of words) {
     const next = line ? `${line} ${word}` : word;
     if (next.length > 20 && line) {
@@ -180,7 +175,14 @@ function titleLines(title: string): string[] {
   if (line) lines.push(line);
   if (lines.length > 3) {
     const remainder = lines.slice(2).join(' ');
-    lines.splice(2, lines.length - 2, `…${remainder.slice(-17).trimStart()}`);
+    const suffix = words.at(-1) ?? '';
+    lines.splice(
+      2,
+      lines.length - 2,
+      suffix.length > 20
+        ? `…${suffix}`
+        : `…${remainder.slice(-17).trimStart()}`,
+    );
   }
   return lines;
 }

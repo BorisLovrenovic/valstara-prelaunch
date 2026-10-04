@@ -274,6 +274,21 @@ test('build generates page-specific PNGs and typed fallback crops from brand tok
       page.pathname.startsWith('/giveaway/rules/'),
     );
     assert.ok(revisions.length >= 2);
+    for (const revision of revisions) {
+      const rulesVersion = revision.pathname.split('/').at(-1);
+      assert.ok(rulesVersion);
+      const svg = socialCardSvg(revision.title, {
+        paper: '#fafafa',
+        ink: '#101014',
+        coral: '#e8654a',
+        font: 'Instrument Sans, sans-serif',
+      });
+      assert.match(
+        svg,
+        new RegExp(`>…?${rulesVersion}</tspan>`, 'u'),
+        `${rulesVersion} must remain intact in the rendered card title`,
+      );
+    }
     assert.notEqual(
       digest(
         await readFile(
