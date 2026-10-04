@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   cp,
+  mkdir,
   mkdtemp,
   readFile,
   readdir,
@@ -24,7 +25,7 @@ import {
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
-test('the prebuild fixture rejects missing metadata, duplicate metadata and a new uncovered page', async () => {
+test('the build fixture rejects missing metadata, duplicate metadata and a new uncovered page', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'valstara-seo-'));
   try {
     await cp(join(root, 'src/pages'), join(fixture, 'src/pages'), {
@@ -34,6 +35,16 @@ test('the prebuild fixture rejects missing metadata, duplicate metadata and a ne
       recursive: true,
     });
     await checkSeoBuild(fixture);
+    const renderedAbout = join(fixture, 'dist/client/about/index.html');
+    await mkdir(join(fixture, 'dist/client/about'), { recursive: true });
+    await writeFile(
+      renderedAbout,
+      '<html><head><title>About</title><link rel="canonical" href="https://valstara.com/about"></head></html>',
+    );
+    await assert.rejects(
+      checkSeoBuild(fixture, true),
+      /rendered description is missing/u,
+    );
     const about = join(fixture, 'src/content/about.md');
     const original = await readFile(about, 'utf8');
     await writeFile(
@@ -84,6 +95,7 @@ test('sitemap routes reconcile with page files and expand every published rules 
     .filter((file) => file.endsWith('.md'))
     .map((file) => file.slice(0, -3));
   const routes = sitemapPaths(pageFiles, revisions);
+  const eligiblePaths: string[] = [];
   for (const file of pageFiles) {
     if (
       file.startsWith('src/pages/api/') ||
@@ -95,10 +107,22 @@ test('sitemap routes reconcile with page files and expand every published rules 
     const path = file
       .replace('src/pages/', '')
       .replace(/(?:\/index)?\.astro$/u, '');
-    assert.ok(routes.includes(path === 'index' ? '/' : `/${path}`), file);
+    const eligiblePath = path === 'index' ? '/' : `/${path}`;
+    eligiblePaths.push(eligiblePath);
+    assert.ok(routes.includes(eligiblePath), file);
   }
-  for (const version of revisions)
+  for (const version of revisions) {
+    eligiblePaths.push(`/giveaway/rules/${version}`);
     assert.ok(routes.includes(`/giveaway/rules/${version}`));
+  }
+  const sitemap = await readFile(join(root, 'public/sitemap.xml'), 'utf8');
+  const generatedUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/gu)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual(
+    generatedUrls.toSorted(),
+    eligiblePaths.map(canonicalUrl).toSorted(),
+  );
   assert.ok(
     sitemapPaths([...pageFiles, 'src/pages/new.astro'], revisions).includes(
       '/new',

@@ -67,11 +67,13 @@ test('built pages emit unique metadata, permanent canonicals and valid organisat
       (data) => data['@type'] === 'Organization',
     );
     assert.ok(organisation, `missing Organisation at ${path}`);
+    assert.equal(organisation['@context'], 'https://schema.org');
     assert.equal(organisation['@id'], 'https://valstara.com/#organization');
     assert.equal(organisation.url, 'https://valstara.com/');
     if (path.startsWith('/giveaway/rules')) {
       const webPage = jsonLd.find((data) => data['@type'] === 'WebPage');
       assert.ok(webPage, `missing WebPage at ${path}`);
+      assert.equal(webPage['@context'], 'https://schema.org');
       assert.equal(webPage.url, canonical);
       assert.deepEqual(webPage.publisher, { '@id': organisation['@id'] });
       assert.deepEqual(

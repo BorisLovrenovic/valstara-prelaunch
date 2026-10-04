@@ -49,7 +49,10 @@ function page(
   return { pathname, ...metadata };
 }
 
-export async function checkSeoBuild(root = projectRoot): Promise<void> {
+export async function checkSeoBuild(
+  root = projectRoot,
+  checkRendered = false,
+): Promise<void> {
   const pageDirectory = join(root, 'src/pages');
   const files = (await readdir(pageDirectory, { recursive: true })).filter(
     (file) => file.endsWith('.astro'),
@@ -130,6 +133,61 @@ export async function checkSeoBuild(root = projectRoot): Promise<void> {
       throw new Error(`SEO layout metadata binding is missing in ${file}`);
     }
   }
+
+  if (checkRendered) {
+    const renderedDirectory = join(root, 'dist/client');
+    const renderedFiles = (
+      await readdir(renderedDirectory, { recursive: true })
+    ).filter((file) => file.endsWith('/index.html'));
+    if (renderedFiles.length === 0) {
+      throw new Error('SEO rendered pages are missing');
+    }
+    const renderedTitles = new Set<string>();
+    const renderedDescriptions = new Set<string>();
+    for (const file of renderedFiles) {
+      const pathname = `/${file.slice(0, -'/index.html'.length)}`;
+      if (!pages.some((metadata) => metadata.pathname === pathname)) {
+        throw new Error(`SEO rendered route is unknown: ${pathname}`);
+      }
+      const html = await readFile(join(renderedDirectory, file), 'utf8');
+      const head = /<head\b[^>]*>([\s\S]*?)<\/head>/u.exec(html)?.[1] ?? '';
+      const titles = [...head.matchAll(/<title>([^<]*)<\/title>/gu)];
+      const descriptions = [
+        ...head.matchAll(
+          /<meta\s+name="description"\s+content="([^"]*)"\s*\/?>/gu,
+        ),
+      ];
+      const canonicals = [
+        ...head.matchAll(/<link\s+rel="canonical"\s+href="([^"]*)"\s*\/?>/gu),
+      ];
+      const title = titles[0]?.[1].trim();
+      const description = descriptions[0]?.[1].trim();
+      if (titles.length !== 1 || !title || renderedTitles.has(title)) {
+        throw new Error(
+          `SEO rendered title is missing or duplicated for ${pathname}`,
+        );
+      }
+      if (
+        descriptions.length !== 1 ||
+        !description ||
+        renderedDescriptions.has(description)
+      ) {
+        throw new Error(
+          `SEO rendered description is missing or duplicated for ${pathname}`,
+        );
+      }
+      if (
+        canonicals.length !== 1 ||
+        canonicals[0][1] !== canonicalUrl(pathname)
+      ) {
+        throw new Error(
+          `SEO rendered canonical is missing or invalid for ${pathname}`,
+        );
+      }
+      renderedTitles.add(title);
+      renderedDescriptions.add(description);
+    }
+  }
 }
 
 export async function generateSitemap(root = projectRoot): Promise<void> {
@@ -153,6 +211,6 @@ if (
   fileURLToPath(import.meta.url) ===
     fileURLToPath(new URL(`file://${process.argv[1]}`))
 ) {
-  if (process.argv.includes('--check')) await checkSeoBuild();
+  if (process.argv.includes('--check')) await checkSeoBuild(projectRoot, true);
   else if (process.argv.includes('--sitemap')) await generateSitemap();
 }
