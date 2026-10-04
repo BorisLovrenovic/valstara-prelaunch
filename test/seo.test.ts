@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   cp,
   mkdir,
@@ -12,18 +14,32 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { checkSeoBuild } from '../scripts/ci/seo-build-check.ts';
+import { promisify } from 'node:util';
+import sharp from 'sharp';
+import {
+  checkSeoBuild,
+  collectSeoPages,
+  generateOpenGraphImages,
+  socialCardSvg,
+} from '../scripts/ci/seo-build-check.ts';
 import {
   canonicalUrl,
   jsonLd,
   organisationData,
   organisationId,
   rulesPageData,
+  socialFallbackImageUrl,
+  socialImageUrl,
+  socialPageKind,
+  socialPageKinds,
   sitemapPaths,
   validatePageMetadata,
 } from '../src/server/seo.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+const executeFile = promisify(execFile);
+const digest = (image: Buffer) =>
+  createHash('sha256').update(image).digest('hex');
 
 test('the build fixture rejects missing metadata, duplicate metadata and a new uncovered page', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'valstara-seo-'));
@@ -223,4 +239,201 @@ test('organisation and every rules-page schema have permanent URLs and only appr
     assert.equal(data.version, revision.rulesVersion);
     assert.equal(data.datePublished, revision.publishedOn);
   }
+});
+
+test('build generates page-specific PNGs and typed fallback crops from brand tokens', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'valstara-og-'));
+  try {
+    await cp(join(root, 'src/pages'), join(fixture, 'src/pages'), {
+      recursive: true,
+    });
+    await cp(join(root, 'src/content'), join(fixture, 'src/content'), {
+      recursive: true,
+    });
+    await cp(
+      join(root, 'src/styles/tokens.css'),
+      join(fixture, 'src/styles/tokens.css'),
+    );
+    await mkdir(join(fixture, 'public/fonts'), { recursive: true });
+    await cp(
+      join(root, 'public/fonts/instrument-sans-latin-wght-normal.woff'),
+      join(fixture, 'public/fonts/instrument-sans-latin-wght-normal.woff'),
+    );
+    const { pages } = await collectSeoPages(fixture);
+    await generateOpenGraphImages(fixture);
+
+    assert.ok(pages.length > 0);
+    const landingImagePath = new URL(socialImageUrl('/')).pathname;
+    const termsImagePath = new URL(socialImageUrl('/terms')).pathname;
+    assert.notDeepEqual(
+      await readFile(join(fixture, 'public', landingImagePath.slice(1))),
+      await readFile(join(fixture, 'public', termsImagePath.slice(1))),
+      'page titles produce page-specific images',
+    );
+    const revisions = pages.filter((page) =>
+      page.pathname.startsWith('/giveaway/rules/'),
+    );
+    assert.ok(revisions.length >= 2);
+    for (const revision of revisions) {
+      const rulesVersion = revision.pathname.split('/').at(-1);
+      assert.ok(rulesVersion);
+      const svg = socialCardSvg(revision.title, {
+        paper: '#fafafa',
+        ink: '#101014',
+        coral: '#e8654a',
+        font: 'Instrument Sans, sans-serif',
+      });
+      assert.match(
+        svg,
+        new RegExp(`>…?${rulesVersion}</tspan>`, 'u'),
+        `${rulesVersion} must remain intact in the rendered card title`,
+      );
+    }
+    assert.notEqual(
+      digest(
+        await readFile(
+          join(
+            fixture,
+            'public',
+            new URL(socialImageUrl(revisions[0].pathname)).pathname.slice(1),
+          ),
+        ),
+      ),
+      digest(
+        await readFile(
+          join(
+            fixture,
+            'public',
+            new URL(socialImageUrl(revisions[1].pathname)).pathname.slice(1),
+          ),
+        ),
+      ),
+      'published revision suffixes remain visible in their cards',
+    );
+    const originalLanding = await readFile(
+      join(fixture, 'public', landingImagePath.slice(1)),
+    );
+    const tokensPath = join(fixture, 'src/styles/tokens.css');
+    const originalTokens = await readFile(tokensPath, 'utf8');
+    await cp(
+      join(root, 'public/fonts/jetbrains-mono-latin-wght-normal.woff'),
+      join(fixture, 'public/fonts/jetbrains-mono-latin-wght-normal.woff'),
+    );
+    await writeFile(
+      tokensPath,
+      originalTokens
+        .replace(
+          "font-family: 'Instrument Sans';",
+          "font-family: 'JetBrains Mono';",
+        )
+        .replaceAll(
+          'instrument-sans-latin-wght-normal.woff',
+          'jetbrains-mono-latin-wght-normal.woff',
+        )
+        .replace(
+          "--font-sans:\n    'Instrument Sans'",
+          "--font-sans:\n    'JetBrains Mono'",
+        ),
+    );
+    await generateOpenGraphImages(fixture);
+    assert.notEqual(
+      digest(
+        await readFile(join(fixture, 'public', landingImagePath.slice(1))),
+      ),
+      digest(originalLanding),
+      'changing the local font and font token changes the rendered pixels',
+    );
+    for (const page of pages) {
+      const imagePath = new URL(socialImageUrl(page.pathname)).pathname;
+      const metadata = await sharp(
+        join(fixture, 'public', imagePath.slice(1)),
+      ).metadata();
+      assert.equal(metadata.format, 'png', page.pathname);
+      assert.equal(metadata.width, 1200, page.pathname);
+      assert.equal(metadata.height, 630, page.pathname);
+    }
+
+    for (const kind of socialPageKinds) {
+      const fallbackPath = new URL(socialFallbackImageUrl(kind)).pathname;
+      const imagePath = join(fixture, 'public', fallbackPath.slice(1));
+      const metadata = await sharp(imagePath).metadata();
+      assert.equal(metadata.width, 1200, kind);
+      assert.equal(metadata.height, 630, kind);
+    }
+
+    const landingPath = new URL(socialImageUrl('/')).pathname;
+    const landingImage = join(fixture, 'public', landingPath.slice(1));
+    const crops = [
+      { name: 'Meta and Slack', width: 1200, height: 630 },
+      { name: 'X', width: 1200, height: 628 },
+      { name: 'LinkedIn', width: 1200, height: 627 },
+    ];
+    for (const crop of crops) {
+      const result = await sharp(landingImage)
+        .extract({ left: 0, top: 0, width: crop.width, height: crop.height })
+        .png()
+        .toBuffer({ resolveWithObject: true });
+      assert.equal(result.info.width, crop.width, crop.name);
+      assert.equal(result.info.height, crop.height, crop.name);
+      assert.ok(result.data.length > 0, crop.name);
+    }
+
+    assert.equal(
+      socialPageKind('/giveaway/rules/VAL-GW-LAUNCH-20261001-r1'),
+      'rules',
+    );
+    assert.equal(socialPageKind('/privacy/storage'), 'legal');
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test('a missing page PNG serves the typed fallback through both rendered card layouts', async () => {
+  await executeFile('npm', ['run', 'build'], { cwd: root });
+  for (const pathname of ['/terms', '/about']) {
+    const imageUrl = socialImageUrl(pathname);
+    const kind = socialPageKind(pathname);
+    const fallbackUrl = socialFallbackImageUrl(kind);
+    const imagePath = join(
+      root,
+      'dist/client',
+      new URL(imageUrl).pathname.slice(1),
+    );
+    const fallbackPath = join(
+      root,
+      'dist/client',
+      new URL(fallbackUrl).pathname.slice(1),
+    );
+    const htmlPath = join(root, 'dist/client', pathname.slice(1), 'index.html');
+    await rm(imagePath);
+    try {
+      await checkSeoBuild(root, true);
+      const head =
+        /<head\b[^>]*>([\s\S]*?)<\/head>/u.exec(
+          await readFile(htmlPath, 'utf8'),
+        )?.[1] ?? '';
+      const twitterImage =
+        /<meta\s+name="twitter:image"\s+content="([^"]+)"/u.exec(head)?.[1];
+      assert.equal(twitterImage, imageUrl);
+      assert.deepEqual(await readFile(imagePath), await readFile(fallbackPath));
+      assert.ok(head.includes(`content="${fallbackUrl}"`));
+    } finally {
+      await cp(fallbackPath, imagePath);
+    }
+  }
+});
+
+test('social card SVG escapes the page title and uses supplied token values', () => {
+  const svg = socialCardSvg('A <clear> & honest title', {
+    paper: '#fafafa',
+    ink: '#101014',
+    coral: '#e8654a',
+    font: 'Instrument Sans, sans-serif',
+  });
+  assert.match(svg, /A &lt;clear&gt; &amp; honest/u);
+  assert.match(svg, />title</u);
+  assert.match(svg, /fill="#fafafa"/u);
+  assert.match(svg, /fill="#e8654a"/u);
+  assert.match(svg, /font-family="Instrument Sans, sans-serif"/u);
+  assert.doesNotMatch(svg, /<clear>/u);
 });
