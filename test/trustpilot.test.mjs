@@ -180,6 +180,19 @@ async function openInBrowser(page, origin) {
   });
 }
 
+async function withBrowserPage(browser, run) {
+  const page = await browser.newPage();
+  try {
+    await run(page);
+  } finally {
+    try {
+      await page.unrouteAll({ behavior: 'wait' });
+    } finally {
+      await page.close();
+    }
+  }
+}
+
 test('E9-08 gates the only Trustpilot request and preserves /legit when the host fails', async () => {
   await executeFile('npm', ['run', 'build']);
   const remote = await startBrowser();
@@ -237,14 +250,12 @@ test('E9-08 gates the only Trustpilot request and preserves /legit when the host
           ),
           /<script\b|\.js(?:["?]|$)/iu,
         );
-        {
-          const page = await remote.browser.newPage();
+        await withBrowserPage(remote.browser, async (page) => {
           const requests = [];
           page.on('request', (request) => requests.push(request.url()));
           await openInBrowser(page, origin);
           assert.ok(!requests.some((url) => url.includes('trustpilot.com')));
-          await page.close();
-        }
+        });
       });
 
       await setFlag(true);
@@ -254,12 +265,12 @@ test('E9-08 gates the only Trustpilot request and preserves /legit when the host
         assert.ok(html.includes('We do not show a Trustpilot star rating'));
         assert.ok(!html.includes(loaderUrl));
         assert.ok(!html.includes('data-template-id='));
-        const page = await remote.browser.newPage();
-        const requests = [];
-        page.on('request', (request) => requests.push(request.url()));
-        await openInBrowser(page, origin);
-        assert.ok(!requests.some((url) => url.includes('trustpilot.com')));
-        await page.close();
+        await withBrowserPage(remote.browser, async (page) => {
+          const requests = [];
+          page.on('request', (request) => requests.push(request.url()));
+          await openInBrowser(page, origin);
+          assert.ok(!requests.some((url) => url.includes('trustpilot.com')));
+        });
       });
 
       await withServer(
@@ -286,8 +297,7 @@ test('E9-08 gates the only Trustpilot request and preserves /legit when the host
         assert.ok(!html.includes('We do not show a Trustpilot star rating'));
         assert.ok(html.includes('We will never buy reviews.'));
 
-        {
-          const page = await remote.browser.newPage();
+        await withBrowserPage(remote.browser, async (page) => {
           const requests = [];
           page.on('request', (request) => requests.push(request.url()));
           await openInBrowser(page, origin);
@@ -309,8 +319,7 @@ test('E9-08 gates the only Trustpilot request and preserves /legit when the host
               'We will never buy reviews.',
             ),
           );
-          await page.close();
-        }
+        });
       });
     });
   } finally {
