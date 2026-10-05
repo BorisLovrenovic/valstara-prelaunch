@@ -21,7 +21,7 @@ function approvedPage(slug) {
   const title = /^\*\*Title:\*\* (.+)$/mu.exec(section)?.[1];
   const description = /^\*\*Description:\*\* (.+)$/mu.exec(section)?.[1];
   assert.ok(title && description);
-  const copy = section
+  const fullCopy = section
     .split('### Page copy\n\n', 2)[1]
     ?.split('\n### Source notes', 1)[0]
     ?.trim()
@@ -29,37 +29,48 @@ function approvedPage(slug) {
       /^\*Pre-launch paragraph, removed at the storefront port:\* /gmu,
       '',
     );
-  assert.ok(copy);
+  assert.ok(fullCopy);
   assert.match(section, /### Source notes\n\n1\./u);
-  return { title, description, copy };
+  if (slug !== 'legit') return { title, description, copy: fullCopy };
+  const [copy, replacement] = fullCopy.split(
+    /\n\*Widget-on variant, replacing the first Reviews paragraph above when eligible:\*\n\n/u,
+  );
+  assert.ok(replacement);
+  const widgetCopy = `${copy.split('\n## Reviews\n')[0]}\n## Reviews\n\n${replacement}`;
+  return { title, description, copy, widgetCopy };
 }
 
 test('trust content transcribes the founder-approved pages with source notes', async () => {
   for (const slug of pages) {
-    const { title, description, copy } = approvedPage(slug);
-    const content = await readFile(
-      join(root, `src/content/${slug}.md`),
-      'utf8',
-    );
-    const expected = await format(
-      `---\nportTarget: /${slug}\ntitle: ${title}\ndescription: ${description}\n---\n\n${copy}\n`,
-      { parser: 'markdown' },
-    );
-    assert.equal(
-      content,
-      expected,
-      `/${slug} must match its approved, sourced copy`,
-    );
-    assert.doesNotMatch(
-      content,
-      /\b(?:TODO|TBD|lorem ipsum|placeholder|dummy copy)\b/iu,
-      `/${slug} contains a placeholder marker`,
-    );
+    const { title, description, copy, widgetCopy } = approvedPage(slug);
+    for (const [name, prose] of [
+      [slug, copy],
+      ...(widgetCopy ? [['legit-widget', widgetCopy]] : []),
+    ]) {
+      const content = await readFile(
+        join(root, `src/content/${name}.md`),
+        'utf8',
+      );
+      const expected = await format(
+        `---\nportTarget: /${slug}\ntitle: ${title}\ndescription: ${description}\n---\n\n${prose}\n`,
+        { parser: 'markdown' },
+      );
+      assert.equal(
+        content,
+        expected,
+        `/${name} must match its approved, sourced copy`,
+      );
+      assert.doesNotMatch(
+        content,
+        /\b(?:TODO|TBD|lorem ipsum|placeholder|dummy copy)\b/iu,
+        `/${name} contains a placeholder marker`,
+      );
+    }
   }
 });
 
 test(
-  'the three permanent URLs build as static pages with no client JavaScript',
+  'the two unchanged trust URLs build as static pages with no client JavaScript',
   { timeout: 120_000 },
   async () => {
     const result = spawnSync('npm', ['run', 'build'], {
@@ -68,7 +79,8 @@ test(
       timeout: 110_000,
     });
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-    for (const slug of pages) {
+    // E9-08 exercises /legit at runtime in both flag states.
+    for (const slug of ['guarantee', 'about']) {
       const { title, description } = approvedPage(slug);
       const html = await readFile(
         join(root, `dist/client/${slug}/index.html`),

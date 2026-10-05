@@ -1666,13 +1666,15 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 **Build:** Ship `llms.txt`. Link the claimed Trustpilot profile. **The widget stays behind its flag, off, and displays no rating until the review count justifies it.**
 
+**Founder-authorised 2026-10-05:** `TRUSTPILOT_MIN_REVIEWS` defaults to 50; founder-entered `TRUSTPILOT_REVIEW_COUNT` defaults to 0. Public `TRUSTPILOT_BUSINESS_UNIT_ID` and `TRUSTPILOT_TEMPLATE_ID` default empty. Validate all four at boot. Render the TrustBox only on `/legit` when `trustpilot.widget` is on, both IDs are set and the count meets the threshold; otherwise emit no widget markup or Trustpilot request. The flag service refuses and audits an attempt to enable the flag below the threshold; disabling it is always allowed. No Trustpilot API or key is added. Lazy loading means Trustpilot's official loader is emitted with `async` only in an eligible `/legit` response; it never blocks the page. No island or first-party JavaScript is added. When the widget renders, omit the first Reviews paragraph about not yet showing a rating and retain "We will never buy reviews." Both copy variants live in content. Always render a plain link to `https://www.trustpilot.com/review/valstara.com` with `rel="noopener"`, without prefetch or preconnect; its sentence is "You can read and leave reviews on our Trustpilot page." with "our Trustpilot page" linked.
+
 **Acceptance criteria:**
 - `llms.txt` ships. **Expect nothing from it** — the largest study found no correlation with citation frequency and Google says it does not use it. One hour of cheap insurance, not a channel
 - **No Trustpilot request occurs while the flag is off** — asserted by the third-party request gate
 - **No rating or review count renders below the configured threshold** — "3 reviews" is worse than none
 - The widget loads lazily when it is on, and **the page renders correctly without it**
 
-**Tests:** The no-request assertion with the flag off · the threshold behaviour · the widget-failure render.
+**Tests:** Flag off: no Trustpilot request (third-party gate), link present · count 49: no widget or request even with flag on; count 50: widget markup · enabling refusal below threshold, audited · Trustpilot host blocked: `/legit` fully renders with link and copy · the "not yet" paragraph is absent when the widget renders and present otherwise.
 **Docs:** `docs/features/seo.md` · `docs/architecture/adr/007-cookieless-analytics.md`
 
 ---

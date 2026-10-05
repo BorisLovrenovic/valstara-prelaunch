@@ -6,6 +6,8 @@ The pre-launch site sits on the **root domain**, and the trust and legal pages a
 ## Feature flag
 `trustpilot.widget` — **default off.** The profile is claimed and linked now; **no rating is displayed until the review count justifies it**, because a three-review TrustScore signals "unproven" more loudly than no score at all.
 
+Founder-authorised 2026-10-05: the plain `/legit` Reviews link points to `https://www.trustpilot.com/review/valstara.com` with `rel="noopener"` and no prefetch or preconnect. `TRUSTPILOT_MIN_REVIEWS` defaults to 50 and founder-entered `TRUSTPILOT_REVIEW_COUNT` defaults to 0; the public business unit and template IDs default empty. All four settings are validated at boot. The flag cannot be enabled below the threshold; refusal is audited. The TrustBox and its official async loader appear only on `/legit` when the flag is on, both IDs exist and the count meets the threshold. Otherwise there is no widget markup or Trustpilot request. No Trustpilot API or key is used. The no-widget and widget Reviews copy variants are stored in content; the widget variant omits the "not yet" paragraph and keeps the no-purchased-reviews statement. The link remains in both variants.
+
 ## The route plan
 
 | Route | Pre-launch role | At launch |

@@ -445,6 +445,55 @@ test('E8-09 audits a free-tier giveaway refusal, permits paid enable and always 
   }
 });
 
+test('E9-08 audits a Trustpilot enable refusal below the threshold and permits off', async () => {
+  const fixture = await createDatabaseFixture();
+  const below = createFlagService(fixture.applicationDatabase, {
+    trustpilot: {
+      minimumReviews: 50,
+      reviewCount: 49,
+      businessUnitId: 'business-unit',
+      templateId: 'template-id',
+    },
+  });
+  const eligible = createFlagService(fixture.applicationDatabase, {
+    trustpilot: {
+      minimumReviews: 50,
+      reviewCount: 50,
+      businessUnitId: 'business-unit',
+      templateId: 'template-id',
+    },
+  });
+  try {
+    await assert.rejects(
+      below.set('trustpilot.widget', true, 'operator-below'),
+      /trustpilot_widget_requires_review_threshold/u,
+    );
+    assert.equal(await below.isEnabled('trustpilot.widget'), false);
+    const refusal = await fixture.database.readOne<{
+      actor: string;
+      detail: { reason: string; reviewCount: number; minimumReviews: number };
+    }>({
+      text: `SELECT actor, detail FROM audit_log
+        WHERE action = 'flag.enable_refused' AND subject_id = 'trustpilot.widget'`,
+    });
+    assert.deepEqual(refusal, {
+      actor: 'operator-below',
+      detail: {
+        reason: 'trustpilot_review_threshold',
+        reviewCount: 49,
+        minimumReviews: 50,
+      },
+    });
+    await eligible.set('trustpilot.widget', true, 'operator-eligible');
+    assert.equal(await eligible.isEnabled('trustpilot.widget'), true);
+    await below.set('trustpilot.widget', false, 'operator-off');
+    assert.equal(await below.isEnabled('trustpilot.widget'), false);
+  } finally {
+    await fixture.applicationDatabase.close();
+    await fixture.dispose();
+  }
+});
+
 test('an audit insertion failure leaves the persisted flag unchanged', async () => {
   const fixture = await createDatabaseFixture();
   const service = createFlagService(fixture.applicationDatabase);

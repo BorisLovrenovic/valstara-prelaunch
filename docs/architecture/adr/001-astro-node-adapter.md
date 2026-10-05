@@ -8,7 +8,7 @@
 The v1 recommendation was Next.js, and its only real argument was component reuse with the storefront. ADR-002 decouples the repositories, which removes that argument entirely. What is left is a site that is mostly static content with a handful of interactive elements and a public write endpoint.
 
 ## Decision
-**Astro with the Node adapter.** Three interactive islands and no more: the signup form, the theme toggle, and the leaderboard. Everything else ships zero client JavaScript.
+**Astro with the Node adapter.** Three interactive islands and no more: the signup form, the theme toggle, and the leaderboard. Other pages ship zero first-party client JavaScript. The two documented external loaders are Cloudflare Turnstile on protected forms (ADR-006) and the eligible flagged Trustpilot TrustBox on `/legit` (E9-08, founder-authorised 2026-10-05).
 
 A fourth island requires an ADR. This is not ceremony — the payload discipline is the whole reason for the choice, and island count is the metric that erodes first.
 
