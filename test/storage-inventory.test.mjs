@@ -157,8 +157,12 @@ test(
     ];
     assert.equal(dataBlocks.length, 1);
     assert.equal(JSON.parse(dataBlocks[0][1])['@type'], 'Organization');
+    const emitter = html.match(
+      /<script defer src="\/page-view\.js" data-website-id="[a-f0-9-]{36}"><\/script>/u,
+    );
+    assert.ok(emitter, 'the inventory page needs the approved emitter');
     assert.doesNotMatch(
-      html.replace(dataBlocks[0][0], ''),
+      html.replace(dataBlocks[0][0], '').replace(emitter[0], ''),
       /<script\b|\.js(?:["?]|$)/iu,
     );
   },

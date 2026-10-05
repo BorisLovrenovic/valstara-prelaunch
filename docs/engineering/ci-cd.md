@@ -167,6 +167,8 @@ The E1-08 local stack uses pgBackRest with weekly full, daily differential and
 continuous WAL configuration, with repository encryption enabled. Its
 unattended drill creates a full and a differential backup, verifies WAL
 archiving, and restores known rows into a scratch container.
+Umami's separate `umami` database is in the same PostgreSQL cluster, so the
+physical pgBackRest backup and restore include it alongside `valstara_waitlist`.
 
 **The E1-08 restore timing is recorded as a local floor, not the production
 RTO.** R2, the production schedule, the off-host passphrase procedure, and the

@@ -10,7 +10,7 @@ const execFileAsync = promisify(execFile);
 const composeFile = fileURLToPath(
   new URL('./docker-compose.yml', import.meta.url),
 );
-const expectedServices = ['app', 'maintenance', 'postgres', 'umami'];
+const expectedServices = ['app', 'caddy', 'maintenance', 'postgres', 'umami'];
 
 async function run(command, args) {
   const { stdout } = await execFileAsync(command, args, {
@@ -237,8 +237,9 @@ export async function assertStack() {
     assertPostgresVersion(),
   ]);
 
-  const [appResponse, umamiResponse] = await Promise.all([
+  const [appResponse, proxyResponse, umamiResponse] = await Promise.all([
     globalThis.fetch('http://127.0.0.1:4321/'),
+    globalThis.fetch('http://127.0.0.1:8080/'),
     globalThis.fetch('http://127.0.0.1:3000/api/heartbeat'),
   ]);
 
@@ -246,6 +247,11 @@ export async function assertStack() {
     appResponse.ok,
     true,
     'the app is not reachable on localhost:4321',
+  );
+  assert.equal(
+    proxyResponse.ok,
+    true,
+    'the local first-party proxy is not reachable on localhost:8080',
   );
   assert.equal(
     umamiResponse.ok,

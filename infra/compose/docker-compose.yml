@@ -200,6 +200,34 @@ services:
     mem_limit: ${UMAMI_MEM_LIMIT:-768m}
     memswap_limit: ${UMAMI_MEM_LIMIT:-768m}
 
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8080:8080'
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+    depends_on:
+      app:
+        condition: service_healthy
+      umami:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--quiet',
+          '--tries=1',
+          '--spider',
+          'http://127.0.0.1:2019/config/',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    mem_limit: ${CADDY_MEM_LIMIT:-128m}
+    memswap_limit: ${CADDY_MEM_LIMIT:-128m}
+
 volumes:
   app-node-modules:
   postgres-data:

@@ -264,9 +264,9 @@ test('the landing page ships only the theme toggle and signup form islands', asy
   await page.goto(browserOrigin);
 
   // The shell itself adds only the theme toggle; the landing page adds the one
-  // signup form island (E3-05) plus Cloudflare's Turnstile loader, the sole
-  // always-on off-origin request (ADR-006, Option A). Every script must fall
-  // into one of these three buckets — a stray script or a third island fails.
+  // signup form island (E3-05), the first-party page-view emitter (E10-01)
+  // and Cloudflare's Turnstile loader. Every script must fit an approved
+  // source — a stray script or a third island fails.
   const scripts = await page.locator('script').evaluateAll((elements) =>
     elements.map((element) => ({
       content: element.textContent ?? '',
@@ -283,6 +283,7 @@ test('the landing page ships only the theme toggle and signup form islands', asy
   const turnstileLoader = scripts.filter((script) =>
     script.src.includes('challenges.cloudflare.com/turnstile'),
   );
+  const pageView = scripts.filter((script) => script.src === '/page-view.js');
   const structuredData = scripts.filter(
     (script) => script.type === 'application/ld+json',
   );
@@ -290,6 +291,11 @@ test('the landing page ships only the theme toggle and signup form islands', asy
   assert.equal(theme.length, 2, 'the toggle bootstrap and island scripts ship');
   assert.equal(signupIsland.length, 1, 'exactly one signup form island ships');
   assert.equal(turnstileLoader.length, 1, 'the Turnstile loader ships once');
+  assert.equal(
+    pageView.length,
+    1,
+    'the first-party page-view emitter ships once',
+  );
   assert.equal(
     structuredData.length,
     1,
@@ -301,6 +307,7 @@ test('the landing page ships only the theme toggle and signup form islands', asy
     theme.length +
       signupIsland.length +
       turnstileLoader.length +
+      pageView.length +
       structuredData.length,
     'no other script ships (no third island)',
   );

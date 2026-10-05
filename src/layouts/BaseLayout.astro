@@ -1,6 +1,7 @@
 ---
 import { layoutCopy } from '../copy/layout.ts';
 import ThemeToggle from '../islands/ThemeToggle.astro';
+import PageViewEmitter from './page-view-emitter.astro';
 import { themeBootstrapScript } from '../islands/theme-toggle.ts';
 import { seoCopy } from '../copy/seo.ts';
 import {
@@ -58,6 +59,7 @@ const fallbackImage = socialFallbackImageUrl(
       set:html={jsonLd(organisationData())}
     />
     <slot name="head" />
+    <PageViewEmitter />
     <link
       rel="preload"
       href="/fonts/instrument-sans-latin-wght-normal.woff2"

@@ -1,0 +1,16 @@
+:8080 {
+	handle /analytics/api/send {
+		uri strip_prefix /analytics
+		reverse_proxy umami:3000
+	}
+
+	handle /analytics/* {
+		respond 404
+	}
+
+	handle {
+		reverse_proxy app:4321 {
+			header_up Host localhost
+		}
+	}
+}
