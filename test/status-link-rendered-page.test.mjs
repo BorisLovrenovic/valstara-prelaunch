@@ -88,7 +88,8 @@ function startServer(databaseUrl) {
       stdio: 'ignore',
     },
   );
-  return { port, server };
+  const exited = once(server, 'exit');
+  return { port, server, exited };
 }
 
 async function waitForServer(port) {
@@ -210,7 +211,7 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
       new Date('2099-01-01T00:00:00.000Z'),
     ],
   );
-  const { port, server } = startServer(fixture.databaseUrl);
+  const { port, server, exited } = startServer(fixture.databaseUrl);
 
   try {
     await waitForServer(port);
@@ -421,8 +422,9 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     assert.doesNotMatch(disabledBody, /data-member-dashboard/u);
     assert.doesNotMatch(disabledBody, /STATUS234567/u);
   } finally {
-    const exited = once(server, 'exit');
-    server.kill('SIGTERM');
+    if (server.exitCode === null && server.signalCode === null) {
+      server.kill('SIGTERM');
+    }
     await exited;
     await fixture.dispose();
   }

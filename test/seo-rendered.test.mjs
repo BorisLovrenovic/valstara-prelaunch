@@ -35,9 +35,9 @@ test('built pages emit unique metadata, permanent canonicals and valid organisat
   const descriptions = new Set();
   const structured = new Map();
   for (const path of paths) {
-    // The landing route is server-rendered; its copy is covered by the
-    // prebuild registry. The other permanent pages are prerendered.
-    if (path === '/') continue;
+    // The landing and /legit routes are server-rendered. /legit's emitted
+    // metadata is checked by the E9-08 rendered-page test.
+    if (path === '/' || path === '/legit') continue;
     const html = await readFile(
       join(root, 'dist/client', path, 'index.html'),
       'utf8',

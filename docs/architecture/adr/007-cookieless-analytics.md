@@ -26,4 +26,6 @@ The cookie/storage gate permits exactly one source write, the theme preference. 
 
 The third-party-request gate permits exactly two off-origin rendered-page hosts: the flagged Trustpilot widget and Cloudflare Turnstile on protected forms (ADR-006, Option A, founder-authorised 2026-09-08). Turnstile's Article 5(3) basis is the probe-confirmed absence of device storage/access. The site runs no device-fingerprinting API; Cloudflare's server-side processing of IP, TLS and user-agent security signals under its processor role is disclosed separately. Every other off-origin request still fails the gate.
 
+The Trustpilot exception is confined to `/legit` (founder-authorised 2026-10-05). The official loader is emitted with `async` only when `trustpilot.widget` is on, both public TrustBox IDs are configured and the founder-entered review count meets the configured minimum (default 50). The flag service audits refusal to enable below the minimum. With the flag off or eligibility unmet, the page has no Trustpilot request; its plain profile link does not prefetch or preconnect. There is no Trustpilot API, key, island or first-party widget script. If the loader fails, the page's own content and profile link still render.
+
 Reopens at store launch, deliberately, as a different decision for a different site.

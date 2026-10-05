@@ -6,7 +6,7 @@ import { giveawayRulesSchema } from './server/giveaway/rules.ts';
 const trust = defineCollection({
   loader: glob({
     base: './src/content',
-    pattern: '{legit,guarantee,about}.md',
+    pattern: '{legit,legit-widget,guarantee,about}.md',
   }),
   schema: z.object({
     portTarget: z.enum(['/legit', '/guarantee', '/about']),

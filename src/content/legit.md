@@ -25,10 +25,6 @@ Every limited company in Hong Kong is entered on the public register kept by the
 
 The same company details appear in section 1 of the official rules for our launch giveaway, published at valstara.com/giveaway/rules. Every version of those rules stays online at its own permanent address, so no change to them can happen quietly.
 
-## Reviews
-
-We do not show a Trustpilot star rating on this site yet. A score built on a handful of reviews tells you very little, so we will display ours once enough customers have reviewed us for the number to mean something. We will never buy reviews.
-
 ## How to reach us
 
 Write to support@valstara.com with any question about Valstara, the waitlist or the giveaway. The same address handles legal matters, payment enquiries and requests to review a decision we have made about you.
@@ -38,3 +34,9 @@ The emails we send you about the waitlist also come from addresses on valstara.c
 ## What this site does with your visit
 
 This site sets no tracking cookies and runs no advertising trackers, which is why you will not see a cookie banner. There is nothing to ask your consent for. The only thing it stores on your device is your choice of light or dark theme.
+
+## Reviews
+
+We do not show a Trustpilot star rating on this site yet. A score built on a handful of reviews tells you very little, so we will display ours once enough customers have reviewed us for the number to mean something. We will never buy reviews.
+
+You can read and leave reviews on <a href="https://www.trustpilot.com/review/valstara.com" rel="noopener">our Trustpilot page</a>.

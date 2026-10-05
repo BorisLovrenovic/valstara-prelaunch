@@ -176,6 +176,24 @@ test('robots excludes only the named private and API route prefixes', async () =
   }
 });
 
+test('the published llms.txt summarizes only existing public routes', async () => {
+  const llms = await readFile(join(root, 'public/llms.txt'), 'utf8');
+  assert.match(llms, /^# Valstara\n/u);
+  for (const path of [
+    '/about',
+    '/legit',
+    '/guarantee',
+    '/giveaway/rules',
+    '/terms',
+    '/privacy',
+    '/privacy/storage',
+  ]) {
+    assert.ok(llms.includes(`https://valstara.com${path}`), path);
+  }
+  assert.doesNotMatch(llms, /https?:\/\/(?!valstara\.com)/u);
+  assert.doesNotMatch(llms, /\/api\/|\/me(?:\b|\/)|\/verify\b/u);
+});
+
 test('organisation and every rules-page schema have permanent URLs and only approved claims', async () => {
   const org = organisationData();
   assert.deepEqual(org, {
