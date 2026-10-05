@@ -1,0 +1,23 @@
+# Valstara
+
+> Valstara is preparing a storefront for digital goods. This site hosts the pre-launch waitlist and publishes information about the company, its commitments, and the launch giveaway.
+
+## About Valstara
+
+- [About Valstara](https://valstara.com/about): What Valstara sells, how it works, and who runs it.
+- [Who runs Valstara](https://valstara.com/legit): Company details, contact information, and ways to check the company independently.
+- [The Triple Guarantee](https://valstara.com/guarantee): The commitments Valstara makes for store orders. The store is not open yet.
+
+## Waitlist and giveaway
+
+- [Launch giveaway rules](https://valstara.com/giveaway/rules): The current rules for the global launch giveaway.
+- [Waitlist terms](https://valstara.com/terms): Terms for joining and using the pre-launch waitlist.
+
+## Privacy
+
+- [Privacy notice](https://valstara.com/privacy): How the pre-launch site handles personal data.
+- [Cookie and storage inventory](https://valstara.com/privacy/storage): The site's browser storage and cookie inventory.
+
+## Contact
+
+For questions about Valstara, the waitlist, or the giveaway, contact support@valstara.com.
