@@ -68,6 +68,7 @@ before(async () => {
     true,
     'the local first-party proxy must be running',
   );
+  await compose(['up', '-d', '--wait', 'umami']);
   database = new Pool({
     connectionString: databaseUrl,
     connectionTimeoutMillis: 5_000,
@@ -125,15 +126,17 @@ test('the live page emits one private-field-free view through the first-party pr
       language: 'en',
     },
   });
+  let afterCount;
   for (let attempt = 0; attempt < 30; attempt += 1) {
-    const recorded = await database.query(
+    afterCount = await database.query(
       `SELECT COUNT(*)::integer AS count FROM website_event
        WHERE website_id = $1 AND url_path = '/privacy'`,
       [websiteId],
     );
-    if (recorded.rows[0].count > beforeCount.rows[0].count) break;
+    if (afterCount.rows[0].count > beforeCount.rows[0].count) break;
     await new Promise((resolve) => globalThis.setTimeout(resolve, 100));
   }
+  assert.equal(afterCount.rows[0].count, beforeCount.rows[0].count + 1);
   const recorded = await database.query(
     `SELECT url_path, url_query, referrer_domain, referrer_path, page_title
      FROM website_event WHERE website_id = $1 AND url_path = '/privacy'
@@ -170,15 +173,26 @@ test('personal-context pages and admin routes do not emit', async () => {
 });
 
 test('collector outage does not affect the rendered response', async () => {
-  await compose(['stop', 'umami']);
+  const { stdout } = await compose(['config', '--format', 'json']);
+  const config = JSON.parse(stdout);
+  assert.equal(config.services.caddy.depends_on.umami, undefined);
+  await compose(['stop', 'caddy', 'umami']);
   try {
+    await compose(['up', '-d', 'caddy']);
+    const { stdout: runningServices } = await compose([
+      'ps',
+      '--status',
+      'running',
+      '--services',
+    ]);
+    assert.equal(runningServices.split(/\s+/u).includes('umami'), false);
     const result = await browserProbe('down');
     assert.equal(result.pageStatus, 200);
     assert.ok(result.pageTitle.length > 0);
     assert.equal(result.collectorRequests, 1);
     assert.ok(result.collectorStatus === null || result.collectorStatus >= 500);
   } finally {
-    await compose(['start', 'umami']);
+    await compose(['up', '-d', '--wait', 'umami', 'caddy']);
   }
 });
 
