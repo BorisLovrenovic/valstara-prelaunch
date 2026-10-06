@@ -22,7 +22,9 @@ Authentication failures are generic, `no-store`, and never echo a credential,
 TOTP, token, raw IP address or configuration detail.
 
 ## User flows
-1. **Health** — verification rate against baseline, leaderboard snapshot age, email queue depth, domain authentication status (E8-02), seed-test results (E8-04), quota consumption and projection (E8-09), purge-job status, and open flag count. E8-02, E8-04 and E8-09 export their results; E10-05 owns this view and tests that every named metric is present (founder-authorised 2026-09-28). **The one screen that answers "is the campaign silently broken".**
+1. **Health** — verification rate against baseline, aggregate referral-attribution share against baseline, leaderboard snapshot age, email queue depth, domain authentication status (E8-02), seed-test results (E8-04), quota consumption and projection (E8-09), purge-job status, and open flag count. E8-02, E8-04 and E8-09 export their results; E10-05 owns this view and tests that every named metric is present (founder-authorised 2026-09-28). The attribution result is `disabled` with no evaluation or alert while `referral.enabled` is off (founder-authorised 2026-10-06). **The one screen that answers "is the campaign silently broken".**
+
+   Purge status comes from `purge_job_run` (founder-authorised 2026-10-06), not an overdue-row count. It shows each existing purge job's last success, last outcome and rows purged; a job with no success or a success older than twice its schedule is `stale`. The four current jobs run daily, so the threshold is 48 hours. Run-record failures never stop the purge or change its existing failure alert.
 2. **Fraud queue** — open flags with their evidence; dismiss or uphold.
 3. **Flags** — read and set campaign flags. This is the incident lever.
 4. **Export** — the CSV, streamed and batch-capped, with the row count audited.

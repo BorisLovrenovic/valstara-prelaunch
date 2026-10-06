@@ -192,7 +192,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      53,
+      56,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -203,7 +203,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
           ORDER BY table_name
         `,
       },
-      33,
+      34,
     );
     const giveawayRulesVersionColumn = await fixture.database.readOne<{
       data_type: string;
@@ -272,6 +272,9 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0051-erasure-constraints.sql',
       '0052-funnel-event-state.sql',
       '0053-funnel-event-invariants.sql',
+      '0054-referral-attribution-health.sql',
+      '0055-purge-job-run.sql',
+      '0056-purge-job-run-success-shape.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -330,6 +333,9 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0051-erasure-constraints.sql',
         '0052-funnel-event-state.sql',
         '0053-funnel-event-invariants.sql',
+        '0054-referral-attribution-health.sql',
+        '0055-purge-job-run.sql',
+        '0056-purge-job-run-success-shape.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -365,6 +371,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'leaderboard_snapshot',
         'migration_ledger',
         'milestone_award',
+        'purge_job_run',
         'rate_limit_bucket',
         'referral_edge',
         'subscriber',
@@ -473,10 +480,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          53,
+          56,
         );
 
-        assert.equal(appliedCount, 53);
+        assert.equal(appliedCount, 56);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -533,6 +540,9 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0051-erasure-constraints.sql',
             '0052-funnel-event-state.sql',
             '0053-funnel-event-invariants.sql',
+            '0054-referral-attribution-health.sql',
+            '0055-purge-job-run.sql',
+            '0056-purge-job-run-success-shape.sql',
           ],
         );
       } finally {

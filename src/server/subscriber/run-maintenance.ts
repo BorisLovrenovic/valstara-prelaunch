@@ -8,11 +8,13 @@ import {
   getResendDispatchConfiguration,
   getSeedTestConfiguration,
   getVerificationRateConfiguration,
+  getReferralAttributionConfiguration,
   getWeeklySendConfiguration,
   getEmailQuotaConfiguration,
 } from '../config.ts';
 import { createPool } from '../db/pool.ts';
 import { createSeedTestRepository } from '../db/seed-test.ts';
+import { createPurgeJobRunRepository } from '../db/purge-job-run.ts';
 import { checkDomainAuthenticationAtStartup } from '../email/domain-authentication.ts';
 import {
   createImapSeedMailbox,
@@ -43,6 +45,8 @@ import { createStrandedReferralReconciliationJob } from '../referral/reconcile-s
 import { referrerTierBucket } from '../analytics/funnel.ts';
 import { createAnalyticsService } from '../analytics/service.ts';
 import { createReferralCounterRepairJob } from '../referral/counter-repair.ts';
+import { createReferralService } from '../referral/service.ts';
+import { runReferralAttributionCheck } from '../referral/attribution-health.ts';
 import { createAlertWebhookTransport } from '../verification-rate/p1-webhook.ts';
 import { createVerificationRateMonitor } from '../verification-rate/service.ts';
 import { createVerificationTokenRetentionJob } from '../verification/retention.ts';
@@ -60,6 +64,7 @@ import {
 import { createWeeklyCampaignJob } from '../email/weekly-campaign.ts';
 import { createEmailQueue } from '../email/queue.ts';
 import { createEmailQuotaService } from '../email/quota.ts';
+import { createRecordedPurgeJob } from './purge-run.ts';
 
 import { createUnverifiedExpiryJob } from './expiry.ts';
 import {
@@ -84,6 +89,7 @@ const brevoProvider =
         brevoConfiguration.listId,
       );
 const broadcastFlags = createFlagService(database);
+const purgeRuns = createPurgeJobRunRepository(database);
 const sharedSnapshot = createSharedLeaderboardSnapshotStore(
   database,
   createRankingIntegrityService(database),
@@ -159,8 +165,18 @@ const scheduler = createVerificationMaintenanceScheduler(
       },
     ),
     expiry: createUnverifiedExpiryJob(database, { clock }),
-    ipPrefixRetention: createIpPrefixRetentionJob(database, { clock }),
-    rateLimitRetention: createRateLimitRetentionJob(database, { clock }),
+    ipPrefixRetention: createRecordedPurgeJob(
+      createIpPrefixRetentionJob(database, { clock }),
+      purgeRuns,
+      'ip_prefix_retention',
+      clock,
+    ),
+    rateLimitRetention: createRecordedPurgeJob(
+      createRateLimitRetentionJob(database, { clock }),
+      purgeRuns,
+      'rate_limit_retention',
+      clock,
+    ),
     referralCounterRepair: createReferralCounterRepairJob(database, {
       alert: (alert) => alerts.send(alert),
     }),
@@ -180,9 +196,34 @@ const scheduler = createVerificationMaintenanceScheduler(
       getVerificationRateConfiguration(),
       { alert: reportVerificationRateCollapse, clock },
     ),
-    verificationTokenRetention: createVerificationTokenRetentionJob(database, {
+    referralAttribution: {
+      run: () =>
+        runReferralAttributionCheck(
+          createReferralService(database, {
+            attributionConfiguration: getReferralAttributionConfiguration(),
+            isReferralEnabled: () =>
+              broadcastFlags.isEnabled('referral.enabled'),
+            clock,
+          }).attributionHealth,
+          (result) =>
+            alerts.send({
+              detail: {
+                baseline_share: result.baselineShare,
+                current_share: result.currentShare,
+                relative_drop: result.relativeDrop,
+              },
+              event: 'referral_attribution_collapsed',
+              occurredAt: result.measuredAt,
+              severity: result.severity,
+            }),
+        ),
+    },
+    verificationTokenRetention: createRecordedPurgeJob(
+      createVerificationTokenRetentionJob(database, { clock }),
+      purgeRuns,
+      'verification_token_retention',
       clock,
-    }),
+    ),
     seedTest,
     broadcastSeedTest,
     emailReconciliation: createEmailReconciliationJob(
@@ -208,17 +249,22 @@ const scheduler = createVerificationMaintenanceScheduler(
       alerts,
       clock,
     ),
-    leaderboardSnapshotPurge: {
-      async run(limit) {
-        let removed = 0;
-        for (let batch = 0; batch < 1_000; batch += 1) {
-          const count = await sharedSnapshot.purge(limit);
-          removed += count;
-          if (count < limit) break;
-        }
-        return removed;
+    leaderboardSnapshotPurge: createRecordedPurgeJob(
+      {
+        async run(limit) {
+          let removed = 0;
+          for (let batch = 0; batch < 1_000; batch += 1) {
+            const count = await sharedSnapshot.purge(limit);
+            removed += count;
+            if (count < limit) break;
+          }
+          return removed;
+        },
       },
-    },
+      purgeRuns,
+      'leaderboard_snapshot_purge',
+      clock,
+    ),
   },
   { clock, reportFailure },
 );

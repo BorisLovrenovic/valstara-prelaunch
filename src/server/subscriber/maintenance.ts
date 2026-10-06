@@ -14,6 +14,7 @@ export type MaintenanceJobName =
   | 'referral_counter_repair'
   | 'stranded_referral'
   | 'verification_rate'
+  | 'referral_attribution'
   | 'verification_token_retention'
   | 'giveaway_entry_reconciliation'
   | 'seed_test'
@@ -41,6 +42,7 @@ export interface VerificationMaintenanceJobs {
   readonly reminder: MaintenanceJob;
   readonly strandedReferral: MaintenanceJob;
   readonly verificationRate: VerificationRateJob;
+  readonly referralAttribution?: VerificationRateJob;
   readonly verificationTokenRetention: MaintenanceJob;
   readonly seedTest?: VerificationRateJob;
   readonly broadcastSeedTest?: VerificationRateJob;
@@ -83,6 +85,7 @@ export function createMaintenanceFailureReporter(
       job === 'leaderboard_snapshot_purge'
         ? 'P2'
         : job === 'verification_rate' ||
+            job === 'referral_attribution' ||
             job === 'rate_limit_retention' ||
             job === 'ip_prefix_retention' ||
             job === 'verification_token_retention' ||
@@ -162,6 +165,13 @@ export function createVerificationMaintenanceScheduler(
       );
     }
     await runVerificationRateJob();
+    if (jobs.referralAttribution !== undefined) {
+      try {
+        await jobs.referralAttribution.run();
+      } catch {
+        await reportFailure('referral_attribution');
+      }
+    }
     if (jobs.seedTest !== undefined) {
       try {
         await jobs.seedTest.run();

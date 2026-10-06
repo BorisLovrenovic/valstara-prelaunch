@@ -61,6 +61,10 @@ table and fails if it differs from `src/server/config.ts`.
 | `VERIFICATION_RATE_COHORT_HOURS`     | Hours in the rolling signup cohort used by the verification-rate monitor                              | App boot, maintenance, admin health     | Optional; defaults to `24`                                                                                                                                             |
 | `VERIFICATION_RATE_COLLAPSE_PERCENT` | Relative verification-rate drop that raises P1                                                        | App boot, maintenance, admin health     | Optional; defaults to `50`                                                                                                                                             |
 | `VERIFICATION_RATE_MINIMUM_SIGNUPS`  | Minimum current-cohort signups before the monitor can alert                                           | App boot, maintenance, admin health     | Optional; defaults to `50`                                                                                                                                             |
+| `REFERRAL_ATTRIBUTION_BASELINE_DAYS` | Prior days in the referral-attribution baseline | App boot, maintenance, admin health | Optional positive integer; defaults to `7` |
+| `REFERRAL_ATTRIBUTION_COHORT_HOURS` | Hours in the current referral-attribution cohort | App boot, maintenance, admin health | Optional positive integer; defaults to `24` |
+| `REFERRAL_ATTRIBUTION_DROP_PERCENT` | Relative attributed-share drop that raises P1 | App boot, maintenance, admin health | Optional integer from `1` to `100`; defaults to `50` |
+| `REFERRAL_ATTRIBUTION_MINIMUM_SIGNUPS` | Minimum current-cohort signups before evaluating attribution | App boot, maintenance, admin health | Optional positive integer; defaults to `50` |
 | `WAITLIST_LIVE_AT`                   | Actual waitlist launch time; giveaway entry period starts at the later of this and 1 October 2026 UTC | App boot, giveaway accrual, maintenance | Optional before launch; a UTC ISO timestamp with milliseconds, required in production before enabling `giveaway.open`; set identically for app and maintenance         |
 
 Resend API keys do not expose a sandbox marker. `RESEND_KEY_MODE` records the
@@ -231,7 +235,7 @@ npm run test:stack
 
 Compose runs migrations in an isolated one-shot `migrate` service before
 starting the app and the maintenance process. The latter queues verification
-reminders and checks the verification rate hourly, and expires unverified rows
+reminders and checks the verification rate and referral-attribution share hourly, and expires unverified rows
 and purges rate-limit buckets older than seven days once per UTC day; every
 invocation is batch-capped where it reads or writes a set of rows. P1 failures,
 verification-rate collapses, and P2 referral-counter corrections are delivered

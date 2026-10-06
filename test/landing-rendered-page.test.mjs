@@ -10,6 +10,7 @@ import { Pool } from 'pg';
 
 import { landingCopy } from '../src/copy/landing.ts';
 import { signupFormCopy } from '../src/copy/signup.ts';
+import { createReferralCaptureService } from '../src/server/referral/capture.ts';
 
 const executeFile = promisify(execFile);
 
@@ -342,4 +343,21 @@ test('referral.enabled off omits the signed attribution field without pausing si
   });
   assert.match(body, /<form action="\/api\/signup" method="post">/u);
   assert.doesNotMatch(body, /name="referral_capture"/u);
+});
+
+test('a landing ?ref= request renders a valid server-signed form field', async () => {
+  const { body } = await renderLanding({
+    paths: ['/?ref=ABCDEFGHJKMN&utm_source=newsletter'],
+  });
+  const signed =
+    /name="referral_capture"\s+type="hidden"\s+value="([^"]+)"/u.exec(
+      body,
+    )?.[1];
+  assert.ok(signed, 'the signed referral field is present');
+  assert.deepEqual(
+    createReferralCaptureService(
+      'landing-rendered-page-referral-secret',
+    ).verifyRef(signed),
+    { ref: 'ABCDEFGHJKMN', utm: { source: 'newsletter' } },
+  );
 });
