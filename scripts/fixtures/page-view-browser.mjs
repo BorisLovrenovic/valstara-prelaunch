@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 
-const origin = 'http://host.docker.internal:8080';
+const origin = 'http://caddy:8080';
 const mode = process.argv[2];
 const browser = await chromium.launch();
 const checkpoint = (stage) => process.stderr.write(`${mode}: ${stage}\n`);

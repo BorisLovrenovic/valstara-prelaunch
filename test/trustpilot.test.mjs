@@ -176,7 +176,7 @@ async function openInBrowser(page, origin) {
     });
   });
   await page.goto('http://valstara.test/legit', {
-    waitUntil: 'domcontentloaded',
+    waitUntil: 'networkidle',
   });
 }
 

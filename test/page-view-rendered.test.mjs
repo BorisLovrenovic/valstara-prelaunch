@@ -9,7 +9,7 @@ import { Pool } from 'pg';
 const executeFile = promisify(execFile);
 const projectRoot = fileURLToPath(new URL('..', import.meta.url));
 const localOrigin = 'http://127.0.0.1:8080';
-const browserOrigin = 'http://host.docker.internal:8080';
+const browserOrigin = 'http://caddy:8080';
 const websiteId = 'a4041033-3269-4a73-8772-c16f9bdf1a33';
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
@@ -17,6 +17,7 @@ const databaseUrl = 'postgresql://umami:umami-local-only@127.0.0.1:5434/umami';
 
 let database;
 let insertedWebsite = false;
+let composeNetwork;
 
 async function compose(args) {
   return executeFile(
@@ -36,8 +37,8 @@ async function browserProbe(mode) {
         '--rm',
         '--name',
         name,
-        '--add-host',
-        'host.docker.internal:host-gateway',
+        '--network',
+        composeNetwork,
         '--volume',
         `${projectRoot}:/work:ro`,
         '--workdir',
@@ -68,6 +69,9 @@ before(async () => {
     true,
     'the local first-party proxy must be running',
   );
+  const { stdout } = await compose(['config', '--format', 'json']);
+  composeNetwork = JSON.parse(stdout).networks.default.name;
+  assert.ok(composeNetwork, 'the browser must join the proxy network');
   await compose(['up', '-d', '--wait', 'umami']);
   database = new Pool({
     connectionString: databaseUrl,
@@ -119,7 +123,7 @@ test('the live page emits one private-field-free view through the first-party pr
     type: 'event',
     payload: {
       website: websiteId,
-      hostname: 'host.docker.internal',
+      hostname: 'caddy',
       url: '/privacy',
       referrer: 'https://partner.example',
       title: result.pageTitle,
