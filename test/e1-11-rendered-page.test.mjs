@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
+import { createServer as createNetServer } from 'node:net';
 import { promisify } from 'node:util';
 import test from 'node:test';
 
@@ -13,31 +14,78 @@ const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
 const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
+const serverStartupTimeoutMilliseconds = 30_000;
 
-function startServer(databaseUrl) {
-  const port = 43_220;
-  const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-    env: {
-      ...process.env,
-      ADMIN_CREDENTIAL: 'rendered-page-admin-credential-32-chars',
-      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
-      DATABASE_URL: databaseUrl,
-      IP_PREFIX_PEPPER: 'rendered-page-test-prefix-pepper',
-      REFERRAL_SIGNING_SECRET: 'rendered-page-test-referral-secret',
-      RESEND_API_KEY: 'rendered-page-test-resend-key',
-      RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
-      RESEND_KEY_MODE: 'test',
-      RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
-      RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
-      RESEND_SENDING_DOMAIN: 'send.valstara.com',
-      TURNSTILE_SECRET_KEY: 'rendered-page-test-turnstile-secret',
-      HOST: '127.0.0.1',
-      PORT: String(port),
-    },
-    stdio: 'ignore',
-  });
+async function availablePort() {
+  const socket = createNetServer();
+  socket.listen(0, '127.0.0.1');
+  await once(socket, 'listening');
+  const { port } = socket.address();
+  socket.close();
+  await once(socket, 'close');
+  return port;
+}
 
-  return { port, server };
+async function stopServer(server) {
+  if (
+    server?.pid === undefined ||
+    server.exitCode !== null ||
+    server.signalCode !== null
+  )
+    return;
+  const exited = once(server, 'exit');
+  server.kill('SIGTERM');
+  await exited;
+}
+
+async function startServer(databaseUrl) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const port = await availablePort();
+    const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
+      env: {
+        ...process.env,
+        ADMIN_CREDENTIAL: 'rendered-page-admin-credential-32-chars',
+        ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+        DATABASE_URL: databaseUrl,
+        IP_PREFIX_PEPPER: 'rendered-page-test-prefix-pepper',
+        REFERRAL_SIGNING_SECRET: 'rendered-page-test-referral-secret',
+        RESEND_API_KEY: 'rendered-page-test-resend-key',
+        RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
+        RESEND_KEY_MODE: 'test',
+        RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+        RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+        RESEND_SENDING_DOMAIN: 'send.valstara.com',
+        TURNSTILE_SECRET_KEY: 'rendered-page-test-turnstile-secret',
+        HOST: '127.0.0.1',
+        PORT: String(port),
+      },
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    let output = '';
+    let launchError;
+    server.stderr.setEncoding('utf8');
+    server.stderr.on('data', (chunk) => {
+      output = `${output}${chunk}`.slice(-8_192);
+    });
+    server.once('error', (error) => {
+      launchError = error;
+    });
+    const started = {
+      port,
+      server,
+      output: () => output,
+      launchError: () => launchError,
+    };
+    try {
+      return { ...started, signup: await waitForPage(started, '/') };
+    } catch (error) {
+      await stopServer(server);
+      if (!output.includes('EADDRINUSE') || attempt === 2) throw error;
+    }
+  }
+  throw new Error(
+    'Rendered-page test server could not claim an available port.',
+  );
 }
 
 async function createDatabaseFixture() {
@@ -83,11 +131,30 @@ async function createDatabaseFixture() {
   };
 }
 
-async function waitForPage(port, pathname) {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+async function waitForPage(started, pathname) {
+  const deadline =
+    globalThis.performance.now() + serverStartupTimeoutMilliseconds;
+  while (globalThis.performance.now() < deadline) {
+    if (started.launchError() !== undefined) {
+      throw new Error(
+        `Could not start rendered-page test server: ${started.launchError().message}`,
+        {
+          cause: started.launchError(),
+        },
+      );
+    }
+    if (
+      started.server.exitCode !== null ||
+      started.server.signalCode !== null
+    ) {
+      throw new Error(
+        `Rendered-page test server exited before startup.\n${started.output() || '(no server output)'}`,
+      );
+    }
     try {
       const response = await globalThis.fetch(
-        `http://127.0.0.1:${port}${pathname}`,
+        `http://127.0.0.1:${started.port}${pathname}`,
+        { signal: globalThis.AbortSignal.timeout(1_000) },
       );
       if (response.ok) {
         return response;
@@ -98,7 +165,9 @@ async function waitForPage(port, pathname) {
     await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
   }
 
-  throw new Error('Rendered-page test server did not start.');
+  throw new Error(
+    `Rendered-page test server did not start within 30 seconds.\n${started.output() || '(no server output)'}`,
+  );
 }
 
 function postVerification(port, token) {
@@ -167,16 +236,16 @@ test('scanner GETs are inert, then token-authenticated POST verifies and replays
       new Date('2099-01-01T00:00:00.000Z'),
     ],
   );
-  const { port, server } = startServer(fixture.databaseUrl);
-
+  let started;
   try {
-    const signup = await waitForPage(port, '/');
+    started = await startServer(fixture.databaseUrl);
+    const { port, signup } = started;
     const scannerGet = await waitForPage(
-      port,
+      started,
       `/verify?token=${encodeURIComponent(token)}`,
     );
     const prefetchGet = await waitForPage(
-      port,
+      started,
       `/verify?token=${encodeURIComponent(token)}`,
     );
     for (const response of [scannerGet, prefetchGet]) {
@@ -223,9 +292,7 @@ test('scanner GETs are inert, then token-authenticated POST verifies and replays
     assert.equal(subscriber.rows[0]?.status, 'verified');
     assert.notEqual(subscriber.rows[0]?.verified_at, null);
   } finally {
-    const exited = once(server, 'exit');
-    server.kill('SIGTERM');
-    await exited;
+    await stopServer(started?.server);
     await fixture.dispose();
   }
 });
@@ -270,11 +337,12 @@ test('with survey.enabled off, the rendered verification success page omits the 
       new Date('2099-01-01T00:00:00.000Z'),
     ],
   );
-  const { port, server } = startServer(fixture.databaseUrl);
-
+  let started;
   try {
+    started = await startServer(fixture.databaseUrl);
+    const { port } = started;
     const confirmation = await waitForPage(
-      port,
+      started,
       `/verify?token=${encodeURIComponent(token)}`,
     );
     assert.match(await confirmation.text(), /Confirm email address/u);
@@ -287,9 +355,7 @@ test('with survey.enabled off, the rendered verification success page omits the 
     assert.ok(!body.includes('Help us prepare for launch'));
     assert.equal(verification.headers.get('set-cookie'), null);
   } finally {
-    const exited = once(server, 'exit');
-    server.kill('SIGTERM');
-    await exited;
+    await stopServer(started?.server);
     await fixture.dispose();
   }
 });
