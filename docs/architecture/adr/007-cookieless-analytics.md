@@ -22,7 +22,7 @@ GA4 and a consent-management platform return at store launch, when ads and ecomm
 - **No analytics** — funnel analytics is on the never-cut list. Flying blind on the campaign's single metric is not a saving.
 
 ## Consequences
-**The banner-free property is a code property**, and one careless dependency reverses it — hence the three gates and the rendered-page checks (`docs/testing/strategy.md`). The funnel is computable from **server-side events alone**, which also makes it robust to ad blockers.
+**The banner-free property is a code property**, and one careless dependency reverses it — hence the three gates and the rendered-page checks (`docs/testing/strategy.md`). **Founder-authorised 2026-10-06:** submit → verify → refer is computable from server events alone. The view step uses the client `page_view` because the landing page is edge-cached; a server view event would undercount. Any view-based rate is labelled an estimate because ad-blocker loss inflates it.
 
 The cookie/storage gate permits exactly one source write, the theme preference. `/privacy/storage` publishes that one-entry inventory, links back to `/privacy`, and a reconciliation test compares the page, the allowlist and the source write.
 
