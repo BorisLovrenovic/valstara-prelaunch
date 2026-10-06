@@ -10,6 +10,8 @@ The site must measure a funnel it is optimising hard — a 20–35% signup targe
 ## Decision
 **Umami self-hosted plus Cloudflare Web Analytics. No GA4, no consent banner.** Cookieless by construction, and enforced by three CI gates rather than by intention: the cookie/storage rule, the fingerprinting rule, and the third-party request rule.
 
+**E10-01 amendment, founder-authorised 2026-10-05:** Umami's stock 3.3.0 tracker reads `localStorage.getItem("umami.disabled")`. No stock or patched Umami tracker is served. A minimal static first-party script sends one pageview per page load to Umami's collector through `/analytics/api/send`. Its payload contains only the public website ID, hostname, URL path, referrer origin, page title and HTML language. The collector request suppresses the browser's `Referer` header so it cannot carry a query token. The emitter omits `/me`, `/verify`, `/unsubscribe` and admin routes; it reads or writes no browser storage and sends no screen or other device property. The proxy exposes only the collector endpoint, never Umami's `/script.js`.
+
 Referral attribution is captured **server-side** (ADR-008) so the one mechanic that would otherwise need a cookie does not.
 
 GA4 and a consent-management platform return at store launch, when ads and ecommerce attribution justify them.

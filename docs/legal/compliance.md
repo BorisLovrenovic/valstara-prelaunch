@@ -60,7 +60,7 @@ The six-year award retention, backup window of up to 30 days, and limited proces
 
 Article 5(3) applies to **storing information on, or accessing information already stored on, a visitor's device**. This site does neither for any non-essential purpose:
 
-- **No analytics cookie.** Umami and Cloudflare Web Analytics are cookieless.
+- **No analytics cookie or storage access.** Valstara's first-party page-view emitter sends a minimal payload to self-hosted Umami and suppresses the collector request's `Referer` header so URL query tokens are not sent. Umami's stock tracker is never served, so its `umami.disabled` browser-storage read does not run (founder-authorised 2026-10-05). The emitter reads or writes no cookie, Web Storage or IndexedDB. Cloudflare Web Analytics is cookieless.
 - **No referral cookie.** `?ref=` is read **server-side on the rendering request** and carried as a signed hidden field — a mechanic that is both more reliable and entirely outside Article 5(3).
 - **No site-run device fingerprinting API.** The site invokes no canvas, font-enumeration, WebGL or timing-entropy API. Cloudflare's server-side security processing is disclosed separately below.
 - **No third-party script** on any page, except two sanctioned exceptions: the deliberately-flagged Trustpilot widget, which stays off until a rating is worth showing, and Cloudflare Turnstile on the signup, verification-recovery and member marketing-preference forms (ADR-006, S-01). The no-banner basis for Turnstile is specifically Article 5(3): the rendered-page probe confirms that it neither stores information on nor accesses information already stored on the visitor's device. Both exceptions are enforced by the third-party-request CI gate's allowlist; nothing else off-origin loads.

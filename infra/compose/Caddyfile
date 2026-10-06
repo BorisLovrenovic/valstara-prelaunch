@@ -22,15 +22,26 @@ https://{$SITE_HOST} {
 	tls /run/secrets/caddy_origin_cert /run/secrets/caddy_origin_key
 	encode zstd gzip
 
-	reverse_proxy app:4321 {
-		health_uri /
-		health_interval 2s
-		health_timeout 1s
-		health_status 200
-		health_fails 2
-		health_passes 2
-		fail_duration 10s
-		max_fails 1
-		lb_try_duration 1s
+	handle /analytics/api/send {
+		uri strip_prefix /analytics
+		reverse_proxy umami:3000
+	}
+
+	handle /analytics/* {
+		respond 404
+	}
+
+	handle {
+		reverse_proxy app:4321 {
+			health_uri /
+			health_interval 2s
+			health_timeout 1s
+			health_status 200
+			health_fails 2
+			health_passes 2
+			fail_duration 10s
+			max_fails 1
+			lb_try_duration 1s
+		}
 	}
 }

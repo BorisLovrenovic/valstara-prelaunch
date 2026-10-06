@@ -176,7 +176,7 @@ async function openInBrowser(page, origin) {
     });
   });
   await page.goto('http://valstara.test/legit', {
-    waitUntil: 'domcontentloaded',
+    waitUntil: 'networkidle',
   });
 }
 
@@ -243,11 +243,17 @@ test('E9-08 gates the only Trustpilot request and preserves /legit when the host
         assert.ok(html.includes('We do not show a Trustpilot star rating'));
         assert.ok(!html.includes(loaderUrl));
         assert.ok(!html.includes('data-template-id='));
+        const emitter = html.match(
+          /<script defer src="\/page-view\.js" data-website-id="[a-f0-9-]{36}"><\/script>/u,
+        );
+        assert.ok(emitter, '/legit needs the approved page-view emitter');
         assert.doesNotMatch(
-          html.replace(
-            /<script type="application\/ld\+json">[\s\S]*?<\/script>/u,
-            '',
-          ),
+          html
+            .replace(
+              /<script type="application\/ld\+json">[\s\S]*?<\/script>/u,
+              '',
+            )
+            .replace(emitter[0], ''),
           /<script\b|\.js(?:["?]|$)/iu,
         );
         await withBrowserPage(remote.browser, async (page) => {

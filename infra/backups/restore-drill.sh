@@ -123,11 +123,17 @@ if [ "$restored_ledger" != "$expected_ledger" ]; then
   exit 1
 fi
 
+restored_umami_table=$(docker exec "$scratch_container" psql --username "$source_db_user" --dbname umami --tuples-only --no-align --command "SELECT to_regclass('public.website') IS NOT NULL")
+if [ "$restored_umami_table" != 't' ]; then
+  printf '%s\n' 'The restored Umami database is missing its website table.' >&2
+  exit 1
+fi
+
 finished_ns=$(date +%s%N)
 elapsed_ms=$(( (finished_ns - started_ns) / 1000000 ))
 
 printf '%s\n' 'pgBackRest local restore drill passed.'
-printf '%s\n' 'Verified source and restored migration ledger rows, full and differential backups, and WAL archiving.'
+printf '%s\n' 'Verified source and restored migration ledger rows, Umami database, full and differential backups, and WAL archiving.'
 printf '%s\n' "Local restore timing: ${elapsed_ms} ms (floor only; not the production RTO)."
 
 if [ "${RESTORE_DRILL_KEEP_SCRATCH:-0}" = '1' ]; then

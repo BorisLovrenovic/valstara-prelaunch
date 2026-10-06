@@ -1,0 +1,14 @@
+---
+// Public Umami website ID. The same ID is used when creating the site in Umami.
+const websiteId = 'a4041033-3269-4a73-8772-c16f9bdf1a33';
+const path = Astro.url.pathname;
+const excluded =
+  /^\/(?:me|verify|unsubscribe)(?:\/|$)/u.test(path) ||
+  /^\/(?:api\/)?admin(?:\/|$)/u.test(path);
+---
+
+{
+  !excluded && (
+    <script is:inline defer src="/page-view.js" data-website-id={websiteId} />
+  )
+}

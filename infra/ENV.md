@@ -283,13 +283,25 @@ owns the remote repository, schedule, and production timing measurement. It
 also removes only unreadable local stanza metadata left by a changed local
 passphrase before creating the drill's replacement backup.
 
-The app is available at `http://127.0.0.1:4321` and Umami at
-`http://127.0.0.1:3000`. PostgreSQL is exposed only on the loopback interface at
-port 5434 for local development. The app and Umami ports are also loopback-only.
+The first-party local entry point is `http://127.0.0.1:8080`; it routes
+`/analytics/api/send` to Umami and every other public page to the app. The app
+is also available directly at `http://127.0.0.1:4321` and Umami's operator UI at
+`http://127.0.0.1:3000`. PostgreSQL is exposed only on the loopback interface
+at port 5434 for local development. All these ports are loopback-only. The
+production Caddy proxy exposes only Umami's collector endpoint under
+`/analytics/`; it returns 404 for `/analytics/script.js` and every other Umami
+path.
 
 The initial Umami login is `admin` / `umami`; change it immediately after the
 first login. The Umami service runs with telemetry disabled and private mode on,
 so this local stack makes no optional external requests.
+
+Create the Valstara website in each Umami database with public ID
+`a4041033-3269-4a73-8772-c16f9bdf1a33`, name `Valstara`, and domain
+`valstara.com` through Umami's authenticated `POST /api/websites` endpoint.
+The `id` request field accepts that explicit UUID. This ID is fixed in
+`src/layouts/page-view-emitter.astro`; it is public, not a secret. The
+operator provisions the production website at E12-07 before enabling traffic.
 
 ## GitHub repository controls
 

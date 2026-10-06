@@ -259,9 +259,9 @@ test('there is no separate AMOE POST route', async () => {
 test('the landing page ships only the theme toggle and signup form islands', async () => {
   // Measured from the built-and-served output. The landing page carries two
   // islands — the theme toggle (its inline bootstrap plus its island script) and
-  // the signup form (E3-05) — plus Cloudflare's Turnstile loader, the one
-  // always-on off-origin request (ADR-006, Option A). Every script must fall
-  // into one of these three buckets; a third island or a stray script fails.
+  // the signup form (E3-05) — plus the first-party page-view emitter (E10-01)
+  // and Cloudflare's Turnstile loader. Every script must fit an approved
+  // source; a third island or a stray script fails.
   const { body } = await renderLanding({ flags: [signupOn] });
 
   const scripts = [
@@ -276,6 +276,9 @@ test('the landing page ships only the theme toggle and signup form islands', asy
   const turnstileLoader = scripts.filter((script) =>
     script.attributes.includes('challenges.cloudflare.com/turnstile'),
   );
+  const pageView = scripts.filter((script) =>
+    script.attributes.includes('src="/page-view.js"'),
+  );
   const structuredData = scripts.filter((script) =>
     script.attributes.includes('type="application/ld+json"'),
   );
@@ -283,6 +286,11 @@ test('the landing page ships only the theme toggle and signup form islands', asy
   assert.equal(theme.length, 2, 'the two theme-toggle scripts ship');
   assert.equal(signupIsland.length, 1, 'exactly one signup form island ships');
   assert.equal(turnstileLoader.length, 1, 'the Turnstile loader ships once');
+  assert.equal(
+    pageView.length,
+    1,
+    'the first-party page-view emitter ships once',
+  );
   assert.equal(
     structuredData.length,
     1,
@@ -294,6 +302,7 @@ test('the landing page ships only the theme toggle and signup form islands', asy
     theme.length +
       signupIsland.length +
       turnstileLoader.length +
+      pageView.length +
       structuredData.length,
     'no other script ships (no third island)',
   );

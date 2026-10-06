@@ -1687,19 +1687,19 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 ### E10-01 — Umami deployment and the cookieless proof
 **Model:** GPT-6 Astra — Medium · **Priority:** High · **Flag:** — · **Area:** infra
-**Why this model:** most of the work is compose and proxy configuration in the terminal, where GPT-6 Astra leads every Sol level, and the cookieless proof must inspect a third-party tracker script rather than trust it (§3).
+**Why this model:** most of the work is compose and proxy configuration in the terminal, where GPT-6 Astra leads every Sol level, and the cookieless proof must inspect the actual rendered page and collector contract rather than trust a vendor claim (§3).
 
-**Build:** Umami in Compose with its own database, behind the proxy, on a first-party path. Wire the client script. **Deploying it to the VPS is E12-07**; everything this ticket asserts — the cookieless proof — is verifiable locally and is the part that matters.
+**Build:** Umami in Compose with its own database, behind the proxy, on a first-party path. Wire the first-party page-view emitter (founder-authorised 2026-10-05): one static same-origin script loaded with `defer`, sending one pageview per page load to Umami's `/api/send` through the first-party proxy. Its payload contains only website ID, hostname, URL path without query or fragment, referrer origin, page title and language. It never runs on `/me`, `/verify`, `/unsubscribe` or admin routes; it accesses no browser storage, cookie or IndexedDB, and failure is silent. Do not serve Umami's tracker, patched or stock, through the proxy. **Deploying it to the VPS is E12-07**; everything this ticket asserts — the cookieless proof — is verifiable locally and is the part that matters.
 
 **Acceptance criteria:**
 - Umami runs with **its own database**, never `valstara_waitlist`
-- **No cookie and no storage identifier is set by the tracking script** — asserted by the rendered-page check
+- **No cookie or browser storage is accessed by the page-view emitter** — asserted by the rendered-page check
 - **The script is served first-party**, so no third-party request occurs
 - Its unavailability affects no response
 - Its own database is included in the backup arrangement or explicitly excluded with a reason
 
-**Tests:** The rendered-page cookie and third-party assertions · a collector-down scenario.
-**Docs:** `docs/features/analytics.md` · `docs/architecture/adr/007-cookieless-analytics.md`
+**Tests:** The rendered-page cookie, storage and third-party assertions with the emitter live · payload fields and query/fragment exclusion including `?ref=` and token URLs · no emission on excluded routes · a collector-down scenario · a recorded-pageview contract test against the pinned Umami container.
+**Docs:** `docs/features/analytics.md` · `docs/architecture/adr/007-cookieless-analytics.md` · `docs/legal/compliance.md#3-eprivacy--why-there-is-no-banner`
 
 ### E10-02 — The event schema and registry
 **Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** backend

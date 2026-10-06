@@ -70,7 +70,7 @@ test('trust content transcribes the founder-approved pages with source notes', a
 });
 
 test(
-  'the two unchanged trust URLs build as static pages with no client JavaScript',
+  'the two unchanged trust URLs build as static pages with only the approved page-view script',
   { timeout: 120_000 },
   async () => {
     const result = spawnSync('npm', ['run', 'build'], {
@@ -96,8 +96,12 @@ test(
       ];
       assert.equal(dataBlocks.length, 1);
       assert.equal(JSON.parse(dataBlocks[0][1])['@type'], 'Organization');
+      const emitter = html.match(
+        /<script defer src="\/page-view\.js" data-website-id="[a-f0-9-]{36}"><\/script>/u,
+      );
+      assert.ok(emitter, `/${slug} needs the approved page-view emitter`);
       assert.doesNotMatch(
-        html.replace(dataBlocks[0][0], ''),
+        html.replace(dataBlocks[0][0], '').replace(emitter[0], ''),
         /<script\b|\.js(?:["?]|$)/iu,
       );
       assert.doesNotMatch(

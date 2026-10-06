@@ -1,6 +1,7 @@
 ---
 import { layoutCopy } from '../copy/layout.ts';
 import { seoCopy } from '../copy/seo.ts';
+import PageViewEmitter from './page-view-emitter.astro';
 import {
   canonicalUrl,
   jsonLd,
@@ -50,6 +51,7 @@ const fallbackImage = socialFallbackImageUrl(
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={image} />
     <meta name="twitter:image:alt" content={title} />
+    <PageViewEmitter />
     <script
       is:inline
       type="application/ld+json"
