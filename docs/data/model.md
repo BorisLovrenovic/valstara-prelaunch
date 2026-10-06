@@ -326,6 +326,8 @@ This is what the schema exists to make trivial. Prelaunch owns the export and th
 | `access_window` | Customer metadata **and** the customer group |
 | `subslush_customer` | The `subslush-legacy` group |
 
+**E10-04 admin CSV encoding.** `GET /api/admin/export.csv` emits exactly the twelve fields above, in table order, with a header row and CRLF line endings. It uses standard CSV quoting for commas, quotes and line breaks. Nullable fields are empty cells; a present `category_preference` is a JSON array inside one CSV cell, so `[]` remains distinct from null. `marketing_consent_at` is RFC 3339 UTC, booleans are lowercase `true`/`false`, and integer counts remain decimal integers. The export is a snapshot of the verified, unsuppressed set; the later E11-06 cutover export and import rehearsal own the launch-day handoff procedure.
+
 **Sequence:** freeze writes → pgBackRest snapshot → export → idempotent import keyed on `email_normalised` → `createCustomersWorkflow` with metadata → assign customer groups `wave-1`…`wave-4` and `subslush-legacy` → generate per-customer discount codes → set the waitlist database read-only for 90 days.
 
 **Groups, not metadata, are what promotions and price lists target.** Metadata carries provenance; the group carries the access it grants. Both are written, and the group assignment is the one the store actually uses.

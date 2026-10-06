@@ -63,6 +63,8 @@ days and changes only `pending` rows strictly past it.
 ## Dependencies
 `db`, `audit`, `fraud` (signals at signup), `referral` (edge creation), `email` (queue verification).
 
+E10-04 adds the authenticated admin CSV export interface in `src/server/subscriber/export.ts`. It reads the verified, unsuppressed subscriber set from one database snapshot in pages of at most 500 rows and emits only the handoff payload fields. It records `export.run` with the operator actor and snapshot row count before any CSV bytes are returned; audit failure stops the export. The route provides the E5-03a MFA boundary.
+
 ## Contract tests
 `user+tag@gmail.com`, `u.s.e.r@gmail.com` and `user@gmail.com` collide on one row · a non-Gmail domain keeps its dots · double signup produces one row and one email · `referred_by_id` cannot be updated · `disqualify()` without an actor throws · `anonymise()` leaves edges intact and personal fields null · reminder offsets and business-key deduplication · reminder stop on verification · `expireUnverified()` honours its limit · expired rows fail the shared counted-status filter.
 

@@ -14,7 +14,7 @@ export interface AuditRecordInput {
   readonly actor: string;
   readonly action: AuditAction;
   readonly subjectType: string;
-  readonly subjectId: string;
+  readonly subjectId: string | null;
   readonly detail?: AuditDetail;
   readonly requestId?: string;
 }

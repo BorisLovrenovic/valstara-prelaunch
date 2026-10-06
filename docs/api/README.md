@@ -121,7 +121,7 @@ middleware.
 
 | Route | Purpose |
 |---|---|
-| `GET /api/admin/export.csv` | The list export. Streamed, batch-capped, audited with row count |
+| `GET /api/admin/export.csv` | The list export. A `text/csv` attachment with the exact handoff fields in `docs/data/model.md`, streamed in 500-row pages from one repeatable-read snapshot. An `export.run` audit with actor and snapshot row count is committed before bytes are returned. `Cache-Control: no-store` |
 | `GET /api/admin/flags` · `POST /api/admin/flags` | Read and set campaign flags |
 | `GET /api/admin/fraud?limit=…` · `POST /api/admin/fraud/:id` | Priority-ordered review queue (hard maximum 50); POST body is `{ "outcome": "dismissed" | "upheld" }`. Both outcomes use the authenticated actor and are audited. Upholding disqualifies once E5-05 adds that downstream transition |
 | `POST /api/admin/draw` | Authenticated, audited draw commitment. Reconciles eligible entries, checks the top-20 review and listed bundle contents, closes entry inserts, and commits the non-voided snapshot hash and future drand round. Returns `202` with `{ draw: { id, state: "pending", target_round, target_round_at } }`. The maintenance worker verifies two relays, selects winners and ordered reserves, and publishes only after offline reproduction. A second active draw is refused. |
