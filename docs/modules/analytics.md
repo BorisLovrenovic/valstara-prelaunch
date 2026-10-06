@@ -18,6 +18,7 @@ interface AnalyticsService {
 ## Rules
 - **One registry covers client and server events**, each tagged by source. `page_view` is client-sourced with exactly `website`, `hostname`, `url`, `referrer`, `title`, `language`. There is no server view event: the landing page is edge-cached, and a server count would undercount. The E10-01 emitter's payload keys are checked against the registry.
 - **No property may carry an email address, referral code, IP address, or any value identifying one person.** A schema test asserts this over the whole registry, including `page_view`. Server-side values are finite categories or booleans; raw UTM values are never emitted.
+- Server `track()` copies caller properties into a plain snapshot, validates that snapshot, and sends only that snapshot; caller mutations after the call cannot change the collector payload.
 - **An unregistered event or a client-sourced event passed to server `track()` throws in development and is dropped in production.** Invalid server properties follow the same rule. Development catches mistakes; production never breaks a response over telemetry.
 - **`track()` never blocks a response and is never retried into a failing collector.** Losing analytics is free; delaying a signup is not.
 - Server events use a fixed, non-personal User-Agent. Pinned Umami 3.3.0 silently discards Node's default bot-classified User-Agent with a 200 `beep/boop` response; the collector contract test requires a recorded event, not only an HTTP success.

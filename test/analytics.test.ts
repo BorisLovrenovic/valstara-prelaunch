@@ -210,6 +210,31 @@ test('track settles before collector I/O and makes one attempt even when the col
   await assert.doesNotReject(syncFailure.track('signup_submitted', submitted));
 });
 
+test('track sends the validated properties when the caller mutates its object', async () => {
+  let posted: { payload: { data: Record<string, unknown> } } | undefined;
+  const send = (async (_url: string, options: RequestInit) => {
+    posted = JSON.parse(String(options.body)) as typeof posted;
+    return new Response(null, { status: 200 });
+  }) as typeof fetch;
+  const analytics = createAnalyticsService({ environment: 'production', send });
+  const props: {
+    source_bucket: string;
+    had_ref: boolean;
+    marketing_opt_in: boolean;
+  } = {
+    ...submitted,
+  };
+
+  const tracked = analytics.track(
+    'signup_submitted',
+    props as typeof submitted,
+  );
+  props.source_bucket = 'person@example.com';
+  await tracked;
+
+  assert.deepEqual(posted?.payload.data, submitted);
+});
+
 test('UTM capture happens on the server with the referral envelope', () => {
   const capture = createReferralCaptureService(
     'analytics-capture-test-secret',

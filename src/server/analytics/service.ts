@@ -40,11 +40,13 @@ export function createAnalyticsService(
     track(event, props) {
       const name: string = event;
       let valid: boolean;
+      let snapshot: Record<string, unknown> = {};
       try {
+        snapshot = { ...props };
         valid =
           isEventName(name) &&
           eventRegistry[name].source === 'server' &&
-          validServerProperties(name as ServerEventName, props);
+          validServerProperties(name as ServerEventName, snapshot);
       } catch {
         valid = false;
       }
@@ -72,7 +74,7 @@ export function createAnalyticsService(
                 hostname: 'valstara.com',
                 url: '/',
                 name,
-                data: props,
+                data: snapshot,
               },
             }),
             signal: AbortSignal.timeout(1_500),
