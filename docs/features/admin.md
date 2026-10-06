@@ -31,6 +31,8 @@ TOTP, token, raw IP address or configuration detail.
 ## Edge cases and error states
 Export requested during a spike → **streamed and batch-capped**; it must not hold the result set in memory on a box with hard limits and no swap. Flag set while a snapshot is mid-refresh → the next snapshot honours it; the flag is checked at read time as well as at build time. Draw executed twice → **the second execution is refused**; a draw is a one-time event with a recorded seed. Admin credential compromised → MFA is mandatory, every admin action is audited, and the audit log is append-only by database permission.
 
+`GET /api/admin/export.csv` reads one repeatable-read snapshot in pages of at most 500 rows, ordered by subscriber ID. It opens only after bearer and TOTP authentication. Before returning the first CSV byte, it records `export.run` with the authenticated actor and the snapshot's row count. If the audit write fails, the export fails closed. The response is `text/csv`, an attachment, and `no-store`; stream cancellation releases the database snapshot. The row set and CSV columns follow the launch-day handoff contract in `docs/data/model.md`.
+
 ## Acceptance criteria
 - [ ] Admin routes require authentication **with MFA active** — verified, not assumed
 - [ ] The route registry exactly covers the admin route tree; every registered route is exercised through the authentication middleware

@@ -1,7 +1,7 @@
 export type AdminHttpMethod = 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT';
 
 export type AdminRouteMethod =
-  | { readonly method: 'GET'; readonly audit: 'read-only' }
+  | { readonly method: 'GET'; readonly audit: 'read-only' | 'required' }
   | {
       readonly method: Exclude<AdminHttpMethod, 'GET'>;
       readonly audit: 'required';
@@ -46,6 +46,11 @@ export function defineAdminRouteRegistry(
 // here in the same change. The generated test reconciles this registry with
 // src/pages/api/admin, then exercises every entry through the prefix middleware.
 export const adminRouteRegistry = defineAdminRouteRegistry([
+  {
+    source: 'src/pages/api/admin/export.csv.ts',
+    pathname: '/api/admin/export.csv',
+    methods: [{ method: 'GET', audit: 'required' }],
+  },
   {
     source: 'src/pages/api/admin/draw.ts',
     pathname: '/api/admin/draw',

@@ -9,7 +9,7 @@ export interface AuditLogInsert {
   readonly detail: AuditDetail;
   readonly id: string;
   readonly requestId: string | null;
-  readonly subjectId: string;
+  readonly subjectId: string | null;
   readonly subjectType: string;
 }
 
