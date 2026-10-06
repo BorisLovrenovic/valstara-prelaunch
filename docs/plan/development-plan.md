@@ -1683,7 +1683,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 **Goal:** the numbers the campaign is optimising, and the five screens an operator actually needs. *5 tickets.*
 
-**Exit criteria:** the funnel is computable from server events alone, no event carries personal data, and the admin health view answers "is the campaign silently broken".
+**Exit criteria:** submit → verify → refer is computable from server events alone; the view step uses the client `page_view` and any view-based rate is labelled an estimate (founder-authorised 2026-10-06). No event carries personal data, and the admin health view answers "is the campaign silently broken".
 
 ### E10-01 — Umami deployment and the cookieless proof
 **Model:** GPT-6 Astra — Medium · **Priority:** High · **Flag:** — · **Area:** infra
@@ -1705,29 +1705,33 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** backend
 **Why this model:** the personal-data assertion over the registry is a privacy control, and it is the kind that decays silently as events are added.
 
+**Founder-authorised clarification, 2026-10-06:** One registry covers every event and tags each `source: 'client' | 'server'`. `page_view` is client-sourced and has exactly the six E10-01 emitter fields. There is no server view event: edge caching (`s-maxage=300`) means it would undercount, and caching is retained. Server `track()` rejects a client-sourced event in the same way as an unregistered event. A test compares the E10-01 emitter's payload keys with the registered `page_view` fields.
+
 **Build:** `src/server/analytics` with the registered event set from `docs/features/analytics.md#the-event-schema`. **An unregistered event throws in development and is dropped in production.**
 
 **Acceptance criteria:**
-- **No event property can carry an email address, referral code, IP address or any single-person identifier** — asserted **over the whole registry**, so a newly added event is covered automatically
-- Unregistered events throw in development, drop in production
+- **No event property can carry an email address, referral code, IP address or any single-person identifier** — asserted **over the whole registry, including `page_view`**, so a newly added event is covered automatically
+- Unregistered events and client-sourced calls to server `track()` throw in development, drop in production
 - **`track()` never blocks a response and is never retried into a failing collector**
 - UTM capture is server-side, consistent with referral capture
 
-**Tests:** The registry-wide personal-data assertion · both unregistered-event behaviours · the non-blocking assertion.
+**Tests:** The registry-wide personal-data assertion (including `page_view`) · both unregistered-event behaviours · the client-event rejection behaviours · the non-blocking assertion · the E10-01 emitter payload-key match.
 **Docs:** `docs/modules/analytics.md`
 
 ### E10-03 — Server-side funnel events
 **Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** backend
 
+**Founder-authorised clarification, 2026-10-06:** There is no server view event. The landing page remains edge-cached (`s-maxage=300`). A view-based rate uses the client `page_view` event and is labelled as an estimate because ad-blocker loss inflates it.
+
 **Build:** Emit the server-side events at their state transitions: `signup_submitted`, `signup_rejected`, `verified`, `referral_confirmed`, `survey_completed`, `giveaway_entered`, `unsubscribed`.
 
 **Acceptance criteria:**
-- **The full funnel — view → submit → verify → refer — is computable from server events alone** — asserted, because ad blockers make client events unusable as a basis
+- **Submit → verify → refer is computable from server events alone. The view step uses the client `page_view` event, and any view-based rate is documented and labelled as an estimate (ad-blocker loss inflates it).**
 - Each event fires exactly once per transition
 - Rejection events carry the reason code, so the rejection mix is analysable
 - No event fires for an unverified row where the feature spec says nothing counts it
 
-**Tests:** Funnel reconstruction from server events only · once-per-transition assertions.
+**Tests:** Funnel reconstruction (submit → verify → refer) from server events only.
 **Docs:** `docs/features/analytics.md`
 
 ### E10-04 — The CSV export
@@ -1748,6 +1752,8 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 ### E10-05 — The health view
 **Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
+
+**Founder-authorised clarification, 2026-10-06:** Any view-based rate shown in the admin view is labelled "estimate".
 
 **Build:** `GET /api/admin/health`, consuming E5-03a's authentication boundary: verification rate against baseline (from E3-10's verification-rate health result), snapshot age, email queue depth, domain authentication status (E8-02), seed-test results (E8-04), quota consumption and projection (E8-09), purge-job status, open flag count. Authentication split founder-authorised 2026-09-16.
 
