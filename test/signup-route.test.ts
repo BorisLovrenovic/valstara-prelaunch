@@ -185,6 +185,76 @@ test('the route runs Turnstile, then the flag, rate limit, and signup module, in
   assert.deepEqual(order, ['turnstile', 'flag', 'rate-limit', 'signup']);
 });
 
+test('each rejected signup emits its closed reason code once, while flag-off emits none', async () => {
+  const cases: Array<{
+    reason: keyof typeof signupErrorCatalogue;
+    overrides: Partial<SignupRouteDependencies>;
+    fields?: Record<string, string>;
+  }> = [
+    {
+      reason: 'challenge_failed',
+      overrides: { verifyTurnstile: async () => 'rejected' },
+    },
+    {
+      reason: 'rate_limited',
+      overrides: { consumeIpRateLimit: async () => 'rate_limited' },
+    },
+    {
+      reason: 'invalid_input',
+      overrides: {},
+      fields: { turnstile_token: 'valid-token' },
+    },
+    {
+      reason: 'invalid_email',
+      overrides: { signup: async () => ({ kind: 'invalid_email' }) },
+    },
+    {
+      reason: 'blocked_domain',
+      overrides: { signup: async () => ({ kind: 'blocked_domain' }) },
+    },
+    {
+      reason: 'unavailable',
+      overrides: {
+        signup: async () => {
+          throw new DatabaseUnavailableError('offline');
+        },
+      },
+    },
+    {
+      reason: 'internal',
+      overrides: {
+        signup: async () => {
+          throw new Error('failure');
+        },
+      },
+    },
+  ];
+  for (const { reason, overrides, fields } of cases) {
+    const events: string[] = [];
+    const route = createSignupRoute(
+      deps({
+        ...overrides,
+        onRejected: (code) => events.push(code),
+      }),
+    );
+    const response = await route(routeContext(makeRequest(fields)));
+    assert.equal((await response.json()).error.code, reason);
+    assert.deepEqual(events, [reason]);
+  }
+  const events: string[] = [];
+  const paused = createSignupRoute(
+    deps({
+      isSignupEnabled: async () => false,
+      onRejected: (reason) => events.push(reason),
+    }),
+  );
+  assert.equal(
+    (await (await paused(routeContext(makeRequest()))).json()).status,
+    'paused',
+  );
+  assert.deepEqual(events, []);
+});
+
 test('a rejected Turnstile token stops the route before the rate limit or any work', async () => {
   const order: string[] = [];
   const route = createSignupRoute(
@@ -656,11 +726,16 @@ test('the default POST route verifies Turnstile and queues one mail without a di
   process.env.RESEND_SEND_CNAME_EXPECTED_TARGET = 'send.forge.rmta.net';
   process.env.RESEND_SENDING_DOMAIN = 'send.valstara.com';
   const requests: string[] = [];
-  globalThis.fetch = (async (input: RequestInfo | URL) => {
+  const analyticsPayloads: unknown[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = input instanceof Request ? input.url : input.toString();
     requests.push(url);
     if (url.includes('challenges.cloudflare.com')) {
       return Response.json({ success: true });
+    }
+    if (url === 'http://umami:3000/api/send') {
+      analyticsPayloads.push(JSON.parse(String(init?.body)));
+      return Response.json({ ok: true });
     }
     throw new Error(`Unexpected provider request: ${url}`);
   }) as typeof globalThis.fetch;
@@ -687,6 +762,23 @@ test('the default POST route verifies Turnstile and queues one mail without a di
     assert.equal(queued?.count, '1');
     assert.deepEqual(requests, [
       'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      'http://umami:3000/api/send',
+    ]);
+    assert.deepEqual(analyticsPayloads, [
+      {
+        type: 'event',
+        payload: {
+          website: 'a4041033-3269-4a73-8772-c16f9bdf1a33',
+          hostname: 'valstara.com',
+          url: '/',
+          name: 'signup_submitted',
+          data: {
+            source_bucket: 'direct',
+            had_ref: false,
+            marketing_opt_in: false,
+          },
+        },
+      },
     ]);
   } finally {
     globalThis.fetch = originalFetch;

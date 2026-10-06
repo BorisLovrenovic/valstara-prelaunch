@@ -11,6 +11,12 @@ import {
   type VerificationCompletion,
 } from '../server/verification/complete.ts';
 import { currentSurveyVersion } from '../server/survey/questions.ts';
+import { createAnalyticsService } from '../server/analytics/service.ts';
+import {
+  hoursToVerifyBucket,
+  referrerTierBucket,
+  sourceBucket,
+} from '../server/analytics/funnel.ts';
 
 const token = Astro.url.searchParams.get('token') ?? '';
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -37,9 +43,30 @@ if (Astro.request.method === 'POST') {
       ? false
       : await getFlagService().isEnabled('referral.enabled');
   try {
+    const analytics = createAnalyticsService();
     completion = await createVerificationCompletionService(database, {
       referralEnabled,
       giveaway: { flags: getFlagService(), currentRules },
+      onCommitted: ({ verified, referrerTier, giveawayMethods }) => {
+        if (verified !== null)
+          void analytics
+            .track('verified', {
+              hours_to_verify_bucket: hoursToVerifyBucket(
+                verified.createdAt,
+                verified.verifiedAt,
+              ),
+              source_bucket: sourceBucket(verified.utm, verified.hasRef),
+            })
+            .catch(() => {});
+        if (referrerTier !== null)
+          void analytics
+            .track('referral_confirmed', {
+              referrer_tier_bucket: referrerTierBucket(referrerTier),
+            })
+            .catch(() => {});
+        for (const method of giveawayMethods)
+          void analytics.track('giveaway_entered', { method }).catch(() => {});
+      },
     })(authenticatedToken);
   } finally {
     await database.close();

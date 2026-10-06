@@ -296,6 +296,7 @@ test('a send failure never rolls back the committed subscriber, token or queued 
 test('a concurrent double-submit produces one subscriber and exactly one email, against a real database', async () => {
   const fixture = await createDatabaseFixture();
   const sent: VerificationTestMail[] = [];
+  const submitted: boolean[] = [];
   const signup = createSignupService(fixture.database, {
     raiseFraudFlag: async () => undefined,
     screenEmailDomain: async () => ({ flags: [] }),
@@ -303,6 +304,7 @@ test('a concurrent double-submit produces one subscriber and exactly one email, 
     async sendVerificationMail(mail) {
       sent.push(mail);
     },
+    onCreated: ({ hasValidRef }) => submitted.push(hasValidRef),
   });
 
   try {
@@ -316,6 +318,7 @@ test('a concurrent double-submit produces one subscriber and exactly one email, 
     assert.equal(await rowCount(fixture.database, 'subscriber'), 1);
     assert.equal(await rowCount(fixture.database, 'email_send'), 1);
     assert.equal(sent.length, 1);
+    assert.deepEqual(submitted, [false]);
   } finally {
     await fixture.dispose();
   }

@@ -7,6 +7,7 @@ import { createReferralService } from './service.ts';
 
 export interface StrandedReferralReconciliationDependencies {
   readonly clock?: () => Date;
+  readonly onConfirmed?: (tier: number) => void;
 }
 
 /** Repairs only the legacy shape created by the former flag-off completion bug. */
@@ -26,11 +27,18 @@ export function createStrandedReferralReconciliationJob(
           database,
         ).findStrandedVerifiedReferralIds(limit);
       for (const referredId of referredIds) {
-        await withTransaction(database, async (connection) => {
-          await createReferralService(connection, {
+        const tier = await withTransaction(database, async (connection) => {
+          return createReferralService(connection, {
             milestoneEmail: milestone,
           }).confirm(referredId, clock());
         });
+        if (tier !== null) {
+          try {
+            dependencies.onConfirmed?.(tier);
+          } catch {
+            /* Repair remains committed. */
+          }
+        }
       }
       return referredIds.length;
     },

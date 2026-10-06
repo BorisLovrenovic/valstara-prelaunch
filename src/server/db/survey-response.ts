@@ -3,6 +3,7 @@ import type { DatabaseConnection } from './pool.ts';
 export interface SurveyResponseRow {
   readonly answers: unknown;
   readonly version: string;
+  readonly first_answered_at: Date | null;
 }
 
 export interface SurveyResponseWrite {
@@ -10,6 +11,7 @@ export interface SurveyResponseWrite {
   readonly id: string;
   readonly subscriberId: string;
   readonly version: string;
+  readonly firstAnsweredAt: Date | null;
 }
 
 export interface SurveyResponseRepository {
@@ -36,21 +38,22 @@ export function createSurveyResponseRepository(
     },
     find(subscriberId) {
       return database.readOne<SurveyResponseRow>({
-        text: 'SELECT answers, version FROM survey_response WHERE subscriber_id = $1',
+        text: 'SELECT answers, version, first_answered_at FROM survey_response WHERE subscriber_id = $1',
         values: [subscriberId],
       });
     },
     async insert(input) {
       await database.execute({
         text: `
-          INSERT INTO survey_response (id, subscriber_id, answers, version)
-          VALUES ($1, $2, $3::jsonb, $4)
+          INSERT INTO survey_response (id, subscriber_id, answers, version, first_answered_at)
+          VALUES ($1, $2, $3::jsonb, $4, $5)
         `,
         values: [
           input.id,
           input.subscriberId,
           JSON.stringify(input.answers),
           input.version,
+          input.firstAnsweredAt,
         ],
       });
     },
@@ -59,13 +62,15 @@ export function createSurveyResponseRepository(
         text: `
           UPDATE survey_response
           SET answers = $2::jsonb,
-              version = $3
+              version = $3,
+              first_answered_at = COALESCE(first_answered_at, $4)
           WHERE subscriber_id = $1
         `,
         values: [
           input.subscriberId,
           JSON.stringify(input.answers),
           input.version,
+          input.firstAnsweredAt,
         ],
       });
     },

@@ -76,7 +76,8 @@ export interface ReferralService {
     limit: number,
     now: Date,
   ): Promise<MilestoneBackfillResult>;
-  confirm(referredId: string, now: Date): Promise<void>;
+  /** New confirmed edge's settled referrer tier; null on a no-op. */
+  confirm(referredId: string, now: Date): Promise<number | null>;
   generateCode(subscriberId: string): Promise<string>;
   getReferralCode(subscriberId: string): Promise<string | null>;
   lookupCode(code: string): Promise<string | null>;
@@ -282,12 +283,12 @@ function createReferralServiceWithRepository(
       });
     },
     async confirm(referredId, now) {
-      await runTransaction(async (connection) => {
+      return runTransaction(async (connection) => {
         const transactionalRepository = createReferralRepository(connection);
         const edge =
           await transactionalRepository.findEdgeForConfirmation(referredId);
         if (edge === null) {
-          return;
+          return null;
         }
 
         // Serialising confirmations for one referrer ensures two real people
@@ -356,6 +357,7 @@ function createReferralServiceWithRepository(
           confirmedReferrals,
           settledTier,
         );
+        return settledTier;
       });
     },
 

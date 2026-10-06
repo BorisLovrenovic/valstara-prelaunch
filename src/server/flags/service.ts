@@ -52,6 +52,7 @@ export function createFlagService(
     periodStart?: Date;
     emailQuota?: EmailQuotaConfiguration;
     trustpilot?: TrustpilotConfiguration;
+    onGiveawayEntry?: (method: 'base' | 'referral') => void;
   } = {},
 ): FlagService {
   const service = createFlagServiceWithDependencies(
@@ -123,6 +124,8 @@ export function createFlagService(
           service,
           giveaway.currentRules ?? currentRulesFromFiles,
           periodStart,
+          undefined,
+          giveaway.onGiveawayEntry,
         );
         let checked: number;
         do {

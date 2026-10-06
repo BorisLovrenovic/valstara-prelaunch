@@ -35,6 +35,7 @@ export function createUnsubscribeService(
       readonly requestedAction: UnsubscribeAction;
       readonly occurredAt: Date;
     }) => Promise<void>;
+    readonly onEffectiveChange?: (sourceTemplate: string) => void;
   },
 ) {
   const clock = dependencies.clock ?? (() => new Date());
@@ -106,6 +107,7 @@ export function createUnsubscribeService(
     }): Promise<UnsubscribeOutcome> {
       let emailSendId: string | null = null;
       let unsubscribeTokenId: string | null = null;
+      let effectiveSourceTemplate: string | null = null;
       const tokenSha256 = hashEmailToken(input.token).toString('hex');
       if (
         input.credential === 'status' &&
@@ -114,7 +116,7 @@ export function createUnsubscribeService(
       )
         return 'rate_limited';
       try {
-        return await withTransaction(database, async (connection) => {
+        const outcome = await withTransaction(database, async (connection) => {
           const now = clock();
           const credential = input.credential ?? 'unsubscribe';
           const limits = createRateLimitBucketRepository(connection);
@@ -210,8 +212,18 @@ export function createUnsubscribeService(
                 now,
               );
             }
-            if (input.action === 'leave_waitlist')
-              await repository.leaveWaitlist(auth.subscriberId, now);
+            if (input.action === 'leave_waitlist') {
+              const withdrewMarketing = await repository.withdrawMarketing(
+                auth.subscriberId,
+                now,
+              );
+              const leftWaitlist = await repository.leaveWaitlist(
+                auth.subscriberId,
+                now,
+              );
+              if (withdrewMarketing || leftWaitlist)
+                effectiveSourceTemplate = bound?.template ?? 'member_status';
+            }
             await audit.record({
               action: 'subscriber.unsubscribed',
               actor: input.actor ?? 'subscriber',
@@ -225,7 +237,8 @@ export function createUnsubscribeService(
             });
           } else if (bound?.provider === 'brevo') {
             if (bound.marketing_consent_at !== null) {
-              await repository.withdrawMarketing(auth.subscriberId, now);
+              if (await repository.withdrawMarketing(auth.subscriberId, now))
+                effectiveSourceTemplate = bound.template;
             }
             await audit.record({
               action: 'consent.marketing_withdrawn',
@@ -245,6 +258,14 @@ export function createUnsubscribeService(
           }
           return 'accepted';
         });
+        if (outcome === 'accepted' && effectiveSourceTemplate !== null) {
+          try {
+            dependencies.onEffectiveChange?.(effectiveSourceTemplate);
+          } catch {
+            /* Committed preferences cannot fail over analytics. */
+          }
+        }
+        return outcome;
       } catch (error) {
         if (error instanceof RateLimitedError) return 'rate_limited';
         await dependencies

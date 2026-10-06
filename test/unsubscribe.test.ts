@@ -241,6 +241,146 @@ test('E6-06 one-click marketing POST withdraws consent, preserves entries and re
   }
 });
 
+test('unsubscribe events require a person-initiated effective change', async () => {
+  const f = await fixture();
+  try {
+    const events: string[] = [];
+    const unsubscribe = createUnsubscribeService(f.app, {
+      clock: () => now,
+      tokenSecret: secret,
+      onFailure: async () => undefined,
+      onEffectiveChange: (template) => events.push(template),
+    });
+    const withdrawing = await subscriber(f.owner, true);
+    const marketing = await boundEmail(
+      f.app,
+      withdrawing,
+      'brevo',
+      'weekly_campaign_update',
+    );
+    assert.equal(
+      await unsubscribe.apply({
+        token: marketing.token,
+        action: 'message_unsubscribe',
+        ipPrefixHash: 'withdraw',
+      }),
+      'accepted',
+    );
+    assert.deepEqual(events, ['weekly_campaign_update']);
+    assert.equal(
+      await unsubscribe.apply({
+        token: marketing.token,
+        action: 'message_unsubscribe',
+        ipPrefixHash: 'replay',
+      }),
+      'already',
+    );
+
+    const noOp = await subscriber(f.owner, false);
+    const noOpMail = await boundEmail(
+      f.app,
+      noOp,
+      'brevo',
+      'weekly_campaign_update',
+    );
+    assert.equal(
+      await unsubscribe.apply({
+        token: noOpMail.token,
+        action: 'message_unsubscribe',
+        ipPrefixHash: 'noop',
+      }),
+      'accepted',
+    );
+    assert.deepEqual(events, ['weekly_campaign_update']);
+
+    const leaving = await subscriber(f.owner, true);
+    const leaveMail = await boundEmail(
+      f.app,
+      leaving,
+      'brevo',
+      'weekly_campaign_update',
+    );
+    assert.equal(
+      await unsubscribe.apply({
+        token: leaveMail.token,
+        action: 'leave_waitlist',
+        ipPrefixHash: 'leave',
+      }),
+      'accepted',
+    );
+    assert.deepEqual(events, [
+      'weekly_campaign_update',
+      'weekly_campaign_update',
+    ]);
+    const left = await f.owner.readOne<{
+      status: string;
+      marketing_consent_at: Date | null;
+    }>({
+      text: 'SELECT status, marketing_consent_at FROM subscriber WHERE id = $1',
+      values: [leaving],
+    });
+    assert.deepEqual(left, {
+      status: 'unsubscribed',
+      marketing_consent_at: null,
+    });
+    assert.equal(
+      await unsubscribe.apply({
+        token: leaveMail.token,
+        action: 'leave_waitlist',
+        ipPrefixHash: 'leave-replay',
+      }),
+      'already',
+    );
+
+    const transactionalOnly = await subscriber(f.owner, false);
+    const transactionalMail = await boundEmail(
+      f.app,
+      transactionalOnly,
+      'resend',
+      'status_link',
+    );
+    assert.equal(
+      await unsubscribe.apply({
+        token: transactionalMail.token,
+        action: 'message_unsubscribe',
+        ipPrefixHash: 'transactional-only',
+      }),
+      'accepted',
+    );
+    assert.deepEqual(events, [
+      'weekly_campaign_update',
+      'weekly_campaign_update',
+    ]);
+
+    const bounced = await subscriber(f.owner, false);
+    const bounceMail = await boundEmail(
+      f.app,
+      bounced,
+      'resend',
+      'status_link',
+    );
+    await f.owner.execute({
+      text: `INSERT INTO suppression (email_normalised, reason, source)
+             SELECT email_normalised, 'bounce_hard', 'provider' FROM subscriber WHERE id = $1`,
+      values: [bounced],
+    });
+    assert.equal(
+      await unsubscribe.apply({
+        token: bounceMail.token,
+        action: 'message_unsubscribe',
+        ipPrefixHash: 'bounce',
+      }),
+      'accepted',
+    );
+    assert.deepEqual(events, [
+      'weekly_campaign_update',
+      'weekly_campaign_update',
+    ]);
+  } finally {
+    await f.close();
+  }
+});
+
 test('E6-06 transactional unsubscribe and explicit leave both create one global suppression', async () => {
   const f = await fixture();
   try {

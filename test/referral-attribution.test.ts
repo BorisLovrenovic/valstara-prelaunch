@@ -284,6 +284,23 @@ test('unknown codes and disabled attribution leave a signup unattributed', async
     });
     assert.equal(result.kind, 'created');
     assert.deepEqual(attributed, []);
+    const capture = await fixture.database.readOne<{
+      id: string;
+      signup_had_ref: boolean;
+      referred_by_id: string | null;
+    }>({
+      text: `SELECT id, signup_had_ref, referred_by_id
+             FROM subscriber WHERE email_normalised = 'flag-off@example.test'`,
+    });
+    assert.equal(capture?.signup_had_ref, true);
+    assert.equal(capture?.referred_by_id, null);
+    await assert.rejects(
+      fixture.database.execute({
+        text: 'UPDATE subscriber SET signup_had_ref = false WHERE id = $1',
+        values: [capture?.id],
+      }),
+      /write-once/u,
+    );
 
     const referredId = await insertSubscriber(fixture.database);
     const unknown = await createReferralService(

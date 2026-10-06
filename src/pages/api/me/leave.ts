@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 
 import { memberStatusCopy } from '../../../copy/member-status.ts';
+import { createAnalyticsService } from '../../../server/analytics/service.ts';
 import { getConfig, getP1AlertConfiguration } from '../../../server/config.ts';
 import { createPool, type DatabasePool } from '../../../server/db/pool.ts';
 import { createUnsubscribeService } from '../../../server/email/unsubscribe.ts';
@@ -122,6 +123,7 @@ export function createLeaveRoute(
 
 function defaultDependencies(): LeaveRouteDependencies {
   const config = getConfig();
+  const analytics = createAnalyticsService();
   return {
     verifyTurnstile: verifyTurnstileToken,
     isEnabled: () => getFlagService().isEnabled('member.dashboard'),
@@ -131,6 +133,13 @@ function defaultDependencies(): LeaveRouteDependencies {
         getP1AlertConfiguration(),
       );
       return createUnsubscribeService(getDatabase(), {
+        onEffectiveChange: () => {
+          void analytics
+            .track('unsubscribed', {
+              source_template: 'member_status',
+            })
+            .catch(() => {});
+        },
         tokenSecret: config.emailTokenSecret,
         onFailure: ({
           unsubscribeTokenId,

@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 
 import { surveyCopy } from '../../copy/survey.ts';
+import { createAnalyticsService } from '../../server/analytics/service.ts';
 import { getConfig } from '../../server/config.ts';
 import { DatabaseUnavailableError } from '../../server/db/errors.ts';
 import { createPool, type DatabasePool } from '../../server/db/pool.ts';
@@ -126,8 +127,18 @@ export function createSurveyRoute(
 
 function defaultDependencies(): SurveyRouteDependencies {
   const config = getConfig();
+  const analytics = createAnalyticsService();
   return {
-    capture: createSurveyService(getDatabase(), { flags: getFlagService() }),
+    capture: createSurveyService(getDatabase(), {
+      flags: getFlagService(),
+      onFirstAnswer: (question_set_version) => {
+        void analytics
+          .track('survey_completed', {
+            question_set_version: question_set_version as '2026-09-08',
+          })
+          .catch(() => {});
+      },
+    }),
     ipPrefixPepper: config.ipPrefixPepper,
   };
 }

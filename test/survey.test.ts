@@ -448,18 +448,89 @@ test('resubmission replaces one response, updates the handoff field, and audits 
   }
 });
 
+test('survey completion emits once: skip, first answer, replacement, and skip then answer', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const events: string[] = [];
+    const capture = createSurveyService(fixture.applicationDatabase, {
+      clock: () => now,
+      flags: { isEnabled: async () => true },
+      onFirstAnswer: (version) => events.push(version),
+    });
+    const first = await insertSubscriber(fixture.database, 'verified');
+    const firstToken = tokenValue('completion-first-status-token');
+    await seedStatusToken(fixture.database, first, firstToken);
+    const skip = (token: string) => ({
+      ...submission(token),
+      answers: { category_preference: null, shopping_frequency: null },
+    });
+
+    assert.equal(await capture(skip(firstToken)), 'skipped');
+    assert.deepEqual(events, []);
+    assert.equal(await capture(submission(firstToken)), 'saved');
+    assert.deepEqual(events, [currentSurveyVersion]);
+    assert.equal(
+      await capture({
+        ...submission(firstToken),
+        answers: {
+          category_preference: ['beauty'],
+          shopping_frequency: 'rarely',
+        },
+      }),
+      'saved',
+    );
+    assert.equal(await capture(skip(firstToken)), 'skipped');
+    assert.equal(await capture(submission(firstToken)), 'saved');
+    assert.deepEqual(events, [currentSurveyVersion]);
+
+    const second = await insertSubscriber(fixture.database, 'verified');
+    const secondToken = tokenValue('completion-second-status-token');
+    await seedStatusToken(fixture.database, second, secondToken);
+    assert.equal(await capture(skip(secondToken)), 'skipped');
+    assert.equal(await capture(submission(secondToken)), 'saved');
+    assert.deepEqual(events, [currentSurveyVersion, currentSurveyVersion]);
+    const markers = await fixture.database.list<{
+      first_answered_at: Date | null;
+    }>(
+      {
+        text: 'SELECT first_answered_at FROM survey_response WHERE subscriber_id = ANY($1::uuid[])',
+        values: [[first, second]],
+      },
+      2,
+    );
+    assert.equal(
+      markers.every(
+        (row) => row.first_answered_at?.toISOString() === now.toISOString(),
+      ),
+      true,
+    );
+    await assert.rejects(
+      fixture.database.execute({
+        text: 'UPDATE survey_response SET first_answered_at = NULL WHERE subscriber_id = $1',
+        values: [first],
+      }),
+      /write-once/u,
+    );
+  } finally {
+    await fixture.dispose();
+  }
+});
+
 test('survey.enabled off is graceful and writes no survey response', async () => {
   const fixture = await createDatabaseFixture();
   try {
+    const events: string[] = [];
     const subscriberId = await insertSubscriber(fixture.database, 'verified');
     const token = tokenValue('disabled-survey-status-token');
     await seedStatusToken(fixture.database, subscriberId, token);
     const capture = createSurveyService(fixture.applicationDatabase, {
       clock: () => now,
       flags: { isEnabled: async () => false },
+      onFirstAnswer: (version) => events.push(version),
     });
 
     assert.equal(await capture(submission(token)), 'disabled');
+    assert.deepEqual(events, []);
     assert.equal(
       await fixture.database.readOne({
         text: 'SELECT subscriber_id FROM survey_response WHERE subscriber_id = $1',

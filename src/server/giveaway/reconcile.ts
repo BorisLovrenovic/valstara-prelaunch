@@ -20,6 +20,7 @@ export function createGiveawayEntryReconciliationJob(
   currentRules: () => Promise<CurrentGiveawayRules>,
   periodStart: Date | null = getGiveawayEntryPeriodStart(),
   clock: () => Date = () => new Date(),
+  onEntry?: (method: 'base' | 'referral') => void,
 ): { run(limit: number): Promise<{ checked: number; accrued: number }> } {
   const receipt = createTransactionalEmailProducers(database, clock).receipt;
   return {
@@ -33,7 +34,8 @@ export function createGiveawayEntryReconciliationJob(
           'Giveaway reconciliation limit must be 1 to 1000.',
         );
       }
-      return withTransaction(database, async (connection) => {
+      const entered: ('base' | 'referral')[] = [];
+      const result = await withTransaction(database, async (connection) => {
         const enabled = await flags.isEnabled('giveaway.open');
         if (enabled && periodStart === null) {
           throw new ConfigurationError(
@@ -65,8 +67,10 @@ export function createGiveawayEntryReconciliationJob(
                 candidate.method,
                 candidate.sourceEdgeId ?? undefined,
               )
-            )
+            ) {
               accrued += 1;
+              entered.push(candidate.method);
+            }
           }
         }
         await createAuditService(connection).record({
@@ -78,6 +82,14 @@ export function createGiveawayEntryReconciliationJob(
         });
         return { checked: candidates.length, accrued };
       });
+      for (const method of entered) {
+        try {
+          onEntry?.(method);
+        } catch {
+          /* Ledger commit is authoritative. */
+        }
+      }
+      return result;
     },
   };
 }

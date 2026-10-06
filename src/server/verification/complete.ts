@@ -19,6 +19,7 @@ import {
   type CurrentGiveawayRules,
 } from '../giveaway/accrue.ts';
 import type { FlagService } from '../flags/types.ts';
+import type { UtmParameters } from '../referral/capture.ts';
 
 import { createVerificationService } from './service.ts';
 import type { ConsumeResult } from './types.ts';
@@ -32,6 +33,17 @@ export interface VerificationCompletion {
 }
 
 export interface VerificationCompletionDependencies {
+  /** Called only after the containing transaction commits. */
+  readonly onCommitted?: (events: {
+    readonly verified: {
+      readonly createdAt: Date;
+      readonly verifiedAt: Date;
+      readonly utm: UtmParameters | null;
+      readonly hasRef: boolean;
+    } | null;
+    readonly referrerTier: number | null;
+    readonly giveawayMethods: readonly ('base' | 'referral')[];
+  }) => void;
   readonly emailProducers?: TransactionalEmailProducers;
   readonly accessWindowBands?: readonly AccessWindowBand[];
   readonly clock?: () => Date;
@@ -73,7 +85,15 @@ export function createVerificationCompletionService(
       };
     }
 
-    return withTransaction(database, async (connection) => {
+    let verifiedEvent: {
+      createdAt: Date;
+      verifiedAt: Date;
+      utm: UtmParameters | null;
+      hasRef: boolean;
+    } | null = null;
+    let referrerTier: number | null = null;
+    let giveawayMethods: readonly ('base' | 'referral')[] = [];
+    const result = await withTransaction(database, async (connection) => {
       const verification = createVerificationService(connection, { clock });
       const consumed = await verification.consumeForVerification(token);
       if (consumed.outcome === 'invalid' || consumed.outcome === 'expired') {
@@ -112,6 +132,10 @@ export function createVerificationCompletionService(
             'A fresh verification token did not verify a pending subscriber.',
           );
         }
+        const source = await completion.sourceFacts(subscriberId);
+        if (source === null)
+          throw new Error('A verified subscriber has no source facts.');
+        verifiedEvent = { ...source, verifiedAt: verificationTime };
         const consentVersion = await completion.promotePendingMarketingConsent(
           subscriberId,
           verificationTime,
@@ -151,13 +175,13 @@ export function createVerificationCompletionService(
       // former flag-off behaviour.
       await referral.generateCode(subscriberId);
       await dependencies.afterStep?.('referral-code');
-      await referral.confirm(subscriberId, clock());
+      referrerTier = await referral.confirm(subscriberId, clock());
       await dependencies.afterStep?.('referral-confirmed');
       if (
         consumed.outcome === 'verified' &&
         dependencies.giveaway !== undefined
       ) {
-        await createGiveawayAccrualServiceInTransaction(
+        giveawayMethods = await createGiveawayAccrualServiceInTransaction(
           connection,
           dependencies.giveaway.flags,
           dependencies.giveaway.currentRules,
@@ -185,5 +209,21 @@ export function createVerificationCompletionService(
         surveyCompleted: await completion.hasSurveyResponse(subscriberId),
       };
     });
+    if (
+      verifiedEvent !== null ||
+      referrerTier !== null ||
+      giveawayMethods.length > 0
+    ) {
+      try {
+        dependencies.onCommitted?.({
+          verified: verifiedEvent,
+          referrerTier,
+          giveawayMethods,
+        });
+      } catch {
+        // A committed verification cannot fail because telemetry is unavailable.
+      }
+    }
+    return result;
   };
 }

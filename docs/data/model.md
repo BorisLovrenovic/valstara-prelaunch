@@ -26,6 +26,7 @@ The waitlist row.
 | `email` | text; null only when erased | **As entered.** What we display and mail to |
 | `email_normalised` | text **unique**; null only when erased | Lowercased, `+tag` stripped, dots removed for Gmail-family domains. **The uniqueness key** |
 | `email_domain` | text; null only when erased | Denormalised for blocklist and analytics queries |
+| `signup_had_ref` | boolean, default false; null when erased | Whether the initial signup carried a valid signed ref; supports later anonymous source classification even while attribution is flag-off, and is cleared on erasure |
 | `status` | text not null | `pending` · `verified` · `expired` · `unsubscribed` · `bounced` · `disqualified` · `erasure_pending` · `erased` |
 | `category_preference` | text[] | From the survey. Carried into the handoff |
 | `source` | text | Bucketed acquisition source |
@@ -103,7 +104,7 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 ## `survey_response`
 
-`id` · `subscriber_id` unique · `answers` jsonb · `created_at`. Answers are validated against a versioned question set; `version` is stored so a mid-campaign question change does not corrupt the earlier answers.
+`id` · `subscriber_id` unique · `answers` jsonb · `version` · `created_at` · `first_answered_at` nullable. Answers are validated against a versioned question set; `version` is stored so a mid-campaign question change does not corrupt the earlier answers. `first_answered_at` is set on the first saved answer and is never cleared by a replacement or all-skip submission; it gates the once-per-subscriber `survey_completed` event. E10-03 backfills existing currently answered rows from `created_at`.
 
 ## `giveaway_entry`
 

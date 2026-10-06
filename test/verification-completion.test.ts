@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
+import { execFile, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
+import { once } from 'node:events';
+import { createServer } from 'node:net';
 import test from 'node:test';
+import { promisify } from 'node:util';
 
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import { createStrandedReferralReconciliationJob } from '../src/server/referral/reconcile-stranded.ts';
 import { createReferralService } from '../src/server/referral/service.ts';
+import { sourceBucket } from '../src/server/analytics/funnel.ts';
+import { createSignupService } from '../src/server/subscriber/signup.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 
@@ -15,6 +21,7 @@ const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const now = new Date('2026-09-08T12:00:00.000Z');
 const tokenIds = new Map<string, string>();
+const executeFile = promisify(execFile);
 
 function tokenValue(label: string): string {
   const hex = createHash('sha256').update(label).digest('hex');
@@ -26,6 +33,7 @@ function tokenValue(label: string): string {
 
 interface DatabaseFixture {
   readonly applicationDatabase: DatabasePool;
+  readonly applicationDatabaseUrl: string;
   readonly database: DatabasePool;
   dispose(): Promise<void>;
 }
@@ -50,6 +58,7 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
 
   return {
     applicationDatabase,
+    applicationDatabaseUrl: applicationDatabaseUrl.toString(),
     database,
     async dispose() {
       await applicationDatabase.close();
@@ -100,6 +109,207 @@ test('the application role completes verification and replay through the E3 tran
     assert.equal(subscriber?.status, 'verified');
     assert.notEqual(subscriber?.verified_at, null);
   } finally {
+    await fixture.dispose();
+  }
+});
+
+test('submit, verify and refer reconstruct from server transition events alone', async () => {
+  await executeFile('npm', ['run', 'build']);
+  const fixture = await createDatabaseFixture();
+  const events: Array<{ name: string; data: Record<string, unknown> }> = [];
+  const listener = createServer();
+  listener.listen(0, '127.0.0.1');
+  await once(listener, 'listening');
+  const address = listener.address();
+  assert.ok(address && typeof address !== 'string');
+  const port = address.port;
+  listener.close();
+  await once(listener, 'close');
+  const preload = `
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (url, options) => {
+      if (String(url) === 'http://umami:3000/api/send') {
+        process.send?.({ type: 'analytics', body: options.body });
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      }
+      return originalFetch(url, options);
+    };
+  `;
+  const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
+    env: {
+      ...process.env,
+      ADMIN_CREDENTIAL: 'funnel-test-admin-credential-32-chars',
+      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+      DATABASE_URL: fixture.applicationDatabaseUrl,
+      HOST: '127.0.0.1',
+      IP_PREFIX_PEPPER: 'funnel-test-prefix-pepper',
+      NODE_OPTIONS: `--import=data:text/javascript;base64,${Buffer.from(preload).toString('base64')}`,
+      PORT: String(port),
+      REFERRAL_SIGNING_SECRET: 'funnel-test-referral-secret',
+      RESEND_API_KEY: 'funnel-test-resend-key',
+      RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
+      RESEND_KEY_MODE: 'test',
+      RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+      RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+      RESEND_SENDING_DOMAIN: 'send.valstara.com',
+      TURNSTILE_SECRET_KEY: 'funnel-test-turnstile-secret',
+    },
+    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+  });
+  server.on('message', (message: unknown) => {
+    if (typeof message !== 'object' || message === null) return;
+    const captured = message as { type?: string; body?: string };
+    if (captured.type !== 'analytics' || typeof captured.body !== 'string')
+      return;
+    const posted = JSON.parse(captured.body) as {
+      payload: { name: string; data: Record<string, unknown> };
+    };
+    events.push(posted.payload);
+  });
+  const origin = `http://127.0.0.1:${port}`;
+  async function postVerification(token: string): Promise<void> {
+    const response = await fetch(`${origin}/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Origin: origin,
+      },
+      body: new URLSearchParams({ token }),
+    });
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /verification-success/u);
+  }
+  async function waitForEventCount(count: number): Promise<void> {
+    for (let attempt = 0; attempt < 100 && events.length < count; attempt += 1)
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(events.length, count);
+  }
+  try {
+    let ready = false;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      try {
+        ready = (await fetch(`${origin}/verify`)).ok;
+      } catch {
+        // The built server has not started yet.
+      }
+      if (ready) break;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    assert.equal(ready, true, 'built verification route must start');
+    const tokens: string[] = [];
+    const signup = createSignupService(fixture.applicationDatabase, {
+      clock: () => now,
+      raiseFraudFlag: async () => undefined,
+      screenEmailDomain: async () => ({ flags: [] }),
+      sendVerificationMail: async (mail) => {
+        const token = new URL(mail.verificationUrl).searchParams.get('token');
+        assert.ok(token);
+        tokens.push(token);
+      },
+      attributeReferral: (id, code, allowed) =>
+        createReferralService(fixture.applicationDatabase).attribute(
+          id,
+          code,
+          allowed,
+        ),
+      isReferralEnabled: async () => true,
+      onCreated: ({ utm, hasValidRef, marketingOptIn }) =>
+        events.push({
+          name: 'signup_submitted',
+          data: {
+            source_bucket: sourceBucket(utm, hasValidRef),
+            had_ref: hasValidRef,
+            marketing_opt_in: marketingOptIn,
+          },
+        }),
+    });
+    const verificationUrl = (token: string) =>
+      `https://valstara.test/verify?token=${token}`;
+
+    assert.equal(
+      (await signup({ email: 'referrer@example.test', verificationUrl })).kind,
+      'created',
+    );
+    assert.equal(
+      (await signup({ email: 'referrer@example.test', verificationUrl })).kind,
+      'existing',
+    );
+    await fixture.database.execute({
+      text: "UPDATE verification_token SET expires_at = '2099-01-01' WHERE consumed_at IS NULL",
+    });
+    await postVerification(tokens[0]!);
+    await waitForEventCount(2);
+    const referrer = await fixture.database.readOne<{
+      referral_code: string;
+    }>({
+      text: "SELECT referral_code FROM subscriber WHERE email_normalised = 'referrer@example.test'",
+    });
+    assert.ok(referrer?.referral_code);
+    await postVerification(tokens[0]!);
+    await waitForEventCount(2);
+
+    assert.equal(
+      (
+        await signup({
+          email: 'referred@example.test',
+          referralCode: referrer.referral_code,
+          verificationUrl,
+        })
+      ).kind,
+      'created',
+    );
+    await fixture.database.execute({
+      text: "UPDATE verification_token SET expires_at = '2099-01-01' WHERE consumed_at IS NULL",
+    });
+    await Promise.all([
+      postVerification(tokens[1]!),
+      postVerification(tokens[1]!),
+    ]);
+    await waitForEventCount(5);
+
+    assert.deepEqual(
+      events.map((event) => event.name),
+      [
+        'signup_submitted',
+        'verified',
+        'signup_submitted',
+        'verified',
+        'referral_confirmed',
+      ],
+    );
+    assert.deepEqual(
+      events
+        .filter((event) => event.name === 'signup_submitted')
+        .map((event) => event.data.source_bucket),
+      ['direct', 'referral'],
+    );
+    assert.equal(
+      events.find((event) => event.name === 'referral_confirmed')?.data
+        .referrer_tier_bucket,
+      'none',
+    );
+    assert.deepEqual(
+      events
+        .filter((event) => event.name === 'verified')
+        .map((event) => event.data.source_bucket),
+      ['direct', 'referral'],
+    );
+    assert.equal(
+      events.filter((event) => event.name === 'verified').length /
+        events.filter((event) => event.name === 'signup_submitted').length,
+      1,
+    );
+    assert.equal(
+      events.filter((event) => event.name === 'referral_confirmed').length /
+        events.filter((event) => event.name === 'verified').length,
+      0.5,
+    );
+  } finally {
+    if (server.exitCode === null) {
+      const exited = once(server, 'exit');
+      server.kill('SIGTERM');
+      await exited;
+    }
     await fixture.dispose();
   }
 });
@@ -417,6 +627,7 @@ test('confirmation derives the counter from edges and evaluates each milestone o
 test('an induced failure rolls back every E3-07 transition', async () => {
   const fixture = await createDatabaseFixture();
   try {
+    const emitted: string[] = [];
     const referrerId = await insertSubscriber(fixture.database, 'verified');
     for (let index = 0; index < 2; index += 1) {
       const priorReferral = await insertSubscriber(
@@ -442,6 +653,7 @@ test('an induced failure rolls back every E3-07 transition', async () => {
     );
 
     const complete = createVerificationCompletionService(fixture.database, {
+      onCommitted: () => emitted.push('committed'),
       afterStep: async (step) => {
         if (step === 'referral-confirmed') {
           throw new Error('induced mid-transaction failure');
@@ -450,6 +662,7 @@ test('an induced failure rolls back every E3-07 transition', async () => {
       clock: () => now,
     });
     await assert.rejects(complete(tokenValue('rollback-token')), /induced/u);
+    assert.deepEqual(emitted, []);
 
     const subscriber = await fixture.database.readOne<{
       access_window: string | null;

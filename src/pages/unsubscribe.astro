@@ -1,5 +1,7 @@
 ---
 import { unsubscribeCopy } from '../copy/unsubscribe.ts';
+import { createAnalyticsService } from '../server/analytics/service.ts';
+import type { EventProps } from '../server/analytics/registry.ts';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getConfig, getP1AlertConfiguration } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
@@ -39,7 +41,16 @@ if (Astro.request.method === 'POST') {
       const alerts = createUnsubscribeOperatorTaskTransport(
         getP1AlertConfiguration(),
       );
+      const analytics = createAnalyticsService();
       outcome = await createUnsubscribeService(database, {
+        onEffectiveChange: (sourceTemplate) => {
+          void analytics
+            .track('unsubscribed', {
+              source_template:
+                sourceTemplate as EventProps<'unsubscribed'>['source_template'],
+            })
+            .catch(() => {});
+        },
         tokenSecret: config.emailTokenSecret,
         onFailure: ({
           unsubscribeTokenId,

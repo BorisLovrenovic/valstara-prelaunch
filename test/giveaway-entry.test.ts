@@ -165,6 +165,7 @@ test('flag-off and every ineligible status accrue nothing', async () => {
 test('concurrent retries write one base and one confirmed-edge entry with first rules stamp', async () => {
   const f = await fixture();
   try {
+    const eventMethods: string[] = [];
     const flags = createFlagService(f.app);
     await flags.set('giveaway.open', true, 'e7-03-test');
     const referrer = await subscriber(f.owner, 'verified');
@@ -180,6 +181,10 @@ test('concurrent retries write one base and one confirmed-edge entry with first 
         f.app,
         flags,
         () => firstRules,
+        undefined,
+        () => fixedTime,
+        undefined,
+        (method) => eventMethods.push(method),
       );
       await service.accrue(referred, 'base');
       await service.accrue(referrer, 'referral', edgeId);
@@ -194,6 +199,7 @@ test('concurrent retries write one base and one confirmed-edge entry with first 
     assert.equal(referredEntries[0].entries, 1);
     assert.equal(referrerEntries[0].entries, 1);
     assert.equal(referrerEntries[0].source_edge_id, edgeId);
+    assert.deepEqual(eventMethods.sort(), ['base', 'referral']);
     for (const entry of [...referredEntries, ...referrerEntries]) {
       assert.equal(entry.rules_version, firstRules.rulesVersion);
       assert.equal(entry.rules_sha256.toString('hex'), firstRules.sha256);
@@ -454,6 +460,7 @@ test('an unconfirmed or foreign edge cannot earn a referral entry; malformed rul
 test('verification transaction credits the verified person and their referrer once', async () => {
   const f = await fixture();
   try {
+    const eventMethods: string[] = [];
     const flags = createFlagService(f.app);
     await flags.set('giveaway.open', true, 'e7-03-test');
     const referrer = await subscriber(f.owner, 'verified');
@@ -480,11 +487,14 @@ test('verification transaction credits the verified person and their referrer on
     const complete = createVerificationCompletionService(f.app, {
       clock: () => fixedTime,
       giveaway: { flags, currentRules: () => firstRules },
+      onCommitted: ({ giveawayMethods }) =>
+        eventMethods.push(...giveawayMethods),
     });
     assert.equal((await complete(token)).outcome, 'verified');
     assert.equal((await complete(token)).outcome, 'already');
     assert.equal((await entries(f.owner, referred)).length, 1);
     assert.equal((await entries(f.owner, referrer)).length, 1);
+    assert.deepEqual(eventMethods.sort(), ['base', 'referral']);
     const edge = await f.owner.readOne<{ state: string }>({
       text: 'SELECT state FROM referral_edge WHERE id = $1',
       values: [edgeId],
@@ -521,6 +531,7 @@ test('verification transaction credits the verified person and their referrer on
 test('flag-on reconciliation restores missed entries, audits counts, and reruns without duplicates', async () => {
   const f = await fixture();
   try {
+    const eventMethods: string[] = [];
     const referrer = await subscriber(f.owner, 'verified');
     const referred = await subscriber(f.owner, 'verified');
     const edgeId = randomUUID();
@@ -532,6 +543,7 @@ test('flag-on reconciliation restores missed entries, audits counts, and reruns 
     });
     const flags = createFlagService(f.app, {
       currentRules: async () => firstRules,
+      onGiveawayEntry: (method) => eventMethods.push(method),
     });
     const service = createGiveawayAccrualService(
       f.app,
@@ -544,15 +556,20 @@ test('flag-on reconciliation restores missed entries, audits counts, and reruns 
     await flags.set('giveaway.open', true, 'e7-03-test');
     assert.equal((await entries(f.owner, referrer)).length, 2);
     assert.equal((await entries(f.owner, referred)).length, 1);
+    assert.deepEqual(eventMethods.sort(), ['base', 'base', 'referral']);
     const job = createGiveawayEntryReconciliationJob(
       f.app,
       flags,
       async () => secondRules,
+      undefined,
+      () => fixedTime,
+      (method) => eventMethods.push(method),
     );
     assert.deepEqual(await job.run(10), { checked: 0, accrued: 0 });
     assert.equal((await entries(f.owner, referrer)).length, 2);
     const laterMissed = await subscriber(f.owner, 'verified');
     assert.deepEqual(await job.run(10), { checked: 1, accrued: 1 });
+    assert.deepEqual(eventMethods.sort(), ['base', 'base', 'base', 'referral']);
     const laterRows = await entries(f.owner, laterMissed);
     assert.equal(laterRows[0]?.rules_version, secondRules.rulesVersion);
     assert.equal(
