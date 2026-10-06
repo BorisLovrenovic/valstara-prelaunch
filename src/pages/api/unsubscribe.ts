@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 
 import { unsubscribeCopy } from '../../copy/unsubscribe.ts';
+import { createAnalyticsService } from '../../server/analytics/service.ts';
+import type { EventProps } from '../../server/analytics/registry.ts';
 import { getConfig, getP1AlertConfiguration } from '../../server/config.ts';
 import { createPool, type DatabasePool } from '../../server/db/pool.ts';
 import { createUnsubscribeService } from '../../server/email/unsubscribe.ts';
@@ -96,12 +98,21 @@ export function createUnsubscribeRoute(
 
 function defaultDependencies(): UnsubscribeRouteDependencies {
   const config = getConfig();
+  const analytics = createAnalyticsService();
   const alerts = createUnsubscribeOperatorTaskTransport(
     getP1AlertConfiguration(),
   );
   return {
     ipPrefixPepper: config.ipPrefixPepper,
     apply: createUnsubscribeService(getDatabase(), {
+      onEffectiveChange: (sourceTemplate) => {
+        void analytics
+          .track('unsubscribed', {
+            source_template:
+              sourceTemplate as EventProps<'unsubscribed'>['source_template'],
+          })
+          .catch(() => {});
+      },
       tokenSecret: config.emailTokenSecret,
       onFailure: ({
         unsubscribeTokenId,

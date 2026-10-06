@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 
 import { memberStatusCopy } from '../../../copy/member-status.ts';
 import { marketingOptInCopy } from '../../../copy/marketing.ts';
+import { createAnalyticsService } from '../../../server/analytics/service.ts';
 import { getConfig } from '../../../server/config.ts';
 import { DatabaseUnavailableError } from '../../../server/db/errors.ts';
 import { createPool, type DatabasePool } from '../../../server/db/pool.ts';
@@ -134,12 +135,18 @@ export function createMarketingRoute(
 
 function defaultDependencies(): MarketingRouteDependencies {
   const config = getConfig();
+  const analytics = createAnalyticsService();
   return {
     verifyTurnstile: (token) => verifyTurnstileToken(token),
     change: (input) =>
-      createMarketingService(getDatabase(), { flags: getFlagService() }).change(
-        input,
-      ),
+      createMarketingService(getDatabase(), {
+        flags: getFlagService(),
+        onWithdrawal: () => {
+          void analytics
+            .track('unsubscribed', { source_template: 'member_status' })
+            .catch(() => {});
+        },
+      }).change(input),
     ipPrefixPepper: config.ipPrefixPepper,
   };
 }

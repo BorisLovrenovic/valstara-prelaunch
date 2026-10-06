@@ -60,6 +60,11 @@ export interface SignupInput {
 
 export interface SignupServiceDependencies {
   readonly clock?: () => Date;
+  readonly onCreated?: (facts: {
+    readonly utm: UtmParameters | null;
+    readonly hasValidRef: boolean;
+    readonly marketingOptIn: boolean;
+  }) => void;
   readonly attributeReferral?: (
     referredId: string,
     code: string,
@@ -85,6 +90,7 @@ async function upsertSubscriber(
   email: NormalisedEmail,
   marketingOptInVersion: string | null,
   utm: UtmParameters | null,
+  signupHadRef: boolean,
   signupIpPrefixHash: Buffer | null,
 ): Promise<SignupSubscriber> {
   return withTransaction(database, async (connection) => {
@@ -96,6 +102,7 @@ async function upsertSubscriber(
       emailNormalised: email.normalised,
       id: subscriberId,
       marketingOptInVersion,
+      signupHadRef,
       signupIpPrefixHash,
       utm,
     });
@@ -155,9 +162,21 @@ export function createSignupService(
       normalised,
       input.marketingOptInVersion ?? null,
       input.utm ?? null,
+      input.referralCode !== undefined && input.referralCode !== null,
       input.signupIpPrefixHash ?? null,
     );
-
+    if (subscriber.created) {
+      try {
+        dependencies.onCreated?.({
+          utm: input.utm ?? null,
+          hasValidRef:
+            input.referralCode !== undefined && input.referralCode !== null,
+          marketingOptIn: input.marketingOptInVersion != null,
+        });
+      } catch {
+        // A committed subscriber row is not undone by telemetry failure.
+      }
+    }
     // A DNS timeout must never cost a real signup. The row is committed first
     // because fraud_flag requires its id; flagging is best-effort metadata and
     // cannot turn the accepted signup back into a failure.

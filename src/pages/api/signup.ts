@@ -4,6 +4,8 @@ import { isIP } from 'node:net';
 import { setTimeout as systemSleep } from 'node:timers/promises';
 
 import { marketingOptInWordingByVersion } from '../../copy/marketing.ts';
+import { sourceBucket } from '../../server/analytics/funnel.ts';
+import { createAnalyticsService } from '../../server/analytics/service.ts';
 import { signupCopy } from '../../copy/signup.ts';
 import { getConfig } from '../../server/config.ts';
 import { DatabaseUnavailableError } from '../../server/db/errors.ts';
@@ -69,6 +71,7 @@ const errorMessages: Record<SignupErrorCode, string> = {
 };
 
 export interface SignupRouteDependencies {
+  readonly onRejected?: (reason: SignupErrorCode) => void;
   readonly isSignupEnabled: () => Promise<boolean>;
   readonly verifyTurnstile: (token: string) => Promise<TurnstileOutcome>;
   readonly consumeIpRateLimit: (
@@ -146,12 +149,6 @@ function errorResponse(code: SignupErrorCode): Response {
   });
 }
 
-function dependencyError(error: unknown): Response {
-  return errorResponse(
-    error instanceof DatabaseUnavailableError ? 'unavailable' : 'internal',
-  );
-}
-
 interface ValidBody {
   readonly email: string;
   readonly marketingOptInVersion: string | null;
@@ -189,13 +186,25 @@ export function createSignupRoute(
     dependencies.monotonicClock ??
     (() => Number(process.hrtime.bigint() / 1_000_000n));
   const sleep = dependencies.sleep ?? systemSleep;
+  const rejected = (reason: SignupErrorCode): Response => {
+    try {
+      dependencies.onRejected?.(reason);
+    } catch {
+      /* Analytics is best-effort. */
+    }
+    return errorResponse(reason);
+  };
+  const dependencyRejection = (error: unknown): Response =>
+    rejected(
+      error instanceof DatabaseUnavailableError ? 'unavailable' : 'internal',
+    );
 
   return async ({ clientAddress, request }) => {
     let formData: FormData;
     try {
       formData = await request.formData();
     } catch {
-      return errorResponse('invalid_input');
+      return rejected('invalid_input');
     }
 
     // 1. Turnstile, server-side, before any other work. A missing token is a
@@ -204,11 +213,11 @@ export function createSignupRoute(
     // the row further down (ADR-006).
     const turnstileToken = formData.get('turnstile_token');
     if (typeof turnstileToken !== 'string' || turnstileToken === '') {
-      return errorResponse('challenge_failed');
+      return rejected('challenge_failed');
     }
     const challenge = await dependencies.verifyTurnstile(turnstileToken);
     if (challenge === 'rejected') {
-      return errorResponse('challenge_failed');
+      return rejected('challenge_failed');
     }
     const challengeTimedOut = challenge === 'unavailable';
 
@@ -226,7 +235,7 @@ export function createSignupRoute(
     // 2. Rate-limit per hashed IP prefix — the strict window when the challenge
     // could not be confirmed.
     const prefixHash = hashIpPrefix(clientAddress, dependencies.ipPrefixPepper);
-    if (prefixHash === null) return errorResponse('rate_limited');
+    if (prefixHash === null) return rejected('rate_limited');
     const now = clock();
     try {
       if (
@@ -236,16 +245,16 @@ export function createSignupRoute(
           challengeTimedOut,
         )) !== 'ok'
       ) {
-        return errorResponse('rate_limited');
+        return rejected('rate_limited');
       }
     } catch (error) {
-      return dependencyError(error);
+      return dependencyRejection(error);
     }
 
     // 3. Validate the body shape.
     const body = validateBody(formData);
     if (body === null) {
-      return errorResponse('invalid_input');
+      return rejected('invalid_input');
     }
     // Bad attribution is deliberately equivalent to no attribution; it never
     // costs the underlying signup.
@@ -278,14 +287,14 @@ export function createSignupRoute(
         },
       });
     } catch (error) {
-      return dependencyError(error);
+      return dependencyRejection(error);
     }
 
     if (outcome.kind === 'invalid_email') {
-      return errorResponse('invalid_email');
+      return rejected('invalid_email');
     }
     if (outcome.kind === 'blocked_domain') {
-      return errorResponse('blocked_domain');
+      return rejected('blocked_domain');
     }
 
     // 5. Flag the row for review when the challenge timed out — the subscriber
@@ -320,7 +329,13 @@ export function createSignupRoute(
 
 function defaultDependencies(): SignupRouteDependencies {
   const config = getConfig();
+  const analytics = createAnalyticsService();
   return {
+    onRejected: (reason) => {
+      void analytics
+        .track('signup_rejected', { reason_code: reason })
+        .catch(() => {});
+    },
     isSignupEnabled: () => getFlagService().isEnabled('signup.enabled'),
     // Server-side verification lives in the turnstile module, the only consumer
     // of the secret. The raw client address is not forwarded to the provider —
@@ -375,6 +390,15 @@ function defaultDependencies(): SignupRouteDependencies {
           getFraudService().raise(subscriberId, kind, detail),
         screenEmailDomain: (domain) => getFraudService().screen({ domain }),
         sendVerificationMail: async () => undefined,
+        onCreated: ({ utm, hasValidRef, marketingOptIn }) => {
+          void analytics
+            .track('signup_submitted', {
+              source_bucket: sourceBucket(utm, hasValidRef),
+              had_ref: hasValidRef,
+              marketing_opt_in: marketingOptIn,
+            })
+            .catch(() => {});
+        },
       })(input),
   };
 }

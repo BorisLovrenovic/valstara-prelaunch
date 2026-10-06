@@ -1,6 +1,12 @@
 import type { DatabaseConnection } from './pool.ts';
+import type { UtmParameters } from '../referral/capture.ts';
 
 export interface VerificationCompletionRepository {
+  sourceFacts(subscriberId: string): Promise<{
+    createdAt: Date;
+    utm: UtmParameters | null;
+    hasRef: boolean;
+  } | null>;
   hasSurveyResponse(subscriberId: string): Promise<boolean>;
   markVerified(subscriberId: string, now: Date): Promise<number>;
   promotePendingMarketingConsent(
@@ -13,6 +19,24 @@ export function createVerificationCompletionRepository(
   database: DatabaseConnection,
 ): VerificationCompletionRepository {
   return {
+    async sourceFacts(subscriberId) {
+      const row = await database.readOne<{
+        created_at: Date;
+        utm: UtmParameters | null;
+        signup_had_ref: boolean;
+      }>({
+        text: `SELECT created_at, utm, signup_had_ref
+               FROM subscriber WHERE id = $1`,
+        values: [subscriberId],
+      });
+      return row === null
+        ? null
+        : {
+            createdAt: row.created_at,
+            utm: row.utm,
+            hasRef: row.signup_had_ref,
+          };
+    },
     async hasSurveyResponse(subscriberId) {
       return (
         (

@@ -40,6 +40,8 @@ import {
 import { createRateLimitRetentionJob } from '../ratelimit/retention.ts';
 import { createIpPrefixRetentionJob } from '../fraud/retention.ts';
 import { createStrandedReferralReconciliationJob } from '../referral/reconcile-stranded.ts';
+import { referrerTierBucket } from '../analytics/funnel.ts';
+import { createAnalyticsService } from '../analytics/service.ts';
 import { createReferralCounterRepairJob } from '../referral/counter-repair.ts';
 import { createAlertWebhookTransport } from '../verification-rate/p1-webhook.ts';
 import { createVerificationRateMonitor } from '../verification-rate/service.ts';
@@ -143,12 +145,18 @@ async function reportVerificationRateCollapse(alert: {
   });
 }
 
+const analytics = createAnalyticsService();
 const scheduler = createVerificationMaintenanceScheduler(
   {
     giveawayEntryReconciliation: createGiveawayEntryReconciliationJob(
       database,
       createFlagService(database),
       currentRulesFromFiles,
+      undefined,
+      clock,
+      (method) => {
+        void analytics.track('giveaway_entered', { method }).catch(() => {});
+      },
     ),
     expiry: createUnverifiedExpiryJob(database, { clock }),
     ipPrefixRetention: createIpPrefixRetentionJob(database, { clock }),
@@ -159,6 +167,13 @@ const scheduler = createVerificationMaintenanceScheduler(
     reminder: createVerificationReminderJob(database, { clock }),
     strandedReferral: createStrandedReferralReconciliationJob(database, {
       clock,
+      onConfirmed: (tier) => {
+        void analytics
+          .track('referral_confirmed', {
+            referrer_tier_bucket: referrerTierBucket(tier),
+          })
+          .catch(() => {});
+      },
     }),
     verificationRate: createVerificationRateMonitor(
       database,

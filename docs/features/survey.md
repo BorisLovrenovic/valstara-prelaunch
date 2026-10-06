@@ -31,4 +31,4 @@ Skipped → **no penalty and no nagging.** A skipped survey is a valid state, no
 - [ ] An unverified subscriber cannot submit
 
 ## Telemetry
-Survey completion rate, per-question skip rate, answer distribution by source, completion versus subsequent referral activity.
+Survey completion rate, per-question skip rate, answer distribution by source, completion versus subsequent referral activity. The `survey_completed` event is emitted after commit only for the first saved submission with at least one answer (founder-authorised 2026-10-06). An all-skip submission does not emit it; a later answered submission does. Replacements do not repeat it. `survey_response.first_answered_at` preserves that fact through subsequent changes.

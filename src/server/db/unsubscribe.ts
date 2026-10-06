@@ -40,22 +40,26 @@ export function createUnsubscribeRepository(connection: DatabaseConnection) {
         values: [tokenId],
       });
     },
-    async withdrawMarketing(subscriberId: string, at: Date): Promise<void> {
-      await connection.execute({
-        text: `UPDATE subscriber SET marketing_consent_at = NULL,
+    async withdrawMarketing(subscriberId: string, at: Date): Promise<boolean> {
+      return (
+        (await connection.execute({
+          text: `UPDATE subscriber SET marketing_consent_at = NULL,
           marketing_consent_version = NULL,
           marketing_consent_source = NULL, updated_at = $2
           WHERE id = $1 AND marketing_consent_at IS NOT NULL`,
-        values: [subscriberId, at],
-      });
+          values: [subscriberId, at],
+        })) === 1
+      );
     },
-    async leaveWaitlist(subscriberId: string, at: Date): Promise<void> {
-      await connection.execute({
-        text: `UPDATE subscriber SET status = 'unsubscribed',
+    async leaveWaitlist(subscriberId: string, at: Date): Promise<boolean> {
+      return (
+        (await connection.execute({
+          text: `UPDATE subscriber SET status = 'unsubscribed',
           unsubscribed_at = $2, updated_at = $2
           WHERE id = $1 AND status = 'verified'`,
-        values: [subscriberId, at],
-      });
+          values: [subscriberId, at],
+        })) === 1
+      );
     },
     async suppress(
       emailNormalised: string,

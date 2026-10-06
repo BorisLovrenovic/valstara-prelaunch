@@ -37,6 +37,7 @@ export interface SurveyServiceDependencies {
   readonly clock?: () => Date;
   readonly flags: Pick<FlagService, 'isEnabled'>;
   readonly questionSets?: SurveyQuestionSets;
+  readonly onFirstAnswer?: (version: string) => void;
 }
 
 export function createSurveyService(
@@ -45,8 +46,9 @@ export function createSurveyService(
 ): (input: SurveyCaptureInput) => Promise<SurveyCaptureOutcome> {
   const clock = dependencies.clock ?? (() => new Date());
 
-  return (input) =>
-    withTransaction(database, async (connection) => {
+  return async (input) => {
+    let firstAnswerVersion: string | null = null;
+    const outcome = await withTransaction(database, async (connection) => {
       const verification = createVerificationService(connection, { clock });
       const authenticated = await verification.consumeForPurpose(
         input.token,
@@ -106,10 +108,16 @@ export function createSurveyService(
         category_preference: submission.answers.category_preference,
         shopping_frequency: submission.answers.shopping_frequency,
       };
+      const hasAnswer =
+        answers.category_preference !== null ||
+        answers.shopping_frequency !== null;
+      const firstAnsweredAt =
+        hasAnswer && previous?.first_answered_at == null ? now : null;
 
       if (previous === null) {
         await repository.insert({
           answers,
+          firstAnsweredAt,
           id: randomUUID(),
           subscriberId: authenticated.subscriberId,
           version: submission.version,
@@ -117,6 +125,7 @@ export function createSurveyService(
       } else {
         await repository.replace({
           answers,
+          firstAnsweredAt,
           subscriberId: authenticated.subscriberId,
           version: submission.version,
         });
@@ -137,9 +146,16 @@ export function createSurveyService(
         authenticated.subscriberId,
         submission.answers.category_preference,
       );
-      return submission.answers.category_preference === null &&
-        submission.answers.shopping_frequency === null
-        ? 'skipped'
-        : 'saved';
+      if (firstAnsweredAt !== null) firstAnswerVersion = submission.version;
+      return hasAnswer ? 'saved' : 'skipped';
     });
+    if (firstAnswerVersion !== null) {
+      try {
+        dependencies.onFirstAnswer?.(firstAnswerVersion);
+      } catch {
+        // The survey response is committed even if analytics is unavailable.
+      }
+    }
+    return outcome;
+  };
 }

@@ -1,5 +1,6 @@
 import { getConfig } from '../config.ts';
 import { createPool } from '../db/pool.ts';
+import { createAnalyticsService } from '../analytics/service.ts';
 
 import { createFlagService } from './service.ts';
 import type { FlagService } from './types.ts';
@@ -11,6 +12,13 @@ import type { FlagService } from './types.ts';
 let service: FlagService | undefined;
 
 export function getFlagService(): FlagService {
-  service ??= createFlagService(createPool(getConfig().databaseUrl));
+  if (service === undefined) {
+    const analytics = createAnalyticsService();
+    service = createFlagService(createPool(getConfig().databaseUrl), {
+      onGiveawayEntry: (method) => {
+        void analytics.track('giveaway_entered', { method }).catch(() => {});
+      },
+    });
+  }
   return service;
 }

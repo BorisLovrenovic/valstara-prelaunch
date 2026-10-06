@@ -9,6 +9,7 @@ export interface PendingSubscriberInsert {
   readonly marketingOptInVersion: string | null;
   readonly signupIpPrefixHash: Buffer | null;
   readonly utm: UtmParameters | null;
+  readonly signupHadRef: boolean;
 }
 
 export interface SubscriberIdentity {
@@ -47,10 +48,11 @@ export function createSubscriberRepository(
             marketing_opt_in_pending,
             marketing_opt_in_pending_version,
             signup_ip_prefix_hash,
+            signup_had_ref,
             utm,
             status
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
           ON CONFLICT (email_normalised) DO NOTHING
         `,
         values: [
@@ -61,6 +63,7 @@ export function createSubscriberRepository(
           input.marketingOptInVersion !== null,
           input.marketingOptInVersion,
           input.signupIpPrefixHash,
+          input.signupHadRef,
           input.utm === null ? null : JSON.stringify(input.utm),
         ],
       });

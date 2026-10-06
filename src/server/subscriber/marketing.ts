@@ -34,6 +34,7 @@ export function createMarketingService(
   dependencies: {
     readonly flags: Pick<FlagService, 'isEnabled'>;
     readonly clock?: () => Date;
+    readonly onWithdrawal?: () => void;
   },
 ): MarketingService {
   const clock = dependencies.clock ?? (() => new Date());
@@ -48,7 +49,8 @@ export function createMarketingService(
         return 'disabled';
       if (input.ipPrefixHash === '') return 'rate_limited';
 
-      return withTransaction(database, async (connection) => {
+      let withdrawn = false;
+      const outcome = await withTransaction(database, async (connection) => {
         const now = clock();
         const windowThreshold = new Date(now.getTime() - marketingWindowMs);
         const limits = createRateLimitBucketRepository(connection);
@@ -118,9 +120,18 @@ export function createMarketingService(
             subjectId: subscriberId,
             subjectType: 'subscriber',
           });
+          withdrawn = true;
         }
         return 'accepted';
       });
+      if (withdrawn) {
+        try {
+          dependencies.onWithdrawal?.();
+        } catch {
+          // A committed preference cannot fail because telemetry is unavailable.
+        }
+      }
+      return outcome;
     },
   };
 }

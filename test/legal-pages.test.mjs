@@ -26,6 +26,7 @@ const subscriberPolicyCategory = {
   category_preference: 'Optional category preference',
   source: 'Acquisition source',
   utm: 'Acquisition source',
+  signup_had_ref: 'Acquisition source',
   referral_code: 'Referral code',
   referred_by_id: 'Referral code',
   referral_tier: 'Referral code',
@@ -94,6 +95,7 @@ const relatedPolicyFields = {
       'answers',
       'version',
       'created_at',
+      'first_answered_at',
     ],
   },
   giveaway_entry: {

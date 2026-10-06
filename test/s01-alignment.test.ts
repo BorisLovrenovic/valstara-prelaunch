@@ -401,9 +401,11 @@ test('marketing route grants and withdraws consent without changing waitlist or 
       new Date('2026-10-25T00:00:00.000Z'),
     );
     const flags = { isEnabled: async () => true };
+    const withdrawalSources: string[] = [];
     const service = createMarketingService(f.app, {
       flags,
       clock: () => verificationTime,
+      onWithdrawal: () => withdrawalSources.push('member_status'),
     });
     const route = createMarketingRoute({
       verifyTurnstile: async () => 'verified',
@@ -438,6 +440,12 @@ test('marketing route grants and withdraws consent without changing waitlist or 
       routeContext(tokenValue('valid-status-token'), 'off'),
     );
     assert.equal(responseOff.status, 200);
+    assert.deepEqual(withdrawalSources, ['member_status']);
+    const responseOffAgain = await route(
+      routeContext(tokenValue('valid-status-token'), 'off'),
+    );
+    assert.equal(responseOffAgain.status, 200);
+    assert.deepEqual(withdrawalSources, ['member_status']);
     assert.equal(
       (await subscriberRow(f.owner, id))?.marketing_consent_at,
       null,

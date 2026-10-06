@@ -25,7 +25,9 @@ export interface GiveawayAccrualService {
     method: 'base' | 'referral',
     sourceEdgeId?: string,
   ): Promise<boolean>;
-  accrueForVerification(referredId: string): Promise<void>;
+  accrueForVerification(
+    referredId: string,
+  ): Promise<readonly ('base' | 'referral')[]>;
 }
 
 export function createGiveawayAccrualService(
@@ -35,12 +37,13 @@ export function createGiveawayAccrualService(
   periodStart: Date | null = getGiveawayEntryPeriodStart(),
   clock: () => Date = () => new Date(),
   receiptEmail?: TransactionalEmailProducers['receipt'],
+  onEntry?: (method: 'base' | 'referral') => void,
 ): GiveawayAccrualService {
   const receipt =
     receiptEmail ?? createTransactionalEmailProducers(database, clock).receipt;
   return {
-    accrue(subscriberId, method, sourceEdgeId) {
-      return withTransaction(database, (connection) =>
+    async accrue(subscriberId, method, sourceEdgeId) {
+      const inserted = await withTransaction(database, (connection) =>
         createGiveawayAccrualServiceInTransaction(
           connection,
           flags,
@@ -49,9 +52,17 @@ export function createGiveawayAccrualService(
           receipt,
         ).accrue(subscriberId, method, sourceEdgeId),
       );
+      if (inserted) {
+        try {
+          onEntry?.(method);
+        } catch {
+          /* Analytics never affects entry accrual. */
+        }
+      }
+      return inserted;
     },
-    accrueForVerification(referredId) {
-      return withTransaction(database, (connection) =>
+    async accrueForVerification(referredId) {
+      const methods = await withTransaction(database, (connection) =>
         createGiveawayAccrualServiceInTransaction(
           connection,
           flags,
@@ -60,6 +71,14 @@ export function createGiveawayAccrualService(
           receipt,
         ).accrueForVerification(referredId),
       );
+      for (const method of methods) {
+        try {
+          onEntry?.(method);
+        } catch {
+          /* Analytics never affects entry accrual. */
+        }
+      }
+      return methods;
     },
   };
 }
@@ -151,10 +170,13 @@ export function createGiveawayAccrualServiceInTransaction(
   return {
     accrue,
     async accrueForVerification(referredId) {
-      if (!(await flags.isEnabled('giveaway.open'))) return;
-      await accrue(referredId, 'base');
+      if (!(await flags.isEnabled('giveaway.open'))) return [];
+      const methods: ('base' | 'referral')[] = [];
+      if (await accrue(referredId, 'base')) methods.push('base');
       const edge = await repository.confirmedEdgeFor(referredId);
-      if (edge !== null) await accrue(edge.referrerId, 'referral', edge.id);
+      if (edge !== null && (await accrue(edge.referrerId, 'referral', edge.id)))
+        methods.push('referral');
+      return methods;
     },
   };
 }
