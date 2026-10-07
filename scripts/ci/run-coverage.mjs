@@ -43,6 +43,7 @@ run(
     '--reporter=lcov',
     '--reports-dir=coverage',
     'node',
+    '--expose-gc',
     '--import',
     'tsx',
     ...testArguments,
