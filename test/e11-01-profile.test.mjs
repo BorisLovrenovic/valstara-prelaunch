@@ -5,6 +5,7 @@ import {
   hostileIdentity,
   phaseCount,
   readProfile,
+  retryAfterMatchesWindow,
   signupIdentity,
 } from '../scripts/load/profile.mjs';
 
@@ -17,6 +18,25 @@ test('E11-01 profile makes the authorised rates configurable', async () => {
   assert.equal(
     phaseCount(profile.leaderboardRate, profile.leaderboardSeconds),
     24000,
+  );
+});
+
+test('E11-01 hostile wait follows the recorded fixed-window reset', () => {
+  const windowStart = new Date('2026-10-07T12:00:00.000Z');
+  const started = new Date('2026-10-07T12:00:09.100Z');
+  const ended = new Date('2026-10-07T12:00:09.300Z');
+  const windowMs = 15 * 60 * 1_000;
+  assert.equal(
+    retryAfterMatchesWindow('891', windowStart, windowMs, started, ended),
+    true,
+  );
+  assert.equal(
+    retryAfterMatchesWindow('900', windowStart, windowMs, started, ended),
+    false,
+  );
+  assert.equal(
+    retryAfterMatchesWindow('890', windowStart, windowMs, started, ended),
+    false,
   );
 });
 

@@ -404,12 +404,16 @@ Keep the values and the test database outside the repository; the runner accepts
 only a loopback target. The command and profile are in
 [`docs/testing/e11-01-load-report.md`](../docs/testing/e11-01-load-report.md).
 
-| Variable | Purpose |
-|---|---|
-| `VALSTARA_LOAD_SCRIPTS_DIR` | Absolute host path of `scripts/load`, mounted read-only into the test app for the fake email sink |
-| `LOAD_APP_PORT`, `LOAD_POSTGRES_PORT` | Optional loopback port overrides; defaults are `54321` and `55434` |
-| `LOAD_BASE_URL` | Loopback app URL used by the runner |
-| `LOAD_REQUEST_ORIGIN` | `http://valstara.com` Host and Origin for the local trusted-proxy test |
-| `LOAD_DATABASE_URL` | Owner URL for the disposable PostgreSQL database, used only by the runner for seeds and assertions |
-| `LOAD_APP_CONTAINER`, `LOAD_POSTGRES_CONTAINER`, `LOAD_UMAMI_CONTAINER` | Container names for memory sampling and the fake mail drain |
-| `LOAD_ADMIN_CREDENTIAL`, `LOAD_ADMIN_TOTP_SECRET` | Disposable admin factors for the deliberately large CSV export |
+| Variable                    | Purpose                                                                                            |
+| --------------------------- | -------------------------------------------------------------------------------------------------- |
+| `VALSTARA_LOAD_SCRIPTS_DIR` | Absolute host path of `scripts/load`, mounted read-only into the test app for the fake email sink  |
+| `LOAD_APP_PORT`             | Optional loopback app port override; default is `54321`                                            |
+| `LOAD_POSTGRES_PORT`        | Optional loopback PostgreSQL port override; default is `55434`                                     |
+| `LOAD_BASE_URL`             | Loopback app URL used by the runner                                                                |
+| `LOAD_REQUEST_ORIGIN`       | `http://valstara.com` Host and Origin for the local trusted-proxy test                             |
+| `LOAD_DATABASE_URL`         | Owner URL for the disposable PostgreSQL database, used only by the runner for seeds and assertions |
+| `LOAD_APP_CONTAINER`        | App container name for memory sampling and the fake mail drain                                     |
+| `LOAD_POSTGRES_CONTAINER`   | PostgreSQL container name for memory sampling                                                      |
+| `LOAD_UMAMI_CONTAINER`      | Umami container name for memory sampling                                                           |
+| `LOAD_ADMIN_CREDENTIAL`     | Disposable admin bearer credential for the deliberately large CSV export                           |
+| `LOAD_ADMIN_TOTP_SECRET`    | Disposable admin TOTP secret for the deliberately large CSV export                                 |

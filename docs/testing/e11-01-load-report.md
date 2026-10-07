@@ -21,6 +21,8 @@ node scripts/load/e11-01-run.mjs scripts/load/e11-01-profile.json docs/testing/e
 
 The runner accepts only a loopback HTTP target. It sets `Host` and `Origin` to `valstara.com` so Astro trusts the simulated client prefix supplied in `X-Forwarded-For`. It seeds and warms the leaderboard snapshot before timed traffic, then resets `pg_stat_statements` immediately before the leaderboard phase. It streams the admin CSV during signup traffic, samples the app, PostgreSQL and Umami containers throughout, drains verification mail through the fake sink, and asserts row, business-key, response, and cache invariants. The result JSON holds every memory sample; it contains no credentials, real addresses, or raw client IPs.
 
+For hostile 429s, the runner reads the current run's rate-limit bucket `window_start` after the traffic phase and checks every `Retry-After` against that recorded start plus the signup route's 15-minute window. It bounds the expected header by each request's start and response end times. The bucket count must equal the hostile request count, proving the phase stayed within one window; a fixed 900-second header fails as the window ages.
+
 ## Bounded query inventory
 
 `DatabaseConnection.list` appends a SQL `LIMIT` for every list result, and `readOne` uses `LIMIT 1` (`src/server/db/pool.ts`). The following are the sweep, export, and bulk operations, including effective call-site caps where a repository accepts a smaller caller-selected limit. Scalar counts and keyed point reads return one row.
@@ -59,7 +61,7 @@ The large CSV is a repeatable-read snapshot with an audited scalar row count, th
 | Burst signup | 3,000 scheduled at 50/s over 60 seconds; phase completed in 60.50 seconds |
 | Ordinary signup responses | 15,000/15,000 HTTP 200; 0 transport errors and 0 HTTP 429 |
 | Signup p95 | 532 ms overall; 529 ms sustained and 541 ms burst, informational for E12-06 |
-| Hostile prefix | 5 HTTP 200, then 195 HTTP 429 out of 200 requests; every 429 carried a valid `Retry-After` value. The injected-clock route test proves the header follows the actual window reset |
+| Hostile prefix | 5 HTTP 200, then 195 HTTP 429 out of 200 requests; every 429 carried a `Retry-After` in the old 1–900-second range check. The later reset-time probe below adds the database-backed assertion |
 | Subscriber rows | 13,505 rows, all 13,505 normalised addresses distinct: 13,500 unique ordinary addresses plus 5 accepted hostile addresses |
 | Verification mail | 13,505 rows and 13,505 distinct business keys, all sent by the fake sink; 0 queued and 0 failed. The sink sent 13,515 total, including 10 warm-up addresses, in 136 batches; the entire `email_send` queue ended empty |
 | Large export during signup | 50,000 verified fixture rows streamed; 50,001 CSV lines and 4,677,991 bytes including the header |
@@ -73,3 +75,5 @@ The large CSV is a repeatable-read snapshot with an audited scalar row count, th
 | Umami | 191.9 MiB | 768 MiB | 188.1 MiB | 576.1 MiB |
 
 An initial full attempt was invalid because the test stack omitted Umami, although the production app sends best-effort signup events to `umami:3000`. That attempt had 99 signup 5xx, 13,421 `challenge_timeout` flags, and rising app memory. A fresh process in the same container could verify 200 Turnstile test tokens at 20/s; instrumenting the running app showed Turnstile timeout errors. The missing collector is the inferred cause of the failed app-process behaviour. The overlay now requires a healthy Umami container before app startup. A corrected short probe passed, followed by the fresh-database full pass above. No live email was sent in either attempt.
+
+**Reset-time verification probe, 2026-10-07 UTC.** With the same local stack, run `eb52b8a2` used a short profile: 20 signups/s for 10 seconds, 50/s for one second, hostile traffic at 20/s for 10 seconds, 10 leaderboard requests/s for one second, and 1,000 additional export rows. It returned 250/250 ordinary HTTP 200s, 5 hostile HTTP 200s, and 195 hostile HTTP 429s. The runner read hostile bucket `window_start = 2026-10-07T19:37:29.844Z`, confirmed its count was 200, and matched **195/195** `Retry-After` headers to that window's reset; `invalidWait = 0`. The queue drained, the export streamed 51,001 lines including the prior run's 50,000 rows, and the leaderboard's 10 responses used the snapshot cache with no `subscriber` query. The probe's result is in `/tmp/valstara-e1101-wait-result.json` on the local machine; the command above reproduces it by supplying a shorter copy of the profile. The full-profile figures above remain the original measured run.

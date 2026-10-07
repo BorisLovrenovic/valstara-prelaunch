@@ -13,6 +13,7 @@ import {
   hostileIdentity,
   phaseCount,
   readProfile,
+  retryAfterMatchesWindow,
   signupIdentity,
 } from './profile.mjs';
 
@@ -62,7 +63,9 @@ const runId = randomBytes(4).toString('hex');
 const database = new pg.Client({ connectionString: databaseUrl });
 await database.connect();
 const httpAgent = new Agent({ keepAlive: true, maxSockets: 512 });
-const stage = (name) => process.stderr.write(`E11-01 ${name} ${new Date().toISOString()}\n`);
+const stage = (name) =>
+  process.stderr.write(`E11-01 ${name} ${new Date().toISOString()}\n`);
+const signupRateLimitWindowMs = 15 * 60 * 1_000;
 
 function newSummary() {
   return {
@@ -70,27 +73,16 @@ function newSummary() {
     statuses: {},
     latenciesMs: [],
     invalidWait: 0,
+    waitObservations: [],
     wrongSnapshot: 0,
     transportErrors: 0,
   };
 }
 
-function observe(
-  summary,
-  status,
-  latency,
-  waitHeader,
-  expectedSnapshot,
-  responseBody,
-) {
+function observe(summary, status, latency, expectedSnapshot, responseBody) {
   summary.count += 1;
   summary.statuses[status] = (summary.statuses[status] ?? 0) + 1;
   summary.latenciesMs.push(latency);
-  if (status === 429) {
-    const seconds = Number(waitHeader);
-    if (!Number.isInteger(seconds) || seconds < 1 || seconds > 900)
-      summary.invalidWait += 1;
-  }
   if (
     expectedSnapshot !== undefined &&
     (status !== 200 ||
@@ -107,6 +99,7 @@ async function postSignup(identity, summary) {
       email: identity.email,
       turnstile_token: 'XXXX.DUMMY.TOKEN.XXXX',
     }).toString();
+    const requestStartedAt = new Date();
     const response = await new Promise((resolve, reject) => {
       const request = httpRequest(
         new URL('/api/signup', baseUrl),
@@ -133,15 +126,50 @@ async function postSignup(identity, summary) {
       request.on('error', reject);
       request.end(body);
     });
-    observe(
-      summary,
-      response.statusCode,
-      monotonicMs() - began,
-      response.headers['retry-after'],
-    );
+    const responseEndedAt = new Date();
+    if (response.statusCode === 429) {
+      summary.waitObservations.push({
+        header: response.headers['retry-after'],
+        requestStartedAt,
+        responseEndedAt,
+      });
+    }
+    observe(summary, response.statusCode, monotonicMs() - began);
   } catch {
     summary.transportErrors += 1;
   }
+}
+
+async function verifyHostileWaits(summary, startedAt) {
+  const { rows } = await database.query(
+    `SELECT window_start, count FROM rate_limit_bucket
+     WHERE key LIKE 'signup:ip:%' AND count > 5 AND window_start >= $1`,
+    [startedAt],
+  );
+  assert.equal(rows.length, 1, 'one hostile signup IP bucket must be present');
+  assert.equal(
+    Number(rows[0].count),
+    summary.count,
+    'hostile traffic must stay in one rate-limit window',
+  );
+  const windowStart = rows[0].window_start;
+  for (const observation of summary.waitObservations) {
+    if (
+      !retryAfterMatchesWindow(
+        observation.header,
+        windowStart,
+        signupRateLimitWindowMs,
+        observation.requestStartedAt,
+        observation.responseEndedAt,
+      )
+    ) {
+      summary.invalidWait += 1;
+    }
+  }
+  return {
+    windowStart: windowStart.toISOString(),
+    checked: summary.waitObservations.length,
+  };
 }
 
 async function getLeaderboard(expectedSnapshot, summary) {
@@ -156,7 +184,6 @@ async function getLeaderboard(expectedSnapshot, summary) {
       summary,
       response.status,
       monotonicMs() - began,
-      null,
       expectedSnapshot,
       body,
     );
@@ -493,9 +520,7 @@ try {
     (index) =>
       postSignup(signupIdentity(sustained.scheduled + index, runId), signup),
   );
-  const burstP95Ms = p95(
-    signup.latenciesMs.slice(sustained.scheduled),
-  );
+  const burstP95Ms = p95(signup.latenciesMs.slice(sustained.scheduled));
   stage('burst complete');
   const hostilePhase = await hostileTask;
   const exportResult = await exportTask;
@@ -515,6 +540,7 @@ try {
     (hostile.statuses[429] ?? 0) > 0,
     'hostile prefix must be rate limited',
   );
+  const hostileWaits = await verifyHostileWaits(hostile, startedAt);
   assert.equal(
     hostile.invalidWait,
     0,
@@ -614,6 +640,7 @@ try {
       count: hostile.count,
       statuses: hostile.statuses,
       invalidWait: hostile.invalidWait,
+      waits: hostileWaits,
     },
     leaderboard: {
       count: leaderboard.count,

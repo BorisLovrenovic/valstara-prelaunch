@@ -52,3 +52,24 @@ export function phaseCount(rate, seconds) {
   }
   return rate * seconds;
 }
+
+export function retryAfterMatchesWindow(
+  header,
+  windowStart,
+  windowMs,
+  requestStartedAt,
+  responseEndedAt,
+) {
+  const seconds = Number(header);
+  if (!Number.isInteger(seconds) || seconds < 1) return false;
+  const reset = windowStart.getTime() + windowMs;
+  const earliest = Math.max(
+    1,
+    Math.ceil((reset - responseEndedAt.getTime()) / 1000),
+  );
+  const latest = Math.max(
+    1,
+    Math.ceil((reset - requestStartedAt.getTime()) / 1000),
+  );
+  return seconds >= earliest && seconds <= latest;
+}
