@@ -23,6 +23,8 @@ const hostOrigin = `http://127.0.0.1:${appPort}`;
 const browserOrigin = `http://host.docker.internal:${appPort}`;
 const browserServerEndpoint = `ws://127.0.0.1:${browserPort}/`;
 const browserContainer = `valstara-leaderboard-playwright-${process.pid}`;
+const appServerStartupTimeoutMilliseconds = 30_000;
+const serverOutputLimit = 4_096;
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
 const defaultDatabaseUrl =
@@ -35,6 +37,8 @@ let browserServer;
 let browserServerError;
 let databaseFixture;
 let server;
+let serverError;
+let serverOutput = '';
 
 async function createDatabaseFixture() {
   const databaseName = `valstara_leaderboard_${randomUUID().replaceAll('-', '')}`;
@@ -109,16 +113,36 @@ async function createDatabaseFixture() {
 }
 
 async function waitForAppServer() {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  const deadline =
+    globalThis.performance.now() + appServerStartupTimeoutMilliseconds;
+
+  while (globalThis.performance.now() < deadline) {
+    if (serverError !== undefined) {
+      throw new Error(
+        `Could not start leaderboard test server: ${serverError.message}`,
+        {
+          cause: serverError,
+        },
+      );
+    }
+    if (server.exitCode !== null) {
+      throw new Error(
+        `Leaderboard test server exited before startup.\n${serverOutput || '(no server output)'}`,
+      );
+    }
     try {
-      const response = await globalThis.fetch(`${hostOrigin}/leaderboard`);
+      const response = await globalThis.fetch(`${hostOrigin}/leaderboard`, {
+        signal: globalThis.AbortSignal.timeout(1_000),
+      });
       if (response.ok) return;
     } catch {
-      // The standalone server has not started yet.
+      // The standalone server may still be finishing startup.
     }
     await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
   }
-  throw new Error('Leaderboard rendered-page test server did not start.');
+  throw new Error(
+    `Leaderboard test server did not start within 30 seconds.\n${serverOutput || '(no server output)'}`,
+  );
 }
 
 async function startBrowserServer() {
@@ -198,7 +222,17 @@ before(async () => {
       TURNSTILE_SECRET_KEY: 'leaderboard-turnstile-secret',
       WEEKLY_SEND_UTC: '2@09:00',
     },
-    stdio: 'ignore',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  server.stdout.setEncoding('utf8');
+  server.stderr.setEncoding('utf8');
+  const captureServerOutput = (chunk) => {
+    serverOutput = `${serverOutput}${chunk}`.slice(-serverOutputLimit);
+  };
+  server.stdout.on('data', captureServerOutput);
+  server.stderr.on('data', captureServerOutput);
+  server.once('error', (error) => {
+    serverError = error;
   });
   await waitForAppServer();
   await startBrowserServer();
@@ -219,9 +253,14 @@ after(async () => {
     browserServer.kill('SIGTERM');
     await exited;
   }
-  if (server !== undefined) {
+  if (
+    server !== undefined &&
+    server.exitCode === null &&
+    server.pid !== undefined
+  ) {
+    const exited = once(server, 'exit');
     server.kill('SIGTERM');
-    await once(server, 'exit');
+    await exited;
   }
   await databaseFixture?.dispose();
 });
