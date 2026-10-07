@@ -9,6 +9,10 @@ import { createSignupRoute } from '../src/pages/api/signup.ts';
 import type { ReferralAttributionHealthRepository } from '../src/server/db/referral-attribution-health.ts';
 import { createReferralCaptureService } from '../src/server/referral/capture.ts';
 import { createReferralService } from '../src/server/referral/service.ts';
+import { createReferralAttributionMaintenanceJob } from '../src/server/referral/attribution-maintenance.ts';
+import { createVerificationMaintenanceScheduler } from '../src/server/subscriber/maintenance.ts';
+import { createFlagService } from '../src/server/flags/service.ts';
+import { createAlertWebhookTransport } from '../src/server/verification-rate/p1-webhook.ts';
 import { createSignupService } from '../src/server/subscriber/signup.ts';
 import {
   createReferralAttributionHealth,
@@ -251,6 +255,150 @@ test('real database attribution health counts edge rows, not signup ref hints', 
     }).attributionHealth();
     assert.equal(disabled.state, 'disabled');
     assert.equal(disabled.current, null);
+  } finally {
+    await app?.close();
+    await database.close();
+    await admin.list(
+      {
+        text: 'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1',
+        values: [name],
+      },
+      10,
+    );
+    await admin.execute({ text: `DROP DATABASE "${name}"` });
+    await admin.close();
+  }
+});
+
+test('configured attribution maintenance delivers P1 at the drop threshold', async () => {
+  const adminUrl = new URL(
+    process.env.TEST_DATABASE_URL ??
+      'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres',
+  );
+  const name = `valstara_e1005_alert_${randomUUID().replaceAll('-', '')}`;
+  const databaseUrl = new URL(adminUrl);
+  databaseUrl.pathname = `/${name}`;
+  const appUrl = new URL(databaseUrl);
+  appUrl.username = 'valstara_app';
+  appUrl.password =
+    process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
+  const admin = createPool(adminUrl.toString());
+  await admin.execute({ text: `CREATE DATABASE "${name}"` });
+  const database = createPool(databaseUrl.toString());
+  let app: DatabasePool | undefined;
+  try {
+    await runMigrations(database, {
+      applicationRolePassword: appUrl.password,
+      release: 'e10-05-attribution-alert-test',
+    });
+    app = createPool(appUrl.toString());
+    const referrer = randomUUID();
+    const baselineReferred = randomUUID();
+    for (const [id, createdAt] of [
+      [referrer, '2026-09-20T12:00:00.000Z'],
+      [baselineReferred, '2026-10-01T12:00:00.000Z'],
+    ] as const) {
+      await database.execute({
+        text: `INSERT INTO subscriber (id, email, email_normalised, email_domain,
+          status, created_at) VALUES ($1, $2, $2, 'example.test', 'pending', $3)`,
+        values: [id, `${id}@example.test`, createdAt],
+      });
+    }
+    await database.execute({
+      text: `INSERT INTO referral_edge (id, referrer_id, referred_id, state,
+        reward_state) VALUES ($1, $2, $3, 'attributed', 'none')`,
+      values: [randomUUID(), referrer, baselineReferred],
+    });
+    for (let index = 0; index < 50; index += 1) {
+      const referred = randomUUID();
+      await database.execute({
+        text: `INSERT INTO subscriber (id, email, email_normalised, email_domain,
+          status, created_at) VALUES ($1, $2, $2, 'example.test', 'pending', $3)`,
+        values: [
+          referred,
+          `${referred}@example.test`,
+          '2026-10-06T11:00:00.000Z',
+        ],
+      });
+      if (index < 25) {
+        await database.execute({
+          text: `INSERT INTO referral_edge (id, referrer_id, referred_id, state,
+            reward_state) VALUES ($1, $2, $3, 'attributed', 'none')`,
+          values: [randomUUID(), referrer, referred],
+        });
+      }
+    }
+    await database.execute({
+      text: `INSERT INTO campaign_flag (key, enabled, updated_by)
+        VALUES ('referral.enabled', true, 'e10-05-test')`,
+    });
+
+    const delivered: unknown[] = [];
+    const alerts = createAlertWebhookTransport(
+      { url: 'https://alerts.example.test/p1', token: 'test-alert-token' },
+      {
+        fetch: async (input, init) => {
+          assert.equal(input, 'https://alerts.example.test/p1');
+          assert.equal(init?.method, 'POST');
+          assert.equal(
+            new Headers(init?.headers).get('Authorization'),
+            'Bearer test-alert-token',
+          );
+          delivered.push(JSON.parse(String(init?.body)));
+          return new Response(null, { status: 204 });
+        },
+      },
+    );
+    const flags = createFlagService(app);
+    assert.equal(await flags.isEnabled('referral.enabled'), true);
+    assert.equal(
+      (
+        await createReferralService(app, {
+          attributionConfiguration: configuration,
+          isReferralEnabled: () => flags.isEnabled('referral.enabled'),
+          clock: () => measuredAt,
+        }).attributionHealth()
+      ).state,
+      'collapsed',
+    );
+    const noOp = { async run() {} };
+    const scheduler = createVerificationMaintenanceScheduler(
+      {
+        expiry: noOp,
+        rateLimitRetention: noOp,
+        referralCounterRepair: noOp,
+        reminder: noOp,
+        strandedReferral: noOp,
+        verificationRate: noOp,
+        verificationTokenRetention: noOp,
+        referralAttribution: createReferralAttributionMaintenanceJob(
+          app,
+          flags,
+          configuration,
+          alerts,
+          () => measuredAt,
+        ),
+      },
+      {
+        clock: () => measuredAt,
+        reportFailure: (job) => {
+          throw new Error(`unexpected maintenance failure: ${job}`);
+        },
+      },
+    );
+    await scheduler.runCycle();
+    assert.deepEqual(delivered, [
+      {
+        detail: {
+          baseline_share: 1,
+          current_share: 0.5,
+          relative_drop: 0.5,
+        },
+        event: 'referral_attribution_collapsed',
+        occurred_at: measuredAt.toISOString(),
+        severity: 'P1',
+      },
+    ]);
   } finally {
     await app?.close();
     await database.close();

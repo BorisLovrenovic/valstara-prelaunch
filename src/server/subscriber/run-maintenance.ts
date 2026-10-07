@@ -45,8 +45,7 @@ import { createStrandedReferralReconciliationJob } from '../referral/reconcile-s
 import { referrerTierBucket } from '../analytics/funnel.ts';
 import { createAnalyticsService } from '../analytics/service.ts';
 import { createReferralCounterRepairJob } from '../referral/counter-repair.ts';
-import { createReferralService } from '../referral/service.ts';
-import { runReferralAttributionCheck } from '../referral/attribution-health.ts';
+import { createReferralAttributionMaintenanceJob } from '../referral/attribution-maintenance.ts';
 import { createAlertWebhookTransport } from '../verification-rate/p1-webhook.ts';
 import { createVerificationRateMonitor } from '../verification-rate/service.ts';
 import { createVerificationTokenRetentionJob } from '../verification/retention.ts';
@@ -196,28 +195,13 @@ const scheduler = createVerificationMaintenanceScheduler(
       getVerificationRateConfiguration(),
       { alert: reportVerificationRateCollapse, clock },
     ),
-    referralAttribution: {
-      run: () =>
-        runReferralAttributionCheck(
-          createReferralService(database, {
-            attributionConfiguration: getReferralAttributionConfiguration(),
-            isReferralEnabled: () =>
-              broadcastFlags.isEnabled('referral.enabled'),
-            clock,
-          }).attributionHealth,
-          (result) =>
-            alerts.send({
-              detail: {
-                baseline_share: result.baselineShare,
-                current_share: result.currentShare,
-                relative_drop: result.relativeDrop,
-              },
-              event: 'referral_attribution_collapsed',
-              occurredAt: result.measuredAt,
-              severity: result.severity,
-            }),
-        ),
-    },
+    referralAttribution: createReferralAttributionMaintenanceJob(
+      database,
+      broadcastFlags,
+      getReferralAttributionConfiguration(),
+      alerts,
+      clock,
+    ),
     verificationTokenRetention: createRecordedPurgeJob(
       createVerificationTokenRetentionJob(database, { clock }),
       purgeRuns,
