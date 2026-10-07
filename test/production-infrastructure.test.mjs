@@ -254,6 +254,10 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   assert.equal(config.services.umami.ports, undefined);
   assert.equal(config.networks.backend.internal, true);
   assert.notEqual(config.networks.outbound.internal, true);
+  assert.deepEqual(Object.keys(config.services.app.networks), [
+    'backend',
+    'outbound',
+  ]);
   assert.deepEqual(Object.keys(config.services.maintenance.networks), [
     'backend',
     'outbound',

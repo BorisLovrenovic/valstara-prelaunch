@@ -21,7 +21,7 @@ import {
   type ReferralCapture,
 } from '../../server/referral/capture.ts';
 import { createReferralService } from '../../server/referral/service.ts';
-import { consumeRateLimit } from '../../server/ratelimit/consume.ts';
+import { consumeRateLimitWithWindow } from '../../server/ratelimit/consume.ts';
 import {
   createSignupService,
   type SignupInput,
@@ -78,7 +78,7 @@ export interface SignupRouteDependencies {
     prefixHash: string,
     now: Date,
     strict: boolean,
-  ) => Promise<'ok' | 'rate_limited'>;
+  ) => Promise<'ok' | { readonly retryAfterSeconds: number }>;
   readonly signup: (input: SignupInput) => Promise<SignupOutcome>;
   readonly verifyReferralCapture?: (
     signed: string | null,
@@ -143,10 +143,21 @@ function jsonResponse(status: number, body: Record<string, unknown>): Response {
   });
 }
 
-function errorResponse(code: SignupErrorCode): Response {
-  return jsonResponse(signupErrorCatalogue[code], {
-    error: { code, message: errorMessages[code] },
+function errorResponse(
+  code: SignupErrorCode,
+  retryAfterSeconds?: number,
+): Response {
+  const message =
+    code === 'rate_limited' && retryAfterSeconds !== undefined
+      ? signupCopy.rateLimitedWait(Math.ceil(retryAfterSeconds / 60))
+      : errorMessages[code];
+  const response = jsonResponse(signupErrorCatalogue[code], {
+    error: { code, message },
   });
+  if (retryAfterSeconds !== undefined) {
+    response.headers.set('Retry-After', String(retryAfterSeconds));
+  }
+  return response;
 }
 
 interface ValidBody {
@@ -186,13 +197,16 @@ export function createSignupRoute(
     dependencies.monotonicClock ??
     (() => Number(process.hrtime.bigint() / 1_000_000n));
   const sleep = dependencies.sleep ?? systemSleep;
-  const rejected = (reason: SignupErrorCode): Response => {
+  const rejected = (
+    reason: SignupErrorCode,
+    retryAfterSeconds?: number,
+  ): Response => {
     try {
       dependencies.onRejected?.(reason);
     } catch {
       /* Analytics is best-effort. */
     }
-    return errorResponse(reason);
+    return errorResponse(reason, retryAfterSeconds);
   };
   const dependencyRejection = (error: unknown): Response =>
     rejected(
@@ -238,14 +252,13 @@ export function createSignupRoute(
     if (prefixHash === null) return rejected('rate_limited');
     const now = clock();
     try {
-      if (
-        (await dependencies.consumeIpRateLimit(
-          prefixHash.toString('hex'),
-          now,
-          challengeTimedOut,
-        )) !== 'ok'
-      ) {
-        return rejected('rate_limited');
+      const limit = await dependencies.consumeIpRateLimit(
+        prefixHash.toString('hex'),
+        now,
+        challengeTimedOut,
+      );
+      if (limit !== 'ok') {
+        return rejected('rate_limited', limit.retryAfterSeconds);
       }
     } catch (error) {
       return dependencyRejection(error);
@@ -348,13 +361,23 @@ function defaultDependencies(): SignupRouteDependencies {
       const limit = strict
         ? strictIpRateLimitMaxAttempts
         : ipRateLimitMaxAttempts;
-      const count = await consumeRateLimit(
+      const { count, windowStart } = await consumeRateLimitWithWindow(
         getDatabase(),
         key,
         ipRateLimitWindowMs,
         now,
       );
-      return count > limit ? 'rate_limited' : 'ok';
+      return count > limit
+        ? {
+            retryAfterSeconds: Math.max(
+              1,
+              Math.ceil(
+                (windowStart.getTime() + ipRateLimitWindowMs - now.getTime()) /
+                  1_000,
+              ),
+            ),
+          }
+        : 'ok';
     },
     ipPrefixPepper: config.ipPrefixPepper,
     verifyReferralCapture: (signed) =>

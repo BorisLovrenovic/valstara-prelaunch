@@ -93,6 +93,7 @@ services:
     memswap_limit: ${APP_MEM_LIMIT:-768m}
     networks:
       - backend
+      - outbound
 
   maintenance:
     image: ${VALSTARA_IMAGE:?VALSTARA_IMAGE must be a SHA-tagged GHCR image}

@@ -68,6 +68,8 @@ The E10-05 admin health response projects only aggregate metrics and sanitized p
 
 **Controls:** static pages absorb the spike through Cloudflare, so the origin sees only writes. **The leaderboard — the one route a spike can hammer — serves from a cached snapshot and never runs a live query.** Hard memory limits with no swap, so contention produces a restart rather than slow degradation. Every sweep and export is batch-capped and streamed. **The signup endpoint is load-tested at 10× expected peak** before the campaign opens (E11-01).
 
+E11-01's local correctness exercise uses the founder-authorised 20/s sustained, 50/s burst and 200/s leaderboard profile, plus a deliberately large streamed export. The reproducible script, capped-query inventory, memory samples and measured result are recorded in [`docs/testing/e11-01-load-report.md`](../testing/e11-01-load-report.md). Capacity on the actual host remains E12-06.
+
 ---
 
 ## CI security gates

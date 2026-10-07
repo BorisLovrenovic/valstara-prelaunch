@@ -59,6 +59,8 @@ Returns `{ status: "pending" }`. The status code, response keys and values are i
 
 Idempotent on `email_normalised`: a repeat signup for a `pending` row re-sends the verification mail subject to its own rate limit; a repeat for a `verified` row sends no second verification mail. Both return the same accepted response as an unknown address. Any status-link affordance is sent only to the submitted address, never returned by this route or rendered on its response page.
 
+The signup prefix limit is five attempts per 15-minute window (two when Turnstile is unavailable). A 429 includes `Retry-After` in whole seconds until that prefix's window resets and copy rounded up to whole minutes. This is the honest wait time exercised in E11-01's hostile-prefix load run.
+
 ### `GET /verify?token=…` *(page route)*
 Non-mutating: renders a confirmation form carrying the bearer token. Mail scanners and prefetchers can GET repeatedly without consuming it.
 

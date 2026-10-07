@@ -1,0 +1,13 @@
+{
+  "signupRate": 20,
+  "signupSeconds": 600,
+  "burstRate": 50,
+  "burstSeconds": 60,
+  "leaderboardRate": 200,
+  "leaderboardSeconds": 120,
+  "hostileRate": 20,
+  "hostileSeconds": 10,
+  "exportRows": 50000,
+  "maxFiveHundreds": 0,
+  "memorySampleSeconds": 5
+}

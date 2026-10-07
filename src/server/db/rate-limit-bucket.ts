@@ -2,6 +2,11 @@ import type { DatabaseConnection } from './pool.ts';
 
 export interface RateLimitBucketRepository {
   consume(key: string, now: Date, windowThreshold: Date): Promise<number>;
+  consumeWithWindow(
+    key: string,
+    now: Date,
+    windowThreshold: Date,
+  ): Promise<{ count: number; windowStart: Date }>;
   purgeOlderThan(before: Date, limit: number): Promise<number>;
 }
 
@@ -15,10 +20,13 @@ export interface RateLimitBucketRepository {
 export function createRateLimitBucketRepository(
   database: DatabaseConnection,
 ): RateLimitBucketRepository {
-  return {
-    async consume(key, now, windowThreshold) {
-      await database.execute({
-        text: `
+  async function consumeWithWindow(
+    key: string,
+    now: Date,
+    windowThreshold: Date,
+  ): Promise<{ count: number; windowStart: Date }> {
+    await database.execute({
+      text: `
           INSERT INTO rate_limit_bucket (key, window_start, count)
           VALUES ($1, $2, 1)
           ON CONFLICT (key) DO UPDATE
@@ -31,20 +39,29 @@ export function createRateLimitBucketRepository(
                 ELSE rate_limit_bucket.count + 1
               END
         `,
-        values: [key, now, windowThreshold],
-      });
+      values: [key, now, windowThreshold],
+    });
 
-      const row = await database.readOne<{ count: number }>({
-        text: 'SELECT count FROM rate_limit_bucket WHERE key = $1',
-        values: [key],
-      });
+    const row = await database.readOne<{
+      count: number;
+      window_start: Date;
+    }>({
+      text: 'SELECT count, window_start FROM rate_limit_bucket WHERE key = $1',
+      values: [key],
+    });
 
-      if (row === null) {
-        throw new Error('Rate-limit counter did not return a count.');
-      }
+    if (row === null) {
+      throw new Error('Rate-limit counter did not return a count.');
+    }
 
-      return row.count;
+    return { count: row.count, windowStart: row.window_start };
+  }
+
+  return {
+    async consume(key, now, windowThreshold) {
+      return (await consumeWithWindow(key, now, windowThreshold)).count;
     },
+    consumeWithWindow,
     async purgeOlderThan(before, limit) {
       if (!Number.isInteger(limit) || limit < 1) {
         throw new RangeError('A rate-limit retention limit must be positive.');
