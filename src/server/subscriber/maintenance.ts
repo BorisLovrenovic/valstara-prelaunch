@@ -1,5 +1,9 @@
 import { setTimeout as systemSleep } from 'node:timers/promises';
 
+import type { ReferralAttributionConfiguration } from '../config.ts';
+import type { DatabasePool } from '../db/pool.ts';
+import type { FlagService } from '../flags/types.ts';
+import { createReferralAttributionMaintenanceJob } from '../referral/attribution-maintenance.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 
 const HOUR_MS = 60 * 60 * 1_000;
@@ -112,6 +116,31 @@ export function createMaintenanceFailureReporter(
 export interface VerificationMaintenanceScheduler {
   run(cycles?: number, signal?: AbortSignal): Promise<void>;
   runCycle(): Promise<void>;
+}
+
+export function createReferralAttributionMaintenanceScheduler(
+  jobs: Omit<VerificationMaintenanceJobs, 'referralAttribution'>,
+  dependencies: VerificationMaintenanceDependencies & {
+    readonly database: DatabasePool;
+    readonly flags: Pick<FlagService, 'isEnabled'>;
+    readonly configuration: ReferralAttributionConfiguration;
+    readonly alerts: AlertTransport;
+    readonly clock: () => Date;
+  },
+): VerificationMaintenanceScheduler {
+  return createVerificationMaintenanceScheduler(
+    {
+      ...jobs,
+      referralAttribution: createReferralAttributionMaintenanceJob(
+        dependencies.database,
+        dependencies.flags,
+        dependencies.configuration,
+        dependencies.alerts,
+        dependencies.clock,
+      ),
+    },
+    dependencies,
+  );
 }
 
 export function createVerificationMaintenanceScheduler(

@@ -45,7 +45,6 @@ import { createStrandedReferralReconciliationJob } from '../referral/reconcile-s
 import { referrerTierBucket } from '../analytics/funnel.ts';
 import { createAnalyticsService } from '../analytics/service.ts';
 import { createReferralCounterRepairJob } from '../referral/counter-repair.ts';
-import { createReferralAttributionMaintenanceJob } from '../referral/attribution-maintenance.ts';
 import { createAlertWebhookTransport } from '../verification-rate/p1-webhook.ts';
 import { createVerificationRateMonitor } from '../verification-rate/service.ts';
 import { createVerificationTokenRetentionJob } from '../verification/retention.ts';
@@ -68,7 +67,7 @@ import { createRecordedPurgeJob } from './purge-run.ts';
 import { createUnverifiedExpiryJob } from './expiry.ts';
 import {
   createMaintenanceFailureReporter,
-  createVerificationMaintenanceScheduler,
+  createReferralAttributionMaintenanceScheduler,
 } from './maintenance.ts';
 import { createVerificationReminderJob } from './reminder.ts';
 
@@ -151,7 +150,7 @@ async function reportVerificationRateCollapse(alert: {
 }
 
 const analytics = createAnalyticsService();
-const scheduler = createVerificationMaintenanceScheduler(
+const scheduler = createReferralAttributionMaintenanceScheduler(
   {
     giveawayEntryReconciliation: createGiveawayEntryReconciliationJob(
       database,
@@ -194,13 +193,6 @@ const scheduler = createVerificationMaintenanceScheduler(
       database,
       getVerificationRateConfiguration(),
       { alert: reportVerificationRateCollapse, clock },
-    ),
-    referralAttribution: createReferralAttributionMaintenanceJob(
-      database,
-      broadcastFlags,
-      getReferralAttributionConfiguration(),
-      alerts,
-      clock,
     ),
     verificationTokenRetention: createRecordedPurgeJob(
       createVerificationTokenRetentionJob(database, { clock }),
@@ -250,7 +242,14 @@ const scheduler = createVerificationMaintenanceScheduler(
       clock,
     ),
   },
-  { clock, reportFailure },
+  {
+    database,
+    flags: broadcastFlags,
+    configuration: getReferralAttributionConfiguration(),
+    alerts,
+    clock,
+    reportFailure,
+  },
 );
 
 const shutdown = new AbortController();

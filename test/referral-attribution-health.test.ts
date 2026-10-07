@@ -9,8 +9,7 @@ import { createSignupRoute } from '../src/pages/api/signup.ts';
 import type { ReferralAttributionHealthRepository } from '../src/server/db/referral-attribution-health.ts';
 import { createReferralCaptureService } from '../src/server/referral/capture.ts';
 import { createReferralService } from '../src/server/referral/service.ts';
-import { createReferralAttributionMaintenanceJob } from '../src/server/referral/attribution-maintenance.ts';
-import { createVerificationMaintenanceScheduler } from '../src/server/subscriber/maintenance.ts';
+import { createReferralAttributionMaintenanceScheduler } from '../src/server/subscriber/maintenance.ts';
 import { createFlagService } from '../src/server/flags/service.ts';
 import { createAlertWebhookTransport } from '../src/server/verification-rate/p1-webhook.ts';
 import { createSignupService } from '../src/server/subscriber/signup.ts';
@@ -362,7 +361,7 @@ test('configured attribution maintenance delivers P1 at the drop threshold', asy
       'collapsed',
     );
     const noOp = { async run() {} };
-    const scheduler = createVerificationMaintenanceScheduler(
+    const scheduler = createReferralAttributionMaintenanceScheduler(
       {
         expiry: noOp,
         rateLimitRetention: noOp,
@@ -371,15 +370,12 @@ test('configured attribution maintenance delivers P1 at the drop threshold', asy
         strandedReferral: noOp,
         verificationRate: noOp,
         verificationTokenRetention: noOp,
-        referralAttribution: createReferralAttributionMaintenanceJob(
-          app,
-          flags,
-          configuration,
-          alerts,
-          () => measuredAt,
-        ),
       },
       {
+        database: app,
+        flags,
+        configuration,
+        alerts,
         clock: () => measuredAt,
         reportFailure: (job) => {
           throw new Error(`unexpected maintenance failure: ${job}`);
