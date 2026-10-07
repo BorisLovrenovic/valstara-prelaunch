@@ -264,6 +264,10 @@ E6-06 also records `consent.marketing_withdrawn` or `subscriber.unsubscribed` wi
 
 `key` pk (hashed IP prefix or normalised email + route) · `window_start` · `count`. `src/server/ratelimit/retention.ts` deletes buckets older than seven days once per UTC day through the maintenance scheduler. Each run is batch-capped; a failed run raises the compliance-alert path.
 
+## `purge_job_run`
+
+One row per scheduled purge job. `job_key` text primary key with a finite CHECK over `ip_prefix_retention` (the fraud IP-prefix retention job), `rate_limit_retention`, `verification_token_retention` (verification and status tokens), and `leaderboard_snapshot_purge`. `last_started_at` · nullable `last_finished_at` · nullable `last_succeeded_at` · nullable `last_outcome` (`succeeded` or `failed`) · `rows_purged` integer at least zero · nullable sanitized `last_error_code`. No personal data. Each job upserts at start and finish; a record-write failure cannot fail the purge. The application role has SELECT, INSERT and UPDATE, never DELETE. Health treats a missing success as stale and a daily job's last success as stale only after 48 hours. The clock is injected. The subscriber expiry sweep changes status and is not a purge job.
+
 ## `migration_ledger`
 
 `filename` pk · `applied_at` · `checksum` · `applied_by_release`. **A checksum mismatch on an already-applied migration aborts the deploy** — an edited migration is a defect, not a difference to tolerate.

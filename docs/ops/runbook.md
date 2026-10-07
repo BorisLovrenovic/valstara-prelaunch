@@ -80,6 +80,19 @@ list removal is delayed. The alert contains no address.
 
 ---
 
+## "Referral attribution dropped"
+
+An hourly `referral_attribution_collapsed` P1 means the share of new signups
+with a referral edge fell by at least the configured relative threshold from
+the preceding seven-day baseline. The default needs 50 signups in the last
+24 hours and a nonzero baseline before evaluating. Compare the aggregate
+shares in `/api/admin/health`, then check that `referral.enabled` is on and
+that a landing `?ref=` request produces a signed form field and an edge after
+signup. When the flag is off, attribution health is `disabled` and no collapse
+alert is sent. The alert carries shares only, never subscriber IDs or codes.
+
+---
+
 ## "The leaderboard looks wrong"
 
 **Diagnose:** compare `confirmed_referrals` against a live count from `referral_edge` for the top rows. Check the snapshot's `as_of` age. Check whether flagged accounts are appearing.
@@ -133,6 +146,13 @@ The five-minute objective is measured in E12-03; until that has run there is no 
 ## "The IP retention purge failed"
 
 **This is a compliance alert, not a hygiene one.** Run it manually, confirm the oldest remaining hash is inside 90 days, and record the gap. If the gap exceeded the retention period, it is recordable.
+
+`GET /api/admin/health` shows the persisted last outcome, last success and
+rows purged for the IP-prefix, rate-limit, verification/status-token and
+leaderboard-snapshot purge jobs. A missing success or one older than 48 hours
+is marked `stale`. This status comes from `purge_job_run`; it does not count
+overdue rows. A record-write failure does not stop the purge, so investigate
+the existing failure alert and the underlying tables when a status is stale.
 
 The rate-limit bucket purge uses the same P1 webhook but a seven-day retention
 period. Confirm both the subscriber prefix hashes (90 days) and rate-limit

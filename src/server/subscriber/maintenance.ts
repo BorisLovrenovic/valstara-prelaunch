@@ -1,5 +1,9 @@
 import { setTimeout as systemSleep } from 'node:timers/promises';
 
+import type { ReferralAttributionConfiguration } from '../config.ts';
+import type { DatabasePool } from '../db/pool.ts';
+import type { FlagService } from '../flags/types.ts';
+import { createReferralAttributionMaintenanceJob } from '../referral/attribution-maintenance.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 
 const HOUR_MS = 60 * 60 * 1_000;
@@ -14,6 +18,7 @@ export type MaintenanceJobName =
   | 'referral_counter_repair'
   | 'stranded_referral'
   | 'verification_rate'
+  | 'referral_attribution'
   | 'verification_token_retention'
   | 'giveaway_entry_reconciliation'
   | 'seed_test'
@@ -41,6 +46,7 @@ export interface VerificationMaintenanceJobs {
   readonly reminder: MaintenanceJob;
   readonly strandedReferral: MaintenanceJob;
   readonly verificationRate: VerificationRateJob;
+  readonly referralAttribution?: VerificationRateJob;
   readonly verificationTokenRetention: MaintenanceJob;
   readonly seedTest?: VerificationRateJob;
   readonly broadcastSeedTest?: VerificationRateJob;
@@ -83,6 +89,7 @@ export function createMaintenanceFailureReporter(
       job === 'leaderboard_snapshot_purge'
         ? 'P2'
         : job === 'verification_rate' ||
+            job === 'referral_attribution' ||
             job === 'rate_limit_retention' ||
             job === 'ip_prefix_retention' ||
             job === 'verification_token_retention' ||
@@ -109,6 +116,31 @@ export function createMaintenanceFailureReporter(
 export interface VerificationMaintenanceScheduler {
   run(cycles?: number, signal?: AbortSignal): Promise<void>;
   runCycle(): Promise<void>;
+}
+
+export function createReferralAttributionMaintenanceScheduler(
+  jobs: Omit<VerificationMaintenanceJobs, 'referralAttribution'>,
+  dependencies: VerificationMaintenanceDependencies & {
+    readonly database: DatabasePool;
+    readonly flags: Pick<FlagService, 'isEnabled'>;
+    readonly configuration: ReferralAttributionConfiguration;
+    readonly alerts: AlertTransport;
+    readonly clock: () => Date;
+  },
+): VerificationMaintenanceScheduler {
+  return createVerificationMaintenanceScheduler(
+    {
+      ...jobs,
+      referralAttribution: createReferralAttributionMaintenanceJob(
+        dependencies.database,
+        dependencies.flags,
+        dependencies.configuration,
+        dependencies.alerts,
+        dependencies.clock,
+      ),
+    },
+    dependencies,
+  );
 }
 
 export function createVerificationMaintenanceScheduler(
@@ -162,6 +194,13 @@ export function createVerificationMaintenanceScheduler(
       );
     }
     await runVerificationRateJob();
+    if (jobs.referralAttribution !== undefined) {
+      try {
+        await jobs.referralAttribution.run();
+      } catch {
+        await reportFailure('referral_attribution');
+      }
+    }
     if (jobs.seedTest !== undefined) {
       try {
         await jobs.seedTest.run();

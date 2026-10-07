@@ -13,6 +13,51 @@ import {
 
 const HOUR_MS = 60 * 60 * 1_000;
 
+test('E10-05 attribution health runs hourly and a failed check takes the P1 path', async () => {
+  let now = new Date('2026-10-06T09:00:00.000Z');
+  let runs = 0;
+  const alerts: unknown[] = [];
+  const noOp = { async run() {} };
+  const report = createMaintenanceFailureReporter(
+    {
+      async send(alert) {
+        alerts.push(alert);
+      },
+    },
+    { clock: () => now },
+  );
+  const scheduler = createVerificationMaintenanceScheduler(
+    {
+      expiry: noOp,
+      rateLimitRetention: noOp,
+      referralCounterRepair: noOp,
+      reminder: noOp,
+      strandedReferral: noOp,
+      verificationRate: noOp,
+      verificationTokenRetention: noOp,
+      referralAttribution: {
+        async run() {
+          runs += 1;
+          if (runs === 2) throw new Error('aggregate unavailable');
+        },
+      },
+    },
+    { clock: () => now, reportFailure: report },
+  );
+  await scheduler.runCycle();
+  now = new Date(now.getTime() + HOUR_MS);
+  await scheduler.runCycle();
+  assert.equal(runs, 2);
+  assert.deepEqual(alerts, [
+    {
+      detail: { job: 'referral_attribution' },
+      event: 'verification_maintenance_failed',
+      occurredAt: now,
+      severity: 'P1',
+    },
+  ]);
+});
+
 test('E8-09 quota maintenance runs once per UTC day and retries a failed check', async () => {
   let now = new Date('2026-09-30T08:00:00.000Z');
   let attempts = 0;

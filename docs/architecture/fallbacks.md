@@ -22,7 +22,7 @@ Everything else announces itself. These two look exactly like ordinary underperf
 | Failure | Why it is silent | The guard |
 |---|---|---|
 | **★ Verification mail stops being delivered** | The page still works, signups still arrive, the funnel simply stops converting. Indistinguishable from a bad landing page | **Alert on verification *rate*, not count**, hourly against a rolling baseline. The default compares the current 24-hour cohort with the preceding seven days, only after 50 signups; a 50% relative drop is P1. Plus weekly seed tests into Gmail, Outlook, GMX and Web.de. |
-| **★ Referral attribution silently stops** | Signups keep arriving, referrers keep sharing, and nobody's counter moves. Discovered weeks later, unrecoverable | **Alert when the attributed-referral share of new signups drops below its baseline**, and assert in CI that a request carrying `?ref=` produces a signed field and an edge row |
+| **★ Referral attribution silently stops** | Signups keep arriving, referrers keep sharing, and nobody's counter moves. Discovered weeks later, unrecoverable | E10-05's hourly `ReferralService.attributionHealth()` compares the share of new signups with a referral edge in the preceding 24 hours against the preceding seven days. With at least 50 current signups and a nonzero baseline share, a relative drop of at least 50% raises P1. The windows, minimum and threshold are configurable. While `referral.enabled` is off, the result is `disabled` and no alert is sent. Assert in CI that a request carrying `?ref=` produces a signed field and an edge row. |
 
 ---
 

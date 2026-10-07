@@ -15,6 +15,7 @@ import {
   getResendDispatchConfiguration,
   productionResendSendingDomain,
   getVerificationRateConfiguration,
+  getReferralAttributionConfiguration,
   getWeeklySendConfiguration,
   getEmailQuotaConfiguration,
   getTrustpilotConfiguration,
@@ -124,6 +125,12 @@ test('E1-12 validates and types the complete application environment', () => {
       collapsePercent: 50,
       minimumSignups: 50,
     },
+    referralAttribution: {
+      baselineDays: 7,
+      cohortHours: 24,
+      dropPercent: 50,
+      minimumSignups: 50,
+    },
     waitlistLiveAt: null,
     weeklySendUtc: null,
     emailQuota: {
@@ -137,6 +144,41 @@ test('E1-12 validates and types the complete application environment', () => {
       templateId: '',
     },
   });
+});
+
+test('E10-05 validates configurable attribution windows and thresholds', () => {
+  assert.deepEqual(getReferralAttributionConfiguration({}), {
+    baselineDays: 7,
+    cohortHours: 24,
+    dropPercent: 50,
+    minimumSignups: 50,
+  });
+  assert.deepEqual(
+    getReferralAttributionConfiguration({
+      REFERRAL_ATTRIBUTION_BASELINE_DAYS: '14',
+      REFERRAL_ATTRIBUTION_COHORT_HOURS: '12',
+      REFERRAL_ATTRIBUTION_DROP_PERCENT: '40',
+      REFERRAL_ATTRIBUTION_MINIMUM_SIGNUPS: '100',
+    }),
+    {
+      baselineDays: 14,
+      cohortHours: 12,
+      dropPercent: 40,
+      minimumSignups: 100,
+    },
+  );
+  for (const [key, value] of [
+    ['REFERRAL_ATTRIBUTION_BASELINE_DAYS', '0'],
+    ['REFERRAL_ATTRIBUTION_COHORT_HOURS', '-1'],
+    ['REFERRAL_ATTRIBUTION_DROP_PERCENT', '101'],
+    ['REFERRAL_ATTRIBUTION_MINIMUM_SIGNUPS', 'invalid'],
+  ] as const) {
+    assert.throws(
+      () => getReferralAttributionConfiguration({ [key]: value }),
+      (error) =>
+        error instanceof ConfigurationError && error.variableName === key,
+    );
+  }
 });
 
 test('E9-08 validates all four Trustpilot settings at boot', () => {

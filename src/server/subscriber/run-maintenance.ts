@@ -8,11 +8,13 @@ import {
   getResendDispatchConfiguration,
   getSeedTestConfiguration,
   getVerificationRateConfiguration,
+  getReferralAttributionConfiguration,
   getWeeklySendConfiguration,
   getEmailQuotaConfiguration,
 } from '../config.ts';
 import { createPool } from '../db/pool.ts';
 import { createSeedTestRepository } from '../db/seed-test.ts';
+import { createPurgeJobRunRepository } from '../db/purge-job-run.ts';
 import { checkDomainAuthenticationAtStartup } from '../email/domain-authentication.ts';
 import {
   createImapSeedMailbox,
@@ -60,11 +62,12 @@ import {
 import { createWeeklyCampaignJob } from '../email/weekly-campaign.ts';
 import { createEmailQueue } from '../email/queue.ts';
 import { createEmailQuotaService } from '../email/quota.ts';
+import { createRecordedPurgeJob } from './purge-run.ts';
 
 import { createUnverifiedExpiryJob } from './expiry.ts';
 import {
   createMaintenanceFailureReporter,
-  createVerificationMaintenanceScheduler,
+  createReferralAttributionMaintenanceScheduler,
 } from './maintenance.ts';
 import { createVerificationReminderJob } from './reminder.ts';
 
@@ -84,6 +87,7 @@ const brevoProvider =
         brevoConfiguration.listId,
       );
 const broadcastFlags = createFlagService(database);
+const purgeRuns = createPurgeJobRunRepository(database);
 const sharedSnapshot = createSharedLeaderboardSnapshotStore(
   database,
   createRankingIntegrityService(database),
@@ -146,7 +150,7 @@ async function reportVerificationRateCollapse(alert: {
 }
 
 const analytics = createAnalyticsService();
-const scheduler = createVerificationMaintenanceScheduler(
+const scheduler = createReferralAttributionMaintenanceScheduler(
   {
     giveawayEntryReconciliation: createGiveawayEntryReconciliationJob(
       database,
@@ -159,8 +163,18 @@ const scheduler = createVerificationMaintenanceScheduler(
       },
     ),
     expiry: createUnverifiedExpiryJob(database, { clock }),
-    ipPrefixRetention: createIpPrefixRetentionJob(database, { clock }),
-    rateLimitRetention: createRateLimitRetentionJob(database, { clock }),
+    ipPrefixRetention: createRecordedPurgeJob(
+      createIpPrefixRetentionJob(database, { clock }),
+      purgeRuns,
+      'ip_prefix_retention',
+      clock,
+    ),
+    rateLimitRetention: createRecordedPurgeJob(
+      createRateLimitRetentionJob(database, { clock }),
+      purgeRuns,
+      'rate_limit_retention',
+      clock,
+    ),
     referralCounterRepair: createReferralCounterRepairJob(database, {
       alert: (alert) => alerts.send(alert),
     }),
@@ -180,9 +194,12 @@ const scheduler = createVerificationMaintenanceScheduler(
       getVerificationRateConfiguration(),
       { alert: reportVerificationRateCollapse, clock },
     ),
-    verificationTokenRetention: createVerificationTokenRetentionJob(database, {
+    verificationTokenRetention: createRecordedPurgeJob(
+      createVerificationTokenRetentionJob(database, { clock }),
+      purgeRuns,
+      'verification_token_retention',
       clock,
-    }),
+    ),
     seedTest,
     broadcastSeedTest,
     emailReconciliation: createEmailReconciliationJob(
@@ -208,19 +225,31 @@ const scheduler = createVerificationMaintenanceScheduler(
       alerts,
       clock,
     ),
-    leaderboardSnapshotPurge: {
-      async run(limit) {
-        let removed = 0;
-        for (let batch = 0; batch < 1_000; batch += 1) {
-          const count = await sharedSnapshot.purge(limit);
-          removed += count;
-          if (count < limit) break;
-        }
-        return removed;
+    leaderboardSnapshotPurge: createRecordedPurgeJob(
+      {
+        async run(limit) {
+          let removed = 0;
+          for (let batch = 0; batch < 1_000; batch += 1) {
+            const count = await sharedSnapshot.purge(limit);
+            removed += count;
+            if (count < limit) break;
+          }
+          return removed;
+        },
       },
-    },
+      purgeRuns,
+      'leaderboard_snapshot_purge',
+      clock,
+    ),
   },
-  { clock, reportFailure },
+  {
+    database,
+    flags: broadcastFlags,
+    configuration: getReferralAttributionConfiguration(),
+    alerts,
+    clock,
+    reportFailure,
+  },
 );
 
 const shutdown = new AbortController();

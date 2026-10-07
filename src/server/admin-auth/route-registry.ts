@@ -62,6 +62,11 @@ export const adminRouteRegistry = defineAdminRouteRegistry([
     methods: [{ method: 'GET', audit: 'read-only' }],
   },
   {
+    source: 'src/pages/api/admin/health.ts',
+    pathname: '/api/admin/health',
+    methods: [{ method: 'GET', audit: 'read-only' }],
+  },
+  {
     source: 'src/pages/api/admin/fraud/[id].ts',
     pathname: '/api/admin/fraud/:id',
     methods: [{ method: 'POST', audit: 'required' }],

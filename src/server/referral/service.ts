@@ -2,6 +2,12 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import { createAuditService } from '../audit/service.ts';
 import {
+  getReferralAttributionConfiguration,
+  type ReferralAttributionConfiguration,
+} from '../config.ts';
+import { createCampaignFlagRepository } from '../db/campaign-flags.ts';
+import { createReferralAttributionHealthRepository } from '../db/referral-attribution-health.ts';
+import {
   createReferralRepository,
   type ReferralRepository,
 } from '../db/referral.ts';
@@ -9,6 +15,7 @@ import { createFraudFlagRepository } from '../db/fraud-flag.ts';
 import type { DatabaseConnection, DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
 import { createTransactionalEmailProducers } from '../email/producers.ts';
+import { createFlagServiceWithDependencies } from '../flags/service.ts';
 
 import {
   referralCodeAlphabet,
@@ -26,6 +33,10 @@ import {
   rewardStateAtConfirmation,
 } from './reward-state.ts';
 import { computeReferralStatus, type ReferralStatus } from './status.ts';
+import {
+  createReferralAttributionHealth,
+  type ReferralAttributionHealth,
+} from './attribution-health.ts';
 
 const maximumCodeAttempts = 10;
 export const milestoneBackfillMaximumLimit = 100;
@@ -34,6 +45,8 @@ export const referralStatusRewardMaximumLimit = 100;
 export const referralCounterRepairMaximumLimit = 1_000;
 
 export interface ReferralServiceDependencies {
+  readonly attributionConfiguration?: ReferralAttributionConfiguration;
+  readonly isReferralEnabled?: () => Promise<boolean>;
   readonly clock?: () => Date;
   readonly createCode?: () => string;
   readonly rewardClassifications?: RewardClassifications;
@@ -65,6 +78,7 @@ export type AttributeResult =
   | { readonly kind: 'unattributed' };
 
 export interface ReferralService {
+  attributionHealth(): Promise<ReferralAttributionHealth>;
   attribute(
     referredId: string,
     code: string,
@@ -108,6 +122,22 @@ export function createReferralService(
           dependencies.clock ?? (() => new Date()),
         ).milestone
       : undefined);
+  const clock = dependencies.clock ?? (() => new Date());
+  const flagService = createFlagServiceWithDependencies(
+    createCampaignFlagRepository(database),
+    async () => {
+      throw new Error('Referral health flag reader is read-only.');
+    },
+    { now: () => clock().getTime() },
+  );
+  const attributionHealth = createReferralAttributionHealth(
+    createReferralAttributionHealthRepository(database),
+    dependencies.attributionConfiguration ??
+      getReferralAttributionConfiguration(),
+    dependencies.isReferralEnabled ??
+      (() => flagService.isEnabled('referral.enabled')),
+    clock,
+  );
   return createReferralServiceWithRepository(
     createReferralRepository(database),
     createCode,
@@ -118,6 +148,7 @@ export function createReferralService(
       ? (operation) =>
           withTransaction(database, async (connection) => operation(connection))
       : async (operation) => operation(database),
+    attributionHealth,
   );
 }
 
@@ -151,8 +182,10 @@ function createReferralServiceWithRepository(
   tiers: readonly MilestoneTier[],
   milestoneEmail: ReferralServiceDependencies['milestoneEmail'],
   runTransaction: ReferralTransaction,
+  attributionHealth: () => Promise<ReferralAttributionHealth>,
 ): ReferralService {
   return {
+    attributionHealth,
     async attribute(referredId, code, allowAttribution = true) {
       return runTransaction(async (connection) => {
         const transactionalRepository = createReferralRepository(connection);

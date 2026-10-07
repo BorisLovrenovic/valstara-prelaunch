@@ -31,6 +31,10 @@ const optionalKeys = [
   'VERIFICATION_RATE_COHORT_HOURS',
   'VERIFICATION_RATE_COLLAPSE_PERCENT',
   'VERIFICATION_RATE_MINIMUM_SIGNUPS',
+  'REFERRAL_ATTRIBUTION_BASELINE_DAYS',
+  'REFERRAL_ATTRIBUTION_COHORT_HOURS',
+  'REFERRAL_ATTRIBUTION_DROP_PERCENT',
+  'REFERRAL_ATTRIBUTION_MINIMUM_SIGNUPS',
   'WAITLIST_LIVE_AT',
   'DRAND_CHAIN_HASH',
   'DRAND_CHAIN_PUBLIC_KEY',
@@ -115,6 +119,7 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
     turnstileSecretKey: requiredValue(environment, 'TURNSTILE_SECRET_KEY'),
     turnstileSiteKey: turnstileSiteKey(environment),
     verificationRate: verificationRate(environment),
+    referralAttribution: referralAttribution(environment),
     waitlistLiveAt: waitlistLiveAt(environment),
     drand: drandConfiguration(environment),
     giveawaySanctionedCountries: getGiveawaySanctionedCountries(environment),
@@ -358,6 +363,12 @@ export function getVerificationRateConfiguration(
   return verificationRate(environment);
 }
 
+export function getReferralAttributionConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): ReferralAttributionConfiguration {
+  return referralAttribution(environment);
+}
+
 export function getIpVelocityConfiguration(
   environment: NodeJS.ProcessEnv = process.env,
 ): IpVelocityConfiguration {
@@ -581,6 +592,34 @@ function verificationRate(
   });
 }
 
+function referralAttribution(
+  environment: NodeJS.ProcessEnv,
+): ReferralAttributionConfiguration {
+  return Object.freeze({
+    baselineDays: positiveInteger(
+      environment,
+      'REFERRAL_ATTRIBUTION_BASELINE_DAYS',
+      7,
+    ),
+    cohortHours: positiveInteger(
+      environment,
+      'REFERRAL_ATTRIBUTION_COHORT_HOURS',
+      24,
+    ),
+    dropPercent: positiveInteger(
+      environment,
+      'REFERRAL_ATTRIBUTION_DROP_PERCENT',
+      50,
+      100,
+    ),
+    minimumSignups: positiveInteger(
+      environment,
+      'REFERRAL_ATTRIBUTION_MINIMUM_SIGNUPS',
+      50,
+    ),
+  });
+}
+
 function positiveInteger(
   environment: NodeJS.ProcessEnv,
   key: OptionalEnvironmentKey,
@@ -660,6 +699,13 @@ export interface VerificationRateConfiguration {
   readonly baselineDays: number;
   readonly cohortHours: number;
   readonly collapsePercent: number;
+  readonly minimumSignups: number;
+}
+
+export interface ReferralAttributionConfiguration {
+  readonly baselineDays: number;
+  readonly cohortHours: number;
+  readonly dropPercent: number;
   readonly minimumSignups: number;
 }
 
@@ -863,6 +909,7 @@ export interface AppConfig {
   readonly turnstileSecretKey: string;
   readonly turnstileSiteKey: string;
   readonly verificationRate: VerificationRateConfiguration;
+  readonly referralAttribution: ReferralAttributionConfiguration;
   readonly waitlistLiveAt: Date | null;
   readonly drand: DrandConfiguration | null;
   readonly giveawaySanctionedCountries: readonly string[];
