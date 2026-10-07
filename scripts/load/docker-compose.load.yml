@@ -1,0 +1,22 @@
+services:
+  postgres:
+    command: ['postgres', '-c', 'shared_preload_libraries=pg_stat_statements']
+    networks:
+      - backend
+      - load_db
+    ports:
+      - '127.0.0.1:${LOAD_POSTGRES_PORT:-55434}:5432'
+  app:
+    depends_on:
+      umami:
+        condition: service_healthy
+    networks:
+      - backend
+      - outbound
+    ports:
+      - '127.0.0.1:${LOAD_APP_PORT:-54321}:4321'
+    volumes:
+      - ${VALSTARA_LOAD_SCRIPTS_DIR:?Set VALSTARA_LOAD_SCRIPTS_DIR to the absolute scripts/load path}:/app/scripts/load:ro
+
+networks:
+  load_db:

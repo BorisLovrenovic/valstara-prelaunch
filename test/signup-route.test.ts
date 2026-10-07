@@ -197,7 +197,9 @@ test('each rejected signup emits its closed reason code once, while flag-off emi
     },
     {
       reason: 'rate_limited',
-      overrides: { consumeIpRateLimit: async () => 'rate_limited' },
+      overrides: {
+        consumeIpRateLimit: async () => ({ retryAfterSeconds: 600 }),
+      },
     },
     {
       reason: 'invalid_input',
@@ -328,7 +330,7 @@ test('the strict limit can still reject a timed-out request, and then nothing is
   const route = createSignupRoute(
     deps({
       verifyTurnstile: async () => 'unavailable',
-      consumeIpRateLimit: async () => 'rate_limited',
+      consumeIpRateLimit: async () => ({ retryAfterSeconds: 600 }),
       async signup() {
         signupCalled = true;
         return { kind: 'created', subscriber: pendingSubscriber };
@@ -341,6 +343,11 @@ test('the strict limit can still reject a timed-out request, and then nothing is
 
   const response = await route(routeContext(makeRequest()));
   assert.equal(response.status, 429);
+  assert.equal(response.headers.get('Retry-After'), '600');
+  assert.equal(
+    (await response.clone().json()).error.message,
+    'Too many attempts — try again in 10 minutes.',
+  );
   assert.equal((await response.json()).error.code, 'rate_limited');
   assert.equal(signupCalled, false);
   assert.equal(flagCalled, false);
@@ -409,7 +416,7 @@ test('the rate limit runs before validation — a rate-limited request with a ba
   const route = createSignupRoute(
     deps({
       async consumeIpRateLimit() {
-        return 'rate_limited';
+        return { retryAfterSeconds: 600 };
       },
       async signup() {
         signupCalled = true;

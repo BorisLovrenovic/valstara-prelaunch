@@ -13,6 +13,8 @@ export const signupCopy = {
   blockedDomain: 'Use a permanent email address to join the waitlist.',
   challengeFailed: "We couldn't confirm that request. Please try again.",
   rateLimited: 'Too many attempts — try again in a few minutes.',
+  rateLimitedWait: (minutes: number) =>
+    `Too many attempts — try again in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`,
   unavailable: "We can't take signups right now — try again in a few minutes.",
   internal: 'Something went wrong — please try again in a few minutes.',
 } as const;

@@ -9,7 +9,12 @@ export default defineConfig({
   output: 'server',
   // RFC 8058 mail clients do not send a browser Origin header. The equivalent
   // guard for every other write route lives in src/middleware.ts.
-  security: { checkOrigin: false },
+  security: {
+    checkOrigin: false,
+    // The Node adapter accepts X-Forwarded-For only for an allowed Host. Caddy
+    // is the sole production path to this backend and forwards this Host.
+    allowedDomains: [{ hostname: 'valstara.com' }],
+  },
   vite: {
     build: {
       sourcemap: coverageSourceMaps,

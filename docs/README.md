@@ -55,6 +55,7 @@ docs/
   security/threat-model.md         threats, CI security gates, secret handling
   legal/compliance.md              GDPR, ePrivacy, the global giveaway under Hong Kong law, Article 27
   testing/strategy.md              test tiers, invariants, definition of done
+  testing/e11-01-load-report.md     E11-01 script, bounded-query inventory and local result
   ops/
     runbook.md                     by symptom
     launch-cutover.md              the host swap and the trust-page port

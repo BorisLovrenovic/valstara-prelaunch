@@ -22,9 +22,25 @@ export async function consumeRateLimit(
   now: Date,
 ): Promise<number> {
   const windowThreshold = new Date(now.getTime() - windowMs);
-
   return withTransaction(database, (connection) =>
     createRateLimitBucketRepository(connection).consume(
+      key,
+      now,
+      windowThreshold,
+    ),
+  );
+}
+
+export async function consumeRateLimitWithWindow(
+  database: DatabasePool,
+  key: string,
+  windowMs: number,
+  now: Date,
+): Promise<{ count: number; windowStart: Date }> {
+  const windowThreshold = new Date(now.getTime() - windowMs);
+
+  return withTransaction(database, (connection) =>
+    createRateLimitBucketRepository(connection).consumeWithWindow(
       key,
       now,
       windowThreshold,

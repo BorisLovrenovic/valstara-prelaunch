@@ -312,7 +312,7 @@ test('the export remains on one snapshot while rows change during streaming', as
   }
 });
 
-test('a large export streams in capped pages with bounded observed heap growth', async (t) => {
+test('a large export streams in capped pages with bounded retained memory', async (t) => {
   const f = await fixture();
   try {
     const rowCount = 20_000;
@@ -341,25 +341,44 @@ test('a large export streams in capped pages with bounded observed heap growth',
     );
     assert.equal(response.status, 200);
     const reader = response.body!.getReader();
-    const initialHeap = process.memoryUsage().heapUsed;
-    let peakHeap = initialHeap;
+    if (typeof globalThis.gc !== 'function') {
+      throw new Error('The export memory test requires --expose-gc.');
+    }
+    const collectGarbage = globalThis.gc;
+    const retainedBytes = () => {
+      const memory = process.memoryUsage();
+      return memory.heapUsed + memory.arrayBuffers;
+    };
+    collectGarbage();
+    const initialRetained = retainedBytes();
+    let peakRetained = initialRetained;
     let bytes = 0;
     let lines = 0;
+    let bytesSinceSample = 0;
     for (;;) {
       const chunk = await reader.read();
       if (chunk.done) break;
       bytes += chunk.value.byteLength;
-      for (const byte of chunk.value) if (byte === 10) lines += 1;
-      peakHeap = Math.max(peakHeap, process.memoryUsage().heapUsed);
+      bytesSinceSample += chunk.value.byteLength;
+      for (let index = 0; index < chunk.value.byteLength; index += 1) {
+        if (chunk.value[index] === 10) lines += 1;
+      }
+      if (bytesSinceSample >= 2 * 1024 * 1024) {
+        collectGarbage();
+        peakRetained = Math.max(peakRetained, retainedBytes());
+        bytesSinceSample = 0;
+      }
     }
+    collectGarbage();
+    peakRetained = Math.max(peakRetained, retainedBytes());
     assert.equal(lines, rowCount + 1);
     assert.ok(bytes > 75 * 1024 * 1024);
     assert.ok(
-      peakHeap - initialHeap < 64 * 1024 * 1024,
-      `observed heap grew ${peakHeap - initialHeap} bytes while streaming ${bytes} bytes`,
+      peakRetained - initialRetained < 64 * 1024 * 1024,
+      `retained memory grew ${peakRetained - initialRetained} bytes while streaming ${bytes} bytes`,
     );
     t.diagnostic(
-      `streamed ${bytes} bytes; observed peak heap growth ${peakHeap - initialHeap} bytes`,
+      `streamed ${bytes} bytes; peak retained memory growth ${peakRetained - initialRetained} bytes`,
     );
   } finally {
     await f.dispose();
