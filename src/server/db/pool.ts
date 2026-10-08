@@ -61,7 +61,15 @@ const unavailableErrorCodes = new Set([
   'ETIMEDOUT',
 ]);
 
-function normaliseDatabaseError(error: unknown): Error {
+export function normaliseDatabaseError(error: unknown): Error {
+  if (
+    error instanceof Error &&
+    /^(?:Connection terminated(?: unexpectedly| due to connection timeout)?|Connection ended unexpectedly|Client has encountered a connection error and is not queryable)$/iu.test(
+      error.message,
+    )
+  ) {
+    return new DatabaseUnavailableError(error);
+  }
   if (
     typeof error === 'object' &&
     error !== null &&

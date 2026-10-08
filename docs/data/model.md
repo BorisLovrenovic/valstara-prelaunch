@@ -159,9 +159,10 @@ complete match count and at most 20 matched subscriber IDs. It never rejects a
 signup.
 
 **Two kinds are written outside the fraud module.** `challenge_timeout` is
-raised by the signup route when Cloudflare Turnstile is unreachable: the signup
-is accepted under strict rate limits and the row is flagged (ADR-006,
-`fallbacks.md` "Turnstile unavailable" → P2). `self_referral` is raised by the
+raised by the signup route when Cloudflare Turnstile is unavailable: the signup
+is accepted under strict rate limits and the row is flagged (ADR-006;
+`fallbacks.md` assigns P1 to a secret configuration fault and P2 to other
+unavailable outcomes). `self_referral` is raised by the
 referral attribution transaction, which rejects the edge atomically while the
 signup still completes (E4-03). The fraud module reviews both like any other
 flag but does not raise them. It owns every other kind.

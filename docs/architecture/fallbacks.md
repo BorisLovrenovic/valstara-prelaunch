@@ -32,7 +32,7 @@ Everything else announces itself. These two look exactly like ordinary underperf
 |---|---|---|---|---|
 | **★ PostgreSQL unavailable** | Connection errors, health probe | **No graceful degradation exists for writes** — the form states honestly that signups are paused and to try shortly. **It never pretends to have succeeded.** Static pages keep serving from Cloudflare | "We can't take signups right now — try again in a few minutes." | **P1** |
 | **★ Resend unavailable or over quota** | Send errors, 4xx quota codes | **The subscriber row is already committed.** The send queues and retries with backoff, deduplicated on its business key. Permanent failure raises an operator task | "You're on the list — the confirmation email may take a few minutes." Never a false "check your inbox now" | **P1** |
-| Turnstile unavailable | Verification endpoint errors or timeout | **Fail closed on hard failure; on provider timeout, fall through to strict rate limiting and flag the row for review.** Never fail open silently | A retry prompt, or a normal signup that is quietly flagged | **P2** |
+| Turnstile unavailable | Siteverify secret error, provider error or timeout | Invalid or replayed tokens are rejected. On `missing-input-secret` or `invalid-input-secret`, accept only under strict rate limits, flag each accepted row `challenge_timeout`, and send a deduplicated, sanitized **P1** through the existing alert webhook. Other unavailable outcomes follow the same strict limit and flag path and raise **P2**. Never accept an unflagged row during the drill | A retry prompt, or a normal signup that is quietly flagged | **P1** for secret configuration; **P2** for timeout, network or internal error |
 | Turnstile token invalid or replayed | Server-side verification | Rejected, not recorded, counted as a bot event | "That didn't go through — please try again." | P3 |
 | Verification token invalid or expired | Expiry check on token-authenticated POST | Both states render the identical generic failure and always offer the same request-new-link control through the enumeration-safe, Turnstile-protected resend route. Scanner/prefetch GETs only render confirmation and never consume | "This verification link is not available." | P3 |
 | Verification-token retention sweep fails | Daily maintenance result | Retry the same batch-capped purge next scheduler cycle; tokens remain unusable after expiry even while retained | Nothing | **P1** |
@@ -95,11 +95,11 @@ Everything else announces itself. These two look exactly like ordinary underperf
 
 ## Chaos drills
 
-Executed and recorded before the campaign opens (E11). **A drill that does not behave as this matrix claims is a blocking finding — fix the system or fix the matrix, never neither.**
+Executed and recorded before the campaign opens (E11). **A drill that does not behave as this matrix claims is a blocking finding — fix the system or fix the matrix, never neither.** E11-02 local results: [chaos report](../testing/e11-02-chaos-report.md) and [machine-readable timings](../testing/e11-02-results.json).
 
 1. Stop PostgreSQL mid-signup; confirm the form fails honestly and no partial row exists.
 2. Revoke the Resend key; confirm signups still commit and the queue drains after restoration.
-3. Break the Turnstile secret; confirm fail-closed behaviour and that no unverified write slips through.
+3. (a) Submit invalid and replayed Turnstile tokens; confirm each is rejected and no row is written. (b) Break the Turnstile secret; confirm signups are accepted only under strict rate limits, every resulting row carries a `challenge_timeout` flag (no unflagged write), and a P1 alert fires. Restore the secret; confirm normal verification resumes. Record the timings.
 4. Kill the leaderboard snapshot job; confirm the stale snapshot serves with its timestamp.
 5. Corrupt a referral counter directly in the database; confirm the repair job restores it from the edges and alerts.
 6. Flip `leaderboard.public` off; confirm the section disappears within the cache window with no deploy.

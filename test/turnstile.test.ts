@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import {
+  createTurnstileUnavailableReporter,
   createTurnstileVerifier,
   type TurnstileOutcome,
 } from '../src/server/turnstile/verify.ts';
@@ -117,6 +118,66 @@ test('a failure the provider blames on the secret is unavailable, not a rejectio
     }),
     'unavailable',
   );
+});
+
+for (const code of ['missing-input-secret', 'invalid-input-secret']) {
+  test(`${code} remains unavailable and raises a sanitized, deduplicated P1`, async () => {
+    const alerts: unknown[] = [];
+    const reporter = createTurnstileUnavailableReporter(
+      {
+        send: async (alert) => {
+          alerts.push(alert);
+        },
+      },
+      () => new Date('2026-10-08T12:00:00.000Z'),
+    );
+    const { fetch } = fetchReturning({ success: false, 'error-codes': [code] });
+    const verifier = createTurnstileVerifier({
+      fetch,
+      secret,
+      onUnavailable: reporter.report,
+    });
+    assert.deepEqual(
+      await Promise.all([verifier.verify('one'), verifier.verify('two')]),
+      ['unavailable', 'unavailable'],
+    );
+    assert.equal(alerts.length, 1);
+    assert.deepEqual(alerts[0], {
+      detail: { reason: 'secret_configuration' },
+      event: 'turnstile_unavailable',
+      occurredAt: new Date('2026-10-08T12:00:00.000Z'),
+      severity: 'P1',
+    });
+  });
+}
+
+test('a provider timeout remains unavailable and raises P2', async () => {
+  const alerts: unknown[] = [];
+  const reporter = createTurnstileUnavailableReporter(
+    {
+      send: async (alert) => {
+        alerts.push(alert);
+      },
+    },
+    () => new Date('2026-10-08T12:00:00.000Z'),
+  );
+  const fetchImpl = (async () => {
+    throw new Error('timeout');
+  }) as typeof fetch;
+  const result = await createTurnstileVerifier({
+    fetch: fetchImpl,
+    secret,
+    onUnavailable: reporter.report,
+  }).verify('a-token');
+  assert.equal(result, 'unavailable');
+  assert.deepEqual(alerts, [
+    {
+      detail: { reason: 'provider_unavailable' },
+      event: 'turnstile_unavailable',
+      occurredAt: new Date('2026-10-08T12:00:00.000Z'),
+      severity: 'P2',
+    },
+  ]);
 });
 
 test('success:false with no error codes is unavailable — the failure cannot be blamed on the token', async () => {

@@ -50,13 +50,13 @@ export interface IpVelocityFlagInsert {
 // The detail never carries a token, a secret, a full IP or an email — only the
 // machine reason (docs/data/model.md#fraud_flag, standing rule on redaction).
 const challengeTimeoutDetail = JSON.stringify({
-  reason: 'turnstile_provider_timeout',
+  reason: 'turnstile_unavailable',
 });
 const selfReferralDetail = JSON.stringify({ reason: 'self_referral' });
 
 /**
  * The data layer for the one `fraud_flag` write E3-03 owns: the Turnstile
- * provider-timeout review flag (ADR-006, founder-authorised 2026-09-07). The
+ * unavailable-provider review flag (ADR-006, founder-authorised 2026-09-07). The
  * SQL lives here because `src/server/db` is the only place it may
  * (`docs/architecture/modules.md`). The E5 fraud module owns every other kind
  * and the review workflow (`docs/modules/fraud.md`); this path does not.

@@ -35,6 +35,7 @@ The five small modules, documented together because each is a few hundred lines 
 - **Verified server-side on every write route, before any other work.**
 - **Fail closed on a hard failure** — an invalid or replayed token is a `rejected` verdict, and the caller rejects the request. Only a failure the provider attributes to the token itself rejects; a missing/invalid-secret or internal-error verdict is not the visitor's fault and falls through to `unavailable`.
 - **On a provider timeout, return `unavailable`** — a network error, a timeout, a non-2xx response, or a malformed body. The caller then **falls through to strict rate limiting and flags the row** (`challenge_timeout`), rather than either rejecting real people or opening the door. The distinction between "invalid" and "unreachable" is the whole design.
+- A missing or invalid siteverify secret remains `unavailable` with sanitized `secret_configuration` reason and a deduplicated P1 through the authenticated alert webhook. Other unavailable reasons raise P2. The visitor path stays strict-limit and review-flagged.
 - Tokens are single-use; a replay (`timeout-or-duplicate`) is rejected.
 - **The secret is read here and nowhere a route can see it**, and it appears in no log line and no response.
 

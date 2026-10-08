@@ -1,0 +1,59 @@
+{
+  "ticket": "E11-02",
+  "stack": "isolated local production Compose with provider fault injection",
+  "image": "valstara-chaos:e11-02",
+  "drills": {
+    "drill1_postgres_mid_signup": {
+      "elapsedMs": 12606,
+      "response": 503,
+      "partialRows": 0
+    },
+    "drill2_resend_revoked": {
+      "elapsedMs": 4833,
+      "committedRows": 1,
+      "attempts": 2,
+      "queuedAfterRecovery": 0
+    },
+    "drill3_turnstile": {
+      "elapsedMs": 1588,
+      "invalidRows": 0,
+      "replayRows": 0,
+      "strictAccepted": 2,
+      "strictLimited": 1,
+      "flagged": 2,
+      "p1Alerts": 1,
+      "restored": true
+    },
+    "drill4_snapshot_job_stopped": {
+      "elapsedMs": 1766,
+      "snapshotId": "7a73111a-bdfc-4b7b-8953-55925777b275",
+      "asOf": "2026-10-08T00:28:25.980Z",
+      "staleServed": true
+    },
+    "drill5_counter_repair": {
+      "elapsedMs": 2094,
+      "corrected": 1,
+      "restoredCount": 1,
+      "p2Alerts": 1,
+      "auditRows": 1
+    },
+    "drill6_leaderboard_kill_switch": {
+      "elapsedMs": 7291,
+      "removalMs": 2204,
+      "restored": true,
+      "deploys": 0
+    },
+    "drill8_replays": {
+      "elapsedMs": 620,
+      "verificationReplay": "success",
+      "turnstileReplay": "rejected",
+      "webhookEvents": 1,
+      "suppressionRows": 1
+    }
+  },
+  "deferredToE1206": [
+    7,
+    9,
+    10
+  ]
+}
