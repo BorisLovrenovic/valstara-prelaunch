@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import pg from 'pg';
+import { leaderboardRefreshIntervalMilliseconds } from '../../src/server/leaderboard/snapshot.ts';
 
 const exec = promisify(execFile);
 const project = `valstara-e1102-${process.pid}`;
@@ -398,6 +399,31 @@ try {
       }, 'site snapshot cache');
       const body = await first.json();
       await command('docker', ['kill', worker]);
+      const stoppedAt = startedAt();
+      await new Promise((resolve) =>
+        globalThis.setTimeout(
+          resolve,
+          leaderboardRefreshIntervalMilliseconds + 1_000,
+        ),
+      );
+      const stoppedForMs = Math.round(startedAt() - stoppedAt);
+      assert.ok(stoppedForMs > leaderboardRefreshIntervalMilliseconds);
+      assert.equal(
+        await command('docker', [
+          'inspect',
+          '--format',
+          '{{.State.Running}}',
+          worker,
+        ]),
+        'false',
+      );
+      const latest = (
+        await sql(
+          'SELECT id, as_of FROM leaderboard_snapshot ORDER BY as_of DESC LIMIT 1',
+        )
+      )[0];
+      assert.equal(latest.id, body.snapshot_id);
+      assert.equal(latest.as_of.toISOString(), body.as_of);
       const second = await page('/api/leaderboard');
       assert.equal(second.status, 200);
       const stale = await second.json();
@@ -406,6 +432,7 @@ try {
       return {
         snapshotId: body.snapshot_id,
         asOf: body.as_of,
+        stoppedForMs,
         staleServed: true,
       };
     } finally {
