@@ -178,6 +178,9 @@ provider credential.
 
 | Variable                          | Purpose                                                                                 | Used by                              | Value class                                                   |
 | --------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------- |
+| `CHAOS_APP_PORT`                  | Loopback host port for the disposable E11-02 application                                | Chaos Compose overlay                | Optional local port; defaults to `54322`                      |
+| `CHAOS_CLOCK`                     | Injected UTC clock for the E11-02 one-shot maintenance and snapshot workers             | Chaos drill workers                  | Per-run ISO timestamp; local test input only                  |
+| `CHAOS_POSTGRES_PORT`             | Loopback host port for the disposable E11-02 PostgreSQL instance                        | Chaos Compose overlay                | Optional local port; defaults to `55435`                      |
 | `CI_RED_PATH_CHILD`               | Prevents the CI gate fixture harness from recursively launching itself                  | CI red-path tests, coverage runner   | Internal test switch; fixed to `1` for child runs             |
 | `CI_SECURITY_RED_PATH_CHILD`      | Prevents the security fixture harness from recursively launching itself                 | Security red-path tests              | Internal test switch; fixed to `1` for child runs             |
 | `COVERAGE_BASE_SHA`               | Selects the pull request base revision for changed-line coverage                        | PR workflow, coverage scripts        | CI revision identifier; neither live nor sandbox              |
@@ -189,11 +192,15 @@ provider credential.
 | `NPM_CONFIG_AUDIT`                | Disables npm's network audit during deterministic container installs                    | Docker image, local Compose          | Fixed tooling switch set to `false`; neither live nor sandbox |
 | `NPM_CONFIG_FUND`                 | Disables npm's funding output during deterministic container installs                   | Docker image, local Compose          | Fixed tooling switch set to `false`; neither live nor sandbox |
 | `NPM_CONFIG_MAXSOCKETS`           | Caps npm install concurrency so container memory use is repeatable                      | Docker image, local Compose          | Fixed tooling limit set to `4`; neither live nor sandbox      |
+| `NODE_OPTIONS`                    | Loads the local E11-02 provider fault-injection preload into the drill app              | Chaos Compose app                    | Fixed to the local preload path; no browser script            |
 | `PATH`                            | Supplies the host executable search path; tests prepend their fake command directory    | Deploy tests                         | Host process setting; neither live nor sandbox                |
 | `RESTORE_DRILL_KEEP_SCRATCH`      | Retains the scratch restore container and volume for local diagnosis when requested     | Backup restore drill                 | Optional diagnostic switch; defaults to `0`                   |
 | `RULES_BASE_SHA`                  | Selects the pull request base revision for the immutable giveaway-rules check           | PR workflow, rules history test      | CI revision identifier; neither live nor sandbox              |
 | `SECURITY_BASE_SHA`               | Selects the pull request base revision inspected by the secret and security gates       | PR workflow, security scripts        | CI revision identifier; neither live nor sandbox              |
 | `TEST_DATABASE_URL`               | Selects the administrator database used to create disposable integration-test databases | Database integration tests, CI       | Local/CI test credential; never a production application URL  |
+| `VALSTARA_CHAOS_SCRIPTS_DIR`      | Host path of the E11-02 drill scripts mounted read-only into the disposable app         | Chaos Compose overlay                | Absolute local `scripts/chaos` path; set by the runner        |
+| `VALSTARA_CHAOS_SOURCE_DIR`       | Host path of server modules mounted read-only into the disposable app                   | Chaos Compose overlay                | Absolute local `src/server` path; set by the runner           |
+| `VALSTARA_CHAOS_STATE_DIR`        | Host path of disposable provider modes and alert output mounted into the drill app      | Chaos Compose overlay                | Temporary local directory; created and removed by the runner  |
 | `VALSTARA_E107_DRILL_DIAGNOSTICS` | Enables per-command timing diagnostics for the local E1-07 deploy drill                 | Deploy tests                         | Optional diagnostic switch; defaults to `0`                   |
 
 Compose derives or fixes the following container variables. They are listed

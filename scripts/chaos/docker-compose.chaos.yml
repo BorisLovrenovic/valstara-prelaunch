@@ -1,0 +1,20 @@
+services:
+  postgres:
+    networks:
+      - backend
+      - chaos_db
+    ports:
+      - '127.0.0.1:${CHAOS_POSTGRES_PORT:-55435}:5432'
+  app:
+    environment:
+      NODE_ENV: development
+      NODE_OPTIONS: --import=/app/scripts/chaos/provider-preload.mjs
+    ports:
+      - '127.0.0.1:${CHAOS_APP_PORT:-54322}:4321'
+    volumes:
+      - ${VALSTARA_CHAOS_SCRIPTS_DIR:?Set the absolute scripts/chaos path}:/app/scripts/chaos:ro
+      - ${VALSTARA_CHAOS_SOURCE_DIR:?Set the absolute src/server path}:/app/src/server:ro
+      - ${VALSTARA_CHAOS_STATE_DIR:?Set a disposable state path}:/run/chaos
+
+networks:
+  chaos_db:

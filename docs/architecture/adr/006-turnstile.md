@@ -16,6 +16,7 @@ Behaviour on failure is specified, because the two failure modes are different:
 
 - **Invalid or replayed token → reject.** Fail closed.
 - **Provider unreachable or timing out → accept, apply strict rate limits, and flag the row.** Rejecting real people because Cloudflare is slow is worse than admitting a few extra rows into a queue that double opt-in will filter anyway.
+- **`missing-input-secret` or `invalid-input-secret` → unavailable with a sanitized `secret_configuration` reason.** The visitor still enters the strict-limit and `challenge_timeout` review path. The verifier sends a deduplicated P1 through the authenticated alert webhook; a persistent configuration fault cannot self-heal. Timeout, network and internal errors remain P2. No provider body or secret appears in the alert.
 
 ## Alternatives rejected
 - **reCAPTCHA** — sets cookies and sends data to Google. Costs the banner-free property outright.

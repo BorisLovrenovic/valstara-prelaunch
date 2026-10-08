@@ -208,10 +208,11 @@ export function createSignupRoute(
     }
     return errorResponse(reason, retryAfterSeconds);
   };
-  const dependencyRejection = (error: unknown): Response =>
-    rejected(
+  const dependencyRejection = (error: unknown): Response => {
+    return rejected(
       error instanceof DatabaseUnavailableError ? 'unavailable' : 'internal',
     );
+  };
 
   return async ({ clientAddress, request }) => {
     let formData: FormData;
@@ -239,7 +240,13 @@ export function createSignupRoute(
     // store, so doing it first would violate the challenge boundary on this
     // public write route. A disabled route returns honest paused copy before
     // rate limiting or signup work.
-    if (!(await dependencies.isSignupEnabled())) {
+    let signupEnabled: boolean;
+    try {
+      signupEnabled = await dependencies.isSignupEnabled();
+    } catch (error) {
+      return dependencyRejection(error);
+    }
+    if (!signupEnabled) {
       return jsonResponse(200, {
         status: 'paused',
         message: signupCopy.paused,

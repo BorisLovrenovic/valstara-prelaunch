@@ -217,6 +217,14 @@ test('each rejected signup emits its closed reason code once, while flag-off emi
     {
       reason: 'unavailable',
       overrides: {
+        isSignupEnabled: async () => {
+          throw new DatabaseUnavailableError(new Error('down'));
+        },
+      },
+    },
+    {
+      reason: 'unavailable',
+      overrides: {
         signup: async () => {
           throw new DatabaseUnavailableError('offline');
         },

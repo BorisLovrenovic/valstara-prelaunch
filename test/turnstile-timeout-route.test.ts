@@ -29,7 +29,7 @@ function routeContext(request: Request) {
 // End-to-end through the default wiring: when siteverify is unreachable the
 // signup is accepted, the mail still queues, and the row is flagged for review
 // (ADR-006, E3-03). This exercises the real turnstile module → route → db path.
-test('a provider-unreachable signup, through the default wiring, commits the row and opens exactly one challenge_timeout flag', async () => {
+test('unavailable Turnstile accepts under strict limits, flags rows, and alerts at the right severity', async () => {
   const databaseName = `valstara_e303timeout_${randomUUID().replaceAll('-', '')}`;
   const adminUrl = new URL(process.env.TEST_DATABASE_URL ?? defaultDatabaseUrl);
   const databaseUrl = new URL(adminUrl);
@@ -56,11 +56,25 @@ test('a provider-unreachable signup, through the default wiring, commits the row
   process.env.RESEND_RSEND_CNAME_EXPECTED_TARGET = 'rsend-euw1.forge.rmta.net';
   process.env.RESEND_SEND_CNAME_EXPECTED_TARGET = 'send.forge.rmta.net';
   process.env.RESEND_SENDING_DOMAIN = 'send.valstara.com';
+  process.env.P1_ALERT_WEBHOOK_TOKEN = 'local-only-turnstile-alert-token';
+  process.env.P1_ALERT_WEBHOOK_URL = 'https://alerts.example.test/turnstile';
 
-  globalThis.fetch = (async (input: RequestInfo | URL) => {
+  let mode: 'timeout' | 'secret' | 'healthy' = 'timeout';
+  const alerts: Array<{ severity: string; detail: { reason: string } }> = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = input instanceof Request ? input.url : input.toString();
     if (url.includes('challenges.cloudflare.com')) {
-      throw new Error('ECONNREFUSED'); // the provider is unreachable
+      if (mode === 'timeout') throw new Error('ECONNREFUSED');
+      if (mode === 'secret')
+        return Response.json({
+          success: false,
+          'error-codes': ['invalid-input-secret'],
+        });
+      return Response.json({ success: true });
+    }
+    if (url === 'https://alerts.example.test/turnstile') {
+      alerts.push(JSON.parse(String(init?.body)));
+      return new Response(null, { status: 204 });
     }
     if (url === 'https://api.resend.com/emails') {
       return new Response(null, { status: 200 });
@@ -102,6 +116,60 @@ test('a provider-unreachable signup, through the default wiring, commits the row
       signupBuckets[0]?.startsWith('signup:ip:strict:'),
       `expected the strict bucket, got ${signupBuckets[0]}`,
     );
+    assert.deepEqual(
+      alerts.map((alert) => [alert.severity, alert.detail.reason]),
+      [['P2', 'provider_unavailable']],
+    );
+
+    mode = 'secret';
+    const secretEmail = 'secret-fault@gmail.com';
+    const secretResponse = await signupPost(
+      routeContext(makeRequest(secretEmail)),
+    );
+    assert.equal(secretResponse.status, 200);
+    const secretSubscriber = await database.readOne<{ id: string }>({
+      text: 'SELECT id FROM subscriber WHERE email_normalised = $1',
+      values: [secretEmail],
+    });
+    assert.ok(secretSubscriber);
+    assert.deepEqual(
+      await database.list<{ kind: string }>(
+        {
+          text: 'SELECT kind FROM fraud_flag WHERE subscriber_id = $1',
+          values: [secretSubscriber.id],
+        },
+        10,
+      ),
+      [{ kind: 'challenge_timeout' }],
+    );
+    assert.deepEqual(
+      alerts.map((alert) => [alert.severity, alert.detail.reason]),
+      [
+        ['P2', 'provider_unavailable'],
+        ['P1', 'secret_configuration'],
+      ],
+    );
+
+    mode = 'healthy';
+    const healthyResponse = await signupPost(
+      routeContext(makeRequest('restored@gmail.com')),
+    );
+    assert.equal(healthyResponse.status, 200);
+    const healthySubscriber = await database.readOne<{ id: string }>({
+      text: 'SELECT id FROM subscriber WHERE email_normalised = $1',
+      values: ['restored@gmail.com'],
+    });
+    assert.ok(healthySubscriber);
+    assert.deepEqual(
+      await database.list<{ kind: string }>(
+        {
+          text: 'SELECT kind FROM fraud_flag WHERE subscriber_id = $1',
+          values: [healthySubscriber.id],
+        },
+        10,
+      ),
+      [],
+    );
   } finally {
     globalThis.fetch = originalFetch;
     for (const key of [
@@ -117,6 +185,8 @@ test('a provider-unreachable signup, through the default wiring, commits the row
       'RESEND_RSEND_CNAME_EXPECTED_TARGET',
       'RESEND_SEND_CNAME_EXPECTED_TARGET',
       'RESEND_SENDING_DOMAIN',
+      'P1_ALERT_WEBHOOK_TOKEN',
+      'P1_ALERT_WEBHOOK_URL',
     ]) {
       if (originalEnv[key] === undefined) {
         delete process.env[key];

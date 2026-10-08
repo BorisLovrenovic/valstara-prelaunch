@@ -1799,12 +1799,13 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 ### E11-02 — Chaos drills
 **Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** infra
 
-**Build:** Execute and record all eight drills in `docs/architecture/fallbacks.md#chaos-drills`.
+**Drill-3 clarification (founder-authorised 2026-10-08):** Invalid and replayed Turnstile tokens fail closed. A broken secret instead keeps the accepted `unavailable` contract: strict rate limits and a `challenge_timeout` flag on each accepted row, with a deduplicated P1 for the sanitized configuration fault. Timeout, network and internal errors remain P2. Restore the secret and verify normal operation.
+
+**Build:** Execute and record drills 1–6 and 8 from `docs/architecture/fallbacks.md#chaos-drills` against the local production-Compose stack. Drills 7, 9 and 10 are E12-06's.
 
 **Acceptance criteria:**
 - **Drills 1–6 and 8 executed against the local production-Compose stack and recorded in the repository.** Drills 7, 9 and 10 need real infrastructure and are **E12-06**, named there rather than quietly skipped
 - **Any drill that does not behave as the matrix claims is a blocking finding** — fix the system or fix the matrix, never neither
-- The restore timing is recorded — this is the RTO
 - **The `leaderboard.public` kill-switch drill is timed**, because its value is how fast it works
 
 **Tests:** The drills are the tests.

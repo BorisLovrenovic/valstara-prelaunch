@@ -97,7 +97,7 @@ test('migration 0005 lets a challenge_timeout flag be written, and the detail ca
     assert.equal(flags[0]?.kind, 'challenge_timeout');
     assert.equal(flags[0]?.state, 'open');
     assert.deepEqual(flags[0]?.detail, {
-      reason: 'turnstile_provider_timeout',
+      reason: 'turnstile_unavailable',
     });
   });
 });

@@ -61,7 +61,15 @@ const unavailableErrorCodes = new Set([
   'ETIMEDOUT',
 ]);
 
-function normaliseDatabaseError(error: unknown): Error {
+export function normaliseDatabaseError(error: unknown): Error {
+  if (
+    error instanceof Error &&
+    /^(?:Connection terminated(?: unexpectedly| due to connection timeout)?|Connection ended unexpectedly|Client has encountered a connection error and is not queryable)$/iu.test(
+      error.message,
+    )
+  ) {
+    return new DatabaseUnavailableError(error);
+  }
   if (
     typeof error === 'object' &&
     error !== null &&
@@ -215,9 +223,13 @@ function assertCommand(statement: SqlStatement): void {
 
 class PostgresConnection implements DatabaseClient {
   private readonly client: PoolClient;
+  private readonly onError = () => undefined;
 
   public constructor(client: PoolClient) {
     this.client = client;
+    // A checked-out pg client emits when PostgreSQL drops its connection.
+    // The in-flight query reports the failure through its promise as well.
+    this.client.on('error', this.onError);
   }
 
   public async execute(statement: SqlStatement): Promise<number> {
@@ -260,6 +272,7 @@ class PostgresConnection implements DatabaseClient {
 
   public release(): void {
     this.client.release();
+    this.client.off('error', this.onError);
   }
 }
 

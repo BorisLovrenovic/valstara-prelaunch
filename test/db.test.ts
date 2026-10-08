@@ -11,8 +11,24 @@ import {
   MigrationChecksumMismatchError,
 } from '../src/server/db/errors.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
-import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
+import {
+  createPool,
+  normaliseDatabaseError,
+  type DatabasePool,
+} from '../src/server/db/pool.ts';
 import { withTransaction } from '../src/server/db/transaction.ts';
+
+test('uncoded PostgreSQL connection terminations are unavailable to the caller', () => {
+  for (const message of [
+    'Connection terminated unexpectedly',
+    'Connection terminated due to connection timeout',
+  ]) {
+    const error = new Error(message);
+    const normalised = normaliseDatabaseError(error);
+    assert.ok(normalised instanceof DatabaseUnavailableError);
+    assert.equal(normalised.cause, error);
+  }
+});
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
