@@ -271,7 +271,7 @@ before(async () => {
       RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
       RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
       RESEND_SENDING_DOMAIN: 'send.valstara.com',
-      TURNSTILE_SECRET_KEY: 'accessibility-turnstile-secret',
+      TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA',
     },
     stdio: 'ignore',
   });
@@ -636,4 +636,264 @@ test('tab order follows the visual reading order with no focus trap', async () =
   );
 
   await context.close();
+});
+
+async function tabTo(page, selector) {
+  for (let step = 0; step < 40; step += 1) {
+    await page.keyboard.press('Tab');
+    if (
+      await page.evaluate(
+        (target) => globalThis.document.activeElement?.matches(target),
+        selector,
+      )
+    ) {
+      return;
+    }
+  }
+  assert.fail(`Keyboard focus never reached ${selector}`);
+}
+
+test('keyboard-only signup and verification expose errors and reach verified state', async () => {
+  const context = await browser.newContext();
+  await context.route('https://challenges.cloudflare.com/**', (route) =>
+    route.fulfill({ contentType: 'text/javascript', body: '' }),
+  );
+  await context.addInitScript(() => {
+    globalThis.turnstile = {
+      ready(callback) {
+        callback();
+      },
+      render(_element, options) {
+        options.callback('XXXX.DUMMY.TOKEN.XXXX');
+        return 'audit-widget';
+      },
+      reset() {},
+    };
+  });
+  const page = await context.newPage();
+  await page.goto(browserOrigin);
+  await page.evaluate(() =>
+    globalThis.customElements.whenDefined('valstara-signup-form'),
+  );
+
+  await tabTo(page, '#signup-email');
+  assert.equal(
+    await page.locator('#signup-email').getAttribute('aria-describedby'),
+    'signup-email-hint signup-email-error',
+  );
+  await tabTo(page, '[data-submit]');
+  await page.keyboard.press('Enter');
+  await page.locator('#signup-email-error:not([hidden])').waitFor();
+  assert.deepEqual(await axeViolations(page), []);
+  assert.equal(
+    await page.locator('#signup-email').getAttribute('aria-invalid'),
+    'true',
+  );
+  assert.equal(
+    await page.locator('#signup-email-error').getAttribute('role'),
+    'alert',
+  );
+  assert.match(
+    await page.locator('main').ariaSnapshot(),
+    /Enter your email address/u,
+  );
+  assert.equal(
+    await page.evaluate(() => globalThis.document.activeElement?.id),
+    'signup-email',
+  );
+
+  const email = `a11y${randomUUID().replaceAll('-', '')}@gmail.com`;
+  await page.keyboard.type(email);
+  await page.route('**/api/signup', (route) =>
+    route.fulfill({
+      status: 429,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: {
+          code: 'rate_limited',
+          message: 'Too many attempts — try again in a few minutes.',
+        },
+      }),
+    }),
+  );
+  await tabTo(page, '[data-submit]');
+  await page.keyboard.press('Enter');
+  await page.locator('[data-form-error]:not([hidden])').waitFor();
+  assert.deepEqual(await axeViolations(page), []);
+  assert.equal(
+    await page.locator('[data-form-error]').getAttribute('role'),
+    'alert',
+  );
+  assert.match(await page.locator('main').ariaSnapshot(), /Too many attempts/u);
+  assert.equal(
+    await page.evaluate(() =>
+      globalThis.document.activeElement?.hasAttribute('data-form-error'),
+    ),
+    true,
+    'form-level errors receive keyboard focus',
+  );
+  await page.unroute('**/api/signup');
+  await tabTo(page, '[data-submit]');
+  await page.keyboard.press('Enter');
+  await page.locator('[data-success]:not([hidden])').waitFor();
+  assert.equal(await page.locator('#signup-email-error').isHidden(), true);
+  assert.match(await page.locator('[data-success]').textContent(), /email/u);
+  assert.equal(
+    await page.evaluate(() =>
+      globalThis.document.activeElement?.hasAttribute('data-success'),
+    ),
+    true,
+    'focus moves to the status after the form is hidden',
+  );
+
+  const issued = await databaseFixture.database.query(
+    `SELECT s.status, v.id AS token_id
+       FROM subscriber s
+       JOIN verification_token v ON v.subscriber_id = s.id
+      WHERE s.email_normalised = $1 AND v.purpose = 'verify'
+      ORDER BY v.created_at DESC LIMIT 1`,
+    [email],
+  );
+  assert.equal(issued.rows.length, 1);
+  assert.equal(issued.rows[0].status, 'pending');
+  const token = deriveEmailToken(
+    issued.rows[0].token_id,
+    process.env.EMAIL_TOKEN_SECRET,
+  );
+
+  await page.goto(`${browserOrigin}/verify?token=${encodeURIComponent(token)}`);
+  assert.match(
+    await page.locator('main').ariaSnapshot(),
+    /Confirm email address/u,
+  );
+  await tabTo(page, 'form.verification-confirm button');
+  await page.keyboard.press('Enter');
+  await page.getByText('Your email address is verified.').waitFor();
+  const verified = await databaseFixture.database.query(
+    'SELECT status FROM subscriber WHERE email_normalised = $1',
+    [email],
+  );
+  assert.equal(verified.rows[0].status, 'verified');
+  assert.match(await page.locator('main').ariaSnapshot(), /View your status/u);
+  await context.close();
+});
+
+function contrastRatio(first, second) {
+  const channels = (color) =>
+    color
+      .match(/[\d.]+/gu)
+      .slice(0, 3)
+      .map((channel) => {
+        const value = Number(channel) / 255;
+        return value <= 0.04045
+          ? value / 12.92
+          : ((value + 0.055) / 1.055) ** 2.4;
+      });
+  const luminance = (color) => {
+    const [red, green, blue] = channels(color);
+    return red * 0.2126 + green * 0.7152 + blue * 0.0722;
+  };
+  const values = [luminance(first), luminance(second)].sort((a, b) => b - a);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
+
+test('signup and verification text clears AA contrast at rendered font sizes in both themes', async () => {
+  for (const colorScheme of themes) {
+    const context = await browser.newContext({ colorScheme });
+    const page = await context.newPage();
+    for (const [route, selectors] of [
+      [
+        '/',
+        [
+          '.lp-hero__heading',
+          '.lp-hero__body',
+          '.field__label',
+          '.field__description',
+          '[data-submit]',
+          '.signup-marketing',
+          '.signup-age',
+          '#signup-email-error',
+          '.site-name',
+          '.footer-links a',
+        ],
+      ],
+      [
+        '/verify?token=audit',
+        [
+          '.verification-confirm p',
+          '.verification-confirm button',
+          '.site-name',
+          '.footer-links a',
+        ],
+      ],
+      [
+        '/verify',
+        [
+          '.verification-invalid p',
+          '.verification-invalid label',
+          '.verification-invalid button',
+        ],
+      ],
+    ]) {
+      await page.goto(`${browserOrigin}${route}`);
+      if (route === '/') {
+        await page.evaluate(() =>
+          globalThis.customElements.whenDefined('valstara-signup-form'),
+        );
+        await page.locator('[data-submit]').click();
+        await page.locator('#signup-email-error:not([hidden])').waitFor();
+      }
+      let lowestRatio = Infinity;
+      let lowestSelector = '';
+      for (const selector of selectors) {
+        const colors = await page
+          .locator(selector)
+          .first()
+          .evaluate((element) => {
+            const style = globalThis.getComputedStyle(element);
+            let parent = element;
+            let background = '';
+            while (parent !== null) {
+              const candidate =
+                globalThis.getComputedStyle(parent).backgroundColor;
+              if (
+                candidate !== 'rgba(0, 0, 0, 0)' &&
+                candidate !== 'transparent'
+              ) {
+                background = candidate;
+                break;
+              }
+              parent = parent.parentElement;
+            }
+            return {
+              background,
+              color: style.color,
+              fontSize: Number.parseFloat(style.fontSize),
+              fontWeight: Number.parseInt(style.fontWeight, 10),
+            };
+          });
+        assert.ok(
+          colors.background,
+          `${route} ${selector} has an opaque background`,
+        );
+        const large =
+          colors.fontSize >= 24 ||
+          (colors.fontSize >= 18.66 && colors.fontWeight >= 700);
+        const minimum = large ? 3 : 4.5;
+        const actual = contrastRatio(colors.color, colors.background);
+        if (actual < lowestRatio) {
+          lowestRatio = actual;
+          lowestSelector = selector;
+        }
+        assert.ok(
+          actual >= minimum,
+          `${colorScheme} ${route} ${selector}: ${actual.toFixed(2)}:1 at ${colors.fontSize}px/${colors.fontWeight}, needs ${minimum}:1`,
+        );
+      }
+      process.stdout.write(
+        `# ${colorScheme} ${route}: lowest rendered text contrast ${lowestRatio.toFixed(2)}:1 (${lowestSelector})\n`,
+      );
+    }
+    await context.close();
+  }
 });

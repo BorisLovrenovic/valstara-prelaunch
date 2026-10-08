@@ -20,6 +20,10 @@ the same browser system libraries without requiring privileged host package
 installation. Docker is therefore a test prerequisite, alongside the disposable
 PostgreSQL and integration stack.
 
+E11-03's keyboard journey, rendered contrast measurements, error-state checks
+and manual-audit limits are recorded in
+[`e11-03-accessibility-audit.md`](e11-03-accessibility-audit.md).
+
 ## Coverage bars
 
 ≥80% changed code. **≥90% in `subscriber`, `verification`, `referral`, `giveaway`, `email`** — the five modules where a defect is either unrecoverable or discredits the campaign.

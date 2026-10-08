@@ -83,6 +83,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       data-form-error
       role="alert"
       aria-atomic="true"
+      tabindex="-1"
       hidden
     >
     </p>
@@ -112,6 +113,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     data-success
     role="status"
     aria-live="polite"
+    tabindex="-1"
     hidden
   >
   </div>
@@ -442,6 +444,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       if (element !== null) {
         element.textContent = message;
         element.hidden = false;
+        element.focus();
       }
     }
 
@@ -458,6 +461,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       if (this.#form !== null) {
         this.#form.hidden = true;
       }
+      success?.focus();
     }
   }
 

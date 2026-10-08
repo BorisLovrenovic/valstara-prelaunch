@@ -124,3 +124,5 @@ That is a stricter reading than the soft-opt-in rules of some jurisdictions requ
 ## 6. Accessibility
 
 The EU Accessibility Act applies to the store, not straightforwardly to a pre-launch page — but the standard is met anyway: **WCAG 2.2 AA**, verified by an automated pass in CI and a manual audit before the campaign opens (E11-03). It is cheaper to build than to retrofit, and the same components are being ported into the storefront where it will apply.
+
+E11-03's local audit evidence and the remaining spoken screen-reader pass are recorded in `docs/testing/e11-03-accessibility-audit.md`. The signup result and form-level error now receive focus when they replace the focused submit control.
