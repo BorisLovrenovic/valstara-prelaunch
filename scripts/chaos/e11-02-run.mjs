@@ -223,23 +223,47 @@ try {
   await connectDatabase();
 
   await time('drill1_postgres_mid_signup', async () => {
-    await setMode('turnstile', 'delayed');
+    // Hold this request after its subscriber INSERT has run but before the
+    // transaction can commit. The waiting advisory lock makes the failure
+    // point observable instead of guessing from a wall-clock delay.
+    await sql(`CREATE FUNCTION chaos_hold_subscriber_insert() RETURNS trigger
+      LANGUAGE plpgsql AS $$ BEGIN
+        IF NEW.email_normalised = 'chaos-db@gmail.com' THEN
+          PERFORM pg_advisory_xact_lock(1102, 1);
+        END IF;
+        RETURN NEW;
+      END; $$`);
+    await sql(`CREATE TRIGGER chaos_hold_subscriber_insert
+      AFTER INSERT ON subscriber FOR EACH ROW
+      EXECUTE FUNCTION chaos_hold_subscriber_insert()`);
+    await sql('SELECT pg_advisory_lock(1102, 1)');
     const request = signup(
       'chaos-db@gmail.com',
       'healthy-token',
       '198.51.101.7',
+    ).then(
+      (outcome) => ({ outcome }),
+      (error) => ({ error }),
     );
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 150));
+    await waitFor(async () => {
+      const rows = await sql(`SELECT pid FROM pg_stat_activity
+        WHERE usename = 'valstara_app'
+          AND wait_event_type = 'Lock'
+          AND wait_event = 'advisory'
+          AND query LIKE '%INSERT INTO subscriber%'`);
+      return rows.length > 0;
+    }, 'signup subscriber INSERT blocked after row write');
     await compose('kill', '-s', 'SIGKILL', 'postgres');
-    const outcome = await request;
+    const completed = await request;
+    if ('error' in completed) throw completed.error;
+    const { outcome } = completed;
     assert.equal(outcome.status, 503, JSON.stringify(outcome));
     assert.equal(outcome.body.error.code, 'unavailable');
     await compose('up', '-d', '--wait', 'postgres');
     await database.end().catch(() => {});
     await connectDatabase();
-    await setMode('turnstile', 'healthy');
     assert.equal(await countEmail('chaos-db@gmail.com'), 0);
-    return { response: outcome.status, partialRows: 0 };
+    return { response: outcome.status, insertReached: true, partialRows: 0 };
   });
 
   await time('drill2_resend_revoked', async () => {
