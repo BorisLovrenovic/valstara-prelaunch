@@ -13,8 +13,16 @@ import { leaderboardRefreshIntervalMilliseconds } from '../../src/server/leaderb
 const exec = promisify(execFile);
 const project = `valstara-e1102-${process.pid}`;
 const stateDir = await mkdtemp(join(tmpdir(), 'valstara-e1102-'));
-const port = 54322;
-const dbPort = 55435;
+const port = Number(process.env.CHAOS_APP_PORT ?? 54322);
+const dbPort = Number(process.env.CHAOS_POSTGRES_PORT ?? 55435);
+for (const [name, value] of [
+  ['CHAOS_APP_PORT', port],
+  ['CHAOS_POSTGRES_PORT', dbPort],
+]) {
+  if (!Number.isInteger(value) || value < 1 || value > 65_535) {
+    throw new Error(`${name} must be a valid TCP port.`);
+  }
+}
 const emailTokenSecret = 'local-chaos-email-token-secret-32-chars';
 const env = {
   ...process.env,
@@ -485,13 +493,12 @@ try {
   await time('drill6_leaderboard_kill_switch', async () => {
     const before = await page('/leaderboard');
     assert.ok((await before.text()).includes('data-leaderboard-section'));
-    const began = startedAt();
-    await oneShot('flag', ['off']);
+    const { changedAtMs } = await oneShot('flag', ['off']);
     await waitFor(async () => {
       const response = await page('/leaderboard');
       return !(await response.text()).includes('data-leaderboard-section');
     }, 'leaderboard removal');
-    const removalMs = Math.round(startedAt() - began);
+    const removalMs = Math.round(startedAt() - changedAtMs);
     assert.ok(removalMs <= 5_000, `kill switch took ${removalMs} ms`);
     await oneShot('flag', ['on']);
     await waitFor(
@@ -528,18 +535,33 @@ try {
         { 'Content-Type': 'application/x-www-form-urlencoded' },
       );
     }
+    async function verificationEffects() {
+      const rows = await sql(
+        `SELECT s.status, s.verified_at, s.updated_at, s.access_window,
+                s.referral_code, t.consumed_at,
+                (SELECT COUNT(*)::integer FROM email_send e WHERE e.subscriber_id=s.id) AS email_sends,
+                (SELECT COUNT(*)::integer FROM giveaway_entry g WHERE g.subscriber_id=s.id) AS giveaway_entries,
+                (SELECT COUNT(*)::integer FROM referral_edge r WHERE r.referred_id=s.id) AS referral_edges,
+                (SELECT COUNT(*)::integer FROM milestone_award m WHERE m.subscriber_id=s.id) AS milestone_awards,
+                (SELECT COUNT(*)::integer FROM audit_log a WHERE a.subject_id=s.id::text) AS audit_rows
+         FROM subscriber s JOIN verification_token t ON t.subscriber_id=s.id
+         WHERE s.email_normalised=$1 AND t.id=$2`,
+        [email, tokenRow.id],
+      );
+      assert.equal(rows.length, 1);
+      return rows[0];
+    }
     const first = await verify();
-    const second = await verify();
     assert.equal(first.status, 200);
-    assert.equal(second.status, 200);
     assert.ok((await first.text()).includes('verification-success'));
+    const beforeReplay = await verificationEffects();
+    assert.equal(beforeReplay.status, 'verified');
+    assert.ok(beforeReplay.verified_at);
+    assert.ok(beforeReplay.consumed_at);
+    const second = await verify();
+    assert.equal(second.status, 200);
     assert.ok((await second.text()).includes('verification-success'));
-    const person = (
-      await sql('SELECT status FROM subscriber WHERE email_normalised=$1', [
-        email,
-      ])
-    )[0];
-    assert.equal(person.status, 'verified');
+    assert.deepEqual(await verificationEffects(), beforeReplay);
     const turnstileReplay = await signup(
       'chaos-token-replay@gmail.com',
       'replayed-token',
@@ -571,6 +593,7 @@ try {
     assert.equal(suppressions[0].count, 1);
     return {
       verificationReplay: 'success',
+      verificationEffectsUnchanged: true,
       turnstileReplay: 'rejected',
       webhookEvents: 1,
       suppressionRows: 1,

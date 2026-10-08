@@ -36,7 +36,11 @@ try {
         process.argv[3] === 'on',
         'chaos-drill-operator',
       );
-      result = { enabled: process.argv[3] === 'on' };
+      // Host and local Compose containers share the kernel's monotonic clock.
+      result = {
+        enabled: process.argv[3] === 'on',
+        changedAtMs: Number(process.hrtime.bigint()) / 1_000_000,
+      };
       break;
     default:
       throw new Error(`Unknown chaos one-shot action: ${action}`);
