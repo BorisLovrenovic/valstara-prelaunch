@@ -101,7 +101,7 @@ test('the build fixture rejects missing metadata, duplicate metadata and a new u
   }
 });
 
-test('sitemap routes reconcile with page files and expand every published rules revision', async () => {
+test('sitemap routes reconcile with page files and include only the current rules revision', async () => {
   const pageFiles = (
     await readdir(join(root, 'src/pages'), { recursive: true })
   )
@@ -127,10 +127,12 @@ test('sitemap routes reconcile with page files and expand every published rules 
     eligiblePaths.push(eligiblePath);
     assert.ok(routes.includes(eligiblePath), file);
   }
-  for (const version of revisions) {
-    eligiblePaths.push(`/giveaway/rules/${version}`);
-    assert.ok(routes.includes(`/giveaway/rules/${version}`));
-  }
+  const currentVersion = 'VAL-GW-LAUNCH-20261009-r1';
+  assert.ok(revisions.includes(currentVersion));
+  eligiblePaths.push(`/giveaway/rules/${currentVersion}`);
+  assert.ok(routes.includes(`/giveaway/rules/${currentVersion}`));
+  for (const version of revisions.filter((value) => value !== currentVersion))
+    assert.ok(!routes.includes(`/giveaway/rules/${version}`));
   const sitemap = await readFile(join(root, 'public/sitemap.xml'), 'utf8');
   const generatedUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/gu)].map(
     (match) => match[1],
@@ -146,6 +148,17 @@ test('sitemap routes reconcile with page files and expand every published rules 
   );
   assert.ok(!routes.includes('/me'));
   assert.ok(!routes.includes('/verify'));
+});
+
+test('sitemap excludes r2 when r10 is published on the same day', () => {
+  const r2 = 'VAL-GW-LAUNCH-20261009-r2';
+  const r10 = 'VAL-GW-LAUNCH-20261009-r10';
+  const routes = sitemapPaths(
+    ['src/pages/giveaway/rules/index.astro'],
+    [r10, r2],
+  );
+  assert.ok(routes.includes(`/giveaway/rules/${r10}`));
+  assert.ok(!routes.includes(`/giveaway/rules/${r2}`));
 });
 
 test('robots excludes only the named private and API route prefixes', async () => {

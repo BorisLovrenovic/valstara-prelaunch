@@ -1,5 +1,5 @@
 import { seoCopy } from '../copy/seo.ts';
-import type { RulesRevision } from './giveaway/rules.ts';
+import { compareRulesRevisions, type RulesRevision } from './giveaway/rules.ts';
 
 export const siteOrigin = 'https://valstara.com';
 export const organisationId = `${siteOrigin}/#organization`;
@@ -155,7 +155,19 @@ export function sitemapPaths(
       !route.startsWith('/api/') &&
       !route.includes('['),
   );
-  for (const version of versions)
-    publicRoutes.push(`/giveaway/rules/${version}`);
+  const currentVersion = versions
+    .map((rulesVersion) => {
+      const match = /-(\d{4})(\d{2})(\d{2})-r([1-9]\d*)$/u.exec(rulesVersion);
+      if (!match)
+        throw new Error(`Invalid giveaway rules version: ${rulesVersion}`);
+      return {
+        rulesVersion,
+        publishedOn: `${match[1]}-${match[2]}-${match[3]}`,
+        revision: Number(match[4]),
+      };
+    })
+    .sort(compareRulesRevisions)
+    .at(-1)?.rulesVersion;
+  if (currentVersion) publicRoutes.push(`/giveaway/rules/${currentVersion}`);
   return [...new Set(publicRoutes)].sort();
 }

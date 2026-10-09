@@ -15,8 +15,11 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const rulesVersion = 'VAL-GW-LAUNCH-20261001-r1';
-const earlierRulesVersion = 'VAL-GW-LAUNCH-20260925-r1';
+const rulesVersion = 'VAL-GW-LAUNCH-20261009-r1';
+const earlierRulesVersions = [
+  'VAL-GW-LAUNCH-20260925-r1',
+  'VAL-GW-LAUNCH-20261001-r1',
+];
 const contentPath = join(
   'src',
   'content',
@@ -190,11 +193,6 @@ test(
       );
       assert.equal(current.status, 200, output);
       assert.equal(permanent.status, 200, output);
-      const earlier = await globalThis.fetch(
-        `${origin}/giveaway/rules/${earlierRulesVersion}`,
-        { redirect: 'manual', signal: globalThis.AbortSignal.timeout(5_000) },
-      );
-      assert.equal(earlier.status, 200, output);
       assert.doesNotMatch(current.url, new RegExp(`${rulesVersion}$`, 'u'));
       assert.match(permanent.url, new RegExp(`${rulesVersion}$`, 'u'));
       const currentPage = await current.text();
@@ -211,10 +209,55 @@ test(
       assert.equal(currentArticle[3], permanentArticle[3]);
       assert.match(currentArticle[3], /support@valstara\.com/u);
       assert.doesNotMatch(currentArticle[3], /@subslush\.com/u);
-      const earlierArticle = articlePattern.exec(await earlier.text());
-      assert.ok(earlierArticle);
-      assert.equal(earlierArticle[1], earlierRulesVersion);
-      assert.match(earlierArticle[3], /compliance@subslush\.com/u);
+      assert.doesNotMatch(
+        currentArticle[3],
+        /data-protection representatives/iu,
+      );
+      for (const page of [currentPage, permanentPage]) {
+        assert.doesNotMatch(page, /data-archived-rules-notice/u);
+        assert.doesNotMatch(page, /<meta name="robots" content="noindex"/u);
+      }
+      for (const version of earlierRulesVersions) {
+        const response = await globalThis.fetch(
+          `${origin}/giveaway/rules/${version}`,
+          { redirect: 'manual', signal: globalThis.AbortSignal.timeout(5_000) },
+        );
+        assert.equal(response.status, 200, output);
+        const page = await response.text();
+        const article = articlePattern.exec(page);
+        assert.ok(article);
+        assert.equal(article[1], version);
+        assert.match(article[3], /data-protection representatives/iu);
+        assert.equal(
+          createHash('sha256').update(article[3]).digest('hex'),
+          article[2],
+        );
+        assert.match(page, /data-archived-rules-notice/u);
+        const notice =
+          /<aside\b[^>]*data-archived-rules-notice[^>]*>([\s\S]*?)<\/aside>/u.exec(
+            page,
+          )?.[1];
+        assert.ok(notice);
+        assert.equal(
+          notice
+            .replace(/<[^>]+>/gu, '')
+            .replace(/\s+/gu, ' ')
+            .trim(),
+          'This is an earlier version of our giveaway rules. It has been replaced and is kept here unchanged as a record. Some details in it are no longer accurate. The rules in force are at valstara.com/giveaway/rules.',
+        );
+        assert.match(
+          page,
+          /<a href="\/giveaway\/rules">valstara.com\/giveaway\/rules<\/a>/u,
+        );
+        assert.match(page, /<meta name="robots" content="noindex"/u);
+        assert.match(
+          page,
+          new RegExp(
+            `<link rel="canonical" href="https://valstara.com/giveaway/rules/${version}"`,
+            'u',
+          ),
+        );
+      }
       assert.equal(
         createHash('sha256').update(currentArticle[3], 'utf8').digest('hex'),
         currentArticle[2],

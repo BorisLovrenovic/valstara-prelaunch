@@ -32,6 +32,15 @@ export interface RulesRevision {
   revision: number;
 }
 
+export function compareRulesRevisions(
+  left: Pick<RulesRevision, 'publishedOn' | 'revision'>,
+  right: Pick<RulesRevision, 'publishedOn' | 'revision'>,
+): number {
+  return left.publishedOn === right.publishedOn
+    ? left.revision - right.revision
+    : left.publishedOn.localeCompare(right.publishedOn);
+}
+
 const requiredHeadings = [
   'Who runs this giveaway',
   'Who can enter',
@@ -215,11 +224,7 @@ export function validateRulesCatalog(revisions: RulesRevision[]): {
   if (revisions.length === 0) {
     throw new Error('At least one giveaway rules revision is required.');
   }
-  const ordered = [...revisions].sort((left, right) =>
-    left.publishedOn === right.publishedOn
-      ? left.revision - right.revision
-      : left.publishedOn.localeCompare(right.publishedOn),
-  );
+  const ordered = [...revisions].sort(compareRulesRevisions);
   for (let index = 1; index < ordered.length; index += 1) {
     if (
       ordered[index].publishedOn === ordered[index - 1].publishedOn &&

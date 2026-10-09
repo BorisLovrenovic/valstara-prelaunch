@@ -101,7 +101,9 @@ E7-06 uses a founder-approved repository catalog for each product's retail value
 
 E7-02 publishes the approved P4 text from `src/content/giveaway-rules/VAL-GW-LAUNCH-20260925-r1.md`. Its structured prize data records a conservative conversion assumption of **US$2 per €1**, so the €1,500 pool is checked as US$3,000. The SHA-256 covers the exact rendered rules article served at the revision's permanent URL; the current URL serves the latest revision. Changing published prose without changing the version fails the build.
 
-**Contact revision, founder-authorised 2026-10-01.** `VAL-GW-LAUNCH-20261001-r1` replaces the SubSlush contact addresses with support@valstara.com and is the current revision. `VAL-GW-LAUNCH-20260925-r1` remains unchanged at its permanent URL. Each revision has its own rendered-content SHA-256; the append-only history check guards both after publication.
+**Contact revision, founder-authorised 2026-10-01.** `VAL-GW-LAUNCH-20261001-r1` replaced the SubSlush contact addresses with support@valstara.com and was current until the representative correction below. `VAL-GW-LAUNCH-20260925-r1` remains unchanged at its permanent URL. Each revision has its own rendered-content SHA-256; the append-only history check guards both after publication.
+
+**Representative correction, founder-authorised 2026-10-09.** `VAL-GW-LAUNCH-20261009-r1` is now current. It copies the 2026-10-01 revision with only the false Article 27 representative sentence removed, a new version/date, and a recomputed article hash. Both older revisions remain byte-for-byte unchanged. Their permanent pages carry an archive notice outside the hashed article, remain self-canonical, use `noindex`, and are omitted from the sitemap. The current rules URL and current revision URL show no archive notice.
 
 **Why the prize limits are what they are.** Staying at €449 or less per prize and below US$5,000 in total keeps several foreign regimes from being triggered at all: the Netherlands' gaming-tax line, the New York and Florida registration thresholds, and Austria's duty exemption. They are the zero-cost risk reduction that goes with accepting foreign promotion-law risk.
 

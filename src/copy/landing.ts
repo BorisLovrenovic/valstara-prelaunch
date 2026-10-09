@@ -46,7 +46,7 @@ export const landingCopy = {
       {
         question: 'What do you do with my email?',
         answer:
-          'We store it to send your verification link and launch updates. It reaches our email providers so those messages can be delivered, and nowhere else.',
+          'We store it to run your waitlist place and send your verification link and launch updates. Our email providers process it to deliver those messages. Our privacy notice explains how we use and keep it.',
       },
       {
         question: 'When does Valstara launch?',
