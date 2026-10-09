@@ -92,8 +92,13 @@ function startServer(databaseUrl) {
   return { port, server, exited };
 }
 
-async function waitForServer(port) {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+async function waitForServer(port, server) {
+  for (let attempt = 0; attempt < 1_200; attempt += 1) {
+    if (server.exitCode !== null || server.signalCode !== null) {
+      throw new Error(
+        'Status-link rendered-page server exited before startup.',
+      );
+    }
     try {
       const response = await globalThis.fetch(`http://127.0.0.1:${port}/me`);
       if (response.ok) return;
@@ -214,7 +219,7 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
   const { port, server, exited } = startServer(fixture.databaseUrl);
 
   try {
-    await waitForServer(port);
+    await waitForServer(port, server);
     const confirmation = await globalThis.fetch(
       `http://127.0.0.1:${port}/unsubscribe?t=${encodeURIComponent(unsubscribeToken)}`,
     );

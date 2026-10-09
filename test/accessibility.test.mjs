@@ -153,7 +153,10 @@ async function renderedRoutes() {
 }
 
 async function waitForAppServer() {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 1_200; attempt += 1) {
+    if (server.exitCode !== null || server.signalCode !== null) {
+      throw new Error('Accessibility test server exited before startup.');
+    }
     try {
       const response = await globalThis.fetch(hostOrigin);
       if (response.ok) {
