@@ -127,8 +127,8 @@ test('sitemap routes reconcile with page files and include only the current rule
     eligiblePaths.push(eligiblePath);
     assert.ok(routes.includes(eligiblePath), file);
   }
-  const currentVersion = [...revisions].sort().at(-1);
-  assert.ok(currentVersion);
+  const currentVersion = 'VAL-GW-LAUNCH-20261009-r1';
+  assert.ok(revisions.includes(currentVersion));
   eligiblePaths.push(`/giveaway/rules/${currentVersion}`);
   assert.ok(routes.includes(`/giveaway/rules/${currentVersion}`));
   for (const version of revisions.filter((value) => value !== currentVersion))
@@ -148,6 +148,17 @@ test('sitemap routes reconcile with page files and include only the current rule
   );
   assert.ok(!routes.includes('/me'));
   assert.ok(!routes.includes('/verify'));
+});
+
+test('sitemap excludes r2 when r10 is published on the same day', () => {
+  const r2 = 'VAL-GW-LAUNCH-20261009-r2';
+  const r10 = 'VAL-GW-LAUNCH-20261009-r10';
+  const routes = sitemapPaths(
+    ['src/pages/giveaway/rules/index.astro'],
+    [r10, r2],
+  );
+  assert.ok(routes.includes(`/giveaway/rules/${r10}`));
+  assert.ok(!routes.includes(`/giveaway/rules/${r2}`));
 });
 
 test('robots excludes only the named private and API route prefixes', async () => {
