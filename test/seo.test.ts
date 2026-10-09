@@ -101,7 +101,7 @@ test('the build fixture rejects missing metadata, duplicate metadata and a new u
   }
 });
 
-test('sitemap routes reconcile with page files and expand every published rules revision', async () => {
+test('sitemap routes reconcile with page files and include only the current rules revision', async () => {
   const pageFiles = (
     await readdir(join(root, 'src/pages'), { recursive: true })
   )
@@ -127,10 +127,12 @@ test('sitemap routes reconcile with page files and expand every published rules 
     eligiblePaths.push(eligiblePath);
     assert.ok(routes.includes(eligiblePath), file);
   }
-  for (const version of revisions) {
-    eligiblePaths.push(`/giveaway/rules/${version}`);
-    assert.ok(routes.includes(`/giveaway/rules/${version}`));
-  }
+  const currentVersion = [...revisions].sort().at(-1);
+  assert.ok(currentVersion);
+  eligiblePaths.push(`/giveaway/rules/${currentVersion}`);
+  assert.ok(routes.includes(`/giveaway/rules/${currentVersion}`));
+  for (const version of revisions.filter((value) => value !== currentVersion))
+    assert.ok(!routes.includes(`/giveaway/rules/${version}`));
   const sitemap = await readFile(join(root, 'public/sitemap.xml'), 'utf8');
   const generatedUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/gu)].map(
     (match) => match[1],

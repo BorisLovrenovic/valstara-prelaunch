@@ -1,5 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import { giveawayRulesCopy } from '../copy/giveaway-rules.ts';
+import { currentRules } from '../server/giveaway/rules-catalog.ts';
 import type { RulesRevision } from '../server/giveaway/rules.ts';
 import { jsonLd, rulesPageData, rulesPageMetadata } from '../server/seo.ts';
 
@@ -8,6 +10,7 @@ interface Props {
 }
 
 const { revision } = Astro.props;
+const archived = revision.rulesVersion !== currentRules().rulesVersion;
 const metadata = rulesPageMetadata(
   revision,
   Astro.url.pathname.replace(/\/+$/u, '') === '/giveaway/rules',
@@ -15,12 +18,24 @@ const metadata = rulesPageMetadata(
 ---
 
 <BaseLayout title={metadata.title} description={metadata.description}>
+  {archived && <meta slot="head" name="robots" content="noindex" />}
   <script
     is:inline
     slot="head"
     type="application/ld+json"
     set:html={jsonLd(rulesPageData(revision, Astro.url.pathname))}
   />
+  {
+    archived && (
+      <aside class="rules-content" data-archived-rules-notice>
+        <p>
+          {giveawayRulesCopy.archivedNoticeBeforeLink}
+          <a href="/giveaway/rules">{giveawayRulesCopy.archivedNoticeLink}</a>
+          {giveawayRulesCopy.archivedNoticeAfterLink}
+        </p>
+      </aside>
+    )
+  }
   <article
     class="rules-content"
     data-rules-version={revision.rulesVersion}

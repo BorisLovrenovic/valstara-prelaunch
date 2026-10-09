@@ -20,6 +20,7 @@ test('built pages emit unique metadata, permanent canonicals and valid organisat
   const versions = (await readdir(join(root, 'src/content/giveaway-rules')))
     .filter((file) => file.endsWith('.md'))
     .map((file) => file.slice(0, -3));
+  const currentVersion = [...versions].sort().at(-1);
   const paths = [
     '/',
     '/about',
@@ -115,8 +116,13 @@ test('built pages emit unique metadata, permanent canonicals and valid organisat
     assert.ok(structured.has(`/giveaway/rules/${version}`));
 
   const sitemap = await readFile(join(root, 'dist/client/sitemap.xml'), 'utf8');
-  for (const path of paths)
-    assert.ok(sitemap.includes(`<loc>https://valstara.com${path}</loc>`), path);
+  for (const path of paths) {
+    const listed = sitemap.includes(`<loc>https://valstara.com${path}</loc>`);
+    const archived =
+      path.startsWith('/giveaway/rules/') &&
+      !path.endsWith(`/${currentVersion}`);
+    assert.equal(listed, !archived, path);
+  }
   assert.ok(!sitemap.includes('<loc>https://valstara.com/me</loc>'));
   assert.ok(!sitemap.includes('<loc>https://valstara.com/verify</loc>'));
 });

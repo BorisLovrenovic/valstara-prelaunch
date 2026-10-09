@@ -155,7 +155,7 @@ export function sitemapPaths(
       !route.startsWith('/api/') &&
       !route.includes('['),
   );
-  for (const version of versions)
-    publicRoutes.push(`/giveaway/rules/${version}`);
+  const currentVersion = [...versions].sort().at(-1);
+  if (currentVersion) publicRoutes.push(`/giveaway/rules/${currentVersion}`);
   return [...new Set(publicRoutes)].sort();
 }

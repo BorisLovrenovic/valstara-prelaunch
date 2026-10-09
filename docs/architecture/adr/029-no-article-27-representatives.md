@@ -19,6 +19,8 @@ The founder authorised temporary draft wording for these two pages while reviewe
 
 The privacy notice cannot name a representative. The prior representative claim on `/legit` is removed. The plan, legal feature specification, compliance document, prerequisites and launch checklists must reflect this decision.
 
-The immutable giveaway rules revisions published before this decision still claim that representatives are listed in `/privacy`. They cannot be edited in place; a new revision is needed to correct the current rules page.
+The immutable giveaway rules revisions published before this decision still claim that representatives are listed in `/privacy`. They cannot be edited in place; a new revision was required to correct the current rules page.
+
+**Founder-authorised resolution, 2026-10-09:** `VAL-GW-LAUNCH-20261009-r1` removes only that sentence from the 2026-10-01 text and becomes the current rules revision. The two prior articles and hashes remain unchanged. Their pages carry an approved archival notice outside the hashed article, are self-canonical and `noindex`, and are excluded from the sitemap. The E11-04 claim-truth criterion applies to current pages; historical revisions pass with the notice and valid unchanged hashes.
 
 This is a founder risk decision, not a finding that an exemption applies. The [EU GDPR Article 27](https://eur-lex.europa.eu/eli/reg/2016/679) and the [ICO's UK representative guidance](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/international-transfers/receiving-personal-information-from-the-eea/) remain the applicable external references. The E11-05 privacy audit must record the unresolved legal assessment before campaign launch.

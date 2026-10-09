@@ -1220,6 +1220,8 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Structured-data ownership (founder-authorised 2026-10-03):** E9-06 fulfils this ticket's outstanding "structured data validates" criterion for the current rules page and every published revision. The published rules content and recorded article hashes remain unchanged.
 
+**E11-04 revision (founder-authorised 2026-10-09):** `VAL-GW-LAUNCH-20261009-r1` removes only the now-false Article 27 representative sentence from the 2026-10-01 text. Both earlier revisions remain immutable and reachable. The current URL and entry stamping use the new revision.
+
 **Tests:** Section completeness · the prize-limit build-failure fixture · the placeholder fixture · the "to be announced" rendering and the no-dummy-products scan · revision immutability and hash match · the required-statement checks.
 **Docs:** `docs/legal/compliance.md` · `docs/architecture/adr/026-global-giveaway-hong-kong-law.md` · `docs/features/legal-and-dsr.md` · `docs/ops/launch-cutover.md`
 
@@ -1645,6 +1647,8 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **Tests:** The missing-metadata build fixture · sitemap/route-set reconciliation · structured-data validation covering the Organisation, current rules page and every published revision · every revision's recorded SHA-256 still matches the served article.
 **Docs:** `docs/features/seo.md`
 
+**E11-04 archive treatment (founder-authorised 2026-10-09):** Superseded rules revisions remain self-canonical and reachable, but carry a visible archived notice outside the hashed article, `noindex`, and no sitemap entry. Only the current revision's permanent URL appears in the sitemap.
+
 ### E9-07 — OG images and social cards
 **Model:** GPT-6 Luna — High · **Priority:** Medium · **Flag:** — · **Area:** frontend
 **Why this model:** cosmetic, build-time output with a typed fallback. There is no terminal work, no audit and no new factual claim, so GPT-6 Luna's weaknesses are not exercised (§3).
@@ -1832,6 +1836,8 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 **Build:** Audit every customer-visible claim: **every giveaway claim matches the current global rules page** (ADR-026) · every number shown is the real number · no countdown, no scarcity, no inflated position, no pre-checked box · the guarantee and sourcing statements match the source documents exactly · the data claims describe what actually happens.
 
+**Founder-authorised 2026-10-09:** Publish `VAL-GW-LAUNCH-20261009-r1` by copying the 2026-10-01 revision, deleting only its Article 27 representative sentence, updating `publishedOn` and `rulesVersion`, and recomputing the rendered-article SHA-256. Do not edit either earlier revision. Every superseded revision page shows the approved archived notice outside its hashed article, links to `/giveaway/rules`, is self-canonical, has `noindex`, and is excluded from the sitemap. The “every claim is true” acceptance criterion applies to current pages; a superseded revision passes with the notice and a valid unchanged hash.
+
 **Acceptance criteria:**
 - **Every claim on the site is true and checkable** — enumerated, with its source named
 - **Every giveaway claim reconciles with the current global rules page** — prize and value within the ADR-026 limits, "no purchase necessary", 18+, one prize per person, the odds wording
@@ -1840,6 +1846,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 - No placeholder text remains anywhere
 
 **Tests:** A full-site copy scan; the claim-to-rules reconciliation; a placeholder scan.
+**Additional founder-authorised tests (2026-10-09):** The new revision's hash matches its served article; both older revisions remain unchanged and hash-valid; the notice is present on every superseded revision and absent from the current one; only superseded revisions have `noindex` and sitemap exclusion; the current revision has no representative claim.
 **Docs:** `docs/brand/copy-rules.md` · `docs/architecture/adr/024-no-dark-patterns.md`
 
 ### E11-05 — Privacy audit
