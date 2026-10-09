@@ -362,9 +362,7 @@ function isAllowedThirdParty(host, file, policy) {
     if (entry.host !== host || !new RegExp(entry.pathPattern).test(file.path)) {
       return false;
     }
-    // A flag-gated exception (Trustpilot) is only permitted where its flag is
-    // named in the file; an always-on exception (Turnstile — a core security
-    // control, never flag-gated) declares no requiredFlag and needs no marker.
+    // A future flag-gated exception still requires its flag marker in source.
     return (
       entry.requiredFlag === undefined ||
       file.content.includes(entry.requiredFlag)

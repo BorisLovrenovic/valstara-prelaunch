@@ -63,8 +63,8 @@
     "content": "<script>fetch(`https://example.invalid/fixture`)</script>\\n",
     "diagnostic": "\\[third-party\\]"
   },
-  "unflagged-trustpilot": {
-    "path": "src/components/ci-trustpilot-fixture.astro",
+  "retired-trustpilot-second-host": {
+    "path": "src/components/ci-second-host-fixture.astro",
     "content": "<script src=\"https://widget.trustpilot.com/fixture.js\"></script>\n",
     "diagnostic": "\\[third-party\\]"
   },

@@ -51,10 +51,6 @@ const optionalKeys = [
   'BREVO_TIER',
   'RESEND_DAILY_CAP',
   'BREVO_DAILY_CAP',
-  'TRUSTPILOT_MIN_REVIEWS',
-  'TRUSTPILOT_REVIEW_COUNT',
-  'TRUSTPILOT_BUSINESS_UNIT_ID',
-  'TRUSTPILOT_TEMPLATE_ID',
 ] as const;
 export const p1AlertEnvironmentKeys = [
   'P1_ALERT_WEBHOOK_TOKEN',
@@ -129,7 +125,6 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
         ? null
         : getWeeklySendConfiguration(environment),
     emailQuota: getEmailQuotaConfiguration(environment),
-    trustpilot: getTrustpilotConfiguration(environment),
   };
   return Object.freeze(config);
 }
@@ -639,40 +634,6 @@ function positiveInteger(
     : invalid(key, `must be an integer from 1 to ${maximum}`);
 }
 
-export interface TrustpilotConfiguration {
-  readonly minimumReviews: number;
-  readonly reviewCount: number;
-  readonly businessUnitId: string;
-  readonly templateId: string;
-}
-
-export function getTrustpilotConfiguration(
-  environment: NodeJS.ProcessEnv = process.env,
-): TrustpilotConfiguration {
-  const reviewCount = environment.TRUSTPILOT_REVIEW_COUNT;
-  if (reviewCount !== undefined && !/^(?:0|[1-9]\d*)$/u.test(reviewCount)) {
-    return invalid('TRUSTPILOT_REVIEW_COUNT', 'must be a non-negative integer');
-  }
-  const count = reviewCount === undefined ? 0 : Number(reviewCount);
-  if (!Number.isSafeInteger(count)) {
-    return invalid('TRUSTPILOT_REVIEW_COUNT', 'must be a safe integer');
-  }
-  const id = (
-    key: 'TRUSTPILOT_BUSINESS_UNIT_ID' | 'TRUSTPILOT_TEMPLATE_ID',
-  ): string => {
-    const value = optionalValue(environment, key) ?? '';
-    return value === '' || /^[A-Za-z0-9-]+$/u.test(value)
-      ? value
-      : invalid(key, 'must contain only letters, numbers or hyphens');
-  };
-  return Object.freeze({
-    minimumReviews: positiveInteger(environment, 'TRUSTPILOT_MIN_REVIEWS', 50),
-    reviewCount: count,
-    businessUnitId: id('TRUSTPILOT_BUSINESS_UNIT_ID'),
-    templateId: id('TRUSTPILOT_TEMPLATE_ID'),
-  });
-}
-
 function ipVelocity(environment: NodeJS.ProcessEnv): IpVelocityConfiguration {
   return Object.freeze({
     threshold: positiveInteger(environment, 'IP_VELOCITY_THRESHOLD', 10),
@@ -920,7 +881,6 @@ export interface AppConfig {
     readonly minute: number;
   } | null;
   readonly emailQuota: EmailQuotaConfiguration;
-  readonly trustpilot: TrustpilotConfiguration;
 }
 
 export interface ProviderQuotaConfiguration {

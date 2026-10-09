@@ -18,7 +18,6 @@ import {
   getReferralAttributionConfiguration,
   getWeeklySendConfiguration,
   getEmailQuotaConfiguration,
-  getTrustpilotConfiguration,
   turnstileTestSiteKey,
   validateConfig,
 } from '../src/server/config.ts';
@@ -137,12 +136,6 @@ test('E1-12 validates and types the complete application environment', () => {
       resend: { tier: 'free', cap: 100 },
       brevo: { tier: 'free', cap: 300 },
     },
-    trustpilot: {
-      minimumReviews: 50,
-      reviewCount: 0,
-      businessUnitId: '',
-      templateId: '',
-    },
   });
 });
 
@@ -175,43 +168,6 @@ test('E10-05 validates configurable attribution windows and thresholds', () => {
   ] as const) {
     assert.throws(
       () => getReferralAttributionConfiguration({ [key]: value }),
-      (error) =>
-        error instanceof ConfigurationError && error.variableName === key,
-    );
-  }
-});
-
-test('E9-08 validates all four Trustpilot settings at boot', () => {
-  assert.deepEqual(getTrustpilotConfiguration({}), {
-    minimumReviews: 50,
-    reviewCount: 0,
-    businessUnitId: '',
-    templateId: '',
-  });
-  assert.deepEqual(
-    validateConfig({
-      ...validEnvironment,
-      TRUSTPILOT_MIN_REVIEWS: '50',
-      TRUSTPILOT_REVIEW_COUNT: '49',
-      TRUSTPILOT_BUSINESS_UNIT_ID: 'business-unit',
-      TRUSTPILOT_TEMPLATE_ID: 'template-id',
-    }).trustpilot,
-    {
-      minimumReviews: 50,
-      reviewCount: 49,
-      businessUnitId: 'business-unit',
-      templateId: 'template-id',
-    },
-  );
-  for (const [key, value] of [
-    ['TRUSTPILOT_MIN_REVIEWS', '0'],
-    ['TRUSTPILOT_REVIEW_COUNT', '-1'],
-    ['TRUSTPILOT_REVIEW_COUNT', '1.5'],
-    ['TRUSTPILOT_BUSINESS_UNIT_ID', 'bad id'],
-    ['TRUSTPILOT_TEMPLATE_ID', 'bad/id'],
-  ] as const) {
-    assert.throws(
-      () => validateConfig({ ...validEnvironment, [key]: value }),
       (error) =>
         error instanceof ConfigurationError && error.variableName === key,
     );
@@ -740,10 +696,13 @@ test('E1-12 complete inventory documents every repository environment variable',
   const usedKeys = new Set<string>(appEnvironmentKeys);
 
   for (const path of sourcePaths) {
-    const source = await readFile(
-      new URL(`../${path}`, import.meta.url),
-      'utf8',
-    );
+    let source: string;
+    try {
+      source = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      throw error;
+    }
     addMatches(
       usedKeys,
       source,

@@ -5,12 +5,6 @@
   },
   "thirdPartyRequests": [
     {
-      "host": "widget.trustpilot.com",
-      "pathPattern": "^src/(?:components|islands)/",
-      "requiredFlag": "trustpilot.widget",
-      "reason": "The flagged Trustpilot widget is one of two approved off-origin rendered-page requests; it stays behind its flag."
-    },
-    {
       "host": "challenges.cloudflare.com",
       "pathPattern": "^src/(?:islands/SignupForm|pages/(?:me|verify|dsr|giveaway/award))\\.astro$",
       "reason": "Cloudflare Turnstile bot-defence widget on signup, verification-recovery, member marketing-preference provisional-winner and DSR request forms (ADR-006, E3-05, E6-04, S-01, E7-06, E9-05). The Article 5(3) basis is the verified absence of device storage/access; the site invokes no device-fingerprinting API. Cloudflare processes IP, TLS and user-agent signals server-side as a security processor.",

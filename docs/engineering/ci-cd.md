@@ -29,7 +29,7 @@ Seven scans, each with a **planted red-path fixture committed in-repo** so a sca
 | **Dependency scan** | Any advisory not matched by an allowlist entry carrying a written justification **and a future expiry date** |
 | **Cookie and storage rule** | `document.cookie`, `Set-Cookie`, `localStorage` or `sessionStorage` outside the single permitted theme-preference write |
 | **Fingerprinting rule** | Canvas, font-enumeration, WebGL or timing-entropy APIs anywhere in the codebase |
-| **Third-party request rule** | A network request in a rendered page to any host but the self-hosted collector — the Trustpilot widget is the one allowlisted exception, and only behind its flag |
+| **Third-party request rule** | A network request in a rendered page to any off-origin host except Cloudflare Turnstile on protected forms; the retired Trustpilot host is a planted red path |
 | **Vendor-boundary rule** | An email vendor SDK imported outside its own provider module. Runtime `import()` targets must resolve statically; **an unresolved target fails closed** |
 | **Forbidden-copy scan** | A never-use string in `src/copy/`, `src/content/` or any `.astro` file |
 | **Inline-prose scan** | Customer-visible prose inline in an `src/**/*.astro` component instead of in the copy layer |

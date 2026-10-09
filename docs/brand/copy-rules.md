@@ -56,7 +56,7 @@ A pre-launch page makes fewer claims than a storefront, and each one is load-bea
 - **Numbers** — any count shown (signups, referrals, positions) is the real number from the database. **A rounded or "approximate" figure must be labelled as one.**
 - **The giveaway** — every claim on the site matches the current global rules page (ADR-026). Prize and its value, "no purchase necessary", 18+, one prize per person, the odds wording, the draw date, and the promoter's identity.
 - **Data** — describe what actually happens: what is collected, who it reaches, how long it is kept. **Never "we never share your data"** — it necessarily reaches the email providers.
-- **Trustpilot** — the profile is claimed and linked. **No rating is displayed until the review count justifies it.** A three-review score signals "unproven" more loudly than no score.
+- **Trustpilot** — linked; no widget or rating pre-launch. A three-review score signals "unproven" more loudly than no score.
 - **The guarantee and sourcing** — stated only as the store documentation states them. **This repository does not author guarantee terms**, and a page that paraphrases them is a defect.
 
 ## Failure copy

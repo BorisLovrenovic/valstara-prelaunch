@@ -163,7 +163,7 @@ Pre-launch site on the **root domain**. Build trust and legal pages at their **p
 
 With separate repos, launch is a **host cutover at the DNS/proxy layer** on `valstara.com`, not a deploy. Plan it as a checklist item with the trust-page port completed and verified beforehand.
 
-**Trustpilot:** claim the profile now, link to it, **display no rating** until the review count justifies it — a 3-review TrustScore signals "unproven". Load the widget lazily when it is worth showing.
+**Trustpilot (amended by founder decision 2026-10-10):** claim the profile now and link to it; no widget or rating appears pre-launch. The widget may return with the storefront's consent management platform.
 
 **llms.txt:** ship it, expect nothing. The largest study (~300k domains) found no correlation with citation frequency and Google says it does not use it. One hour of cheap insurance, not a channel.
 

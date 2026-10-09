@@ -22,9 +22,6 @@ const appPassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const emailTokenSecret = 'privacy-test-email-token-secret-32-chars';
 const turnstileHost = 'challenges.cloudflare.com';
-const trustpilotHost = 'widget.trustpilot.com';
-const trustpilotLoader =
-  'https://widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js';
 const protectedPages = new Set([
   '/',
   '/verify',
@@ -244,7 +241,7 @@ async function seedEmailLinkedPages(database) {
   return { ...tokens, awardId };
 }
 
-async function withServer(databaseUrl, reviewCount, ids, run) {
+async function withServer(databaseUrl, run) {
   const port = 49_000 + (process.pid % 1_000);
   const origin = `http://127.0.0.1:${port}`;
   const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
@@ -266,10 +263,6 @@ async function withServer(databaseUrl, reviewCount, ids, run) {
       RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
       RESEND_SENDING_DOMAIN: 'send.valstara.com',
       TURNSTILE_SECRET_KEY: 'privacy-test-turnstile-secret',
-      TRUSTPILOT_MIN_REVIEWS: '50',
-      TRUSTPILOT_REVIEW_COUNT: String(reviewCount),
-      TRUSTPILOT_BUSINESS_UNIT_ID: ids[0],
-      TRUSTPILOT_TEMPLATE_ID: ids[1],
       HOST: '0.0.0.0',
       PORT: String(port),
     },
@@ -294,15 +287,51 @@ async function withServer(databaseUrl, reviewCount, ids, run) {
   }
 }
 
-async function crawl(browser, origin, path, trustpilotExpected) {
+async function crawl(browser, origin, path, executeTurnstile = false) {
   const page = await browser.newPage();
   const requests = [];
+  const turnstileResponses = [];
+  const storageAccess = [];
   try {
+    if (executeTurnstile) {
+      await page.exposeBinding('__reportStorageAccess', (_source, entry) => {
+        storageAccess.push(entry);
+      });
+      await page.addInitScript(() => {
+        for (const method of [
+          'getItem',
+          'setItem',
+          'removeItem',
+          'clear',
+          'key',
+        ]) {
+          const original = globalThis.Storage.prototype[method];
+          globalThis.Storage.prototype[method] = function (...args) {
+            void globalThis.__reportStorageAccess({
+              method,
+              key: args[0] ?? null,
+            });
+            return original.apply(this, args);
+          };
+        }
+      });
+    }
     page.on('request', (request) => requests.push(request.url()));
+    page.on('response', (response) => {
+      if (new URL(response.url()).hostname === turnstileHost)
+        turnstileResponses.push({
+          url: response.url(),
+          status: response.status(),
+        });
+    });
     await page.route('**/*', async (route) => {
       const url = new URL(route.request().url());
       if (url.hostname !== 'valstara.test') {
-        await route.abort();
+        if (executeTurnstile && url.hostname === turnstileHost) {
+          await route.continue();
+        } else {
+          await route.abort();
+        }
         return;
       }
       const response = await globalThis.fetch(
@@ -315,8 +344,27 @@ async function crawl(browser, origin, path, trustpilotExpected) {
       });
     });
     const response = await page.goto(`http://valstara.test${path}`, {
-      waitUntil: 'networkidle',
+      waitUntil: executeTurnstile ? 'domcontentloaded' : 'networkidle',
     });
+    if (executeTurnstile) {
+      await page.waitForTimeout(5_000);
+      assert.deepEqual(
+        storageAccess.filter((entry) => entry.key !== 'valstara-theme'),
+        [],
+        `${path} Turnstile loader accessed browser storage`,
+      );
+      assert.ok(
+        turnstileResponses.some((entry) => {
+          const url = new URL(entry.url);
+          return (
+            entry.status === 200 &&
+            url.hostname === turnstileHost &&
+            url.pathname.endsWith('/api.js')
+          );
+        }),
+        `${path} Turnstile loader must execute successfully`,
+      );
+    }
     assert.ok(response, `${path} has a response`);
     assert.ok(
       response.status() < 500,
@@ -387,7 +435,7 @@ async function crawl(browser, origin, path, trustpilotExpected) {
     );
     for (const host of hosts) {
       assert.ok(
-        [turnstileHost, trustpilotHost].includes(host),
+        host === turnstileHost,
         `${path} requested unapproved host ${host}`,
       );
     }
@@ -401,16 +449,13 @@ async function crawl(browser, origin, path, trustpilotExpected) {
     if (!protectedPages.has(pathname)) {
       assert.ok(!hosts.has(turnstileHost), `${path} loaded Turnstile`);
     }
-    assert.equal(
-      hosts.has(trustpilotHost),
-      trustpilotExpected && pathname === '/legit',
-      `${path} Trustpilot scope`,
-    );
-    assert.equal(
-      html.includes(trustpilotLoader),
-      trustpilotExpected && pathname === '/legit',
-      `${path} Trustpilot markup`,
-    );
+    if (pathname === '/legit') {
+      assert.match(html, /We do not show a Trustpilot star rating/u);
+      assert.match(
+        html,
+        /href="https:\/\/www\.trustpilot\.com\/review\/valstara\.com" rel="noopener"/u,
+      );
+    }
     assert.ok(
       !requests.some(
         (url) => new URL(url).hostname === 'static.cloudflareinsights.com',
@@ -430,18 +475,13 @@ async function crawl(browser, origin, path, trustpilotExpected) {
   }
 }
 
-test('E11-05 allowlist has exactly the two approved hosts', async () => {
+test('E11-05 allowlist has only the Turnstile host', async () => {
   const allowlist = JSON.parse(
     await readFile(`${root}/scripts/ci/privacy-allowlist.json`, 'utf8'),
   );
   assert.deepEqual(
     allowlist.thirdPartyRequests.map((entry) => entry.host).sort(),
-    [turnstileHost, trustpilotHost].sort(),
-  );
-  assert.equal(
-    allowlist.thirdPartyRequests.find((entry) => entry.host === trustpilotHost)
-      .requiredFlag,
-    'trustpilot.widget',
+    [turnstileHost],
   );
   assert.equal(
     allowlist.thirdPartyRequests.find((entry) => entry.host === turnstileHost)
@@ -454,7 +494,7 @@ test('E11-05 allowlist has exactly the two approved hosts', async () => {
 });
 
 test(
-  'E11-05 crawls every rendered route in off, below-threshold and eligible states',
+  'E11-05 crawls every rendered route and executes Turnstile on a protected form',
   { timeout: 240_000 },
   async () => {
     await executeFile('npm', ['run', 'build']);
@@ -478,61 +518,13 @@ test(
           '/dsr?operation=delete&t=invalid',
         ];
         const paths = [...inventory.routes, ...emailLinked, ...errorPages];
-        const setFlag = async (enabled) => {
-          await database.query(
-            `INSERT INTO campaign_flag (key, enabled, updated_by)
-          VALUES ('trustpilot.widget', $1, 'privacy-audit')
-          ON CONFLICT (key) DO UPDATE SET enabled = EXCLUDED.enabled`,
-            [enabled],
-          );
-        };
-        for (const state of [
-          {
-            enabled: false,
-            count: 50,
-            ids: ['business-id', 'template-id'],
-            expected: false,
-          },
-          {
-            enabled: true,
-            count: 49,
-            ids: ['business-id', 'template-id'],
-            expected: false,
-          },
-          {
-            enabled: true,
-            count: 50,
-            ids: ['business-id', ''],
-            expected: false,
-          },
-          {
-            enabled: true,
-            count: 50,
-            ids: ['', 'template-id'],
-            expected: false,
-          },
-          {
-            enabled: true,
-            count: 50,
-            ids: ['business-id', 'template-id'],
-            expected: true,
-          },
-        ]) {
-          await setFlag(state.enabled);
-          await withServer(
-            databaseUrl,
-            state.count,
-            state.ids,
-            async (origin) => {
-              const observations = [];
-              for (const path of paths)
-                observations.push(
-                  await crawl(remote.browser, origin, path, state.expected),
-                );
-              assert.equal(observations.length, paths.length);
-            },
-          );
-        }
+        await withServer(databaseUrl, async (origin) => {
+          const observations = [];
+          for (const path of paths)
+            observations.push(await crawl(remote.browser, origin, path));
+          assert.equal(observations.length, paths.length);
+          await crawl(remote.browser, origin, '/', true);
+        });
       });
     } finally {
       await remote.browser.close();

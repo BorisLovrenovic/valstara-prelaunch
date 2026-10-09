@@ -6,7 +6,6 @@ export const campaignFlagRegistry = Object.freeze({
   'survey.enabled': true,
   'member.dashboard': true,
   'email.broadcast': false,
-  'trustpilot.widget': false,
 } as const);
 
 export type FlagKey = keyof typeof campaignFlagRegistry;

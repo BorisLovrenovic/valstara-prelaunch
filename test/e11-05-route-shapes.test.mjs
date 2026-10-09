@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { parse as parseAstro } from '@astrojs/compiler';
 import ts from 'typescript';
 import { adminRouteRegistry } from '../src/server/admin-auth/route-registry.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const apiRoot = `${root}/src/pages/api`;
+const pagesRoot = `${root}/src/pages`;
 const responseFields = new Set([
   'error',
   'code',
@@ -61,8 +63,59 @@ function objectFields(object) {
   return fields;
 }
 
+const personalValue =
+  /\b(?:clientAddress|rawEmail|email|emailNormalised|ipAddress|subscriber)\b|\.(?:email|email_normalised|ip|token_hash)\b/u;
+
+function responseTaints(source) {
+  const declarations = [];
+  const visit = (node) => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer
+    )
+      declarations.push([node.name.text, node.initializer.getText(source)]);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  const tainted = new Set();
+  let changed;
+  do {
+    changed = false;
+    for (const [name, expression] of declarations) {
+      if (tainted.has(name)) continue;
+      if (
+        personalValue.test(expression) ||
+        [...tainted].some((alias) =>
+          new RegExp(`(?<!\\.)\\b${alias}\\b`, 'u').test(expression),
+        )
+      ) {
+        tainted.add(name);
+        changed = true;
+      }
+    }
+  } while (changed);
+  return tainted;
+}
+
+function assertSafeValue(value, source, path, tainted) {
+  const text = value.getText(source);
+  assert.doesNotMatch(
+    text,
+    personalValue,
+    `${path} serializes a personal response value: ${text}`,
+  );
+  for (const alias of tainted)
+    assert.doesNotMatch(
+      text,
+      new RegExp(`(?<!\\.)\\b${alias}\\b`, 'u'),
+      `${path} serializes a personal response value via ${alias}`,
+    );
+}
+
 function responseObjectFields(source, path) {
   const bodies = [];
+  const tainted = responseTaints(source);
   let wrapperSerializations = 0;
   const visit = (node) => {
     if (
@@ -87,11 +140,23 @@ function responseObjectFields(source, path) {
           `${path} has a dynamic JSON response body`,
         );
         bodies.push(objectFields(body));
+        for (const property of body.properties) {
+          if (ts.isPropertyAssignment(property))
+            assertSafeValue(property.initializer, source, path, tainted);
+          if (ts.isShorthandPropertyAssignment(property))
+            assertSafeValue(property.name, source, path, tainted);
+        }
       }
       if (expression === 'Response.json' || expression === 'JSON.stringify') {
         const body = node.arguments[0];
         if (body && ts.isObjectLiteralExpression(body)) {
           bodies.push(objectFields(body));
+          for (const property of body.properties) {
+            if (ts.isPropertyAssignment(property))
+              assertSafeValue(property.initializer, source, path, tainted);
+            if (ts.isShorthandPropertyAssignment(property))
+              assertSafeValue(property.name, source, path, tainted);
+          }
         } else {
           assert.ok(
             expression === 'JSON.stringify' &&
@@ -113,6 +178,52 @@ function responseObjectFields(source, path) {
     `${path} must have only its inspected JSON wrapper`,
   );
   return bodies;
+}
+
+async function astroResponseShape(path) {
+  const text = await readFile(`${pagesRoot}/${path}`, 'utf8');
+  const { ast } = await parseAstro(text);
+  const frontmatter = ast.children.find((node) => node.type === 'frontmatter');
+  assert.ok(frontmatter, `${path} has no inspectable frontmatter`);
+  const source = ts.createSourceFile(
+    path,
+    frontmatter.value,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const methods = ['GET'];
+  if (/Astro\.request\.method\s*===\s*['"]POST['"]/u.test(frontmatter.value))
+    methods.push('POST');
+  const personalAliases = new Set(['clientAddress', ...responseTaints(source)]);
+  const rendered = [];
+  const visitMarkup = (node) => {
+    if (node.type === 'expression')
+      rendered.push(node.children.map((child) => child.value ?? '').join(''));
+    for (const attribute of node.attributes ?? []) {
+      if (attribute.kind === 'expression' || attribute.kind === 'spread')
+        rendered.push(attribute.value);
+    }
+    for (const child of node.children ?? []) visitMarkup(child);
+  };
+  for (const child of ast.children) {
+    if (child !== frontmatter) visitMarkup(child);
+  }
+  for (const expression of rendered) {
+    if (!(path === 'dsr.astro' && expression.trim() === 'dsrCopy.email'))
+      assert.doesNotMatch(
+        expression,
+        personalValue,
+        `${path} renders a personal response value`,
+      );
+    for (const alias of personalAliases) {
+      assert.doesNotMatch(
+        expression,
+        new RegExp(`(?<!\\.)\\b${alias}\\b`, 'u'),
+        `${path} renders a personal value via ${alias}`,
+      );
+    }
+  }
+  return methods;
 }
 
 test('E11-05 generates the registered API inventory and rejects personal fields in public response shapes', async () => {
@@ -170,6 +281,12 @@ test('E11-05 generates the registered API inventory and rejects personal fields 
       }
     }
   }
+  const astroFiles = (await readdir(pagesRoot, { recursive: true }))
+    .filter((path) => path.endsWith('.astro'))
+    .sort();
+  for (const path of astroFiles) {
+    inventory.push({ path, methods: await astroResponseShape(path) });
+  }
   const dsrHandler = await readFile(`${root}/src/server/dsr/http.ts`, 'utf8');
   assert.match(
     dsrHandler,
@@ -181,7 +298,16 @@ test('E11-05 generates the registered API inventory and rejects personal fields 
     /exportSubject\(/u,
     'DSR export must use subject-scoped projection',
   );
-  assert.equal(inventory.length, files.length);
+  assert.equal(inventory.length, files.length + astroFiles.length);
+  assert.deepEqual(
+    inventory
+      .filter(
+        (entry) =>
+          entry.path.endsWith('.astro') && entry.methods.includes('POST'),
+      )
+      .map((entry) => entry.path),
+    ['giveaway/award.astro', 'me.astro', 'unsubscribe.astro', 'verify.astro'],
+  );
 });
 
 test('E11-05 response-shape guard fails on personal, dynamic and raw response bodies', () => {
@@ -212,5 +338,23 @@ test('E11-05 response-shape guard fails on personal, dynamic and raw response bo
         'signup.ts',
       ),
     /uninspected raw response body/u,
+  );
+  assert.throws(
+    () =>
+      responseObjectFields(
+        source('jsonResponse(200, { message: clientAddress });'),
+        'signup.ts',
+      ),
+    /personal response value/u,
+  );
+  assert.throws(
+    () =>
+      responseObjectFields(
+        source(
+          'const leaked = clientAddress; jsonResponse(200, { message: leaked });',
+        ),
+        'signup.ts',
+      ),
+    /personal response value/u,
   );
 });

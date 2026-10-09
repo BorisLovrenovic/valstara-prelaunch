@@ -86,7 +86,6 @@ Everything else announces itself. These two look exactly like ordinary underperf
 | Box OOM-kills the container | Restart, memory metric | Compose restarts it. **Recurrence is a capacity signal, not a restart loop to tolerate** | Brief unavailability | **P1** on recurrence |
 | Cloudflare proxy or DNS down | Uptime probe | Nothing to fall back to | Site unreachable | **P1** |
 | Umami unavailable | Ingest errors | **Analytics is lost; nothing else is.** No page ever blocks on an analytics call | Nothing | P3 |
-| Trustpilot widget fails | Script error | **Page renders without it.** Content never blocks on a third-party script | Missing widget | P3 |
 | Backup fails, or a restore drill fails | Job result, monthly drill | Investigate immediately. **A backup that has never been restored is a hypothesis** | Nothing | **P1** |
 | Deploy health check fails | Deploy gate | Roll out aborts; the previous image keeps serving | Nothing | **P2** |
 | **Token file drifts from the storefront's** | Comparison at each port checkpoint | **Reconcile in this repository first**, then re-port. The token file is canonical during pre-launch | Nothing yet — the cost lands at store launch | P2 |

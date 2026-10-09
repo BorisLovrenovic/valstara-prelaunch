@@ -17,11 +17,10 @@ Flags exist for one reason: **so a mechanic can be switched off during an incide
 | `survey.enabled` | on | `survey.md` | Off skips the two questions on the verification success page |
 | `member.dashboard` | on | `member-status.md` | Off falls back to the status summary in email only — this is cut-list item 3 |
 | `email.broadcast` | **off** | `email-campaign.md` | **Off until domain authentication is verified end to end.** Transactional mail is unaffected |
-| `trustpilot.widget` | **off** | `seo.md` | Stays off until the review count justifies displaying a rating |
 
-**Three flags default off.** `trustpilot.widget` is off because a rating below the display threshold is worse than none (ADR-024) — that is a brand decision, and it is turned on by judgement rather than by a gate.
+**Two flags default off.** The founder retired the pre-launch `trustpilot.widget` flag on 2026-10-10; it is no longer a registered feature.
 
-**Two of the three are hard gates**, and this is the distinction that matters: `giveaway.open` and `email.broadcast` each depend on something **outside the code** — published rules pages for one, verified DNS authentication and an upgraded ESP tier for the other. ADR-029 removed the representative prerequisite. Neither may be turned on until its remaining prerequisite is complete, and E8-09 enforces the ESP one in code.
+**Both are hard gates:** `giveaway.open` and `email.broadcast` each depend on something **outside the code** — published rules pages for one, verified DNS authentication and an upgraded ESP tier for the other. ADR-029 removed the representative prerequisite. Neither may be turned on until its remaining prerequisite is complete, and E8-09 enforces the ESP one in code.
 
 ## Not flagged, deliberately
 
@@ -34,7 +33,7 @@ Flags exist for one reason: **so a mechanic can be switched off during an incide
 These apply to **every** feature and are not restated per spec:
 
 - **No non-essential cookie, and no browser-storage value used to identify a visitor.** The theme preference is the single permitted storage write, and it is functional.
-- **No third-party script loads on any page** except two sanctioned hosts: the deliberately-flagged Trustpilot widget, lazily and only when it is worth showing, and the always-on Cloudflare Turnstile loader on protected forms (ADR-006, founder-authorised 2026-09-08). Turnstile's Article 5(3) basis is the verified absence of device storage/access. The site runs no device-fingerprinting API; Cloudflare processes IP/TLS/UA server-side as security processor.
+- **No third-party script loads on any page** except Cloudflare Turnstile on protected forms (ADR-006, founder-authorised 2026-09-08). Turnstile's Article 5(3) basis is the verified absence of device storage/access. The site runs no device-fingerprinting API; Cloudflare processes IP/TLS/UA server-side as security processor.
 - **No unverified subscriber is counted, ranked, rewarded, or broadcast to.**
 - **Referral attribution is server-side and signed** — never read from a cookie or from client JavaScript.
 - **Fraud signals flag; humans decide.** No code path sets `disqualified` without a recorded human action.

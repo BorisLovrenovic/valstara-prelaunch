@@ -1,20 +1,11 @@
 ---
 import { getEntry, render } from 'astro:content';
-import TrustpilotWidget from '../components/trustpilot/widget.astro';
 import TrustPage from '../layouts/trust-page.astro';
-import { getConfig } from '../server/config.ts';
-import { getFlagService } from '../server/flags/app-service.ts';
 
 export const prerender = false;
 
-const trustpilot = getConfig().trustpilot;
-const widgetEnabled =
-  (await getFlagService().isEnabled('trustpilot.widget')) &&
-  trustpilot.businessUnitId !== '' &&
-  trustpilot.templateId !== '' &&
-  trustpilot.reviewCount >= trustpilot.minimumReviews;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
-const entry = await getEntry('trust', widgetEnabled ? 'legit-widget' : 'legit');
+const entry = await getEntry('trust', 'legit');
 if (!entry || entry.data.portTarget !== '/legit') {
   throw new Error('Missing or misrouted /legit content.');
 }
@@ -23,12 +14,4 @@ const { Content } = await render(entry);
 
 <TrustPage title={entry.data.title} description={entry.data.description}>
   <Content />
-  {
-    widgetEnabled ? (
-      <TrustpilotWidget
-        businessUnitId={trustpilot.businessUnitId}
-        templateId={trustpilot.templateId}
-      />
-    ) : null
-  }
 </TrustPage>
