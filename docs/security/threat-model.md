@@ -36,6 +36,8 @@ The site operates with no banner because Article 5(3) device storage/access is a
 
 **Controls:** three CI gates — the cookie/storage rule, the fingerprinting rule and the third-party request rule — each with a planted fixture. Referral attribution is server-side and signed. Analytics is cookieless and its event registry is asserted free of personal data. **A new dependency that reaches the browser requires an explicit note in the PR describing what it loads.**
 
+**E11-05 local audit, 2026-10-09:** The [complete rendered-page and route inventory](../testing/e11-05-privacy-audit.md) covered the two approved hosts in five Trustpilot states, confirmed the same-origin Umami emitter, and found no `static.cloudflareinsights.com` request. The allowlist test fails if a third host is added. Production Cloudflare injection remains a separate E12-05 check; no host is pre-approved for it.
+
 ---
 
 ## T5 — Bots inflate the list

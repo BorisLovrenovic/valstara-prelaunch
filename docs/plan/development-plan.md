@@ -1853,10 +1853,13 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **Model:** GPT-6 Astra — **Extra High** · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this model:** the no-banner position rests on a property that must hold across every page and every dependency, and a single violation invalidates it retroactively — after data has already been collected.
 
-**Build:** Exhaustively verify, across **every rendered page** including email-linked pages and error pages: **no non-essential cookie, no storage identifier beyond the one, no third-party request, no fingerprinting API, no personal data in any analytics event, no full IP anywhere, and no public response carrying another person's data.** Enumerate every registered route and assert its response shape.
+**Founder-authorised clarification, 2026-10-09:** The off-origin criterion below recognises only the two exceptions already approved in ADR-006 and ADR-007. The audit lists their scope and basis, asserts that the allowlist has exactly those two hosts, and checks every rendered route. The Umami page-view emitter is same-origin; `static.cloudflareinsights.com` is not an exception and its presence is a blocking finding.
+
+**Build:** Exhaustively verify, across **every rendered page** including email-linked pages and error pages: **no non-essential cookie, no storage identifier beyond the one, no off-origin request beyond the two approved hosts below, no fingerprinting API, no personal data in any analytics event, no full IP anywhere, and no public response carrying another person's data.** Enumerate every registered route and assert its response shape.
 
 **Acceptance criteria:**
 - **Every rendered page checked** — the inventory is complete, not sampled
+- **No rendered page makes an off-origin request except the two approved hosts (ADR-006, ADR-007):** Cloudflare Turnstile (`challenges.cloudflare.com`) on Turnstile-protected forms only; Trustpilot on `/legit` only, and only when `trustpilot.widget` is on, both TrustBox IDs are set and the review threshold is met
 - **Every registered route's response shape enumerated and asserted free of another person's data**, with `/me` the single documented exception for its own bearer
 - **The storage inventory holds exactly one entry** and reconciles with the gate allowlist
 - **No full IP address appears in any table, log line, alert or response** — verified by inspection, not by assertion

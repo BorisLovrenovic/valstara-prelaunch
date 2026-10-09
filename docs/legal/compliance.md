@@ -33,7 +33,7 @@ The founder decided on 2026-10-01 that Valstara will not appoint EU or UK Articl
 
 **The double opt-in proves ownership of the address in every case, and confirms marketing consent where it was given.** A ticked signup stores the wording version in `marketing_opt_in_pending_version` until verification; a later ticked submission while pending replaces that version. Verification copies it into the consent record and clears the pending fields in the same audited transaction. Every later withdrawal or re-grant is audited. That is what makes consent demonstrable rather than asserted.
 
-**To confirm in the privacy audit (E11-05):** that the single launch-access notification is a message the person requested by joining the waitlist, not marketing.
+**E11-05 privacy audit confirmation (2026-10-09):** the single factual launch-access notification is the fulfilment message a person requests by joining the waitlist, under the contract basis above. It must remain administrative and non-promotional; [ICO guidance](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/direct-marketing-guidance/identify-direct-marketing/) says a promotional element makes a service message direct marketing. Weekly updates, product news and additional promotional messages require current marketing consent. The [audit record](../testing/e11-05-privacy-audit.md) traces the promise, consent split and dispatch checks; it does not authorise a series of launch promotions to non-consenting members. The final message has not been written by this ticket.
 
 **Withdrawal is one click** and is as easy as giving it. Every marketing mail carries an RFC 8058 one-click unsubscribe that withdraws marketing consent, and `/me` has a marketing on/off control. **Withdrawing marketing consent never removes a person from the waitlist or the giveaway.** Leaving the waitlist entirely is a separate, explicit action that suppresses all mail.
 
@@ -69,6 +69,8 @@ Article 5(3) applies to **storing information on, or accessing information alrea
 **This is not a shortcut.** GA4 requires opt-in consent in Germany with no analytics exemption at all, and CNIL's French exemption is narrow and conditional. A banner on a page targeting 20–35% signup costs conversion directly **and corrupts the measurement it was added for**, since consented analytics only ever sees a self-selected subset. **Cookieless gives better numbers here, not worse.** GA4 and a CMP return at store launch, when ads and ecommerce attribution justify the cost.
 
 **The three CI gates in `docs/security/threat-model.md#ci-security-gates` are what keep this true.** Without them it is an intention.
+
+The [E11-05 local audit](../testing/e11-05-privacy-audit.md) crawled every rendered route, including emailed-link and error states, under the Trustpilot flag and threshold cases. It found only the two approved off-origin hosts, no cookie or storage write on page load, and no `static.cloudflareinsights.com` auto-injection locally. The production response must be checked again at E12-05. The legal sign-off requirement below is unchanged.
 
 ### Cloudflare Turnstile processor disclosure
 
