@@ -322,6 +322,12 @@ async function crawl(browser, origin, path, storageMutation) {
         local: globalThis.localStorage,
         session: globalThis.sessionStorage,
       };
+      Object.defineProperty(globalThis, '__readStorageInventory', {
+        value: () => ({
+          local: Object.keys(storageAreas.local),
+          session: Object.keys(storageAreas.session),
+        }),
+      });
       const cookie = Object.getOwnPropertyDescriptor(
         globalThis.Document.prototype,
         'cookie',
@@ -369,6 +375,15 @@ async function crawl(browser, origin, path, storageMutation) {
       ]) {
         const storage = storageAreas[area];
         const proxy = new Proxy(storage, {
+          ownKeys(target) {
+            void globalThis.__reportStorageAccess({
+              method: 'keys.enumerate',
+              key: null,
+              area,
+              origin: globalThis.location.origin,
+            });
+            return Reflect.ownKeys(target);
+          },
           get(target, property) {
             if (
               property === 'length' ||
@@ -547,10 +562,9 @@ async function crawl(browser, origin, path, storageMutation) {
         `${path} must render the provisional winner's own check form`,
       );
     }
-    const storage = await page.evaluate(() => ({
-      local: Object.keys(globalThis.localStorage),
-      session: Object.keys(globalThis.sessionStorage),
-    }));
+    const storage = await page.evaluate(() =>
+      globalThis.__readStorageInventory(),
+    );
     assert.deepEqual(
       storage.local,
       [],
@@ -727,6 +741,13 @@ test(
             }),
             /accessed unlisted browser storage or cookies/u,
             'direct storage key read must fail the page inventory',
+          );
+          await assert.rejects(
+            crawl(remote.browser, origin, '/privacy', () => {
+              Object.keys(globalThis.localStorage);
+            }),
+            /accessed unlisted browser storage or cookies/u,
+            'storage key enumeration must fail the page inventory',
           );
           const observations = [];
           for (const path of paths)
