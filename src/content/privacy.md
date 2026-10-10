@@ -34,13 +34,14 @@ Our email providers process message data to deliver mail. Cloudflare processes c
 
 ## Cookie and storage inventory
 
-This site has one browser-storage entry:
+This site has two browser-storage entries and sets no cookies:
 
-| Name             | Kind          | Purpose                                   |
-| ---------------- | ------------- | ----------------------------------------- |
-| `valstara-theme` | Local storage | Remembers your light or dark theme choice |
+| Name             | Kind                     | Purpose                                            |
+| ---------------- | ------------------------ | -------------------------------------------------- |
+| `valstara-theme` | Local storage            | Remembers your light or dark theme choice          |
+| `cf.turnstile.u` | Cloudflare local storage | Helps secure a form when its Turnstile widget runs |
 
-The theme choice is functional and does not identify you. The site sets no tracking cookie. It uses no advertising tracker. The signup form uses Cloudflare Turnstile to prevent abuse; our site does not add a browser-storage identifier for that purpose. This is why the site has no cookie banner.
+The theme choice is functional and does not identify you. Cloudflare Turnstile reads and writes `cf.turnstile.u` only when a protected form's widget runs; it is used to protect the form you submit from abuse. We rely on the Article 5(3) strictly-necessary exemption for that form-security use. The site sets no tracking cookie and uses no advertising tracker. This is why the site has no cookie banner.
 
 The [full cookie and storage inventory](/privacy/storage) explains the no-banner basis and the checks that keep it true.
 

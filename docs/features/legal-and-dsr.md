@@ -7,7 +7,7 @@
 None.
 
 ## User flows
-1. **Privacy policy** — what is collected, why, the lawful basis, retention periods, and how to exercise rights. It states the ADR-027 split plainly: joining and entering run on contract, marketing on separate optional consent, and withdrawing marketing never affects the waitlist or entries. It also says that only a country of residence is collected from provisional winners, at award time; no postal address is collected (ADR-026). E9-03 embeds the one-entry storage inventory in this page; E9-04 publishes the same inventory and no-banner reasoning at `/privacy/storage`, linked from the policy.
+1. **Privacy policy** — what is collected, why, the lawful basis, retention periods, and how to exercise rights. It states the ADR-027 split plainly: joining and entering run on contract, marketing on separate optional consent, and withdrawing marketing never affects the waitlist or entries. It also says that only a country of residence is collected from provisional winners, at award time; no postal address is collected (ADR-026). E9-03 embeds the two-entry browser-storage inventory in this page: Valstara's theme preference and Cloudflare Turnstile's protected-form `cf.turnstile.u` value (founder-authorised 2026-10-10). E9-04 publishes the same inventory and no-banner reasoning at `/privacy/storage`, linked from the policy. Valstara's source-code gate still permits only the theme write.
 2. **Terms** — site terms for a pre-launch waitlist. Distinct from the store's terms, which are the storefront's.
 3. **Giveaway rules** — **one global page under Hong Kong law** at `/giveaway/rules` (ADR-026), carrying every section listed in `docs/legal/compliance.md#4`, including the disqualification rule and the promoter's identity.
 

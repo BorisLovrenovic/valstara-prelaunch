@@ -7,9 +7,15 @@
     {
       "host": "challenges.cloudflare.com",
       "pathPattern": "^src/(?:islands/SignupForm|pages/(?:me|verify|dsr|giveaway/award))\\.astro$",
-      "reason": "Cloudflare Turnstile bot-defence widget on signup, verification-recovery, member marketing-preference provisional-winner and DSR request forms (ADR-006, E3-05, E6-04, S-01, E7-06, E9-05). The Article 5(3) basis is the verified absence of device storage/access; the site invokes no device-fingerprinting API. Cloudflare processes IP, TLS and user-agent signals server-side as a security processor.",
+      "reason": "Cloudflare Turnstile bot-defence widget on signup, verification-recovery, member marketing-preference provisional-winner and DSR request forms (ADR-006, E3-05, E6-04, S-01, E7-06, E9-05). The Article 5(3) basis for Cloudflare's cf.turnstile.u storage access is the strictly-necessary exemption for security of the form the visitor submits, subject to legal sign-off; the site invokes no device-fingerprinting API. Cloudflare processes IP, TLS and user-agent signals server-side as a security processor.",
       "disclosureContract": {
-        "article5_3Basis": "no-device-storage-or-access",
+        "article5_3Basis": "strictly-necessary-form-security",
+        "processorStorage": {
+          "origin": "https://challenges.cloudflare.com",
+          "key": "cf.turnstile.u",
+          "area": "local",
+          "scope": "active-protected-form"
+        },
         "siteDeviceFingerprintingApi": false,
         "processorServerSideSignals": ["IP", "TLS", "user-agent"],
         "processorRole": "security-processor",

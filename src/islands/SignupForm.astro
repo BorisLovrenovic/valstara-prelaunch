@@ -123,7 +123,8 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   /*
   Cloudflare Turnstile's client widget. This is the sole sanctioned off-origin
   rendered-page request: the
-  Article 5(3) basis is the probe-confirmed absence of device storage/access;
+  Article 5(3) basis for Cloudflare's cf.turnstile.u access is the strictly
+  necessary form-security exemption, pending legal sign-off;
   Cloudflare's IP/TLS/UA security processing is disclosed separately. It is
   allowlisted in the third-party gate for
   this exact file (Option A, founder-authorised 2026-09-08; ADR-006, ADR-007,
@@ -152,7 +153,6 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       options: Record<string, unknown>,
     ): string | undefined;
     reset(widgetId?: string): void;
-    ready(callback: () => void): void;
   }
 
   declare global {
@@ -230,26 +230,24 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       const tryRender = (): void => {
         const turnstile = window.turnstile;
         if (turnstile !== undefined) {
-          turnstile.ready(() => {
-            this.#widgetId = turnstile.render(container, {
-              sitekey,
-              appearance: 'interaction-only',
-              callback: (token: string) => {
-                if (token !== '' && this.#tokenInput !== null) {
-                  this.#tokenInput.value = token;
-                  this.#resolveChallenge?.(token);
-                  this.#resolveChallenge = null;
-                  this.#rejectChallenge = null;
-                }
-              },
-              'expired-callback': () => {
-                this.#failChallenge();
-              },
-              'error-callback': () => {
-                this.#failChallenge();
-                return true;
-              },
-            });
+          this.#widgetId = turnstile.render(container, {
+            sitekey,
+            appearance: 'interaction-only',
+            callback: (token: string) => {
+              if (token !== '' && this.#tokenInput !== null) {
+                this.#tokenInput.value = token;
+                this.#resolveChallenge?.(token);
+                this.#resolveChallenge = null;
+                this.#rejectChallenge = null;
+              }
+            },
+            'expired-callback': () => {
+              this.#failChallenge();
+            },
+            'error-callback': () => {
+              this.#failChallenge();
+              return true;
+            },
           });
           return;
         }

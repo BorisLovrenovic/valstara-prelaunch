@@ -655,14 +655,14 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Build:** The form island: inline validation, submission states, error rendering from the closed code set, the signed ref carried as a hidden field, and Turnstile mounted invisibly. Submission requires JavaScript because Turnstile has no no-JS token path; the server-rendered form remains visible and its `<noscript>` notice tells visitors to enable JavaScript.
 
-**Turnstile client mount and the no-third-party-request property — founder-authorised 2026-09-08 (Option A), reconciled 2026-10-10.** Mounting Turnstile client-side loads `challenges.cloudflare.com/turnstile/v0/api.js`, an off-origin request that the standing "no third-party request from a rendered page" rule and `docs/legal/compliance.md#3` otherwise forbid. The Article 5(3) no-banner basis is the probe-confirmed absence of device storage/access. The site runs no device-fingerprinting API; Cloudflare processes IP, TLS and user-agent signals server-side as a security processor. This ticket — the first to put Turnstile in the browser — owns the reconciliation under standing rule 19: the third-party-request gate permits the **always-on** (no flag) `challenges.cloudflare.com` entry scoped to protected forms, adds the public `TURNSTILE_SITE_KEY` config (a temporary placeholder until the real Cloudflare key is provisioned; E12-05 swaps it in with the production secret), and updates ADR-006, ADR-007, `docs/legal/compliance.md#3` and the threat model. The signed ref field itself remains E4-02's to render; the island only carries it through unchanged.
+**Turnstile client mount and the no-third-party-request property — founder-authorised 2026-09-08 (Option A), reconciled 2026-10-10.** Mounting Turnstile client-side loads `challenges.cloudflare.com/turnstile/v0/api.js`, an off-origin request that the standing "no third-party request from a rendered page" rule and `docs/legal/compliance.md#3` otherwise forbid. Cloudflare's widget reads and writes `cf.turnstile.u` only when a protected form runs; the Article 5(3) no-banner basis is the strictly-necessary exemption for security of the form the visitor submits (founder-authorised 2026-10-10, subject to legal sign-off). The site runs no device-fingerprinting API; Cloudflare processes IP, TLS and user-agent signals server-side as a security processor. This ticket — the first to put Turnstile in the browser — owns the reconciliation under standing rule 19: the third-party-request gate permits the **always-on** (no flag) `challenges.cloudflare.com` entry scoped to protected forms, adds the public `TURNSTILE_SITE_KEY` config (a temporary placeholder until the real Cloudflare key is provisioned; E12-05 swaps it in with the production secret), and updates ADR-006, ADR-007, `docs/legal/compliance.md#3` and the threat model. The signed ref field itself remains E4-02's to render; the island only carries it through unchanged.
 
 **Acceptance criteria:**
 - With JavaScript disabled the form still renders, explains that JavaScript is required, and a native submission is rejected for its missing/empty Turnstile token
 - Inline validation never blocks a submission the server would accept
 - Errors render from the copy layer with the field association assistive technology needs
 - The signed ref is carried through unchanged; **the island never reads or writes the ref itself**
-- **No cookie and no storage write occurs** in the flow
+- **No cookie and no Valstara source-code storage write occurs** in the flow; Cloudflare's protected-form widget may read and write the published `cf.turnstile.u` entry under the E11-05 amendment
 - Submission is disabled during flight; a double-click cannot double-submit
 
 **Tests:** Real-route no-JS missing/empty-token rejection · delayed Turnstile resolution in the submitted body · error rendering per code · expiry/error retry · double-click prevention · the storage-gate check over the rendered page.
@@ -1584,7 +1584,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 - The signup route has no representative-dependent gate
 - Every collected field, its purpose, its lawful basis and its retention period appears in the policy — **reconciled against `docs/data/model.md` by a test**
 - **The policy states the ADR-027 split plainly:** joining and entering run on contract, marketing runs on separate optional consent, and withdrawing marketing never affects the waitlist place or entries. It also names the winner-only collection of country of residence, with no postal address (ADR-026)
-- The cookie and storage inventory is published and lists **exactly one** entry
+- The cookie and storage inventory is published and lists **exactly two** entries: the first-party theme preference and Cloudflare Turnstile's form-security value (founder-authorised 2026-10-10)
 - Pages are at their permanent URLs
 
 **Tests:** The no-representative-claim assertion · the signup route's independence from representative fields · the data-model reconciliation · the inventory count.
@@ -1593,15 +1593,15 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 ### E9-04 — The cookie and storage inventory
 **Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
-**Build:** A published inventory page listing every cookie and storage value — **which is exactly one, the theme preference** — with the reasoning for why no banner is required, and the CI gates that keep it true.
+**Build:** A published inventory page listing every cookie and storage value — **exactly two: the first-party theme preference and Cloudflare Turnstile's `cf.turnstile.u` on protected forms** — with the reasoning for why no banner is required, and the CI gates that keep it true (founder-authorised 2026-10-10). Valstara's source code still makes exactly one permitted storage write, the theme preference; Cloudflare's script makes the second.
 
 **Acceptance criteria:**
-- **The inventory lists exactly one entry**, and a test reconciles it against the storage-gate allowlist
+- **The inventory lists exactly two entries**, and a test reconciles the first-party entry against the unchanged source-code storage-gate allowlist and the Cloudflare entry against the rendered-page probe
 - The no-banner reasoning is stated plainly and is checkable
 - **Adding a second storage write fails both the gate and this reconciliation** — a fixture proves it
 - Linked from the privacy policy
 
-**Tests:** The one-entry reconciliation; the planted second-write fixture.
+**Tests:** The two-entry reconciliation; the planted second source-write fixture.
 **Docs:** `docs/legal/compliance.md#3-eprivacy--why-there-is-no-banner`
 
 ### E9-05 — Data-subject rights
@@ -1855,13 +1855,13 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 **Founder-authorised clarification, 2026-10-09; amended 2026-10-10:** The off-origin criterion now recognises only Cloudflare Turnstile on protected forms. Executing the formerly approved Trustpilot loader revealed an unapproved follow-on host, so the founder removed the pre-launch widget and its exception. The audit asserts that the allowlist has exactly one host and checks every rendered route. The Umami page-view emitter is same-origin; `static.cloudflareinsights.com` is not an exception and its presence is a blocking finding.
 
-**Build:** Exhaustively verify, across **every rendered page** including email-linked pages and error pages: **no non-essential cookie, no storage identifier beyond the one, no off-origin request beyond the one approved host below, no fingerprinting API, no personal data in any analytics event, no full IP anywhere, and no public response carrying another person's data.** Enumerate every registered route and assert its response shape.
+**Build:** Exhaustively verify, across **every rendered page** including email-linked pages and error pages: **no non-essential cookie, no storage identifier beyond the two inventory entries, no off-origin request beyond the one approved host below, no fingerprinting API, no personal data in any analytics event, no full IP anywhere, and no public response carrying another person's data.** Enumerate every registered route and assert its response shape. On pages without a protected form, the rendered probe permits only the documented theme-preference access. On protected forms, it additionally permits only Cloudflare's `cf.turnstile.u` and requires a completed Turnstile token before submission; no page may set or access cookies (founder-authorised 2026-10-10).
 
 **Acceptance criteria:**
 - **Every rendered page checked** — the inventory is complete, not sampled
 - **No rendered page makes an off-origin request except Cloudflare Turnstile (`challenges.cloudflare.com`) on Turnstile-protected forms (ADR-006).** No Trustpilot host is requested on any route
 - **Every registered route's response shape enumerated and asserted free of another person's data**, with `/me` the single documented exception for its own bearer
-- **The storage inventory holds exactly one entry** and reconciles with the gate allowlist
+- **The storage inventory holds exactly two entries** and reconciles with the unchanged first-party source-code gate and the protected-form rendered probe
 - **No full IP address appears in any table, log line, alert or response** — verified by inspection, not by assertion
 - Every dependency reaching the browser is enumerated with what it loads
 - **The ADR-027 consent split holds end to end:** signup and entry succeed with the marketing box unticked, no broadcast reaches a subscriber without current consent, withdrawal leaves waitlist status and entries intact, and the launch-access notification's classification as a requested service message is confirmed and recorded

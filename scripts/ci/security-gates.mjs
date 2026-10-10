@@ -382,7 +382,12 @@ function scanThirdPartyRequests(files) {
     const expectedSignals = ['IP', 'TLS', 'user-agent'];
     const contract = turnstile?.disclosureContract;
     if (
-      contract?.article5_3Basis !== 'no-device-storage-or-access' ||
+      contract?.article5_3Basis !== 'strictly-necessary-form-security' ||
+      contract?.processorStorage?.origin !==
+        'https://challenges.cloudflare.com' ||
+      contract?.processorStorage?.key !== 'cf.turnstile.u' ||
+      contract?.processorStorage?.area !== 'local' ||
+      contract?.processorStorage?.scope !== 'active-protected-form' ||
       contract?.siteDeviceFingerprintingApi !== false ||
       contract?.processorRole !== 'security-processor' ||
       contract?.privacyPolicyDisclosure !==

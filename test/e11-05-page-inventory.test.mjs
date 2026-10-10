@@ -22,6 +22,8 @@ const appPassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const emailTokenSecret = 'privacy-test-email-token-secret-32-chars';
 const turnstileHost = 'challenges.cloudflare.com';
+const turnstileTestSiteKey = '1x00000000000000000000AA';
+const turnstileStorageKey = 'cf.turnstile.u';
 const protectedPages = new Set([
   '/',
   '/verify',
@@ -29,6 +31,24 @@ const protectedPages = new Set([
   '/dsr',
   '/giveaway/award',
 ]);
+
+function expectedProtectedFormCount(url) {
+  if (url.pathname === '/') return 1;
+  if (url.pathname === '/dsr') return url.searchParams.has('t') ? 0 : 1;
+  if (url.pathname === '/verify') return url.searchParams.has('token') ? 0 : 1;
+  if (url.pathname === '/me') {
+    return url.searchParams.has('t') && url.searchParams.get('t') !== 'invalid'
+      ? 2
+      : 1;
+  }
+  if (url.pathname === '/giveaway/award') {
+    return url.searchParams.has('award') &&
+      url.searchParams.get('award') !== 'invalid'
+      ? 1
+      : 0;
+  }
+  return 0;
+}
 
 async function sourcePagePaths() {
   const pages = await readdir(`${root}/src/pages`, { recursive: true });
@@ -287,35 +307,59 @@ async function withServer(databaseUrl, run) {
   }
 }
 
-async function crawl(browser, origin, path, executeTurnstile = false) {
+async function crawl(browser, origin, path) {
+  const pageUrl = new URL(`http://valstara.test${path}`);
   const page = await browser.newPage();
   const requests = [];
   const turnstileResponses = [];
   const storageAccess = [];
   try {
-    if (executeTurnstile) {
-      await page.exposeBinding('__reportStorageAccess', (_source, entry) => {
-        storageAccess.push(entry);
-      });
-      await page.addInitScript(() => {
-        for (const method of [
-          'getItem',
-          'setItem',
-          'removeItem',
-          'clear',
-          'key',
-        ]) {
-          const original = globalThis.Storage.prototype[method];
-          globalThis.Storage.prototype[method] = function (...args) {
+    await page.exposeBinding('__reportStorageAccess', (_source, entry) => {
+      storageAccess.push(entry);
+    });
+    await page.addInitScript(() => {
+      const cookie = Object.getOwnPropertyDescriptor(
+        globalThis.Document.prototype,
+        'cookie',
+      );
+      if (cookie?.get && cookie?.set) {
+        Object.defineProperty(globalThis.Document.prototype, 'cookie', {
+          configurable: true,
+          get() {
             void globalThis.__reportStorageAccess({
-              method,
-              key: args[0] ?? null,
+              method: 'cookie.get',
+              origin: globalThis.location.origin,
             });
-            return original.apply(this, args);
-          };
-        }
-      });
-    }
+            return cookie.get.call(this);
+          },
+          set(value) {
+            void globalThis.__reportStorageAccess({
+              method: 'cookie.set',
+              origin: globalThis.location.origin,
+            });
+            cookie.set.call(this, value);
+          },
+        });
+      }
+      for (const method of [
+        'getItem',
+        'setItem',
+        'removeItem',
+        'clear',
+        'key',
+      ]) {
+        const original = globalThis.Storage.prototype[method];
+        globalThis.Storage.prototype[method] = function (...args) {
+          void globalThis.__reportStorageAccess({
+            method,
+            key: args[0] ?? null,
+            area: this === globalThis.localStorage ? 'local' : 'session',
+            origin: globalThis.location.origin,
+          });
+          return original.apply(this, args);
+        };
+      }
+    });
     page.on('request', (request) => requests.push(request.url()));
     page.on('response', (response) => {
       if (new URL(response.url()).hostname === turnstileHost)
@@ -327,7 +371,7 @@ async function crawl(browser, origin, path, executeTurnstile = false) {
     await page.route('**/*', async (route) => {
       const url = new URL(route.request().url());
       if (url.hostname !== 'valstara.test') {
-        if (executeTurnstile && url.hostname === turnstileHost) {
+        if (url.hostname === turnstileHost) {
           await route.continue();
         } else {
           await route.abort();
@@ -343,16 +387,75 @@ async function crawl(browser, origin, path, executeTurnstile = false) {
         body: globalThis.Buffer.from(await response.arrayBuffer()),
       });
     });
-    const response = await page.goto(`http://valstara.test${path}`, {
-      waitUntil: executeTurnstile ? 'domcontentloaded' : 'networkidle',
+    const response = await page.goto(pageUrl.toString(), {
+      waitUntil:
+        expectedProtectedFormCount(pageUrl) > 0 ? 'load' : 'networkidle',
     });
-    if (executeTurnstile) {
-      await page.waitForTimeout(5_000);
-      assert.deepEqual(
-        storageAccess.filter((entry) => entry.key !== 'valstara-theme'),
-        [],
-        `${path} Turnstile loader accessed browser storage`,
+    const protectedForms = page.locator(
+      'form:has(.cf-turnstile), form:has([data-turnstile-container])',
+    );
+    const protectedFormCount = await protectedForms.count();
+    assert.equal(
+      protectedFormCount,
+      expectedProtectedFormCount(pageUrl),
+      `${path} protected-form count`,
+    );
+    if (pageUrl.pathname === '/') {
+      await page.waitForFunction(
+        () =>
+          globalThis.document.querySelector('valstara-signup-form form')
+            ?.noValidate,
       );
+      await page.locator('#signup-email').fill('privacy-probe@example.test');
+    }
+    if (protectedFormCount > 0) {
+      const siteKeys = await protectedForms.evaluateAll((forms) =>
+        forms.map(
+          (form) =>
+            form
+              .closest('valstara-signup-form')
+              ?.getAttribute('data-sitekey') ??
+            form.querySelector('.cf-turnstile')?.getAttribute('data-sitekey'),
+        ),
+      );
+      assert.deepEqual(
+        siteKeys,
+        Array(protectedFormCount).fill(turnstileTestSiteKey),
+        `${path} must use Cloudflare's always-pass test site key`,
+      );
+      try {
+        await page.waitForFunction(
+          () =>
+            [...globalThis.document.querySelectorAll('form')]
+              .filter((form) =>
+                form.querySelector('.cf-turnstile, [data-turnstile-container]'),
+              )
+              .every(
+                (form) =>
+                  (form.querySelector('input[name="turnstile_token"]')?.value ??
+                    '') !== '',
+              ),
+          undefined,
+          { timeout: 15_000 },
+        );
+      } catch {
+        assert.fail(
+          `${path} protected form did not produce a Turnstile token before submit`,
+        );
+      }
+      const tokens = await protectedForms
+        .locator('input[name="turnstile_token"]')
+        .evaluateAll((elements) => elements.map((element) => element.value));
+      assert.equal(
+        tokens.length,
+        protectedFormCount,
+        `${path} has a token in every protected form`,
+      );
+      assert.ok(
+        tokens.every((token) => token !== ''),
+        `${path} has no empty protected-form token`,
+      );
+      await page.waitForTimeout(5_000);
       assert.ok(
         turnstileResponses.some((entry) => {
           const url = new URL(entry.url);
@@ -364,15 +467,25 @@ async function crawl(browser, origin, path, executeTurnstile = false) {
         }),
         `${path} Turnstile loader must execute successfully`,
       );
+      assert.ok(
+        turnstileResponses.some(
+          (entry) =>
+            entry.status === 200 &&
+            new URL(entry.url).pathname.startsWith(
+              '/cdn-cgi/challenge-platform/',
+            ),
+        ),
+        `${path} active Turnstile widget must load its challenge`,
+      );
     }
     assert.ok(response, `${path} has a response`);
     assert.ok(
       response.status() < 500,
       `${path} must not be a server error (got ${response.status()})`,
     );
-    const pathname = new URL(`http://valstara.test${path}`).pathname;
+    const pathname = pageUrl.pathname;
     const html = await page.content();
-    const query = new URL(`http://valstara.test${path}`).searchParams;
+    const query = pageUrl.searchParams;
     if (pathname === '/dsr' && query.has('t')) {
       assert.ok(
         !html.includes('challenges.cloudflare.com'),
@@ -406,7 +519,7 @@ async function crawl(browser, origin, path, executeTurnstile = false) {
     assert.deepEqual(
       storage.local,
       [],
-      `${path} wrote local storage during page load`,
+      `${path} wrote first-party local storage`,
     );
     assert.deepEqual(
       storage.session,
@@ -428,6 +541,11 @@ async function crawl(browser, origin, path, executeTurnstile = false) {
     if (pathname === '/') {
       assert.ok(hasTurnstileForm, 'the signup page has a protected form');
     }
+    assert.equal(
+      hasTurnstileForm,
+      protectedFormCount > 0,
+      `${path} protected-form inventory disagrees with markup`,
+    );
     assert.equal(
       hosts.has(turnstileHost),
       hasTurnstileForm,
@@ -468,6 +586,37 @@ async function crawl(browser, origin, path, executeTurnstile = false) {
         `${path} has a same-origin emitter`,
       );
     }
+    assert.deepEqual(
+      storageAccess.filter(
+        (entry) =>
+          entry.method.startsWith('cookie.') ||
+          (!(
+            entry.key === 'valstara-theme' &&
+            entry.origin === pageUrl.origin &&
+            entry.area === 'local'
+          ) &&
+            !(
+              protectedFormCount > 0 &&
+              entry.origin === `https://${turnstileHost}` &&
+              entry.area === 'local' &&
+              entry.key === turnstileStorageKey
+            )),
+      ),
+      [],
+      `${path} accessed unlisted browser storage or cookies`,
+    );
+    if (protectedFormCount === 0) {
+      assert.deepEqual(
+        storageAccess.filter(
+          (entry) =>
+            entry.key !== 'valstara-theme' ||
+            entry.origin !== pageUrl.origin ||
+            entry.area !== 'local',
+        ),
+        [],
+        `${path} without a protected form accessed storage beyond the theme preference`,
+      );
+    }
     return { path, status: response.status(), offOrigin };
   } finally {
     await page.unrouteAll({ behavior: 'wait' });
@@ -486,7 +635,17 @@ test('E11-05 allowlist has only the Turnstile host', async () => {
   assert.equal(
     allowlist.thirdPartyRequests.find((entry) => entry.host === turnstileHost)
       .disclosureContract.article5_3Basis,
-    'no-device-storage-or-access',
+    'strictly-necessary-form-security',
+  );
+  assert.deepEqual(
+    allowlist.thirdPartyRequests.find((entry) => entry.host === turnstileHost)
+      .disclosureContract.processorStorage,
+    {
+      origin: `https://${turnstileHost}`,
+      key: turnstileStorageKey,
+      area: 'local',
+      scope: 'active-protected-form',
+    },
   );
   const emitter = await readFile(`${root}/public/page-view.js`, 'utf8');
   assert.match(emitter, /fetch\('\/analytics\/api\/send'/u);
@@ -494,7 +653,7 @@ test('E11-05 allowlist has only the Turnstile host', async () => {
 });
 
 test(
-  'E11-05 crawls every rendered route and executes Turnstile on a protected form',
+  'E11-05 crawls every rendered route and completes Turnstile on every protected form',
   { timeout: 240_000 },
   async () => {
     await executeFile('npm', ['run', 'build']);
@@ -515,6 +674,7 @@ test(
           '/giveaway/award?award=invalid&t=invalid',
           `/giveaway/award?award=${tokens.awardId}&t=${encodeURIComponent(tokens.status)}`,
           '/dsr?t=invalid',
+          '/dsr?operation=delete',
           '/dsr?operation=delete&t=invalid',
         ];
         const paths = [...inventory.routes, ...emailLinked, ...errorPages];
@@ -523,7 +683,6 @@ test(
           for (const path of paths)
             observations.push(await crawl(remote.browser, origin, path));
           assert.equal(observations.length, paths.length);
-          await crawl(remote.browser, origin, '/', true);
         });
       });
     } finally {
