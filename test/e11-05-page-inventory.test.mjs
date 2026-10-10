@@ -307,7 +307,7 @@ async function withServer(databaseUrl, run) {
   }
 }
 
-async function crawl(browser, origin, path) {
+async function crawl(browser, origin, path, storageMutation) {
   const pageUrl = new URL(`http://valstara.test${path}`);
   const page = await browser.newPage();
   const requests = [];
@@ -318,6 +318,10 @@ async function crawl(browser, origin, path) {
       storageAccess.push(entry);
     });
     await page.addInitScript(() => {
+      const storageAreas = {
+        local: globalThis.localStorage,
+        session: globalThis.sessionStorage,
+      };
       const cookie = Object.getOwnPropertyDescriptor(
         globalThis.Document.prototype,
         'cookie',
@@ -353,11 +357,39 @@ async function crawl(browser, origin, path) {
           void globalThis.__reportStorageAccess({
             method,
             key: args[0] ?? null,
-            area: this === globalThis.localStorage ? 'local' : 'session',
+            area: this === storageAreas.local ? 'local' : 'session',
             origin: globalThis.location.origin,
           });
           return original.apply(this, args);
         };
+      }
+      for (const [area, name] of [
+        ['local', 'localStorage'],
+        ['session', 'sessionStorage'],
+      ]) {
+        const storage = storageAreas[area];
+        const proxy = new Proxy(storage, {
+          get(target, property) {
+            if (
+              property === 'length' ||
+              (typeof property === 'string' &&
+                !(property in globalThis.Storage.prototype))
+            ) {
+              void globalThis.__reportStorageAccess({
+                method: 'property.get',
+                key: property === 'length' ? null : property,
+                area,
+                origin: globalThis.location.origin,
+              });
+            }
+            const value = Reflect.get(target, property, target);
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        });
+        Object.defineProperty(globalThis, name, {
+          configurable: true,
+          get: () => proxy,
+        });
       }
     });
     page.on('request', (request) => requests.push(request.url()));
@@ -485,6 +517,9 @@ async function crawl(browser, origin, path) {
     );
     const pathname = pageUrl.pathname;
     const html = await page.content();
+    if (storageMutation) {
+      await page.evaluate(storageMutation);
+    }
     const query = pageUrl.searchParams;
     if (pathname === '/dsr' && query.has('t')) {
       assert.ok(
@@ -679,6 +714,20 @@ test(
         ];
         const paths = [...inventory.routes, ...emailLinked, ...errorPages];
         await withServer(databaseUrl, async (origin) => {
+          await assert.rejects(
+            crawl(remote.browser, origin, '/privacy', () => {
+              void globalThis.localStorage.length;
+            }),
+            /accessed unlisted browser storage or cookies/u,
+            'direct storage length read must fail the page inventory',
+          );
+          await assert.rejects(
+            crawl(remote.browser, origin, '/privacy', () => {
+              void globalThis.localStorage['unlisted-key'];
+            }),
+            /accessed unlisted browser storage or cookies/u,
+            'direct storage key read must fail the page inventory',
+          );
           const observations = [];
           for (const path of paths)
             observations.push(await crawl(remote.browser, origin, path));
