@@ -147,13 +147,20 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
       VALUES ('suppressed@example.test','manual','test')`,
     });
     const discountId = randomUUID();
+    const secondDiscountId = randomUUID();
     const legacyId = randomUUID();
     const settledLegacyId = randomUUID();
     await f.owner.execute({
       text: `INSERT INTO milestone_award(id,subscriber_id,tier,reward_kind,state)
-        VALUES ($1,$2,1,'discount','held'),($3,$2,1,'entries','held'),
-          ($4,$2,2,'entries','settled')`,
-      values: [discountId, included, legacyId, settledLegacyId],
+        VALUES ($1,$2,1,'discount','held'),($3,$2,2,'discount','held'),
+          ($4,$2,1,'entries','held'),($5,$2,2,'entries','settled')`,
+      values: [
+        discountId,
+        included,
+        secondDiscountId,
+        legacyId,
+        settledLegacyId,
+      ],
     });
     const records: HandoffRecord[] = [];
     const counts = await exportHandoff(
@@ -163,15 +170,16 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
       async (record) => {
         records.push(record);
       },
+      async () => {},
     );
     assert.deepEqual(counts, {
       customers: 1,
-      heldDiscounts: 1,
+      heldDiscounts: 2,
       confirmedReferrals: 0,
       voidedIneligibleDiscounts: 0,
       voidedLegacyBonusEntries: 2,
     });
-    assert.equal(records.length, 2);
+    assert.equal(records.length, 3);
     const customer = records.find((record) => record.type === 'customer');
     assert.deepEqual(customer, {
       type: 'customer',
@@ -190,18 +198,33 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
       groups: ['wave-2', 'subslush-legacy'],
     });
     assert.deepEqual(
-      records.find((record) => record.type === 'held_discount'),
-      {
-        type: 'held_discount',
-        award_id: discountId,
-        subscriber_id: included,
-        email_normalised: 'included@example.test',
-        tier: 1,
-        discount_percent: 15,
-        state: 'held',
-        outcome: 'carried_to_storefront',
-        qualification_deadline: qualificationDeadline(launch),
-      },
+      records
+        .filter((record) => record.type === 'held_discount')
+        .sort((left, right) => left.award_id.localeCompare(right.award_id)),
+      [
+        {
+          type: 'held_discount',
+          award_id: discountId,
+          subscriber_id: included,
+          email_normalised: 'included@example.test',
+          tier: 1,
+          discount_percent: 15,
+          state: 'held',
+          outcome: 'carried_to_storefront',
+          qualification_deadline: qualificationDeadline(launch),
+        },
+        {
+          type: 'held_discount',
+          award_id: secondDiscountId,
+          subscriber_id: included,
+          email_normalised: 'included@example.test',
+          tier: 2,
+          discount_percent: 25,
+          state: 'held',
+          outcome: 'carried_to_storefront',
+          qualification_deadline: qualificationDeadline(launch),
+        },
+      ].sort((left, right) => left.award_id.localeCompare(right.award_id)),
     );
     assert.equal(qualificationDeadline(launch), '2027-06-13T10:00:00.000Z');
     assert.ok(
@@ -244,14 +267,35 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
       voidAudit?.detail.reason,
       'bonus_entries_unqualifiable_under_published_rules',
     );
+    for (const awardId of [discountId, secondDiscountId]) {
+      assert.deepEqual(
+        await f.owner.readOne({
+          text: `SELECT actor,detail FROM audit_log WHERE action='handoff.discount_carried' AND subject_id=$1`,
+          values: [awardId],
+        }),
+        {
+          actor: 'operator',
+          detail: {
+            outcome: 'carried_to_storefront',
+            qualification_deadline: qualificationDeadline(launch),
+          },
+        },
+      );
+    }
     const second: HandoffRecord[] = [];
     assert.deepEqual(
-      await exportHandoff(f.app, 'operator', launch, async (record) => {
-        second.push(record);
-      }),
+      await exportHandoff(
+        f.app,
+        'operator',
+        launch,
+        async (record) => {
+          second.push(record);
+        },
+        async () => {},
+      ),
       {
         customers: 1,
-        heldDiscounts: 1,
+        heldDiscounts: 2,
         confirmedReferrals: 0,
         voidedIneligibleDiscounts: 0,
         voidedLegacyBonusEntries: 0,
@@ -265,7 +309,7 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
     assert.deepEqual(await importRehearsal(f.scratch, lines()), {
       createdCustomers: 1,
       createdGroups: 2,
-      createdDiscounts: 1,
+      createdDiscounts: 2,
       createdReferrals: 0,
     });
     assert.deepEqual(await importRehearsal(f.scratch, lines()), {
@@ -277,9 +321,64 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
     assert.deepEqual(await countRehearsalRows(f.scratch), {
       customers: 1,
       groups: 2,
-      discounts: 1,
+      discounts: 2,
       referrals: 0,
     });
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('failed handoff output does not audit a carried discount', async () => {
+  const f = await fixture();
+  try {
+    const ownerId = await subscriber(f.owner, 'owner@example.test', 'verified');
+    const referredId = await subscriber(
+      f.owner,
+      'referred@example.test',
+      'verified',
+    );
+    const awardId = await heldDiscount(f.owner, ownerId);
+    await referralEdge(f.owner, ownerId, referredId);
+    await assert.rejects(
+      exportHandoff(
+        f.app,
+        'operator',
+        launch,
+        async (record) => {
+          if (record.type === 'confirmed_referral')
+            throw new Error('write failed');
+        },
+        async () => {},
+      ),
+      /write failed/u,
+    );
+    assert.equal(
+      await f.owner.readOne({
+        text: `SELECT id FROM audit_log WHERE action='handoff.discount_carried' AND subject_id=$1`,
+        values: [awardId],
+      }),
+      null,
+    );
+    await assert.rejects(
+      exportHandoff(
+        f.app,
+        'operator',
+        launch,
+        async () => {},
+        async () => {
+          throw new Error('finish failed');
+        },
+      ),
+      /finish failed/u,
+    );
+    assert.equal(
+      await f.owner.readOne({
+        text: `SELECT id FROM audit_log WHERE action='handoff.discount_carried' AND subject_id=$1`,
+        values: [awardId],
+      }),
+      null,
+    );
   } finally {
     await f.dispose();
   }
@@ -399,6 +498,7 @@ for (const scenario of [
         async (record) => {
           records.push(record);
         },
+        async () => {},
       );
       assert.equal(counts.voidedIneligibleDiscounts, 1);
       assert.equal(counts.heldDiscounts, 0);
@@ -444,6 +544,7 @@ test('marketing-withdrawn verified owner retains the held discount and an audite
       async (record) => {
         records.push(record);
       },
+      async () => {},
     );
     assert.equal(counts.heldDiscounts, 1);
     assert.equal(counts.voidedIneligibleDiscounts, 0);
@@ -514,6 +615,7 @@ test('erased owner has no discount or identity to export after E9-05 erasure', a
       async (record) => {
         records.push(record);
       },
+      async () => {},
     );
     assert.equal(counts.heldDiscounts, 0);
     assert.deepEqual(records, []);
@@ -572,6 +674,7 @@ test('confirmed referral links include only pairs whose two people are exported 
       async (record) => {
         records.push(record);
       },
+      async () => {},
     );
     assert.equal(counts.confirmedReferrals, 1);
     assert.deepEqual(
@@ -729,6 +832,7 @@ test('handoff pages over more than one capped batch', async () => {
         assert.equal(record.type, 'customer');
         emitted += 1;
       },
+      async () => {},
     );
     assert.equal(emitted, 1001);
     assert.deepEqual(counts, {

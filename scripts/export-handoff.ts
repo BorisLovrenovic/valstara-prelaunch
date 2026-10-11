@@ -1,6 +1,7 @@
 import { createWriteStream } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { once } from 'node:events';
+import { finished } from 'node:stream/promises';
 
 import { createPool } from '../src/server/db/pool.ts';
 import { exportHandoff } from '../src/server/subscriber/handoff.ts';
@@ -30,6 +31,7 @@ if (!Number.isFinite(storeLaunchAt.getTime()))
   throw new Error('Store launch instant is invalid.');
 const database = createPool(databaseUrl);
 const stream = createWriteStream(output, { flags: 'wx', mode: 0o600 });
+let outputFinished = false;
 try {
   const counts = await exportHandoff(
     database,
@@ -39,13 +41,17 @@ try {
       if (!stream.write(`${JSON.stringify(record)}\n`))
         await once(stream, 'drain');
     },
+    async () => {
+      const completed = finished(stream);
+      stream.end();
+      await completed;
+      outputFinished = true;
+    },
   );
-  stream.end();
-  await once(stream, 'finish');
   process.stdout.write(`${JSON.stringify(counts)}\n`);
 } catch (error) {
   stream.destroy();
-  await rm(output, { force: true });
+  if (!outputFinished) await rm(output, { force: true });
   throw error;
 } finally {
   await database.close();

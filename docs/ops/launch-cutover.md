@@ -56,6 +56,8 @@ Rehearsed twice against a scratch database before the day (E11-06). **A rehearsa
 
 E11-06's handoff file is NDJSON. `customer` records contain the twelve customer fields above plus their assigned groups; `held_discount` records carry the owner key, held award and qualification deadline; `confirmed_referral` records carry the two normalised email keys. The export command requires `--store-launch-at=<RFC3339 UTC>`, `--actor=<operator>` and `--output=<new private path>` with `DATABASE_URL` set to the frozen waitlist database. The import rehearsal requires `--input=<handoff NDJSON>` and `--evidence=<new path>` with `HANDOFF_REHEARSAL_ADMIN_URL` set to a PostgreSQL owner URL. It creates two scratch databases, imports the same file twice into each, rejects any additional customer, group, discount or referral pair on the second pass, and drops both databases. The synthetic pre-launch rehearsal evidence is in `docs/ops/e11-06-rehearsals.json`; the launch-day run uses the real export and retains only aggregate evidence in the repository.
 
+The exporter audits `carried_to_storefront` outcomes only after the NDJSON file finishes writing, and commits those carry audits together. A write failure removes the partial file without recording any carry outcome. If auditing fails after the file finishes, the complete file remains for diagnosis; a nonzero command exit is not an approved handoff and must not be imported.
+
 ## Verification after the swap
 
 Not "the site loads". Specifically:

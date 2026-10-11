@@ -8,6 +8,7 @@ import {
   voidLegacyBonusBatch,
 } from '../db/handoff.ts';
 import type { DatabasePool } from '../db/pool.ts';
+import { withTransaction } from '../db/transaction.ts';
 import { milestoneTiers, type AccessWindow } from '../referral/config.ts';
 
 export interface HandoffCustomer {
@@ -72,6 +73,7 @@ export async function exportHandoff(
   actor: string,
   storeLaunchAt: Date,
   writeRecord: (record: HandoffRecord) => Promise<void>,
+  finishOutput: () => Promise<void>,
 ): Promise<HandoffCounts> {
   if (actor.trim() === '') throw new Error('A handoff actor is required.');
   const deadline = qualificationDeadline(storeLaunchAt);
@@ -205,16 +207,6 @@ export async function exportHandoff(
           outcome: 'carried_to_storefront',
           qualification_deadline: deadline,
         });
-        await audit.record({
-          action: 'handoff.discount_carried',
-          actor,
-          subjectType: 'milestone_award',
-          subjectId: row.id,
-          detail: {
-            outcome: 'carried_to_storefront',
-            qualification_deadline: deadline,
-          },
-        });
         heldDiscounts += 1;
         discountAfter = row.id;
       }
@@ -242,6 +234,37 @@ export async function exportHandoff(
         referralAfter = row.id;
       }
     }
+    await finishOutput();
+    await withTransaction(database, async (connection) => {
+      const carryAudit = createAuditService(connection);
+      let audited = 0;
+      let auditAfter: string | null = null;
+      while (audited < snapshot.discountCount) {
+        const page = await snapshot.discounts(auditAfter);
+        if (
+          page.length === 0 ||
+          page.length > handoffBatchSize ||
+          audited + page.length > snapshot.discountCount
+        )
+          throw new Error(
+            'Handoff discount audit snapshot did not match the export.',
+          );
+        for (const row of page) {
+          await carryAudit.record({
+            action: 'handoff.discount_carried',
+            actor,
+            subjectType: 'milestone_award',
+            subjectId: row.id,
+            detail: {
+              outcome: 'carried_to_storefront',
+              qualification_deadline: deadline,
+            },
+          });
+          audited += 1;
+          auditAfter = row.id;
+        }
+      }
+    });
     return {
       customers,
       heldDiscounts,
