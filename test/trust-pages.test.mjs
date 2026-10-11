@@ -32,21 +32,13 @@ function approvedPage(slug) {
   assert.ok(fullCopy);
   assert.match(section, /### Source notes\n\n1\./u);
   if (slug !== 'legit') return { title, description, copy: fullCopy };
-  const [copy, replacement] = fullCopy.split(
-    /\n\*Widget-on variant, replacing the first Reviews paragraph above when eligible:\*\n\n/u,
-  );
-  assert.ok(replacement);
-  const widgetCopy = `${copy.split('\n## Reviews\n')[0]}\n## Reviews\n\n${replacement}`;
-  return { title, description, copy, widgetCopy };
+  return { title, description, copy: fullCopy };
 }
 
 test('trust content transcribes the founder-approved pages with source notes', async () => {
   for (const slug of pages) {
-    const { title, description, copy, widgetCopy } = approvedPage(slug);
-    for (const [name, prose] of [
-      [slug, copy],
-      ...(widgetCopy ? [['legit-widget', widgetCopy]] : []),
-    ]) {
+    const { title, description, copy } = approvedPage(slug);
+    for (const [name, prose] of [[slug, copy]]) {
       const content = await readFile(
         join(root, `src/content/${name}.md`),
         'utf8',
@@ -79,7 +71,7 @@ test(
       timeout: 110_000,
     });
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-    // E9-08 exercises /legit at runtime in both flag states.
+    // E9-08 exercises /legit at runtime.
     for (const slug of ['guarantee', 'about']) {
       const { title, description } = approvedPage(slug);
       const html = await readFile(

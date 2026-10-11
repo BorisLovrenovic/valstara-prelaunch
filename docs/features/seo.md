@@ -4,9 +4,9 @@
 The pre-launch site sits on the **root domain**, and the trust and legal pages are built at their permanent URLs so they accumulate authority that survives the store launch. Everything here is in service of that transition (ADR-021).
 
 ## Feature flag
-`trustpilot.widget` — **default off.** The profile is claimed and linked now; **no rating is displayed until the review count justifies it**, because a three-review TrustScore signals "unproven" more loudly than no score at all.
+None for the trust-page link. The profile is claimed and linked now; no widget or rating appears pre-launch.
 
-Founder-authorised 2026-10-05: the plain `/legit` Reviews link points to `https://www.trustpilot.com/review/valstara.com` with `rel="noopener"` and no prefetch or preconnect. `TRUSTPILOT_MIN_REVIEWS` defaults to 50 and founder-entered `TRUSTPILOT_REVIEW_COUNT` defaults to 0; the public business unit and template IDs default empty. All four settings are validated at boot. The flag cannot be enabled below the threshold; refusal is audited. The TrustBox and its official async loader appear only on `/legit` when the flag is on, both IDs exist and the count meets the threshold. Otherwise there is no widget markup or Trustpilot request. No Trustpilot API or key is used. The no-widget and widget Reviews copy variants are stored in content; the widget variant omits the "not yet" paragraph and keeps the no-purchased-reviews statement. The link remains in both variants.
+Founder-authorised 2026-10-10, superseding the widget decision of 2026-10-05: the plain `/legit` Reviews link points to `https://www.trustpilot.com/review/valstara.com` with `rel="noopener"` and no prefetch or preconnect. The "not yet" paragraph and no-purchased-reviews statement always render. No Trustpilot request, widget, rating, API, or key is used by the pre-launch site. A widget may return with the storefront's consent management platform.
 
 ## The route plan
 
@@ -24,7 +24,7 @@ Founder-authorised 2026-10-05: the plain `/legit` Reviews link points to `https:
 3. **Machines** — `llms.txt` ships. **Expect nothing from it**: the largest study found no correlation with citation frequency and Google says it does not use it. One hour of cheap insurance, not a channel.
 
 ## Edge cases and error states
-A page shipped without metadata → **the build fails**; a trust page with no description is a wasted ranking opportunity that nobody notices. OG image missing → a typed fallback per page kind, never a broken card. Trustpilot script fails → **the page renders without it**; content never blocks on a third-party script. Route added without a sitemap entry → the sitemap is generated from the route set, so this cannot happen by omission.
+A page shipped without metadata → **the build fails**; a trust page with no description is a wasted ranking opportunity that nobody notices. OG image missing → a typed fallback per page kind, never a broken card. Route added without a sitemap entry → the sitemap is generated from the route set, so this cannot happen by omission.
 
 E9-06 runs `scripts/ci/seo-build-check.ts` at build time. Its prebuild step writes `public/sitemap.xml` from the page files plus the current rules revision's permanent URL; its postbuild step validates metadata sources for every HTML route and static page bindings, then checks the emitted heads of prerendered pages for a unique title, description and self-canonical URL. `/me` and `/verify` are excluded from the sitemap in line with `robots.txt`; API routes are not HTML pages. Canonicals use the permanent `https://valstara.com` URLs without query parameters. The rules article bytes and recorded SHA-256 remain unchanged: only page metadata and the archive notice outside the article differ between current and superseded revisions.
 
@@ -37,7 +37,7 @@ E9-06 runs `scripts/ci/seo-build-check.ts` at build time. Its prebuild step writ
 - [ ] Structured data validates for the organisation and for each rules page
 - [ ] Rules-page structured data is schema.org WebPage JSON-LD generated from validated revision frontmatter. The current page and every immutable revision have their own permanent URL and self-canonical; each records its `rules_version` and `datePublished` and points to the Organisation publisher. It carries no Event, Offer, Product, prize, odds or date claims (E9-06, founder-authorised 2026-10-03).
 - [ ] OG images exist per page type and render correctly at the major platforms' crops
-- [ ] **The Trustpilot widget loads lazily and only when its flag is on**, and no Trustpilot request occurs while it is off
+- [ ] **No Trustpilot host is requested on any rendered page;** the plain `/legit` profile link and "not yet" Reviews paragraph render
 - [ ] `llms.txt` ships
 - [ ] **No trust or legal URL differs from the URL the storefront will keep** — checked against the port checklist
 

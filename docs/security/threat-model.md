@@ -32,9 +32,13 @@ The campaign's single unrecoverable technical failure. (The SubSlush announcemen
 
 ## T4 — A privacy failure forces a consent banner
 
-The site operates with no banner because Article 5(3) device storage/access is absent outside the documented functional theme preference, and it makes no unsanctioned third-party request. The only off-origin hosts a rendered page may contact are the flagged Trustpilot widget and Cloudflare Turnstile on protected forms (ADR-006, Option A, founder-authorised 2026-09-08). The site runs no device-fingerprinting API; Cloudflare processes IP, TLS and user-agent signals server-side as a security processor, as the privacy disclosure states. **One careless dependency reverses that**, and the cost is not a banner — it is the conversion the banner takes and the measurement it corrupts.
+The site operates with no banner because its two documented browser-storage entries are the functional theme preference and Cloudflare Turnstile's `cf.turnstile.u`, which the widget reads and writes only on protected forms under the Article 5(3) strictly-necessary form-security basis (founder-authorised 2026-10-10, pending legal sign-off). It makes no unsanctioned third-party request. The only off-origin host a rendered page may contact is Cloudflare Turnstile on protected forms (ADR-006, Option A, founder-authorised 2026-09-08). The site runs no device-fingerprinting API; Cloudflare processes IP, TLS and user-agent signals server-side as a security processor, as the privacy disclosure states. **One careless dependency reverses that**, and the cost is not a banner — it is the conversion the banner takes and the measurement it corrupts.
 
 **Controls:** three CI gates — the cookie/storage rule, the fingerprinting rule and the third-party request rule — each with a planted fixture. Referral attribution is server-side and signed. Analytics is cookieless and its event registry is asserted free of personal data. **A new dependency that reaches the browser requires an explicit note in the PR describing what it loads.**
+
+**E11-05 local audit, revised 2026-10-10:** The [complete rendered-page and route inventory](../testing/e11-05-privacy-audit.md) and executing-loader check exposed an unapproved Trustpilot follow-on request to `images-static.trustpilot.com`. The founder removed the pre-launch widget, and the browser check now permits only Turnstile on protected forms. The allowlist contains exactly that one host and the retired Trustpilot host has a red-path fixture. The same-origin Umami emitter remains; no `static.cloudflareinsights.com` request was seen. Production Cloudflare injection remains a separate E12-05 check; no host is pre-approved for it.
+
+**E11-05 amendment, founder-authorised 2026-10-10:** The activated Turnstile widget's Cloudflare-origin `cf.turnstile.u` read and write are the second published inventory entry. The rendered-page probe checks every page for storage access and cookies, and requires a completed token from each protected form. Valstara's source-code storage gate still permits only the theme write. The [audit report](../testing/e11-05-privacy-audit.md) records the activation regression and its result.
 
 ---
 
@@ -82,7 +86,7 @@ Each has a planted red-path fixture; **a gate that cannot be shown to fail is no
 | Dependency scan | No unallowlisted advisory; allowlist entries carry justification **and a future expiry** |
 | Cookie and storage rule | No non-essential cookie or storage identifier |
 | Fingerprinting rule | No browser-entropy API anywhere |
-| Third-party request rule | No request off-origin from a rendered page, save the two allowlisted Cloudflare-adjacent exceptions (flagged Trustpilot, always-on Turnstile) |
+| Third-party request rule | No request off-origin from a rendered page, save Turnstile on protected forms; the retired Trustpilot host is a planted red path |
 | Vendor-boundary rule | No email SDK outside its provider module |
 | Forbidden-copy scan | No never-use string ships |
 | Inline-prose scan | No customer-visible prose is inline in an `.astro` component; it lives in the copy layer |

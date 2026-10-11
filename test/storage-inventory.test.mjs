@@ -55,15 +55,26 @@ function reconcileInventory(inventory, allowlist, files) {
     ),
     ['themePreference'],
   );
-  assert.equal(
-    entries.length,
-    1,
-    'the published inventory must have one entry',
-  );
-  assert.deepEqual(entries[0], [
-    `\`${allowlist.themePreference.storageKey}\``,
-    'Local storage',
-    'Remembers your light or dark theme choice',
+  const processorStorage = allowlist.thirdPartyRequests.find(
+    (entry) => entry.host === 'challenges.cloudflare.com',
+  )?.disclosureContract.processorStorage;
+  assert.deepEqual(processorStorage, {
+    origin: 'https://challenges.cloudflare.com',
+    key: 'cf.turnstile.u',
+    area: 'local',
+    scope: 'active-protected-form',
+  });
+  assert.deepEqual(entries, [
+    [
+      `\`${allowlist.themePreference.storageKey}\``,
+      'Local storage',
+      'Remembers your light or dark theme choice',
+    ],
+    [
+      `\`${processorStorage.key}\``,
+      'Cloudflare local storage',
+      'Helps secure a form when its Turnstile widget runs',
+    ],
   ]);
   assert.deepEqual(writes, [
     {
@@ -73,7 +84,7 @@ function reconcileInventory(inventory, allowlist, files) {
   ]);
 }
 
-test('the published inventory reconciles with the allowlist and the single source write', async () => {
+test('the two-entry inventory reconciles with the unchanged source write and Turnstile contract', async () => {
   const inventory = await read('src/content/privacy-storage.md');
   const privacy = await read('src/content/privacy.md');
   const allowlist = JSON.parse(await read('scripts/ci/privacy-allowlist.json'));

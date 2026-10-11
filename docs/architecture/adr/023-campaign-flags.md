@@ -16,11 +16,11 @@ A twelve-week campaign with a public leaderboard, a prize draw and a mail progra
 - **A lookup failure returns the code default** — fail-safe, never fail-open.
 - Reads are cached in-process for five seconds; `set()` invalidates the local process immediately. Other processes observe the override no later than their next read after cache expiry, so **the worst-case propagation delay is five seconds**. A lever whose effect is invisible for an unknown period is not a lever.
 
-Eight flags, listed in `docs/features/README.md#flag-registry`. **Three default off** — `giveaway.open`, `email.broadcast` and `trustpilot.widget`. The first two are **hard gates**, each depending on something outside the code. The third is a brand judgement: a rating below the display threshold is worse than none (ADR-024), so it stays off until the review count justifies it.
+Seven flags, listed in `docs/features/README.md#flag-registry`. **Two default off** — `giveaway.open` and `email.broadcast`. Both are hard gates, each depending on something outside the code. The founder retired `trustpilot.widget` on 2026-10-10 when the pre-launch widget was removed; a persisted override for that key is ignored by the registry and the service rejects new reads and writes to it.
 
 ## Alternatives rejected
 - **Environment variables** — changing one means a deploy, which is the thing this exists to avoid.
-- **A hosted flag service** — a vendor and a monthly line for eight booleans.
+- **A hosted flag service** — a vendor and a monthly line for seven booleans.
 - **No flags** — leaves "deploy under pressure" as the only response to an incident.
 
 ## Consequences

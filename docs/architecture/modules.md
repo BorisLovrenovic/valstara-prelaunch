@@ -22,7 +22,7 @@ Enforced in CI where possible; binding via `AGENTS.md` where not.
 
 6. **No customer-visible string is inline.** All copy lives in the copy layer (`src/content/` for prose, `src/copy/` for interface strings), scanned in CI against the never-use list. → `docs/brand/copy-rules.md`
 
-7. **Three islands, and no more.** `SignupForm`, `ThemeToggle`, `Leaderboard`. Other pages ship zero first-party client JavaScript; the approved Turnstile and flagged Trustpilot external loaders are documented in ADR-006 and E9-08. A fourth island requires an ADR. → ADR-001
+7. **Three islands, and no more.** `SignupForm`, `ThemeToggle`, `Leaderboard`. Other pages ship zero first-party client JavaScript; the sole approved external loader, Turnstile, is documented in ADR-006. A fourth island requires an ADR. → ADR-001
 
 8. **No client code sets a cookie, writes to `localStorage`/`sessionStorage` for identification, or loads a third-party script.** The theme toggle's preference is the single permitted storage write and is functional, not identifying — documented in the cookie/storage inventory. → ADR-007, ADR-008
 

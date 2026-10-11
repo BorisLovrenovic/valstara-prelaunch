@@ -3,9 +3,7 @@ import {
   ConfigurationError,
   getEmailQuotaConfiguration,
   getGiveawayEntryPeriodStart,
-  getTrustpilotConfiguration,
   type EmailQuotaConfiguration,
-  type TrustpilotConfiguration,
 } from '../config.ts';
 import {
   createCampaignFlagRepository,
@@ -51,7 +49,6 @@ export function createFlagService(
     currentRules?: () => Promise<CurrentGiveawayRules>;
     periodStart?: Date;
     emailQuota?: EmailQuotaConfiguration;
-    trustpilot?: TrustpilotConfiguration;
     onGiveawayEntry?: (method: 'base' | 'referral') => void;
   } = {},
 ): FlagService {
@@ -69,27 +66,6 @@ export function createFlagService(
   return {
     ...service,
     async set(key, enabled, actor) {
-      if (key === 'trustpilot.widget' && enabled) {
-        const trustpilot = giveaway.trustpilot ?? getTrustpilotConfiguration();
-        if (trustpilot.reviewCount < trustpilot.minimumReviews) {
-          if (actor.trim() === '')
-            throw new TypeError('A campaign flag change requires an actor.');
-          await withTransaction(database, async (connection) => {
-            await createAuditService(connection).record({
-              action: 'flag.enable_refused',
-              actor,
-              detail: {
-                reason: 'trustpilot_review_threshold',
-                reviewCount: trustpilot.reviewCount,
-                minimumReviews: trustpilot.minimumReviews,
-              },
-              subjectId: key,
-              subjectType: 'campaign_flag',
-            });
-          });
-          throw new Error('trustpilot_widget_requires_review_threshold');
-        }
-      }
       if (key === 'giveaway.open' && enabled) {
         const quota = giveaway.emailQuota ?? getEmailQuotaConfiguration();
         const freeProviders = (['resend', 'brevo'] as const).filter(

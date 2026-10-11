@@ -37,7 +37,7 @@ Umami unavailable → **events are lost and nothing else is.** The emitter ignor
 
 ## Acceptance criteria
 - [ ] **No cookie and no browser-storage identifier is set** — asserted by an automated check over a rendered page
-- [ ] **No third-party request leaves the page** except to the self-hosted collector — asserted by a network-inventory test
+- [ ] **No third-party request leaves the page** except Turnstile on protected forms; the collector is same-origin — asserted by a network-inventory test
 - [ ] Every event validates against the registered schema; an unregistered event **throws in development and is dropped in production**
 - [ ] **No event property carries personal data** — asserted over the whole registry
 - [ ] Submit → verify → refer is computable **from server events alone**; the view step uses client `page_view`, and any view-based rate is labelled **estimate**

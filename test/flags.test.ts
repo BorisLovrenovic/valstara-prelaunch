@@ -137,7 +137,7 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
   };
 }
 
-test('the code registry declares exactly the eight documented keys and defaults', async () => {
+test('the code registry declares exactly the seven documented keys and defaults', async () => {
   const featureIndex = await readFile(
     new URL('../docs/features/README.md', import.meta.url),
     'utf8',
@@ -147,7 +147,7 @@ test('the code registry declares exactly the eight documented keys and defaults'
     ([, key, state]) => [key, state === 'on'] as const,
   );
 
-  assert.equal(campaignFlagKeys.length, 8);
+  assert.equal(campaignFlagKeys.length, 7);
   assert.equal(
     Object.values(campaignFlagRegistry).every(
       (value) => typeof value === 'boolean',
@@ -155,6 +155,14 @@ test('the code registry declares exactly the eight documented keys and defaults'
     true,
   );
   assert.deepEqual(Object.entries(campaignFlagRegistry), documentedRegistry);
+  const repository = createMemoryRepository();
+  repository.overrides.set('trustpilot.widget', true);
+  const service = createTestFlagService(repository, createAuditRecorder());
+  assert.deepEqual(
+    (await service.list()).map(({ key }) => key),
+    campaignFlagKeys,
+    'a persisted retired flag does not re-enter the registry',
+  );
 });
 
 test('an unregistered key throws without consulting the database', async () => {
@@ -164,6 +172,15 @@ test('an unregistered key throws without consulting the database', async () => {
   await assert.rejects(
     service.isEnabled('unknown.flag' as FlagKey),
     /Unregistered campaign flag: unknown.flag/,
+  );
+  assert.equal(repository.readCount, 0);
+  await assert.rejects(
+    service.isEnabled('trustpilot.widget' as FlagKey),
+    /Unregistered campaign flag: trustpilot\.widget/u,
+  );
+  await assert.rejects(
+    service.set('trustpilot.widget' as FlagKey, true, 'operator'),
+    /Unregistered campaign flag: trustpilot\.widget/u,
   );
   assert.equal(repository.readCount, 0);
 });
@@ -439,55 +456,6 @@ test('E8-09 audits a free-tier giveaway refusal, permits paid enable and always 
     assert.equal(await paid.isEnabled('giveaway.open'), true);
     await free.set('giveaway.open', false, 'operator-off');
     assert.equal(await free.isEnabled('giveaway.open'), false);
-  } finally {
-    await fixture.applicationDatabase.close();
-    await fixture.dispose();
-  }
-});
-
-test('E9-08 audits a Trustpilot enable refusal below the threshold and permits off', async () => {
-  const fixture = await createDatabaseFixture();
-  const below = createFlagService(fixture.applicationDatabase, {
-    trustpilot: {
-      minimumReviews: 50,
-      reviewCount: 49,
-      businessUnitId: 'business-unit',
-      templateId: 'template-id',
-    },
-  });
-  const eligible = createFlagService(fixture.applicationDatabase, {
-    trustpilot: {
-      minimumReviews: 50,
-      reviewCount: 50,
-      businessUnitId: 'business-unit',
-      templateId: 'template-id',
-    },
-  });
-  try {
-    await assert.rejects(
-      below.set('trustpilot.widget', true, 'operator-below'),
-      /trustpilot_widget_requires_review_threshold/u,
-    );
-    assert.equal(await below.isEnabled('trustpilot.widget'), false);
-    const refusal = await fixture.database.readOne<{
-      actor: string;
-      detail: { reason: string; reviewCount: number; minimumReviews: number };
-    }>({
-      text: `SELECT actor, detail FROM audit_log
-        WHERE action = 'flag.enable_refused' AND subject_id = 'trustpilot.widget'`,
-    });
-    assert.deepEqual(refusal, {
-      actor: 'operator-below',
-      detail: {
-        reason: 'trustpilot_review_threshold',
-        reviewCount: 49,
-        minimumReviews: 50,
-      },
-    });
-    await eligible.set('trustpilot.widget', true, 'operator-eligible');
-    assert.equal(await eligible.isEnabled('trustpilot.widget'), true);
-    await below.set('trustpilot.widget', false, 'operator-off');
-    assert.equal(await below.isEnabled('trustpilot.widget'), false);
   } finally {
     await fixture.applicationDatabase.close();
     await fixture.dispose();

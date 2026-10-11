@@ -349,13 +349,13 @@ test('the modelled personal-data fields reconcile to policy rows with purpose, b
   });
 });
 
-test('the privacy notice publishes exactly the storage allowlist entry', async () => {
+test('the privacy notice publishes the theme and Turnstile storage entries', async () => {
   const policy = await read('src/content/privacy.md');
   const allowlist = JSON.parse(await read('scripts/ci/privacy-allowlist.json'));
   const section = policy.split('## Cookie and storage inventory\n', 2)[1];
   assert.ok(section, 'inventory heading is missing');
   const entries = tableRows(section).slice(1);
-  assert.equal(entries.length, 1, 'the inventory must have one entry');
+  assert.equal(entries.length, 2, 'the inventory must have two entries');
   assert.deepEqual(
     Object.keys(allowlist).filter((key) =>
       /storage|themePreference/iu.test(key),
@@ -365,6 +365,14 @@ test('the privacy notice publishes exactly the storage allowlist entry', async (
   assert.equal(entries[0][0], `\`${allowlist.themePreference.storageKey}\``);
   assert.match(entries[0][1], /local storage/iu);
   assert.ok(entries[0][2]);
+  const processorStorage = allowlist.thirdPartyRequests.find(
+    (entry) => entry.host === 'challenges.cloudflare.com',
+  )?.disclosureContract.processorStorage;
+  assert.equal(entries[1][0], `\`${processorStorage?.key}\``);
+  assert.equal(processorStorage?.origin, 'https://challenges.cloudflare.com');
+  assert.equal(processorStorage?.scope, 'active-protected-form');
+  assert.match(entries[1][1], /Cloudflare local storage/iu);
+  assert.match(entries[1][2], /secure a form/iu);
 });
 
 test('the draft policy states the separate marketing choice and winner-only location collection', async () => {

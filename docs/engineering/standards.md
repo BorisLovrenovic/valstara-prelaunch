@@ -28,7 +28,7 @@ Structured JSON to stdout with a `request_id`. **Redact tokens, secrets, signatu
 This is unusual to put in a standards file, and it belongs here because it is a code property rather than a policy:
 
 - **No code sets a non-essential cookie or writes a browser-storage value used to identify a visitor.** The theme preference is the single permitted storage write.
-- **No third-party script is added to any page** except the flagged Trustpilot widget and Cloudflare Turnstile on protected signup/verification-recovery forms (ADR-006).
+- **No third-party script is added to any page** except Cloudflare Turnstile on protected forms (ADR-006). The pre-launch Trustpilot widget was removed by founder decision on 2026-10-10.
 - **No analytics event carries personal data.**
 - **No fingerprinting API is called** — canvas, font enumeration, WebGL, timing entropy. CI-scanned.
 

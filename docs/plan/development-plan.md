@@ -282,7 +282,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 2. **Dependency scan** — an allowlist entry requires a written justification **and a future expiry date**
 3. **Cookie and storage rule** — `document.cookie`, `Set-Cookie`, `localStorage`, `sessionStorage` outside the single permitted theme-preference write
 4. **Fingerprinting rule** — canvas, font-enumeration, WebGL and timing-entropy APIs anywhere
-5. **Third-party request rule** — any off-origin request from a rendered page; the flagged Trustpilot widget is the one allowlisted exception
+5. **Third-party request rule** — any off-origin request from a rendered page; Cloudflare Turnstile on protected forms is the sole allowlisted exception
 6. **Vendor-boundary rule** — an email SDK imported outside its provider module. **Runtime `import()` targets must resolve statically; an unresolved target fails closed**
 7. **Forbidden-copy scan** — over `src/copy/`, `src/content/` and every `.astro` file. **This ticket creates `scripts/forbidden-copy.json` and seeds it from the never-use table in `docs/brand/copy-rules.md`**, so the gate is live the moment it exists. E2-08 later moves copy into the layer the scan already covers; it does not create the list (standing rule 20)
 
@@ -367,17 +367,17 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 ### E1-10 — Campaign flags with code-level fail-safe defaults
 **Model:** Tier A — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 
-**Build:** `src/server/flags` per `docs/modules/flags.md`. All eight flags registered in code with declared defaults, **matching `docs/features/README.md#flag-registry` exactly**.
+**Build:** `src/server/flags` per `docs/modules/flags.md`. All seven current flags registered in code with declared defaults, **matching `docs/features/README.md#flag-registry` exactly**. The former `trustpilot.widget` flag was retired by the founder's E11-05 decision on 2026-10-10.
 
 **Includes a forward-only migration changing `audit_log.subject_id` from `uuid` to `text`.** E1-03 typed it `uuid` because `docs/data/model.md` listed `audit_log`'s columns without types — the one table where it did. The column is **polymorphic by design**: `subject_type` discriminates, a subscriber subject is a UUID, a flag subject is a key like `leaderboard.public`, and an export has no natural subject. Auditing a flag change is impossible until this is corrected, so it is this ticket's. Founder-authorised 2026-08-27.
 
-The change is additive-safe — `USING subject_id::text` preserves every existing value, and text accepts what a previous image would write. **Three default off: `giveaway.open`, `email.broadcast` and `trustpilot.widget`**; the other five default on. In-process cache with a short TTL, invalidated immediately on `set()`. Every change audited with an actor.
+The change is additive-safe — `USING subject_id::text` preserves every existing value, and text accepts what a previous image would write. **Two default off: `giveaway.open` and `email.broadcast`**; the other five default on. In-process cache with a short TTL, invalidated immediately on `set()`. Every change audited with an actor.
 
 **Acceptance criteria:**
 - **An unregistered key throws** — never a silent `false`
 - **Database unavailable returns the code default** — fail-safe, never fail-open
 - **Every registered flag has a declared default** — asserted by a test over the registry
-- **The registry matches `docs/features/README.md#flag-registry` exactly** — same eight keys, same defaults — asserted by a test, so the table and the code cannot drift
+- **The registry matches `docs/features/README.md#flag-registry` exactly** — same seven current keys, same defaults — asserted by a test, so the table and the code cannot drift
 - **`audit_log.subject_id` is `text`**, existing UUID values preserved as strings — asserted against the PostgreSQL catalogue
 - **A flag change writes an audit record whose `subject_id` is the flag key** — the case that was previously impossible
 - `set()` takes effect within the documented TTL, and **the worst-case propagation delay is documented**
@@ -655,14 +655,14 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 
 **Build:** The form island: inline validation, submission states, error rendering from the closed code set, the signed ref carried as a hidden field, and Turnstile mounted invisibly. Submission requires JavaScript because Turnstile has no no-JS token path; the server-rendered form remains visible and its `<noscript>` notice tells visitors to enable JavaScript.
 
-**Turnstile client mount and the no-third-party-request property — founder-authorised 2026-09-08 (Option A).** Mounting Turnstile client-side loads `challenges.cloudflare.com/turnstile/v0/api.js`, an off-origin request that the standing "no third-party request from a rendered page" rule and `docs/legal/compliance.md#3` otherwise forbid (only the flagged Trustpilot widget was allowlisted). The Article 5(3) no-banner basis is the probe-confirmed absence of device storage/access. The site runs no device-fingerprinting API; Cloudflare processes IP, TLS and user-agent signals server-side as a security processor. So this ticket — the first to put Turnstile in the browser — owns the reconciliation under standing rule 19: it extends the third-party-request gate's allowlist to permit an **always-on** (no flag) `challenges.cloudflare.com` entry scoped to the protected forms, adds the public `TURNSTILE_SITE_KEY` config (a temporary placeholder until the real Cloudflare key is provisioned; E12-05 swaps it in with the production secret), and updates ADR-006, ADR-007, `docs/legal/compliance.md#3` and the threat model to name Turnstile alongside Trustpilot. The signed ref field itself remains E4-02's to render; the island only carries it through unchanged.
+**Turnstile client mount and the no-third-party-request property — founder-authorised 2026-09-08 (Option A), reconciled 2026-10-10.** Mounting Turnstile client-side loads `challenges.cloudflare.com/turnstile/v0/api.js`, an off-origin request that the standing "no third-party request from a rendered page" rule and `docs/legal/compliance.md#3` otherwise forbid. Cloudflare's widget reads and writes `cf.turnstile.u` only when a protected form runs; the Article 5(3) no-banner basis is the strictly-necessary exemption for security of the form the visitor submits (founder-authorised 2026-10-10, subject to legal sign-off). The site runs no device-fingerprinting API; Cloudflare processes IP, TLS and user-agent signals server-side as a security processor. This ticket — the first to put Turnstile in the browser — owns the reconciliation under standing rule 19: the third-party-request gate permits the **always-on** (no flag) `challenges.cloudflare.com` entry scoped to protected forms, adds the public `TURNSTILE_SITE_KEY` config (a temporary placeholder until the real Cloudflare key is provisioned; E12-05 swaps it in with the production secret), and updates ADR-006, ADR-007, `docs/legal/compliance.md#3` and the threat model. The signed ref field itself remains E4-02's to render; the island only carries it through unchanged.
 
 **Acceptance criteria:**
 - With JavaScript disabled the form still renders, explains that JavaScript is required, and a native submission is rejected for its missing/empty Turnstile token
 - Inline validation never blocks a submission the server would accept
 - Errors render from the copy layer with the field association assistive technology needs
 - The signed ref is carried through unchanged; **the island never reads or writes the ref itself**
-- **No cookie and no storage write occurs** in the flow
+- **No cookie and no Valstara source-code storage write occurs** in the flow; Cloudflare's protected-form widget may read and write the published `cf.turnstile.u` entry under the E11-05 amendment
 - Submission is disabled during flight; a double-click cannot double-submit
 
 **Tests:** Real-route no-JS missing/empty-token rejection · delayed Turnstile resolution in the submitted body · error rendering per code · expiry/error retry · double-click prevention · the storage-gate check over the rendered page.
@@ -1584,7 +1584,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 - The signup route has no representative-dependent gate
 - Every collected field, its purpose, its lawful basis and its retention period appears in the policy — **reconciled against `docs/data/model.md` by a test**
 - **The policy states the ADR-027 split plainly:** joining and entering run on contract, marketing runs on separate optional consent, and withdrawing marketing never affects the waitlist place or entries. It also names the winner-only collection of country of residence, with no postal address (ADR-026)
-- The cookie and storage inventory is published and lists **exactly one** entry
+- The cookie and storage inventory is published and lists **exactly two** entries: the first-party theme preference and Cloudflare Turnstile's form-security value (founder-authorised 2026-10-10)
 - Pages are at their permanent URLs
 
 **Tests:** The no-representative-claim assertion · the signup route's independence from representative fields · the data-model reconciliation · the inventory count.
@@ -1593,15 +1593,15 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 ### E9-04 — The cookie and storage inventory
 **Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
-**Build:** A published inventory page listing every cookie and storage value — **which is exactly one, the theme preference** — with the reasoning for why no banner is required, and the CI gates that keep it true.
+**Build:** A published inventory page listing every cookie and storage value — **exactly two: the first-party theme preference and Cloudflare Turnstile's `cf.turnstile.u` on protected forms** — with the reasoning for why no banner is required, and the CI gates that keep it true (founder-authorised 2026-10-10). Valstara's source code still makes exactly one permitted storage write, the theme preference; Cloudflare's script makes the second.
 
 **Acceptance criteria:**
-- **The inventory lists exactly one entry**, and a test reconciles it against the storage-gate allowlist
+- **The inventory lists exactly two entries**, and a test reconciles the first-party entry against the unchanged source-code storage-gate allowlist and the Cloudflare entry against the rendered-page probe
 - The no-banner reasoning is stated plainly and is checkable
 - **Adding a second storage write fails both the gate and this reconciliation** — a fixture proves it
 - Linked from the privacy policy
 
-**Tests:** The one-entry reconciliation; the planted second-write fixture.
+**Tests:** The two-entry reconciliation; the planted second source-write fixture.
 **Docs:** `docs/legal/compliance.md#3-eprivacy--why-there-is-no-banner`
 
 ### E9-05 — Data-subject rights
@@ -1665,20 +1665,20 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **Docs:** `docs/features/seo.md`
 
 ### E9-08 — `llms.txt` and the Trustpilot link
-**Model:** GPT-6 Luna — High · **Priority:** Low · **Flag:** `trustpilot.widget` · **Area:** frontend
-**Why this model:** `llms.txt` summarises existing content, and the widget's dangerous failures (an off-origin request with the flag off, a fourth island) are already caught by the third-party-request gate and the island-count test (§3).
+**Model:** GPT-6 Luna — High · **Priority:** Low · **Flag:** — · **Area:** frontend
+**Why this model:** `llms.txt` summarises existing content, and the Trustpilot profile link is ordinary static markup.
 
-**Build:** Ship `llms.txt`. Link the claimed Trustpilot profile. **The widget stays behind its flag, off, and displays no rating until the review count justifies it.**
+**Build:** Ship `llms.txt`. Link the claimed Trustpilot profile on `/legit`. Show the approved "not yet" Reviews paragraph on every response. No Trustpilot widget or rating is served during pre-launch.
 
-**Founder-authorised 2026-10-05:** `TRUSTPILOT_MIN_REVIEWS` defaults to 50; founder-entered `TRUSTPILOT_REVIEW_COUNT` defaults to 0. Public `TRUSTPILOT_BUSINESS_UNIT_ID` and `TRUSTPILOT_TEMPLATE_ID` default empty. Validate all four at boot. Render the TrustBox only on `/legit` when `trustpilot.widget` is on, both IDs are set and the count meets the threshold; otherwise emit no widget markup or Trustpilot request. The flag service refuses and audits an attempt to enable the flag below the threshold; disabling it is always allowed. No Trustpilot API or key is added. Lazy loading means Trustpilot's official loader is emitted with `async` only in an eligible `/legit` response; it never blocks the page. No island or first-party JavaScript is added. When the widget renders, omit the first Reviews paragraph about not yet showing a rating and retain "We will never buy reviews." Both copy variants live in content. Always render a plain link to `https://www.trustpilot.com/review/valstara.com` with `rel="noopener"`, without prefetch or preconnect; its sentence is "You can read and leave reviews on our Trustpilot page." with "our Trustpilot page" linked.
+**Founder-authorised 2026-10-10 (superseding the widget decision of 2026-10-05):** Remove the TrustBox markup, loader, widget-on copy, four Trustpilot settings, flag-on refusal and `trustpilot.widget` registry entry. Keep a plain link to `https://www.trustpilot.com/review/valstara.com` with `rel="noopener"`, without prefetch or preconnect; its sentence is "You can read and leave reviews on our Trustpilot page." with "our Trustpilot page" linked. The "not yet" Reviews paragraph and "We will never buy reviews" remain visible on every `/legit` response. The widget may return with the storefront's consent management platform, outside this repository.
 
 **Acceptance criteria:**
 - `llms.txt` ships. **Expect nothing from it** — the largest study found no correlation with citation frequency and Google says it does not use it. One hour of cheap insurance, not a channel
-- **No Trustpilot request occurs while the flag is off** — asserted by the third-party request gate
-- **No rating or review count renders below the configured threshold** — "3 reviews" is worse than none
-- The widget loads lazily when it is on, and **the page renders correctly without it**
+- **No Trustpilot host is requested on any rendered route** — asserted by the third-party request gate and browser crawl
+- **No rating or review count renders pre-launch** — "3 reviews" is worse than none
+- The plain profile link is present and the "not yet" Reviews paragraph always renders on `/legit`
 
-**Tests:** Flag off: no Trustpilot request (third-party gate), link present · count 49: no widget or request even with flag on; count 50: widget markup · enabling refusal below threshold, audited · Trustpilot host blocked: `/legit` fully renders with link and copy · the "not yet" paragraph is absent when the widget renders and present otherwise.
+**Tests:** No Trustpilot host request on any rendered route · the plain profile link on `/legit` · the "not yet" Reviews paragraph on every `/legit` response · the retired host fails the third-party request gate's planted fixture.
 **Docs:** `docs/features/seo.md` · `docs/architecture/adr/007-cookieless-analytics.md`
 
 ---
@@ -1853,12 +1853,15 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **Model:** GPT-6 Astra — **Extra High** · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this model:** the no-banner position rests on a property that must hold across every page and every dependency, and a single violation invalidates it retroactively — after data has already been collected.
 
-**Build:** Exhaustively verify, across **every rendered page** including email-linked pages and error pages: **no non-essential cookie, no storage identifier beyond the one, no third-party request, no fingerprinting API, no personal data in any analytics event, no full IP anywhere, and no public response carrying another person's data.** Enumerate every registered route and assert its response shape.
+**Founder-authorised clarification, 2026-10-09; amended 2026-10-10:** The off-origin criterion now recognises only Cloudflare Turnstile on protected forms. Executing the formerly approved Trustpilot loader revealed an unapproved follow-on host, so the founder removed the pre-launch widget and its exception. The audit asserts that the allowlist has exactly one host and checks every rendered route. The Umami page-view emitter is same-origin; `static.cloudflareinsights.com` is not an exception and its presence is a blocking finding.
+
+**Build:** Exhaustively verify, across **every rendered page** including email-linked pages and error pages: **no non-essential cookie, no storage identifier beyond the two inventory entries, no off-origin request beyond the one approved host below, no fingerprinting API, no personal data in any analytics event, no full IP anywhere, and no public response carrying another person's data.** Enumerate every registered route and assert its response shape. On pages without a protected form, the rendered probe permits only the documented theme-preference access. On protected forms, it additionally permits only Cloudflare's `cf.turnstile.u` and requires a completed Turnstile token before submission; no page may set or access cookies (founder-authorised 2026-10-10).
 
 **Acceptance criteria:**
 - **Every rendered page checked** — the inventory is complete, not sampled
+- **No rendered page makes an off-origin request except Cloudflare Turnstile (`challenges.cloudflare.com`) on Turnstile-protected forms (ADR-006).** No Trustpilot host is requested on any route
 - **Every registered route's response shape enumerated and asserted free of another person's data**, with `/me` the single documented exception for its own bearer
-- **The storage inventory holds exactly one entry** and reconciles with the gate allowlist
+- **The storage inventory holds exactly two entries** and reconciles with the unchanged first-party source-code gate and the protected-form rendered probe
 - **No full IP address appears in any table, log line, alert or response** — verified by inspection, not by assertion
 - Every dependency reaching the browser is enumerated with what it loads
 - **The ADR-027 consent split holds end to end:** signup and entry succeed with the marketing box unticked, no broadcast reaches a subscriber without current consent, withdrawal leaves waitlist status and entries intact, and the launch-access notification's classification as a requested service message is confirmed and recorded
