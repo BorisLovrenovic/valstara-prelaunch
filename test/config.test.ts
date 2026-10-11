@@ -696,13 +696,10 @@ test('E1-12 complete inventory documents every repository environment variable',
   const usedKeys = new Set<string>(appEnvironmentKeys);
 
   for (const path of sourcePaths) {
-    let source: string;
-    try {
-      source = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
-      throw error;
-    }
+    const source = await readFile(
+      new URL(`../${path}`, import.meta.url),
+      'utf8',
+    );
     addMatches(
       usedKeys,
       source,
