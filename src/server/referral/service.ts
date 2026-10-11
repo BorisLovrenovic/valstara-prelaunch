@@ -28,10 +28,7 @@ import {
   type RewardClassifications,
   promoteAccessWindow,
 } from './config.ts';
-import {
-  rewardStateAtCampaignClose,
-  rewardStateAtConfirmation,
-} from './reward-state.ts';
+import { rewardStateAtConfirmation } from './reward-state.ts';
 import { computeReferralStatus, type ReferralStatus } from './status.ts';
 import {
   createReferralAttributionHealth,
@@ -40,7 +37,6 @@ import {
 
 const maximumCodeAttempts = 10;
 export const milestoneBackfillMaximumLimit = 100;
-export const campaignCloseVoidMaximumLimit = 100;
 export const referralStatusRewardMaximumLimit = 100;
 export const referralCounterRepairMaximumLimit = 1_000;
 
@@ -61,10 +57,6 @@ export interface ReferralServiceDependencies {
 export interface MilestoneBackfillResult {
   readonly awarded: number;
   readonly checked: number;
-}
-
-export interface CampaignCloseVoidResult {
-  readonly voided: number;
 }
 
 export interface ReferralCounterRepairResult {
@@ -97,14 +89,11 @@ export interface ReferralService {
   lookupCode(code: string): Promise<string | null>;
   recomputeCounters(limit: number): Promise<ReferralCounterRepairResult>;
   status(subscriberId: string): Promise<ReferralStatus>;
-  voidHeldRewardsAtCampaignClose(
-    limit: number,
-  ): Promise<CampaignCloseVoidResult>;
 }
 
 /**
  * Referral operations used by E3-07's verification transaction. Attribution,
- * signed refs, confirmation rewards, and campaign-close voiding live here.
+ * signed refs and confirmation rewards live here.
  */
 export function createReferralService(
   database: DatabaseConnection | DatabasePool,
@@ -511,30 +500,6 @@ function createReferralServiceWithRepository(
         },
       );
     },
-
-    async voidHeldRewardsAtCampaignClose(limit) {
-      assertCampaignCloseVoidLimit(limit);
-      return runTransaction(async (connection) => {
-        const transactionalRepository = createReferralRepository(connection);
-        const voidState = rewardStateAtCampaignClose('held');
-        const heldAwardIds =
-          await transactionalRepository.findHeldMilestoneAwardIds(limit);
-        const voidedAwards = await transactionalRepository.voidMilestoneAwards(
-          heldAwardIds,
-          voidState,
-        );
-        const remaining = limit - voidedAwards;
-        const heldEdgeIds =
-          remaining === 0
-            ? []
-            : await transactionalRepository.findHeldReferralEdgeIds(remaining);
-        const voidedEdges = await transactionalRepository.voidReferralEdges(
-          heldEdgeIds,
-          voidState,
-        );
-        return { voided: voidedAwards + voidedEdges };
-      });
-    },
   };
 }
 
@@ -599,29 +564,7 @@ async function awardMilestone(
       now,
     );
   }
-  if (tier.bonusEntries > 0) {
-    await repository.insertMilestoneAward(
-      randomUUID(),
-      subscriberId,
-      tier.number,
-      'entries',
-      rewardStateAtConfirmation(rewardClassifications.entries),
-      now,
-    );
-  }
   return true;
-}
-
-function assertCampaignCloseVoidLimit(limit: number): void {
-  if (
-    !Number.isInteger(limit) ||
-    limit < 1 ||
-    limit > campaignCloseVoidMaximumLimit
-  ) {
-    throw new RangeError(
-      `A campaign-close void limit must be between 1 and ${campaignCloseVoidMaximumLimit}.`,
-    );
-  }
 }
 
 function assertCounterRepairLimit(limit: number): void {

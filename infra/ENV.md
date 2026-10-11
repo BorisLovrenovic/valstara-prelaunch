@@ -185,6 +185,7 @@ provider credential.
 | `GITHUB_ENV`                      | Names GitHub Actions' command file for exporting values to later workflow steps         | PR workflow                          | GitHub Actions-provided file path; neither live nor sandbox   |
 | `GITHUB_OUTPUT`                   | Names GitHub Actions' command file for publishing step outputs                          | Main-image workflow                  | GitHub Actions-provided file path; neither live nor sandbox   |
 | `GITHUB_REPOSITORY`               | Supplies the repository owner and name used to derive the GHCR image name               | Main-image workflow                  | GitHub Actions repository metadata; neither live nor sandbox  |
+| `HANDOFF_REHEARSAL_ADMIN_URL`     | Owner URL for creating the two disposable handoff rehearsal databases                   | E11-06 import rehearsal              | Local or CI owner credential; never a production commerce URL |
 | `NPM_CONFIG_AUDIT`                | Disables npm's network audit during deterministic container installs                    | Docker image, local Compose          | Fixed tooling switch set to `false`; neither live nor sandbox |
 | `NPM_CONFIG_FUND`                 | Disables npm's funding output during deterministic container installs                   | Docker image, local Compose          | Fixed tooling switch set to `false`; neither live nor sandbox |
 | `NPM_CONFIG_MAXSOCKETS`           | Caps npm install concurrency so container memory use is repeatable                      | Docker image, local Compose          | Fixed tooling limit set to `4`; neither live nor sandbox      |
@@ -398,6 +399,19 @@ limits, proves that a non-Cloudflare peer receives `403`, stops the app until
 Caddy returns `503`, then starts it and waits for Caddy to serve it again. The
 drill removes its containers, volumes, test network and temporary certificate
 when it finishes.
+
+## E11-06 handoff rehearsal
+
+`scripts/export-handoff.ts` reads the existing `DATABASE_URL` for the waitlist
+database. It requires command arguments for the operator actor, the store-launch
+instant and a new output path. Keep the resulting NDJSON outside public paths;
+the exporter creates it with mode `0600`.
+
+`HANDOFF_REHEARSAL_ADMIN_URL` is an owner connection URL to a PostgreSQL
+administration database. `scripts/import-rehearsal.ts` uses it to create and
+destroy two uniquely named scratch databases. It must never point at a
+production commerce database. No value is committed. The only retained
+rehearsal artifact is aggregate evidence without customer data.
 
 ## E11-01 disposable load exercise
 

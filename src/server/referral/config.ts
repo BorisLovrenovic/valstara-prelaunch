@@ -6,13 +6,12 @@ export interface AccessWindowBand {
   readonly maximumVerificationOrder: number | null;
   readonly window: AccessWindow;
 }
-export type MilestoneRewardKind = 'discount' | 'entries' | 'wave_upgrade';
+export type MilestoneRewardKind = 'discount' | 'wave_upgrade';
 export type RewardClassifications = Readonly<
   Record<MilestoneRewardKind, RewardClassification>
 >;
 
 export interface MilestoneTier {
-  readonly bonusEntries: number;
   readonly discountPercent: number;
   readonly enabled: boolean;
   readonly number: number;
@@ -38,14 +37,12 @@ export function milestoneReachedAtConfirmation(
  */
 export const milestoneTiers: readonly MilestoneTier[] = Object.freeze([
   {
-    bonusEntries: 5,
     discountPercent: 15,
     enabled: true,
     number: 1,
     threshold: 3,
   },
   {
-    bonusEntries: 10,
     discountPercent: 25,
     enabled: false,
     number: 2,
@@ -60,7 +57,6 @@ export const milestoneTiers: readonly MilestoneTier[] = Object.freeze([
 export const milestoneRewardClassifications: RewardClassifications =
   Object.freeze({
     discount: 'high_value',
-    entries: 'high_value',
     wave_upgrade: 'cheap',
   });
 

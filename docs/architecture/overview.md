@@ -18,7 +18,7 @@ Each is re-derived from this campaign and traces to an ADR.
 
 3. **No non-essential cookie, ever — so there is no consent banner.** This is not a shortcut. Referral attribution is captured **server-side on the rendering request** and carried as a signed hidden field, analytics is cookieless, and the site runs no device-fingerprinting API. Because nothing is stored on or read from the visitor's device for a non-essential purpose, the site is outside ePrivacy Article 5(3); Cloudflare Turnstile's separate server-side processing of IP, TLS and user-agent security signals is disclosed as processor activity (`docs/legal/compliance.md`). That is the reason the measurement is trustworthy rather than a self-selected subset. → ADR-007, ADR-008
 
-4. **Fraud is answered by economics, not detection.** Cheap rewards confirm on verification; **high-value rewards are held until the referred person completes a first order after launch.** Detection layers exist, they *flag*, and a human decides. Nothing auto-bans. → ADR-012, ADR-013
+4. **Fraud is answered by economics, not detection.** Cheap rewards confirm on verification; **milestone discounts are held until any one of the owner's confirmed referred people places a first order within 90 days after store launch.** Detection layers exist, they *flag*, and a human decides. Nothing auto-bans. → ADR-012, ADR-013
 
 5. **The waitlist database is its own database, and it is designed against the import.** Never tables inside Medusa's. Every column that the launch-day handoff needs — referral tier, code, confirmed referrals, category preference, access window, source, SubSlush provenance, marketing-consent state — exists from the first migration, so the handoff is a script rather than a modelling exercise. → ADR-004, `docs/data/model.md`
 
@@ -120,7 +120,7 @@ sequenceDiagram
   V->>A: POST /verify (token)
   A->>DB: Consume single-use token, set status = verified
   A->>DB: Referral edge -> confirmed; cheap reward settles
-  A->>DB: High-value reward -> HELD (waits on a post-launch first order)
+  A->>DB: Milestone discount -> HELD (storefront qualifies within 90 days after launch)
   A-->>V: Success page + two survey questions + referral link
   A->>R: Welcome mail with referral link and signed status link
 ```
@@ -139,9 +139,9 @@ stateDiagram-v2
   Attributed --> Rejected: self-referral, duplicate identity, or referrer disqualified
   Attributed --> Confirmed: referred subscriber verifies
   Confirmed --> Settled: cheap reward — entries, tier progress, wave position
-  Confirmed --> Held: high-value reward — large discount, extra draw entries
-  Held --> Settled: referred person completes a first order AFTER launch
-  Held --> Void: campaign closes without a qualifying order
+  Confirmed --> Held: milestone discount
+  Held --> Settled: qualifying referred person completes a first order within 90 days after store launch
+  Held --> Void: storefront deadline passes without a qualifying order
   Rejected --> [*]
   Settled --> [*]
   Void --> [*]

@@ -34,7 +34,7 @@ export const emailCopy = {
   milestone: {
     subject: (tier: number) => `Referral tier ${tier} reached`,
     firstLine: (tier: number) => `You reached referral tier ${tier}.`,
-    body: 'Your current rewards are below. Settled rewards are earned; held rewards wait for a qualifying first order after launch.',
+    body: 'Your current rewards are below. Settled rewards are earned; held discounts require the referred person’s first order within 90 days after store launch.',
   },
   statusLink: {
     subject: 'Your Valstara waitlist status link',

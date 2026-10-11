@@ -1,0 +1,48 @@
+{
+  "ticket": "E11-06",
+  "inputSha256": "27e4763700072940083324cea6da0813387e38d1234af820f1444257a06ca32a",
+  "rehearsals": [
+    {
+      "rehearsal": 1,
+      "firstImport": {
+        "createdCustomers": 4,
+        "createdDiscounts": 2,
+        "createdGroups": 5,
+        "createdReferrals": 2
+      },
+      "secondImport": {
+        "createdCustomers": 0,
+        "createdDiscounts": 0,
+        "createdGroups": 0,
+        "createdReferrals": 0
+      },
+      "finalCounts": {
+        "customers": 4,
+        "groups": 5,
+        "discounts": 2,
+        "referrals": 2
+      }
+    },
+    {
+      "rehearsal": 2,
+      "firstImport": {
+        "createdCustomers": 4,
+        "createdDiscounts": 2,
+        "createdGroups": 5,
+        "createdReferrals": 2
+      },
+      "secondImport": {
+        "createdCustomers": 0,
+        "createdDiscounts": 0,
+        "createdGroups": 0,
+        "createdReferrals": 0
+      },
+      "finalCounts": {
+        "customers": 4,
+        "groups": 5,
+        "discounts": 2,
+        "referrals": 2
+      }
+    }
+  ]
+}

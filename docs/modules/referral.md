@@ -17,7 +17,6 @@ interface ReferralService {
   attribute(referredId: string, code: string): Promise<AttributeResult>
   confirm(referredId: string): Promise<void>           // called on verification
   status(subscriberId: string): Promise<ReferralStatus>
-  voidHeldRewardsAtCampaignClose(limit: number): Promise<{ voided: number }>
   backfillTier(tier: number, actor: string, limit: number): Promise<{ checked: number; awarded: number }>
   rejectEdgesOf(referrerId: string, reason: RejectReason): Promise<number>
   recomputeCounters(limit: number): Promise<{ checked: number; corrected: number }>
@@ -34,7 +33,7 @@ interface ReferralService {
 - UTM accepts only source, medium, campaign, content and term; values are trimmed, control-character-free, capped at 128 characters and 512 serialized bytes. Invalid values are dropped. It is analytics-only and never gates attribution or rewards.
 - **`verifyRef()` returns `null` rather than throwing.** A bad ref must never cost a signup.
 - **One edge per referred person, forever** — a database unique constraint, not an application check.
-- **Cheap rewards settle on confirmation; high-value rewards enter `held`.** This repository implements the hold and campaign-close `void` transition only. The storefront is the authoritative post-launch order source and owns `held` → `settled` after handoff. **A verification alone can never settle a high-value reward** — this is the module's central invariant.
+- **Cheap rewards settle on confirmation; milestone discounts enter `held`.** This repository carries eligible owners' held discounts to the storefront with their normalised email key, confirmed referral pairs, and a qualification deadline 90 days after store launch. The storefront settles a held discount if any one of the owner's confirmed referred people places a first order before that deadline, and voids it afterward otherwise. Disqualified owners' discounts are voided with audited reason `owner_disqualified`; suppressed or departed owners' with `owner_not_in_handoff`. Erasure removes the award (E9-05); marketing withdrawal alone does not bar an otherwise eligible owner. **A verification alone can never settle a high-value reward** — this is the module's central invariant. Any legacy bonus-entry milestone award is voided with an audited reason at handoff and never exported.
 - A configured tier is awarded only by the confirmation that reaches its threshold. Enabling a tier after a subscriber has already passed that threshold is deliberately non-retroactive. Retroactive awards require the actor-named, batch-capped `backfillTier()` action, and every batch writes `referral.milestone_backfilled` to the audit log.
 - **`referral_tier` is derived from the highest settled `milestone_award`.** Held awards do not raise it.
 - **Referral status has one computation.** `status()` returns the code-derived referral link, the subscriber row's exact `confirmed_referrals` value without display transformation, the tier derived afresh from settled awards, and every active milestone reward with its `settled` or `held` state. E6-05 extends that result with the authenticated subscriber's own rank, computed server-side against the referral ordering; it is personal `/me` content and never comes from the anonymised public snapshot. E6-05 and E8-03 render this result; they do not recompute it. Referral-status rendering ownership was founder-authorised 2026-09-14; the own-rank scope move was founder-authorised 2026-09-21.
@@ -47,9 +46,9 @@ Values, not schema. Changing any of them requires no migration.
 
 - **Base entry:** `1` on verification. **Per confirmed referral:** `+1` entry — cheap, settles on confirmation.
 - **Tier ladder** (`milestone_award`, unique on `(subscriber_id, tier, reward_kind)`):
-  - **Tier 1 — 3 confirmed referrals:** cheap settled = tier progress + `wave_upgrade`; **held** = 15% launch discount + `+5` bonus entries.
-  - **Tier 2 — 5 confirmed referrals** (cut-list item 7, added mid-campaign, no migration): held = 25% discount + `+10` bonus entries.
-- **Cheap vs high-value** follows ADR-012: base/per-referral entries, tier progress and wave position settle on confirmation; **milestone discount codes and milestone bonus entries are `held`**, then become `void` at campaign close if they remain in pre-launch. The classification is configuration, not schema.
+  - **Tier 1 — 3 confirmed referrals:** cheap settled = tier progress + `wave_upgrade`; **held** = 15% launch discount.
+  - **Tier 2 — 5 confirmed referrals** (cut-list item 7, added mid-campaign, no migration): cheap settled = tier progress + `wave_upgrade`; **held** = 25% discount.
+- **Cheap vs high-value** follows ADR-012: base/per-referral entries, tier progress and wave position settle on confirmation; **milestone discount codes are `held`** and carried to the storefront. No configured milestone reward is a draw entry. The classification is configuration, not schema.
 - **Access-window bands** (assigned at verification — see `docs/data/model.md` `access_window`): base band by verification order `≤1,000 → wave-1 · ≤5,000 → wave-2 · ≤15,000 → wave-3 · else wave-4`, then each tier promotes one band toward `wave-1` (promotion only, audited).
   The count-and-assignment section is serialised, so concurrent verifications receive distinct ordinals at a band boundary. Every later promotion records `referral.access_window_promoted` with its previous and resulting tier and wave.
 

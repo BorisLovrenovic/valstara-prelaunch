@@ -232,7 +232,8 @@ test('E8-03 verification begins with its purpose; milestone distinguishes held a
   assert.match(milestone.subject, /Referral tier 1 reached/u);
   assert.match(milestone.text, /Access-wave upgrade — Settled/u);
   assert.match(milestone.text, /Launch discount — Held/u);
-  assert.match(milestone.text, /Bonus entries — Held/u);
+  assert.doesNotMatch(milestone.text, /Bonus entries/u);
+  assert.match(milestone.text, /within 90 days after store launch/u);
 });
 
 test('E8-03 welcome and milestone use the same referral presentation as /me', async () => {

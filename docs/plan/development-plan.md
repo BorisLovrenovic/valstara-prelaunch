@@ -824,7 +824,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 ### E4-05 — Milestone ladder and tiers
 **Model:** Tier A — Medium · **Priority:** High · **Flag:** `referral.enabled` · **Area:** backend
 
-**Build:** The tier ladder as configuration, evaluated on each confirmation. `milestone_award` unique on `(subscriber_id, tier, reward_kind)` so the tier's settled wave upgrade and held discount/bonus entries coexist. Tier 1 ships; **the five-referral tier is cut-list item 7 and can be added mid-campaign** without a migration.
+**Build:** The tier ladder as configuration, evaluated on each confirmation. `milestone_award` unique on `(subscriber_id, tier, reward_kind)` so the tier's settled wave upgrade and held discount coexist. No milestone bonus draw entries are configured (founder-authorised 2026-10-11). Tier 1 ships; **the five-referral tier is cut-list item 7 and can be added mid-campaign** without a migration.
 
 **Acceptance criteria:**
 - A tier is awarded **exactly once**, enforced by the unique constraint
@@ -839,15 +839,15 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Model:** Tier B — **Extra High** · **Priority:** Highest · **Flag:** `referral.enabled` · **Area:** backend
 **Why this tier:** this is the campaign's central anti-fraud invariant (ADR-012). Every other fraud control is secondary to it, and a subtle path that settles a high-value reward from a verification undoes all of them at once.
 
-**Build:** The pre-launch reward state machine: `none` → `settled` for cheap rewards on confirmation; `none` → `held` for high-value rewards on confirmation; and `held` → `void` at campaign close. The classification of cheap versus high-value is configuration. `held` → `settled` on a qualifying first order is deliberately **not** a pre-launch transition: the storefront (Medusa) is the authoritative order source and owns that transition after the handoff. This repository never reads or writes Medusa.
+**Build:** The pre-launch reward state machine: `none` → `settled` for cheap rewards on confirmation and `none` → `held` for milestone discounts on confirmation. The classification is configuration. Tier 1 has settled tier progress/`wave_upgrade` and a held 15% discount; Tier 2, if enabled, has settled tier progress/`wave_upgrade` and a held 25% discount. No milestone draw-entry reward is configured. The storefront (Medusa) owns both `held` → `settled` when any one of the owner's confirmed referred people places a first order before the qualification deadline, and `held` → `void` after the deadline, which is store launch plus 90 days. This repository never reads or writes Medusa. Founder-authorised 2026-10-11: legacy bonus-entry awards, if any, are voided with a recorded audited reason; eligible held discounts are carried at handoff.
 
 **Acceptance criteria:**
 - **No code path settles a high-value reward from a verification** — asserted by enumerating every transition into `settled` and proving each one's precondition
 - Cheap rewards settle on confirmation
-- **Held rewards that never qualify become `void` — recorded, never deleted**, because the rule was published and must be checkable
+- No configured milestone reward is a draw entry; any legacy bonus-entry award is voided with an audited reason, never deleted
 - The classification is configuration, changeable without a migration
 
-**Tests:** **A generated test over every transition into `settled`, asserting its precondition** · a seeded property test over generated referral graphs asserting no held reward settles without a qualifying order · the void path at campaign close.
+**Tests:** **A generated test over every transition into `settled`, asserting its precondition** · a seeded property test over generated referral graphs asserting no held reward settles without a qualifying order · no milestone draw-entry reward is configured · the audited legacy bonus-entry void path.
 **Docs:** `docs/architecture/adr/012-reward-gating.md` · `docs/modules/referral.md` · `docs/security/threat-model.md#t2--referral-fraud-discredits-the-leaderboard`
 
 ### E4-07 — Access-window assignment
@@ -1877,7 +1877,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 **Build:** `scripts/export-handoff.ts` producing the export set and payload per `docs/data/model.md#the-launch-day-handoff-contract`, and `scripts/import-rehearsal.ts` performing the idempotent import keyed on `email_normalised` against a scratch database. **Rehearse twice.**
 
-**Reward-gating boundary (founder-authorised 2026-09-13):** E4-06 owns the pre-launch hold and bounded campaign-close void transition. A qualifying post-launch first order comes only from the storefront (Medusa), which applies `held` → `settled` after the handoff; the pre-launch repository never reads or writes Medusa and the waitlist database becomes read-only after handoff. This ticket's handoff-time reconciliation exports the held-reward records, applies the published campaign-close void rule where applicable, and records every held reward's outcome.
+**Reward-gating boundary (founder-authorised 2026-09-13; amended 2026-10-11):** Campaign close for held discounts is the handoff. The pre-launch repository carries every held discount whose owner is in the export set to the storefront with owner `email_normalised`, state `held`, and `qualification_deadline = store launch + 90 days`; store launch is a handoff parameter. It exports confirmed referral links as `(referrer email_normalised, referred email_normalised)` pairs only when both people are in that set. Medusa settles a held discount when any one of the owner's confirmed referred people places a first order before the deadline and voids it after the deadline otherwise. Before export, a disqualified owner's held discount is voided with audited reason `owner_disqualified`; a suppressed or departed owner's is voided with audited reason `owner_not_in_handoff`. Marketing withdrawal alone does not remove an otherwise eligible owner. Erasure leaves no discount to export (E9-05). Each carried reward has an audited `carried_to_storefront` outcome with its deadline. The pre-launch repository never reads or writes Medusa and the waitlist database becomes read-only after handoff. Legacy bonus-entry milestone awards are unqualifiable under the published rules and are voided in bounded batches with an audited reason, never deleted.
 
 **Acceptance criteria:**
 - The export set is exactly *verified, unsuppressed, not disqualified* — asserted, so a **pending or `expired` row is absent** (E3-08's deferred handoff-exclusion assertion, owned here — standing rule 20)
@@ -1885,10 +1885,12 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 - **Running the import twice produces zero additional customers** — the invariant, asserted, and a failure here is blocking
 - **Customer groups `wave-1`…`wave-4` and `subslush-legacy` are assigned**, and their values match what the storefront expects
 - **Both rehearsals are executed against a scratch database and recorded in the repository**
-- Held referral rewards are reconciled per the published rule — voided in pre-launch where the campaign-close rule applies, otherwise handed to the storefront for first-order settlement — and **every held reward's outcome is recorded**
+- Every eligible owner's held discount is exported with its owner key, 90-day-after-launch deadline and audited `carried_to_storefront` outcome; ineligible owner outcomes are voided and audited, and no discount for an owner outside the export set is exported
+- Confirmed referral links include only pairs whose referrer and referred person are in the customer export set; the scratch import of those pairs is idempotent
+- No bonus-entry reward exists in configuration or export; any legacy bonus-entry award is voided with an audited reason
 - The export is streamed and batch-capped
 
-**Tests:** Double-import idempotency · field completeness against the contract · group assignment · the held-reward settlement pass.
+**Tests:** Double-import idempotency including `qualification_deadline`, owner key and confirmed referral links · field completeness against the contract · group assignment · every eligible held discount and its deadline · one test per owner outcome (disqualified, suppressed, departed, erased, marketing-withdrawn) and no out-of-set discount export · no configured or exported bonus-entry reward · the audited legacy bonus-entry void pass.
 **Docs:** `docs/data/model.md#the-launch-day-handoff-contract` · `docs/ops/launch-cutover.md`
 
 ### E11-07 — Cutover rehearsal and the port checklist

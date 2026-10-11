@@ -4,7 +4,7 @@
  */
 export type PrelaunchRewardState = 'none' | 'settled' | 'held' | 'void';
 export type RewardClassification = 'cheap' | 'high_value';
-export type RewardTransitionSource = 'confirmation' | 'campaign_close';
+export type RewardTransitionSource = 'confirmation';
 
 export interface PrelaunchRewardTransition {
   readonly classification: RewardClassification;
@@ -27,20 +27,10 @@ export const prelaunchRewardTransitions: readonly PrelaunchRewardTransition[] =
       source: 'confirmation',
       to: 'held',
     },
-    {
-      classification: 'high_value',
-      from: 'held',
-      source: 'campaign_close',
-      to: 'void',
-    },
   ]);
 
 export type ConfirmationRewardState = 'held' | 'settled';
 export type MilestoneAwardState = Exclude<PrelaunchRewardState, 'none'>;
-
-export function rewardStateAtCampaignClose(state: 'held'): 'void' {
-  return transitionFor('high_value', state, 'campaign_close').to as 'void';
-}
 
 export function rewardStateAtConfirmation(
   classification: RewardClassification,

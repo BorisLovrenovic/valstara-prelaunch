@@ -45,14 +45,16 @@ Rehearsed twice against a scratch database before the day (E11-06). **A rehearsa
 2. **Send the final reminder** to unverified rows *before* the freeze, so nobody is left holding a token that will stop working.
 3. **pgBackRest snapshot.** The point-in-time everything else references.
 4. **Export**: verified, unsuppressed, not disqualified.
-5. **Idempotent import keyed on `email_normalised`** → `createCustomersWorkflow` with metadata (`referral_tier`, `referral_code`, `confirmed_referrals`, `category_preference`, `access_window`, `source`, `subslush_customer`, and the marketing-consent state). **The storefront sends marketing only to customers whose consent is present** (ADR-027).
+5. **Idempotent import keyed on `email_normalised`** → `createCustomersWorkflow` with metadata (`referral_tier`, `referral_code`, `confirmed_referrals`, `category_preference`, `access_window`, `source`, `subslush_customer`, and the marketing-consent state). **The storefront sends marketing only to customers whose consent is present** (ADR-027). The E11-06 scratch import proves the contract; the Medusa-side implementation lives in the storefront repository.
 6. **Assign customer groups** `wave-1`…`wave-4` and `subslush-legacy`. **Groups, not metadata, are what promotions and price lists target** — the metadata carries provenance, the group carries the access it grants.
-7. **Generate per-customer discount codes.**
-8. **Settle or void held referral rewards** per the published rule, and record the outcome for every held edge.
+7. **Import confirmed referral pairs and eligible held-discount records.** Both people in each pair and every discount owner must be in the customer import set. The discount's owner `email_normalised` is its customer import key.
+8. **Carry eligible held discounts to the storefront** with state `held`, audited `carried_to_storefront` outcome and `qualification_deadline` set from the supplied store-launch instant plus 90 days. The storefront settles a discount when any one of its owner's confirmed referred people places a first order before the deadline, then voids still-held discounts afterward. Before export, void disqualified owners' discounts with reason `owner_disqualified`, and suppressed or departed owners' with `owner_not_in_handoff`; audit every outcome. E9-05 erasure leaves no award to export. Marketing withdrawal alone does not block a verified, unsuppressed owner. Void any legacy bonus-entry milestone awards in bounded batches with an audited reason. No bonus-entry award is imported.
 9. **DNS/proxy cutover.**
 10. **Set the waitlist database read-only for 90 days** as the audit trail.
 
 ---
+
+E11-06's handoff file is NDJSON. `customer` records contain the twelve customer fields above plus their assigned groups; `held_discount` records carry the owner key, held award and qualification deadline; `confirmed_referral` records carry the two normalised email keys. The export command requires `--store-launch-at=<RFC3339 UTC>`, `--actor=<operator>` and `--output=<new private path>` with `DATABASE_URL` set to the frozen waitlist database. The import rehearsal requires `--input=<handoff NDJSON>` and `--evidence=<new path>` with `HANDOFF_REHEARSAL_ADMIN_URL` set to a PostgreSQL owner URL. It creates two scratch databases, imports the same file twice into each, rejects any additional customer, group, discount or referral pair on the second pass, and drops both databases. The synthetic pre-launch rehearsal evidence is in `docs/ops/e11-06-rehearsals.json`; the launch-day run uses the real export and retains only aggregate evidence in the repository.
 
 ## Verification after the swap
 

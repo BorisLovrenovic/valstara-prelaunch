@@ -18,7 +18,7 @@ Status: authoritative. Scope: the pre-launch site for the duration of the campai
 
 Reputational, not financial. A leaderboard that visibly rewards a cheat is worse than no leaderboard.
 
-**Controls:** Structural first — **cheap rewards on verification, high-value rewards held until a post-launch first order** (ADR-012). Then normalisation before uniqueness, blocklist and MX, self-referral and velocity flags, and **manual review of the top 20 before any award**. Flagged accounts are excluded from the snapshot. The disqualification rule is **published**, because an unpublished rule cannot be enforced fairly. `leaderboard.public` is the incident lever, and it works without a deploy.
+**Controls:** Structural first — **cheap rewards on verification, milestone discounts held until any one of the owner's confirmed referred people places a first order within 90 days after store launch** (ADR-012). No milestone bonus draw entries are configured (founder-authorised 2026-10-11). Then normalisation before uniqueness, blocklist and MX, self-referral and velocity flags, and **manual review of the top 20 before any award**. Flagged accounts are excluded from the snapshot. The disqualification rule is **published**, because an unpublished rule cannot be enforced fairly. `leaderboard.public` is the incident lever, and it works without a deploy.
 
 ---
 

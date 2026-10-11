@@ -527,11 +527,10 @@ test('verification commits the referral completion together and holds high-value
       `,
         values: [referrerId],
       },
-      3,
+      2,
     );
     assert.deepEqual(awards, [
       { reward_kind: 'discount', state: 'held' },
-      { reward_kind: 'entries', state: 'held' },
       { reward_kind: 'wave_upgrade', state: 'settled' },
     ]);
   } finally {
@@ -611,12 +610,11 @@ test('confirmation derives the counter from edges and evaluates each milestone o
         `,
         values: [referrerId],
       },
-      3,
+      2,
     );
     assert.deepEqual(referrer, { confirmed_referrals: 3, referral_tier: 1 });
     assert.deepEqual(awards, [
       { reward_kind: 'discount' },
-      { reward_kind: 'entries' },
       { reward_kind: 'wave_upgrade' },
     ]);
   } finally {
@@ -783,11 +781,10 @@ test('with referral.enabled off, verification still confirms and settles an exis
         `,
         values: [referrerId],
       },
-      3,
+      2,
     );
     assert.deepEqual(awards, [
       { reward_kind: 'discount', state: 'held' },
-      { reward_kind: 'entries', state: 'held' },
       { reward_kind: 'wave_upgrade', state: 'settled' },
     ]);
   } finally {
