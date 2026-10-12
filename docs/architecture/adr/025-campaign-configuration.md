@@ -26,8 +26,7 @@ the single source of the numbers.
 ### Reward classification (restates ADR-012 — not re-litigated)
 - **Cheap — settle on confirmation:** the base draw entry, `+1` entry per confirmed
   referral, tier progress, and wave position (`wave_upgrade`).
-- **High-value — enter `held`, settle only on a post-launch first order, `void` at
-  campaign close:** milestone discount codes and milestone **bonus** entries.
+- **High-value — enter `held`, settle only on a qualifying first order within 90 days after store launch:** milestone discount codes. The storefront voids unqualified discounts after that deadline. No milestone draw-entry reward is configured (founder-authorised 2026-10-11).
 
 ### Entries
 - **Base entry:** `1`, accrued on verification.
@@ -36,8 +35,8 @@ the single source of the numbers.
 ### Tier ladder (`milestone_award`, unique on `(subscriber_id, tier, reward_kind)`)
 | Tier | Threshold (confirmed referrals) | Cheap (settled on confirmation) | High-value (`held`) |
 |---|---|---|---|
-| 1 | 3 | tier progress · `wave_upgrade` | **15%** launch discount code · `+5` bonus entries |
-| 2 | 5 | tier progress · `wave_upgrade` | **25%** launch discount code · `+10` bonus entries |
+| 1 | 3 | tier progress · `wave_upgrade` | **15%** launch discount code |
+| 2 | 5 | tier progress · `wave_upgrade` | **25%** launch discount code |
 
 Tier 1 ships. Tier 2 is cut-list item 7 (`docs/features/README.md#cut-list-in-order`):
 added mid-campaign with no migration, and **never retroactively awarded** to people who
@@ -96,8 +95,12 @@ numbers; a change to any value updates this ADR in the same ticket (ADR index ru
 
 The two values that carried real-world consequence are **confirmed** (2026-09-08):
 - **The held discount percentages — 15% (Tier 1) / 25% (Tier 2)** are production values.
-  The launch-day handoff generates per-customer discount codes at these rates
-  (`docs/data/model.md#the-launch-day-handoff-contract`).
+  The handoff carries eligible owners' held discounts at these rates with owner
+  `email_normalised`, confirmed referral pairs, and qualification deadlines.
+  The storefront settles a discount when any one of that owner's confirmed
+  referred people places a first order before the deadline
+  (`docs/data/model.md#the-launch-day-handoff-contract`). Both tiers also retain
+  their settled tier progress and `wave_upgrade`.
 - **The `category_preference` taxonomy** `[apparel, footwear, accessories, home, beauty]`
   is the canonical set. The storefront creates Medusa product categories to match it; the
   handoff export carries these exact tokens.

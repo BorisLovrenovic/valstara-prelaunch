@@ -27,10 +27,9 @@ export const memberStatusCopy = {
     empty: 'No referral rewards yet.',
     heading: 'Referral rewards',
     intro:
-      'Settled rewards are already earned. Held rewards wait for a qualifying first order after launch.',
+      'Settled rewards are already earned. Held discounts require the referred person’s first order within 90 days after store launch.',
     kinds: {
       discount: 'Launch discount',
-      entries: 'Bonus entries',
       merch: 'Merchandise',
       wave_upgrade: 'Access-wave upgrade',
     },

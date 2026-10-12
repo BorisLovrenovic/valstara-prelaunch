@@ -190,7 +190,7 @@ test('concurrent confirmations cannot skip or duplicate a tier threshold', async
           values: [referrerId],
         })
       )?.count,
-      '3',
+      '2',
     );
   } finally {
     await fixture.dispose();
@@ -252,11 +252,10 @@ test('enabling a tier does not reward subscribers who already passed it without 
         `,
         values: [referrerId],
       },
-      3,
+      2,
     );
     assert.deepEqual(awards, [
       { reward_kind: 'discount', state: 'held' },
-      { reward_kind: 'entries', state: 'held' },
       { reward_kind: 'wave_upgrade', state: 'settled' },
     ]);
     assert.deepEqual(

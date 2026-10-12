@@ -52,10 +52,18 @@ export function presentReferralStatus(status: ReferralStatus) {
       },
     ],
     referralLink: status.referralLink,
-    rewards: status.rewards.map((reward) => ({
-      label: memberStatusCopy.rewards.kinds[reward.kind],
-      tier: memberStatusCopy.rewards.tier(reward.tier),
-      state: memberStatusCopy.rewards.states[reward.state],
-    })),
+    rewards: status.rewards
+      .filter(
+        (
+          reward,
+        ): reward is typeof reward & {
+          kind: 'discount' | 'merch' | 'wave_upgrade';
+        } => reward.kind !== 'entries',
+      )
+      .map((reward) => ({
+        label: memberStatusCopy.rewards.kinds[reward.kind],
+        tier: memberStatusCopy.rewards.tier(reward.tier),
+        state: memberStatusCopy.rewards.states[reward.state],
+      })),
   };
 }

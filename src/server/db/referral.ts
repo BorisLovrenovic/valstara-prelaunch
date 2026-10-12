@@ -49,8 +49,6 @@ export interface ReferralRepository {
   findEdgeForConfirmation(
     referredId: string,
   ): Promise<ReferralEdgeForConfirmation | null>;
-  findHeldMilestoneAwardIds(limit: number): Promise<readonly string[]>;
-  findHeldReferralEdgeIds(limit: number): Promise<readonly string[]>;
   findSubscriber(subscriberId: string): Promise<ReferralSubscriber | null>;
   findSubscriberIdByCode(code: string): Promise<string | null>;
   findSettledReferralTier(subscriberId: string): Promise<number>;
@@ -60,7 +58,7 @@ export interface ReferralRepository {
     id: string,
     subscriberId: string,
     tier: number,
-    rewardKind: 'discount' | 'entries' | 'wave_upgrade',
+    rewardKind: 'discount' | 'wave_upgrade',
     state: Exclude<MilestoneAwardState, 'void'>,
     now: Date,
   ): Promise<number>;
@@ -83,8 +81,6 @@ export interface ReferralRepository {
     tier: number,
   ): Promise<boolean>;
   verificationOrder(): Promise<number>;
-  voidMilestoneAwards(ids: readonly string[], state: 'void'): Promise<number>;
-  voidReferralEdges(ids: readonly string[], state: 'void'): Promise<number>;
 }
 
 export function createReferralRepository(
@@ -257,42 +253,6 @@ export function createReferralRepository(
       });
     },
 
-    async findHeldMilestoneAwardIds(limit) {
-      if (!Number.isInteger(limit) || limit < 1) {
-        throw new RangeError('A held-award query limit must be positive.');
-      }
-      const rows = await database.list<{ id: string }>(
-        {
-          text: `
-            SELECT id
-            FROM milestone_award
-            WHERE state = 'held'
-            ORDER BY awarded_at, id
-          `,
-        },
-        limit,
-      );
-      return rows.map((row) => row.id);
-    },
-
-    async findHeldReferralEdgeIds(limit) {
-      if (!Number.isInteger(limit) || limit < 1) {
-        throw new RangeError('A held-edge query limit must be positive.');
-      }
-      const rows = await database.list<{ id: string }>(
-        {
-          text: `
-            SELECT id
-            FROM referral_edge
-            WHERE reward_state = 'held'
-            ORDER BY confirmed_at NULLS LAST, created_at, id
-          `,
-        },
-        limit,
-      );
-      return rows.map((row) => row.id);
-    },
-
     async findSubscriber(subscriberId) {
       return database.readOne<ReferralSubscriber>({
         text: `
@@ -454,34 +414,6 @@ export function createReferralRepository(
         values: [countedSubscriberStatus],
       });
       return Number(row?.count ?? '0');
-    },
-
-    async voidMilestoneAwards(ids, state) {
-      if (ids.length === 0) {
-        return 0;
-      }
-      return database.execute({
-        text: `
-          UPDATE milestone_award
-          SET state = $2
-          WHERE id = ANY($1::uuid[]) AND state = 'held'
-        `,
-        values: [ids, state],
-      });
-    },
-
-    async voidReferralEdges(ids, state) {
-      if (ids.length === 0) {
-        return 0;
-      }
-      return database.execute({
-        text: `
-          UPDATE referral_edge
-          SET reward_state = $2
-          WHERE id = ANY($1::uuid[]) AND reward_state = 'held'
-        `,
-        values: [ids, state],
-      });
     },
   };
 }

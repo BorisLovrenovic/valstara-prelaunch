@@ -27,6 +27,9 @@ export const auditActions = [
   'dsr.requested',
   'dsr.fulfilled',
   'handoff.frozen',
+  'handoff.bonus_entries_voided',
+  'handoff.discount_voided',
+  'handoff.discount_carried',
 ] as const;
 
 export type AuditAction = (typeof auditActions)[number];

@@ -142,6 +142,31 @@ async function startBrowserServer() {
   );
 }
 
+async function waitForBrowserAppServer() {
+  const deadline =
+    globalThis.performance.now() + appServerStartupTimeoutMilliseconds;
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  let lastError;
+  try {
+    while (globalThis.performance.now() < deadline) {
+      try {
+        const response = await page.goto(browserOrigin, { timeout: 2_000 });
+        if (response?.ok()) return;
+      } catch (error) {
+        lastError = error;
+      }
+      if (serverError !== undefined || server.exitCode !== null) break;
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 100));
+    }
+    throw new Error(
+      `Landing theme browser could not reach the app server. ${String(lastError)}\n${serverOutput || '(no server output)'}`,
+    );
+  } finally {
+    await context.close();
+  }
+}
+
 before(async () => {
   await execFileAsync('npm', ['run', 'build']);
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -192,6 +217,7 @@ before(async () => {
   }
   const browserServerEndpoint = await startBrowserServer();
   browser = await chromium.connect(browserServerEndpoint);
+  await waitForBrowserAppServer();
 });
 
 after(async () => {

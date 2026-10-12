@@ -8,14 +8,14 @@ import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import type { RewardClassifications } from '../src/server/referral/config.ts';
 import {
+  milestoneRewardClassifications,
+  milestoneTiers,
+} from '../src/server/referral/config.ts';
+import {
   prelaunchRewardTransitions,
-  rewardStateAtCampaignClose,
   rewardStateAtConfirmation,
 } from '../src/server/referral/reward-state.ts';
-import {
-  campaignCloseVoidMaximumLimit,
-  createReferralService,
-} from '../src/server/referral/service.ts';
+import { createReferralService } from '../src/server/referral/service.ts';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
@@ -112,7 +112,13 @@ test('every pre-launch transition into settled requires a cheap confirmation', (
   ]);
   assert.equal(rewardStateAtConfirmation('cheap'), 'settled');
   assert.equal(rewardStateAtConfirmation('high_value'), 'held');
-  assert.equal(rewardStateAtCampaignClose('held'), 'void');
+  assert.deepEqual(Object.keys(milestoneRewardClassifications).sort(), [
+    'discount',
+    'wave_upgrade',
+  ]);
+  assert.ok(
+    milestoneTiers.every((tier) => !Object.hasOwn(tier, 'bonusEntries')),
+  );
 });
 
 test('confirmation applies the configured cheap and high-value classifications', async () => {
@@ -136,17 +142,15 @@ test('confirmation applies the configured cheap and high-value classifications',
         `,
         values: [referrerId],
       },
-      3,
+      2,
     );
     assert.deepEqual(awards, [
       { reward_kind: 'discount', state: 'held' },
-      { reward_kind: 'entries', state: 'held' },
       { reward_kind: 'wave_upgrade', state: 'settled' },
     ]);
 
     const configuredClassifications: RewardClassifications = {
       discount: 'cheap',
-      entries: 'cheap',
       wave_upgrade: 'cheap',
     };
     const configuredReferrerId = await insertVerifiedSubscriber(
@@ -174,10 +178,9 @@ test('confirmation applies the configured cheap and high-value classifications',
         `,
         values: [configuredReferrerId],
       },
-      3,
+      2,
     );
     assert.deepEqual(configuredAwards, [
-      { state: 'settled' },
       { state: 'settled' },
       { state: 'settled' },
     ]);
@@ -214,126 +217,17 @@ test('a seeded referral-graph property keeps high-value awards out of settled wi
                 SELECT reward_kind, state
                 FROM milestone_award
                 WHERE subscriber_id = ANY($1::uuid[])
-                  AND reward_kind IN ('discount', 'entries')
+                  AND reward_kind = 'discount'
               `,
               values: [referrerIds],
             },
-            confirmationCounts.length * 2,
+            confirmationCounts.length,
           );
-          assert.equal(highValueAwards.length, confirmationCounts.length * 2);
+          assert.equal(highValueAwards.length, confirmationCounts.length);
           assert.ok(highValueAwards.every((award) => award.state === 'held'));
         },
       ),
       { numRuns: 20, seed: 20_260_913 },
-    );
-  } finally {
-    await fixture.dispose();
-  }
-});
-
-test('campaign close voids held rewards in bounded batches without deleting their records', async () => {
-  const fixture = await createDatabaseFixture();
-  try {
-    const subscriberId = await insertVerifiedSubscriber(fixture.database);
-    const referredId = await insertVerifiedSubscriber(fixture.database);
-    const secondReferredId = await insertVerifiedSubscriber(fixture.database);
-    const heldAwardIds = [randomUUID(), randomUUID()];
-    const heldEdgeIds = [randomUUID(), randomUUID()];
-    await fixture.database.execute({
-      text: `
-        INSERT INTO milestone_award (
-          id, subscriber_id, tier, reward_kind, state, awarded_at
-        ) VALUES
-          ($1, $2, 1, 'discount', 'held', $3),
-          ($4, $2, 1, 'entries', 'held', $3)
-      `,
-      values: [heldAwardIds[0], subscriberId, now, heldAwardIds[1]],
-    });
-    await fixture.database.execute({
-      text: `
-        INSERT INTO referral_edge (
-          id, referrer_id, referred_id, state, reward_state, confirmed_at
-        ) VALUES
-          ($1, $2, $3, 'confirmed', 'held', $4),
-          ($5, $2, $6, 'confirmed', 'held', $4)
-      `,
-      values: [
-        heldEdgeIds[0],
-        subscriberId,
-        referredId,
-        now,
-        heldEdgeIds[1],
-        secondReferredId,
-      ],
-    });
-
-    const referral = createReferralService(fixture.applicationDatabase);
-    assert.deepEqual(await referral.voidHeldRewardsAtCampaignClose(3), {
-      voided: 3,
-    });
-    assert.deepEqual(
-      await fixture.database.readOne<{ count: string }>({
-        text: `
-          SELECT COUNT(*)::text AS count
-          FROM (
-            SELECT id FROM milestone_award WHERE state = 'held'
-            UNION ALL
-            SELECT id FROM referral_edge WHERE reward_state = 'held'
-          ) AS held_rewards
-        `,
-      }),
-      { count: '1' },
-    );
-    assert.deepEqual(await referral.voidHeldRewardsAtCampaignClose(3), {
-      voided: 1,
-    });
-    await assert.rejects(
-      referral.voidHeldRewardsAtCampaignClose(
-        campaignCloseVoidMaximumLimit + 1,
-      ),
-      /campaign-close void limit/u,
-    );
-
-    const awards = await fixture.database.list<{ id: string; state: string }>(
-      {
-        text: `
-          SELECT id, state
-          FROM milestone_award
-          WHERE id = ANY($1::uuid[])
-          ORDER BY id
-        `,
-        values: [heldAwardIds],
-      },
-      2,
-    );
-    assert.deepEqual(
-      awards,
-      [
-        { id: heldAwardIds[0], state: 'void' },
-        { id: heldAwardIds[1], state: 'void' },
-      ].sort((left, right) => left.id.localeCompare(right.id)),
-    );
-    const edges = await fixture.database.list<{
-      id: string;
-      reward_state: string;
-    }>(
-      {
-        text: `
-          SELECT id, reward_state
-          FROM referral_edge
-          WHERE id = ANY($1::uuid[])
-          ORDER BY id
-        `,
-        values: [heldEdgeIds],
-      },
-      2,
-    );
-    assert.deepEqual(
-      edges,
-      [
-        { id: heldEdgeIds[0], reward_state: 'void' },
-        { id: heldEdgeIds[1], reward_state: 'void' },
-      ].sort((left, right) => left.id.localeCompare(right.id)),
     );
   } finally {
     await fixture.dispose();

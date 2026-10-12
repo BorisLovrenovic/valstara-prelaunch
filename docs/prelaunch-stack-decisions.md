@@ -133,7 +133,7 @@ Referral attribution: capture `?ref=` **server-side** on the rendering request a
 
 ### Fraud — the structural answer
 
-Confirm cheap rewards on verification; **hold high-value rewards (large discounts, extra draw entries) until the referred person completes a first order.** Fraud is economics, not detection.
+Confirm cheap rewards on verification; **hold milestone discounts until any one of the owner's confirmed referred people places a first order within 90 days after store launch.** No milestone bonus draw entries are configured (founder-authorised 2026-10-11). Fraud is economics, not detection.
 
 Supporting layers, in order of value per hour: address normalisation before uniqueness checks (`+tags`, Gmail dots), disposable-domain blocklist plus MX check, self-referral and /24 velocity flags (flag, never auto-ban), manual review of the top 20 before awarding prizes.
 

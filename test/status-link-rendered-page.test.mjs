@@ -269,7 +269,7 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
       'Turn on marketing email',
       'https://valstara.com/?ref=STATUS234567',
       'Settled rewards are already earned',
-      'Held rewards wait for a qualifying first order after launch',
+      'Held discounts require the referred person’s first order within 90 days after store launch',
       'Access-wave upgrade',
       'Settled',
       'Launch discount',
