@@ -9,6 +9,7 @@ import type {
   HandoffCustomer,
   HandoffDiscount,
   HandoffRecord,
+  HandoffUnsubscribeToken,
 } from './handoff.ts';
 
 const customerKeys = [
@@ -42,6 +43,13 @@ const referralKeys = [
   'type',
   'referrer_email_normalised',
   'referred_email_normalised',
+] as const;
+const unsubscribeTokenKeys = [
+  'type',
+  'token_sha256',
+  'email_normalised',
+  'origin_kind',
+  'expires_at',
 ] as const;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const utcInstant = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
@@ -169,6 +177,22 @@ export function parseHandoffRecord(value: unknown): HandoffRecord {
     }
     return value as unknown as HandoffRecord;
   }
+  if (value.type === 'unsubscribe_token') {
+    if (
+      !exactKeys(value, unsubscribeTokenKeys) ||
+      typeof value.token_sha256 !== 'string' ||
+      !/^[a-f0-9]{64}$/u.test(value.token_sha256) ||
+      typeof value.email_normalised !== 'string' ||
+      value.email_normalised.length === 0 ||
+      (value.origin_kind !== 'marketing' &&
+        value.origin_kind !== 'transactional') ||
+      !validInstant(value.expires_at)
+    )
+      throw new TypeError(
+        'Unsubscribe token does not match its field contract.',
+      );
+    return value as unknown as HandoffUnsubscribeToken;
+  }
   throw new TypeError('Unrecognised handoff record type.');
 }
 
@@ -181,6 +205,7 @@ export async function importRehearsal(
     createdDiscounts: 0,
     createdGroups: 0,
     createdReferrals: 0,
+    createdTokens: 0,
   };
   let batch: HandoffRecord[] = [];
   async function flush(): Promise<void> {
@@ -190,6 +215,7 @@ export async function importRehearsal(
     totals.createdDiscounts += result.createdDiscounts;
     totals.createdGroups += result.createdGroups;
     totals.createdReferrals += result.createdReferrals;
+    totals.createdTokens += result.createdTokens;
     batch = [];
   }
   for await (const line of lines) {

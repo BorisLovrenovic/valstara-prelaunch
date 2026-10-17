@@ -5,7 +5,6 @@ import { createServer } from 'node:http';
 import test from 'node:test';
 
 import { checkCutover, type CutoverRules } from '../scripts/cutover-check.ts';
-import { currentRulesFromFiles } from '../src/server/giveaway/current-rules-file.ts';
 
 const destinations = {
   accountPath: '/account',
@@ -44,11 +43,6 @@ async function fixture(
   );
   const currentVersion = revisionNames.at(-1);
   assert.ok(currentVersion);
-  if (broken === 'changed-rules-article') {
-    const recorded = await currentRulesFromFiles();
-    assert.equal(recorded.rulesVersion, currentVersion);
-    revisionHashes.set(currentVersion, recorded.sha256);
-  }
   const rules = { currentVersion, revisions };
   const state = { applications: 0, attempts: 0 };
   const server = createServer(async (request, response) => {
@@ -188,15 +182,17 @@ test('a redirect to the wrong 200 page aborts cutover', async () => {
 });
 
 test('changed rules article content aborts cutover despite the advertised hash', async () => {
-  await fixture(async (url) => {
+  await fixture(async (url, _state, rules) => {
     await assert.rejects(
       checkCutover(
         url,
         'local-fixture-unsubscribe-token',
         'local-fixture-expired-unsubscribe-token',
         destinations,
+        fetch,
+        rules,
       ),
-      /\/giveaway\/rules.*SHA-256/u,
+      /\/giveaway\/rules article content has a SHA-256 mismatch/u,
     );
   }, 'changed-rules-article');
 });

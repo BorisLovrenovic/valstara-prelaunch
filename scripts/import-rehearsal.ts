@@ -61,7 +61,8 @@ try {
         secondImport.createdCustomers !== 0 ||
         secondImport.createdDiscounts !== 0 ||
         secondImport.createdGroups !== 0 ||
-        secondImport.createdReferrals !== 0
+        secondImport.createdReferrals !== 0 ||
+        secondImport.createdTokens !== 0
       ) {
         throw new Error('A repeated handoff import created additional rows.');
       }
@@ -70,7 +71,8 @@ try {
         finalCounts.customers !== firstImport.createdCustomers ||
         finalCounts.discounts !== firstImport.createdDiscounts ||
         finalCounts.groups !== firstImport.createdGroups ||
-        finalCounts.referrals !== firstImport.createdReferrals
+        finalCounts.referrals !== firstImport.createdReferrals ||
+        finalCounts.tokens !== firstImport.createdTokens
       ) {
         throw new Error(
           'Scratch database counts disagree with the first import.',

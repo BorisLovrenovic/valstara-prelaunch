@@ -22,6 +22,7 @@ import {
 import { createDsrHandler } from '../src/server/dsr/http.ts';
 import {
   completeErasureCommand,
+  requestErasureCommand,
   reapplyErasureCommand,
   commandOptions,
 } from '../src/server/dsr/commands.ts';
@@ -106,6 +107,55 @@ async function request(
 ) {
   await withTransaction(db, (c) => service.request(c, id));
 }
+
+test('named operator records a verified post-cutover erasure request before completion', async (t) => {
+  const f = await fixture();
+  t.after(() => f.close());
+  const p = await person(f.owner);
+  const e = environment(f.app);
+  await assert.rejects(
+    requestErasureCommand(e.service, [
+      '--subscriber-id',
+      p.id,
+      '--actor',
+      'operator',
+      '--evidence-ref',
+      'email@example.test',
+    ]),
+    /opaque identity-verification reference/u,
+  );
+  await requestErasureCommand(e.service, [
+    '--subscriber-id',
+    p.id,
+    '--actor',
+    'operator',
+    '--evidence-ref',
+    'rights-case-42',
+  ]);
+  assert.equal(
+    (await createDsrRepository(f.app).subject(p.id))?.status,
+    'erasure_pending',
+  );
+  const audit = await f.owner.readOne<{
+    actor: string;
+    detail: { evidence_ref: string };
+  }>({
+    text: "SELECT actor,detail FROM audit_log WHERE action='dsr.requested' AND subject_id=$1",
+    values: [p.id],
+  });
+  assert.equal(audit?.actor, 'operator');
+  assert.equal(audit?.detail.evidence_ref, 'rights-case-42');
+  await completeErasureCommand(e.service, [
+    '--subscriber-id',
+    p.id,
+    '--actor',
+    'operator',
+  ]);
+  assert.equal(
+    (await createDsrRepository(f.app).subject(p.id))?.status,
+    'erased',
+  );
+});
 
 test('pending erasure excludes queue, dispatch, sync, status links, ranking and the draw; no retry email copy', async (t) => {
   const f = await fixture();

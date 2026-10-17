@@ -3,6 +3,7 @@ import type {
   HandoffConfirmedReferral,
   HandoffDiscount,
   HandoffRecord,
+  HandoffUnsubscribeToken,
 } from '../subscriber/handoff.ts';
 import type { DatabaseConnection, DatabasePool } from './pool.ts';
 import { withTransaction } from './transaction.ts';
@@ -21,6 +22,7 @@ export interface RehearsalCounts {
   readonly createdDiscounts: number;
   readonly createdGroups: number;
   readonly createdReferrals: number;
+  readonly createdTokens: number;
 }
 
 export async function createRehearsalTables(
@@ -57,6 +59,15 @@ export async function createRehearsalTables(
     UNIQUE (referred_email_normalised)
   )`,
   });
+  await database.execute({
+    text: `CREATE TABLE rehearsal_unsubscribe_token (
+      token_sha256 text PRIMARY KEY CHECK (token_sha256 ~ '^[a-f0-9]{64}$'),
+      email_normalised text NOT NULL,
+      origin_kind text NOT NULL CHECK (origin_kind IN ('marketing','transactional')),
+      expires_at timestamptz NOT NULL,
+      payload jsonb NOT NULL
+    )`,
+  });
 }
 
 async function importCustomer(
@@ -88,6 +99,7 @@ async function importCustomer(
     createdGroups,
     createdDiscounts: 0,
     createdReferrals: 0,
+    createdTokens: 0,
   };
 }
 
@@ -118,6 +130,7 @@ async function importDiscount(
     createdGroups: 0,
     createdDiscounts,
     createdReferrals: 0,
+    createdTokens: 0,
   };
 }
 
@@ -152,6 +165,40 @@ async function importReferral(
     createdGroups: 0,
     createdDiscounts: 0,
     createdReferrals,
+    createdTokens: 0,
+  };
+}
+
+async function importUnsubscribeToken(
+  connection: DatabaseConnection,
+  record: HandoffUnsubscribeToken,
+): Promise<RehearsalCounts> {
+  const payload = JSON.stringify(record);
+  const createdTokens = await connection.execute({
+    text: `INSERT INTO rehearsal_unsubscribe_token
+      (token_sha256, email_normalised, origin_kind, expires_at, payload)
+      VALUES ($1,$2,$3,$4,$5::jsonb) ON CONFLICT (token_sha256) DO NOTHING`,
+    values: [
+      record.token_sha256,
+      record.email_normalised,
+      record.origin_kind,
+      record.expires_at,
+      payload,
+    ],
+  });
+  const existing = await connection.readOne<{ matches: boolean }>({
+    text: `SELECT payload=$2::jsonb AS matches FROM rehearsal_unsubscribe_token
+      WHERE token_sha256=$1`,
+    values: [record.token_sha256, payload],
+  });
+  if (!existing?.matches)
+    throw new Error('Unsubscribe token hash has conflicting data.');
+  return {
+    createdCustomers: 0,
+    createdDiscounts: 0,
+    createdGroups: 0,
+    createdReferrals: 0,
+    createdTokens,
   };
 }
 
@@ -167,6 +214,7 @@ export async function importRehearsalBatch(
       createdGroups: 0,
       createdDiscounts: 0,
       createdReferrals: 0,
+      createdTokens: 0,
     };
     for (const record of records) {
       const result =
@@ -174,11 +222,14 @@ export async function importRehearsalBatch(
           ? await importCustomer(connection, record)
           : record.type === 'held_discount'
             ? await importDiscount(connection, record)
-            : await importReferral(connection, record);
+            : record.type === 'confirmed_referral'
+              ? await importReferral(connection, record)
+              : await importUnsubscribeToken(connection, record);
       counts.createdCustomers += result.createdCustomers;
       counts.createdGroups += result.createdGroups;
       counts.createdDiscounts += result.createdDiscounts;
       counts.createdReferrals += result.createdReferrals;
+      counts.createdTokens += result.createdTokens;
     }
     return counts;
   });
@@ -189,18 +240,21 @@ export async function countRehearsalRows(database: DatabasePool): Promise<{
   groups: number;
   discounts: number;
   referrals: number;
+  tokens: number;
 }> {
   const row = await database.readOne<{
     customers: number;
     groups: number;
     discounts: number;
     referrals: number;
+    tokens: number;
   }>({
     text: `SELECT
       (SELECT count(*)::int FROM rehearsal_customer) AS customers,
       (SELECT count(*)::int FROM rehearsal_customer_group) AS groups,
       (SELECT count(*)::int FROM rehearsal_discount) AS discounts,
-      (SELECT count(*)::int FROM rehearsal_confirmed_referral) AS referrals`,
+      (SELECT count(*)::int FROM rehearsal_confirmed_referral) AS referrals,
+      (SELECT count(*)::int FROM rehearsal_unsubscribe_token) AS tokens`,
   });
   if (!row) throw new Error('Rehearsal counts were unavailable.');
   return row;

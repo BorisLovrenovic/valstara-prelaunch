@@ -102,6 +102,39 @@ export function createErasureService(
       );
   }
   return {
+    async requestManually(
+      id: string,
+      actor: string,
+      evidenceRef: string,
+    ): Promise<void> {
+      if (!actor.trim() || actor === 'system:dsr')
+        throw new Error('A human actor is required.');
+      if (!/^[A-Za-z0-9_.:-]{1,100}$/u.test(evidenceRef))
+        throw new Error(
+          'An opaque identity-verification reference is required.',
+        );
+      await withTransaction(database, async (connection) => {
+        await locks(connection);
+        const repo = createDsrRepository(connection);
+        const subject = await repo.subject(id);
+        if (subject === null || subject.status === 'erased')
+          throw new Error('Erasure subject is unavailable.');
+        if (subject.status === 'erasure_pending') return;
+        await repo.begin(id, deps.clock());
+        await awards.excludeErasure(connection, id);
+        await createAuditService(connection).record({
+          action: 'dsr.requested',
+          actor,
+          subjectType: 'subscriber',
+          subjectId: id,
+          detail: {
+            operation: 'delete',
+            stage: 'operator_confirmed',
+            evidence_ref: evidenceRef,
+          },
+        });
+      });
+    },
     // Called inside the signed-token transaction, never before ownership proof.
     async request(connection: DatabaseConnection, id: string) {
       await locks(connection);

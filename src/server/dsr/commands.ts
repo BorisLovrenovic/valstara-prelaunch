@@ -32,6 +32,23 @@ export async function completeErasureCommand(
     options['--actor']!,
   );
 }
+export async function requestErasureCommand(
+  service: Pick<ReturnType<typeof createErasureService>, 'requestManually'>,
+  args: readonly string[],
+) {
+  const options = commandOptions(args, [
+    '--subscriber-id',
+    '--actor',
+    '--evidence-ref',
+  ]);
+  if (!uuid.test(options['--subscriber-id']!))
+    throw new Error('Invalid subscriber ID.');
+  await service.requestManually(
+    options['--subscriber-id']!,
+    options['--actor']!,
+    options['--evidence-ref']!,
+  );
+}
 export async function reapplyErasureCommand(
   database: DatabasePool,
   service: Pick<ReturnType<typeof createErasureService>, 'reapply'>,

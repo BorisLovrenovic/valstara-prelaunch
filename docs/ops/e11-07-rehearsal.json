@@ -1,0 +1,180 @@
+{
+  "ticket": "E11-07",
+  "mode": "local disposable database and route fixture",
+  "verificationWindowHours": 72,
+  "measuredMs": 5678.93,
+  "projectedLocalTimelineMs": 259205679,
+  "steps": [
+    {
+      "step": 1,
+      "name": "Close signups and audit",
+      "elapsedMs": 16.3,
+      "result": {
+        "flag": "signup.enabled",
+        "enabled": false
+      }
+    },
+    {
+      "step": 2,
+      "name": "Queue final reminder and verify idempotency",
+      "elapsedMs": 235.13,
+      "result": {
+        "queued": 1,
+        "replayQueued": 0
+      }
+    },
+    {
+      "step": 3,
+      "name": "Verify within the configured window",
+      "elapsedMs": 24.57,
+      "result": {
+        "configuredHours": 72,
+        "tokenLifetimeHours": 168,
+        "actualWaitMs": 0,
+        "verifiedAtWindowEnd": true
+      }
+    },
+    {
+      "step": 4,
+      "name": "Record operational full freeze",
+      "elapsedMs": 8.34,
+      "result": {
+        "publicWriteBlock": "local route fixture",
+        "maintenance": "not running"
+      }
+    },
+    {
+      "step": 5,
+      "name": "pgBackRest differential snapshot",
+      "elapsedMs": 4398.53,
+      "result": {
+        "kind": "pgBackRest differential",
+        "label": "20261015-050852F_20261015-053159D",
+        "includesDisposableSource": true
+      }
+    },
+    {
+      "step": 6,
+      "name": "Export frozen handoff",
+      "elapsedMs": 255.87,
+      "result": {
+        "customers": 2,
+        "heldDiscounts": 1,
+        "confirmedReferrals": 1,
+        "unsubscribeTokens": 3,
+        "voidedIneligibleDiscounts": 0,
+        "voidedLegacyBonusEntries": 0
+      }
+    },
+    {
+      "step": 7,
+      "name": "Import twice into two scratch databases",
+      "elapsedMs": 436.59,
+      "result": {
+        "ticket": "E11-06",
+        "inputSha256": "19269368e752156ae8569f90dc9ffca49bb105aefb8703af87566948624051c0",
+        "rehearsals": [
+          {
+            "rehearsal": 1,
+            "firstImport": {
+              "createdCustomers": 2,
+              "createdDiscounts": 1,
+              "createdGroups": 2,
+              "createdReferrals": 1,
+              "createdTokens": 3
+            },
+            "secondImport": {
+              "createdCustomers": 0,
+              "createdDiscounts": 0,
+              "createdGroups": 0,
+              "createdReferrals": 0,
+              "createdTokens": 0
+            },
+            "finalCounts": {
+              "customers": 2,
+              "groups": 2,
+              "discounts": 1,
+              "referrals": 1,
+              "tokens": 3
+            }
+          },
+          {
+            "rehearsal": 2,
+            "firstImport": {
+              "createdCustomers": 2,
+              "createdDiscounts": 1,
+              "createdGroups": 2,
+              "createdReferrals": 1,
+              "createdTokens": 3
+            },
+            "secondImport": {
+              "createdCustomers": 0,
+              "createdDiscounts": 0,
+              "createdGroups": 0,
+              "createdReferrals": 0,
+              "createdTokens": 0
+            },
+            "finalCounts": {
+              "customers": 2,
+              "groups": 2,
+              "discounts": 1,
+              "referrals": 1,
+              "tokens": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "step": 8,
+      "name": "Verify customer groups",
+      "elapsedMs": 0.06,
+      "result": {
+        "scratchDatabases": 2,
+        "groups": 2
+      }
+    },
+    {
+      "step": 9,
+      "name": "Verify confirmed referral import",
+      "elapsedMs": 0.02,
+      "result": {
+        "referrals": 1
+      }
+    },
+    {
+      "step": 10,
+      "name": "Verify held discount and token import",
+      "elapsedMs": 0.03,
+      "result": {
+        "heldDiscounts": 1,
+        "unsubscribeTokens": 3
+      }
+    },
+    {
+      "step": 11,
+      "name": "Run local route cutover fixture",
+      "elapsedMs": 280.52,
+      "result": {
+        "localProbe": "passed",
+        "dnsChanged": false
+      }
+    },
+    {
+      "step": 12,
+      "name": "Restrict routine database writes",
+      "elapsedMs": 22.97,
+      "result": {
+        "routineWriteDenied": true,
+        "operatorExceptionAvailable": true
+      }
+    }
+  ],
+  "limitations": [
+    "No real email was dispatched; the transactional queue and token were exercised.",
+    "The proxy block was represented by the local route fixture; no production proxy was changed.",
+    "The Medusa customer workflow was represented by the E11-06 scratch import.",
+    "A synthetic published draw exercised the export precondition; the draw itself was not replayed.",
+    "No DNS change was executed."
+  ]
+}

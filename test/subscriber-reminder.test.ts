@@ -6,6 +6,7 @@ import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
 import { createVerificationService } from '../src/server/verification/service.ts';
+import { createFinalReminderJob } from '../src/server/subscriber/final-reminder.ts';
 import {
   createVerificationReminderJob,
   verificationReminderBusinessKey,
@@ -104,6 +105,56 @@ async function reminderKeys(
   );
   return rows.map((row) => row.business_key);
 }
+
+test('final reminder queues once per pending unsuppressed subscriber under concurrency', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const pending = await insertSubscriber(fixture.database, baseTime);
+    const suppressed = await insertSubscriber(fixture.database, baseTime);
+    const verified = await insertSubscriber(
+      fixture.database,
+      baseTime,
+      'verified',
+    );
+    await fixture.database.execute({
+      text: `INSERT INTO suppression (email_normalised,reason,source)
+        SELECT email_normalised,'manual','test' FROM subscriber WHERE id=$1`,
+      values: [suppressed],
+    });
+    const job = createFinalReminderJob(
+      fixture.applicationDatabase,
+      () => baseTime,
+    );
+    const runs = await Promise.all([job.run(null, 10), job.run(null, 10)]);
+    assert.equal(
+      runs.reduce((sum, run) => sum + run.queued, 0),
+      1,
+    );
+    assert.deepEqual(await reminderKeys(fixture.database, pending), [
+      `verify-reminder-final:${pending}`,
+    ]);
+    assert.deepEqual(await reminderKeys(fixture.database, suppressed), []);
+    assert.deepEqual(await reminderKeys(fixture.database, verified), []);
+    assert.deepEqual(await job.run(null, 10), {
+      scanned: 0,
+      queued: 0,
+      afterId: null,
+    });
+    const token = await fixture.database.readOne<{
+      token_hash: Buffer;
+      expires_at: Date;
+    }>({
+      text: `SELECT t.token_hash,t.expires_at FROM verification_token t
+        JOIN email_send e ON e.subscriber_id=t.subscriber_id
+        WHERE e.business_key=$1 AND t.id=(e.payload->>'token_id')::uuid`,
+      values: [`verify-reminder-final:${pending}`],
+    });
+    assert.equal(token?.token_hash.length, 32);
+    assert.equal(token?.expires_at.toISOString(), '2026-09-16T00:00:00.000Z');
+  } finally {
+    await fixture.dispose();
+  }
+});
 
 test('the clock-injected ladder queues exactly one reminder at each of +1h, +24h, and +72h', async () => {
   const fixture = await createDatabaseFixture();
