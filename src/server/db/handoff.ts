@@ -38,6 +38,88 @@ export interface HandoffSnapshot {
   close(): Promise<void>;
 }
 
+export interface UnsubscribeTokenRow {
+  readonly id: string;
+  readonly token_hash: Buffer;
+  readonly email_normalised: string;
+  readonly provider: string;
+  readonly expires_at: Date;
+}
+
+export async function assertCutoverEligible(
+  database: DatabasePool,
+): Promise<void> {
+  const row = await database.readOne<{
+    published: boolean;
+    open_awards: boolean;
+  }>({
+    text: `SELECT
+      EXISTS (SELECT 1 FROM giveaway_draw WHERE state = 'published') AS published,
+      EXISTS (SELECT 1 FROM giveaway_award
+        WHERE state NOT IN ('confirmed', 'delivered', 'exhausted')) AS open_awards`,
+  });
+  if (!row?.published || row.open_awards)
+    throw new Error('Handoff requires a published draw and terminal awards.');
+}
+
+export async function openUnsubscribeTokenSnapshot(
+  database: DatabasePool,
+  at: Date,
+) {
+  const connection = await database.connect();
+  let closed = false;
+  async function close() {
+    if (closed) return;
+    closed = true;
+    try {
+      await connection.execute({ text: 'ROLLBACK' });
+    } finally {
+      connection.release();
+    }
+  }
+  try {
+    await connection.execute({
+      text: 'BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY',
+    });
+    const count = await connection.readOne<{ total: number; unbound: number }>({
+      text: `SELECT
+        (SELECT count(*)::int FROM verification_token t
+          WHERE t.purpose='unsubscribe' AND t.consumed_at IS NULL AND t.expires_at>$1) AS total,
+        (SELECT count(*)::int FROM verification_token t
+          WHERE t.purpose='unsubscribe' AND t.consumed_at IS NULL AND t.expires_at>$1
+            AND NOT EXISTS (SELECT 1 FROM email_send e WHERE e.unsubscribe_token_id=t.id)) AS unbound`,
+      values: [at],
+    });
+    if (!count || count.unbound !== 0)
+      throw new Error('An unexpired unsubscribe token has no email binding.');
+    return {
+      count: count.total,
+      async page(
+        afterId: string | null,
+      ): Promise<readonly UnsubscribeTokenRow[]> {
+        if (closed) throw new Error('Unsubscribe snapshot is closed.');
+        return connection.list<UnsubscribeTokenRow>(
+          {
+            text: `SELECT t.id, t.token_hash, s.email_normalised, e.provider, t.expires_at
+            FROM verification_token t
+            JOIN email_send e ON e.unsubscribe_token_id=t.id
+            JOIN subscriber s ON s.id=t.subscriber_id
+            WHERE t.purpose='unsubscribe' AND t.consumed_at IS NULL
+              AND t.expires_at>$1 AND ($2::uuid IS NULL OR t.id>$2::uuid)
+            ORDER BY t.id`,
+            values: [at, afterId],
+          },
+          handoffBatchSize,
+        );
+      },
+      close,
+    };
+  } catch (error) {
+    await close();
+    throw error;
+  }
+}
+
 export async function voidIneligibleDiscountBatch(
   database: DatabasePool,
   record: (

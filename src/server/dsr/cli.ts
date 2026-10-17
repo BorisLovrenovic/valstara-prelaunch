@@ -1,9 +1,13 @@
 import { getDatabaseUrl } from '../config.ts';
 import { createPool } from '../db/pool.ts';
 import { createErasureService } from './service.ts';
-import { completeErasureCommand, reapplyErasureCommand } from './commands.ts';
+import {
+  completeErasureCommand,
+  reapplyErasureCommand,
+  requestErasureCommand,
+} from './commands.ts';
 export async function runDsrCommand(
-  kind: 'complete' | 'reapply',
+  kind: 'complete' | 'reapply' | 'request',
   args: readonly string[],
 ) {
   const database = createPool(getDatabaseUrl());
@@ -17,6 +21,7 @@ export async function runDsrCommand(
       },
     });
     if (kind === 'complete') await completeErasureCommand(service, args);
+    else if (kind === 'request') await requestErasureCommand(service, args);
     else await reapplyErasureCommand(database, service, args);
     process.stdout.write('Erasure command completed.\n');
   } catch {

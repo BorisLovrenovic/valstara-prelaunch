@@ -17,6 +17,11 @@ export interface SubscriberMaintenanceRepository {
     limit: number,
   ): Promise<readonly DueVerificationReminder[]>;
   lockPendingSubscriber(subscriberId: string): Promise<boolean>;
+  listFinalReminderCandidates(
+    afterId: string | null,
+    limit: number,
+  ): Promise<readonly { id: string }[]>;
+  lockFinalReminderCandidate(subscriberId: string): Promise<boolean>;
 }
 
 export function createSubscriberMaintenanceRepository(
@@ -80,6 +85,33 @@ export function createSubscriberMaintenanceRepository(
         values: [subscriberId],
       });
       return row?.status === 'pending';
+    },
+    listFinalReminderCandidates(afterId, limit) {
+      assertBatchLimit(limit);
+      if (limit > 500)
+        throw new RangeError('Final reminder batch exceeds 500.');
+      return database.list<{ id: string }>(
+        {
+          text: `SELECT s.id FROM subscriber s
+            WHERE s.status = 'pending'
+              AND ($1::uuid IS NULL OR s.id > $1::uuid)
+              AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = s.email_normalised)
+              AND NOT EXISTS (SELECT 1 FROM email_send e
+                WHERE e.business_key = 'verify-reminder-final:' || s.id::text)
+            ORDER BY s.id`,
+          values: [afterId],
+        },
+        limit,
+      );
+    },
+    async lockFinalReminderCandidate(subscriberId) {
+      const row = await database.readOne<{ eligible: boolean }>({
+        text: `SELECT s.status = 'pending' AND NOT EXISTS
+          (SELECT 1 FROM suppression p WHERE p.email_normalised = s.email_normalised)
+          AS eligible FROM subscriber s WHERE s.id = $1 FOR UPDATE OF s`,
+        values: [subscriberId],
+      });
+      return row?.eligible === true;
     },
   };
 }

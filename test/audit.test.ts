@@ -110,6 +110,7 @@ test('the required audit action registry is complete', () => {
     'dsr.requested',
     'dsr.fulfilled',
     'handoff.frozen',
+    'handoff.final_reminders_queued',
     'handoff.bonus_entries_voided',
     'handoff.discount_voided',
     'handoff.discount_carried',

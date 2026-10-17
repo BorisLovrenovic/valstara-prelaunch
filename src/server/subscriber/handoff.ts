@@ -4,6 +4,7 @@ import {
   ineligibleDiscountVoidBatchSize,
   legacyBonusVoidBatchSize,
   openHandoffSnapshot,
+  openUnsubscribeTokenSnapshot,
   voidIneligibleDiscountBatch,
   voidLegacyBonusBatch,
 } from '../db/handoff.ts';
@@ -46,13 +47,25 @@ export interface HandoffConfirmedReferral {
   readonly referred_email_normalised: string;
 }
 
+export interface HandoffUnsubscribeToken {
+  readonly type: 'unsubscribe_token';
+  readonly token_sha256: string;
+  readonly email_normalised: string;
+  readonly origin_kind: 'marketing' | 'transactional';
+  readonly expires_at: string;
+}
+
 export type HandoffRecord =
-  HandoffCustomer | HandoffDiscount | HandoffConfirmedReferral;
+  | HandoffCustomer
+  | HandoffDiscount
+  | HandoffConfirmedReferral
+  | HandoffUnsubscribeToken;
 
 export interface HandoffCounts {
   readonly customers: number;
   readonly heldDiscounts: number;
   readonly confirmedReferrals: number;
+  readonly unsubscribeTokens: number;
   readonly voidedIneligibleDiscounts: number;
   readonly voidedLegacyBonusEntries: number;
 }
@@ -74,6 +87,7 @@ export async function exportHandoff(
   storeLaunchAt: Date,
   writeRecord: (record: HandoffRecord) => Promise<void>,
   finishOutput: () => Promise<void>,
+  clock: () => Date = () => new Date(),
 ): Promise<HandoffCounts> {
   if (actor.trim() === '') throw new Error('A handoff actor is required.');
   const deadline = qualificationDeadline(storeLaunchAt);
@@ -234,6 +248,40 @@ export async function exportHandoff(
         referralAfter = row.id;
       }
     }
+    const tokens = await openUnsubscribeTokenSnapshot(database, clock());
+    let unsubscribeTokens = 0;
+    try {
+      let tokenAfter: string | null = null;
+      while (unsubscribeTokens < tokens.count) {
+        const page = await tokens.page(tokenAfter);
+        if (
+          page.length === 0 ||
+          page.length > handoffBatchSize ||
+          unsubscribeTokens + page.length > tokens.count
+        )
+          throw new Error(
+            'Unsubscribe token snapshot count or batch cap changed.',
+          );
+        for (const row of page) {
+          if (row.provider !== 'brevo' && row.provider !== 'resend')
+            throw new Error(
+              'Unsubscribe token has an unknown origin provider.',
+            );
+          await writeRecord({
+            type: 'unsubscribe_token',
+            token_sha256: row.token_hash.toString('hex'),
+            email_normalised: row.email_normalised,
+            origin_kind:
+              row.provider === 'brevo' ? 'marketing' : 'transactional',
+            expires_at: row.expires_at.toISOString(),
+          });
+          unsubscribeTokens += 1;
+          tokenAfter = row.id;
+        }
+      }
+    } finally {
+      await tokens.close();
+    }
     await finishOutput();
     await withTransaction(database, async (connection) => {
       const carryAudit = createAuditService(connection);
@@ -269,6 +317,7 @@ export async function exportHandoff(
       customers,
       heldDiscounts,
       confirmedReferrals,
+      unsubscribeTokens,
       voidedIneligibleDiscounts,
       voidedLegacyBonusEntries,
     };

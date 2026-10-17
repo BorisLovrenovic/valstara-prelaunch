@@ -22,5 +22,7 @@ The pre-launch site occupies `valstara.com` for twelve weeks. With a shared repo
 
 Two consequences that are easy to miss and are therefore checklisted:
 
-- **`/verify` and `/api/*` disappear at cutover**, so any live verification token stops working. The final reminder goes out *before* the freeze.
+- **`/verify` and the retired waitlist `/api/*` routes return `410` at cutover; `/api/unsubscribe` remains on the storefront**, so any live verification token stops working. Under the founder-authorised 2026-10-12 sequence, signups close first, the final reminder goes out before the full freeze, and `/verify` stays live through a configurable 72-hour verification window before that freeze.
 - **`/giveaway/rules` and its immutable revisions must be retained, not redirected**, for 12 months after the final award (ADR-026; Valstara policy rather than a statute).
+
+The founder's 2026-10-12 route amendment keeps `/unsubscribe` and `/api/unsubscribe` on the storefront for unexpired imported tokens, redirects `/dsr` to storefront privacy rights, and retires `/giveaway/award` only after publication and terminal awards. The waitlist database is read-only for routine access after handoff; a named operator may record and complete verified erasure requests during the 90-day retention period. The exact route and token contract is in `docs/ops/launch-cutover.md` and `docs/data/model.md`.

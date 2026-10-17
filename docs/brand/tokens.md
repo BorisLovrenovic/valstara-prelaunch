@@ -113,3 +113,21 @@ Kept current from the first commit, because it is what makes launch day a checkl
 | `src/content/privacy-storage.md` | `/privacy/storage` — ported with the privacy notice | E11-07 |
 | `src/content/giveaway-rules/*.md` | `/giveaway/rules` and each immutable `/giveaway/rules/<rules_version>` | E11-07 |
 | Font files and `@font-face` declarations | Storefront font layer | E11-07 |
+
+E11-07 source-to-target reconciliation (targets are the storefront routes to build and verify before the DNS swap):
+
+| Source file | Storefront target | Port disposition |
+|---|---|---|
+| `src/content/legit.md` | `/legit` | Port at the same URL |
+| `src/content/guarantee.md` | `/guarantee` | Port at the same URL |
+| `src/content/about.md` | `/about` | Port at the same URL |
+| `src/content/terms.md` | `/terms` | Port and revise for storefront processing |
+| `src/content/privacy.md` | `/privacy` | Port and revise for storefront processing |
+| `src/content/privacy-storage.md` | `/privacy/storage` | Port with the privacy notice |
+| `src/content/giveaway-rules/VAL-GW-LAUNCH-20260925-r1.md` | `/giveaway/rules/VAL-GW-LAUNCH-20260925-r1` | Retain as an archived, hash-preserved revision |
+| `src/content/giveaway-rules/VAL-GW-LAUNCH-20261001-r1.md` | `/giveaway/rules/VAL-GW-LAUNCH-20261001-r1` | Retain as an archived, hash-preserved revision |
+| `src/content/giveaway-rules/VAL-GW-LAUNCH-20261009-r1.md` | `/giveaway/rules/VAL-GW-LAUNCH-20261009-r1` and `/giveaway/rules` | Retain as the current, hash-preserved revision |
+
+`src/content/giveaway-award-catalog.json` is a pre-launch award configuration file with no published prose and no storefront port target. The rules articles above retain their recorded rendered-article SHA-256 values when ported; archived versions keep the E11-04 notice outside the hashed article, `noindex`, and sitemap exclusion. The runbook's named current version must equal `currentRules()`.
+
+The font transfer set is all six files in `public/fonts/` (the Instrument Sans and JetBrains Mono WOFF2 and WOFF files and both OFL licence files). Their four `@font-face` declarations, including local metric-matched fallbacks and `/fonts/` URLs, live in `src/styles/tokens.css`; copy that stylesheet verbatim and place the font assets at the same URLs. Confirm the destination's reverse mapping lists only these sources for the font layer.

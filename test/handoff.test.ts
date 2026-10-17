@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import test from 'node:test';
 import fc from 'fast-check';
 
 import { runMigrations } from '../src/server/db/migration.ts';
-import { voidLegacyBonusBatch } from '../src/server/db/handoff.ts';
+import {
+  assertCutoverEligible,
+  voidLegacyBonusBatch,
+} from '../src/server/db/handoff.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
+import { createFlagService } from '../src/server/flags/service.ts';
+import { recordHandoffFreeze } from '../src/server/subscriber/handoff-freeze.ts';
 import { withTransaction } from '../src/server/db/transaction.ts';
 import {
   createRehearsalTables,
@@ -30,6 +35,30 @@ const defaultDatabaseUrl =
 const appPassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const launch = new Date('2027-03-15T10:00:00.000Z');
+
+test('the named freeze audit requires signups closed and records its mode', async () => {
+  const f = await fixture();
+  try {
+    const flags = createFlagService(f.app);
+    await flags.set('signup.enabled', true, 'operator');
+    await assert.rejects(
+      recordHandoffFreeze(f.app, 'operator', 'operational'),
+      /Close signups/u,
+    );
+    await flags.set('signup.enabled', false, 'operator');
+    await recordHandoffFreeze(f.app, 'operator', 'operational');
+    const audit = await f.owner.readOne<{
+      actor: string;
+      detail: { mode: string };
+    }>({
+      text: `SELECT actor,detail FROM audit_log WHERE action='handoff.frozen'`,
+    });
+    assert.equal(audit?.actor, 'operator');
+    assert.equal(audit?.detail.mode, 'operational');
+  } finally {
+    await f.dispose();
+  }
+});
 
 async function fixture(): Promise<{
   owner: DatabasePool;
@@ -129,6 +158,230 @@ async function referralEdge(
   });
 }
 
+test('unexpired unsubscribe tokens export by hash with origin and import idempotently', async () => {
+  const f = await fixture();
+  const at = new Date('2027-03-15T10:00:00.000Z');
+  try {
+    const id = await subscriber(
+      f.owner,
+      'suppressed-token@example.test',
+      'verified',
+    );
+    await f.owner.execute({
+      text: `INSERT INTO suppression(email_normalised,reason,source)
+        VALUES ('suppressed-token@example.test','manual','test')`,
+    });
+    const tokenId = randomUUID();
+    const hash = createHash('sha256').update('never-export-plaintext').digest();
+    await f.owner.execute({
+      text: `INSERT INTO verification_token
+        (id,subscriber_id,token_hash,purpose,expires_at)
+        VALUES ($1,$2,$3,'unsubscribe',$4)`,
+      values: [tokenId, id, hash, new Date('2027-06-01T00:00:00.000Z')],
+    });
+    await f.owner.execute({
+      text: `INSERT INTO email_send
+        (id,subscriber_id,template,provider,business_key,state,unsubscribe_token_id)
+        VALUES ($1,$2,'weekly_campaign','brevo',$3,'sent',$4)`,
+      values: [randomUUID(), id, `weekly:${id}`, tokenId],
+    });
+    const transactionalId = randomUUID();
+    const transactionalHash = createHash('sha256')
+      .update('transactional-token')
+      .digest();
+    await f.owner.execute({
+      text: `INSERT INTO verification_token
+        (id,subscriber_id,token_hash,purpose,expires_at)
+        VALUES ($1,$2,$3,'unsubscribe',$4)`,
+      values: [
+        transactionalId,
+        id,
+        transactionalHash,
+        new Date('2027-06-01T00:00:00.000Z'),
+      ],
+    });
+    await f.owner.execute({
+      text: `INSERT INTO email_send
+        (id,subscriber_id,template,provider,business_key,state,unsubscribe_token_id)
+        VALUES ($1,$2,'verification_complete','resend',$3,'sent',$4)`,
+      values: [randomUUID(), id, `transactional:${id}`, transactionalId],
+    });
+    for (const [label, expiresAt, consumedAt] of [
+      ['expired', '2027-03-14T00:00:00.000Z', null],
+      ['consumed', '2027-06-01T00:00:00.000Z', '2027-03-14T00:00:00.000Z'],
+    ] as const) {
+      const excludedId = randomUUID();
+      await f.owner.execute({
+        text: `INSERT INTO verification_token
+          (id,subscriber_id,token_hash,purpose,expires_at,consumed_at)
+          VALUES ($1,$2,$3,'unsubscribe',$4,$5)`,
+        values: [
+          excludedId,
+          id,
+          createHash('sha256').update(label).digest(),
+          new Date(expiresAt),
+          consumedAt ? new Date(consumedAt) : null,
+        ],
+      });
+      await f.owner.execute({
+        text: `INSERT INTO email_send
+          (id,subscriber_id,template,provider,business_key,state,unsubscribe_token_id)
+          VALUES ($1,$2,'weekly_campaign','brevo',$3,'sent',$4)`,
+        values: [randomUUID(), id, `${label}:${id}`, excludedId],
+      });
+    }
+    const records: HandoffRecord[] = [];
+    const counts = await exportHandoff(
+      f.app,
+      'operator',
+      launch,
+      async (record) => {
+        records.push(record);
+      },
+      async () => {},
+      () => at,
+    );
+    assert.equal(counts.customers, 0);
+    assert.equal(counts.unsubscribeTokens, 2);
+    assert.deepEqual(
+      records.sort((left, right) =>
+        left.type === 'unsubscribe_token' && right.type === 'unsubscribe_token'
+          ? left.origin_kind.localeCompare(right.origin_kind)
+          : 0,
+      ),
+      [
+        {
+          type: 'unsubscribe_token',
+          token_sha256: hash.toString('hex'),
+          email_normalised: 'suppressed-token@example.test',
+          origin_kind: 'marketing',
+          expires_at: '2027-06-01T00:00:00.000Z',
+        },
+        {
+          type: 'unsubscribe_token',
+          token_sha256: transactionalHash.toString('hex'),
+          email_normalised: 'suppressed-token@example.test',
+          origin_kind: 'transactional',
+          expires_at: '2027-06-01T00:00:00.000Z',
+        },
+      ],
+    );
+    const lines = async function* () {
+      for (const record of records) yield JSON.stringify(record);
+    };
+    assert.equal((await importRehearsal(f.scratch, lines())).createdTokens, 2);
+    assert.equal((await importRehearsal(f.scratch, lines())).createdTokens, 0);
+    assert.equal((await countRehearsalRows(f.scratch)).tokens, 2);
+    await assert.rejects(
+      importRehearsalBatch(f.scratch, [
+        {
+          ...records[0]!,
+          origin_kind: 'transactional',
+        } as HandoffRecord,
+      ]),
+      /conflicting data/u,
+    );
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('handoff preflight refuses an unpublished draw', async () => {
+  const f = await fixture();
+  try {
+    await assert.rejects(assertCutoverEligible(f.app), /published draw/u);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('handoff preflight refuses a published draw with a nonterminal award', async () => {
+  const f = await fixture();
+  try {
+    const personId = await subscriber(
+      f.owner,
+      'award@example.test',
+      'verified',
+    );
+    const drawId = randomUUID();
+    const entryId = randomUUID();
+    const committedAt = new Date('2027-03-14T00:00:00.000Z');
+    await f.owner.execute({
+      text: 'INSERT INTO giveaway_draw(id,executed_by) VALUES ($1,$2)',
+      values: [drawId, 'operator'],
+    });
+    await f.owner.execute({
+      text: `INSERT INTO giveaway_entry
+        (id,subscriber_id,method,entries,rules_version,rules_sha256)
+        VALUES ($1,$2,'base',1,'VAL-GW-LAUNCH-20261009-r1',$3)`,
+      values: [entryId, personId, Buffer.alloc(32)],
+    });
+    await f.owner.execute({
+      text: `INSERT INTO giveaway_draw_snapshot_row
+        (draw_id,entry_id,subscriber_id,method,rules_version,rules_sha256)
+        VALUES ($1,$2,$3,'base','VAL-GW-LAUNCH-20261009-r1',$4)`,
+      values: [drawId, entryId, personId, Buffer.alloc(32)],
+    });
+    await f.owner.execute({
+      text: `INSERT INTO giveaway_draw_selection
+        (draw_id,position,subscriber_id,entry_id,is_winner)
+        VALUES ($1,1,$2,$3,true)`,
+      values: [drawId, personId, entryId],
+    });
+    await f.owner.execute({
+      text: `UPDATE giveaway_draw SET snapshot_committed_at=$2,
+        entry_snapshot_hash=$3,snapshot_count=1,prize_count=1,
+        rules_version='VAL-GW-LAUNCH-20261009-r1',rules_sha256=$3,
+        drand_chain_hash=$3,drand_chain_info='{}'::jsonb,
+        target_round=1,target_round_at=$4 WHERE id=$1`,
+      values: [
+        drawId,
+        committedAt,
+        Buffer.alloc(32),
+        new Date(committedAt.getTime() + 10 * 60_000),
+      ],
+    });
+    await f.owner.execute({
+      text: `UPDATE giveaway_draw SET state='published',seed=$2,
+        seed_generated_at=$3,beacon_round=1,beacon_randomness=$4,
+        beacon_signature=$4,beacon_relay_used='fixture',
+        beacon_verified_relays='["one","two"]'::jsonb,
+        winners=$5::jsonb,reproduced_at=$3,published_at=$3 WHERE id=$1`,
+      values: [
+        drawId,
+        '0'.repeat(64),
+        new Date(committedAt.getTime() + 20 * 60_000),
+        Buffer.alloc(32),
+        JSON.stringify([personId]),
+      ],
+    });
+    const awardId = randomUUID();
+    await f.owner.execute({
+      text: `INSERT INTO giveaway_award
+        (id,draw_id,prize_slot,entry_snapshot_hash,selection_position,
+        entry_id,subscriber_id,state,notified_at,response_deadline_at)
+        VALUES ($1,$2,1,$3,1,$4,$5,'notified',$6,$7)`,
+      values: [
+        awardId,
+        drawId,
+        Buffer.alloc(32),
+        entryId,
+        personId,
+        new Date('2027-03-15T00:00:00.000Z'),
+        new Date('2027-03-29T00:00:00.000Z'),
+      ],
+    });
+    await assert.rejects(assertCutoverEligible(f.app), /terminal awards/u);
+    await f.owner.execute({
+      text: `UPDATE giveaway_award SET state='exhausted' WHERE id=$1`,
+      values: [awardId],
+    });
+    await assertCutoverEligible(f.app);
+  } finally {
+    await f.dispose();
+  }
+});
+
 test('handoff exports verified unsuppressed customers, eligible held discounts and audited legacy voids', async () => {
   const f = await fixture();
   try {
@@ -176,6 +429,7 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
       customers: 1,
       heldDiscounts: 2,
       confirmedReferrals: 0,
+      unsubscribeTokens: 0,
       voidedIneligibleDiscounts: 0,
       voidedLegacyBonusEntries: 2,
     });
@@ -297,6 +551,7 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
         customers: 1,
         heldDiscounts: 2,
         confirmedReferrals: 0,
+        unsubscribeTokens: 0,
         voidedIneligibleDiscounts: 0,
         voidedLegacyBonusEntries: 0,
       },
@@ -311,18 +566,21 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
       createdGroups: 2,
       createdDiscounts: 2,
       createdReferrals: 0,
+      createdTokens: 0,
     });
     assert.deepEqual(await importRehearsal(f.scratch, lines()), {
       createdCustomers: 0,
       createdGroups: 0,
       createdDiscounts: 0,
       createdReferrals: 0,
+      createdTokens: 0,
     });
     assert.deepEqual(await countRehearsalRows(f.scratch), {
       customers: 1,
       groups: 2,
       discounts: 2,
       referrals: 0,
+      tokens: 0,
     });
   } finally {
     await f.dispose();
@@ -697,6 +955,7 @@ test('confirmed referral links include only pairs whose two people are exported 
       createdGroups: 0,
       createdDiscounts: 0,
       createdReferrals: 0,
+      createdTokens: 0,
     });
     assert.equal((await countRehearsalRows(f.scratch)).referrals, 1);
   } finally {
@@ -780,6 +1039,7 @@ test('scratch import rejects a conflicting idempotency key and enforces the batc
       createdGroups: 0,
       createdDiscounts: 1,
       createdReferrals: 0,
+      createdTokens: 0,
     });
     await assert.rejects(
       importRehearsalBatch(f.scratch, [
@@ -802,6 +1062,7 @@ test('scratch import rejects a conflicting idempotency key and enforces the batc
       groups: 1,
       discounts: 1,
       referrals: 0,
+      tokens: 0,
     });
     await assert.rejects(
       importRehearsalBatch(
@@ -839,6 +1100,7 @@ test('handoff pages over more than one capped batch', async () => {
       customers: 1001,
       heldDiscounts: 0,
       confirmedReferrals: 0,
+      unsubscribeTokens: 0,
       voidedIneligibleDiscounts: 0,
       voidedLegacyBonusEntries: 0,
     });
@@ -908,6 +1170,7 @@ test('seeded property: double import adds no customer, group or deadline-bearing
             createdGroups: 0,
             createdDiscounts: 0,
             createdReferrals: 0,
+            createdTokens: 0,
           });
         },
       ),

@@ -1879,6 +1879,8 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 **Reward-gating boundary (founder-authorised 2026-09-13; amended 2026-10-11):** Campaign close for held discounts is the handoff. The pre-launch repository carries every held discount whose owner is in the export set to the storefront with owner `email_normalised`, state `held`, and `qualification_deadline = store launch + 90 days`; store launch is a handoff parameter. It exports confirmed referral links as `(referrer email_normalised, referred email_normalised)` pairs only when both people are in that set. Medusa settles a held discount when any one of the owner's confirmed referred people places a first order before the deadline and voids it after the deadline otherwise. Before export, a disqualified owner's held discount is voided with audited reason `owner_disqualified`; a suppressed or departed owner's is voided with audited reason `owner_not_in_handoff`. Marketing withdrawal alone does not remove an otherwise eligible owner. Erasure leaves no discount to export (E9-05). Each carried reward has an audited `carried_to_storefront` outcome with its deadline. The pre-launch repository never reads or writes Medusa and the waitlist database becomes read-only after handoff. Legacy bonus-entry milestone awards are unqualifiable under the published rules and are voided in bounded batches with an audited reason, never deleted.
 
+**E11-07 cutover extension (founder-authorised 2026-10-12):** The handoff NDJSON also exports every unexpired, unconsumed unsubscribe token with its SHA-256 hash, owner `email_normalised`, origin kind (`marketing` or `transactional`) and expiry. The storefront imports these records idempotently and honours the existing one-click POST semantics until each token expires. The export command refuses unless the giveaway draw is published and every award is terminal (`confirmed`, `delivered` or `exhausted`). E11-07 extends the scratch import and tests; this is a founder-authorised addition to the E11-06 handoff contract.
+
 **Acceptance criteria:**
 - The export set is exactly *verified, unsuppressed, not disqualified* — asserted, so a **pending or `expired` row is absent** (E3-08's deferred handoff-exclusion assertion, owned here — standing rule 20)
 - **Every field in the handoff contract is present and correctly typed**, including the marketing-consent state the storefront must honour (ADR-027); no `country` field exists (ADR-026)
@@ -1896,6 +1898,10 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 ### E11-07 — Cutover rehearsal and the port checklist
 **Model:** GPT-6 Astra — Medium · **Priority:** High · **Flag:** — · **Area:** docs
 
+**Founder-authorised cutover sequence, 2026-10-12:** Close signups with `signup.enabled` off and audit the change; send the final reminder to every unverified row; keep `/verify` live for a configurable 72-hour verification window (inside the seven-day verify-token expiry); then stop all remaining waitlist writes and audit the full freeze. Snapshot, export, import and DNS/proxy cutover follow in their existing order. The rehearsal times every step, including the verification window as an explicit parameter.
+
+**Founder-authorised execution and route decisions, 2026-10-12:** E11-07 builds a batch-capped, idempotent final-reminder command for pending, unsuppressed subscribers, issuing fresh verification tokens. At full freeze, block public writes and pause maintenance; audited handoff operations remain permitted until the database is set read-only after cutover. `/unsubscribe` and `/api/unsubscribe` move to the storefront, preserving one-click POST from exported unexpired tokens; after token expiry they redirect to storefront email preferences. `/dsr` redirects to storefront privacy rights; named-operator erasure against the waitlist database is the documented exception during its 90-day read-only retention. `/giveaway/award` becomes `410` only after the draw is published and all awards are terminal. E11-07 verifies the source-to-target mapping in both directions, builds `scripts/cutover-check.ts`, and tests retained `200`, redirect-to-`200`, `410`, and one-click unsubscribe behaviour against a local fixture server. The live storefront run is a cutover-day go/no-go gate.
+
 **Build:** Complete and verify the port checklist: the token file, every content file with its storefront target, and the font layer. Rehearse the cutover sequence in `docs/ops/launch-cutover.md` end to end, without executing the DNS change.
 
 **Acceptance criteria:**
@@ -1904,6 +1910,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 - The cutover sequence is rehearsed and timed
 - **The retained-versus-redirected disposition of every route is recorded**, including the giveaway rules pages
 - **The final-reminder-before-freeze step is in the sequence** — otherwise a live verification token stops working at cutover
+- The port checklist asserts that the runbook's named current rules revision equals `currentRules()`; `VAL-GW-LAUNCH-20261009-r1` is current, and the 2026-09-25 and 2026-10-01 revisions remain directly served, archived and hash-preserved
 
 **Tests:** The port-checklist reconciliation; the rehearsal is the test.
 **Docs:** `docs/ops/launch-cutover.md` · `docs/brand/tokens.md#port-checklist`

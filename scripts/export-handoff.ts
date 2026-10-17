@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import { finished } from 'node:stream/promises';
 
 import { createPool } from '../src/server/db/pool.ts';
+import { assertCutoverEligible } from '../src/server/db/handoff.ts';
 import { exportHandoff } from '../src/server/subscriber/handoff.ts';
 
 function argument(name: string): string {
@@ -33,6 +34,7 @@ const database = createPool(databaseUrl);
 const stream = createWriteStream(output, { flags: 'wx', mode: 0o600 });
 let outputFinished = false;
 try {
+  await assertCutoverEligible(database);
   const counts = await exportHandoff(
     database,
     actor,
