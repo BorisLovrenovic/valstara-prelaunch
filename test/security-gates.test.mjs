@@ -100,7 +100,7 @@ test('security and privacy gates pass on the repository baseline', async () => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 });
 
-test('the excepted cache advisory cannot reach its vulnerable Astro method', async () => {
+test('Astro remote-image caching uses only the expected policy methods', async () => {
   const astroRoot = join(projectRoot, 'node_modules/astro');
   const astroPackage = JSON.parse(
     await readFile(join(astroRoot, 'package.json'), 'utf8'),

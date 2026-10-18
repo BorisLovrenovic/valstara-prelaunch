@@ -15,11 +15,11 @@
 | **P4** | Giveaway prize + final text of the one global rules page (Hong Kong law) | ✅ Supplied 2026-09-25 | Publishing E7-02's page | Done |
 | **P5** | Upgrade Resend + Brevo past free tiers | 🔴 Outstanding | Turning `giveaway.open` on | Before E7 exit |
 | **P7** | The four seed mailboxes (Gmail, Outlook.com, GMX, Web.de) | 🔴 Outstanding | E12-07: the first live seed run and the rendering check | Before E12 |
-| **P3b** | Trust-page prose (`/legit`, `/guarantee`, `/about`) | 🔴 Outstanding | E9-02 | Before E9 |
+| **P3b** | Trust-page prose (`/legit`, `/guarantee`, `/about`) | ✅ Supplied 2026-09-30; E9-02 published it | E9-02 | Done |
 | **P6** | Provision the production VPS | ⚪ Deferred (by design) | Epic E12 | Before E12 |
 | **P3a** | Brand token values | ✅ Satisfied | — | Done |
 
-**P1 is complete; sender-reputation warming continues through E11-08/E12-07. P2 is waived by the founder under ADR-029.**
+**P1 is complete; sender-reputation warming continues through E11-08/E12-07. P2 is waived by the founder under ADR-029. P3b is complete: the final copy is in `docs/prerequisites/p3b-trust-pages-copy.md` and the three content files.**
 
 ---
 
@@ -176,10 +176,10 @@ Free-tier caps are **Resend 100/day** and **Brevo 300/day**. A viral signup spik
 
 ## P3b — Trust-page prose
 
-- **Status:** 🔴 Outstanding
+- **Status:** ✅ Supplied 2026-09-30 in `docs/prerequisites/p3b-trust-pages-copy.md` and published by E9-02 in `src/content/legit.md`, `src/content/guarantee.md` and `src/content/about.md`.
 - **Nature:** Founder input, from the brand and store documentation
-- **Gates:** E9-02.
-- **Deadline:** Before E9.
+- **Gates:** E9-02, now complete.
+- **Deadline:** Met before E9.
 
 ### Why this matters
 `/legit`, `/guarantee`, and `/about` are the pages that carry the brand's entire trust proposition. **A page shell with placeholder text is explicitly not a deliverable** — the agent will not build these on stubs, because empty trust pages undercut the one thing the brand is selling.
