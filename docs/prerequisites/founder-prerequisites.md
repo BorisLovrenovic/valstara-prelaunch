@@ -13,7 +13,7 @@
 | **P1** | DNS records + email authentication | ✅ Satisfied 2026-09-27 | —; E8 unblocked | Done |
 | **P2** | EU + UK Article 27 representatives | Waived by founder 2026-10-01 (ADR-029) | No representative gate | Done |
 | **P4** | Giveaway prize + final text of the one global rules page (Hong Kong law) | ✅ Supplied 2026-09-25 | Publishing E7-02's page | Done |
-| **P5** | Upgrade Resend + Brevo past free tiers | 🔴 Outstanding | Turning `giveaway.open` on | Before E7 exit |
+| **P5** | Upgrade Resend + Brevo past free tiers | 🔴 Partially evidenced; still outstanding | Turning `giveaway.open` on | Before E7 exit |
 | **P7** | The four seed mailboxes (Gmail, Outlook.com, GMX, Web.de) | 🔴 Outstanding | E12-07: the first live seed run and the rendering check | Before E12 |
 | **P3b** | Trust-page prose (`/legit`, `/guarantee`, `/about`) | ✅ Supplied 2026-09-30; E9-02 published it | E9-02 | Done |
 | **P6** | Provision the production VPS | ⚪ Deferred (by design) | Epic E12 | Before E12 |
@@ -150,10 +150,21 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 
 ## P5 — Upgrade Resend and Brevo past the free tiers
 
-- **Status:** 🔴 Outstanding
+- **Status:** 🔴 Partially evidenced; still outstanding
 - **Nature:** Purchase
 - **Gates:** Turning `giveaway.open` **on** (E7 exit).
 - **Deadline:** **Before the giveaway opens — not when the limits are hit.** Upgrading reactively means dropped mail at the worst possible moment.
+
+### Account evidence received 2026-10-18
+
+The founder transcribed the Resend account dashboard and identified Brevo's Starter package during the E11-08 review; no account screenshot or billing record is stored in the repository:
+
+| Provider and use | Account plan shown | Account limits supplied | Remaining verification |
+|---|---|---|---|
+| Resend transactional | Pro | 50,000 sends/month, renewing October 24; daily limit shown as unlimited; 10 requests/second. Resend Marketing remains Free and is not the broadcast provider. | Founder set `RESEND_DAILY_CAP=1600` on 2026-10-18 as an internal alert threshold: 50,000 ÷ 30 ≈ 1,667, rounded down. This is not a provider daily limit. |
+| Brevo broadcast | Starter package | The plan website says from 5,000 and up to 100,000 sends/month, and up to 500,000 contacts. These are plan-range figures, not the purchased account allowance. | Record the active monthly send allowance from the account dashboard or invoice and any daily limit. Then set `BREVO_DAILY_CAP` to that monthly allowance ÷ 30, rounded down to the nearest 50 (founder instruction, 2026-10-18). |
+
+Neither `RESEND_TIER` nor `BREVO_TIER` has been changed in the local configuration. P5 remains open until the purchased Brevo allowance, its derived daily alert threshold, and the resulting tier and cap configuration are checked. The paid-tier configuration rejects a daily cap at or below Brevo's free 300/day cap. `giveaway.open` remains off.
 
 ### Why this matters
 Free-tier caps are **Resend 100/day** and **Brevo 300/day**. A viral signup spike will blow through these instantly, and once mail starts failing during a launch there is no recovery. The caps are treated as configuration, not hard-coded assumptions, so the upgrade is purely a purchasing action on your accounts.
