@@ -187,7 +187,7 @@ A leaked secret means **rotate, then purge**. Committing over it is not remediat
 
 Three things must be true before the DNS record points at this site publicly, and they are gates rather than checklist items because each is unrecoverable if missed:
 
-1. **The privacy notice and terms are published**, with the founder's Article 27 decision recorded in ADR-029. The E11-05 privacy audit remains a launch blocker until the founder supplies either a legal review outcome (reviewed wording, reviewer and date) covering Turnstile's `cf.turnstile.u` basis, the Cloudflare processor wording and the draft `/privacy` and `/terms`, or an explicit founder risk acceptance in a new ADR. Record the former as reviewed and the latter as waived, never as a clean legal review (founder decision, 2026-10-18).
+1. **The privacy notice and terms are published**, with the founder's Article 27 decision recorded in ADR-029. The E11-05 legal finding covering Turnstile's `cf.turnstile.u` basis, the Cloudflare processor wording and the draft `/privacy` and `/terms` is closed by the founder's risk acceptance in ADR-030 (2026-10-18). It is **waived**, not legally reviewed; the E12-05 production privacy check remains required.
 2. **SPF, DKIM and DMARC verify on every sending domain**, and the seed test round-trips.
 3. **The ESP tiers are upgraded past the free caps** before `giveaway.open` is turned on. E11-08 records each provider's founder-supplied account plan and limit; only then may its configured cap and `RESEND_TIER`/`BREVO_TIER` move to `paid` and P5 be marked complete (founder decision, 2026-10-18).
 

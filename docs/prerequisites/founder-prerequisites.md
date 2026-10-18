@@ -64,7 +64,7 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 - **Status:** Waived by founder decision on 2026-10-01 (ADR-029).
 - **Decision:** Valstara will not appoint an EU or UK Article 27 representative for the pre-launch campaign.
 - **Engineering effect:** E9-03 has no representative fields, build assertion or representative-dependent signup gate.
-- **Legal text:** The founder authorised temporary draft `/terms` and `/privacy` text. Reviewed replacement wording remains outstanding and is assessed at E11-05.
+- **Legal text:** The founder authorised temporary draft `/terms` and `/privacy` text. Reviewed replacement wording remains outstanding; the E11-05 legal finding was waived by the founder on 2026-10-18 in ADR-030.
 
 ### Source docs
 `docs/plan/development-plan.md` §2 (P2), E9-03 · `docs/legal/compliance.md#1` · `docs/architecture/adr/029-no-article-27-representatives.md`
@@ -108,7 +108,7 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 - **Status:** Waived by founder decision on 2026-10-01 (ADR-029).
 - **Decision:** Valstara will not appoint an EU or UK Article 27 representative for the pre-launch campaign.
 - **Engineering effect:** E9-03 has no representative fields, build assertion or representative-dependent signup gate.
-- **Legal text:** The founder authorised temporary draft `/terms` and `/privacy` text. Reviewed replacement wording remains outstanding and is assessed at E11-05.
+- **Legal text:** The founder authorised temporary draft `/terms` and `/privacy` text. Reviewed replacement wording remains outstanding; the E11-05 legal finding was waived by the founder on 2026-10-18 in ADR-030.
 
 ### Source docs
 `docs/plan/development-plan.md` §2 (P2), E9-03 · `docs/legal/compliance.md#1` · `docs/architecture/adr/029-no-article-27-representatives.md`

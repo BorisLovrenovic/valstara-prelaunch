@@ -123,8 +123,9 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   /*
   Cloudflare Turnstile's client widget. This is the sole sanctioned off-origin
   rendered-page request: the
-  Article 5(3) basis for Cloudflare's cf.turnstile.u access is the strictly
-  necessary form-security exemption, pending legal sign-off;
+  stated Article 5(3) basis for Cloudflare's cf.turnstile.u access is the
+  strictly necessary form-security exemption; legal review was waived by the
+  founder in ADR-030.
   Cloudflare's IP/TLS/UA security processing is disclosed separately. It is
   allowlisted in the third-party gate for
   this exact file (Option A, founder-authorised 2026-09-08; ADR-006, ADR-007,
