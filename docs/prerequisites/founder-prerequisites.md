@@ -157,14 +157,14 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 
 ### Account evidence received 2026-10-18
 
-The founder transcribed the Resend account dashboard and identified Brevo's Starter package during the E11-08 review; no account screenshot or billing record is stored in the repository:
+The founder transcribed the Resend account dashboard and checked Brevo's Starter checkout/plan page on 2026-10-18; no account screenshot or billing record is stored in the repository. Brevo Starter has not been purchased or activated:
 
 | Provider and use | Account plan shown | Account limits supplied | Remaining verification |
 |---|---|---|---|
 | Resend transactional | Pro | 50,000 sends/month, renewing October 24; daily limit shown as unlimited; 10 requests/second. Resend Marketing remains Free and is not the broadcast provider. | Founder set `RESEND_DAILY_CAP=1600` on 2026-10-18 as an internal alert threshold: 50,000 ÷ 30 ≈ 1,667, rounded down. This is not a provider daily limit. |
-| Brevo broadcast | Starter package, founder-stated 5,000 sends/month | The founder states this paid package has no daily provider limit. The supplied checkout/plan-page evidence date is still a placeholder, and active account status has not been confirmed. | Founder replaced the earlier ÷ 30 rule on 2026-10-18: `BREVO_DAILY_CAP=1000` is 5,000 ÷ 5, allowing one full-list send on each of at most five weekly broadcast days per month. This is an internal alert threshold, not a provider daily limit. Confirm the evidence date, active plan and audience headroom before completing P5. |
+| Brevo broadcast | Starter package, not yet purchased | The founder checked the 5,000 sends/month, no-daily-limit paid plan on 2026-10-18. This is a prospective allowance, not an active account limit. | Founder replaced the earlier ÷ 30 rule on 2026-10-18: the target `BREVO_DAILY_CAP=1000` is 5,000 ÷ 5, allowing one full-list send on each of at most five weekly broadcast days per month. This is an internal alert threshold, not a provider daily limit. Purchase and verify the plan before completing P5. |
 
-Neither `RESEND_TIER` nor `BREVO_TIER` has been changed in the local configuration. The planned paid caps of 1,600 and 1,000 both pass the unchanged free-cap floor, but P5 remains open until Brevo's dated account evidence and full-list headroom are verified and the resulting tier and cap configuration is checked. `giveaway.open` remains off.
+Neither `RESEND_TIER` nor `BREVO_TIER` has been changed in the local configuration. The planned paid caps of 1,600 and 1,000 both pass the unchanged free-cap floor, but P5 remains open because Brevo has not been purchased. After purchase, verify the active allowance and set and check both tiers and caps; `giveaway.open` remains off meanwhile. The founder intends an initial consented audience below 1,000 and a staged upgrade as it grows. The requested 80%-of-capacity P2 alert is separate work requiring its own ticket and plan amendment; it is not active in this gate.
 
 ### Why this matters
 Free-tier caps are **Resend 100/day** and **Brevo 300/day**. A viral signup spike will blow through these instantly, and once mail starts failing during a launch there is no recovery. The caps are treated as configuration, not hard-coded assumptions, so the upgrade is purely a purchasing action on your accounts.
