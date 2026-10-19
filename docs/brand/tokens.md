@@ -31,6 +31,7 @@ So the rule is stronger than "use tokens":
   --coral-tint: #FDEEE9;     /* accent backgrounds, subtle highlight fills */
   --midnight: #171733;       /* dark surfaces — guarantee band, footer */
   --midnight-deep: #0D0D1F;  /* optional gradient terminal */
+  --on-midnight: #FAFAFA;    /* role: text and icons on midnight */
 
   /* functional — UI only, never brand surfaces */
   --error: #C0392B; --warning: #B7791F; --success: #2E7D57;
@@ -58,6 +59,7 @@ So the rule is stronger than "use tokens":
 [data-theme='dark'] {
   --paper: #0F0F1A; --surface: #171733; --ink: #F0F0EE; --coral: #FF8A66;
   --ink-600: #A0A0A8; /* dark secondary text — see note below */
+  --on-midnight: #F0F0EE;
 }
 ```
 
@@ -80,6 +82,12 @@ Dark values redefine those same names in **two** places, and both are required:
 The media block exists because **the site must render the system-preferred theme with JavaScript disabled**, and nothing can set `data-theme` without JavaScript. The attribute block exists because an explicit choice must beat the system preference. The `:not([data-theme])` guard is what keeps them from fighting: once a visitor has chosen, the media query stops applying.
 
 **The two dark blocks must declare the identical set of token names** — a token redefined in one and not the other is a defect, and E2-01 asserts it rather than leaving it to review.
+
+**E11.5-01 foundation (founder-authorised 2026-10-19).** `--on-midnight` is the foreground role for all text and icons on a `midnight` surface. Its light value is locked `paper` (`#FAFAFA`); its dark value is locked dark `ink` (`#F0F0EE`) in both dark blocks. The role adds no palette colour. The contrast gate checks this pairing at body-text AA in each theme, and `coral` on `midnight` at large-text/graphic AA for accents only.
+
+The portable file also carries `--shadow-1` through `--shadow-3` (with paired dark elevations), `--container-max`, `--gutter`, `--gutter-wide`, `--section-gap`, `--section-gap-wide`, `--measure`, four weight tokens, two tracking tokens, `--tap-min`, three icon sizes, and `--layer-dock`/`--layer-skip`. Their exact values are specified in E11.5-01 of the development plan and tested against the file. The only media-query length literals allowed are **40rem, 64rem and 80rem**: small is below 40rem, medium begins at 40rem, large at 64rem and wide at 80rem. CSS custom properties cannot be used inside media conditions.
+
+The [page-design engineering reference](page-design.md) defines how pages use the grid, elevations and layout checks.
 
 **`--ink-600` carries a dark override (`#A0A0A8`) beyond the four brand-defined swaps** (founder-authorised 2026-09-05). At its base `#55555E` it renders secondary text at 2.58:1 on the dark `--paper` and 2.36:1 on `--surface`, below AA; `#A0A0A8` — the LOCKED light `--ink-300` value, reused rather than a new colour — clears 7.33:1 and 6.70:1, mirroring its 7.07:1 in light so the muted hierarchy reads identically in both themes. E2-01's contrast test covers the muted pairings in dark so this cannot regress.
 
@@ -113,6 +121,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 | `src/content/privacy-storage.md` | `/privacy/storage` — ported with the privacy notice | E11-07 |
 | `src/content/giveaway-rules/*.md` | `/giveaway/rules` and each immutable `/giveaway/rules/<rules_version>` | E11-07 |
 | Font files and `@font-face` declarations | Storefront font layer | E11-07 |
+
+**E11.5-01 port addition:** copy the expanded `tokens.css` verbatim, including `--on-midnight`, the three shadow pairs, layout, type-weight, tracking, sizing and layering tokens. Re-run the contrast and dark-name-set tests after the port. The breakpoint literals above travel with page CSS; they are documented here because media conditions cannot reference custom properties.
 
 E11-07 source-to-target reconciliation (targets are the storefront routes to build and verify before the DNS swap):
 

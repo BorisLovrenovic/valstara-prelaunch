@@ -100,6 +100,30 @@ test('security and privacy gates pass on the repository baseline', async () => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 });
 
+test('the wired literal gate rejects planted page, island and media fixtures', async () => {
+  for (const [name, path] of [
+    ['page', 'src/pages/ci-literal-page.astro'],
+    ['island', 'src/islands/CiLiteralIsland.astro'],
+    ['media', 'src/pages/ci-literal-media.astro'],
+  ]) {
+    const content = await readFile(
+      new URL(`fixtures/literal-values/${name}.astro`, import.meta.url),
+      'utf8',
+    );
+    const { repository, temporaryRoot } = await createFixtureRepository(
+      `literal-${name}`,
+      { path, content },
+    );
+    try {
+      const result = runSecurityGate(repository);
+      assert.notEqual(result.status, 0, `${name} fixture unexpectedly passed`);
+      assert.match(`${result.stdout}\n${result.stderr}`, /\[literal-values\]/u);
+    } finally {
+      await rm(temporaryRoot, { force: true, recursive: true });
+    }
+  }
+});
+
 test('Astro remote-image caching uses only the expected policy methods', async () => {
   const astroRoot = join(projectRoot, 'node_modules/astro');
   const astroPackage = JSON.parse(

@@ -46,6 +46,7 @@ docs/
   api/README.md                    route surface, error envelope, closed code set
   brand/
     tokens.md                      the portable token contract (ADR-015)
+    page-design.md                 E11.5 grid, elevation, breakpoints and layout evidence
     copy-rules.md                  enforceable copy rules — CI-scanned
   engineering/
     standards.md                   coding standards

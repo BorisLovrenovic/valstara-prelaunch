@@ -1,0 +1,96 @@
+---
+export type IconName = 'star' | 'check' | 'arrow-right' | 'shield' | 'link';
+export type IconSize = 'sm' | 'md' | 'lg';
+
+interface Props {
+  name: IconName;
+  size?: IconSize;
+  label?: string;
+}
+
+const { name, size = 'md', label } = Astro.props;
+---
+
+<svg
+  class:list={['icon', `icon--${size}`]}
+  viewBox="0 0 24 24"
+  xmlns="http://www.w3.org/2000/svg"
+  aria-hidden={label ? undefined : 'true'}
+  aria-label={label}
+  role={label ? 'img' : undefined}
+  focusable="false"
+>
+  {
+    name === 'star' && (
+      <path
+        d="M12 1.5 C12 8 13 12 19 12 C13 12 12 16 12 22.5 C12 16 11 12 5 12 C11 12 12 8 12 1.5 Z"
+        fill="currentColor"
+      />
+    )
+  }
+  {
+    name === 'check' && (
+      <path
+        d="M5 12.5 9.5 17 19 7"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    )
+  }
+  {
+    name === 'arrow-right' && (
+      <path
+        d="M4 12h15m-6-6 6 6-6 6"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    )
+  }
+  {
+    name === 'shield' && (
+      <path
+        d="M12 2 20 5v6c0 5.2-3.2 8.8-8 11-4.8-2.2-8-5.8-8-11V5l8-3Z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linejoin="round"
+      />
+    )
+  }
+  {
+    name === 'link' && (
+      <path
+        d="M10 13a5 5 0 0 0 7 .1l2-2a5 5 0 0 0-7-7l-1.2 1.2M14 11a5 5 0 0 0-7-.1l-2 2a5 5 0 0 0 7 7l1.2-1.2"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      />
+    )
+  }
+</svg>
+
+<style>
+  .icon {
+    display: inline-block;
+    flex: none;
+    inline-size: var(--icon-md);
+    block-size: var(--icon-md);
+    color: inherit;
+  }
+
+  .icon--sm {
+    inline-size: var(--icon-sm);
+    block-size: var(--icon-sm);
+  }
+  .icon--lg {
+    inline-size: var(--icon-lg);
+    block-size: var(--icon-lg);
+  }
+</style>

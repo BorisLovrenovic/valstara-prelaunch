@@ -61,6 +61,7 @@
   --coral-tint: #fdeee9;
   --midnight: #171733;
   --midnight-deep: #0d0d1f;
+  --on-midnight: #fafafa;
 
   /* functional */
   --error: #c0392b;
@@ -84,6 +85,12 @@
   --leading-1: 1.25rem;
   --step-0: 0.8125rem;
   --leading-0: 1.125rem;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
 
   /* spacing */
   --space-1: 0.5rem;
@@ -97,10 +104,30 @@
   --space-9: 4.5rem;
   --space-10: 5rem;
 
+  /* layout */
+  --container-max: 75rem;
+  --gutter: var(--space-2);
+  --gutter-wide: var(--space-4);
+  --section-gap: var(--space-8);
+  --section-gap-wide: var(--space-10);
+  --measure: 68ch;
+
   /* radius */
   --radius-card: 12px;
   --radius-control: 8px;
   --radius-pill: 999px;
+
+  /* elevation, sizing and layering */
+  --shadow-1: 0 1px 2px rgb(16 16 20 / 0.06), 0 2px 6px rgb(16 16 20 / 0.06);
+  /* prettier-ignore */
+  --shadow-2: 0 2px 4px rgb(16 16 20 / 0.06), 0 8px 24px rgb(16 16 20 / 0.10);
+  --shadow-3: 0 4px 8px rgb(16 16 20 / 0.08), 0 16px 40px rgb(16 16 20 / 0.14);
+  --tap-min: 2.75rem;
+  --icon-sm: 1rem;
+  --icon-md: 1.5rem;
+  --icon-lg: 2.5rem;
+  --layer-dock: 20;
+  --layer-skip: 30;
 
   /* motion */
   --duration-fast: 150ms;
@@ -120,6 +147,13 @@
     --ink: #f0f0ee;
     --ink-600: #a0a0a8;
     --coral: #ff8a66;
+    --on-midnight: #f0f0ee;
+    /* prettier-ignore */
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.30), 0 2px 6px rgb(0 0 0 / 0.30);
+    /* prettier-ignore */
+    --shadow-2: 0 2px 4px rgb(0 0 0 / 0.30), 0 8px 24px rgb(0 0 0 / 0.40);
+    /* prettier-ignore */
+    --shadow-3: 0 4px 8px rgb(0 0 0 / 0.40), 0 16px 40px rgb(0 0 0 / 0.50);
   }
 }
 
@@ -129,4 +163,11 @@
   --ink: #f0f0ee;
   --ink-600: #a0a0a8;
   --coral: #ff8a66;
+  --on-midnight: #f0f0ee;
+  /* prettier-ignore */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.30), 0 2px 6px rgb(0 0 0 / 0.30);
+  /* prettier-ignore */
+  --shadow-2: 0 2px 4px rgb(0 0 0 / 0.30), 0 8px 24px rgb(0 0 0 / 0.40);
+  /* prettier-ignore */
+  --shadow-3: 0 4px 8px rgb(0 0 0 / 0.40), 0 16px 40px rgb(0 0 0 / 0.50);
 }
