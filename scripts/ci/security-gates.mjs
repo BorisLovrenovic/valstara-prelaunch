@@ -375,7 +375,7 @@ function scanThirdPartyRequests(files) {
   const urlPattern =
     /(?:fetch|import|navigator\.sendBeacon|new\s+(?:WebSocket|EventSource)|\.open)\(\s*(?:['"`][^'"`]+['"`]\s*,\s*)?(['"`])(https?:\/\/[^'"`]+)\1|<(?:script|iframe|img|link)\b[^>]*\b(?:src|href)=["'](https?:\/\/[^"']+)|(?:@import\s+(?:url\()?|url\()\s*['"]?(https?:\/\/[^'"\s)]+)/g;
 
-  return readJson('scripts/ci/privacy-allowlist.json').then((policy) => {
+  return readJson('scripts/ci/privacy-allowlist.json').then(async (policy) => {
     const turnstile = policy.thirdPartyRequests.find(
       (entry) => entry.host === 'challenges.cloudflare.com',
     );
@@ -392,7 +392,7 @@ function scanThirdPartyRequests(files) {
       contract?.processorRole !== 'security-processor' ||
       contract?.privacyPolicyDisclosure !==
         'docs/legal/compliance.md#cloudflare-turnstile-processor-disclosure' ||
-      contract?.legalSignOff !== 'required' ||
+      contract?.legalReviewOutcome !== 'founder-risk-acceptance-adr-030' ||
       JSON.stringify(contract?.processorServerSideSignals) !==
         JSON.stringify(expectedSignals)
     ) {
@@ -410,7 +410,7 @@ function scanThirdPartyRequests(files) {
     if (
       compliance === undefined ||
       !compliance.includes('Cloudflare Turnstile processor disclosure') ||
-      !compliance.includes('LEGAL SIGN-OFF REQUIRED') ||
+      !compliance.includes('FOUNDER RISK ACCEPTANCE — LEGAL REVIEW WAIVED') ||
       !expectedSignals.every((signal) => compliance.includes(`**${signal}**`))
     ) {
       issues.push(
@@ -418,6 +418,28 @@ function scanThirdPartyRequests(files) {
           'privacy-disclosure',
           'docs/legal/compliance.md',
           'privacy policy does not state the enforced Turnstile processor contract',
+        ),
+      );
+    }
+    const waiver = await readFile(
+      resolve(
+        projectRoot,
+        'docs/architecture/adr/030-founder-legal-review-risk-acceptance.md',
+      ),
+      'utf8',
+    ).catch(() => '');
+    if (
+      !waiver.includes(
+        '- Status: Accepted — legal review waived, not reviewed',
+      ) ||
+      !waiver.includes('- Deciders: founder') ||
+      !waiver.includes("without a lawyer's review")
+    ) {
+      issues.push(
+        issue(
+          'privacy-disclosure',
+          'docs/architecture/adr/030-founder-legal-review-risk-acceptance.md',
+          'founder legal-review waiver record is missing or incomplete',
         ),
       );
     }

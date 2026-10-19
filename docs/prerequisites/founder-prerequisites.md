@@ -13,13 +13,13 @@
 | **P1** | DNS records + email authentication | ✅ Satisfied 2026-09-27 | —; E8 unblocked | Done |
 | **P2** | EU + UK Article 27 representatives | Waived by founder 2026-10-01 (ADR-029) | No representative gate | Done |
 | **P4** | Giveaway prize + final text of the one global rules page (Hong Kong law) | ✅ Supplied 2026-09-25 | Publishing E7-02's page | Done |
-| **P5** | Upgrade Resend + Brevo past free tiers | 🔴 Outstanding | Turning `giveaway.open` on | Before E7 exit |
+| **P5** | Upgrade Resend + Brevo past free tiers | 🔴 Partially evidenced; still outstanding | Turning `giveaway.open` on | Before E7 exit |
 | **P7** | The four seed mailboxes (Gmail, Outlook.com, GMX, Web.de) | 🔴 Outstanding | E12-07: the first live seed run and the rendering check | Before E12 |
-| **P3b** | Trust-page prose (`/legit`, `/guarantee`, `/about`) | 🔴 Outstanding | E9-02 | Before E9 |
+| **P3b** | Trust-page prose (`/legit`, `/guarantee`, `/about`) | ✅ Supplied 2026-09-30; E9-02 published it | E9-02 | Done |
 | **P6** | Provision the production VPS | ⚪ Deferred (by design) | Epic E12 | Before E12 |
 | **P3a** | Brand token values | ✅ Satisfied | — | Done |
 
-**P1 is complete; sender-reputation warming continues through E11-08/E12-07. P2 is waived by the founder under ADR-029.**
+**P1 is complete; sender-reputation warming continues through E11-08/E12-07. P2 is waived by the founder under ADR-029. P3b is complete: the final copy is in `docs/prerequisites/p3b-trust-pages-copy.md` and the three content files.**
 
 ---
 
@@ -64,7 +64,7 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 - **Status:** Waived by founder decision on 2026-10-01 (ADR-029).
 - **Decision:** Valstara will not appoint an EU or UK Article 27 representative for the pre-launch campaign.
 - **Engineering effect:** E9-03 has no representative fields, build assertion or representative-dependent signup gate.
-- **Legal text:** The founder authorised temporary draft `/terms` and `/privacy` text. Reviewed replacement wording remains outstanding and is assessed at E11-05.
+- **Legal text:** The founder authorised temporary draft `/terms` and `/privacy` text. Reviewed replacement wording remains outstanding; the E11-05 legal finding was waived by the founder on 2026-10-18 in ADR-030.
 
 ### Source docs
 `docs/plan/development-plan.md` §2 (P2), E9-03 · `docs/legal/compliance.md#1` · `docs/architecture/adr/029-no-article-27-representatives.md`
@@ -108,7 +108,7 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 - **Status:** Waived by founder decision on 2026-10-01 (ADR-029).
 - **Decision:** Valstara will not appoint an EU or UK Article 27 representative for the pre-launch campaign.
 - **Engineering effect:** E9-03 has no representative fields, build assertion or representative-dependent signup gate.
-- **Legal text:** The founder authorised temporary draft `/terms` and `/privacy` text. Reviewed replacement wording remains outstanding and is assessed at E11-05.
+- **Legal text:** The founder authorised temporary draft `/terms` and `/privacy` text. Reviewed replacement wording remains outstanding; the E11-05 legal finding was waived by the founder on 2026-10-18 in ADR-030.
 
 ### Source docs
 `docs/plan/development-plan.md` §2 (P2), E9-03 · `docs/legal/compliance.md#1` · `docs/architecture/adr/029-no-article-27-representatives.md`
@@ -150,10 +150,21 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 
 ## P5 — Upgrade Resend and Brevo past the free tiers
 
-- **Status:** 🔴 Outstanding
+- **Status:** 🔴 Partially evidenced; still outstanding
 - **Nature:** Purchase
 - **Gates:** Turning `giveaway.open` **on** (E7 exit).
 - **Deadline:** **Before the giveaway opens — not when the limits are hit.** Upgrading reactively means dropped mail at the worst possible moment.
+
+### Account evidence received 2026-10-18
+
+The founder transcribed the Resend account dashboard and checked Brevo's Starter checkout/plan page on 2026-10-18; no account screenshot or billing record is stored in the repository. Brevo Starter has not been purchased or activated:
+
+| Provider and use | Account plan shown | Account limits supplied | Remaining verification |
+|---|---|---|---|
+| Resend transactional | Pro | 50,000 sends/month, renewing October 24; daily limit shown as unlimited; 10 requests/second. Resend Marketing remains Free and is not the broadcast provider. | Founder set `RESEND_DAILY_CAP=1600` on 2026-10-18 as an internal alert threshold: 50,000 ÷ 30 ≈ 1,667, rounded down. This is not a provider daily limit. |
+| Brevo broadcast | Starter package, not yet purchased | The founder checked the 5,000 sends/month, no-daily-limit paid plan on 2026-10-18. This is a prospective allowance, not an active account limit. | Founder replaced the earlier ÷ 30 rule on 2026-10-18: the target `BREVO_DAILY_CAP=1000` is 5,000 ÷ 5, allowing one full-list send on each of at most five weekly broadcast days per month. This is an internal alert threshold, not a provider daily limit. Purchase and verify the plan before completing P5. |
+
+Neither `RESEND_TIER` nor `BREVO_TIER` has been changed in the local configuration. The planned paid caps of 1,600 and 1,000 both pass the unchanged free-cap floor, but P5 remains open because Brevo has not been purchased. After purchase, verify the active allowance and set and check both tiers and caps; `giveaway.open` remains off meanwhile. The founder intends an initial consented audience below 1,000 and a staged upgrade as it grows. The requested 80%-of-capacity P2 alert is separate work requiring its own ticket and plan amendment; it is not active in this gate.
 
 ### Why this matters
 Free-tier caps are **Resend 100/day** and **Brevo 300/day**. A viral signup spike will blow through these instantly, and once mail starts failing during a launch there is no recovery. The caps are treated as configuration, not hard-coded assumptions, so the upgrade is purely a purchasing action on your accounts.
@@ -176,10 +187,10 @@ Free-tier caps are **Resend 100/day** and **Brevo 300/day**. A viral signup spik
 
 ## P3b — Trust-page prose
 
-- **Status:** 🔴 Outstanding
+- **Status:** ✅ Supplied 2026-09-30 in `docs/prerequisites/p3b-trust-pages-copy.md` and published by E9-02 in `src/content/legit.md`, `src/content/guarantee.md` and `src/content/about.md`.
 - **Nature:** Founder input, from the brand and store documentation
-- **Gates:** E9-02.
-- **Deadline:** Before E9.
+- **Gates:** E9-02, now complete.
+- **Deadline:** Met before E9.
 
 ### Why this matters
 `/legit`, `/guarantee`, and `/about` are the pages that carry the brand's entire trust proposition. **A page shell with placeholder text is explicitly not a deliverable** — the agent will not build these on stubs, because empty trust pages undercut the one thing the brand is selling.

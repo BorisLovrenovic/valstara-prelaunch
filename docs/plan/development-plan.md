@@ -1860,7 +1860,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **Acceptance criteria:**
 - **Every rendered page checked** — the inventory is complete, not sampled
 - **No rendered page makes an off-origin request except Cloudflare Turnstile (`challenges.cloudflare.com`) on Turnstile-protected forms (ADR-006).** No Trustpilot host is requested on any route
-- **Every registered route's response shape enumerated and asserted free of another person's data**, with `/me` the single documented exception for its own bearer
+- **Every registered route's response shape enumerated and asserted free of another person's data**, with `/me`, the DSR export confirmation and the provisional-winner award form as own-bearer exceptions; each returns only its authenticated requester's data (founder-authorised wording correction, 2026-10-18)
 - **The storage inventory holds exactly two entries** and reconciles with the unchanged first-party source-code gate and the protected-form rendered probe
 - **No full IP address appears in any table, log line, alert or response** — verified by inspection, not by assertion
 - Every dependency reaching the browser is enumerated with what it loads
@@ -1928,7 +1928,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 - MFA active on the admin account
 - Backups running and **a restore drilled with its timing recorded**
 - **No live provider key is present anywhere in the repository or local environment** — verified. **Installing live keys on the host is E12-07**, and the campaign does not open until that ticket's gate passes
-- The privacy audit (E11-05) clean, with no open finding
+- The privacy audit (E11-05) with no open technical finding; the Turnstile `cf.turnstile.u` basis, Cloudflare processor wording and draft `/privacy` and `/terms` have either a recorded legal review outcome (reviewed wording, reviewer, date) or a founder risk acceptance in a new ADR. Record the latter as **waived**, never as a clean legal review (founder decision, 2026-10-18)
 - The verification-rate alert **drilled**, not just configured
 - The IP purge job running, with its retention verified
 - **The plan itself reconciled** — every ticket done, or explicitly deferred with founder authorisation

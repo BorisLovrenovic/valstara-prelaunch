@@ -100,7 +100,7 @@ test('security and privacy gates pass on the repository baseline', async () => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 });
 
-test('the excepted cache advisory cannot reach its vulnerable Astro method', async () => {
+test('Astro remote-image caching uses only the expected policy methods', async () => {
   const astroRoot = join(projectRoot, 'node_modules/astro');
   const astroPackage = JSON.parse(
     await readFile(join(astroRoot, 'package.json'), 'utf8'),
@@ -226,6 +226,35 @@ test('the privacy gate rejects an incomplete Turnstile disclosure contract', asy
     assert.match(
       `${result.stdout}\n${result.stderr}`,
       /\[privacy-disclosure\]/u,
+    );
+  } finally {
+    await rm(temporaryRoot, { force: true, recursive: true });
+  }
+});
+
+test('the privacy gate rejects a withdrawn founder waiver', async () => {
+  const path =
+    'docs/architecture/adr/030-founder-legal-review-risk-acceptance.md';
+  const waiver = await readFile(join(projectRoot, path), 'utf8');
+  const fixture = {
+    content: waiver.replace(
+      '- Status: Accepted — legal review waived, not reviewed',
+      '- Status: Proposed',
+    ),
+    path,
+  };
+  assert.notEqual(fixture.content, waiver);
+  const { repository, temporaryRoot } = await createFixtureRepository(
+    'withdrawn-founder-waiver',
+    fixture,
+  );
+
+  try {
+    const result = runSecurityGate(repository);
+    assert.notEqual(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /\[privacy-disclosure\].*founder legal-review waiver record is missing or incomplete/u,
     );
   } finally {
     await rm(temporaryRoot, { force: true, recursive: true });

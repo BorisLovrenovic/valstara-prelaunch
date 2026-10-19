@@ -44,6 +44,7 @@ Architecture decision records for the Valstara pre-launch site. One file per sig
 | 018 | Giveaway jurisdiction exclusions enforced at point of entry | Superseded by 026 |
 | 019 | EU and UK Article 27 representatives named before the first signup | Superseded by 029 |
 | 029 | Do not appoint Article 27 representatives for pre-launch | Accepted |
+| 030 | Founder accepts launch legal review risk | Accepted — waived, not reviewed |
 | 020 | Build the waitlist rather than buy a hosted one | Accepted |
 | 023 | Campaign flags with code-level fail-safe defaults | Accepted |
 | 025 | Campaign business config — tier ladder, wave bands, survey v1 | Accepted |
@@ -52,7 +53,7 @@ Architecture decision records for the Valstara pre-launch site. One file per sig
 | 021 | Launch is a host cutover at the DNS layer, not a deploy | Accepted |
 | 022 | The waitlist database is frozen read-only for 90 days after handoff | Accepted |
 
-26 Accepted · 3 Superseded · 0 Proposed.
+27 Accepted · 3 Superseded · 0 Proposed.
 
 ## Open items
 
