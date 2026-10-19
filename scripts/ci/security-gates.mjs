@@ -2,6 +2,7 @@ import { parse, teardown } from '@astrojs/compiler';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { lstat, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { scanAstroLiteralValues } from './literal-values.mjs';
 
 const projectRoot = resolve(new URL('../..', import.meta.url).pathname);
 const codeExtensions = new Set([
@@ -701,6 +702,18 @@ async function scanInlineProse(files) {
   return issues;
 }
 
+function scanLiteralValues(files) {
+  return files
+    .filter(
+      (file) => file.path.startsWith('src/') && file.path.endsWith('.astro'),
+    )
+    .flatMap((file) =>
+      scanAstroLiteralValues(file.content).map((message) =>
+        issue('literal-values', file.path, message),
+      ),
+    );
+}
+
 export async function runSecurityGates(
   options = parseArguments(process.argv.slice(2)),
 ) {
@@ -714,6 +727,7 @@ export async function runSecurityGates(
     scanVendorBoundary(files),
     scanForbiddenCopy(files),
     scanInlineProse(files),
+    scanLiteralValues(files),
   ]);
   return scans.flat();
 }

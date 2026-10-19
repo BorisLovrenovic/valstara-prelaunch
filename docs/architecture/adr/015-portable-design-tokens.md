@@ -25,3 +25,5 @@ The pre-launch site and the storefront are separate repositories on different fr
 **Named risk 6 is the failure mode**: if the design system diverges during the campaign, the storefront inherits a subtly different brand and nobody notices until both are live side by side. The port checklist in `docs/brand/tokens.md` exists for that reason, and it is kept current from the first commit rather than assembled at launch.
 
 Values are **transcribed** from the brand guidelines, not invented here. A placeholder value shipping to production is a blocking finding.
+
+**E11.5-01 amendment, founder-authorised 2026-10-19:** the portable file also carries the exact elevation, layout, weight, tracking, sizing and layering tokens recorded in E11.5-01 of the plan. `--on-midnight` is the required text/icon foreground role on `midnight`: it reuses locked light `paper` and dark `ink`, so it adds no palette colour. The two dark blocks keep identical token-name sets. The closed media breakpoints are 40rem, 64rem and 80rem, documented in `docs/brand/tokens.md`; CSS variables cannot appear in media conditions. The component literal scan now covers every Astro file under `src/`.

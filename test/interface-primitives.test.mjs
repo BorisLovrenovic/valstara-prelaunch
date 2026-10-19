@@ -1,3 +1,4 @@
+/* global getComputedStyle */
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -233,13 +234,14 @@ after(async () => {
   }
 });
 
-test('all seven primitives are zero-JavaScript Astro components', async () => {
+test('all primitives and the icon registry are zero-JavaScript Astro components', async () => {
   const components = await componentSources();
   assert.deepEqual(components.map(({ name }) => name).sort(), [
     'accordion.astro',
     'button.astro',
     'card.astro',
     'field.astro',
+    'icon.astro',
     'input.astro',
     'pill.astro',
     'select.astro',
@@ -249,6 +251,68 @@ test('all seven primitives are zero-JavaScript Astro components', async () => {
     assert.doesNotMatch(source, /<script\b|client:/u, name);
     assert.match(source, /var\(--/u, name);
   }
+});
+
+test('icons render in currentColor at token sizes with decorative hiding', async () => {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(browserOrigin);
+    const icons = await page.locator('svg.icon').evaluateAll((elements) =>
+      elements.map((element) => ({
+        role: element.getAttribute('role'),
+        hidden: element.getAttribute('aria-hidden'),
+        label: element.getAttribute('aria-label'),
+        width: getComputedStyle(element).width,
+        height: getComputedStyle(element).height,
+        colors: [...element.querySelectorAll('path')].map((path) => [
+          path.getAttribute('fill'),
+          path.getAttribute('stroke'),
+        ]),
+      })),
+    );
+    assert.equal(icons.length, 5);
+    assert.deepEqual(
+      icons.map((icon) => icon.width),
+      ['16px', '24px', '40px', '24px', '24px'],
+    );
+    assert.deepEqual(
+      icons.map((icon) => icon.height),
+      icons.map((icon) => icon.width),
+    );
+    assert.equal(icons[0].hidden, 'true');
+    assert.equal(icons[1].role, 'img');
+    assert.equal(icons[1].label, 'Confirmed');
+    assert.equal(icons[1].hidden, null);
+    for (const icon of icons) {
+      for (const [fill, stroke] of icon.colors) {
+        assert.ok(fill === 'currentColor' || stroke === 'currentColor');
+      }
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test('the decorative star has four sharp, concave points and 1.5:1 symmetric arms', async () => {
+  const source = await readFile(
+    join(componentsDirectory, 'icon.astro'),
+    'utf8',
+  );
+  const path = /name === 'star'[\s\S]*?<path\s+d="([^"]+)"/u.exec(source)?.[1];
+  assert.ok(path);
+  const numbers = [...path.matchAll(/-?\d+(?:\.\d+)?/gu)].map((match) =>
+    Number(match[0]),
+  );
+  assert.deepEqual(
+    numbers,
+    [
+      12, 1.5, 12, 8, 13, 12, 19, 12, 13, 12, 12, 16, 12, 22.5, 12, 16, 11, 12,
+      5, 12, 11, 12, 12, 8, 12, 1.5,
+    ],
+  );
+  assert.equal((22.5 - 1.5) / (19 - 5), 1.5);
+  assert.match(path, /^M[^Z]+Z$/u);
 });
 
 test('components contain no literal colour, font, radius, spacing or duration values', async () => {

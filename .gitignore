@@ -17,6 +17,7 @@ dist/
 *.log
 .DS_Store
 coverage/
+.design-contact-sheets/
 
 # WSL alternate-data-stream artifacts
 *:Zone.Identifier

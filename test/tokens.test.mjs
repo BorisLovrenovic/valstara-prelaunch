@@ -52,13 +52,46 @@ const expectedDarkTokens = {
   '--paper': '#0F0F1A',
   '--surface': '#171733',
   '--ink': '#F0F0EE',
+  '--ink-600': '#A0A0A8',
   '--coral': '#FF8A66',
+  '--on-midnight': '#F0F0EE',
+  '--shadow-1': '0 1px 2px rgb(0 0 0 / 0.30), 0 2px 6px rgb(0 0 0 / 0.30)',
+  '--shadow-2': '0 2px 4px rgb(0 0 0 / 0.30), 0 8px 24px rgb(0 0 0 / 0.40)',
+  '--shadow-3': '0 4px 8px rgb(0 0 0 / 0.40), 0 16px 40px rgb(0 0 0 / 0.50)',
+};
+
+const foundationTokens = {
+  '--on-midnight': '#fafafa',
+  '--shadow-1':
+    '0 1px 2px rgb(16 16 20 / 0.06), 0 2px 6px rgb(16 16 20 / 0.06)',
+  '--shadow-2':
+    '0 2px 4px rgb(16 16 20 / 0.06), 0 8px 24px rgb(16 16 20 / 0.10)',
+  '--shadow-3':
+    '0 4px 8px rgb(16 16 20 / 0.08), 0 16px 40px rgb(16 16 20 / 0.14)',
+  '--container-max': '75rem',
+  '--gutter': 'var(--space-2)',
+  '--gutter-wide': 'var(--space-4)',
+  '--section-gap': 'var(--space-8)',
+  '--section-gap-wide': 'var(--space-10)',
+  '--measure': '68ch',
+  '--weight-regular': '400',
+  '--weight-medium': '500',
+  '--weight-semibold': '600',
+  '--weight-bold': '700',
+  '--tracking-tight': '-0.01em',
+  '--tracking-normal': '0',
+  '--tap-min': '2.75rem',
+  '--icon-sm': '1rem',
+  '--icon-md': '1.5rem',
+  '--icon-lg': '2.5rem',
+  '--layer-dock': '20',
+  '--layer-skip': '30',
 };
 
 function declarations(block) {
   return new Map(
     [...block.matchAll(/(?<name>--[\w-]+):\s*(?<value>[^;]+);/g)].map(
-      ({ groups }) => [groups.name, groups.value.trim()],
+      ({ groups }) => [groups.name, groups.value.trim().replace(/\s+/gu, ' ')],
     ),
   );
 }
@@ -109,6 +142,9 @@ test('tokens exactly transcribe the locked colour and typography sources', async
 
   for (const [name, value] of Object.entries(expectedRootTokens)) {
     assert.equal(root.get(name)?.toUpperCase(), value.toUpperCase(), name);
+  }
+  for (const [name, value] of Object.entries(foundationTokens)) {
+    assert.equal(root.get(name), value, name);
   }
 
   for (const name of [
@@ -163,6 +199,100 @@ test('tokens exactly transcribe the locked colour and typography sources', async
   })) {
     assert.equal(root.get(name), value, name);
   }
+});
+
+test('every colour value reuses the locked §5 palette and the type scale has no new size', async () => {
+  const [source, guidelines] = await Promise.all([
+    readFile(tokenPath, 'utf8'),
+    readFile(brandGuidelinesPath, 'utf8'),
+  ]);
+  const lockedNames = [
+    'paper',
+    'surface',
+    'ink',
+    'ink-600',
+    'ink-300',
+    'line',
+    'coral',
+    'coral-lift',
+    'coral-tint',
+    'midnight',
+    'midnight-deep',
+  ];
+  const palette = new Set(
+    lockedNames.map((name) => lockedColour(guidelines, name).toLowerCase()),
+  );
+  for (const value of ['#0F0F1A', '#F0F0EE', '#C0392B', '#B7791F', '#2E7D57']) {
+    assert.match(guidelines, new RegExp(value, 'iu'));
+    palette.add(value.toLowerCase());
+  }
+  const root = declarations(
+    source.match(/:root\s*\{(?<block>[\s\S]*?)\}/u).groups.block,
+  );
+  const dark = declarations(
+    source.match(/:root\[data-theme=['"]dark['"]\]\s*\{(?<block>[\s\S]*?)\}/u)
+      .groups.block,
+  );
+  assert.deepEqual(
+    [...root.keys()].sort(),
+    [
+      ...Object.keys(expectedRootTokens),
+      ...Object.keys(foundationTokens),
+      ...Array.from({ length: 10 }, (_, index) => `--space-${index + 1}`),
+    ].sort(),
+    'bare :root declares exactly the authorised tokens, regardless of colour syntax or size name',
+  );
+  assert.deepEqual(
+    [...dark.keys()].sort(),
+    Object.keys(expectedDarkTokens).sort(),
+    'dark mode introduces no colour or type-size token',
+  );
+  assert.deepEqual(
+    new Set(
+      [...source.matchAll(/(?<name>--[\w-]+)\s*:/gu)].map(
+        (match) => match.groups.name,
+      ),
+    ),
+    new Set(root.keys()),
+    'no selector introduces an undeclared colour or type-size token',
+  );
+  assert.equal(
+    [...source.matchAll(/--[\w-]+\s*:/gu)].length,
+    root.size + dark.size * 2,
+    'tokens are declared only in the base and paired dark blocks',
+  );
+  const expectedColourNames = new Set([
+    ...Object.entries(expectedRootTokens)
+      .filter(([, value]) => value.startsWith('#'))
+      .map(([name]) => name),
+    '--on-midnight',
+  ]);
+  assert.deepEqual(
+    new Set(
+      [...root]
+        .filter(([, value]) => /^#[0-9a-f]{6}$/iu.test(value))
+        .map(([name]) => name),
+    ),
+    expectedColourNames,
+  );
+  for (const [name, value] of [...root, ...dark]) {
+    if (/^#[0-9a-f]{6}$/iu.test(value)) {
+      assert.ok(
+        palette.has(value.toLowerCase()),
+        `${name} must reuse §5 palette`,
+      );
+    }
+  }
+  assert.equal(root.get('--on-midnight'), root.get('--paper'));
+  assert.equal(dark.get('--on-midnight'), dark.get('--ink'));
+  assert.deepEqual(
+    [...root.keys()]
+      .filter((name) => /^--(?:step|leading)-/u.test(name))
+      .sort(),
+    Object.keys(expectedRootTokens)
+      .filter((name) => /^--(?:step|leading)-/u.test(name))
+      .sort(),
+  );
 });
 
 test('the port checklist names the storefront target for the verbatim token file', async () => {
@@ -264,6 +394,16 @@ test('declared body-text pairings meet WCAG AA in both themes', async () => {
         `${theme.name} ${foreground} on ${background} must meet WCAG AA`,
       );
     }
+  }
+
+  for (const theme of themes) {
+    const foreground =
+      theme.name === 'light' ? root['--on-midnight'] : dark['--on-midnight'];
+    assert.ok(contrastRatio(foreground, root['--midnight']) >= 4.5);
+    assert.ok(
+      contrastRatio(theme.tokens['--coral'], root['--midnight']) >= 3,
+      `${theme.name} coral on midnight must meet large-text and accent contrast`,
+    );
   }
 
   assert.notEqual(root['--error'], root['--coral']);

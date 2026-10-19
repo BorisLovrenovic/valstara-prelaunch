@@ -4,6 +4,7 @@ import Button from '../../../../../src/components/button.astro';
 import Card from '../../../../../src/components/card.astro';
 import Field from '../../../../../src/components/field.astro';
 import Input from '../../../../../src/components/input.astro';
+import Icon from '../../../../../src/components/icon.astro';
 import Pill from '../../../../../src/components/pill.astro';
 import Select from '../../../../../src/components/select.astro';
 import '../../../../../src/styles/tokens.css';
@@ -20,6 +21,11 @@ import '../../../../../src/styles/tokens.css';
     <main>
       <Card aria-label="Primitive card">
         <Pill>Verified</Pill>
+        <Icon name="star" size="sm" />
+        <Icon name="check" size="md" label="Confirmed" />
+        <Icon name="shield" size="lg" />
+        <Icon name="arrow-right" />
+        <Icon name="link" />
         <Button>Continue</Button>
         <Field
           controlId="email"
