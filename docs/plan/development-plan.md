@@ -41,7 +41,7 @@ This plan is written against a **12-week campaign**, and three of its constraint
 
 ## 2. Founder prerequisites — not agent tickets
 
-Five items no agent can complete. Each gates something, and the gate is stated so it is not discovered late.
+Items no agent can complete. Each gates something, and the gate is stated so it is not discovered late.
 
 | # | Item | Nature | Gates | Start by |
 |---|---|---|---|---|
@@ -53,6 +53,7 @@ Five items no agent can complete. Each gates something, and the gate is stated s
 | **P6** | **Provision the production VPS** | Purchase and provisioning | **E12 entirely.** Nothing before E12 requires it — founder decision, 2026-08-27: the site is built and verified locally first, then the host is provisioned once | Before E12 |
 | **P5** | **Upgrade Resend and Brevo past the free tiers** | Purchase — Resend free is 100/day, Brevo 300/day | **Turning `giveaway.open` on.** Upgrade *before* the giveaway opens, not when the limits hit | Before E7 exit |
 | **P7** | **Create the four seed mailboxes** — one each at Gmail, Outlook.com, GMX and Web.de, IMAP access enabled, used for seed tests and nothing else. Outlook.com allows IMAP only through OAuth, not a password. Credentials go to the production secret manager; none is committed (founder-authorised 2026-09-29) | Account setup, free | **E12-07:** the first live seed run and the rendering check | Before E12 |
+| **P8** | **Launch provider list and logo files** — for each provider shown on the landing page: display name, category (E11.5-02's v2 taxonomy), confirmation that its goods are on the launch catalogue, the official SVG logo (plus a dark-theme variant where the provider supplies one) from the provider's published brand resources with its source URL, and its brand colour (founder-authorised 2026-10-19) | Founder input | **E11.5-04** only. A showcase with placeholder logos is not a deliverable | Before E11.5-04 |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
 
@@ -72,6 +73,8 @@ The Codex roster on 2026-09-28 was GPT-5.6 Luna, Terra and Sol, and GPT-6 Luna, 
 | **GPT-6 Astra** | Terminal and operations work (the stack, the host, drills, load, backups, Cloudflare) and audits of the whole system | Leads every Sol level on terminal tasks (Terminal-Bench 4.0 at Light/Medium/High/Extra High: 42/49/54/60% vs Sol 9/19/26/30%) and on factual reliability (AA-Omniscience 41–44 vs 27) |
 | **GPT-6 Luna** | Small, low-stakes tickets with no terminal work, no audit and no new factual claim, where an existing gate catches the dangerous failure | 14–16 points below Sol on the Coding Agent Index (41 vs 57). It is cheaper, not faster: it writes more tokens per task |
 | GPT-5.6 Sol, Terra, Luna | Not used | GPT-6 Sol matches or beats GPT-5.6 Sol and Terra at every level for less; GPT-6 Luna matches or beats GPT-5.6 Luna from Light to High |
+
+**E11.5 (founder-authorised 2026-10-19) follows the same binding:** its eleven code tickets go to GPT-6 Sol and its design-QA and re-audit ticket, E11.5-12, to GPT-6 Astra.
 
 **Two tickets are exceptions to "code goes to Sol":** E9-05, because its erasure design spans every table and conflicts with the append-only audit log and six-year award retention, and E11-06, because it is the campaign's unrecoverable output and includes the scratch-database rehearsals. Both go to Astra.
 
@@ -151,8 +154,11 @@ flowchart TD
   E8 --> E11
   E9 --> E11
   E10 --> E11
-  E11 --> E12[E12 Production bring-up]
+  E11 --> E115[E11.5 Frontend design]
+  E115 --> E12[E12 Production bring-up]
 ```
+
+**E11.5 runs after E11 and before E12 (founder-authorised 2026-10-19).** It redesigns every surface a visitor sees without changing behaviour, then re-runs E11's accessibility, claims and privacy audits on the new surfaces, so E12 deploys and measures the final build.
 
 **Everything through E11 is built and verified locally.** The VPS is provisioned once, at the end, and **E12 collects every piece of evidence that needs real infrastructure** — the rollback RTO, a restore from R2, capacity on the actual box (founder decision, 2026-08-27).
 
@@ -174,7 +180,7 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 | 4 | S-01 + E6 + E7 | 2 | Tier B + second model |
 | 5 | E8 | 2 | Tier B + second model |
 | 6 | E9 + E10 | 1 | Tier B |
-| 7 | E11 | 2 | Tier B + second model |
+| 7 | E11 + E11.5 | 2 | Tier B + second model |
 
 **Dual-gate rules, no exceptions:** the two runs are fully independent — fresh sessions, neither model sees the other's report · the deduplicated **union** of blockers is cleared · disagreements are settled **by evidence from the code and docs, never by which model raised it.** The value is a decorrelated blind spot from a different model family, not extra capability.
 
@@ -1944,6 +1950,312 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 ---
 
+## Epic E11.5 — Frontend design
+
+**Founder-authorised 2026-10-19.** Added after E11 and before E12. Branches follow the usual pattern, e.g. `feat/E11.5-05-landing-page`; commits carry `[E11.5-05]`.
+
+**Goal:** every page a visitor can reach looks finished, reads in seconds and works as well on a phone as on a desktop — without changing what the system does, what it collects or what it claims. *12 tickets.*
+
+**Why this epic exists.** E2 built a correct, accessible and portable design system, and E3–E9 built every page on it, but no ticket owned the visual design. The site passes its gates and still reads as a wireframe, which `docs/brand/identity-guidelines.md` §7.3 names as an anti-pattern. A visitor sees the design, not the backend. For a brand whose whole proposition is trust, a page that looks unfinished is the conversion failure.
+
+**Exit criteria:** every public page and state passes the layout checks at every test width in both themes; the landing page answers "is this legit, what is it, what do I get" within the scan budget; the mobile sticky signup bar works through the one signup island; the emails share the new layout; the accessibility, claims and privacy audits re-pass on the new surfaces; and the founder has signed off the visual contact sheet.
+
+**Founder decisions recorded with this epic (2026-10-19):** brand rules in §4–§7 apply to the waitlist, which may deviate where the storefront elements do not exist yet · **text wordmark only** — no mark, no vector assets · the mobile sticky signup bar carries an email field and the submit button only, with no marketing checkbox · the landing page shows **real provider logos** in composed banners (P8) · the survey taxonomy changes to digital-goods categories · the emails are restyled in this epic.
+
+**Requires P8 for E11.5-04 only.** Every other ticket proceeds without it.
+
+### Design rules for every E11.5 ticket
+
+Not restated per ticket. **Violating one fails review.**
+
+1. **Behaviour is frozen.** E11.5 changes presentation, composition and customer-visible copy. It changes no route contract, response shape, flag default, collected field, token purpose or analytics event, except where a ticket's Build names the change (E11.5-02 survey taxonomy, E11.5-06 resend in the success state, E11.5-10 the 404 and 500 routes). Existing tests stay green unchanged unless the ticket names the test it rewrites and why. **Never weaken an assertion.**
+2. **The scan budget.** Every page is designed for three reads: about **3 seconds** (is this legit: the wordmark, one plain statement of what Valstara is, the guarantee in view), about **20 seconds** (what is it and what do I get: understandable from headings, visuals and button labels alone), and **a minute or two** (details: FAQ, trust pages, rules).
+3. **The copy budget.** On marketing surfaces (landing, signup states, verification success, `/me`, leaderboard, header and footer): a heading is at most 7 words, a supporting line at most 20, a card, step or badge text at most 15, an FAQ answer at most 45. A test over those copy-layer entries enforces it. Legal, rules and trust content files are exempt: their wording is founder-approved, hashed or ported, and **E11.5 does not edit it.**
+4. **Visual over verbal.** Where a sentence would explain a mechanic — how referral works, what the guarantee covers, which wave you are in — use a step diagram, an icon row, a progress meter or a badge, with the exact figure from its source computation.
+5. **The brand guidelines bind.** §4–§7 apply. The §5 palette and §6.1 type scale stay LOCKED: **no new colour and no new type size.** Recorded waitlist deviations from §7.1: no search, category navigation, currency, account, cart, prices, discount figures, reviews or Trustpilot rating, because none exists pre-launch and a placeholder of any of them is a false claim. **Every §7.3 anti-pattern binds without exception**, including centred hero text and centred section headings.
+6. **Text wordmark only.** "Valstara" per §4.5: sentence case, primary face, semibold, near-black on light and near-white on dark, never coloured. No mark, no star logo and no favicon artwork until the §12 vector redraw exists.
+7. **Breakpoints and test widths.** Mobile-first. Small is below 40rem, medium 40rem to below 64rem, large 64rem and up, wide 80rem and up. Layout checks run at 320, 360, 390, 768, 1024, 1280, 1440 and 1920 px, in both themes.
+8. **The layout checks.** Playwright assertions in the rendered-page suite, run in CI, built by E11.5-01: no horizontal overflow; no clipped or overflowing text; interactive targets at least 44 × 44 CSS px at small widths; no focused element obscured by sticky content (WCAG 2.2 SC 2.4.11); every image with intrinsic dimensions, so layout shift stays zero; content aligned to the container grid. **A page joins the enforced set in the ticket that redesigns it**; E11.5-12 asserts the enforced set equals every rendered page.
+9. **Evidence in every PR.** A PR that renders a page attaches the contact sheet (E11.5-01's script) for the pages it touched at small, medium and large widths in both themes.
+10. **Tokens only, everywhere.** After E11.5-01 the literal-value scan covers every `.astro` file under `src/`, and the email layout's colours and fonts trace to `tokens.css`.
+11. **No new island, no new third-party request, no new storage.** ADR-001's three islands stand. The sticky signup bar is part of the `SignupForm` island. Provider logos and illustrations are same-origin files. Every PR that reaches the browser states what it loads (AGENTS.md rule 1).
+12. **Motion** is 150–200 ms ease-out on state changes only. No parallax, no auto-advancing carousel, no scroll-triggered entrance animation other than the sticky bar's own reveal. All motion stops under `prefers-reduced-motion`.
+
+### E11.5-01 — Design foundations: tokens, breakpoints, icons, layout checks and the extended literal-value scan
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Why this model:** `tokens.css` is the file the storefront inherits verbatim (ADR-015), and every later E11.5 ticket builds on what this one adds.
+
+**Build:** Add these tokens to `src/styles/tokens.css`. **The values are founder-authorised 2026-10-19**, because §7 is DIRECTIONAL and gives none:
+
+- **Elevation** (shadow colour derived from `ink`): `--shadow-1: 0 1px 2px rgb(16 16 20 / 0.06), 0 2px 6px rgb(16 16 20 / 0.06)` for cards at rest · `--shadow-2: 0 2px 4px rgb(16 16 20 / 0.06), 0 8px 24px rgb(16 16 20 / 0.10)` for raised elements (hero visual, hovered interactive card, sticky bar) · `--shadow-3: 0 4px 8px rgb(16 16 20 / 0.08), 0 16px 40px rgb(16 16 20 / 0.14)` for overlays. In **both** dark blocks: `--shadow-1: 0 1px 2px rgb(0 0 0 / 0.30), 0 2px 6px rgb(0 0 0 / 0.30)` · `--shadow-2: 0 2px 4px rgb(0 0 0 / 0.30), 0 8px 24px rgb(0 0 0 / 0.40)` · `--shadow-3: 0 4px 8px rgb(0 0 0 / 0.40), 0 16px 40px rgb(0 0 0 / 0.50)`.
+- **Layout:** `--container-max: 75rem` · `--gutter: var(--space-2)` · `--gutter-wide: var(--space-4)` · `--section-gap: var(--space-8)` · `--section-gap-wide: var(--space-10)` (§7: 64–80px) · `--measure: 68ch`.
+- **Type:** `--weight-regular: 400` · `--weight-medium: 500` · `--weight-semibold: 600` · `--weight-bold: 700` · `--tracking-tight: -0.01em` (§6.1 "tight headline tracking") · `--tracking-normal: 0`.
+- **Sizing and layering:** `--tap-min: 2.75rem` · `--icon-sm: 1rem` · `--icon-md: 1.5rem` · `--icon-lg: 2.5rem` · `--layer-dock: 20` · `--layer-skip: 30`.
+
+Record the closed breakpoint set (`40rem`, `64rem`, `80rem`) in `docs/brand/tokens.md`. Custom properties cannot be used in media-query conditions, so these are the only literal lengths permitted inside an `@media` condition.
+
+**Extend the literal-value scan** from components and the layout to every `.astro` file under `src/` — pages, layouts, islands and components. Widen it to `box-shadow`, `z-index`, `font-weight`, `letter-spacing`, width and height lengths (keywords, percentages and `0` remain allowed), and media-query conditions outside the closed set. Fix every existing violation it finds in this PR; that is what makes the gate true on `main`.
+
+**Icons:** `src/components/icon.astro`, inline SVG from a closed registry, `currentColor`, sized by the icon tokens, hidden from assistive technology unless labelled from the copy layer. Hand-authored, or vendored from a permissively licensed set with its licence file committed beside it. No icon font, no runtime dependency, no request. Include a **four-point star glyph drawn to the §4.2 star geometry** (concave sides, sharp tips, vertical arms 1.4–1.6× the horizontal), used only as a decorative accent — never as a rating and never three in a level row (§4.10).
+
+**Layout checks and contact sheet:** build the rule-8 Playwright harness and an enforced-pages list (empty at this ticket; later tickets add their pages), and `scripts/design/contact-sheet.mjs`, which screenshots a given set of routes and states at the test widths in both themes into a git-ignored directory. Run both over the current site and attach the result to the PR as the "before" baseline.
+
+**Write `docs/brand/page-design.md`:** the E11.5 design rules as engineering reference — grid, section rhythm, elevation use, breakpoints, copy budget, the waitlist deviations from §7. Link it from `docs/brand/tokens.md` and `docs/README.md`. Update the port checklist for the new tokens.
+
+**Acceptance criteria:**
+- Every token above is present on bare `:root` with its stated value, and **both dark blocks declare the identical name set**, including the dark shadow values — the E2-01 tests extended
+- **No new colour or type-size token exists** — asserted against identity-guidelines §5 and §6.1
+- `tokens.css` still has no framework syntax and no import; the E11-07 port-checklist test passes
+- **A planted literal in a page, in an island, and a media condition outside the closed set each fail the scan** — fixtures; `main` passes
+- Every icon renders in `currentColor` at a token size; decorative icons are hidden from assistive technology; the star is four-pointed and symmetric about its vertical axis — asserted from its path geometry
+- The contrast test covers the new surfaces: `--on-midnight` on `midnight` (light `paper` in the light theme, dark `ink` in the dark theme) for body text, and `coral` on `midnight` for large text and accents only, in both themes
+- The layout-check harness passes on a fixture page and fails on a planted overflow, a planted 30px target and a planted obscured focus — fixtures
+
+**Tests:** Token presence, values and dark-set identity · the no-new-colour-or-size assertion · the three planted-literal fixtures · icon rendering and assistive-technology hiding · star geometry · the extended contrast matrix · the layout-check harness and its planted fixtures · the port-checklist reconciliation.
+**Docs:** `docs/brand/tokens.md` · `docs/brand/identity-guidelines.md` §4–§7 · `docs/architecture/adr/015-portable-design-tokens.md` · `docs/brand/page-design.md` (created here)
+
+### E11.5-02 — Survey v2: the digital-goods taxonomy
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `survey.enabled` · **Area:** backend
+**Why this model:** `category_preference` is a handoff field — the storefront creates its categories from these tokens (ADR-025) — so changing it is a contract change, not a copy edit.
+
+**Build:** Founder decision 2026-10-19: the v1 taxonomy (`apparel`, `footwear`, `accessories`, `home`, `beauty`) does not describe a digital-goods store. Add survey version `"2026-10-19"` to `src/server/survey/questions.ts`:
+
+- **Q1 `category_preference`** (multi-select, the handoff field): `ai`, `subscriptions`, `software`, `gift_cards`, `game_keys`, `game_top_ups`, `in_game_currency` — the storefront navigation categories of identity-guidelines §7.1. Copy-layer labels: AI tools · Streaming and subscriptions · Software · Gift cards · Game keys · Game top-ups · In-game currency.
+- **Q2 `shopping_frequency`:** "How often do you buy digital goods?" with the four existing answers unchanged.
+
+New renders on `/verify` and `/me` use v2. **v1 stays in the versioned set**: stored v1 responses are never rewritten, and a v1 submission from a page rendered before the deploy is accepted and stored as v1. No campaign data exists yet, so no backfill is needed. No migration: `subscriber.category_preference` is `text[]` with no value constraint (verified 2026-10-19). Write **ADR-031** (amends ADR-025's survey section; the index shows ADR-025 as "Accepted — survey amended by 031") and update `docs/features/survey.md`, `docs/data/model.md` and the handoff contract: exported `category_preference` values are the union of the v1 and v2 tokens, and each response carries its version. Update the analytics registry only if a registered event carries category values.
+
+**Acceptance criteria:**
+- `/verify` and `/me` render the v2 questions with labels from the copy layer; **no v1 label renders anywhere on the site**
+- A v2 answer validates and stores version `"2026-10-19"`; a v1 submission stores v1; **no stored response is rewritten**
+- `category_preference` denormalises v2 tokens onto the subscriber
+- The handoff export carries v2 tokens with the response version, and **the E11-06 double-import rehearsal test passes with v1 and v2 fixtures**
+- With `survey.enabled` off, the questions are still skipped
+
+**Tests:** v2 validation · v1 acceptance from a pre-deploy page · no rewrite across the version change · denormalisation · handoff export and double import with v1 and v2 fixtures · flag-off.
+**Docs:** `docs/architecture/adr/025-campaign-configuration.md` · `docs/features/survey.md` · `docs/data/model.md#the-launch-day-handoff-contract`
+
+### E11.5-03 — The site shell and the primitives
+**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+
+**Build:** Restyle `BaseLayout` and the E2-04 primitives on the E11.5-01 foundations.
+
+- **Header** (not sticky): the text wordmark on the left. From medium width up, anchor links to the landing sections — How it works · What you get · Guarantee · FAQ — and a primary "Join the waitlist" button; on other pages they point at `/#…`. **At small widths: wordmark, theme toggle and the Join button only** — no hamburger, no menu script.
+- **Footer:** a full-width `midnight` band (§5.2) with the wordmark, two link columns — Company (About, Legit, Guarantee) and Legal (Terms, Privacy, Storage inventory, Giveaway rules) — `support@valstara.com`, and the §3.4 legal line "Valstara is a trading brand of 3NITY Digital Limited, registered in Hong Kong." Rewrite the E2-05 footer assertion to the new link set, keeping the five permanent URLs.
+- **Layout primitives:** zero-JS `Container` (max `--container-max`, responsive gutters) and `Section` (section rhythm, optional `midnight` variant, left-aligned heading slot).
+- **Primitives:** Button (primary coral, secondary, on-midnight; hover, active, focus-visible and disabled states; at least `--tap-min`) · Input, Select and Field (focus ring; error state using `--error` plus an icon, never colour alone) · Card (`--shadow-1` at rest, `--shadow-2` on hover only when interactive) · Pill and Badge (`coral-tint` and `coral`; mono tabular figures) · Accordion (native disclosure, chevron icon).
+- **Theme toggle:** restyled as an icon button. Behaviour, storage key and no-flash are unchanged.
+
+**Acceptance criteria:**
+- Header and footer render as specified at every test width in both themes; one `<main>`, and the skip link is still the first focusable element
+- **The small-width header adds no script and no menu**
+- Every primitive state renders and passes the existing E2-04 keyboard and focus tests; error states are distinguishable without colour
+- The theme toggle's existing E2-03 suite passes unchanged
+- **Every existing page still passes the axe gate in both themes** after the restyle; the shell joins the enforced layout-check set
+
+**Tests:** Header per breakpoint, including the no-script assertion · the rewritten footer link-set and legal-line assertion · primitive states · the E2-03, E2-04 and E2-05 suites · layout checks on the shell · axe.
+**Docs:** `docs/brand/page-design.md` · `docs/brand/identity-guidelines.md` §4.5, §5.2, §7 · `docs/architecture/modules.md`
+
+### E11.5-04 — The provider showcase
+**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**BLOCKED until P8 is supplied.** A showcase with placeholder logos or invented providers is not a deliverable.
+
+**Build:** `src/content/provider-showcase.json`, schema-validated at build. Each entry has the provider's display name, its category (a v2 token from E11.5-02), a same-origin SVG logo path with an optional dark-theme variant, the provider's brand colour (as data, never a component literal), the founder's catalogue confirmation (name and date) and the logo's source URL. Logos live in `public/images/providers/`: SVG, optimised, at most 12 KB each, with intrinsic dimensions.
+
+- **`ProviderBanner`** — a composed promotional banner per §7: a layered background in the provider's brand colour (the base colour plus a tonal layer derived from it in CSS), the logo on a raised surface, the category label and soft elevation. **Never a logo centred on a flat colour block (§7.3).** No price, discount figure, availability date or stock claim.
+- **`ProviderRail`** — banners grouped by category in v2 order. At small widths a CSS scroll-snap rail with the next banner peeking, scrollable by touch and keyboard, with no script and no auto-advance; at large widths a grid of four to five across (§7).
+- **Trademark line** in the footer on every page, from the copy layer: "Product names and logos are trademarks of their respective owners. Valstara is an independent seller, not affiliated with or endorsed by them."
+
+Record the decision to show third-party marks, the asset source rule and the no-figures rule in **ADR-032**.
+
+**Acceptance criteria:**
+- **The build fails** on a missing field, a missing or oversized logo, a category outside v2, or an entry without a founder confirmation — fixtures
+- **Every logo is same-origin** — the third-party request gate and the rendered probe pass, and no provider host is requested
+- Banners are composed (layered background, raised logo) and legible in both themes
+- **No price, discount, count or date appears in any banner** — asserted
+- The rail scrolls by keyboard and touch with no script and never auto-advances
+- Each logo's alt text is the provider name from the data file; decorative layers are hidden from assistive technology
+- The trademark line renders on every page
+
+**Tests:** Schema-failure fixtures · same-origin assertion · no-figure assertion · keyboard scroll and no-script · alt text · trademark line on every page · layout checks on a fixture page carrying the rail.
+**Docs:** `docs/brand/identity-guidelines.md` §5.3, §7 · `docs/brand/copy-rules.md#claims-that-must-stay-true` · `docs/prerequisites/founder-prerequisites.md#p8`
+
+### E11.5-05 — The landing page
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · `referral.enabled` · `giveaway.open` · `leaderboard.public` (read only) · **Area:** frontend
+**Why this model:** the page that converts. It reads four flags, the referral ladder and the current rules, and every figure it shows is a claim.
+
+**Build:** Rebuild `src/pages/index.astro` on the shell, in this order:
+
+1. **Hero (`#join`).** Left: the §1.4 positioning as the eyebrow, the H1, one supporting line, the signup form (E11.5-06 owns its states) and, under the form, a row of three short icon facts drawn only from approved claims (for example free to join, one-click unsubscribe, your data is never sold). Right, from medium width: a composed hero visual — a layered stack of provider banners from E11.5-04 with elevation (§7: hero above background). Small widths: the visual becomes a compact logo strip below the form. Left-aligned, never centred.
+2. **What you'll find (`#catalogue`).** The provider rail by category.
+3. **How it works (`#how`).** Three numbered visual steps, one line each: join with your email → confirm the link we send → share your link (optional).
+4. **What you get (`#rewards`).** Visual cards:
+   - **Early access:** earlier sign-ups get earlier access, shown as a four-wave visual. No band thresholds are shown.
+   - **Referral reward**, only with `referral.enabled`: for each configured tier, "N confirmed referrals → move up an access wave and X% off at launch", plus one plain line for the held condition (the discount unlocks when someone you referred places a first order within 90 days of launch). **N and X are read from the ladder configuration (ADR-025), never written into copy.**
+   - **Giveaway**, only with `giveaway.open`: prize count and value from `currentRules()`, "No purchase necessary", 18+ and a link to `/giveaway/rules`.
+   - **Leaderboard link**, only with `leaderboard.public`: to `/leaderboard`. No leaderboard island on this page.
+   - One line that counts are real: only confirmed, verified referrals count.
+5. **Guarantee band (`#guarantee`).** Full-width `midnight`, three columns, Roman numerals in coral (§2.4, §7.1 item 9), each promise title with one line from the approved guarantee source and a link to `/guarantee`. This is the page's principal contrast.
+6. **Trust row.** Three link cards: is Valstara legit (`/legit`), who we are (`/about`), contact (`support@valstara.com`).
+7. **FAQ (`#faq`).** The existing accordion, restyled, with answers within the copy budget.
+8. **Final call to action.** A short heading and a button that links to `#join`. The island moves focus to the email field when present; without JavaScript the anchor scroll alone.
+
+Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache headers, the fail-safe flag defaults and the two-island rule.
+
+**Acceptance criteria:**
+- **At 390 × 844 and 1440 × 900 the positioning line, the H1, the email field and the submit button are visible without scrolling**
+- Section order and anchors match the list above, and the header anchors resolve
+- The copy-budget test passes for the landing copy
+- **Every figure shown — tier threshold, discount, prize count and value — comes from its source**: a test changes the configuration or rules fixture and the page changes; no figure is literal in the copy layer
+- **Flag matrix**: signup off → the paused panel replaces the form and no sticky bar renders; referral off → no referral card; giveaway off → no giveaway card and no disclosure; leaderboard off → no leaderboard link
+- The page still ships exactly the theme toggle and signup form islands, and its cache headers are unchanged — existing tests
+- **The E11-04 claim-to-rules reconciliation covers the new giveaway card**
+- No countdown, scarcity claim, position display or exit-intent behaviour — copy scan and review
+- The landing page joins the enforced layout-check set and passes axe in both themes
+
+**Tests:** Above-the-fold at both viewports · copy budget · configuration-derived figures · the four-flag matrix · island count · cache headers · claims reconciliation · layout checks · axe.
+**Docs:** `docs/features/signup.md` · `docs/features/referral.md` · `docs/features/giveaway.md` · `docs/architecture/adr/024-no-dark-patterns.md` · `docs/architecture/adr/025-campaign-configuration.md` · `docs/brand/copy-rules.md` · `docs/brand/page-design.md`
+
+### E11.5-06 — Signup form states and the mobile sticky signup bar
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
+**Why this model:** this is the only public write path. The bar adds a second entry point without a second island, a second challenge or a membership oracle.
+
+**Build:** In the `SignupForm` island:
+
+- **States:** idle, focused, inline error, in flight (disabled button with its label changed), form error, rate limited (honest wait time) and paused — each designed on the primitives.
+- **Success ("check your inbox"):** replaces the form with a mail icon, a heading, the address the visitor typed (their own input, echoed client-side, never returned by the server), and one plain next step: open the email from Valstara and click the link; nothing counts until you do. A "use a different address" control restores the form. After 60 seconds (an injected timer in tests) a "send the link again" control posts to the existing `POST /api/resend-verification` through the same Turnstile flow with a fresh token. **The copy is identical for unknown, pending and verified addresses and never says a mail was sent**; the resend result renders the route's identical acknowledgement (E3-09).
+- **Mobile sticky signup bar**, small widths only. An email input and the submit button docked at the bottom of the viewport, plus one microline carrying the 18+ statement and, when `giveaway.open` is on, "No purchase necessary" with the rules link. Its markup lives inside `<valstara-signup-form>` and it submits through the island's single path: the same form submission, Turnstile widget and token, signed ref field and error mapping. **Only the hero input carries `name="email"`**; the bar's input mirrors it both ways. **No marketing checkbox in the bar** (founder decision 2026-10-19): a bar submission carries the hero checkbox's state, unticked unless the visitor ticked it there.
+  - It appears once the hero form has scrolled out of view. It hides while the hero form or the footer is in view, after a successful signup, and when `signup.enabled` is off. It is server-rendered hidden, so without JavaScript it never appears.
+  - The page reserves bottom space and sets `scroll-padding-bottom` to the bar's height, so it never covers content or a focused element (WCAG 2.2 SC 2.4.11). It respects `env(safe-area-inset-bottom)`.
+  - Errors render in the bar with their field association. Success collapses the bar into a one-line confirmation with a close control. The reveal motion stops under reduced motion.
+
+**Acceptance criteria:**
+- **One island, one Turnstile widget, one submission path** — asserted from the build output and the DOM
+- **A bar submission sends the identical body a hero submission sends**, including the signed ref and the checkbox state — asserted
+- The bar follows its visibility rules at small widths, never renders at medium width and up, and is absent without JavaScript or with signup off
+- **No focused element is obscured by the bar** at any small test width — asserted by tabbing through the whole page
+- The success state is identical for unknown, pending and verified addresses, echoes only client input, and shows no position or count
+- Resend appears only after the delay, uses a fresh Turnstile token, and renders the identical acknowledgement for any address
+- **No cookie and no Valstara storage write; no host beyond the existing Turnstile entry** — the privacy gates pass
+- The 18+ statement, and the disclosure when the giveaway is open, sit next to both submit buttons
+- A double submission across both entry points produces one request
+- The bar is a labelled region and its errors are announced
+
+**Tests:** Island and widget count · hero-versus-bar body parity · the visibility matrix (scroll positions, success, flag off, no JavaScript) · the focus-not-obscured walk · success-state equivalence · resend delay with an injected timer and fresh-token use · privacy gates · statement presence · cross-entry double submit · axe with the bar visible.
+**Docs:** `docs/features/signup.md` · `docs/architecture/adr/001-astro-node-adapter.md` · `docs/architecture/adr/006-turnstile.md` · `docs/architecture/adr/027-entry-separate-from-marketing-consent.md` · E3-05 · E3-09 · S-01
+
+### E11.5-07 — Verification and the success page
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `survey.enabled` · `referral.enabled` · **Area:** frontend
+
+**Build:** Redesign `/verify`. Behaviour is unchanged; a replay still renders the same success page.
+
+- **Confirmation (GET):** one card, one primary button, and one line on what happens next. GET stays inert.
+- **Success**, the funnel's highest-attention moment: a confirmed heading with a success icon; the access-wave badge; the referral card — the link in a mono field, the existing copy control, and a native share button only where `navigator.share` exists (an inline handler, no island, no third-party request); a progress meter such as "0 of 3 to Tier 1", with exact figures from `ReferralService.status` and the ladder; the rewards that tier unlocks, with the held condition in one line; survey v2 as selectable chips (multi-select) and segmented options (single-select), with skip as an equal-weight action; and the status link as a secondary button.
+- **Invalid or expired:** one card, a plain message, and the restyled request-new-link control.
+
+**Acceptance criteria:**
+- Every state renders at every test width in both themes; `/verify` joins the enforced layout-check set and passes axe
+- **Every figure comes from `ReferralService.status` or the ladder configuration** — exact, asserted
+- The share button renders only where supported and requests nothing off-origin
+- The survey is answerable without a page load and **skip is not visually demoted** — asserted from computed styles
+- Referral off → no referral card or meter; survey off → no survey
+- The existing E3-07, E6-03 and S-01 suites pass unchanged
+
+**Tests:** State rendering · figure derivation · share feature detection · the flag-off matrix · skip parity · existing suites · layout checks · axe.
+**Docs:** `docs/features/double-opt-in.md` · `docs/features/survey.md` · `docs/features/member-status.md` · `docs/architecture/adr/012-reward-gating.md`
+
+### E11.5-08 — The member page and the leaderboard page
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `member.dashboard` · `leaderboard.public` · **Area:** frontend
+
+**Build:**
+- **`/me`** as a dashboard of cards, in this order: status, access-wave badge and own rank → the referral card (link, copy, share, progress to the next tier) → rewards, with settled and held as two clearly labelled states, each with an icon and the plain held explanation → giveaway entries when any exist, in mono tabular figures → preferences (survey v2 re-answer in a disclosure; the marketing on/off control styled as a switch but still the Turnstile form posting the existing route) → data rights (the `/dsr` links) → leave the waitlist, plain and visually separated, one action, no retention plea. The recovery, left and disabled states are restyled.
+- **`/leaderboard`:** the top 10 as a clean ranked list — rank, display handle and exact count in mono tabular figures, the snapshot age, two lines on what counts (only referrals who verified), and a call to action to join or to open `/me`. A short board renders short. Flag-off behaviour is unchanged (E6-02).
+
+**Acceptance criteria:**
+- **`/me` renders only the bearer's data**, every field from the shared status computation — the existing suites unchanged
+- The marketing control remains a Turnstile-protected form on the existing route; leaving remains one action
+- **Held and settled are distinguishable without colour**
+- The leaderboard is never padded, shows exact counts and its age, is still the third island, and its flag drill is unchanged
+- No never-build pattern (`docs/brand/copy-rules.md#never-build`) on leave or marketing — asserted over the copy
+- Both pages join the enforced layout-check set and pass axe in both themes
+
+**Tests:** The existing E6, S-01 and E9-05 suites · state rendering · colour independence of reward states · the short board and age · layout checks · axe.
+**Docs:** `docs/features/member-status.md` · `docs/features/leaderboard.md` · `docs/architecture/adr/024-no-dark-patterns.md` · `docs/architecture/adr/027-entry-separate-from-marketing-consent.md`
+
+### E11.5-09 — Trust, legal and giveaway rules pages
+**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** Restyle the trust-page and giveaway-rules layouts and `/terms`, `/privacy` and `/privacy/storage`.
+
+- A page header band with the title and a one-line summary from the copy layer.
+- From large width, two columns, so there is no narrow column with wide empty margins (§7.3): the prose at `--measure` and a sticky side card. On trust pages the card is a guarantee summary with a Join button to `/#join`; on legal and rules pages it is a contents list linking to heading anchors **already present** in the rendered content (none renders where there are none).
+- Small widths: a single column. On `/legit`, `/guarantee` and `/about` only, a zero-JS sticky "Join the waitlist" link bar to `/#join` — a link, not a form. No sticky bar on legal or rules pages.
+- Prose styles for headings, lists, links, blockquotes and tables, with tables in a horizontally scrollable wrapper at small widths.
+- **Content files are not edited, and the hashed rules article markup stays byte-identical.** Every addition renders outside the hashed article and styling is CSS only. Superseded revisions keep their archived notice.
+
+**Acceptance criteria:**
+- **No content file changes, and every recorded rules SHA-256 still matches the served article** — the existing E7-02 and E11-04 suites
+- These pages ship no client JavaScript beyond the existing page-view emitter and theme toggle; the sticky join bar is a link
+- No table causes page-level horizontal overflow
+- Every page joins the enforced layout-check set and passes axe in both themes; the E9-02, E9-03, E9-04 and E9-06 suites pass unchanged
+
+**Tests:** Content-unchanged assertion · the rules hash suite · zero-JS · contents anchors · table overflow · layout checks · axe.
+**Docs:** `docs/features/trust-pages.md` · `docs/features/legal-and-dsr.md` · `docs/architecture/adr/017-content-files.md` · E7-02 · E11-04
+
+### E11.5-10 — Task pages, and branded 404 and 500 pages
+**Model:** GPT-6 Sol — Medium · **Priority:** Medium · **Flag:** — · **Area:** frontend
+
+**Build:** Move `/unsubscribe`, `/dsr` (request and confirmation) and `/giveaway/award` (every state) onto one task-card pattern: a left-aligned card in the container, one primary action, and plain outcome states with icons. Their behaviour is unchanged: token consumption, Turnstile and identical responses stay as built. Add `src/pages/404.astro` and `src/pages/500.astro` on the shell — a plain heading, one line, links home and to `/legit` — with `noindex`, excluded from the sitemap and served with the correct status.
+
+**Acceptance criteria:**
+- Every task-page state is restyled and the existing suites pass unchanged
+- **An unknown route returns 404 with the branded page; an induced render error returns 500 with the branded page and leaks no stack trace or internal detail**
+- Both are `noindex` and absent from the sitemap (the E9-06 reconciliation updated), and both are in the E11-05 page inventory and rendered privacy probe
+- Every page joins the enforced layout-check set and passes axe in both themes
+
+**Tests:** State rendering · 404 and 500 status and content · the no-leak assertion · sitemap and robots reconciliation · page inventory · layout checks · axe.
+**Docs:** `docs/features/legal-and-dsr.md` · `docs/features/giveaway.md` · `docs/features/seo.md` · E6-06 · E11-05
+
+### E11.5-11 — The email layout
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** frontend
+**Why this model:** email clients are the least forgiving renderer in this project, and a broken message is a sending-reputation and trust event at once.
+
+**Build:** Redesign the shared layout in `src/server/email/template-layout.ts` and `weekly-template.ts`, used by the seven transactional templates and the weekly update. A 600px table-based layout with inline styles: the text wordmark header; one bulletproof coral primary button per message for its main action; secondary links as text; facts as a compact list with mono figures; a footer with the §3.4 legal line, `support@valstara.com` and the unsubscribe link; and a hidden preheader per template from the copy layer. Light by default, with a `prefers-color-scheme: dark` block where supported. **Colours and fonts are resolved from `tokens.css` at render time and inlined**: Gmail and Outlook ignore CSS custom properties, so the output contains no `var(`, and the tokens remain the single source. No image, remote resource, tracking pixel or link rewriting. Copy is unchanged apart from the new preheaders, and the verification mail still says what it is in its first line.
+
+**Acceptance criteria:**
+- **Every template's HTML contains no `var(`, no `<img>` and no remote URL beyond its own first-party links** — asserted
+- **Every inlined colour and font traces to `tokens.css`** — a test changes a token fixture and the output changes
+- Plain-text parity, required elements, unsubscribe binding and the first-line rule hold — the existing E8-03 and E8-07 suites pass unchanged
+- The layout is at most 600px wide and buttons are at least 44px tall
+- Rendered previews of every template in light and dark are attached to the PR; **the live five-client check stays E12-07's**
+
+**Tests:** The no-`var(`, no-image and no-remote assertion · the token-trace test · preheader presence · the existing template suites.
+**Docs:** `docs/features/email-campaign.md` · `docs/modules/email.md` · `docs/brand/copy-rules.md#email-copy` · `docs/architecture/adr/015-portable-design-tokens.md`
+
+### E11.5-12 — Design QA, the re-audits and founder sign-off
+**Model:** GPT-6 Astra — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Why this model:** a reasoning-led audit across every page (§3), and E11's audits ran against the old surfaces.
+
+**Build:**
+1. **The full contact sheet:** every public page and state — the landing page per flag state, every signup state with and without the sticky bar, every `/verify` and `/me` state, the leaderboard, trust and legal pages, current and archived rules, the task pages, 404 and 500 — at every test width in both themes, plus every email preview. Generated by E11.5-01's script, not committed; its index is recorded in `docs/testing/e11-5-design-qa.md`.
+2. **Re-run E11's audits on the new surfaces:** the E11-03 accessibility scope (keyboard-only journey including the sticky bar, a screen-reader pass, contrast at real sizes on `midnight` bands and banners); the E11-04 claims audit over all new copy, every showcase entry against its P8 confirmation, and every reward and prize figure; the E11-05 page inventory and rendered privacy probe, including 404, 500 and the logos; and the E11-07 port checklist for `tokens.css`.
+3. **Performance** on the landing page at 390px with 4× CPU throttling in the local harness: layout shift 0, largest contentful paint at most 2.5 s, first-party JavaScript recorded before and after E11.5, and total logo bytes recorded.
+4. **Founder visual review** of the contact sheet. Every finding is fixed in this ticket or recorded as a founder-accepted deviation; the sign-off is recorded with its date.
+5. Update the rows of `docs/ops/e11-08-launch-readiness.md` that the re-audits touch.
+
+**Acceptance criteria:**
+- **The contact sheet is complete** — every page, state, width and theme, none sampled
+- **The enforced layout-check set equals every rendered page** — asserted against the E11-05 page inventory
+- Every re-audit passes, and findings are fixed, not filed
+- The performance figures are recorded and within budget
+- **The founder's sign-off is recorded**
+
+**Tests:** The audits and the layout-check suite are the tests; evidence recorded.
+**Docs:** `docs/testing/strategy.md` · `docs/brand/page-design.md` · E11-03 · E11-04 · E11-05 · E11-07
+
+---
+
 ## Epic E12 — Production bring-up
 
 **Goal:** provision the VPS, put the whole system on it, and collect every piece of evidence that could not be gathered locally. *7 tickets.*
@@ -1954,7 +2266,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 **Exit criteria:** the site serves from the VPS behind Cloudflare, a rollback has been timed under five minutes, a restore from R2 has been verified, the drills have run against real limits, and the launch gate passes on the real host.
 
-**Prerequisite: the VPS is provisioned and reachable.** No ticket here starts before it is.
+**Prerequisite: the VPS is provisioned and reachable, and E11.5 is merged.** No ticket here starts before both hold, so E12 deploys, load-tests and gates the final build (founder-authorised 2026-10-19).
 
 ### E12-01 — Provision the host and run the production stack on it
 **Model:** GPT-6 Astra — Light · **Priority:** Highest · **Flag:** — · **Area:** infra
@@ -2095,12 +2407,15 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 | E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, legal pages, inventory, DSR, SEO, OG, llms.txt |
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
+| E11.5 Frontend design | 12 | Foundations, survey v2, shell, **provider showcase**, landing, **mobile sticky signup bar**, verify, `/me` and leaderboard, content pages, task and error pages, email layout, design QA and re-audits |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
-| **Total** | **97** | |
+| **Total** | **109** | |
 
 **Model distribution (2026-09-28, the 34 tickets not yet merged):** GPT-6 Astra 16 (Extra High 1 · High 8 · Medium 6 · Light 1) · GPT-6 Sol 16 (High 10 · Medium 6) · GPT-6 Luna 2 (High 2). **Astra carries the operations and audit work of E11 and E12**, plus E9-05 and E10-01; **Sol carries the code of E8–E10**; Luna carries two small tickets whose dangerous failures an existing gate already catches (§3).
 
 E8-03a was added after that model distribution was recorded, with an explicit founder assignment of Tier B — Medium (2026-09-28).
+
+**E11.5 (founder-authorised 2026-10-19), 12 tickets:** GPT-6 Sol 11 (High 7 · Medium 4) · GPT-6 Astra 1 (Medium 1).
 
 **Tier distribution before 2026-09-28** (all 96 tickets as first planned; the merged ones keep these tiers): Tier B Extra High 4 · Tier B High 15 · Tier B Medium 30 · Tier A High 16 · Tier A Medium 31. *(2026-09-25: S-01 added at Tier B High; E7-01 moved from Tier B High to Tier A Medium once jurisdiction gating was removed; E7-06 moved from Tier A Medium to Tier B Medium because it now collects provisional winners' countries of residence and runs the sanctions check. 2026-09-27: E8-08 removed from Tier B High by ADR-028.)*
 
@@ -2112,7 +2427,7 @@ Under the tier policy, **Tier B carried the personal data, the privacy propertie
 
 ## Effort reconciliation
 
-The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
+The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each, plus E11.5's 12 design tickets (founder-authorised 2026-10-19), which are heavier per ticket and are not in the stack-decisions estimate. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
 
 | Cut | Removes | Saves |
 |---|---|---|
