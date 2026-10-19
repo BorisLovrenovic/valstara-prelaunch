@@ -52,6 +52,7 @@ const expectedDarkTokens = {
   '--paper': '#0F0F1A',
   '--surface': '#171733',
   '--ink': '#F0F0EE',
+  '--ink-600': '#A0A0A8',
   '--coral': '#FF8A66',
   '--on-midnight': '#F0F0EE',
   '--shadow-1': '0 1px 2px rgb(0 0 0 / 0.30), 0 2px 6px rgb(0 0 0 / 0.30)',
@@ -231,6 +232,34 @@ test('every colour value reuses the locked §5 palette and the type scale has no
   const dark = declarations(
     source.match(/:root\[data-theme=['"]dark['"]\]\s*\{(?<block>[\s\S]*?)\}/u)
       .groups.block,
+  );
+  assert.deepEqual(
+    [...root.keys()].sort(),
+    [
+      ...Object.keys(expectedRootTokens),
+      ...Object.keys(foundationTokens),
+      ...Array.from({ length: 10 }, (_, index) => `--space-${index + 1}`),
+    ].sort(),
+    'bare :root declares exactly the authorised tokens, regardless of colour syntax or size name',
+  );
+  assert.deepEqual(
+    [...dark.keys()].sort(),
+    Object.keys(expectedDarkTokens).sort(),
+    'dark mode introduces no colour or type-size token',
+  );
+  assert.deepEqual(
+    new Set(
+      [...source.matchAll(/(?<name>--[\w-]+)\s*:/gu)].map(
+        (match) => match.groups.name,
+      ),
+    ),
+    new Set(root.keys()),
+    'no selector introduces an undeclared colour or type-size token',
+  );
+  assert.equal(
+    [...source.matchAll(/--[\w-]+\s*:/gu)].length,
+    root.size + dark.size * 2,
+    'tokens are declared only in the base and paired dark blocks',
   );
   const expectedColourNames = new Set([
     ...Object.entries(expectedRootTokens)

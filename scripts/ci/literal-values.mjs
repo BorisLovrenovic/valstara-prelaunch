@@ -63,6 +63,15 @@ export function scanAstroLiteralValues(source) {
     ...[...source.matchAll(/\bstyle\s*=\s*["']([^"']+)["']/giu)].map(
       (match) => match[1],
     ),
+    ...[...source.matchAll(/\bstyle\s*=\s*\{\{([\s\S]*?)\}\}/giu)].map(
+      (match) =>
+        [...match[1].matchAll(/([\w-]+)\s*:\s*(["'`])([^"'`]*?)\2/gu)]
+          .map((entry) => `${entry[1]}: ${entry[3]};`)
+          .join(''),
+    ),
+    ...[...source.matchAll(/\bstyle\s*=\s*\{(["'`])([\s\S]*?)\1\}/giu)].map(
+      (match) => match[2],
+    ),
   ];
 
   for (const css of styles) {

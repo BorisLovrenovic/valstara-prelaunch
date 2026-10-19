@@ -29,12 +29,17 @@ export async function checkPageLayout(page) {
       const style = getComputedStyle(element);
       if (
         element.textContent?.trim() &&
-        (['hidden', 'clip'].includes(style.overflowX) ||
-          ['hidden', 'clip'].includes(style.overflowY)) &&
-        (element.scrollWidth > element.clientWidth + 1 ||
-          element.scrollHeight > element.clientHeight + 1)
+        ((['hidden', 'clip', 'visible'].includes(style.overflowX) &&
+          element.scrollWidth > element.clientWidth + 1) ||
+          (['hidden', 'clip', 'visible'].includes(style.overflowY) &&
+            element.scrollHeight > element.clientHeight + 1))
       ) {
-        issues.push(`clipped text: ${element.tagName.toLowerCase()}`);
+        const clipped =
+          ['hidden', 'clip'].includes(style.overflowX) ||
+          ['hidden', 'clip'].includes(style.overflowY);
+        issues.push(
+          `${clipped ? 'clipped' : 'overflowing'} text: ${element.tagName.toLowerCase()}`,
+        );
       }
     }
 

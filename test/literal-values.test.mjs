@@ -11,6 +11,7 @@ for (const [fixture, expected] of [
   ['page', 'literal colour'],
   ['island', 'literal min-width'],
   ['media', 'unregistered media-query length 48rem'],
+  ['expression', 'literal width: 20px'],
 ]) {
   test(`planted ${fixture} literal fails the CI scanner`, async () => {
     const source = await readFile(

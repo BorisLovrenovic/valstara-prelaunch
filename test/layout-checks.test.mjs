@@ -160,6 +160,25 @@ test('clipped text, missing image dimensions and a misaligned grid item fail', a
   }
 });
 
+test('visibly overflowing text fails the layout harness', async () => {
+  const page = await browser.newPage({ viewport: { width: 768, height: 600 } });
+  try {
+    await page.setContent(
+      good.replace(
+        '</main>',
+        '<p style="height:18px;overflow:visible">First line<br>Second line<br>Third line</p></main>',
+      ),
+    );
+    assert.ok(
+      (await checkPageLayout(page)).some((issue) =>
+        issue.includes('overflowing text'),
+      ),
+    );
+  } finally {
+    await page.close();
+  }
+});
+
 test('contact-sheet actions can reach a named interactive state without serialising input', async () => {
   const page = await browser.newPage({ viewport: { width: 320, height: 300 } });
   try {
