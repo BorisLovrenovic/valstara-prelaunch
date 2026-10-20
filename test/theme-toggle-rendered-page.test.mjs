@@ -6,13 +6,12 @@ import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
 
 import { chromium } from 'playwright';
+import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 
 const execFileAsync = promisify(execFile);
-const appPort = 43_221;
-const browserPort = 43_222;
-const hostOrigin = `http://127.0.0.1:${appPort}`;
-const browserOrigin = `http://host.docker.internal:${appPort}`;
-const browserServerEndpoint = `ws://127.0.0.1:${browserPort}/`;
+// No fixed ports: the app server gets a reserved port below the kernel's
+// ephemeral range and Docker allocates the browser server's host port (see
+// test/helpers/listen-port.mjs).
 const browserContainer = `valstara-playwright-${process.pid}`;
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
@@ -25,22 +24,9 @@ const backgrounds = {
 let browser;
 let browserServer;
 let browserServerError;
-let server;
-
-async function waitForAppServer() {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    try {
-      const response = await globalThis.fetch(hostOrigin);
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // The standalone server has not started yet.
-    }
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
-  }
-  throw new Error('Theme rendered-page test server did not start.');
-}
+let app;
+let browserOrigin;
+let browserServerEndpoint;
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -54,7 +40,7 @@ async function startBrowserServer() {
       '--add-host',
       'host.docker.internal:host-gateway',
       '--publish',
-      `127.0.0.1:${browserPort}:3000`,
+      '127.0.0.1::3000',
       '--volume',
       `${projectRoot}:/work:ro`,
       '--workdir',
@@ -84,6 +70,7 @@ async function startBrowserServer() {
 
   for (let attempt = 0; attempt < 720; attempt += 1) {
     if (output.includes('Listening on')) {
+      browserServerEndpoint = `ws://127.0.0.1:${await publishedPort(browserContainer, 3000)}/`;
       return;
     }
     if (browserServerError !== undefined) {
@@ -130,9 +117,9 @@ async function connectToBrowserServer() {
 }
 
 before(async () => {
-  server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-    env: {
-      ...process.env,
+  app = await startAppServer({
+    label: 'Theme rendered-page test',
+    env: () => ({
       ADMIN_CREDENTIAL: 'theme-rendered-admin-credential-32-chars',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
       DATABASE_URL:
@@ -140,7 +127,6 @@ before(async () => {
       HOST: '0.0.0.0',
       IP_PREFIX_PEPPER: 'theme-rendered-page-prefix-pepper',
       REFERRAL_SIGNING_SECRET: 'theme-rendered-page-referral-secret',
-      PORT: String(appPort),
       RESEND_API_KEY: 'theme-rendered-page-resend-key',
       RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
       RESEND_KEY_MODE: 'test',
@@ -148,10 +134,9 @@ before(async () => {
       RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
       RESEND_SENDING_DOMAIN: 'send.valstara.com',
       TURNSTILE_SECRET_KEY: 'theme-rendered-page-turnstile-secret',
-    },
-    stdio: 'ignore',
+    }),
   });
-  await waitForAppServer();
+  browserOrigin = `http://host.docker.internal:${app.port}`;
   await startBrowserServer();
   browser = await connectToBrowserServer();
 });
@@ -172,10 +157,7 @@ after(async () => {
     browserServer.kill('SIGTERM');
     await browserServerExited;
   }
-  if (server !== undefined) {
-    server.kill('SIGTERM');
-    await once(server, 'exit');
-  }
+  await app?.stop();
 });
 
 async function firstFrameFor({ colorScheme, storedTheme }) {

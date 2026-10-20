@@ -1,22 +1,23 @@
 import assert from 'node:assert/strict';
-import { execFile, spawn } from 'node:child_process';
-import { once } from 'node:events';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import test from 'node:test';
+import { startAppServer } from './helpers/listen-port.mjs';
 
 const executeFile = promisify(execFile);
 
 async function withServer(run) {
-  const port = 46_000 + (process.pid % 1_000);
-  const origin = `http://127.0.0.1:${port}`;
-  const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-    env: {
-      ...process.env,
+  // A reserved port below the kernel's ephemeral range (see
+  // test/helpers/listen-port.mjs).
+  const app = await startAppServer({
+    label: 'Trustpilot /legit',
+    readyPath: '/legit',
+    env: (port) => ({
       ADMIN_CREDENTIAL: 'trustpilot-test-admin-credential-32-chars',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
       DATABASE_URL:
         'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres',
-      EMAIL_BASE_URL: origin,
+      EMAIL_BASE_URL: `http://127.0.0.1:${port}`,
       EMAIL_TOKEN_SECRET: 'trustpilot-test-email-token-secret-32-chars',
       IP_PREFIX_PEPPER: 'trustpilot-test-prefix-pepper',
       REFERRAL_SIGNING_SECRET: 'trustpilot-test-referral-secret',
@@ -30,25 +31,15 @@ async function withServer(run) {
       BREVO_WEBHOOK_TOKEN: 'trustpilot-test-brevo-webhook-token-32-chars',
       TURNSTILE_SECRET_KEY: 'trustpilot-test-turnstile-secret',
       HOST: '127.0.0.1',
-      PORT: String(port),
-    },
-    stdio: 'ignore',
+    }),
   });
+  const origin = `http://127.0.0.1:${app.port}`;
   try {
-    let response;
-    for (let attempt = 0; attempt < 120; attempt += 1) {
-      try {
-        response = await globalThis.fetch(`${origin}/legit`);
-        break;
-      } catch {
-        await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
-      }
-    }
-    assert.ok(response?.ok, '/legit server starts');
+    const response = await globalThis.fetch(`${origin}/legit`);
+    assert.ok(response.ok, '/legit server starts');
     await run(await response.text());
   } finally {
-    server.kill();
-    await once(server, 'exit');
+    await app.stop();
   }
 }
 

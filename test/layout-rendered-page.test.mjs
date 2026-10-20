@@ -1,17 +1,15 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
 
 import { chromium } from 'playwright';
+import { startAppServer } from './helpers/listen-port.mjs';
 
 const execFileAsync = promisify(execFile);
 const browserContainer = `valstara-layout-playwright-${process.pid}`;
-const appServerStartupTimeoutMilliseconds = 30_000;
-const serverOutputLimit = 16_384;
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
 const permanentFooterUrls = [
@@ -37,58 +35,11 @@ const footerUrls = [
 const designWidths = [320, 360, 390, 768, 1024, 1280, 1440, 1920];
 const sectionAnchors = ['#how', '#rewards', '#guarantee', '#faq'];
 
-let appPort;
+let app;
 let browser;
 let browserOrigin;
 let browserServer;
 let browserServerError;
-let server;
-let serverError;
-let serverOutput = '';
-
-async function availablePort() {
-  const socket = createNetServer();
-  socket.listen(0, '0.0.0.0');
-  await once(socket, 'listening');
-  const { port } = socket.address();
-  socket.close();
-  await once(socket, 'close');
-  return port;
-}
-
-async function waitForAppServer() {
-  const deadline =
-    globalThis.performance.now() + appServerStartupTimeoutMilliseconds;
-
-  while (globalThis.performance.now() < deadline) {
-    if (serverError !== undefined) {
-      throw new Error(
-        `Could not start the layout rendered-page test server: ${serverError.message}`,
-        { cause: serverError },
-      );
-    }
-    if (server.exitCode !== null) {
-      throw new Error(
-        `Layout rendered-page test server exited before startup.\n${serverOutput || '(no server output)'}`,
-      );
-    }
-    try {
-      const response = await globalThis.fetch(`http://127.0.0.1:${appPort}`, {
-        signal: globalThis.AbortSignal.timeout(1_000),
-      });
-      if (response.ok) {
-        browserOrigin = `http://host.docker.internal:${appPort}`;
-        return;
-      }
-    } catch {
-      // The app server may still be finishing startup.
-    }
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
-  }
-  throw new Error(
-    `Layout rendered-page test server did not start within 30 seconds.\n${serverOutput || '(no server output)'}`,
-  );
-}
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -162,48 +113,28 @@ async function startBrowserServer() {
 
 before(async () => {
   await execFileAsync('npm', ['run', 'build']);
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    appPort = await availablePort();
-    serverOutput = '';
-    serverError = undefined;
-    server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-      env: {
-        ...process.env,
-        ADMIN_CREDENTIAL: 'layout-rendered-admin-credential-32-chars',
-        ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
-        DATABASE_URL:
-          'postgresql://unused:unused@127.0.0.1:5434/unused-layout-test',
-        HOST: '0.0.0.0',
-        IP_PREFIX_PEPPER: 'layout-rendered-page-prefix-pepper',
-        REFERRAL_SIGNING_SECRET: 'layout-rendered-page-referral-secret',
-        PORT: String(appPort),
-        RESEND_API_KEY: 'layout-rendered-page-resend-key',
-        RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
-        RESEND_KEY_MODE: 'test',
-        RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
-        RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
-        RESEND_SENDING_DOMAIN: 'send.valstara.com',
-        TURNSTILE_SECRET_KEY: 'layout-rendered-page-turnstile-secret',
-      },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    server.stdout.setEncoding('utf8');
-    server.stderr.setEncoding('utf8');
-    const captureServerOutput = (chunk) => {
-      serverOutput = `${serverOutput}${chunk}`.slice(-serverOutputLimit);
-    };
-    server.stdout.on('data', captureServerOutput);
-    server.stderr.on('data', captureServerOutput);
-    server.once('error', (error) => {
-      serverError = error;
-    });
-    try {
-      await waitForAppServer();
-      break;
-    } catch (error) {
-      if (!serverOutput.includes('EADDRINUSE') || attempt === 2) throw error;
-    }
-  }
+  // A reserved port below the kernel's ephemeral range; only a lost bind
+  // race is retried (test/helpers/listen-port.mjs).
+  app = await startAppServer({
+    label: 'Layout rendered-page test',
+    env: () => ({
+      ADMIN_CREDENTIAL: 'layout-rendered-admin-credential-32-chars',
+      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+      DATABASE_URL:
+        'postgresql://unused:unused@127.0.0.1:5434/unused-layout-test',
+      HOST: '0.0.0.0',
+      IP_PREFIX_PEPPER: 'layout-rendered-page-prefix-pepper',
+      REFERRAL_SIGNING_SECRET: 'layout-rendered-page-referral-secret',
+      RESEND_API_KEY: 'layout-rendered-page-resend-key',
+      RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
+      RESEND_KEY_MODE: 'test',
+      RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+      RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+      RESEND_SENDING_DOMAIN: 'send.valstara.com',
+      TURNSTILE_SECRET_KEY: 'layout-rendered-page-turnstile-secret',
+    }),
+  });
+  browserOrigin = `http://host.docker.internal:${app.port}`;
   const browserServerEndpoint = await startBrowserServer();
   browser = await chromium.connect(browserServerEndpoint);
 });
@@ -224,11 +155,7 @@ after(async () => {
     browserServer.kill('SIGTERM');
     await browserServerExited;
   }
-  if (server !== undefined && server.exitCode === null) {
-    const serverExited = once(server, 'exit');
-    server.kill('SIGTERM');
-    await serverExited;
-  }
+  await app?.stop();
 });
 
 test('the shell exposes one main landmark and a skip link as the first focusable element', async () => {

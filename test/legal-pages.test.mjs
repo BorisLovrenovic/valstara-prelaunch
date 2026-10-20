@@ -1,13 +1,12 @@
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { once } from 'node:events';
 import { readFile } from 'node:fs/promises';
-import { createServer } from 'node:net';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
+import { startAppServer } from './helpers/listen-port.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path) => readFile(join(root, path), 'utf8');
@@ -436,23 +435,18 @@ test(
     // A real HTTP request enters Astro middleware before reaching the signup
     // route. Missing Turnstile is rejected by the route's challenge boundary;
     // a representative-dependent middleware gate would reject it earlier.
-    const listener = createServer();
-    listener.listen(0, '127.0.0.1');
-    await once(listener, 'listening');
-    const address = listener.address();
-    assert.ok(address && typeof address !== 'string');
-    const port = address.port;
-    listener.close();
-    await once(listener, 'close');
-    const origin = `http://127.0.0.1:${port}`;
-    const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
+    // A reserved port below the kernel's ephemeral range (see
+    // test/helpers/listen-port.mjs).
+    const app = await startAppServer({
+      label: 'Legal-page',
+      readyPath: '/privacy',
       cwd: root,
-      env: {
-        ...process.env,
+      entry: join(root, 'dist/server/entry.mjs'),
+      env: (port) => ({
         ADMIN_CREDENTIAL: 'legal-page-admin-credential-32-chars',
         ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
         DATABASE_URL: adminDatabaseUrl,
-        EMAIL_BASE_URL: origin,
+        EMAIL_BASE_URL: `http://127.0.0.1:${port}`,
         EMAIL_TOKEN_SECRET: 'legal-page-email-token-secret-32-chars',
         RESEND_WEBHOOK_SECRET: 'whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk=',
         BREVO_WEBHOOK_TOKEN: 'legal-page-brevo-webhook-token-32-chars',
@@ -466,21 +460,10 @@ test(
         RESEND_SENDING_DOMAIN: 'send.valstara.com',
         TURNSTILE_SECRET_KEY: 'legal-page-turnstile-secret',
         HOST: '127.0.0.1',
-        PORT: String(port),
-      },
-      stdio: 'ignore',
+      }),
     });
+    const origin = `http://127.0.0.1:${app.port}`;
     try {
-      let ready = false;
-      for (let attempt = 0; attempt < 100; attempt += 1) {
-        try {
-          ready = (await globalThis.fetch(`${origin}/privacy`)).ok;
-          if (ready) break;
-        } catch {
-          await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
-        }
-      }
-      assert.ok(ready, 'Astro server did not start');
       const response = await globalThis.fetch(`${origin}/api/signup`, {
         method: 'POST',
         headers: {
@@ -494,8 +477,7 @@ test(
       assert.equal(response.status, 400);
       assert.equal((await response.json()).error.code, 'challenge_failed');
     } finally {
-      server.kill();
-      await once(server, 'exit');
+      await app.stop();
     }
   },
 );

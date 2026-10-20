@@ -12,13 +12,12 @@ import { chromium } from 'playwright';
 import { Pool } from 'pg';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 import { assertShellLayout } from '../scripts/design/layout-checks.mjs';
+import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 
 const execFileAsync = promisify(execFile);
-const appPort = 45_000 + (process.pid % 1_000) * 2;
-const browserPort = appPort + 1;
-const hostOrigin = `http://127.0.0.1:${appPort}`;
-const browserOrigin = `http://host.docker.internal:${appPort}`;
-const browserServerEndpoint = `ws://127.0.0.1:${browserPort}/`;
+// No fixed ports: the app server gets a reserved port below the kernel's
+// ephemeral range and Docker allocates the browser server's host port (see
+// test/helpers/listen-port.mjs).
 const browserContainer = `valstara-a11y-playwright-${process.pid}`;
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
@@ -46,7 +45,10 @@ let browser;
 let browserServer;
 let browserServerError;
 let databaseFixture;
-let server;
+let app;
+let browserOrigin;
+let browserServerEndpoint;
+let hostOrigin;
 
 async function createDatabaseFixture() {
   const databaseName = `valstara_e605a11y_${randomUUID().replaceAll('-', '')}`;
@@ -153,24 +155,6 @@ async function renderedRoutes() {
   return routes.sort();
 }
 
-async function waitForAppServer() {
-  for (let attempt = 0; attempt < 1_200; attempt += 1) {
-    if (server.exitCode !== null || server.signalCode !== null) {
-      throw new Error('Accessibility test server exited before startup.');
-    }
-    try {
-      const response = await globalThis.fetch(hostOrigin);
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // The standalone server has not started yet.
-    }
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
-  }
-  throw new Error('Accessibility test server did not start.');
-}
-
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
   browserServer = spawn(
@@ -183,7 +167,7 @@ async function startBrowserServer() {
       '--add-host',
       'host.docker.internal:host-gateway',
       '--publish',
-      `127.0.0.1:${browserPort}:3000`,
+      '127.0.0.1::3000',
       '--volume',
       `${projectRoot}:/work:ro`,
       '--workdir',
@@ -213,6 +197,7 @@ async function startBrowserServer() {
 
   for (let attempt = 0; attempt < 720; attempt += 1) {
     if (output.includes('Listening on')) {
+      browserServerEndpoint = `ws://127.0.0.1:${await publishedPort(browserContainer, 3000)}/`;
       return;
     }
     if (browserServerError !== undefined) {
@@ -259,16 +244,15 @@ async function axeViolations(page) {
 before(async () => {
   await execFileAsync('npm', ['run', 'build']);
   databaseFixture = await createDatabaseFixture();
-  server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-    env: {
-      ...process.env,
+  app = await startAppServer({
+    label: 'Accessibility test',
+    env: () => ({
       ADMIN_CREDENTIAL: 'accessibility-admin-credential-32-chars',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
       DATABASE_URL: databaseFixture.applicationUrl,
       HOST: '0.0.0.0',
       IP_PREFIX_PEPPER: 'accessibility-prefix-pepper',
       REFERRAL_SIGNING_SECRET: 'accessibility-referral-secret',
-      PORT: String(appPort),
       RESEND_API_KEY: 'accessibility-resend-key',
       RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
       RESEND_KEY_MODE: 'test',
@@ -276,10 +260,10 @@ before(async () => {
       RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
       RESEND_SENDING_DOMAIN: 'send.valstara.com',
       TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA',
-    },
-    stdio: 'ignore',
+    }),
   });
-  await waitForAppServer();
+  hostOrigin = `http://127.0.0.1:${app.port}`;
+  browserOrigin = `http://host.docker.internal:${app.port}`;
   const authenticatedDashboard = await globalThis.fetch(
     `${hostOrigin}/me?t=${encodeURIComponent(authenticatedStatusToken)}`,
   );
@@ -309,10 +293,7 @@ after(async () => {
     browserServer.kill('SIGTERM');
     await browserServerExited;
   }
-  if (server !== undefined) {
-    server.kill('SIGTERM');
-    await once(server, 'exit');
-  }
+  await app?.stop();
   await databaseFixture?.dispose();
 });
 

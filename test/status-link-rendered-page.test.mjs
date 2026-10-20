@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import { execFile, spawn } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { once } from 'node:events';
 import { promisify } from 'node:util';
 import test from 'node:test';
 
 import { Pool } from 'pg';
 import { seedGiveawayEntryRows } from './helpers/giveaway-entry-rows.ts';
+import { startAppServer } from './helpers/listen-port.mjs';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 
 const executeFile = promisify(execFile);
@@ -50,8 +50,9 @@ async function createDatabaseFixture() {
   };
 }
 
+// The server gets a reserved port below the kernel's ephemeral range (see
+// test/helpers/listen-port.mjs); the P1 alert webhook points back at it.
 function startServer(databaseUrl) {
-  const port = 43_290;
   const providerStub = `data:text/javascript,${encodeURIComponent(`
     const realFetch = globalThis.fetch;
     globalThis.fetch = async (input, init) => {
@@ -62,52 +63,28 @@ function startServer(databaseUrl) {
       return realFetch(input, init);
     };
   `)}`;
-  const server = spawn(
-    process.execPath,
-    ['--import', providerStub, 'dist/server/entry.mjs'],
-    {
-      env: {
-        ...process.env,
-        ADMIN_CREDENTIAL: 'status-link-admin-credential-32-chars',
-        ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
-        DATABASE_URL: databaseUrl,
-        HOST: '127.0.0.1',
-        IP_PREFIX_PEPPER: 'status-link-prefix-pepper',
-        P1_ALERT_WEBHOOK_URL: 'http://127.0.0.1:43290/alert',
-        P1_ALERT_WEBHOOK_TOKEN: 'status-link-alert-test-token',
-        PORT: String(port),
-        REFERRAL_SIGNING_SECRET: 'status-link-referral-secret',
-        RESEND_API_KEY: 'status-link-resend-key',
-        RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
-        RESEND_KEY_MODE: 'test',
-        RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
-        RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
-        RESEND_SENDING_DOMAIN: 'send.valstara.com',
-        TURNSTILE_SECRET_KEY: 'status-link-turnstile-secret',
-      },
-      stdio: 'ignore',
-    },
-  );
-  const exited = once(server, 'exit');
-  return { port, server, exited };
-}
-
-async function waitForServer(port, server) {
-  for (let attempt = 0; attempt < 1_200; attempt += 1) {
-    if (server.exitCode !== null || server.signalCode !== null) {
-      throw new Error(
-        'Status-link rendered-page server exited before startup.',
-      );
-    }
-    try {
-      const response = await globalThis.fetch(`http://127.0.0.1:${port}/me`);
-      if (response.ok) return;
-    } catch {
-      // The standalone server has not started yet.
-    }
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
-  }
-  throw new Error('Status-link rendered-page server did not start.');
+  return startAppServer({
+    label: 'Status-link rendered-page',
+    readyPath: '/me',
+    nodeArguments: ['--import', providerStub],
+    env: (port) => ({
+      ADMIN_CREDENTIAL: 'status-link-admin-credential-32-chars',
+      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+      DATABASE_URL: databaseUrl,
+      HOST: '127.0.0.1',
+      IP_PREFIX_PEPPER: 'status-link-prefix-pepper',
+      P1_ALERT_WEBHOOK_URL: `http://127.0.0.1:${port}/alert`,
+      P1_ALERT_WEBHOOK_TOKEN: 'status-link-alert-test-token',
+      REFERRAL_SIGNING_SECRET: 'status-link-referral-secret',
+      RESEND_API_KEY: 'status-link-resend-key',
+      RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
+      RESEND_KEY_MODE: 'test',
+      RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+      RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+      RESEND_SENDING_DOMAIN: 'send.valstara.com',
+      TURNSTILE_SECRET_KEY: 'status-link-turnstile-secret',
+    }),
+  });
 }
 
 test('the status page makes expiry and tampering identical, sets no cookie, and offers one-click recovery', async () => {
@@ -216,10 +193,11 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
       new Date('2099-01-01T00:00:00.000Z'),
     ],
   );
-  const { port, server, exited } = startServer(fixture.databaseUrl);
+  let app;
 
   try {
-    await waitForServer(port, server);
+    app = await startServer(fixture.databaseUrl);
+    const { port } = app;
     const confirmation = await globalThis.fetch(
       `http://127.0.0.1:${port}/unsubscribe?t=${encodeURIComponent(unsubscribeToken)}`,
     );
@@ -441,10 +419,7 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     assert.doesNotMatch(disabledBody, /data-member-dashboard/u);
     assert.doesNotMatch(disabledBody, /STATUS234567/u);
   } finally {
-    if (server.exitCode === null && server.signalCode === null) {
-      server.kill('SIGTERM');
-    }
-    await exited;
+    await app?.stop();
     await fixture.dispose();
   }
 });
