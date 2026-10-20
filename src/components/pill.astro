@@ -1,25 +1,44 @@
 ---
 import type { HTMLAttributes } from 'astro/types';
 
-type Props = HTMLAttributes<'span'>;
+type Props = HTMLAttributes<'span'> & {
+  // A pill is a quiet coral-tint label; a badge is the solid coral marker for
+  // a figure or state, set in mono with tabular figures (identity §6.2, §7).
+  variant?: 'pill' | 'badge';
+};
 
-const { class: className, ...attributes } = Astro.props;
+const { class: className, variant = 'pill', ...attributes } = Astro.props;
 ---
 
-<span {...attributes} class:list={['pill', className]}>
+<span
+  {...attributes}
+  class:list={['pill', variant === 'badge' && 'pill--badge', className]}
+>
   <slot />
 </span>
 
 <style>
   .pill {
     display: inline-flex;
+    gap: var(--space-1);
     align-items: center;
-    padding: var(--space-1) var(--space-2);
+    padding-block: var(--space-1);
+    padding-inline: var(--space-2);
     color: var(--midnight);
     font-family: var(--font-sans);
     font-size: var(--step-0);
+    font-weight: var(--weight-medium);
+    font-variant-numeric: tabular-nums;
     line-height: var(--leading-0);
     background-color: var(--coral-tint);
     border-radius: var(--radius-pill);
+    box-shadow: none;
+  }
+
+  .pill--badge {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-semibold);
+    background-color: var(--coral);
+    box-shadow: var(--shadow-1);
   }
 </style>

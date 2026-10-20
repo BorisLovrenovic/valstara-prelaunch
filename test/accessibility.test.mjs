@@ -11,13 +11,13 @@ import axe from 'axe-core';
 import { chromium } from 'playwright';
 import { Pool } from 'pg';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
+import { assertShellLayout } from '../scripts/design/layout-checks.mjs';
+import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 
 const execFileAsync = promisify(execFile);
-const appPort = 45_000 + (process.pid % 1_000) * 2;
-const browserPort = appPort + 1;
-const hostOrigin = `http://127.0.0.1:${appPort}`;
-const browserOrigin = `http://host.docker.internal:${appPort}`;
-const browserServerEndpoint = `ws://127.0.0.1:${browserPort}/`;
+// No fixed ports: the app server gets a reserved port below the kernel's
+// ephemeral range and Docker allocates the browser server's host port (see
+// test/helpers/listen-port.mjs).
 const browserContainer = `valstara-a11y-playwright-${process.pid}`;
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
@@ -45,7 +45,10 @@ let browser;
 let browserServer;
 let browserServerError;
 let databaseFixture;
-let server;
+let app;
+let browserOrigin;
+let browserServerEndpoint;
+let hostOrigin;
 
 async function createDatabaseFixture() {
   const databaseName = `valstara_e605a11y_${randomUUID().replaceAll('-', '')}`;
@@ -152,24 +155,6 @@ async function renderedRoutes() {
   return routes.sort();
 }
 
-async function waitForAppServer() {
-  for (let attempt = 0; attempt < 1_200; attempt += 1) {
-    if (server.exitCode !== null || server.signalCode !== null) {
-      throw new Error('Accessibility test server exited before startup.');
-    }
-    try {
-      const response = await globalThis.fetch(hostOrigin);
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // The standalone server has not started yet.
-    }
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
-  }
-  throw new Error('Accessibility test server did not start.');
-}
-
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
   browserServer = spawn(
@@ -182,7 +167,7 @@ async function startBrowserServer() {
       '--add-host',
       'host.docker.internal:host-gateway',
       '--publish',
-      `127.0.0.1:${browserPort}:3000`,
+      '127.0.0.1::3000',
       '--volume',
       `${projectRoot}:/work:ro`,
       '--workdir',
@@ -212,6 +197,7 @@ async function startBrowserServer() {
 
   for (let attempt = 0; attempt < 720; attempt += 1) {
     if (output.includes('Listening on')) {
+      browserServerEndpoint = `ws://127.0.0.1:${await publishedPort(browserContainer, 3000)}/`;
       return;
     }
     if (browserServerError !== undefined) {
@@ -258,16 +244,15 @@ async function axeViolations(page) {
 before(async () => {
   await execFileAsync('npm', ['run', 'build']);
   databaseFixture = await createDatabaseFixture();
-  server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-    env: {
-      ...process.env,
+  app = await startAppServer({
+    label: 'Accessibility test',
+    env: () => ({
       ADMIN_CREDENTIAL: 'accessibility-admin-credential-32-chars',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
       DATABASE_URL: databaseFixture.applicationUrl,
       HOST: '0.0.0.0',
       IP_PREFIX_PEPPER: 'accessibility-prefix-pepper',
       REFERRAL_SIGNING_SECRET: 'accessibility-referral-secret',
-      PORT: String(appPort),
       RESEND_API_KEY: 'accessibility-resend-key',
       RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
       RESEND_KEY_MODE: 'test',
@@ -275,10 +260,10 @@ before(async () => {
       RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
       RESEND_SENDING_DOMAIN: 'send.valstara.com',
       TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA',
-    },
-    stdio: 'ignore',
+    }),
   });
-  await waitForAppServer();
+  hostOrigin = `http://127.0.0.1:${app.port}`;
+  browserOrigin = `http://host.docker.internal:${app.port}`;
   const authenticatedDashboard = await globalThis.fetch(
     `${hostOrigin}/me?t=${encodeURIComponent(authenticatedStatusToken)}`,
   );
@@ -308,10 +293,7 @@ after(async () => {
     browserServer.kill('SIGTERM');
     await browserServerExited;
   }
-  if (server !== undefined) {
-    server.kill('SIGTERM');
-    await once(server, 'exit');
-  }
+  await app?.stop();
   await databaseFixture?.dispose();
 });
 
@@ -374,6 +356,16 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
       await context.close();
     }
   }
+});
+
+// E11.5-03: the shell joins the enforced layout-check set. Its header and
+// footer pass the E11.5-01 layout rules on every rendered page, at every test
+// width, in both themes; page bodies join in the ticket that redesigns them.
+test('the site shell passes the layout checks on every rendered page', async () => {
+  await assertShellLayout(browser, browserOrigin, [
+    ...(await renderedRoutes()),
+    '/giveaway/rules/VAL-GW-LAUNCH-20260925-r1',
+  ]);
 });
 
 test('trust and legal pages fit mobile and desktop in both themes', async () => {
@@ -557,53 +549,13 @@ test('tab order follows the visual reading order with no focus trap', async () =
   );
   assert.equal(positiveTabindex, 0, 'no element uses a positive tabindex');
 
-  // Tag every focusable in DOM order, and record each one's on-screen box. A
-  // control that renders no box is not in the tab order
-  // and the keyboard walk below never reaches it, so it is excluded here: "tab
-  // order follows reading order" ranges over the controls that are actually
-  // tabbable.
-  const layout = await page.evaluate((selector) => {
-    const elements = [...globalThis.document.querySelectorAll(selector)].filter(
-      (element) => element.getClientRects().length > 0,
-    );
-    return elements.map((element, index) => {
-      element.setAttribute('data-a11y-order', String(index));
-      const rectangle = element.getBoundingClientRect();
-      return {
-        bottom: rectangle.bottom,
-        left: rectangle.left,
-        top: rectangle.top,
-      };
-    });
-  }, focusableSelector);
+  const layout = await focusLayout(page, focusableSelector);
   assert.ok(layout.length >= 4, 'the page has the expected focusable controls');
 
-  // DOM order is the visual reading order: cluster the controls into rows by
-  // vertical overlap — so two controls centred on one header row are one row
-  // regardless of a few pixels of height difference — then read each row left to
-  // right. Given no positive tabindex, tab order equals DOM order, so proving
-  // DOM order equals this reading order proves tab order matches the visual one.
-  const items = layout.map((box, index) => ({ ...box, index }));
-  const rows = [];
-  for (const item of [...items].sort((a, b) => a.top - b.top)) {
-    const row = rows.find(
-      (candidate) => item.top < candidate.bottom && candidate.top < item.bottom,
-    );
-    if (row === undefined) {
-      rows.push({ bottom: item.bottom, items: [item], top: item.top });
-    } else {
-      row.items.push(item);
-      row.top = Math.min(row.top, item.top);
-      row.bottom = Math.max(row.bottom, item.bottom);
-    }
-  }
-  const readingOrder = rows
-    .sort((a, b) => a.top - b.top)
-    .flatMap((row) =>
-      row.items.sort((a, b) => a.left - b.left).map((item) => item.index),
-    );
+  // Given no positive tabindex, tab order equals DOM order, so proving DOM
+  // order equals the visual reading order proves tab order matches it.
   assert.deepEqual(
-    readingOrder,
+    visualReadingOrder(layout),
     layout.map((_, index) => index),
     'DOM order matches the visual reading order',
   );
@@ -640,6 +592,124 @@ test('tab order follows the visual reading order with no focus trap', async () =
 
   await context.close();
 });
+
+// Tag every focusable in DOM order and record each one's on-screen box, plus
+// the list it belongs to. A control that renders no box is not in the tab order
+// and the keyboard walk never reaches it, so it is excluded: "tab order follows
+// reading order" ranges over the controls that are actually tabbable.
+test('the reading-order check fails on a list whose DOM order differs from its visual order', async () => {
+  const page = await browser.newPage({
+    viewport: { width: 1280, height: 720 },
+  });
+  const footer = (listStyle) =>
+    `<!doctype html><html lang="en"><body><footer style="display:flex;gap:40px"><a href="/">Home</a><ul style="${listStyle}"><li><a href="/a">A</a></li><li><a href="/b">B</a></li><li><a href="/c">C</a></li></ul><ul><li><a href="/d">D</a></li><li><a href="/e">E</a></li></ul></footer></body></html>`;
+  const selector = 'a[href]';
+  try {
+    // Two stacked columns side by side: read column by column, so DOM order
+    // passes.
+    await page.setContent(footer('margin:0'));
+    let layout = await focusLayout(page, selector);
+    assert.deepEqual(visualReadingOrder(layout), [0, 1, 2, 3, 4, 5]);
+
+    // Planted: the first column renders bottom to top, so C is seen first
+    // while the DOM (and tab order) visits A first. The check must fail.
+    await page.setContent(
+      footer('margin:0;display:flex;flex-direction:column-reverse'),
+    );
+    layout = await focusLayout(page, selector);
+    assert.notDeepEqual(
+      visualReadingOrder(layout),
+      layout.map((_, index) => index),
+    );
+    assert.deepEqual(visualReadingOrder(layout), [0, 3, 2, 1, 4, 5]);
+
+    // Planted: the columns are swapped visually. The check must fail.
+    await page.setContent(footer('margin:0;order:2'));
+    layout = await focusLayout(page, selector);
+    assert.notDeepEqual(
+      visualReadingOrder(layout),
+      layout.map((_, index) => index),
+    );
+  } finally {
+    await page.close();
+  }
+});
+
+async function focusLayout(page, selector) {
+  return page.evaluate((focusable) => {
+    const elements = [
+      ...globalThis.document.querySelectorAll(focusable),
+    ].filter((element) => element.getClientRects().length > 0);
+    const lists = [];
+    return elements.map((element, index) => {
+      element.setAttribute('data-a11y-order', String(index));
+      const rectangle = element.getBoundingClientRect();
+      const list = element.closest('ul, ol');
+      let listBox = null;
+      if (list !== null) {
+        if (!lists.includes(list)) lists.push(list);
+        const box = list.getBoundingClientRect();
+        listBox = { bottom: box.bottom, left: box.left, top: box.top };
+      }
+      return {
+        bottom: rectangle.bottom,
+        left: rectangle.left,
+        list: list === null ? null : lists.indexOf(list),
+        listBox,
+        top: rectangle.top,
+      };
+    });
+  }, selector);
+}
+
+// Cluster boxes into rows by vertical overlap — so two controls centred on one
+// header row are one row regardless of a few pixels of height difference — then
+// read each row left to right.
+function rowOrder(units) {
+  const rows = [];
+  for (const unit of [...units].sort((a, b) => a.top - b.top)) {
+    const row = rows.find(
+      (candidate) => unit.top < candidate.bottom && candidate.top < unit.bottom,
+    );
+    if (row === undefined) {
+      rows.push({ bottom: unit.bottom, top: unit.top, units: [unit] });
+    } else {
+      row.units.push(unit);
+      row.top = Math.min(row.top, unit.top);
+      row.bottom = Math.max(row.bottom, unit.bottom);
+    }
+  }
+  return rows
+    .sort((a, b) => a.top - b.top)
+    .flatMap((row) => row.units.sort((a, b) => a.left - b.left));
+}
+
+// The visual reading order. Controls inside one list (a footer column, a nav
+// row) are read as a single block at that list's position, and within the
+// block top to bottom by the same row rule (E11.5-03, founder decision
+// 2026-10-20). Every other control is read by the row rule directly.
+function visualReadingOrder(layout) {
+  const units = [];
+  const blocks = new Map();
+  layout.forEach((box, index) => {
+    const item = { ...box, index };
+    if (box.list === null) {
+      units.push({ ...item, members: [item] });
+      return;
+    }
+    let block = blocks.get(box.list);
+    if (block === undefined) {
+      block = { ...box.listBox, members: [] };
+      blocks.set(box.list, block);
+      units.push(block);
+    }
+    block.members.push(item);
+    block.bottom = Math.max(block.bottom, item.bottom);
+  });
+  return rowOrder(units).flatMap((unit) =>
+    rowOrder(unit.members).map((member) => member.index),
+  );
+}
 
 async function tabTo(page, selector) {
   for (let step = 0; step < 40; step += 1) {

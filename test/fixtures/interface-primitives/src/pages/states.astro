@@ -1,0 +1,89 @@
+---
+import Accordion from '../../../../../src/components/accordion.astro';
+import Button from '../../../../../src/components/button.astro';
+import Card from '../../../../../src/components/card.astro';
+import Field from '../../../../../src/components/field.astro';
+import Input from '../../../../../src/components/input.astro';
+import Pill from '../../../../../src/components/pill.astro';
+import Section from '../../../../../src/components/section.astro';
+import Select from '../../../../../src/components/select.astro';
+import '../../../../../src/styles/tokens.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Interface primitive states fixture</title>
+  </head>
+  <body>
+    <main>
+      <Section id="default-section" aria-labelledby="default-heading">
+        <h2 slot="heading" id="default-heading">Default section</h2>
+        <div class="row">
+          <Button id="primary">Primary</Button>
+          <Button id="secondary" variant="secondary">Secondary</Button>
+          <Button id="disabled" disabled>Disabled</Button>
+          <Button id="link-button" href="/states#target">Link</Button>
+        </div>
+        <Field controlId="valid-email" label="Valid email">
+          <Input id="valid-email" type="email" />
+        </Field>
+        <Field
+          controlId="invalid-email"
+          label="Invalid email"
+          error="Enter a valid email address."
+          errorId="invalid-email-error"
+        >
+          <Input
+            id="invalid-email"
+            type="email"
+            invalid
+            aria-describedby="invalid-email-error"
+          />
+        </Field>
+        <Field controlId="valid-select" label="Valid select">
+          <Select id="valid-select">
+            <option value="">Choose</option>
+          </Select>
+        </Field>
+        <Field controlId="invalid-select" label="Invalid select">
+          <Select id="invalid-select" invalid>
+            <option value="">Choose</option>
+          </Select>
+        </Field>
+        <Card id="static-card">Static card</Card>
+        <Card id="interactive-card" interactive>
+          <a href="/states#target">Interactive card</a>
+        </Card>
+        <Pill id="pill">Free to join</Pill>
+        <Pill id="badge" variant="badge">3 of 5</Pill>
+        <Accordion id="accordion" summary="Question">Answer</Accordion>
+        <p id="target">Target</p>
+      </Section>
+      <Section
+        id="midnight-section"
+        variant="midnight"
+        aria-labelledby="midnight-heading"
+      >
+        <h2 slot="heading" id="midnight-heading">Midnight section</h2>
+        <Button id="on-midnight" variant="on-midnight">On midnight</Button>
+      </Section>
+    </main>
+  </body>
+</html>
+
+<style>
+  html,
+  body {
+    margin: 0;
+    color: var(--ink);
+    background-color: var(--paper);
+  }
+
+  .row {
+    display: flex;
+    gap: var(--space-2);
+  }
+</style>

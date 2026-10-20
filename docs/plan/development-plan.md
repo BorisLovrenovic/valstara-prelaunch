@@ -2053,8 +2053,10 @@ New renders on `/verify` and `/me` use v2. **v1 stays in the versioned set**: st
 - The theme toggle's existing E2-03 suite passes unchanged
 - **Every existing page still passes the axe gate in both themes** after the restyle; the shell joins the enforced layout-check set
 
-**Tests:** Header per breakpoint, including the no-script assertion · the rewritten footer link-set and legal-line assertion · primitive states · the E2-03, E2-04 and E2-05 suites · layout checks on the shell · axe.
+**Tests:** Header per breakpoint, including the no-script assertion · the rewritten footer link-set and legal-line assertion · primitive states · the E2-03, E2-04 and E2-05 suites · layout checks on the shell · axe · the rewritten E2-07 reading-order test with its planted column fixtures · the additive E2-04 icon and file-list extension.
 **Docs:** `docs/brand/page-design.md` · `docs/brand/identity-guidelines.md` §4.5, §5.2, §7 · `docs/architecture/modules.md`
+
+**Review decisions (founder-authorised 2026-10-20):** (1) The E2-07 “tab order follows the visual reading order” test reads the links in one list top to bottom as a single block. Planted reversed-column and swapped-column fixtures must still fail it. (2) The E2-04 primitives test expects seven icons and the extended file list, additively. (3) /legit, /guarantee and /about render the shell without the theme toggle, keeping E9-02’s zero-JavaScript criterion. They follow the system theme, and their small-width header is the wordmark and the Join button. (4) The header’s landing anchors resolve from E11.5-05, which owns that criterion. (5) “The shell joins the enforced layout-check set” means assertShellLayout checks the header and footer on every rendered page, at all 8 widths in both themes. enforcedPages gains pages only in the ticket that redesigns them.
 
 ### E11.5-04 — The provider showcase
 **Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend

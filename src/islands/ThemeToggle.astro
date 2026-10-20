@@ -1,10 +1,15 @@
 ---
+import Icon from '../components/icon.astro';
 import { themeToggleCopy } from '../copy/theme-toggle.ts';
 ---
 
 <valstara-theme-toggle>
   <button type="button" aria-pressed="false" disabled>
-    <span data-theme-toggle-label>{themeToggleCopy.useDark}</span>
+    <Icon name="moon" class="theme-toggle__icon theme-toggle__icon--moon" />
+    <Icon name="sun" class="theme-toggle__icon theme-toggle__icon--sun" />
+    <span class="theme-toggle__label" data-theme-toggle-label
+      >{themeToggleCopy.useDark}</span
+    >
   </button>
   <span aria-atomic="true" aria-live="polite" data-theme-toggle-status></span>
 </valstara-theme-toggle>
@@ -104,31 +109,83 @@ import { themeToggleCopy } from '../copy/theme-toggle.ts';
   }
 
   valstara-theme-toggle {
+    position: relative;
     display: flex;
-    gap: var(--space-1);
     align-items: center;
     font-family: var(--font-sans);
   }
 
+  /* An icon button: the moon offers dark, the sun offers light. The label
+     stays in the accessible name and the status is still announced. */
   button {
+    position: relative;
     box-sizing: border-box;
-    inline-size: calc(var(--space-10) * 2);
-    padding: var(--space-1) var(--space-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--tap-min);
+    block-size: var(--tap-min);
+    padding: 0;
     color: var(--ink);
     font: inherit;
-    line-height: var(--leading-1);
     background-color: var(--surface);
-    border-color: var(--line);
+    border: thin solid var(--line);
     border-radius: var(--radius-control);
+    cursor: pointer;
+    transition-property: border-color, box-shadow;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  button:hover {
+    border-color: var(--coral);
+    box-shadow: var(--shadow-1);
+  }
+
+  button:active {
+    box-shadow: none;
   }
 
   button:focus-visible {
-    outline-color: var(--coral);
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  button:disabled {
+    color: var(--ink-600);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  button :global(.theme-toggle__icon--sun),
+  button[aria-pressed='true'] :global(.theme-toggle__icon--moon) {
+    display: none;
+  }
+
+  button[aria-pressed='true'] :global(.theme-toggle__icon--sun) {
+    display: inline-block;
+  }
+
+  /* Visually hidden, anchored to the right edge so the hidden text never
+     extends the page's scrollable area. */
+  .theme-toggle__label,
+  [data-theme-toggle-status] {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
   }
 
   [data-theme-toggle-status] {
-    color: var(--ink-600);
     font-size: var(--step-1);
     line-height: var(--leading-1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button {
+      transition-property: none;
+    }
   }
 </style>

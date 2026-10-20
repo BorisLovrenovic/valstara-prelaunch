@@ -8,11 +8,11 @@ import { promisify } from 'node:util';
 import test from 'node:test';
 import { chromium } from 'playwright';
 import { Pool } from 'pg';
+import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 
 const executeFile = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
 const browserContainer = `valstara-e1105-playwright-${process.pid}`;
-const browserPort = 48_000 + (process.pid % 1_000);
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
 const adminUrl =
@@ -85,7 +85,7 @@ async function startBrowser() {
       '--add-host',
       'host.docker.internal:host-gateway',
       '--publish',
-      `127.0.0.1:${browserPort}:3000`,
+      '127.0.0.1::3000',
       '--volume',
       `${root}:/work:ro`,
       '--workdir',
@@ -110,7 +110,9 @@ async function startBrowser() {
   for (let attempt = 0; attempt < 240; attempt += 1) {
     if (output.includes('Listening on')) {
       return {
-        browser: await chromium.connect(`ws://127.0.0.1:${browserPort}/`),
+        browser: await chromium.connect(
+          `ws://127.0.0.1:${await publishedPort(browserContainer, 3000)}/`,
+        ),
         child,
       };
     }
@@ -262,15 +264,16 @@ async function seedEmailLinkedPages(database) {
 }
 
 async function withServer(databaseUrl, run) {
-  const port = 49_000 + (process.pid % 1_000);
-  const origin = `http://127.0.0.1:${port}`;
-  const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-    env: {
-      ...process.env,
+  // A reserved port below the kernel's ephemeral range (see
+  // test/helpers/listen-port.mjs).
+  const app = await startAppServer({
+    label: 'Privacy-audit',
+    readyPath: '/privacy',
+    env: (port) => ({
       ADMIN_CREDENTIAL: 'privacy-test-admin-credential-32-chars',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
       DATABASE_URL: databaseUrl,
-      EMAIL_BASE_URL: origin,
+      EMAIL_BASE_URL: `http://127.0.0.1:${port}`,
       EMAIL_TOKEN_SECRET: emailTokenSecret,
       RESEND_WEBHOOK_SECRET: 'whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk=',
       BREVO_WEBHOOK_TOKEN: 'privacy-test-brevo-webhook-token-32-chars',
@@ -284,26 +287,13 @@ async function withServer(databaseUrl, run) {
       RESEND_SENDING_DOMAIN: 'send.valstara.com',
       TURNSTILE_SECRET_KEY: 'privacy-test-turnstile-secret',
       HOST: '0.0.0.0',
-      PORT: String(port),
-    },
-    stdio: 'ignore',
+    }),
   });
+  const origin = `http://127.0.0.1:${app.port}`;
   try {
-    let ready = false;
-    for (let attempt = 0; attempt < 120; attempt += 1) {
-      try {
-        ready = (await globalThis.fetch(`${origin}/privacy`)).ok;
-      } catch {
-        /* starting */
-      }
-      if (ready) break;
-      await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
-    }
-    assert.ok(ready, 'privacy-audit server starts');
     await run(origin);
   } finally {
-    server.kill();
-    await once(server, 'exit');
+    await app.stop();
   }
 }
 

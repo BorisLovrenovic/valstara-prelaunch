@@ -15,16 +15,13 @@ import { flagCacheTtlMilliseconds } from '../src/server/flags/service.ts';
 import { createPool } from '../src/server/db/pool.ts';
 import { createRankingIntegrityService } from '../src/server/referral/ranking.ts';
 import { createSharedLeaderboardSnapshotStore } from '../src/server/leaderboard/persisted.ts';
+import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 
 const execFileAsync = promisify(execFile);
-const appPort = 43_280;
-const browserPort = 43_281;
-const hostOrigin = `http://127.0.0.1:${appPort}`;
-const browserOrigin = `http://host.docker.internal:${appPort}`;
-const browserServerEndpoint = `ws://127.0.0.1:${browserPort}/`;
+// No fixed ports: the app server gets a reserved port below the kernel's
+// ephemeral range and Docker allocates the browser server's host port (see
+// test/helpers/listen-port.mjs).
 const browserContainer = `valstara-leaderboard-playwright-${process.pid}`;
-const appServerStartupTimeoutMilliseconds = 30_000;
-const serverOutputLimit = 4_096;
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
 const defaultDatabaseUrl =
@@ -32,13 +29,14 @@ const defaultDatabaseUrl =
 const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 
+let app;
 let browser;
+let browserOrigin;
+let browserServerEndpoint;
+let hostOrigin;
 let browserServer;
 let browserServerError;
 let databaseFixture;
-let server;
-let serverError;
-let serverOutput = '';
 
 async function createDatabaseFixture() {
   const databaseName = `valstara_leaderboard_${randomUUID().replaceAll('-', '')}`;
@@ -112,39 +110,6 @@ async function createDatabaseFixture() {
   };
 }
 
-async function waitForAppServer() {
-  const deadline =
-    globalThis.performance.now() + appServerStartupTimeoutMilliseconds;
-
-  while (globalThis.performance.now() < deadline) {
-    if (serverError !== undefined) {
-      throw new Error(
-        `Could not start leaderboard test server: ${serverError.message}`,
-        {
-          cause: serverError,
-        },
-      );
-    }
-    if (server.exitCode !== null) {
-      throw new Error(
-        `Leaderboard test server exited before startup.\n${serverOutput || '(no server output)'}`,
-      );
-    }
-    try {
-      const response = await globalThis.fetch(`${hostOrigin}/leaderboard`, {
-        signal: globalThis.AbortSignal.timeout(1_000),
-      });
-      if (response.ok) return;
-    } catch {
-      // The standalone server may still be finishing startup.
-    }
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
-  }
-  throw new Error(
-    `Leaderboard test server did not start within 30 seconds.\n${serverOutput || '(no server output)'}`,
-  );
-}
-
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
   browserServer = spawn(
@@ -157,7 +122,7 @@ async function startBrowserServer() {
       '--add-host',
       'host.docker.internal:host-gateway',
       '--publish',
-      `127.0.0.1:${browserPort}:3000`,
+      '127.0.0.1::3000',
       '--volume',
       `${projectRoot}:/work:ro`,
       '--workdir',
@@ -186,7 +151,10 @@ async function startBrowserServer() {
   });
 
   for (let attempt = 0; attempt < 720; attempt += 1) {
-    if (output.includes('Listening on')) return;
+    if (output.includes('Listening on')) {
+      browserServerEndpoint = `ws://127.0.0.1:${await publishedPort(browserContainer, 3000)}/`;
+      return;
+    }
     if (browserServerError !== undefined) {
       throw new Error(
         `Could not start Playwright: ${browserServerError.message}`,
@@ -203,16 +171,16 @@ async function startBrowserServer() {
 before(async () => {
   await execFileAsync('npm', ['run', 'build']);
   databaseFixture = await createDatabaseFixture();
-  server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-    env: {
-      ...process.env,
+  app = await startAppServer({
+    label: 'Leaderboard test',
+    readyPath: '/leaderboard',
+    env: () => ({
       ADMIN_CREDENTIAL: 'leaderboard-admin-credential-32-chars',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
       DATABASE_URL: databaseFixture.databaseUrl,
       HOST: '0.0.0.0',
       IP_PREFIX_PEPPER: 'leaderboard-prefix-pepper',
       REFERRAL_SIGNING_SECRET: 'leaderboard-referral-secret',
-      PORT: String(appPort),
       RESEND_API_KEY: 'leaderboard-resend-key',
       RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
       RESEND_KEY_MODE: 'test',
@@ -221,20 +189,10 @@ before(async () => {
       RESEND_SENDING_DOMAIN: 'send.valstara.com',
       TURNSTILE_SECRET_KEY: 'leaderboard-turnstile-secret',
       WEEKLY_SEND_UTC: '2@09:00',
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    }),
   });
-  server.stdout.setEncoding('utf8');
-  server.stderr.setEncoding('utf8');
-  const captureServerOutput = (chunk) => {
-    serverOutput = `${serverOutput}${chunk}`.slice(-serverOutputLimit);
-  };
-  server.stdout.on('data', captureServerOutput);
-  server.stderr.on('data', captureServerOutput);
-  server.once('error', (error) => {
-    serverError = error;
-  });
-  await waitForAppServer();
+  hostOrigin = `http://127.0.0.1:${app.port}`;
+  browserOrigin = `http://host.docker.internal:${app.port}`;
   await startBrowserServer();
   browser = await chromium.connect(browserServerEndpoint);
 });
@@ -253,15 +211,7 @@ after(async () => {
     browserServer.kill('SIGTERM');
     await exited;
   }
-  if (
-    server !== undefined &&
-    server.exitCode === null &&
-    server.pid !== undefined
-  ) {
-    const exited = once(server, 'exit');
-    server.kill('SIGTERM');
-    await exited;
-  }
+  await app?.stop();
   await databaseFixture?.dispose();
 });
 

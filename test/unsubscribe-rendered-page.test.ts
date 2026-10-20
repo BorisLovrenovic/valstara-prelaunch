@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawn, execFile } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
@@ -9,6 +9,10 @@ import { promisify } from 'node:util';
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool } from '../src/server/db/pool.ts';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
+import {
+  startAppServer,
+  type StartedAppServer,
+} from './helpers/listen-port.mjs';
 
 const execFileAsync = promisify(execFile);
 const adminDatabaseUrl =
@@ -16,18 +20,6 @@ const adminDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
 const appPassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
-
-async function freePort(): Promise<number> {
-  const server = createServer();
-  server.listen(0, '127.0.0.1');
-  await once(server, 'listening');
-  const address = server.address();
-  assert.ok(address && typeof address !== 'string');
-  const port = address.port;
-  server.close();
-  await once(server, 'close');
-  return port;
-}
 
 test('E6-06 confirmation page keeps GET inert and offers an honest retry after an atomic failure', async () => {
   const name = `valstara_e606page_${randomUUID().replaceAll('-', '')}`;
@@ -50,7 +42,7 @@ test('E6-06 confirmation page keeps GET inert and offers an honest retry after a
     alertBodies.push(JSON.parse(body));
     response.writeHead(200).end();
   });
-  let app: ReturnType<typeof spawn> | undefined;
+  let app: StartedAppServer | undefined;
   try {
     await runMigrations(owner, {
       applicationRolePassword: appPassword,
@@ -100,46 +92,36 @@ test('E6-06 confirmation page keeps GET inert and offers an honest retry after a
     await once(alertServer, 'listening');
     const alertAddress = alertServer.address();
     assert.ok(alertAddress && typeof alertAddress !== 'string');
-    const port = await freePort();
-    app = spawn(
-      process.execPath,
-      ['scripts/fixtures/run-unsubscribe-server.mjs'],
-      {
-        env: {
-          ...process.env,
-          ADMIN_CREDENTIAL: 'unsubscribe-admin-credential-32-characters',
-          ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
-          DATABASE_URL: appUrl.toString(),
-          EMAIL_BASE_URL: `http://127.0.0.1:${port}`,
-          EMAIL_TOKEN_SECRET: process.env.EMAIL_TOKEN_SECRET,
-          HOST: '127.0.0.1',
-          IP_PREFIX_PEPPER: 'unsubscribe-page-test-pepper',
-          P1_ALERT_WEBHOOK_URL: `http://127.0.0.1:${alertAddress.port}/alert`,
-          P1_ALERT_WEBHOOK_TOKEN: 'unsubscribe-alert-test-token',
-          PORT: String(port),
-          REFERRAL_SIGNING_SECRET: 'unsubscribe-page-referral-secret',
-          RESEND_API_KEY: 'unsubscribe-page-resend-key',
-          RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
-          RESEND_KEY_MODE: 'test',
-          RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
-          RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
-          RESEND_SENDING_DOMAIN: 'send.valstara.com',
-          TURNSTILE_SECRET_KEY: 'unsubscribe-turnstile-secret',
-        },
-        stdio: 'ignore',
-      },
-    );
+    // A reserved port below the kernel's ephemeral range (see
+    // test/helpers/listen-port.mjs). Readiness is probed on the bare route, so
+    // the first request carrying the token is the one asserted below.
+    app = await startAppServer({
+      label: 'Unsubscribe page',
+      entry: 'scripts/fixtures/run-unsubscribe-server.mjs',
+      readyPath: '/unsubscribe',
+      env: (port) => ({
+        ADMIN_CREDENTIAL: 'unsubscribe-admin-credential-32-characters',
+        ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+        DATABASE_URL: appUrl.toString(),
+        EMAIL_BASE_URL: `http://127.0.0.1:${port}`,
+        EMAIL_TOKEN_SECRET: process.env.EMAIL_TOKEN_SECRET,
+        HOST: '127.0.0.1',
+        IP_PREFIX_PEPPER: 'unsubscribe-page-test-pepper',
+        P1_ALERT_WEBHOOK_URL: `http://127.0.0.1:${alertAddress.port}/alert`,
+        P1_ALERT_WEBHOOK_TOKEN: 'unsubscribe-alert-test-token',
+        REFERRAL_SIGNING_SECRET: 'unsubscribe-page-referral-secret',
+        RESEND_API_KEY: 'unsubscribe-page-resend-key',
+        RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
+        RESEND_KEY_MODE: 'test',
+        RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+        RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+        RESEND_SENDING_DOMAIN: 'send.valstara.com',
+        TURNSTILE_SECRET_KEY: 'unsubscribe-turnstile-secret',
+      }),
+    });
+    const { port } = app;
     const target = `http://127.0.0.1:${port}/unsubscribe?t=${encodeURIComponent(token)}`;
-    let get: Response | null = null;
-    for (let attempt = 0; attempt < 100; attempt += 1) {
-      try {
-        get = await fetch(target);
-        break;
-      } catch {
-        await new Promise((resolve) => setTimeout(resolve, 25));
-      }
-    }
-    assert.ok(get);
+    const get = await fetch(target);
     assert.equal(get.status, 200);
     assert.equal(get.headers.get('set-cookie'), null);
     const confirmation = await get.text();
@@ -194,11 +176,7 @@ test('E6-06 confirmation page keeps GET inert and offers an honest retry after a
     });
     assert.equal(otherWrite.status, 403);
   } finally {
-    if (app && app.exitCode === null) {
-      const exited = once(app, 'exit');
-      app.kill('SIGTERM');
-      await exited;
-    }
+    await app?.stop();
     if (alertServer.listening) {
       alertServer.close();
       await once(alertServer, 'close');

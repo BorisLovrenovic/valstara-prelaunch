@@ -1,4 +1,6 @@
 ---
+import Button from '../components/button.astro';
+import Container from '../components/container.astro';
 import { layoutCopy } from '../copy/layout.ts';
 import ThemeToggle from '../islands/ThemeToggle.astro';
 import PageViewEmitter from './page-view-emitter.astro';
@@ -17,9 +19,18 @@ import '../styles/tokens.css';
 interface Props {
   title: string;
   description: string;
+  // Trust and legal pages ship no client JavaScript beyond the page-view
+  // emitter (E9-02, E9-03, E9-04), so they render the shell without the toggle.
+  themeToggle?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, themeToggle = true } = Astro.props;
+// Header anchors target the landing sections; elsewhere they lead back to them.
+const sectionPrefix = Astro.url.pathname === '/' ? '' : '/';
+const footerGroups = layoutCopy.footerGroups.map((group) => ({
+  ...group,
+  links: layoutCopy.footerLinks.filter((link) => link.group === group.id),
+}));
 const canonical = canonicalUrl(Astro.url.pathname);
 const image = socialImageUrl(Astro.url.pathname);
 const fallbackImage = socialFallbackImageUrl(
@@ -67,34 +78,88 @@ const fallbackImage = socialFallbackImageUrl(
       type="font/woff2"
       crossorigin
     />
-    <script is:inline set:html={themeBootstrapScript} />
+    {themeToggle && <script is:inline set:html={themeBootstrapScript} />}
   </head>
   <body>
     <a class="skip-link" href="#main-content">{layoutCopy.skipToContent}</a>
     <header class="site-header">
-      <a class="site-name" href="/">{layoutCopy.siteName}</a>
-      <ThemeToggle />
+      <Container class="site-header__inner">
+        <a class="site-name" href="/">{layoutCopy.siteName}</a>
+        <nav class="site-nav" aria-label={layoutCopy.headerNavLabel}>
+          <ul class="site-nav__links">
+            {
+              layoutCopy.headerLinks.map((link) => (
+                <li>
+                  <a href={`${sectionPrefix}${link.anchor}`}>{link.label}</a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+        <div class="site-header__actions">
+          <Button
+            class="site-header__join"
+            href={`${sectionPrefix}${layoutCopy.joinAnchor}`}
+          >
+            {layoutCopy.joinLabel}
+          </Button>
+          {themeToggle && <ThemeToggle />}
+        </div>
+      </Container>
     </header>
     <main id="main-content" class="site-main">
       <slot />
     </main>
     <footer class="site-footer">
-      <nav aria-label={layoutCopy.footerNavLabel}>
-        <ul class="footer-links">
-          {
-            layoutCopy.footerLinks.map((link) => (
-              <li>
-                <a href={link.href}>{link.label}</a>
-              </li>
-            ))
-          }
-        </ul>
-      </nav>
+      <Container class="site-footer__inner">
+        <a class="site-name site-name--footer" href="/">{layoutCopy.siteName}</a
+        >
+        <div class="site-footer__columns">
+          <nav class="site-footer__nav" aria-label={layoutCopy.footerNavLabel}>
+            {
+              footerGroups.map((group) => (
+                <div class="site-footer__column">
+                  <h2 class="site-footer__heading" id={`footer-${group.id}`}>
+                    {group.heading}
+                  </h2>
+                  <ul
+                    class="footer-links"
+                    aria-labelledby={`footer-${group.id}`}
+                  >
+                    {group.links.map((link) => (
+                      <li>
+                        <a href={link.href}>{link.label}</a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            }
+          </nav>
+          <div class="site-footer__column">
+            <h2 class="site-footer__heading">{layoutCopy.contactHeading}</h2>
+            <a
+              class="site-footer__contact"
+              href={`mailto:${layoutCopy.supportEmail}`}
+            >
+              {layoutCopy.supportEmail}
+            </a>
+          </div>
+        </div>
+        <p class="site-footer__legal">{layoutCopy.legalLine}</p>
+      </Container>
     </footer>
   </body>
 </html>
 
 <style>
+  :global(body) {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    background-color: var(--paper);
+  }
+
   .skip-link {
     position: absolute;
     inset-block-start: var(--space-1);
@@ -104,6 +169,7 @@ const fallbackImage = socialFallbackImageUrl(
     color: var(--midnight);
     font-family: var(--font-sans);
     font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
     line-height: var(--leading-1);
     background-color: var(--coral);
     border-radius: var(--radius-control);
@@ -119,26 +185,87 @@ const fallbackImage = socialFallbackImageUrl(
     outline-offset: var(--space-1);
   }
 
+  /* The header is not sticky (E11.5-03), so it never obscures focus. */
   .site-header {
+    padding-block: var(--space-2);
+    background-color: var(--paper);
+  }
+
+  .site-header__inner {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: var(--space-1);
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-2) var(--space-3);
   }
 
   .site-name {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
     color: var(--ink);
     font-family: var(--font-sans);
     font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
     line-height: var(--leading-3);
+    letter-spacing: var(--tracking-normal);
     text-decoration: none;
   }
 
-  .site-name:focus-visible {
+  .site-name:focus-visible,
+  .site-nav__links a:focus-visible {
     outline: medium solid var(--coral);
     outline-offset: var(--space-1);
+  }
+
+  /* Small widths: wordmark, Join and the theme toggle only. The section links
+     are not rendered as a menu; they simply appear from medium width. */
+  .site-nav {
+    display: none;
+  }
+
+  .site-nav__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-nav__links a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+    min-inline-size: var(--tap-min);
+    color: var(--ink);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+    text-decoration: none;
+  }
+
+  .site-nav__links a:hover {
+    color: var(--ink-600);
+    text-decoration: underline;
+  }
+
+  .site-header__actions {
+    display: flex;
+    flex: none;
+    gap: var(--space-1);
+    align-items: center;
+  }
+
+  /* A fixed, token-derived width: the label's width differs slightly between
+     the metric-matched fallback and the loaded face, and the right-aligned
+     actions must not move when the font swaps (zero CLS, E2-02). */
+  .site-header__join {
+    inline-size: calc(var(--space-10) + var(--space-7));
+    padding-inline: var(--space-1);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    white-space: nowrap;
   }
 
   .site-main {
@@ -146,30 +273,110 @@ const fallbackImage = socialFallbackImageUrl(
     padding-block: var(--space-4);
   }
 
+  /* The footer is a full-width midnight band (identity §5.2). */
   .site-footer {
-    padding: var(--space-4) var(--space-3);
-    border-block-start: thin solid var(--line);
+    padding-block: var(--space-8);
+    color: var(--on-midnight);
+    background-color: var(--midnight);
+  }
+
+  .site-footer__inner {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .site-name--footer {
+    justify-self: start;
+    color: var(--on-midnight);
+  }
+
+  .site-footer__columns,
+  .site-footer__nav {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .site-footer__heading {
+    margin: 0;
+    margin-block-end: var(--space-1);
+    color: var(--on-midnight);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
   }
 
   .footer-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-3);
+    display: grid;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  .footer-links a {
-    color: var(--ink-600);
+  .footer-links a,
+  .site-footer__contact {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+    min-inline-size: var(--tap-min);
+    color: var(--on-midnight);
     font-family: var(--font-sans);
     font-size: var(--step-1);
     line-height: var(--leading-1);
   }
 
-  .footer-links a:focus-visible {
+  .footer-links a:hover,
+  .site-footer__contact:hover {
+    color: var(--coral-lift);
+  }
+
+  .footer-links a:focus-visible,
+  .site-footer__contact:focus-visible,
+  .site-name--footer:focus-visible {
     outline: medium solid var(--coral);
     outline-offset: var(--space-1);
+  }
+
+  .site-footer__legal {
+    margin: 0;
+    padding-block-start: var(--space-3);
+    color: var(--on-midnight);
+    font-size: var(--step-0);
+    line-height: var(--leading-0);
+    border-block-start: thin solid var(--ink-600);
+  }
+
+  @media (min-width: 40rem) {
+    .site-header__inner {
+      gap: var(--space-2);
+    }
+
+    .site-nav {
+      display: block;
+      margin-inline-start: auto;
+    }
+
+    .site-header__join {
+      inline-size: calc(var(--space-10) * 2);
+      padding-inline: var(--space-3);
+    }
+
+    .site-nav__links {
+      gap: var(--space-2);
+    }
+
+    .site-footer__columns {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+
+    .site-footer__nav {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .site-nav__links {
+      gap: var(--space-3);
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {

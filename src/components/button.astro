@@ -1,44 +1,71 @@
 ---
 import type { HTMLAttributes } from 'astro/types';
 
-type Props = HTMLAttributes<'button'> & {
-  variant?: 'primary' | 'secondary';
-};
+type Variant = 'primary' | 'secondary' | 'on-midnight';
 
-const {
-  class: className,
-  type = 'button',
-  variant = 'primary',
-  ...attributes
-} = Astro.props;
+// With an href the button is a link styled as a button: navigation stays a
+// native anchor, so it works without JavaScript.
+type Props =
+  | (HTMLAttributes<'button'> & { href?: undefined; variant?: Variant })
+  | (HTMLAttributes<'a'> & { href: string; variant?: Variant });
+
+const { class: className, variant = 'primary', ...attributes } = Astro.props;
+const classes = ['button', `button--${variant}`, className];
 ---
 
-<button
-  {...attributes}
-  type={type}
-  class:list={['button', `button--${variant}`, className]}
->
-  <slot />
-</button>
+{
+  attributes.href === undefined ? (
+    <button
+      {...(attributes as HTMLAttributes<'button'>)}
+      type={(attributes as HTMLAttributes<'button'>).type ?? 'button'}
+      class:list={classes}
+    >
+      <slot />
+    </button>
+  ) : (
+    <a {...(attributes as HTMLAttributes<'a'>)} class:list={classes}>
+      <slot />
+    </a>
+  )
+}
 
 <style>
   .button {
+    box-sizing: border-box;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-1);
-    padding: var(--space-1) var(--space-2);
+    min-block-size: var(--tap-min);
+    min-inline-size: var(--tap-min);
+    padding-block: var(--space-1);
+    padding-inline: var(--space-3);
     color: var(--midnight);
     font-family: var(--font-sans);
     font-size: var(--step-2);
+    font-weight: var(--weight-semibold);
     line-height: var(--leading-2);
+    text-decoration: none;
     background-color: var(--coral);
-    border-color: var(--coral);
+    border: thin solid var(--coral);
     border-radius: var(--radius-control);
+    box-shadow: none;
     cursor: pointer;
-    transition-property: background-color, border-color;
+    transition-property: background-color, border-color, box-shadow, color;
     transition-duration: var(--duration-fast);
     transition-timing-function: var(--ease-out);
+  }
+
+  .button:hover {
+    background-color: var(--coral-lift);
+    border-color: var(--coral-lift);
+    box-shadow: var(--shadow-1);
+  }
+
+  .button:active {
+    background-color: var(--coral);
+    border-color: var(--coral);
+    box-shadow: none;
   }
 
   .button--secondary {
@@ -47,14 +74,27 @@ const {
     border-color: var(--line);
   }
 
-  .button:hover {
-    background-color: var(--coral-lift);
-    border-color: var(--coral-lift);
+  .button--secondary:hover {
+    background-color: var(--surface);
+    border-color: var(--coral);
   }
 
-  .button--secondary:hover {
-    background-color: var(--coral-tint);
+  .button--secondary:active {
+    background-color: var(--paper);
     border-color: var(--coral);
+  }
+
+  .button--on-midnight {
+    color: var(--on-midnight);
+    background-color: var(--midnight);
+    border-color: var(--on-midnight);
+  }
+
+  .button--on-midnight:hover,
+  .button--on-midnight:active {
+    color: var(--midnight);
+    background-color: var(--on-midnight);
+    border-color: var(--on-midnight);
   }
 
   .button:focus-visible {
@@ -62,10 +102,12 @@ const {
     outline-offset: var(--space-1);
   }
 
-  .button:disabled {
+  .button:disabled,
+  .button:disabled:hover {
     color: var(--ink-600);
     background-color: var(--line);
     border-color: var(--line);
+    box-shadow: none;
     cursor: not-allowed;
   }
 

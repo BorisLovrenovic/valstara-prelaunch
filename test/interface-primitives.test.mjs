@@ -236,14 +236,17 @@ after(async () => {
 
 test('all primitives and the icon registry are zero-JavaScript Astro components', async () => {
   const components = await componentSources();
+  // E11.5-03 adds the zero-JS Container and Section layout primitives.
   assert.deepEqual(components.map(({ name }) => name).sort(), [
     'accordion.astro',
     'button.astro',
     'card.astro',
+    'container.astro',
     'field.astro',
     'icon.astro',
     'input.astro',
     'pill.astro',
+    'section.astro',
     'select.astro',
   ]);
 
@@ -271,10 +274,12 @@ test('icons render in currentColor at token sizes with decorative hiding', async
         ]),
       })),
     );
-    assert.equal(icons.length, 5);
+    // E11.5-03: the field error state adds the small alert icon and the
+    // accordion its chevron, after the five registry icons.
+    assert.equal(icons.length, 7);
     assert.deepEqual(
       icons.map((icon) => icon.width),
-      ['16px', '24px', '40px', '24px', '24px'],
+      ['16px', '24px', '40px', '24px', '24px', '16px', '24px'],
     );
     assert.deepEqual(
       icons.map((icon) => icon.height),
@@ -571,4 +576,316 @@ test('all primitives resolve theme tokens in light and dark modes', async () => 
       },
     },
   ]);
+});
+
+// E11.5-03 primitive states, rendered on their own fixture page so the E2-04
+// fixture and its exact assertions above stay as they are.
+// Reduced motion stops the state transitions, so a computed style read right
+// after hover or press is the settled state rather than a frame mid-change.
+async function statesPage(options = {}) {
+  const context = await browser.newContext({
+    reducedMotion: 'reduce',
+    ...options,
+  });
+  const page = await context.newPage();
+  await page.goto(`${browserOrigin}/states`);
+  return { context, page };
+}
+
+function computed(page, selector, properties) {
+  return page.locator(selector).evaluate((element, names) => {
+    const style = globalThis.getComputedStyle(element);
+    return Object.fromEntries(names.map((name) => [name, style[name]]));
+  }, properties);
+}
+
+function resolvedToken(page, property, token) {
+  return page.evaluate(
+    ([name, value]) => {
+      const probe = globalThis.document.createElement('div');
+      probe.style[name] = `var(${value})`;
+      globalThis.document.body.append(probe);
+      const resolved = globalThis.getComputedStyle(probe)[name];
+      probe.remove();
+      return resolved;
+    },
+    [property, token],
+  );
+}
+
+test('buttons show distinct hover, active, focus-visible and disabled states at least the tap minimum', async () => {
+  for (const colorScheme of ['light', 'dark']) {
+    const { context, page } = await statesPage({ colorScheme });
+    try {
+      const properties = ['backgroundColor', 'boxShadow', 'cursor'];
+      const coral = await resolvedToken(page, 'backgroundColor', '--coral');
+      const coralLift = await resolvedToken(
+        page,
+        'backgroundColor',
+        '--coral-lift',
+      );
+      const shadow1 = await resolvedToken(page, 'boxShadow', '--shadow-1');
+
+      const rest = await computed(page, '#primary', properties);
+      assert.equal(rest.backgroundColor, coral, colorScheme);
+      assert.equal(rest.boxShadow, 'none');
+
+      await page.locator('#primary').hover();
+      const hover = await computed(page, '#primary', properties);
+      assert.equal(hover.backgroundColor, coralLift, colorScheme);
+      assert.equal(hover.boxShadow, shadow1);
+
+      await page.mouse.down();
+      const active = await computed(page, '#primary', properties);
+      assert.equal(active.backgroundColor, coral);
+      assert.equal(active.boxShadow, 'none');
+      await page.mouse.up();
+
+      // A fresh load, so the first Tab is keyboard focus with no prior click.
+      await page.reload();
+      await page.keyboard.press('Tab');
+      assert.equal(
+        await page
+          .locator('#primary')
+          .evaluate((element) => element.matches(':focus-visible')),
+        true,
+      );
+      const focus = await computed(page, '#primary', [
+        'outlineStyle',
+        'outlineColor',
+      ]);
+      assert.equal(focus.outlineStyle, 'solid');
+      assert.equal(
+        focus.outlineColor,
+        await resolvedToken(page, 'color', '--coral'),
+      );
+
+      const disabled = await computed(page, '#disabled', properties);
+      assert.equal(
+        disabled.backgroundColor,
+        await resolvedToken(page, 'backgroundColor', '--line'),
+      );
+      assert.equal(disabled.cursor, 'not-allowed');
+      assert.equal(await page.locator('#disabled').isDisabled(), true);
+
+      for (const selector of [
+        '#primary',
+        '#secondary',
+        '#disabled',
+        '#link-button',
+        '#on-midnight',
+      ]) {
+        const box = await page.locator(selector).boundingBox();
+        assert.ok(box.height >= 44 && box.width >= 44, selector);
+      }
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('a button with an href is a native link, and on-midnight reads on the band', async () => {
+  for (const colorScheme of ['light', 'dark']) {
+    const { context, page } = await statesPage({ colorScheme });
+    try {
+      const link = page.locator('#link-button');
+      assert.equal(await link.evaluate((element) => element.tagName), 'A');
+      assert.equal(await link.getAttribute('href'), '/states#target');
+      assert.equal(await link.getAttribute('type'), null);
+
+      const band = await computed(page, '#midnight-section', [
+        'backgroundColor',
+        'color',
+      ]);
+      assert.equal(
+        band.backgroundColor,
+        await resolvedToken(page, 'backgroundColor', '--midnight'),
+      );
+      const onMidnight = await computed(page, '#on-midnight', [
+        'backgroundColor',
+        'color',
+      ]);
+      assert.ok(
+        contrastRatio(onMidnight.color, band.backgroundColor) >= 4.5,
+        colorScheme,
+      );
+      await page.locator('#on-midnight').hover();
+      const hovered = await computed(page, '#on-midnight', [
+        'backgroundColor',
+        'color',
+      ]);
+      assert.notEqual(hovered.backgroundColor, onMidnight.backgroundColor);
+      assert.ok(
+        contrastRatio(hovered.color, hovered.backgroundColor) >= 4.5,
+        colorScheme,
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('input and select error states are distinguishable without colour', async () => {
+  const { context, page } = await statesPage();
+  try {
+    for (const [valid, invalid] of [
+      ['#valid-email', '#invalid-email'],
+      ['#valid-select', '#invalid-select'],
+    ]) {
+      const width = (selector) =>
+        page
+          .locator(selector)
+          .evaluate((element) =>
+            Number.parseFloat(
+              globalThis.getComputedStyle(element).borderTopWidth,
+            ),
+          );
+      assert.ok(
+        (await width(invalid)) > (await width(valid)),
+        `${invalid} has a heavier border, not only a different colour`,
+      );
+      assert.equal(
+        await page.locator(invalid).getAttribute('aria-invalid'),
+        'true',
+      );
+      assert.equal(
+        await page.locator(valid).getAttribute('aria-invalid'),
+        null,
+      );
+    }
+
+    // The error message carries an icon beside its text.
+    const row = page.locator('.field__error-row');
+    assert.equal(await row.locator('svg.icon').count(), 1);
+    assert.equal(
+      await row.locator('svg.icon').getAttribute('aria-hidden'),
+      'true',
+    );
+    assert.ok((await row.locator('svg.icon').boundingBox()).width > 0);
+    assert.equal(
+      await row.locator('[role="alert"]').textContent(),
+      'Enter a valid email address.',
+    );
+    assert.equal(await page.locator('.field__error-row').count(), 1);
+
+    for (const selector of ['#valid-email', '#valid-select']) {
+      assert.ok((await page.locator(selector).boundingBox()).height >= 44);
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test('cards rest on shadow-1 and only an interactive card rises to shadow-2 on hover', async () => {
+  for (const colorScheme of ['light', 'dark']) {
+    const { context, page } = await statesPage({ colorScheme });
+    try {
+      const shadow1 = await resolvedToken(page, 'boxShadow', '--shadow-1');
+      const shadow2 = await resolvedToken(page, 'boxShadow', '--shadow-2');
+      assert.notEqual(shadow1, shadow2);
+      for (const selector of ['#static-card', '#interactive-card']) {
+        assert.equal(
+          (await computed(page, selector, ['boxShadow'])).boxShadow,
+          shadow1,
+          `${selector} at rest in ${colorScheme}`,
+        );
+      }
+      await page.locator('#static-card').hover();
+      assert.equal(
+        (await computed(page, '#static-card', ['boxShadow'])).boxShadow,
+        shadow1,
+      );
+      await page.locator('#interactive-card').hover();
+      assert.equal(
+        (await computed(page, '#interactive-card', ['boxShadow'])).boxShadow,
+        shadow2,
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('the pill is coral-tint, the badge is coral, and both set figures tabular', async () => {
+  const { context, page } = await statesPage();
+  try {
+    const pill = await computed(page, '#pill', [
+      'backgroundColor',
+      'fontVariantNumeric',
+    ]);
+    const badge = await computed(page, '#badge', [
+      'backgroundColor',
+      'fontFamily',
+      'fontVariantNumeric',
+    ]);
+    assert.equal(
+      pill.backgroundColor,
+      await resolvedToken(page, 'backgroundColor', '--coral-tint'),
+    );
+    assert.equal(
+      badge.backgroundColor,
+      await resolvedToken(page, 'backgroundColor', '--coral'),
+    );
+    assert.equal(pill.fontVariantNumeric, 'tabular-nums');
+    assert.equal(badge.fontVariantNumeric, 'tabular-nums');
+    assert.match(badge.fontFamily, /^"JetBrains Mono"/u);
+  } finally {
+    await context.close();
+  }
+});
+
+test('the accordion summary meets the tap minimum and its chevron turns when open', async () => {
+  const { context, page } = await statesPage();
+  try {
+    const summary = page.locator('#accordion summary');
+    assert.ok((await summary.boundingBox()).height >= 44);
+    const chevron = page.locator('#accordion svg.icon');
+    assert.equal(await chevron.getAttribute('aria-hidden'), 'true');
+    const transform = () =>
+      chevron.evaluate(
+        (element) => globalThis.getComputedStyle(element).transform,
+      );
+    assert.equal(await transform(), 'none');
+    await summary.press('Enter');
+    assert.equal(await page.locator('#accordion').getAttribute('open'), '');
+    assert.notEqual(await transform(), 'none');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Container caps content at --container-max with gutters, and Section headings sit left', async () => {
+  for (const [width, gutter, expected] of [
+    [320, 16, 288],
+    [768, 32, 704],
+    [1920, null, 1200],
+  ]) {
+    const { context, page } = await statesPage({
+      viewport: { width, height: 900 },
+    });
+    try {
+      const box = await page
+        .locator('#default-section [data-design-container]')
+        .boundingBox();
+      assert.equal(Math.round(box.width), expected, `${width}px`);
+      if (gutter !== null) assert.equal(Math.round(box.x), gutter);
+      else assert.equal(Math.round(box.x), (width - expected) / 2);
+      assert.equal(
+        await page.evaluate(
+          () => globalThis.document.documentElement.scrollWidth,
+        ),
+        width,
+      );
+      const heading = await computed(
+        page,
+        '#default-section .section__heading',
+        ['textAlign'],
+      );
+      assert.equal(heading.textAlign, 'start');
+      const headingBox = await page.locator('#default-heading').boundingBox();
+      assert.equal(Math.round(headingBox.x), Math.round(box.x));
+    } finally {
+      await context.close();
+    }
+  }
 });

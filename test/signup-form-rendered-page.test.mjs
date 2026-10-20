@@ -6,13 +6,12 @@ import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
 
 import { chromium } from 'playwright';
+import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 
 const execFileAsync = promisify(execFile);
-const appPort = 43_260;
-const browserPort = 43_261;
-const hostOrigin = `http://127.0.0.1:${appPort}`;
-const browserOrigin = `http://host.docker.internal:${appPort}`;
-const browserServerEndpoint = `ws://127.0.0.1:${browserPort}/`;
+// No fixed ports: the app server gets a reserved port below the kernel's
+// ephemeral range and Docker allocates the browser server's host port (see
+// test/helpers/listen-port.mjs).
 const browserContainer = `valstara-signup-playwright-${process.pid}`;
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
@@ -20,22 +19,9 @@ const playwrightImage =
 let browser;
 let browserServer;
 let browserServerError;
-let server;
-
-async function waitForAppServer() {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    try {
-      const response = await globalThis.fetch(hostOrigin);
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // The standalone server has not started yet.
-    }
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
-  }
-  throw new Error('Signup-form rendered-page test server did not start.');
-}
+let app;
+let browserOrigin;
+let browserServerEndpoint;
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -49,7 +35,7 @@ async function startBrowserServer() {
       '--add-host',
       'host.docker.internal:host-gateway',
       '--publish',
-      `127.0.0.1:${browserPort}:3000`,
+      '127.0.0.1::3000',
       '--volume',
       `${projectRoot}:/work:ro`,
       '--workdir',
@@ -79,6 +65,7 @@ async function startBrowserServer() {
 
   for (let attempt = 0; attempt < 720; attempt += 1) {
     if (output.includes('Listening on')) {
+      browserServerEndpoint = `ws://127.0.0.1:${await publishedPort(browserContainer, 3000)}/`;
       return;
     }
     if (browserServerError !== undefined) {
@@ -106,16 +93,15 @@ before(async () => {
   // registered default (signup on), so the form island renders. Most signup
   // requests are intercepted in-browser; the no-JS case deliberately reaches
   // the real route and is rejected at the empty-token boundary before DB work.
-  server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-    env: {
-      ...process.env,
+  app = await startAppServer({
+    label: 'Signup-form rendered-page test',
+    env: () => ({
       ADMIN_CREDENTIAL: 'signup-form-admin-credential-32-chars',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
       DATABASE_URL: 'postgresql://unused:unused@127.0.0.1:5434/unused-signup',
       HOST: '0.0.0.0',
       IP_PREFIX_PEPPER: 'signup-form-prefix-pepper',
       REFERRAL_SIGNING_SECRET: 'signup-form-referral-secret',
-      PORT: String(appPort),
       RESEND_API_KEY: 'signup-form-resend-key',
       RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
       RESEND_KEY_MODE: 'test',
@@ -123,10 +109,9 @@ before(async () => {
       RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
       RESEND_SENDING_DOMAIN: 'send.valstara.com',
       TURNSTILE_SECRET_KEY: 'signup-form-turnstile-secret',
-    },
-    stdio: 'ignore',
+    }),
   });
-  await waitForAppServer();
+  browserOrigin = `http://host.docker.internal:${app.port}`;
   await startBrowserServer();
   browser = await chromium.connect(browserServerEndpoint);
 });
@@ -147,10 +132,7 @@ after(async () => {
     browserServer.kill('SIGTERM');
     await browserServerExited;
   }
-  if (server !== undefined) {
-    server.kill('SIGTERM');
-    await once(server, 'exit');
-  }
+  await app?.stop();
 });
 
 async function openForm({

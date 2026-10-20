@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
-import { execFile, spawn } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { once } from 'node:events';
-import { createServer } from 'node:net';
 import test from 'node:test';
 import { promisify } from 'node:util';
 
@@ -14,6 +12,10 @@ import { sourceBucket } from '../src/server/analytics/funnel.ts';
 import { createSignupService } from '../src/server/subscriber/signup.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
+import {
+  startAppServer,
+  type StartedAppServer,
+} from './helpers/listen-port.mjs';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
@@ -117,14 +119,6 @@ test('submit, verify and refer reconstruct from server transition events alone',
   await executeFile('npm', ['run', 'build']);
   const fixture = await createDatabaseFixture();
   const events: Array<{ name: string; data: Record<string, unknown> }> = [];
-  const listener = createServer();
-  listener.listen(0, '127.0.0.1');
-  await once(listener, 'listening');
-  const address = listener.address();
-  assert.ok(address && typeof address !== 'string');
-  const port = address.port;
-  listener.close();
-  await once(listener, 'close');
   const preload = `
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (url, options) => {
@@ -135,38 +129,8 @@ test('submit, verify and refer reconstruct from server transition events alone',
       return originalFetch(url, options);
     };
   `;
-  const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-    env: {
-      ...process.env,
-      ADMIN_CREDENTIAL: 'funnel-test-admin-credential-32-chars',
-      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
-      DATABASE_URL: fixture.applicationDatabaseUrl,
-      HOST: '127.0.0.1',
-      IP_PREFIX_PEPPER: 'funnel-test-prefix-pepper',
-      NODE_OPTIONS: `--import=data:text/javascript;base64,${Buffer.from(preload).toString('base64')}`,
-      PORT: String(port),
-      REFERRAL_SIGNING_SECRET: 'funnel-test-referral-secret',
-      RESEND_API_KEY: 'funnel-test-resend-key',
-      RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
-      RESEND_KEY_MODE: 'test',
-      RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
-      RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
-      RESEND_SENDING_DOMAIN: 'send.valstara.com',
-      TURNSTILE_SECRET_KEY: 'funnel-test-turnstile-secret',
-    },
-    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
-  });
-  server.on('message', (message: unknown) => {
-    if (typeof message !== 'object' || message === null) return;
-    const captured = message as { type?: string; body?: string };
-    if (captured.type !== 'analytics' || typeof captured.body !== 'string')
-      return;
-    const posted = JSON.parse(captured.body) as {
-      payload: { name: string; data: Record<string, unknown> };
-    };
-    events.push(posted.payload);
-  });
-  const origin = `http://127.0.0.1:${port}`;
+  let app: StartedAppServer | undefined;
+  let origin = '';
   async function postVerification(token: string): Promise<void> {
     const response = await fetch(`${origin}/verify`, {
       method: 'POST',
@@ -185,17 +149,41 @@ test('submit, verify and refer reconstruct from server transition events alone',
     assert.equal(events.length, count);
   }
   try {
-    let ready = false;
-    for (let attempt = 0; attempt < 100; attempt += 1) {
-      try {
-        ready = (await fetch(`${origin}/verify`)).ok;
-      } catch {
-        // The built server has not started yet.
-      }
-      if (ready) break;
-      await new Promise((resolve) => setTimeout(resolve, 25));
-    }
-    assert.equal(ready, true, 'built verification route must start');
+    // A reserved port below the kernel's ephemeral range (see
+    // test/helpers/listen-port.mjs); the IPC channel carries the captured
+    // analytics posts back from the server.
+    app = await startAppServer({
+      label: 'Funnel verification',
+      readyPath: '/verify',
+      ipc: true,
+      env: () => ({
+        ADMIN_CREDENTIAL: 'funnel-test-admin-credential-32-chars',
+        ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+        DATABASE_URL: fixture.applicationDatabaseUrl,
+        HOST: '127.0.0.1',
+        IP_PREFIX_PEPPER: 'funnel-test-prefix-pepper',
+        NODE_OPTIONS: `--import=data:text/javascript;base64,${Buffer.from(preload).toString('base64')}`,
+        REFERRAL_SIGNING_SECRET: 'funnel-test-referral-secret',
+        RESEND_API_KEY: 'funnel-test-resend-key',
+        RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
+        RESEND_KEY_MODE: 'test',
+        RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+        RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+        RESEND_SENDING_DOMAIN: 'send.valstara.com',
+        TURNSTILE_SECRET_KEY: 'funnel-test-turnstile-secret',
+      }),
+    });
+    origin = `http://127.0.0.1:${app.port}`;
+    app.server.on('message', (message: unknown) => {
+      if (typeof message !== 'object' || message === null) return;
+      const captured = message as { type?: string; body?: string };
+      if (captured.type !== 'analytics' || typeof captured.body !== 'string')
+        return;
+      const posted = JSON.parse(captured.body) as {
+        payload: { name: string; data: Record<string, unknown> };
+      };
+      events.push(posted.payload);
+    });
     const tokens: string[] = [];
     const signup = createSignupService(fixture.applicationDatabase, {
       clock: () => now,
@@ -305,11 +293,7 @@ test('submit, verify and refer reconstruct from server transition events alone',
       0.5,
     );
   } finally {
-    if (server.exitCode === null) {
-      const exited = once(server, 'exit');
-      server.kill('SIGTERM');
-      await exited;
-    }
+    await app?.stop();
     await fixture.dispose();
   }
 });

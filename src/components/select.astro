@@ -20,22 +20,48 @@ const { class: className, invalid = false, ...attributes } = Astro.props;
   .select {
     box-sizing: border-box;
     width: 100%;
-    padding: var(--space-1) var(--space-2);
+    min-block-size: var(--tap-min);
+    padding-block: var(--space-1);
+    padding-inline: var(--space-2);
     color: var(--ink);
     font-family: var(--font-sans);
     font-size: var(--step-2);
     line-height: var(--leading-2);
     background-color: var(--surface);
-    border-color: var(--line);
+    border: thin solid var(--ink-600);
     border-radius: var(--radius-control);
+    transition-property: border-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
   }
 
-  .select[aria-invalid='true'] {
-    border-color: var(--error);
+  .select:hover {
+    border-color: var(--ink);
   }
 
   .select:focus-visible {
+    border-color: var(--coral);
     outline: medium solid var(--coral);
     outline-offset: var(--space-1);
+  }
+
+  /* Invalid is shown by a heavier border as well as the error colour, and the
+     Field pairs it with an icon and text, so it never relies on colour. */
+  .select[aria-invalid='true'] {
+    border-color: var(--error);
+    border-width: medium;
+  }
+
+  .select:disabled {
+    color: var(--ink-600);
+    background-color: var(--paper);
+    border-color: var(--line);
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .select {
+      transition-property: none;
+    }
   }
 </style>

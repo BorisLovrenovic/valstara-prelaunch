@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
-import { execFile, spawn } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
-import { createServer as createNetServer } from 'node:net';
 import { promisify } from 'node:util';
 import test from 'node:test';
 
 import { Pool } from 'pg';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
+import { startAppServer } from './helpers/listen-port.mjs';
 
 const executeFile = promisify(execFile);
 const defaultDatabaseUrl =
@@ -15,16 +15,6 @@ const defaultDatabaseUrl =
 const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const serverStartupTimeoutMilliseconds = 30_000;
-
-async function availablePort() {
-  const socket = createNetServer();
-  socket.listen(0, '127.0.0.1');
-  await once(socket, 'listening');
-  const { port } = socket.address();
-  socket.close();
-  await once(socket, 'close');
-  return port;
-}
 
 async function stopServer(server) {
   if (
@@ -38,54 +28,39 @@ async function stopServer(server) {
   await exited;
 }
 
+// The server gets a reserved port below the kernel's ephemeral range and
+// retries only a lost bind race (test/helpers/listen-port.mjs).
 async function startServer(databaseUrl) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const port = await availablePort();
-    const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-      env: {
-        ...process.env,
-        ADMIN_CREDENTIAL: 'rendered-page-admin-credential-32-chars',
-        ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
-        DATABASE_URL: databaseUrl,
-        IP_PREFIX_PEPPER: 'rendered-page-test-prefix-pepper',
-        REFERRAL_SIGNING_SECRET: 'rendered-page-test-referral-secret',
-        RESEND_API_KEY: 'rendered-page-test-resend-key',
-        RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
-        RESEND_KEY_MODE: 'test',
-        RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
-        RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
-        RESEND_SENDING_DOMAIN: 'send.valstara.com',
-        TURNSTILE_SECRET_KEY: 'rendered-page-test-turnstile-secret',
-        HOST: '127.0.0.1',
-        PORT: String(port),
-      },
-      stdio: ['ignore', 'ignore', 'pipe'],
-    });
-    let output = '';
-    let launchError;
-    server.stderr.setEncoding('utf8');
-    server.stderr.on('data', (chunk) => {
-      output = `${output}${chunk}`.slice(-8_192);
-    });
-    server.once('error', (error) => {
-      launchError = error;
-    });
-    const started = {
-      port,
-      server,
-      output: () => output,
-      launchError: () => launchError,
-    };
-    try {
-      return { ...started, signup: await waitForPage(started, '/') };
-    } catch (error) {
-      await stopServer(server);
-      if (!output.includes('EADDRINUSE') || attempt === 2) throw error;
-    }
+  const app = await startAppServer({
+    label: 'Rendered-page test',
+    startupTimeoutMilliseconds: serverStartupTimeoutMilliseconds,
+    env: () => ({
+      ADMIN_CREDENTIAL: 'rendered-page-admin-credential-32-chars',
+      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+      DATABASE_URL: databaseUrl,
+      IP_PREFIX_PEPPER: 'rendered-page-test-prefix-pepper',
+      REFERRAL_SIGNING_SECRET: 'rendered-page-test-referral-secret',
+      RESEND_API_KEY: 'rendered-page-test-resend-key',
+      RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
+      RESEND_KEY_MODE: 'test',
+      RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+      RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+      RESEND_SENDING_DOMAIN: 'send.valstara.com',
+      TURNSTILE_SECRET_KEY: 'rendered-page-test-turnstile-secret',
+      HOST: '127.0.0.1',
+    }),
+  });
+  const started = {
+    port: app.port,
+    server: app.server,
+    output: app.output,
+  };
+  try {
+    return { ...started, signup: await waitForPage(started, '/') };
+  } catch (error) {
+    await app.stop();
+    throw error;
   }
-  throw new Error(
-    'Rendered-page test server could not claim an available port.',
-  );
 }
 
 async function createDatabaseFixture() {
@@ -135,14 +110,6 @@ async function waitForPage(started, pathname) {
   const deadline =
     globalThis.performance.now() + serverStartupTimeoutMilliseconds;
   while (globalThis.performance.now() < deadline) {
-    if (started.launchError() !== undefined) {
-      throw new Error(
-        `Could not start rendered-page test server: ${started.launchError().message}`,
-        {
-          cause: started.launchError(),
-        },
-      );
-    }
     if (
       started.server.exitCode !== null ||
       started.server.signalCode !== null
