@@ -18,6 +18,10 @@ const submitted = {
 } as const;
 
 test('the whole registry has only finite server properties and the approved client fields', () => {
+  assert.deepEqual(
+    eventRegistry.survey_completed.properties.question_set_version.allowed,
+    ['2026-09-08', '2026-10-19'],
+  );
   assert.deepEqual(Object.keys(eventRegistry), [
     'page_view',
     'signup_submitted',

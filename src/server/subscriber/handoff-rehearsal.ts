@@ -1,4 +1,5 @@
 import { accessWindows, milestoneTiers } from '../referral/config.ts';
+import { surveyQuestionSets } from '../survey/questions.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import {
   importRehearsalBatch,
@@ -20,6 +21,7 @@ const customerKeys = [
   'referral_code',
   'confirmed_referrals',
   'category_preference',
+  'survey_version',
   'source',
   'marketing_consent_at',
   'marketing_consent_version',
@@ -88,6 +90,13 @@ function validInstant(value: unknown): value is string {
 export function parseHandoffRecord(value: unknown): HandoffRecord {
   if (!object(value)) throw new TypeError('Handoff record must be an object.');
   if (value.type === 'customer') {
+    const questionSet =
+      typeof value.survey_version === 'string' &&
+      Object.hasOwn(surveyQuestionSets, value.survey_version)
+        ? surveyQuestionSets[
+            value.survey_version as keyof typeof surveyQuestionSets
+          ]
+        : null;
     if (
       !exactKeys(value, customerKeys) ||
       typeof value.email !== 'string' ||
@@ -107,6 +116,16 @@ export function parseHandoffRecord(value: unknown): HandoffRecord {
         (!Array.isArray(value.category_preference) ||
           !value.category_preference.every(
             (item: unknown) => typeof item === 'string',
+          ))) ||
+      !nullableString(value.survey_version) ||
+      (value.survey_version !== null && questionSet === null) ||
+      (value.category_preference !== null &&
+        (questionSet === null ||
+          value.category_preference.some(
+            (item: string) =>
+              !(questionSet.categoryPreference as readonly string[]).includes(
+                item,
+              ),
           ))) ||
       !accessWindows.includes(
         value.access_window as (typeof accessWindows)[number],

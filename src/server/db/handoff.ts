@@ -32,10 +32,14 @@ export interface HandoffSnapshot {
   readonly customerCount: number;
   readonly discountCount: number;
   readonly referralCount: number;
-  customers(afterId: string | null): Promise<readonly AdminExportRow[]>;
+  customers(afterId: string | null): Promise<readonly HandoffCustomerRow[]>;
   discounts(afterId: string | null): Promise<readonly HeldDiscountRow[]>;
   referrals(afterId: string | null): Promise<readonly ConfirmedReferralRow[]>;
   close(): Promise<void>;
+}
+
+export interface HandoffCustomerRow extends AdminExportRow {
+  readonly survey_version: string | null;
 }
 
 export interface UnsubscribeTokenRow {
@@ -227,13 +231,14 @@ export async function openHandoffSnapshot(
       referralCount: counts.referral_count,
       async customers(afterId) {
         if (closed) throw new Error('Handoff snapshot is closed.');
-        return connection.list<AdminExportRow>(
+        return connection.list<HandoffCustomerRow>(
           {
             text: `SELECT s.id, s.email, s.email_normalised, s.referral_tier,
               s.referral_code, s.confirmed_referrals, s.category_preference,
-              s.source, s.marketing_consent_at, s.marketing_consent_version,
+              r.version AS survey_version, s.source, s.marketing_consent_at, s.marketing_consent_version,
               s.marketing_consent_source, s.access_window, s.subslush_customer
-            FROM subscriber s WHERE s.status = 'verified'
+            FROM subscriber s LEFT JOIN survey_response r ON r.subscriber_id = s.id
+            WHERE s.status = 'verified'
               AND ($1::uuid IS NULL OR s.id > $1::uuid)
               AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = s.email_normalised)
             ORDER BY s.id`,

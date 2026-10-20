@@ -14,11 +14,28 @@ export const surveyQuestionSets = Object.freeze({
       'rarely',
     ]),
   }),
+  '2026-10-19': Object.freeze({
+    categoryPreference: Object.freeze([
+      'ai',
+      'subscriptions',
+      'software',
+      'gift_cards',
+      'game_keys',
+      'game_top_ups',
+      'in_game_currency',
+    ]),
+    shoppingFrequency: Object.freeze([
+      'weekly',
+      'monthly',
+      'a few times a year',
+      'rarely',
+    ]),
+  }),
 } as const);
 
 export type SurveyVersion = keyof typeof surveyQuestionSets;
 
-export const currentSurveyVersion: SurveyVersion = '2026-09-08';
+export const currentSurveyVersion: SurveyVersion = '2026-10-19';
 
 export interface SurveyAnswers {
   readonly category_preference: readonly string[] | null;

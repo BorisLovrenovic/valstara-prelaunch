@@ -79,7 +79,7 @@ export const eventRegistry = Object.freeze({
   survey_completed: Object.freeze({
     source: 'server' as const,
     properties: Object.freeze({
-      question_set_version: category('2026-09-08'),
+      question_set_version: category('2026-09-08', '2026-10-19'),
     }),
   }),
   giveaway_entered: Object.freeze({

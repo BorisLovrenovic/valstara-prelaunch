@@ -47,13 +47,14 @@ Architecture decision records for the Valstara pre-launch site. One file per sig
 | 030 | Founder accepts launch legal review risk | Accepted — waived, not reviewed |
 | 020 | Build the waitlist rather than buy a hosted one | Accepted |
 | 023 | Campaign flags with code-level fail-safe defaults | Accepted |
-| 025 | Campaign business config — tier ladder, wave bands, survey v1 | Accepted |
+| 025 | Campaign business config — tier ladder, wave bands, survey v1 | Accepted — survey amended by 031 |
+| 031 | Digital-goods survey taxonomy v2 and versioned handoff | Accepted |
 | 026 | One global giveaway under Hong Kong law, with no jurisdiction gating | Accepted |
 | **Transition** | | |
 | 021 | Launch is a host cutover at the DNS layer, not a deploy | Accepted |
 | 022 | The waitlist database is frozen read-only for 90 days after handoff | Accepted |
 
-27 Accepted · 3 Superseded · 0 Proposed.
+28 Accepted · 3 Superseded · 0 Proposed.
 
 ## Open items
 

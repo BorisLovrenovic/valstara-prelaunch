@@ -4,6 +4,8 @@
 - Date: 2026-09-08
 - Deciders: founder (2026-09-08 — the discount percentages and the survey taxonomy are confirmed as the production values, not placeholders)
 
+**Survey amendment:** ADR-031 makes the digital-goods v2 taxonomy current for new forms. The v1 set below remains accepted for submissions from pages rendered before that change and for stored responses; its claim to be the current canonical storefront taxonomy is superseded by ADR-031. Reward and wave decisions here are unchanged.
+
 ## Context
 Several tickets deliberately defer their business numbers to keep the schema and the
 mechanic decisions clean: E4-05 (the tier ladder), E4-06 (which rewards are cheap

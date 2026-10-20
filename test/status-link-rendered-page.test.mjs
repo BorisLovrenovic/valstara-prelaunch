@@ -309,6 +309,20 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     assert.doesNotMatch(optedInBody, /Turn on marketing email/u);
     assert.match(authenticatedBody, /data-copy-referral/u);
     assert.match(authenticatedBody, /action="\/api\/survey"/u);
+    const surveyForm = authenticatedBody.match(
+      /<form[^>]+action="\/api\/survey"[\s\S]*?<\/form>/u,
+    )?.[0];
+    assert.ok(surveyForm);
+    assert.match(
+      surveyForm,
+      /name="version" type="hidden" value="2026-10-19"/u,
+    );
+    assert.match(surveyForm, /AI tools/u);
+    assert.match(surveyForm, /In-game currency/u);
+    assert.doesNotMatch(
+      surveyForm,
+      />Apparel<|>Footwear<|>Accessories<|>Home<|>Beauty</u,
+    );
     assert.match(authenticatedBody, /action="\/api\/me\/leave"/u);
     for (const forbidden of [
       subscriberId,

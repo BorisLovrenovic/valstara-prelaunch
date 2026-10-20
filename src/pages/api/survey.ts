@@ -12,6 +12,7 @@ import {
   type SurveyCaptureInput,
   type SurveyCaptureOutcome,
 } from '../../server/survey/service.ts';
+import type { SurveyVersion } from '../../server/survey/questions.ts';
 
 export interface SurveyRouteDependencies {
   readonly capture: (
@@ -134,7 +135,7 @@ function defaultDependencies(): SurveyRouteDependencies {
       onFirstAnswer: (question_set_version) => {
         void analytics
           .track('survey_completed', {
-            question_set_version: question_set_version as '2026-09-08',
+            question_set_version: question_set_version as SurveyVersion,
           })
           .catch(() => {});
       },
