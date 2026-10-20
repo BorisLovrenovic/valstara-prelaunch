@@ -274,6 +274,69 @@ test('scanner GETs are inert, then token-authenticated POST verifies and replays
     );
     const verificationBody = await verification.text();
     const replayBody = await replay.text();
+    const surveyForm = verificationBody.match(
+      /<form[^>]+action="\/api\/survey"[\s\S]*?<\/form>/u,
+    )?.[0];
+    assert.ok(surveyForm);
+    assert.match(
+      surveyForm,
+      /name="version" type="hidden" value="2026-10-19"/u,
+    );
+    for (const label of [
+      'AI tools',
+      'Streaming and subscriptions',
+      'Software',
+      'Gift cards',
+      'Game keys',
+      'Game top-ups',
+      'In-game currency',
+      'How often do you buy digital goods?',
+    ])
+      assert.ok(surveyForm.includes(label), label);
+    assert.doesNotMatch(
+      surveyForm,
+      />Apparel<|>Footwear<|>Accessories<|>Home<|>Beauty</u,
+    );
+    const surveyToken = surveyForm.match(
+      /name="token" type="hidden" value="([^"]+)"/u,
+    )?.[1];
+    assert.ok(surveyToken);
+    const surveyResponse = await globalThis.fetch(
+      `http://127.0.0.1:${port}/api/survey`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Origin: `http://127.0.0.1:${port}`,
+        },
+        body: new globalThis.URLSearchParams([
+          ['token', surveyToken],
+          ['version', '2026-10-19'],
+          ['category_preference', 'ai'],
+          ['category_preference', 'game_keys'],
+          ['shopping_frequency', 'weekly'],
+        ]),
+      },
+    );
+    assert.equal(surveyResponse.status, 200);
+    assert.deepEqual(await surveyResponse.json(), {
+      message: 'Your preferences are saved.',
+      status: 'saved',
+    });
+    const storedSurvey = await fixture.database.query(
+      `SELECT r.version,r.answers,s.category_preference
+        FROM survey_response r JOIN subscriber s ON s.id=r.subscriber_id
+        WHERE r.subscriber_id=$1`,
+      [subscriberId],
+    );
+    assert.deepEqual(storedSurvey.rows[0], {
+      version: '2026-10-19',
+      answers: {
+        category_preference: ['ai', 'game_keys'],
+        shopping_frequency: 'weekly',
+      },
+      category_preference: ['ai', 'game_keys'],
+    });
     for (const body of [verificationBody, replayBody]) {
       assert.match(body, /Your email address is verified\./u);
       assert.match(body, /Share your referral link/u);

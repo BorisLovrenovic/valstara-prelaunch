@@ -6,11 +6,15 @@ Two questions on the verification success page — category preference and one q
 ## Feature flag
 `survey.enabled` — default on. Off skips the questions; verification is unaffected.
 
-## Question set (v1 — ADR-025)
-`version` = `"2026-09-08"`. A version change never rewrites earlier responses.
+## Question sets (ADR-025, amended by ADR-031)
+New `/verify` and `/me` renders use version `"2026-10-19"`:
 
-1. **`category_preference`** (multi-select — **this is the handoff export field**): `[apparel, footwear, accessories, home, beauty]`. This is the **canonical** taxonomy — the storefront's Medusa product categories are created to match it at handoff (ADR-025).
-2. **`shopping_frequency`** (single-select, the qualifying question): "How often do you shop this kind of product?" → `[weekly, monthly, a few times a year, rarely]`.
+1. **`category_preference`** (multi-select — **the handoff export field**): `[ai, subscriptions, software, gift_cards, game_keys, game_top_ups, in_game_currency]`. Labels: AI tools, Streaming and subscriptions, Software, Gift cards, Game keys, Game top-ups, In-game currency. These match the storefront navigation categories.
+2. **`shopping_frequency`** (single-select): "How often do you buy digital goods?" → `[weekly, monthly, a few times a year, rarely]`.
+
+Version `"2026-09-08"` remains valid for a form rendered before deployment: categories `[apparel, footwear, accessories, home, beauty]`, with the same four frequency answers. New pages never render the old labels. A version change does not rewrite an earlier response; only an explicit re-answer from `/me` replaces a response and audits that action. No backfill is needed because campaign data does not yet exist.
+
+The launch handoff exports `category_preference` and nullable `survey_version` together. A response saved with either version retains its version; a person with no response exports `survey_version: null`. The admin CSV's fixed field contract is separate.
 
 Skipping either is a first-class outcome, recorded, with no follow-up prompt.
 

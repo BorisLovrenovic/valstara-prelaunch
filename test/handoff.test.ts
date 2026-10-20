@@ -123,6 +123,21 @@ async function subscriber(
       '2027-01-01T12:00:00Z','v1','signup')`,
     values: [id, email, status, wave],
   });
+  if (status === 'verified') {
+    await owner.execute({
+      text: `INSERT INTO survey_response(id,subscriber_id,version,answers,first_answered_at)
+        VALUES ($1,$2,'2026-09-08',$3::jsonb,$4)`,
+      values: [
+        randomUUID(),
+        id,
+        JSON.stringify({
+          category_preference: ['apparel', 'home'],
+          shopping_frequency: 'monthly',
+        }),
+        launch,
+      ],
+    });
+  }
   return id;
 }
 
@@ -157,6 +172,81 @@ async function referralEdge(
     ],
   });
 }
+
+test('handoff exports v1 and v2 categories with versions and imports both twice', async () => {
+  const f = await fixture();
+  try {
+    await subscriber(f.owner, 'survey-v1@example.test', 'verified');
+    const v2Id = await subscriber(
+      f.owner,
+      'survey-v2@example.test',
+      'verified',
+    );
+    await f.owner.execute({
+      text: `UPDATE survey_response SET version='2026-10-19',
+        answers='{"category_preference":["ai","game_keys"],"shopping_frequency":"weekly"}'::jsonb
+        WHERE subscriber_id=$1`,
+      values: [v2Id],
+    });
+    await f.owner.execute({
+      text: `UPDATE subscriber SET category_preference=ARRAY['ai','game_keys'] WHERE id=$1`,
+      values: [v2Id],
+    });
+    const records: HandoffRecord[] = [];
+    await exportHandoff(
+      f.app,
+      'operator',
+      launch,
+      async (record) => {
+        records.push(record);
+      },
+      async () => {},
+    );
+    const customers = records.filter((record) => record.type === 'customer');
+    assert.deepEqual(
+      customers
+        .map(({ email_normalised, category_preference, survey_version }) => ({
+          email_normalised,
+          category_preference,
+          survey_version,
+        }))
+        .sort((a, b) => a.email_normalised.localeCompare(b.email_normalised)),
+      [
+        {
+          email_normalised: 'survey-v1@example.test',
+          category_preference: ['apparel', 'home'],
+          survey_version: '2026-09-08',
+        },
+        {
+          email_normalised: 'survey-v2@example.test',
+          category_preference: ['ai', 'game_keys'],
+          survey_version: '2026-10-19',
+        },
+      ],
+    );
+    const lines = async function* () {
+      for (const record of records) yield JSON.stringify(record);
+    };
+    const first = await importRehearsal(f.scratch, lines());
+    const second = await importRehearsal(f.scratch, lines());
+    assert.equal(first.createdCustomers, 2);
+    assert.equal(second.createdCustomers, 0);
+    const imported = await f.scratch.list<{ payload: HandoffRecord }>(
+      {
+        text: 'SELECT payload FROM rehearsal_customer ORDER BY email_normalised',
+      },
+      2,
+    );
+    assert.deepEqual(
+      imported.map(({ payload }) => payload),
+      [...customers].sort((a, b) =>
+        a.email_normalised.localeCompare(b.email_normalised),
+      ),
+    );
+  } finally {
+    await f.dispose();
+  }
+});
 
 test('unexpired unsubscribe tokens export by hash with origin and import idempotently', async () => {
   const f = await fixture();
@@ -443,6 +533,7 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
       referral_code: null,
       confirmed_referrals: 3,
       category_preference: ['apparel', 'home'],
+      survey_version: '2026-09-08',
       source: 'referral',
       marketing_consent_at: '2027-01-01T12:00:00.000Z',
       marketing_consent_version: 'v1',
@@ -651,6 +742,7 @@ test('handoff import rejects missing or extra fields, a changed deadline, and bo
     referral_code: null,
     confirmed_referrals: 0,
     category_preference: null,
+    survey_version: null,
     source: null,
     marketing_consent_at: null,
     marketing_consent_version: null,
@@ -660,6 +752,28 @@ test('handoff import rejects missing or extra fields, a changed deadline, and bo
     groups: ['wave-1'],
   };
   assert.deepEqual(parseHandoffRecord(customer), customer);
+  assert.throws(
+    () => parseHandoffRecord({ ...customer, survey_version: undefined }),
+    TypeError,
+  );
+  assert.throws(
+    () =>
+      parseHandoffRecord({
+        ...customer,
+        category_preference: ['apparel'],
+        survey_version: '2026-10-19',
+      }),
+    TypeError,
+  );
+  assert.throws(
+    () =>
+      parseHandoffRecord({
+        ...customer,
+        category_preference: ['game_keys'],
+        survey_version: '2026-09-08',
+      }),
+    TypeError,
+  );
   assert.throws(
     () => parseHandoffRecord({ ...customer, country: 'SE' }),
     TypeError,
@@ -1015,6 +1129,7 @@ test('scratch import rejects a conflicting idempotency key and enforces the batc
       referral_code: null,
       confirmed_referrals: 0,
       category_preference: null,
+      survey_version: null,
       source: null,
       marketing_consent_at: null,
       marketing_consent_version: null,
@@ -1131,6 +1246,7 @@ test('seeded property: double import adds no customer, group or deadline-bearing
               referral_code: null,
               confirmed_referrals: 0,
               category_preference: null,
+              survey_version: null,
               source: null,
               marketing_consent_at: null,
               marketing_consent_version: null,

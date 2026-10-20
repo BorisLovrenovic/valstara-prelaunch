@@ -20,6 +20,7 @@ export interface HandoffCustomer {
   readonly referral_code: string | null;
   readonly confirmed_referrals: number;
   readonly category_preference: readonly string[] | null;
+  readonly survey_version: string | null;
   readonly source: string | null;
   readonly marketing_consent_at: string | null;
   readonly marketing_consent_version: string | null;
@@ -177,6 +178,7 @@ export async function exportHandoff(
           referral_code: row.referral_code,
           confirmed_referrals: row.confirmed_referrals,
           category_preference: row.category_preference,
+          survey_version: row.survey_version,
           source: row.source,
           marketing_consent_at: row.marketing_consent_at?.toISOString() ?? null,
           marketing_consent_version: row.marketing_consent_version,

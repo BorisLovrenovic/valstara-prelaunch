@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import test from 'node:test';
 
+import { verificationCopy } from '../src/copy/verification.ts';
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import {
   currentSurveyVersion,
+  surveyQuestionSets,
   validateSurveySubmission,
 } from '../src/server/survey/questions.ts';
 import { createSurveyService } from '../src/server/survey/service.ts';
@@ -138,7 +140,7 @@ async function seedConsumedVerificationToken(
 function submission(token: string) {
   return {
     answers: {
-      category_preference: ['apparel', 'home'],
+      category_preference: ['ai', 'software'],
       shopping_frequency: 'monthly',
     },
     ipPrefixHash: 'hashed-prefix',
@@ -146,6 +148,148 @@ function submission(token: string) {
     version: currentSurveyVersion,
   } as const;
 }
+
+test('v2 validates every digital-goods token and keeps v1 submissions valid', () => {
+  assert.equal(currentSurveyVersion, '2026-10-19');
+  assert.deepEqual(
+    surveyQuestionSets[currentSurveyVersion].categoryPreference,
+    [
+      'ai',
+      'subscriptions',
+      'software',
+      'gift_cards',
+      'game_keys',
+      'game_top_ups',
+      'in_game_currency',
+    ],
+  );
+  assert.deepEqual(
+    verificationCopy.survey.categoryOptions.map((option) => option.value),
+    surveyQuestionSets[currentSurveyVersion].categoryPreference,
+  );
+  assert.deepEqual(
+    verificationCopy.survey.categoryOptions.map((option) => option.label),
+    [
+      'AI tools',
+      'Streaming and subscriptions',
+      'Software',
+      'Gift cards',
+      'Game keys',
+      'Game top-ups',
+      'In-game currency',
+    ],
+  );
+  assert.equal(
+    verificationCopy.survey.frequencyLabel,
+    'How often do you buy digital goods?',
+  );
+  for (const category of surveyQuestionSets[currentSurveyVersion]
+    .categoryPreference) {
+    assert.notEqual(
+      validateSurveySubmission({
+        answers: {
+          category_preference: [category],
+          shopping_frequency: 'monthly',
+        },
+        version: currentSurveyVersion,
+      }),
+      null,
+    );
+  }
+  assert.equal(
+    validateSurveySubmission({
+      answers: {
+        category_preference: ['apparel'],
+        shopping_frequency: 'weekly',
+      },
+      version: currentSurveyVersion,
+    }),
+    null,
+  );
+  assert.notEqual(
+    validateSurveySubmission({
+      answers: {
+        category_preference: ['apparel'],
+        shopping_frequency: 'weekly',
+      },
+      version: '2026-09-08',
+    }),
+    null,
+  );
+});
+
+test('a pre-deploy v1 page submits after v2 deploy without rewriting that response', async () => {
+  const fixture = await createDatabaseFixture();
+  try {
+    const earlierId = await insertSubscriber(fixture.database, 'verified');
+    const earlierToken = tokenValue('predeploy-v1-page');
+    await seedStatusToken(fixture.database, earlierId, earlierToken);
+    const capture = createSurveyService(fixture.applicationDatabase, {
+      clock: () => now,
+      flags: { isEnabled: async () => true },
+    });
+    assert.equal(
+      await capture({
+        answers: {
+          category_preference: ['apparel'],
+          shopping_frequency: 'monthly',
+        },
+        ipPrefixHash: 'predeploy-v1-prefix',
+        token: earlierToken,
+        version: '2026-09-08',
+      }),
+      'saved',
+    );
+    const before = await fixture.database.readOne({
+      text: `SELECT r.answers,r.version,s.category_preference
+        FROM survey_response r JOIN subscriber s ON s.id=r.subscriber_id
+        WHERE r.subscriber_id=$1`,
+      values: [earlierId],
+    });
+    const currentId = await insertSubscriber(fixture.database, 'verified');
+    const currentToken = tokenValue('current-v2-page');
+    await seedStatusToken(fixture.database, currentId, currentToken);
+    assert.equal(
+      await capture({
+        answers: {
+          category_preference: ['ai', 'game_keys'],
+          shopping_frequency: 'monthly',
+        },
+        ipPrefixHash: 'current-v2-prefix',
+        token: currentToken,
+        version: currentSurveyVersion,
+      }),
+      'saved',
+    );
+    assert.deepEqual(
+      await fixture.database.readOne({
+        text: `SELECT r.answers,r.version,s.category_preference
+          FROM survey_response r JOIN subscriber s ON s.id=r.subscriber_id
+          WHERE r.subscriber_id=$1`,
+        values: [earlierId],
+      }),
+      before,
+    );
+    assert.deepEqual(
+      await fixture.database.readOne({
+        text: `SELECT r.answers,r.version,s.category_preference
+          FROM survey_response r JOIN subscriber s ON s.id=r.subscriber_id
+          WHERE r.subscriber_id=$1`,
+        values: [currentId],
+      }),
+      {
+        answers: {
+          category_preference: ['ai', 'game_keys'],
+          shopping_frequency: 'monthly',
+        },
+        version: currentSurveyVersion,
+        category_preference: ['ai', 'game_keys'],
+      },
+    );
+  } finally {
+    await fixture.dispose();
+  }
+});
 
 test('answers validate and persist against their named version across a question-set change', async () => {
   const fixture = await createDatabaseFixture();
@@ -268,7 +412,7 @@ test('answers validate and persist against their named version across a question
     assert.notEqual(
       validateSurveySubmission({
         answers: {
-          category_preference: ['home'],
+          category_preference: ['software'],
           shopping_frequency: null,
         },
         version: currentSurveyVersion,
@@ -386,7 +530,7 @@ test('resubmission replaces one response, updates the handoff field, and audits 
       await capture({
         ...submission(token),
         answers: {
-          category_preference: ['beauty'],
+          category_preference: ['gift_cards'],
           shopping_frequency: 'rarely',
         },
         requestId: 'survey-request-2',
@@ -409,10 +553,10 @@ test('resubmission replaces one response, updates the handoff field, and audits 
     });
     assert.deepEqual(response, {
       answers: {
-        category_preference: ['beauty'],
+        category_preference: ['gift_cards'],
         shopping_frequency: 'rarely',
       },
-      category_preference: ['beauty'],
+      category_preference: ['gift_cards'],
       version: currentSurveyVersion,
     });
     assert.equal(
@@ -473,7 +617,7 @@ test('survey completion emits once: skip, first answer, replacement, and skip th
       await capture({
         ...submission(firstToken),
         answers: {
-          category_preference: ['beauty'],
+          category_preference: ['gift_cards'],
           shopping_frequency: 'rarely',
         },
       }),
