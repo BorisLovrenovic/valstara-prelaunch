@@ -1,18 +1,28 @@
 ---
-export type IconName = 'star' | 'check' | 'arrow-right' | 'shield' | 'link';
+export type IconName =
+  | 'star'
+  | 'check'
+  | 'arrow-right'
+  | 'shield'
+  | 'link'
+  | 'alert'
+  | 'chevron-down'
+  | 'sun'
+  | 'moon';
 export type IconSize = 'sm' | 'md' | 'lg';
 
 interface Props {
   name: IconName;
   size?: IconSize;
   label?: string;
+  class?: string;
 }
 
-const { name, size = 'md', label } = Astro.props;
+const { name, size = 'md', label, class: className } = Astro.props;
 ---
 
 <svg
-  class:list={['icon', `icon--${size}`]}
+  class:list={['icon', `icon--${size}`, className]}
   viewBox="0 0 24 24"
   xmlns="http://www.w3.org/2000/svg"
   aria-hidden={label ? undefined : 'true'}
@@ -71,6 +81,52 @@ const { name, size = 'md', label } = Astro.props;
         stroke="currentColor"
         stroke-width="2"
         stroke-linecap="round"
+      />
+    )
+  }
+  {
+    name === 'alert' && (
+      <path
+        d="M12 3 22 20H2L12 3Zm0 6.5v5m0 2.5v.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    )
+  }
+  {
+    name === 'chevron-down' && (
+      <path
+        d="m6 9 6 6 6-6"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    )
+  }
+  {
+    name === 'sun' && (
+      <path
+        d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0-5v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      />
+    )
+  }
+  {
+    name === 'moon' && (
+      <path
+        d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linejoin="round"
       />
     )
   }

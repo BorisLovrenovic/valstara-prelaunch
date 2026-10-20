@@ -8,12 +8,48 @@ export const designThemes = Object.freeze(['light', 'dark']);
 // it to the complete rendered-page inventory.
 export const enforcedPages = Object.freeze([]);
 
+// The site shell: BaseLayout's header and footer landmarks. E11.5-03 enforces
+// the layout rules on these regions on every rendered page, while page bodies
+// join `enforcedPages` in the ticket that redesigns them.
+export const shellRegions = Object.freeze(['body > header', 'body > footer']);
+
 export async function checkPageLayout(page) {
-  return page.evaluate(() => {
+  return checkLayout(page, null);
+}
+
+export async function checkShellLayout(page) {
+  return checkLayout(page, shellRegions);
+}
+
+async function checkLayout(page, regions) {
+  return page.evaluate((scopes) => {
     const issues = [];
     const viewportWidth = document.documentElement.clientWidth;
-    if (document.documentElement.scrollWidth > viewportWidth + 1) {
-      issues.push('horizontal overflow');
+    const roots =
+      scopes === null
+        ? [document.body]
+        : scopes.flatMap((scope) => {
+            const found = [...document.querySelectorAll(scope)];
+            if (found.length === 0) issues.push(`missing region: ${scope}`);
+            return found;
+          });
+    const within = (selector) =>
+      roots.flatMap((root) => [...root.querySelectorAll(selector)]);
+    if (scopes === null) {
+      if (document.documentElement.scrollWidth > viewportWidth + 1) {
+        issues.push('horizontal overflow');
+      }
+    } else {
+      for (const root of roots) {
+        const box = root.getBoundingClientRect();
+        if (
+          root.scrollWidth > root.clientWidth + 1 ||
+          box.left < -1 ||
+          box.right > viewportWidth + 1
+        ) {
+          issues.push(`horizontal overflow: ${root.tagName.toLowerCase()}`);
+        }
+      }
     }
 
     const visible = (element) => {
@@ -24,7 +60,7 @@ export async function checkPageLayout(page) {
         element.getClientRects().length > 0
       );
     };
-    for (const element of document.querySelectorAll('body *')) {
+    for (const element of within('*')) {
       if (!visible(element)) continue;
       const style = getComputedStyle(element);
       if (
@@ -44,7 +80,7 @@ export async function checkPageLayout(page) {
     }
 
     if (viewportWidth < 640) {
-      for (const element of document.querySelectorAll(
+      for (const element of within(
         'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"]',
       )) {
         if (!visible(element) || element.disabled) continue;
@@ -57,7 +93,7 @@ export async function checkPageLayout(page) {
       }
     }
 
-    for (const [imageIndex, image] of [...document.images].entries()) {
+    for (const [imageIndex, image] of within('img').entries()) {
       const intrinsicWidth = Number(image.getAttribute('width'));
       const intrinsicHeight = Number(image.getAttribute('height'));
       if (
@@ -72,11 +108,18 @@ export async function checkPageLayout(page) {
       }
     }
 
-    const containers = [
-      ...document.querySelectorAll('[data-design-container]'),
-    ];
-    if (containers.length === 0) issues.push('missing design container');
-    for (const element of document.querySelectorAll('[data-grid-align]')) {
+    if (scopes === null) {
+      if (within('[data-design-container]').length === 0)
+        issues.push('missing design container');
+    } else {
+      for (const root of roots) {
+        if (root.querySelector('[data-design-container]') === null)
+          issues.push(
+            `missing design container: ${root.tagName.toLowerCase()}`,
+          );
+      }
+    }
+    for (const element of within('[data-grid-align]')) {
       const container = element.closest('[data-design-container]');
       if (!container) {
         issues.push('grid item outside container');
@@ -93,11 +136,9 @@ export async function checkPageLayout(page) {
       }
     }
 
-    const focusables = [
-      ...document.querySelectorAll(
-        'a[href],button,input:not([type="hidden"]),select,textarea,summary,[tabindex]:not([tabindex="-1"])',
-      ),
-    ].filter((element) => visible(element) && !element.disabled);
+    const focusables = within(
+      'a[href],button,input:not([type="hidden"]),select,textarea,summary,[tabindex]:not([tabindex="-1"])',
+    ).filter((element) => visible(element) && !element.disabled);
     for (const element of focusables) {
       element.focus({ preventScroll: true });
       element.scrollIntoView({ block: 'end', inline: 'nearest' });
@@ -124,7 +165,7 @@ export async function checkPageLayout(page) {
       }
     }
     return [...new Set(issues)];
-  });
+  }, regions);
 }
 
 export async function assertEnforcedPages(browser, origin) {
@@ -142,6 +183,30 @@ export async function assertEnforcedPages(browser, origin) {
           if (issues.length)
             throw new Error(
               `${route} ${width}px ${theme}: ${issues.join(', ')}`,
+            );
+        } finally {
+          await context.close();
+        }
+      }
+    }
+  }
+}
+
+export async function assertShellLayout(browser, origin, routes) {
+  for (const route of routes) {
+    for (const width of designWidths) {
+      for (const theme of designThemes) {
+        const context = await browser.newContext({
+          viewport: { width, height: 900 },
+          colorScheme: theme,
+        });
+        try {
+          const page = await context.newPage();
+          await page.goto(new URL(route, origin).href);
+          const issues = await checkShellLayout(page);
+          if (issues.length)
+            throw new Error(
+              `shell on ${route} ${width}px ${theme}: ${issues.join(', ')}`,
             );
         } finally {
           await context.close();

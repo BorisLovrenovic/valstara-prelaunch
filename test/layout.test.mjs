@@ -112,19 +112,91 @@ test('each page drives its own title and description through the layout props', 
   }
 });
 
-test('the footer copy links to the permanent trust and legal URLs', async () => {
+// Rewritten in E11.5-03: the footer became two link columns, Company and Legal,
+// so the link set grew. The five permanent URLs (E2-05) are still asserted.
+test('the footer copy groups the permanent URLs into Company and Legal, with the legal line', async () => {
   const source = await copySource();
+  const { layoutCopy } = await import('../src/copy/layout.ts');
 
-  // Every footer entry declares a non-empty label alongside its href.
   const entries = [
-    ...source.matchAll(/\{\s*href:\s*'([^']+)',\s*label:\s*'([^']+)'\s*\}/gu),
+    ...source.matchAll(
+      /\{\s*group:\s*'([^']+)',\s*href:\s*'([^']+)',\s*label:\s*'([^']+)'\s*\}/gu,
+    ),
   ];
   assert.deepEqual(
-    entries.map((entry) => entry[1]),
-    ['/legit', '/guarantee', '/about', '/terms', '/privacy'],
+    entries.map(([, group, href]) => [group, href]),
+    [
+      ['company', '/about'],
+      ['company', '/legit'],
+      ['company', '/guarantee'],
+      ['legal', '/terms'],
+      ['legal', '/privacy'],
+      ['legal', '/privacy/storage'],
+      ['legal', '/giveaway/rules'],
+    ],
   );
-  for (const [, href, label] of entries) {
+  const hrefs = entries.map((entry) => entry[2]);
+  for (const permanent of [
+    '/legit',
+    '/guarantee',
+    '/about',
+    '/terms',
+    '/privacy',
+  ]) {
+    assert.ok(hrefs.includes(permanent), `the footer keeps ${permanent}`);
+  }
+  for (const [, , href, label] of entries) {
     assert.ok(label.length > 0, `${href} has a label`);
   }
+  assert.deepEqual(
+    layoutCopy.footerGroups.map((group) => [group.id, group.heading]),
+    [
+      ['company', 'Company'],
+      ['legal', 'Legal'],
+    ],
+  );
+  assert.equal(layoutCopy.supportEmail, 'support@valstara.com');
+  // identity-guidelines §3.4, verbatim.
+  assert.equal(
+    layoutCopy.legalLine,
+    'Valstara is a trading brand of 3NITY Digital Limited, registered in Hong Kong.',
+  );
   assert.match(source, /skipToContent:\s*'[^']+'/u);
+});
+
+test('the header copy carries the four landing anchors and the Join action', async () => {
+  const { layoutCopy } = await import('../src/copy/layout.ts');
+  assert.deepEqual(
+    layoutCopy.headerLinks.map((link) => [link.anchor, link.label]),
+    [
+      ['#how', 'How it works'],
+      ['#rewards', 'What you get'],
+      ['#guarantee', 'Guarantee'],
+      ['#faq', 'FAQ'],
+    ],
+  );
+  assert.equal(layoutCopy.joinAnchor, '#join');
+  assert.equal(layoutCopy.joinLabel, 'Join the waitlist');
+});
+
+test('header and footer copy stays within the E11.5 copy budget', async () => {
+  const { layoutCopy } = await import('../src/copy/layout.ts');
+  const words = (text) => text.trim().split(/\s+/u).length;
+  // Headings at most 7 words; link, button and badge-sized text at most 15;
+  // a supporting line at most 20.
+  for (const heading of [
+    ...layoutCopy.footerGroups.map((group) => group.heading),
+    layoutCopy.contactHeading,
+  ]) {
+    assert.ok(words(heading) <= 7, heading);
+  }
+  for (const label of [
+    ...layoutCopy.headerLinks.map((link) => link.label),
+    ...layoutCopy.footerLinks.map((link) => link.label),
+    layoutCopy.joinLabel,
+    layoutCopy.siteName,
+  ]) {
+    assert.ok(words(label) <= 15, label);
+  }
+  assert.ok(words(layoutCopy.legalLine) <= 20);
 });

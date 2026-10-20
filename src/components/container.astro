@@ -1,0 +1,45 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'div'>;
+
+const { class: className, ...attributes } = Astro.props;
+---
+
+<div class="container">
+  <div
+    {...attributes}
+    class:list={['container__content', className]}
+    data-design-container
+  >
+    <slot />
+  </div>
+</div>
+
+<style>
+  /* A three-track grid centres the content track without margins: the outer
+     tracks are the gutters and the content track is capped at
+     --container-max. The content element is the grid edge the layout checks
+     align to (data-grid-align). */
+  .container {
+    display: grid;
+    grid-template-columns:
+      minmax(var(--gutter), 1fr)
+      minmax(0, var(--container-max))
+      minmax(var(--gutter), 1fr);
+  }
+
+  .container__content {
+    grid-column: 2;
+    min-inline-size: 0;
+  }
+
+  @media (min-width: 40rem) {
+    .container {
+      grid-template-columns:
+        minmax(var(--gutter-wide), 1fr)
+        minmax(0, var(--container-max))
+        minmax(var(--gutter-wide), 1fr);
+    }
+  }
+</style>

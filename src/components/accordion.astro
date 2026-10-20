@@ -1,5 +1,6 @@
 ---
 import type { HTMLAttributes } from 'astro/types';
+import Icon from './icon.astro';
 
 type Props = HTMLAttributes<'details'> & {
   summary: string;
@@ -9,7 +10,10 @@ const { class: className, summary, ...attributes } = Astro.props;
 ---
 
 <details {...attributes} class:list={['accordion', className]}>
-  <summary class="accordion__summary">{summary}</summary>
+  <summary class="accordion__summary">
+    <span class="accordion__question">{summary}</span>
+    <Icon name="chevron-down" class="accordion__chevron" />
+  </summary>
   <div class="accordion__content">
     <slot />
   </div>
@@ -17,18 +21,31 @@ const { class: className, summary, ...attributes } = Astro.props;
 
 <style>
   .accordion {
-    padding: var(--space-2);
     color: var(--ink);
     font-family: var(--font-sans);
     background-color: var(--surface);
-    border: thin solid var(--line);
     border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1);
   }
 
   .accordion__summary {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: space-between;
+    min-block-size: var(--tap-min);
+    padding-block: var(--space-1);
+    padding-inline: var(--space-3);
     font-size: var(--step-2);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-2);
+    list-style: none;
     cursor: pointer;
+    border-radius: var(--radius-card);
+  }
+
+  .accordion__summary::-webkit-details-marker {
+    display: none;
   }
 
   .accordion__summary:focus-visible {
@@ -36,9 +53,27 @@ const { class: className, summary, ...attributes } = Astro.props;
     outline-offset: var(--space-1);
   }
 
+  .accordion :global(.accordion__chevron) {
+    color: var(--coral);
+    transition-property: transform;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .accordion[open] :global(.accordion__chevron) {
+    transform: rotate(180deg);
+  }
+
   .accordion__content {
-    padding-block-start: var(--space-2);
+    padding-block-end: var(--space-3);
+    padding-inline: var(--space-3);
     font-size: var(--step-2);
     line-height: var(--leading-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .accordion :global(.accordion__chevron) {
+      transition-property: none;
+    }
   }
 </style>

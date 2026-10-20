@@ -9,6 +9,8 @@ import { chromium } from 'playwright';
 import {
   assertEnforcedPages,
   checkPageLayout,
+  checkShellLayout,
+  shellRegions,
   designThemes,
   designWidths,
   enforcedPages,
@@ -198,6 +200,94 @@ test('contact-sheet actions can reach a named interactive state without serialis
     await assert.rejects(
       runContactSheetActions(page, [{ action: 'evaluate', selector: '#show' }]),
     );
+  } finally {
+    await page.close();
+  }
+});
+
+// E11.5-03: the shell check applies the same rules to the header and footer.
+const shell = (header, main, footer) =>
+  `<!doctype html><html><head><style>body{margin:0}.c{margin:0 16px}.t{display:block;width:44px;height:44px}</style></head><body><header><div class="c" data-design-container>${header}</div></header><main>${main}</main><footer><div class="c" data-design-container>${footer}</div></footer></body></html>`;
+const target = '<a class="t" href="#">Go</a>';
+
+test('the shell check covers exactly the header and footer landmarks', async () => {
+  assert.deepEqual(shellRegions, ['body > header', 'body > footer']);
+  const page = await browser.newPage({ viewport: { width: 320, height: 600 } });
+  try {
+    await page.setContent(shell(target, target, target));
+    assert.deepEqual(await checkShellLayout(page), []);
+
+    // A body defect is outside the shell, so the shell check leaves it to the
+    // page's own enforcement, while the full-page check still sees it.
+    await page.setContent(
+      shell(
+        target,
+        '<a href="#" style="display:block;width:30px;height:30px">x</a><p style="width:400px">wide</p>',
+        target,
+      ),
+    );
+    assert.deepEqual(await checkShellLayout(page), []);
+    const fullPage = await checkPageLayout(page);
+    assert.ok(fullPage.some((issue) => issue.includes('small target')));
+    assert.ok(fullPage.includes('horizontal overflow'));
+  } finally {
+    await page.close();
+  }
+});
+
+test('planted shell defects fail the shell check in the header and in the footer', async () => {
+  const page = await browser.newPage({ viewport: { width: 320, height: 300 } });
+  try {
+    const small =
+      '<a href="#" style="display:block;width:30px;height:30px">x</a>';
+    await page.setContent(shell(small, '', target));
+    assert.ok(
+      (await checkShellLayout(page)).some((issue) =>
+        issue.includes('small target'),
+      ),
+    );
+    await page.setContent(shell(target, '', small));
+    assert.ok(
+      (await checkShellLayout(page)).some((issue) =>
+        issue.includes('small target'),
+      ),
+    );
+    await page.setContent(
+      shell(`${target}<p style="width:400px">wide</p>`, '', target),
+    );
+    assert.ok(
+      (await checkShellLayout(page)).includes('horizontal overflow: header'),
+    );
+    await page.setContent(
+      shell(
+        target,
+        '<div style="height:900px"></div>',
+        `${target}<div style="position:fixed;bottom:0;left:0;width:100%;height:120px;background:black"></div>`,
+      ).replace(
+        '</footer>',
+        '<div style="height:600px"></div><a class="t" href="#">Late</a></footer>',
+      ),
+    );
+    assert.ok(
+      (await checkShellLayout(page)).some((issue) =>
+        issue.includes('focus obscured'),
+      ),
+    );
+    await page.setContent(
+      shell(target, '', target).replace(' data-design-container', ''),
+    );
+    assert.ok(
+      (await checkShellLayout(page)).includes(
+        'missing design container: header',
+      ),
+    );
+    await page.setContent(
+      '<!doctype html><html><body><main><a class="t" href="#">Go</a></main></body></html>',
+    );
+    assert.deepEqual(await checkShellLayout(page), [
+      'missing region: body > header',
+      'missing region: body > footer',
+    ]);
   } finally {
     await page.close();
   }

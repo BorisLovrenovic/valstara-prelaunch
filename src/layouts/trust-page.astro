@@ -1,16 +1,5 @@
 ---
-import { layoutCopy } from '../copy/layout.ts';
-import { seoCopy } from '../copy/seo.ts';
-import PageViewEmitter from './page-view-emitter.astro';
-import {
-  canonicalUrl,
-  jsonLd,
-  organisationData,
-  socialFallbackImageUrl,
-  socialImageUrl,
-  socialPageKind,
-} from '../server/seo.ts';
-import '../styles/tokens.css';
+import BaseLayout from './BaseLayout.astro';
 
 interface Props {
   title: string;
@@ -18,127 +7,28 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
-const canonical = canonicalUrl(Astro.url.pathname);
-const image = socialImageUrl(Astro.url.pathname);
-const fallbackImage = socialFallbackImageUrl(
-  socialPageKind(Astro.url.pathname),
-);
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
-    <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content={seoCopy.organisationName} />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical} />
-    <meta property="og:image" content={image} />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content={title} />
-    <meta property="og:image" content={fallbackImage} />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content={seoCopy.organisationName} />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={title} />
-    <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={image} />
-    <meta name="twitter:image:alt" content={title} />
-    <PageViewEmitter />
-    <script
-      is:inline
-      type="application/ld+json"
-      set:html={jsonLd(organisationData())}
-    />
-    <link
-      rel="preload"
-      href="/fonts/instrument-sans-latin-wght-normal.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
-    />
-  </head>
-  <body>
-    <a class="skip-link" href="#main-content">{layoutCopy.skipToContent}</a>
-    <header class="site-header">
-      <a class="site-name" href="/">{layoutCopy.siteName}</a>
-    </header>
-    <main id="main-content" class="site-main">
-      <article class="trust-content">
-        <slot />
-      </article>
-    </main>
-    <footer class="site-footer">
-      <nav aria-label={layoutCopy.footerNavLabel}>
-        <ul class="footer-links">
-          {
-            layoutCopy.footerLinks.map((link) => (
-              <li>
-                <a href={link.href}>{link.label}</a>
-              </li>
-            ))
-          }
-        </ul>
-      </nav>
-    </footer>
-  </body>
-</html>
+{
+  /*
+  Trust pages share the site shell. They ship no client JavaScript beyond the
+  page-view emitter (E9-02), so the shell renders without the theme toggle.
+*/
+}
+<BaseLayout title={title} description={description} themeToggle={false}>
+  <article class="trust-content">
+    <slot />
+  </article>
+</BaseLayout>
 
 <style is:global>
-  body {
-    margin: 0;
-    color: var(--ink);
-    background: var(--paper);
-    font-family: var(--font-sans);
-  }
-
-  .skip-link {
-    position: absolute;
-    inset-block-start: var(--space-1);
-    inset-inline-start: var(--space-1);
-    padding: var(--space-1) var(--space-2);
-    color: var(--midnight);
-    background: var(--coral);
-    transform: translateY(-200%);
-  }
-
-  .skip-link:focus-visible {
-    transform: translateY(0);
-  }
-
-  .site-header,
-  .site-footer {
-    padding: var(--space-3);
-  }
-
-  .site-header {
-    border-block-end: thin solid var(--line);
-  }
-
-  .site-footer {
-    border-block-start: thin solid var(--line);
-  }
-
-  .site-name,
-  .footer-links a,
   .trust-content a {
     color: var(--ink-600);
   }
 
-  a:focus-visible {
+  .trust-content a:focus-visible {
     outline: medium solid var(--coral);
     outline-offset: var(--space-1);
-  }
-
-  .site-main {
-    padding: var(--space-4) var(--space-3);
   }
 
   .trust-content {
@@ -175,14 +65,5 @@ const fallbackImage = socialFallbackImageUrl(
     padding: var(--space-1);
     border-block-end: thin solid var(--line);
     text-align: start;
-  }
-
-  .footer-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    padding: 0;
-    margin: 0;
-    list-style: none;
   }
 </style>

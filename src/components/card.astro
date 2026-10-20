@@ -1,12 +1,18 @@
 ---
 import type { HTMLAttributes } from 'astro/types';
 
-type Props = HTMLAttributes<'article'>;
+type Props = HTMLAttributes<'article'> & {
+  // An interactive card (one that is, or wraps, a single link) lifts on hover.
+  interactive?: boolean;
+};
 
-const { class: className, ...attributes } = Astro.props;
+const { class: className, interactive = false, ...attributes } = Astro.props;
 ---
 
-<article {...attributes} class:list={['card', className]}>
+<article
+  {...attributes}
+  class:list={['card', interactive && 'card--interactive', className]}
+>
   <slot />
 </article>
 
@@ -16,7 +22,24 @@ const { class: className, ...attributes } = Astro.props;
     color: var(--ink);
     font-family: var(--font-sans);
     background-color: var(--surface);
-    border: thin solid var(--line);
     border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1);
+  }
+
+  .card--interactive {
+    transition-property: box-shadow;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .card--interactive:hover,
+  .card--interactive:focus-within {
+    box-shadow: var(--shadow-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card--interactive {
+      transition-property: none;
+    }
   }
 </style>
