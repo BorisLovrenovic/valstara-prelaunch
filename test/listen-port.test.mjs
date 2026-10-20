@@ -117,7 +117,7 @@ test('a server that never reports listening is not taken for ready, even if its 
       startAppServer({
         label: 'Fixture',
         entry: fixtureEntry,
-        env: () => ({ FIXTURE_SILENT: '1', HOST: '0.0.0.0' }),
+        env: () => ({ LISTEN_PORT_FIXTURE_SILENT: '1', HOST: '0.0.0.0' }),
         reservePort: async () => port,
         startupTimeoutMilliseconds: 1_000,
       }),
@@ -136,7 +136,7 @@ test('a startup failure other than a bind race is not retried', async () => {
     startAppServer({
       label: 'Fixture',
       entry: fixtureEntry,
-      env: () => ({ FIXTURE_CRASH: '1' }),
+      env: () => ({ LISTEN_PORT_FIXTURE_CRASH: '1' }),
       reservePort: async () => {
         reservations += 1;
         return reserveListenPort();
