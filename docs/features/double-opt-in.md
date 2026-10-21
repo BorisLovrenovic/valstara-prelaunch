@@ -28,3 +28,12 @@ Token replayed → **renders the same success page.** An already-verified person
 
 ## Telemetry
 Verification rate by cohort and source, time-to-verify distribution, reminder attribution, expiry count, resend requests, per-mailbox-provider verification rate from the weekly seed tests.
+
+## E11.5-07 verification page
+The inert GET presents one confirmation card. Token-authenticated POST still
+commits verification once, and a replay renders the same success state. The
+success page shows the assigned access wave, the shared referral status and
+configured tier ladder when referrals are enabled, the v2 survey when enabled,
+and the bearer status link. Invalid and
+expired tokens retain one generic message and the Turnstile-protected
+request-new-link form. The page remains private and no-store.

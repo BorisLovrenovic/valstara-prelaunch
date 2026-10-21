@@ -86,7 +86,9 @@ export async function captureContactSheet({
           try {
             const page = await context.newPage();
             const response = await page.goto(url.href, {
-              waitUntil: 'networkidle',
+              // Protected forms keep Turnstile active after load; waiting for
+              // network silence can hang a contact sheet on those states.
+              waitUntil: 'load',
             });
             if (!response?.ok())
               throw new Error(

@@ -17,6 +17,11 @@ Version `"2026-09-08"` remains valid for a form rendered before deployment: cate
 The launch handoff exports `category_preference` and nullable `survey_version` together. A response saved with either version retains its version; a person with no response exports `survey_version: null`. The admin CSV's fixed field contract is separate.
 
 Skipping either is a first-class outcome, recorded, with no follow-up prompt.
+On the redesigned verification success page (E11.5-07), category options
+appear as selectable chips and frequency options as segmented choices. Save
+and Skip have equal button weight. With JavaScript, both submit through the
+existing same-origin survey route without a page load; Skip sends no selected
+answers.
 
 ## User flows
 1. **Ask** — on the verification success page, below the referral link, answerable in one interaction each.
