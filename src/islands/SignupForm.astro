@@ -108,7 +108,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     }
   </form>
 
-  <div
+  <section
     class="signup-success"
     data-success
     role="status"
@@ -116,7 +116,70 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     tabindex="-1"
     hidden
   >
-  </div>
+    <span class="signup-success__icon" aria-hidden="true">✉</span>
+    <h2>{signupFormCopy.successHeading}</h2>
+    <p data-success-address></p>
+    <p>{signupFormCopy.successStep}</p>
+    <div class="signup-success__actions">
+      <Button type="button" data-different-address variant="secondary">
+        {signupFormCopy.differentAddress}
+      </Button>
+      <Button type="button" data-resend hidden>
+        {signupFormCopy.resendLink}
+      </Button>
+    </div>
+    <p data-resend-status role="status" aria-live="polite" hidden></p>
+  </section>
+
+  <section
+    class="signup-dock"
+    data-dock
+    role="region"
+    aria-label={signupFormCopy.barLabel}
+    hidden
+  >
+    <div data-dock-entry>
+      <div class="signup-dock__row">
+        <label for="signup-dock-email">{signupFormCopy.barEmailLabel}</label>
+        <Input
+          id="signup-dock-email"
+          type="email"
+          autocomplete="email"
+          placeholder={landingCopy.form.placeholder}
+          aria-describedby="signup-dock-error"
+        />
+        <Button type="button" data-dock-submit>{landingCopy.form.submit}</Button
+        >
+      </div>
+      <p
+        id="signup-dock-error"
+        class="signup-error"
+        data-dock-error
+        role="alert"
+        aria-atomic="true"
+        hidden
+      >
+      </p>
+      <p class="signup-age">
+        {signupFormCopy.ageStatement}
+        {
+          giveawayEnabled && (
+            <>
+              {' '}
+              {signupFormCopy.freeEntryDisclosure}{' '}
+              <a href="/giveaway/rules">{signupFormCopy.giveawayRulesLink}</a>
+            </>
+          )
+        }
+      </p>
+    </div>
+    <div data-dock-confirmation hidden>
+      <p>{signupFormCopy.barConfirmation}</p>
+      <Button type="button" data-dock-close variant="secondary"
+        >{signupFormCopy.barClose}</Button
+      >
+    </div>
+  </section>
 </valstara-signup-form>
 
 {
@@ -142,6 +205,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 <script>
   import {
     collectClientErrors,
+    resendDelayMs,
     serverErrorField,
     type SignupClientError,
     type SignupFieldName,
@@ -172,6 +236,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     #resolveChallenge: ((token: string) => void) | null = null;
     #rejectChallenge: ((error: Error) => void) | null = null;
     #inFlight = false;
+    #dock: HTMLElement | null = null;
+    #dockInput: HTMLInputElement | null = null;
+    #entryPoint: 'hero' | 'dock' = 'hero';
+    #signedUpEmail = '';
+    #succeeded = false;
+    #resendTimer: number | undefined;
+    #idleLabel = '';
 
     connectedCallback(): void {
       const form = this.querySelector('form');
@@ -180,10 +251,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       }
       this.#form = form;
       this.#submit = form.querySelector('[data-submit]');
+      this.#idleLabel = this.#submit?.textContent?.trim() ?? '';
       this.#tokenInput = form.querySelector('input[name="turnstile_token"]');
       this.#turnstileContainer = form.querySelector(
         '[data-turnstile-container]',
       );
+      this.#dock = this.querySelector('[data-dock]');
+      this.#dockInput = this.querySelector('#signup-dock-email');
 
       // With the island active, custom validation governs; native constraint
       // validation would otherwise pop its own UI before the submit handler
@@ -192,6 +266,38 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       form.noValidate = true;
 
       form.addEventListener('submit', this.#onSubmit);
+      this.#submit?.addEventListener('click', () => {
+        if (!this.#inFlight) this.#entryPoint = 'hero';
+      });
+      this.querySelector('#signup-email')?.addEventListener(
+        'input',
+        this.#mirrorHero,
+      );
+      this.#dockInput?.addEventListener('input', this.#mirrorDock);
+      this.#dockInput?.addEventListener('input', this.#startTurnstile, {
+        once: true,
+      });
+      const dockSubmit = this.querySelector('[data-dock-submit]');
+      dockSubmit?.addEventListener('mousedown', (event) =>
+        event.preventDefault(),
+      );
+      dockSubmit?.addEventListener('click', this.#submitDock);
+      this.querySelector('[data-different-address]')?.addEventListener(
+        'click',
+        this.#differentAddress,
+      );
+      this.querySelector('[data-resend]')?.addEventListener(
+        'click',
+        this.#resend,
+      );
+      this.querySelector('[data-dock-close]')?.addEventListener(
+        'click',
+        this.#closeDock,
+      );
+      window.addEventListener('scroll', this.#updateDock, { passive: true });
+      window.addEventListener('resize', this.#updateDock);
+      document.addEventListener('focusin', this.#protectFocus);
+      this.#updateDock();
       // A real visitor types their address first, so the invisible challenge is
       // already resolving by the time they submit. Rendering lazily (never on
       // page load) keeps the initial page free of any widget frame or shift.
@@ -204,7 +310,86 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
     disconnectedCallback(): void {
       this.#form?.removeEventListener('submit', this.#onSubmit);
+      window.removeEventListener('scroll', this.#updateDock);
+      window.removeEventListener('resize', this.#updateDock);
+      document.removeEventListener('focusin', this.#protectFocus);
+      window.clearTimeout(this.#resendTimer);
+      this.#reserveDock(false);
     }
+
+    readonly #mirrorHero = (): void => {
+      const hero = this.querySelector<HTMLInputElement>('#signup-email');
+      if (hero !== null && this.#dockInput !== null)
+        this.#dockInput.value = hero.value;
+    };
+
+    readonly #mirrorDock = (): void => {
+      const hero = this.querySelector<HTMLInputElement>('#signup-email');
+      if (hero !== null && this.#dockInput !== null)
+        hero.value = this.#dockInput.value;
+    };
+
+    readonly #submitDock = (): void => {
+      if (this.#inFlight || this.#form === null) return;
+      this.#entryPoint = 'dock';
+      this.#mirrorDock();
+      this.#form.dispatchEvent(
+        new SubmitEvent('submit', { bubbles: true, cancelable: true }),
+      );
+    };
+
+    readonly #updateDock = (): void => {
+      if (this.#dock === null || this.#form === null) return;
+      const small = window.matchMedia('(max-width: 39.999rem)').matches;
+      if (this.#succeeded) {
+        this.#reserveDock(small && !this.#dock.hidden);
+        return;
+      }
+      const footer = document.querySelector('body > footer');
+      const heroOut = this.#form.getBoundingClientRect().bottom <= 0;
+      const footerIn =
+        footer !== null &&
+        footer.getBoundingClientRect().top < window.innerHeight;
+      const visible = small && heroOut && !footerIn && !this.#succeeded;
+      if (visible && this.#dock.hidden) this.#mirrorHero();
+      this.#dock.hidden = !visible;
+      this.#reserveDock(visible);
+    };
+
+    #reserveDock(visible: boolean): void {
+      if (visible && this.#dock !== null) {
+        document.documentElement.style.setProperty(
+          '--signup-dock-height',
+          `${this.#dock.getBoundingClientRect().height}px`,
+        );
+        document.documentElement.dataset.signupDock = 'visible';
+      } else {
+        document.documentElement.style.removeProperty('--signup-dock-height');
+        delete document.documentElement.dataset.signupDock;
+      }
+    }
+
+    readonly #closeDock = (): void => {
+      if (this.#dock !== null) this.#dock.hidden = true;
+      this.#reserveDock(false);
+    };
+
+    readonly #protectFocus = (): void => {
+      window.requestAnimationFrame(() => {
+        const focused = document.activeElement;
+        if (
+          !(focused instanceof HTMLElement) ||
+          this.#dock?.hidden !== false ||
+          this.#dock.contains(focused)
+        )
+          return;
+        const target = focused.getBoundingClientRect();
+        const dock = this.#dock.getBoundingClientRect();
+        if (target.bottom > dock.top && target.top < dock.bottom) {
+          window.scrollBy(0, Math.ceil(target.bottom - dock.top));
+        }
+      });
+    };
 
     readonly #startTurnstile = (): Promise<string> => {
       const existingToken = this.#tokenInput?.value ?? '';
@@ -220,6 +405,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         this.#rejectChallenge = reject;
       });
       const challengePromise = this.#challengePromise;
+      if (this.#widgetId !== undefined) {
+        if (window.turnstile === undefined) this.#failChallenge();
+        else window.turnstile.reset(this.#widgetId);
+        return challengePromise;
+      }
       const container = this.#turnstileContainer;
       const sitekey = this.dataset.sitekey;
       if (container === null || sitekey === undefined) {
@@ -275,9 +465,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       const errors = collectClientErrors(values);
       this.#renderFieldErrors(errors);
       if (errors.length > 0) {
+        if (this.#entryPoint === 'dock')
+          this.#showDockError(errors[0]!.message);
         this.#focusField(errors[0]!.field);
         return;
       }
+      this.#clearDockError();
+      this.#signedUpEmail = values.email;
 
       // Make sure the challenge is running even if the visitor never fired an
       // input event (e.g. autofill straight to submit).
@@ -291,6 +485,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       } catch {
         this.#showFormError(signupFormCopy.challengeUnavailable);
         this.#setInFlight(false);
+        this.#signedUpEmail = '';
       }
     };
 
@@ -310,6 +505,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       } catch {
         this.#showFormError(signupFormCopy.connection);
         this.#setInFlight(false);
+        this.#signedUpEmail = '';
       }
     }
 
@@ -323,12 +519,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
       const status = record.status;
       if (status === 'pending') {
-        this.#showSuccess(this.#messageOf(record.message));
+        this.#showSuccess();
         return;
       }
       if (status === 'paused') {
         this.#showFormError(this.#messageOf(record.message));
         this.#setInFlight(false);
+        this.#signedUpEmail = '';
         return;
       }
 
@@ -339,7 +536,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         const message = this.#messageOf(details.message);
         if (serverErrorField(code) === 'email') {
           this.#showFieldError('email', message);
-          this.querySelector<HTMLElement>('#signup-email')?.focus();
+          this.#focusField('email');
         } else {
           this.#showFormError(message);
         }
@@ -348,11 +545,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
           this.#resetChallenge();
         }
         this.#setInFlight(false);
+        this.#signedUpEmail = '';
         return;
       }
 
       this.#showFormError(signupFormCopy.connection);
       this.#setInFlight(false);
+      this.#signedUpEmail = '';
     }
 
     #messageOf(value: unknown): string {
@@ -376,6 +575,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       this.#inFlight = inFlight;
       if (this.#submit !== null) {
         this.#submit.disabled = inFlight;
+        this.#submit.textContent = inFlight ? message : this.#idleLabel;
+      }
+      const dockSubmit =
+        this.querySelector<HTMLButtonElement>('[data-dock-submit]');
+      if (dockSubmit !== null) {
+        dockSubmit.disabled = inFlight;
+        dockSubmit.textContent = inFlight ? message : this.#idleLabel;
       }
       const status = this.querySelector<HTMLElement>('[data-form-status]');
       if (status !== null) {
@@ -425,6 +631,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         'aria-invalid',
         'true',
       );
+      if (this.#entryPoint === 'dock') this.#showDockError(message, true);
     }
 
     #clearFieldError(field: SignupFieldName): void {
@@ -443,25 +650,143 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       if (element !== null) {
         element.textContent = message;
         element.hidden = false;
-        element.focus();
+        if (this.#entryPoint === 'hero') element.focus();
       }
+      if (this.#entryPoint === 'dock') this.#showDockError(message);
     }
 
     #focusField(field: SignupFieldName): void {
-      this.querySelector<HTMLElement>(`#signup-${field}`)?.focus();
+      (this.#entryPoint === 'dock'
+        ? this.#dockInput
+        : this.querySelector<HTMLElement>(`#signup-${field}`)
+      )?.focus();
     }
 
-    #showSuccess(message: string): void {
+    #showDockError(message: string, emailInvalid = false): void {
+      const error = this.querySelector<HTMLElement>('[data-dock-error]');
+      if (error !== null) {
+        error.textContent = message;
+        error.hidden = false;
+      }
+      if (emailInvalid) this.#dockInput?.setAttribute('aria-invalid', 'true');
+      this.#reserveDock(!this.#dock?.hidden);
+    }
+
+    #clearDockError(): void {
+      const error = this.querySelector<HTMLElement>('[data-dock-error]');
+      if (error !== null) {
+        error.textContent = '';
+        error.hidden = true;
+      }
+      this.#dockInput?.removeAttribute('aria-invalid');
+    }
+
+    #showSuccess(): void {
+      this.#setInFlight(false);
       const success = this.querySelector<HTMLElement>('[data-success]');
       if (success !== null) {
-        success.textContent = message;
         success.hidden = false;
       }
+      const address = this.querySelector<HTMLElement>('[data-success-address]');
+      if (address !== null) address.textContent = this.#signedUpEmail;
+      const showConfirmation =
+        this.#entryPoint === 'dock' && this.#dock?.hidden === false;
+      this.#succeeded = true;
       if (this.#form !== null) {
         this.#form.hidden = true;
       }
-      success?.focus();
+      if (this.#dock !== null) {
+        this.#dock.hidden = !showConfirmation;
+        const entry = this.querySelector<HTMLElement>('[data-dock-entry]');
+        const confirmation = this.querySelector<HTMLElement>(
+          '[data-dock-confirmation]',
+        );
+        if (entry !== null) entry.hidden = true;
+        if (confirmation !== null) confirmation.hidden = !showConfirmation;
+        this.#reserveDock(showConfirmation);
+      }
+      window.clearTimeout(this.#resendTimer);
+      this.#resendTimer = window.setTimeout(() => {
+        const resend = this.querySelector<HTMLButtonElement>('[data-resend]');
+        if (resend !== null) resend.hidden = false;
+      }, resendDelayMs);
+      if (showConfirmation) {
+        this.querySelector<HTMLElement>('[data-dock-close]')?.focus();
+      } else {
+        success?.focus();
+      }
     }
+
+    readonly #differentAddress = (): void => {
+      window.clearTimeout(this.#resendTimer);
+      this.#signedUpEmail = '';
+      this.#succeeded = false;
+      this.#resetChallenge();
+      const success = this.querySelector<HTMLElement>('[data-success]');
+      if (success !== null) success.hidden = true;
+      if (this.#form !== null) this.#form.hidden = false;
+      const resend = this.querySelector<HTMLElement>('[data-resend]');
+      if (resend !== null) resend.hidden = true;
+      const status = this.querySelector<HTMLElement>('[data-resend-status]');
+      if (status !== null) {
+        status.hidden = true;
+        status.textContent = '';
+      }
+      const email = this.querySelector<HTMLInputElement>('#signup-email');
+      if (email !== null) {
+        email.value = '';
+        email.focus();
+      }
+      if (this.#dockInput !== null) this.#dockInput.value = '';
+      const entry = this.querySelector<HTMLElement>('[data-dock-entry]');
+      const confirmation = this.querySelector<HTMLElement>(
+        '[data-dock-confirmation]',
+      );
+      if (entry !== null) entry.hidden = false;
+      if (confirmation !== null) confirmation.hidden = true;
+      this.#setInFlight(false);
+      this.#updateDock();
+    };
+
+    readonly #resend = async (): Promise<void> => {
+      if (this.#inFlight || this.#form === null) return;
+      const status = this.querySelector<HTMLElement>('[data-resend-status]');
+      const resend = this.querySelector<HTMLButtonElement>('[data-resend]');
+      if (resend !== null) resend.disabled = true;
+      this.#resetChallenge();
+      try {
+        const token = await this.#startTurnstile();
+        const body = new FormData();
+        body.set('email', this.#signedUpEmail);
+        body.set('turnstile_token', token);
+        const response = await fetch('/api/resend-verification', {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+          body,
+        });
+        const result: unknown = await response.json().catch(() => null);
+        if (status !== null) {
+          const record =
+            typeof result === 'object' && result !== null
+              ? (result as Record<string, unknown>)
+              : {};
+          const error =
+            typeof record.error === 'object' && record.error !== null
+              ? (record.error as Record<string, unknown>)
+              : {};
+          status.textContent = this.#messageOf(record.message ?? error.message);
+          status.hidden = false;
+        }
+      } catch {
+        if (status !== null) {
+          status.textContent = signupFormCopy.connection;
+          status.hidden = false;
+        }
+      } finally {
+        if (resend !== null) resend.disabled = false;
+        this.#resetChallenge();
+      }
+    };
   }
 
   if (!customElements.get('valstara-signup-form')) {
@@ -476,6 +801,17 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   */
 }
 <style is:global>
+  valstara-signup-form [hidden] {
+    display: none !important;
+  }
+  html[data-signup-dock='visible'] {
+    scroll-padding-block-end: var(--signup-dock-height);
+  }
+
+  html[data-signup-dock='visible'] body {
+    padding-block-end: var(--signup-dock-height);
+  }
+
   valstara-signup-form {
     display: block;
   }
@@ -542,5 +878,84 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     background-color: var(--surface);
     border: thin solid var(--line);
     border-radius: var(--radius-card);
+  }
+
+  valstara-signup-form .signup-success h2,
+  valstara-signup-form .signup-success p {
+    margin: 0;
+  }
+
+  valstara-signup-form .signup-success__icon {
+    display: inline-block;
+    color: var(--coral);
+    font-size: var(--step-4);
+  }
+
+  valstara-signup-form .signup-success__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-block-start: var(--space-2);
+  }
+
+  valstara-signup-form .signup-dock:not([hidden]) {
+    position: fixed;
+    z-index: var(--layer-dock);
+    inset-inline: 0;
+    inset-block-end: 0;
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    padding-block-end: max(var(--space-2), env(safe-area-inset-bottom));
+    color: var(--ink);
+    background: var(--surface);
+    box-shadow: var(--shadow-2);
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+
+  valstara-signup-form .signup-dock__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-1);
+    align-items: end;
+  }
+
+  valstara-signup-form .signup-dock__row label {
+    grid-column: 1 / -1;
+    font-size: var(--step-1);
+  }
+
+  valstara-signup-form .signup-dock__row input {
+    min-width: 0;
+  }
+
+  valstara-signup-form .signup-dock .signup-age {
+    font-size: var(--step-0);
+  }
+
+  valstara-signup-form .signup-dock [data-dock-confirmation]:not([hidden]) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  valstara-signup-form .signup-dock [data-dock-confirmation] p {
+    margin: 0;
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    white-space: nowrap;
+  }
+
+  @media (min-width: 40rem) {
+    valstara-signup-form .signup-dock {
+      display: none !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    valstara-signup-form .signup-dock {
+      transition-property: none;
+    }
   }
 </style>

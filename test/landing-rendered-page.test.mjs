@@ -222,6 +222,10 @@ test('with signup.enabled off, an honest paused message replaces the form', asyn
   // The form is gone — not present-but-broken — so nothing can fail on submit.
   assert.ok(!/<form action="\/api\/signup"/u.test(body));
   assert.ok(!body.includes('name="email"'));
+  assert.ok(
+    !body.includes('data-dock'),
+    'flag-off renders no sticky signup bar',
+  );
 
   // The paused copy comes from the copy layer and names no machinery.
   assert.ok(rendersCopy(body, landingCopy.paused.heading));
@@ -241,6 +245,10 @@ test('free-entry disclosure appears beside the signup action when the giveaway i
   assert.ok(disclosure > button);
   assert.ok(rulesLink > disclosure);
   assert.ok(rulesLink - button < 600);
+  assert.equal(
+    open.body.split(signupFormCopy.freeEntryDisclosure).length - 1,
+    2,
+  );
   assert.ok(rendersCopy(open.body, signupFormCopy.giveawayRulesLink));
   assert.equal(open.setCookie, null);
 
