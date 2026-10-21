@@ -1954,6 +1954,8 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 **Founder-authorised 2026-10-19.** Added after E11 and before E12. Branches follow the usual pattern, e.g. `feat/E11.5-05-landing-page`; commits carry `[E11.5-05]`.
 
+Founder-authorised 2026-10-20: E11.5-04 and E11.5-05 wait for P8; E11.5-06 to E11.5-11 run first; E11.5-12 stays last.
+
 **Goal:** every page a visitor can reach looks finished, reads in seconds and works as well on a phone as on a desktop — without changing what the system does, what it collects or what it claims. *12 tickets.*
 
 **Why this epic exists.** E2 built a correct, accessible and portable design system, and E3–E9 built every page on it, but no ticket owned the visual design. The site passes its gates and still reads as a wireframe, which `docs/brand/identity-guidelines.md` §7.3 names as an anti-pattern. A visitor sees the design, not the backend. For a brand whose whole proposition is trust, a page that looks unfinished is the conversion failure.

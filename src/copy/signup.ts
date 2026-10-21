@@ -40,4 +40,13 @@ export const signupFormCopy = {
   ageStatement: 'Open to people aged 18 and over.',
   freeEntryDisclosure: 'No purchase necessary.',
   giveawayRulesLink: 'See the giveaway rules.',
+  successHeading: 'Check your inbox',
+  successStep:
+    'If an email from Valstara arrives, open it and confirm your address. Nothing counts until you do.',
+  differentAddress: 'Use a different address',
+  resendLink: 'Send the link again',
+  barLabel: 'Join the waitlist',
+  barEmailLabel: 'Email address',
+  barClose: 'Close',
+  barConfirmation: 'Check your inbox.',
 } as const;

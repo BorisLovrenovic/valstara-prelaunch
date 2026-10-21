@@ -12,6 +12,8 @@ The v1 recommendation was Next.js, and its only real argument was component reus
 
 A fourth island requires an ADR. This is not ceremony — the payload discipline is the whole reason for the choice, and island count is the metric that erodes first.
 
+E11.5-06 adds a mobile signup bar inside the existing signup island. It shares the hero form and Turnstile widget; the three-island limit is unchanged.
+
 ## Alternatives rejected
 - **Next.js App Router** — led only on reuse, which no longer exists. Larger payload, heavier model for a page that is mostly prose.
 - **A static generator with a separate API** — two deploy units and a CORS boundary for a site with one write path.

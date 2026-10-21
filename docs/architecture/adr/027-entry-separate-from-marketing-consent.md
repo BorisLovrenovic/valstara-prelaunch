@@ -23,6 +23,8 @@ Double opt-in stays unconditional (ADR-011). What changes is what it evidences: 
 - **A separate "draw only" entry form** (research report 1) — it works, but it duplicates the signup route when a single form with a separate opt-in achieves the same result.
 - **A pre-ticked opt-in** — unlawful in the target markets, and already forbidden by the copy rules.
 
+The E11.5-06 mobile signup bar has no second checkbox. It submits the existing hero form, so the original checkbox remains unticked unless the visitor ticked it in the hero.
+
 ## Consequences
 - The broadcast audience becomes the marketing-consented subset of verified, unsuppressed subscribers. It is smaller than the waitlist, and that is honest.
 - The handoff payload carries the marketing-consent state, and the storefront must honour it.

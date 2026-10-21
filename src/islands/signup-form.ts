@@ -10,6 +10,8 @@ import type { SignupErrorCode } from '../pages/api/signup.ts';
 
 export type SignupFieldName = 'email';
 
+export const resendDelayMs = 60_000;
+
 export interface SignupClientError {
   readonly field: SignupFieldName;
   readonly message: string;
