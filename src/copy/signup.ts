@@ -42,7 +42,7 @@ export const signupFormCopy = {
   giveawayRulesLink: 'See the giveaway rules.',
   successHeading: 'Check your inbox',
   successStep:
-    'If an email from Valstara arrives, open it and confirm your address. Nothing counts until you do.',
+    'If an email from Valstara arrives, open it and click the link to confirm your address. Nothing counts until you do.',
   differentAddress: 'Use a different address',
   resendLink: 'Send the link again',
   barLabel: 'Join the waitlist',

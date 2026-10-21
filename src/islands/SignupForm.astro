@@ -631,7 +631,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         'aria-invalid',
         'true',
       );
-      if (this.#entryPoint === 'dock') this.#showDockError(message);
+      if (this.#entryPoint === 'dock') this.#showDockError(message, true);
     }
 
     #clearFieldError(field: SignupFieldName): void {
@@ -662,13 +662,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       )?.focus();
     }
 
-    #showDockError(message: string): void {
+    #showDockError(message: string, emailInvalid = false): void {
       const error = this.querySelector<HTMLElement>('[data-dock-error]');
       if (error !== null) {
         error.textContent = message;
         error.hidden = false;
       }
-      this.#dockInput?.setAttribute('aria-invalid', 'true');
+      if (emailInvalid) this.#dockInput?.setAttribute('aria-invalid', 'true');
       this.#reserveDock(!this.#dock?.hidden);
     }
 

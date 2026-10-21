@@ -357,6 +357,10 @@ test('a pending response hides the form and shows the same privacy-safe success 
   );
   assert.match(
     await page.locator('[data-success]').textContent(),
+    /open it and click the link/u,
+  );
+  assert.match(
+    await page.locator('[data-success]').textContent(),
     /pending@example.com/u,
   );
   assert.doesNotMatch(
@@ -794,6 +798,73 @@ test('bar reports a field error and cross-entry double submit sends one request'
     );
   } finally {
     await context.close();
+  }
+});
+
+test('bar announces form errors without marking its email field invalid', async () => {
+  for (const scenario of [
+    {
+      code: 'challenge_failed',
+      status: 400,
+      message: "We couldn't confirm that request. Please try again.",
+    },
+    {
+      code: 'rate_limited',
+      status: 429,
+      message: 'Too many attempts — try again in a few minutes.',
+    },
+    {
+      code: 'unavailable',
+      status: 503,
+      message: "We can't take signups right now — try again in a few minutes.",
+    },
+    {
+      code: 'connection',
+      message: signupFormCopy.connection,
+    },
+  ]) {
+    const { context, page } = await openForm({
+      viewport: { width: 320, height: 400 },
+    });
+    try {
+      await page.evaluate(() => {
+        const form = globalThis.document.querySelector(
+          'valstara-signup-form form',
+        );
+        globalThis.scrollTo(
+          0,
+          form.getBoundingClientRect().bottom + globalThis.scrollY + 20,
+        );
+      });
+      await page.waitForFunction(
+        () => !globalThis.document.querySelector('[data-dock]').hidden,
+      );
+      await page.route('**/api/signup', (route) =>
+        scenario.code === 'connection'
+          ? route.abort()
+          : route.fulfill({
+              status: scenario.status,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error: { code: scenario.code, message: scenario.message },
+              }),
+            }),
+      );
+      await page.fill('#signup-dock-email', 'visitor@example.com');
+      await page.click('[data-dock-submit]');
+      await page.waitForSelector('[data-dock-error]:not([hidden])');
+      assert.equal(
+        await page.locator('[data-dock-error]').textContent(),
+        scenario.message,
+      );
+      assert.equal(
+        await page.locator('#signup-dock-email').getAttribute('aria-invalid'),
+        null,
+        `${scenario.code} is a form error, not an email error`,
+      );
+    } finally {
+      await context.close();
+    }
   }
 });
 
