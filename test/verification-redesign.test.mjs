@@ -305,6 +305,8 @@ test('verification states, exact figures, native actions and flags render access
       )?.[0];
       assert.equal(tag?.match(/\stype=/gu)?.length, 1, marker);
     }
+    for (const tag of revisedHtml.match(/<button[^>]*>/gu) ?? [])
+      assert.equal(tag.match(/\stype=/gu)?.length, 1, tag);
 
     const invalid = await globalThis.fetch(
       'http://127.0.0.1:' + app.port + '/verify',
