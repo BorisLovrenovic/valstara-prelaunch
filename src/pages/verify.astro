@@ -127,7 +127,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
                 <h1 class="verification-success__message">
                   {verificationCopy.complete}
                 </h1>
-                <p>{verificationCopy.completeNext}</p>
+                <p>
+                  {referralEnabled
+                    ? verificationCopy.completeNext
+                    : verificationCopy.completeNextNoReferral}
+                </p>
               </div>
             </div>
             {referralFigures?.accessWindow !== null &&
@@ -318,7 +322,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   const copyButton = document.querySelector('[data-copy-referral]');
   const copyStatus = document.querySelector('[data-copy-status]');
   if (
-    referralLink instanceof HTMLInputElement &&
+    referralLink?.tagName === 'INPUT' &&
     copyButton instanceof HTMLButtonElement &&
     copyStatus instanceof HTMLElement
   ) {

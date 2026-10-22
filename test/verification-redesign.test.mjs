@@ -446,6 +446,7 @@ test('verification states, exact figures, native actions and flags render access
     app = await startVerificationApp();
     const referralOffHtml = await renderOther();
     assert.doesNotMatch(referralOffHtml, /data-referral-card/u);
+    assert.doesNotMatch(referralOffHtml, /Share your link/u);
     assert.match(referralOffHtml, /data-access-wave/u);
     assert.match(referralOffHtml, /<form[^>]*data-survey-form/u);
 

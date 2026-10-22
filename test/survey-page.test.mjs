@@ -57,13 +57,9 @@ test('the inline enhancement prevents navigation and reports the same-page respo
   vm.runInNewContext(script, {
     FormData: class {},
     HTMLButtonElement: Button,
-    HTMLInputElement: class extends Element {},
     HTMLElement: Element,
     HTMLFormElement: Form,
-    document: {
-      querySelector: (selector) =>
-        selector === '[data-survey-form]' ? form : null,
-    },
+    document: { querySelector: () => form },
     fetch: async (input) => {
       fetchInput = input;
       return {

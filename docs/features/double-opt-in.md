@@ -37,3 +37,5 @@ configured tier ladder when referrals are enabled, the v2 survey when enabled,
 and the bearer status link. Invalid and
 expired tokens retain one generic message and the Turnstile-protected
 request-new-link form. The page remains private and no-store.
+With referrals disabled, the success message confirms the place without asking
+the visitor to share a link that is not shown.

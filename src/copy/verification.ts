@@ -7,6 +7,7 @@ export const verificationCopy = {
   complete: 'Your email address is verified.',
   completeNext:
     'Your place is confirmed. Share your link to move toward your next tier.',
+  completeNextNoReferral: 'Your place is confirmed.',
   invalid: 'This verification link is not available.',
   invalidHeading: 'Request a new link',
   meta: {
