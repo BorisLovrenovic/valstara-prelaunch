@@ -1,6 +1,12 @@
 ---
 import { verificationCopy } from '../copy/verification.ts';
 import { surveyCopy } from '../copy/survey.ts';
+import Button from '../components/button.astro';
+import Card from '../components/card.astro';
+import Container from '../components/container.astro';
+import Icon from '../components/icon.astro';
+import Input from '../components/input.astro';
+import Pill from '../components/pill.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
@@ -11,6 +17,7 @@ import {
   type VerificationCompletion,
 } from '../server/verification/complete.ts';
 import { currentSurveyVersion } from '../server/survey/questions.ts';
+import { verificationReferralFigures } from '../server/referral/verification-presentation.ts';
 import { createAnalyticsService } from '../server/analytics/service.ts';
 import {
   hoursToVerifyBucket,
@@ -25,6 +32,7 @@ let completion: VerificationCompletion = {
   accessWindow: null,
   outcome: 'invalid',
   referralCode: null,
+  referralStatus: null,
   statusToken: null,
   surveyCompleted: false,
 };
@@ -74,13 +82,18 @@ if (Astro.request.method === 'POST') {
 }
 const completed =
   completion.outcome === 'verified' || completion.outcome === 'already';
+const referralFigures =
+  completion.referralStatus === null
+    ? null
+    : verificationReferralFigures(completion.referralStatus);
+const ladderFigures = referralFigures?.ladder ?? null;
 const surveyEnabled =
   completed && !completion.surveyCompleted
     ? await getFlagService().isEnabled('survey.enabled')
     : false;
 const referralUrl =
-  referralEnabled && completion.referralCode !== null
-    ? new URL(`/?ref=${encodeURIComponent(completion.referralCode)}`, Astro.url)
+  referralEnabled && completion.referralStatus !== null
+    ? new URL(completion.referralStatus.referralLink)
     : null;
 const statusUrl =
   completion.statusToken === null
@@ -94,111 +107,266 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   title={verificationCopy.meta.title}
   description={verificationCopy.meta.description}
 >
-  {
-    showConfirmation ? (
-      <form action="/verify" class="verification-confirm" method="post">
-        <p>{verificationCopy.confirm.body}</p>
-        <input name="token" type="hidden" value={token} />
-        <button type="submit">{verificationCopy.confirm.submit}</button>
-      </form>
-    ) : completed ? (
-      <div class="verification-success">
-        <p class="verification-success__message">{verificationCopy.complete}</p>
-
-        {referralUrl !== null ? (
-          <section class="verification-success__section">
-            <h2>{verificationCopy.referral.label}</h2>
-            <a href={referralUrl.toString()}>
-              {verificationCopy.referral.link}
-            </a>
-          </section>
-        ) : null}
-
-        {surveyEnabled && statusUrl !== null ? (
-          <form
-            action="/api/survey"
-            class="verification-success__section"
-            data-survey-form
-            data-unavailable-message={surveyCopy.unavailable}
-            method="post"
-          >
-            <h2>{verificationCopy.survey.heading}</h2>
-            <input name="token" type="hidden" value={completion.statusToken} />
-            <input name="version" type="hidden" value={currentSurveyVersion} />
-            <fieldset>
-              <legend>{verificationCopy.survey.categoryLabel}</legend>
-              {verificationCopy.survey.categoryOptions.map((option) => (
-                <label>
-                  <input
-                    name="category_preference"
-                    type="checkbox"
-                    value={option.value}
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </fieldset>
-            <fieldset>
-              <legend>{verificationCopy.survey.frequencyLabel}</legend>
-              {verificationCopy.survey.frequencyOptions.map((option) => (
-                <label>
-                  <input
-                    name="shopping_frequency"
-                    type="radio"
-                    value={option.value}
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </fieldset>
-            <button type="submit">{verificationCopy.survey.submit}</button>
-            <p aria-live="polite" data-survey-status />
-          </form>
-        ) : null}
-
-        {statusUrl !== null ? (
-          <section class="verification-success__section">
-            <h2>{verificationCopy.status.label}</h2>
-            <a href={statusUrl.toString()}>{verificationCopy.status.link}</a>
-          </section>
-        ) : null}
-      </div>
-    ) : (
-      <div class="verification-invalid">
-        <p>{verificationCopy.invalid}</p>
-        <form action="/api/resend-verification" method="post">
-          <label for="resend-email">{verificationCopy.resend.emailLabel}</label>
-          <input
-            id="resend-email"
-            name="email"
-            type="email"
-            autocomplete="email"
-            required
-          />
-          <div
-            class="cf-turnstile"
-            data-sitekey={turnstileSiteKey}
-            data-response-field-name="turnstile_token"
-          />
-          <noscript>
-            <p>{verificationCopy.resend.javaScriptRequired}</p>
-          </noscript>
-          <button type="submit">{verificationCopy.resend.submit}</button>
+  <Container class="verification-container">
+    {
+      showConfirmation ? (
+        <form action="/verify" class="verification-confirm" method="post">
+          <Card class="verification-boundary">
+            <Icon name="shield" size="lg" />
+            <h1>{verificationCopy.confirm.body}</h1>
+            <p>{verificationCopy.confirm.next}</p>
+            <input name="token" type="hidden" value={token} />
+            <Button type="submit">{verificationCopy.confirm.submit}</Button>
+          </Card>
         </form>
-        <script
-          is:inline
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-          async
-          defer
-        />
-      </div>
-    )
-  }
+      ) : completed ? (
+        <div class="verification-success">
+          <Card class="verification-boundary">
+            <div class="verification-heading">
+              <Icon name="check" size="lg" />
+              <div>
+                <h1 class="verification-success__message">
+                  {verificationCopy.complete}
+                </h1>
+                <p>
+                  {referralEnabled
+                    ? verificationCopy.completeNext
+                    : verificationCopy.completeNextNoReferral}
+                </p>
+              </div>
+            </div>
+            {referralFigures?.accessWindow !== null &&
+            referralFigures?.accessWindow !== undefined ? (
+              <Pill variant="badge" data-access-wave>
+                {verificationCopy.referral.wave(referralFigures.accessWindow)}
+              </Pill>
+            ) : null}
+          </Card>
+
+          {referralUrl !== null && ladderFigures !== null ? (
+            <Card class="verification-success__section" data-referral-card>
+              <h2>{verificationCopy.referral.label}</h2>
+              <p>{verificationCopy.referral.link}</p>
+              <div class="verification-link-control">
+                <Input
+                  aria-label={verificationCopy.referral.linkLabel}
+                  data-referral-link
+                  readonly
+                  type="url"
+                  value={referralUrl.toString()}
+                />
+                <Button
+                  data-copy-referral
+                  data-copied={verificationCopy.referral.copied}
+                  data-copy-failed={verificationCopy.referral.copyFailed}
+                >
+                  {verificationCopy.referral.copy}
+                </Button>
+                <span
+                  data-share-host
+                  data-share-label={verificationCopy.referral.share}
+                  data-share-title={verificationCopy.referral.label}
+                />
+              </div>
+              <p aria-live="polite" data-copy-status />
+              <div class="verification-progress">
+                <label for="referral-progress">
+                  {verificationCopy.referral.progress(
+                    ladderFigures.progress,
+                    ladderFigures.threshold,
+                    ladderFigures.tier,
+                  )}
+                </label>
+                <progress
+                  id="referral-progress"
+                  data-referral-progress
+                  value={ladderFigures.progress}
+                  max={ladderFigures.threshold}
+                />
+              </div>
+              <div class="verification-rewards">
+                <h3>{verificationCopy.referral.unlocks(ladderFigures.tier)}</h3>
+                <p class="verification-reward-name">
+                  {verificationCopy.referral.reward(
+                    ladderFigures.discountPercent,
+                  )}
+                </p>
+                <p>{verificationCopy.referral.waveReward}</p>
+                {ladderFigures.rewardStates.map((reward) => (
+                  <Pill>
+                    {reward.kind === 'discount'
+                      ? verificationCopy.referral.reward(
+                          ladderFigures.discountPercent,
+                        )
+                      : verificationCopy.referral.waveReward}
+                    : {verificationCopy.referral[reward.state]}
+                  </Pill>
+                ))}
+                <p>{verificationCopy.referral.heldCondition}</p>
+              </div>
+            </Card>
+          ) : null}
+
+          {surveyEnabled && statusUrl !== null ? (
+            <Card class="verification-success__section">
+              <form
+                action="/api/survey"
+                class="verification-survey"
+                data-survey-form
+                data-unavailable-message={surveyCopy.unavailable}
+                method="post"
+              >
+                <h2>{verificationCopy.survey.heading}</h2>
+                <input
+                  name="token"
+                  type="hidden"
+                  value={completion.statusToken}
+                />
+                <input
+                  name="version"
+                  type="hidden"
+                  value={currentSurveyVersion}
+                />
+                <fieldset>
+                  <legend>{verificationCopy.survey.categoryLabel}</legend>
+                  <div class="verification-options verification-options--chips">
+                    {verificationCopy.survey.categoryOptions.map((option) => (
+                      <label>
+                        <input
+                          name="category_preference"
+                          type="checkbox"
+                          value={option.value}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <fieldset>
+                  <legend>{verificationCopy.survey.frequencyLabel}</legend>
+                  <div class="verification-options verification-options--segments">
+                    {verificationCopy.survey.frequencyOptions.map((option) => (
+                      <label>
+                        <input
+                          name="shopping_frequency"
+                          type="radio"
+                          value={option.value}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <div class="verification-survey-actions">
+                  <Button type="submit" variant="secondary">
+                    {verificationCopy.survey.submit}
+                  </Button>
+                  <Button variant="secondary" data-survey-skip>
+                    {verificationCopy.survey.skip}
+                  </Button>
+                </div>
+                <p aria-live="polite" data-survey-status />
+              </form>
+            </Card>
+          ) : null}
+
+          {statusUrl !== null ? (
+            <Button href={statusUrl.toString()} variant="secondary">
+              {verificationCopy.status.link}
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <Card class="verification-invalid verification-boundary">
+          <Icon name="alert" size="lg" />
+          <h1>{verificationCopy.invalidHeading}</h1>
+          <p>{verificationCopy.invalid}</p>
+          <form action="/api/resend-verification" method="post">
+            <label for="resend-email">
+              {verificationCopy.resend.emailLabel}
+            </label>
+            <Input
+              id="resend-email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+            />
+            <div
+              class="cf-turnstile"
+              data-sitekey={turnstileSiteKey}
+              data-size="compact"
+              data-response-field-name="turnstile_token"
+            />
+            <noscript>
+              <p>{verificationCopy.resend.javaScriptRequired}</p>
+            </noscript>
+            <Button type="submit">{verificationCopy.resend.submit}</Button>
+          </form>
+          <script
+            is:inline
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+            async
+            defer
+          />
+        </Card>
+      )
+    }
+  </Container>
 </BaseLayout>
 
 <script is:inline>
+  const referralLink = document.querySelector('[data-referral-link]');
+  const copyButton = document.querySelector('[data-copy-referral]');
+  const copyStatus = document.querySelector('[data-copy-status]');
+  if (
+    referralLink?.tagName === 'INPUT' &&
+    copyButton instanceof HTMLButtonElement &&
+    copyStatus instanceof HTMLElement
+  ) {
+    copyButton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(referralLink.value);
+        copyStatus.textContent = copyButton.dataset.copied ?? '';
+      } catch {
+        referralLink.select();
+        copyStatus.textContent = copyButton.dataset.copyFailed ?? '';
+      }
+    });
+    const shareHost = document.querySelector('[data-share-host]');
+    if (
+      shareHost instanceof HTMLElement &&
+      typeof navigator.share === 'function'
+    ) {
+      const shareButton = document.createElement('button');
+      shareButton.type = 'button';
+      shareButton.className = 'verification-native-share';
+      shareButton.textContent = shareHost.dataset.shareLabel ?? '';
+      shareButton.addEventListener('click', () => {
+        void navigator
+          .share({
+            title: shareHost.dataset.shareTitle,
+            url: referralLink.value,
+          })
+          .catch(() => {});
+      });
+      shareHost.append(shareButton);
+    }
+  }
+
   const surveyForm = document.querySelector('[data-survey-form]');
   if (surveyForm instanceof HTMLFormElement) {
+    const skip = surveyForm.querySelector('[data-survey-skip]');
+    if (skip instanceof HTMLButtonElement) {
+      skip.addEventListener('click', () => {
+        for (const input of surveyForm.querySelectorAll(
+          'input[type="checkbox"], input[type="radio"]',
+        )) {
+          if (input instanceof HTMLInputElement) input.checked = false;
+        }
+        surveyForm.requestSubmit();
+      });
+    }
     surveyForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       const submit = surveyForm.querySelector('[type="submit"]');
@@ -210,6 +378,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         return;
 
       submit.disabled = true;
+      if (skip instanceof HTMLButtonElement) skip.disabled = true;
       try {
         const response = await fetch(surveyForm.action, {
           body: new FormData(surveyForm),
@@ -223,64 +392,196 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         status.textContent = surveyForm.dataset.unavailableMessage ?? '';
       } finally {
         submit.disabled = false;
+        if (skip instanceof HTMLButtonElement) skip.disabled = false;
       }
     });
   }
 </script>
 
 <style>
+  :global(.verification-container) {
+    padding-block: var(--section-gap);
+  }
+
   .verification-success,
-  .verification-confirm,
-  .verification-invalid,
+  .verification-boundary,
   .verification-invalid form,
   .verification-success__section,
-  fieldset {
+  .verification-survey,
+  .verification-progress,
+  .verification-rewards {
     display: grid;
+    gap: var(--space-3);
+  }
+
+  .verification-boundary {
+    max-inline-size: var(--measure);
+  }
+
+  .verification-boundary :global(.pill),
+  .verification-rewards :global(.pill) {
+    justify-self: start;
+  }
+
+  .verification-heading,
+  .verification-link-control,
+  .verification-survey-actions,
+  .verification-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: var(--space-2);
   }
 
-  .verification-success__message,
-  h2,
-  legend,
-  label,
-  input,
-  a,
-  button {
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
+  .verification-heading {
+    align-items: flex-start;
   }
 
-  .verification-success__message,
-  h2 {
+  .verification-heading > div {
+    flex: auto;
+  }
+
+  h1,
+  h2,
+  h3,
+  p {
     margin: 0;
   }
 
+  h1 {
+    font-size: var(--step-5);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-5);
+    letter-spacing: var(--tracking-tight);
+  }
+
   h2 {
+    font-size: var(--step-4);
+    line-height: var(--leading-4);
+  }
+
+  h3 {
     font-size: var(--step-3);
     line-height: var(--leading-3);
   }
 
-  fieldset {
-    margin: 0;
-    padding: var(--space-2);
-    border: thin solid var(--line);
-    border-radius: var(--radius-card);
-  }
-
+  p,
+  legend,
   label {
-    display: flex;
-    gap: var(--space-1);
-    align-items: center;
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
   }
 
-  button {
-    width: fit-content;
-    padding: var(--space-1) var(--space-2);
-    color: var(--midnight);
-    background: var(--coral);
-    border: thin solid var(--coral);
+  .verification-heading p,
+  .verification-boundary > p,
+  .verification-rewards p {
+    color: var(--ink-600);
+  }
+
+  .verification-rewards .verification-reward-name {
+    color: var(--ink);
+    font-weight: var(--weight-semibold);
+  }
+
+  .verification-link-control :global(.input) {
+    min-inline-size: 0;
+    flex: auto;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .verification-link-control :global(.button) {
+    flex: none;
+  }
+
+  .verification-progress label {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  progress {
+    inline-size: 100%;
+    block-size: var(--space-2);
+    accent-color: var(--coral);
+  }
+
+  fieldset {
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  legend {
+    margin-block-end: var(--space-2);
+    font-weight: var(--weight-semibold);
+  }
+
+  .verification-options label {
+    position: relative;
+    display: inline-flex;
+    min-block-size: var(--tap-min);
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .verification-options input {
+    position: absolute;
+    inline-size: var(--tap-min);
+    block-size: var(--tap-min);
+    margin: 0;
+    opacity: 0;
+  }
+
+  .verification-options span {
+    display: inline-flex;
+    min-block-size: var(--tap-min);
+    align-items: center;
+    padding-inline: var(--space-2);
+    color: var(--ink);
+    background-color: var(--paper);
+    border: thin solid var(--line);
+    border-radius: var(--radius-pill);
+  }
+
+  .verification-options--segments span {
     border-radius: var(--radius-control);
+  }
+
+  .verification-options input:checked + span {
+    background-color: var(--coral-tint);
+    border-color: var(--coral);
+  }
+
+  .verification-options label:focus-within span {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  .verification-survey-actions :global(.button) {
+    min-inline-size: var(--space-10);
+  }
+
+  :global(.verification-native-share) {
+    min-block-size: var(--tap-min);
+    min-inline-size: var(--tap-min);
+    padding-inline: var(--space-3);
+    color: var(--ink);
+    font: inherit;
+    background: var(--surface);
+    border: thin solid var(--line);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+  }
+
+  :global(.verification-native-share:focus-visible) {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  @media (min-width: 64rem) {
+    :global(.verification-container) {
+      padding-block: var(--section-gap-wide);
+    }
   }
 </style>

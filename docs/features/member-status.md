@@ -12,6 +12,15 @@ A signed, expiring link that shows a subscriber their own status — verified st
 The `/me` referral section is rendered by E6-05. The welcome and milestone email referral sections are rendered by E8-03, which also owns the final parity assertion proving that the email and page mappings consume the same status result. This ownership split is founder-authorised on 2026-09-14.
 
 ## User flows
+E11.5-07 renders the verification success page's access wave from the same
+ReferralService.status result, independent of the milestone ladder. With
+referrals enabled, it also renders the referral link, progress toward the
+next enabled tier, and that tier's held or settled reward states. Reward
+states of other tiers are not shown there; `/me` shows them. The
+progress target and discount percentage come from the enabled milestone
+ladder; with no enabled tier, no referral card renders. The existing signed
+status link remains a secondary action.
+
 1. **Receive** — every transactional email carries the signed status link.
 2. **View** — `/me?t=…` renders the bearer's own row, own rank and referral link, with a copy control.
 3. **Act** — re-answer the survey, switch marketing email on or off (ADR-027; switching off never affects the waitlist place or giveaway entries), or unsubscribe.

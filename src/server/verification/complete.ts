@@ -14,6 +14,7 @@ import {
   type AccessWindow,
 } from '../referral/config.ts';
 import { createReferralService } from '../referral/service.ts';
+import type { ReferralStatus } from '../referral/status.ts';
 import {
   createGiveawayAccrualServiceInTransaction,
   type CurrentGiveawayRules,
@@ -28,6 +29,7 @@ export interface VerificationCompletion {
   readonly accessWindow: AccessWindow | null;
   readonly outcome: ConsumeResult;
   readonly referralCode: string | null;
+  readonly referralStatus: ReferralStatus | null;
   readonly statusToken: string | null;
   readonly surveyCompleted: boolean;
 }
@@ -80,6 +82,7 @@ export function createVerificationCompletionService(
         accessWindow: null,
         outcome: 'invalid',
         referralCode: null,
+        referralStatus: null,
         statusToken: null,
         surveyCompleted: false,
       };
@@ -101,6 +104,7 @@ export function createVerificationCompletionService(
           accessWindow: null,
           outcome: consumed.outcome,
           referralCode: null,
+          referralStatus: null,
           statusToken: null,
           surveyCompleted: false,
         };
@@ -205,6 +209,7 @@ export function createVerificationCompletionService(
         accessWindow: subscriber.access_window,
         outcome: consumed.outcome,
         referralCode: referralEnabled ? subscriber.referral_code : null,
+        referralStatus: await referral.status(subscriberId),
         statusToken: status.token,
         surveyCompleted: await completion.hasSurveyResponse(subscriberId),
       };

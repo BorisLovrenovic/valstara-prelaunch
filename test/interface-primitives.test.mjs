@@ -24,6 +24,7 @@ const playwrightImage =
 
 let browser;
 let browserOrigin;
+let fixtureOrigin;
 let browserServer;
 let browserServerError;
 let server;
@@ -159,6 +160,7 @@ async function waitForFixtureServer() {
         });
         if (response.ok) {
           browserOrigin = `http://host.docker.internal:${port}`;
+          fixtureOrigin = `http://127.0.0.1:${port}`;
           return;
         }
       } catch {
@@ -722,6 +724,24 @@ test('a button with an href is a native link, and on-midnight reads on the band'
     } finally {
       await context.close();
     }
+  }
+});
+
+test('a button renders exactly one type attribute, defaulting to button', async () => {
+  // The parsed DOM drops duplicate attributes, so read the server's markup.
+  const html = await (await globalThis.fetch(`${fixtureOrigin}/states`)).text();
+  for (const [id, type] of [
+    ['primary', 'button'],
+    ['submit-button', 'submit'],
+  ]) {
+    const tag = new RegExp(`<button[^>]*\\sid="${id}"[^>]*>`, 'u').exec(
+      html,
+    )?.[0];
+    assert.deepEqual(
+      [...(tag ?? '').matchAll(/\stype="([^"]*)"/gu)].map((match) => match[1]),
+      [type],
+      id,
+    );
   }
 });
 

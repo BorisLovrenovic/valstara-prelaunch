@@ -27,3 +27,8 @@ It makes the reward state machine explicit — `none` → `settled` | `held` →
 **Repository boundary (founder-authorised 2026-09-13; amended 2026-10-11):** this pre-launch repository implements `none` → `settled` for cheap confirmation rewards and `none` → `held` for milestone discounts. It has no qualifying-order path and never reads or writes Medusa. The storefront is the authoritative order source and owns both `held` → `settled` and deadline-driven `held` → `void` after handoff. E11-06 carries every export-set owner's held discount with a store-launch-plus-90-days deadline and records each outcome before the waitlist database becomes read-only. It voids ineligible owners' discounts and legacy bonus-entry awards with audited reasons.
 
 The messaging must be honest about it. The milestone email **plainly states which reward is settled and which is held**, because a reward a person believes they have and then does not receive is worse than one they knew was conditional.
+
+E11.5-07's verification success card shows the configured next-tier discount
+with its first-order condition in one line. When a tier has been reached, any
+attained held or settled state comes from ReferralService.status; verification
+page presentation does not settle rewards.

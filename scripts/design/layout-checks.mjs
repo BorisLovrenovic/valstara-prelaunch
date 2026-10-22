@@ -6,7 +6,7 @@ export const designThemes = Object.freeze(['light', 'dark']);
 
 // Pages enter this list in the ticket that redesigns them. E11.5-12 compares
 // it to the complete rendered-page inventory.
-export const enforcedPages = Object.freeze([]);
+export const enforcedPages = Object.freeze(['/verify']);
 
 // The site shell: BaseLayout's header and footer landmarks. E11.5-03 enforces
 // the layout rules on these regions on every rendered page, while page bodies
@@ -84,6 +84,8 @@ async function checkLayout(page, regions) {
         'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"]',
       )) {
         if (!visible(element) || element.disabled) continue;
+        // The skip link is intentionally translated off screen until focused.
+        if (element.matches('.skip-link:not(:focus-visible)')) continue;
         const rect = element.getBoundingClientRect();
         if (rect.width < 44 || rect.height < 44) {
           issues.push(
