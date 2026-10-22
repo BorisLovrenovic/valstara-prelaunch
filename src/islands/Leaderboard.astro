@@ -1,17 +1,43 @@
 ---
-import { leaderboardCopy } from '../copy/leaderboard.ts';
+import { leaderboardCopy, leaderboardPanelCopy } from '../copy/leaderboard.ts';
+import Button from '../components/button.astro';
+import Card from '../components/card.astro';
+import Icon from '../components/icon.astro';
+
+// The explanation and the call to action sit inside the flagged section, so
+// the kill switch removes the whole surface, as it always has.
 ---
 
 <section class="leaderboard-section" data-leaderboard-section>
   <valstara-leaderboard data-endpoint="/api/leaderboard">
     <h1 class="leaderboard-heading">{leaderboardCopy.heading}</h1>
     <p class="leaderboard-introduction">{leaderboardCopy.introduction}</p>
+    <p class="leaderboard-meta" data-leaderboard-meta hidden></p>
     <p class="leaderboard-status" data-leaderboard-status role="status">
       {leaderboardCopy.loading}
     </p>
-    <p class="leaderboard-meta" data-leaderboard-meta hidden></p>
     <ol class="leaderboard-entries" data-leaderboard-entries></ol>
   </valstara-leaderboard>
+  <div class="leaderboard-aside">
+    <Card class="leaderboard-panel" data-leaderboard-counts>
+      <h2>{leaderboardPanelCopy.counts.heading}</h2>
+      <ul>
+        {
+          leaderboardPanelCopy.counts.lines.map((line) => (
+            <li>
+              <Icon name="check" />
+              <span>{line}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </Card>
+    <Card class="leaderboard-panel" data-leaderboard-cta>
+      <h2>{leaderboardPanelCopy.cta.heading}</h2>
+      <Button href="/#join">{leaderboardPanelCopy.cta.join}</Button>
+      <p>{leaderboardPanelCopy.cta.member}</p>
+    </Card>
+  </div>
 </section>
 
 <script>
@@ -24,6 +50,13 @@ import { leaderboardCopy } from '../copy/leaderboard.ts';
     snapshotAgeSeconds,
     type PublicLeaderboardSnapshot,
   } from './leaderboard.ts';
+
+  function span(className: string, text = ''): HTMLSpanElement {
+    const element = document.createElement('span');
+    element.className = className;
+    element.textContent = text;
+    return element;
+  }
 
   class ValstaraLeaderboard extends HTMLElement {
     #interval: ReturnType<typeof globalThis.setInterval> | null = null;
@@ -120,18 +153,30 @@ import { leaderboardCopy } from '../copy/leaderboard.ts';
           const item = document.createElement('li');
           item.className = 'leaderboard-entry';
 
-          const rank = document.createElement('span');
-          rank.className = 'leaderboard-rank tabular-figure';
-          rank.textContent = leaderboardCopy.rank(entry.rank);
-
-          const handle = document.createElement('span');
-          handle.className = 'leaderboard-handle';
-          handle.textContent = leaderboardCopy.handle(entry.displayHandle);
-
-          const count = document.createElement('span');
-          count.className = 'leaderboard-count tabular-figure';
-          count.textContent = leaderboardCopy.confirmedReferrals(
-            entry.confirmedReferrals,
+          // Each figure is its own mono tabular span; the text node between
+          // label and figure keeps the read-out "Rank 1" and
+          // "7 confirmed referrals", exactly as the copy layer words them.
+          const rank = span('leaderboard-rank');
+          rank.append(
+            span('leaderboard-rank-label', leaderboardCopy.rankLabel),
+            ' ',
+            span('leaderboard-rank-figure tabular-figure', String(entry.rank)),
+          );
+          const handle = span(
+            'leaderboard-handle',
+            leaderboardCopy.handle(entry.displayHandle),
+          );
+          const count = span('leaderboard-count');
+          count.append(
+            span(
+              'leaderboard-count-figure tabular-figure',
+              String(entry.confirmedReferrals),
+            ),
+            ' ',
+            span(
+              'leaderboard-count-label',
+              leaderboardCopy.confirmedReferralsLabel(entry.confirmedReferrals),
+            ),
           );
 
           item.append(rank, handle, count);
@@ -171,26 +216,37 @@ import { leaderboardCopy } from '../copy/leaderboard.ts';
 
 <style is:global>
   .leaderboard-section,
-  valstara-leaderboard {
+  valstara-leaderboard,
+  .leaderboard-aside,
+  .leaderboard-panel {
     display: grid;
-    gap: var(--space-2);
+    gap: var(--space-3);
+    align-content: start;
   }
 
   .leaderboard-heading,
   .leaderboard-introduction,
   .leaderboard-status,
-  .leaderboard-meta {
+  .leaderboard-meta,
+  .leaderboard-panel h2,
+  .leaderboard-panel p,
+  .leaderboard-panel ul {
     margin: 0;
-    color: var(--ink);
     font-family: var(--font-sans);
   }
 
   .leaderboard-heading {
+    color: var(--ink);
     font-size: var(--step-5);
+    font-weight: var(--weight-semibold);
     line-height: var(--leading-5);
+    letter-spacing: var(--tracking-tight);
   }
 
-  .leaderboard-introduction {
+  .leaderboard-introduction,
+  .leaderboard-panel p,
+  .leaderboard-panel li {
+    color: var(--ink-600);
     font-size: var(--step-2);
     line-height: var(--leading-2);
   }
@@ -202,6 +258,16 @@ import { leaderboardCopy } from '../copy/leaderboard.ts';
     line-height: var(--leading-1);
   }
 
+  .leaderboard-meta {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .leaderboard-status[hidden],
+  .leaderboard-meta[hidden] {
+    display: none;
+  }
+
   .leaderboard-entries {
     display: grid;
     gap: var(--space-1);
@@ -211,36 +277,104 @@ import { leaderboardCopy } from '../copy/leaderboard.ts';
   }
 
   .leaderboard-entry {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-1) var(--space-3);
     align-items: center;
     padding: var(--space-2) var(--space-3);
     color: var(--ink);
     background-color: var(--surface);
-    border: thin solid var(--line);
     border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1);
   }
 
-  .leaderboard-rank,
-  .leaderboard-count {
+  .leaderboard-rank {
+    display: grid;
+    grid-row: span 2;
+    justify-items: start;
+    min-inline-size: var(--tap-min);
+  }
+
+  .leaderboard-rank-label,
+  .leaderboard-count-label {
+    color: var(--ink-600);
+    font-family: var(--font-sans);
     font-size: var(--step-1);
     line-height: var(--leading-1);
   }
 
-  .leaderboard-rank {
-    flex: 0 0 var(--space-10);
+  .leaderboard-rank-figure {
+    color: var(--ink);
+    font-size: var(--step-5);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-5);
   }
 
   .leaderboard-handle {
-    flex: 1 1 calc(var(--space-10) * 2);
     overflow-wrap: anywhere;
     font-family: var(--font-sans);
     font-size: var(--step-2);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-2);
   }
 
   .leaderboard-count {
-    margin-inline-start: auto;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    align-items: baseline;
+  }
+
+  .leaderboard-count-figure {
+    color: var(--ink);
+    font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-3);
+  }
+
+  .leaderboard-panel h2 {
+    color: var(--ink);
+    font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-3);
+  }
+
+  .leaderboard-panel ul {
+    display: grid;
+    gap: var(--space-2);
+    padding: 0;
+    list-style: none;
+  }
+
+  .leaderboard-panel li {
+    display: flex;
+    gap: var(--space-1);
+    align-items: flex-start;
+  }
+
+  .leaderboard-panel .icon {
+    color: var(--coral);
+  }
+
+  .leaderboard-panel .button {
+    justify-self: start;
+  }
+
+  @media (min-width: 40rem) {
+    .leaderboard-entry {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .leaderboard-rank {
+      grid-row: auto;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .leaderboard-section {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      gap: var(--space-4);
+      align-items: start;
+    }
   }
 </style>

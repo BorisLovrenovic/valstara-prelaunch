@@ -86,10 +86,10 @@ after(async () => {
 const good =
   '<!doctype html><html><head><style>body{margin:0}.container{margin:0 16px}.target{display:block;width:44px;height:44px}</style></head><body><main class="container" data-design-container><button class="target" data-grid-align="start">Go</button></main></body></html>';
 
-test('closed widths and themes, with /verify joining the enforced set', () => {
+test('closed widths and themes, with /verify, /me and /leaderboard enforced', () => {
   assert.deepEqual(designWidths, [320, 360, 390, 768, 1024, 1280, 1440, 1920]);
   assert.deepEqual(designThemes, ['light', 'dark']);
-  assert.deepEqual(enforcedPages, ['/verify']);
+  assert.deepEqual(enforcedPages, ['/verify', '/me', '/leaderboard']);
 });
 
 test('a sound fixture passes every layout rule', async () => {

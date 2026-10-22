@@ -2,6 +2,13 @@
 import { memberStatusCopy } from '../copy/member-status.ts';
 import { surveyCopy } from '../copy/survey.ts';
 import { verificationCopy } from '../copy/verification.ts';
+import Accordion from '../components/accordion.astro';
+import Button from '../components/button.astro';
+import Card from '../components/card.astro';
+import Container from '../components/container.astro';
+import Icon from '../components/icon.astro';
+import Input from '../components/input.astro';
+import Pill from '../components/pill.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
@@ -9,6 +16,7 @@ import { createUnsubscribeRepository } from '../server/db/unsubscribe.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
 import { createReferralService } from '../server/referral/service.ts';
 import { presentReferralStatus } from '../server/referral/status-presentation.ts';
+import { verificationReferralFigures } from '../server/referral/verification-presentation.ts';
 import { dsrCopy } from '../copy/dsr.ts';
 import { createMarketingService } from '../server/subscriber/marketing.ts';
 import type { ReferralStatus } from '../server/referral/status.ts';
@@ -100,228 +108,400 @@ if (Astro.request.method === 'POST') {
 }
 const dashboardView =
   dashboardStatus === null ? null : presentReferralStatus(dashboardStatus);
+// Every card reads its figures from the one shared status presentation; the
+// keys only decide which card a field sits on.
+const dashboardFields =
+  dashboardView === null
+    ? null
+    : new Map(dashboardView.fields.map((field) => [field.key, field]));
+type DashboardField = NonNullable<typeof dashboardView>['fields'][number];
+const placedFields = (keys: readonly DashboardField['key'][]) =>
+  keys.flatMap((key) => dashboardFields?.get(key) ?? []);
+const statusFields = placedFields([
+  'subscriberStatus',
+  'accessWindow',
+  'ownRank',
+]);
+const referralFields = placedFields(['confirmedReferrals', 'tier']);
+const entriesField =
+  dashboardStatus !== null && dashboardStatus.giveawayEntries > 0
+    ? (dashboardFields?.get('giveawayEntries') ?? null)
+    : null;
+const ladderFigures =
+  dashboardStatus === null
+    ? null
+    : verificationReferralFigures(dashboardStatus).ladder;
+const accessWindow = dashboardStatus?.accessWindow ?? null;
+// Held and settled differ by icon, label and outline, never by colour alone.
+const rewardStates = ['settled', 'held'] as const;
+const rewardIcon = { held: 'clock', settled: 'check' } as const;
 ---
 
 <BaseLayout
   title={memberStatusCopy.meta.title}
   description={memberStatusCopy.meta.description}
 >
-  {
-    authentication.kind === 'authenticated' && leftWaitlist ? (
-      <section class="member-status-boundary">
-        <h1>{memberStatusCopy.left.heading}</h1>
-        <p>{memberStatusCopy.left.body}</p>
-      </section>
-    ) : authentication.kind === 'authenticated' && dashboardView !== null ? (
-      <div class="member-status-boundary" data-member-dashboard>
-        <h1>{memberStatusCopy.authenticated.heading}</h1>
-        <p>{memberStatusCopy.authenticated.body}</p>
+  <Container class="member-container">
+    {
+      authentication.kind === 'authenticated' && leftWaitlist ? (
+        <Card class="member-boundary" data-member-state="left">
+          <Icon name="check" size="lg" />
+          <h1>{memberStatusCopy.left.heading}</h1>
+          <p>{memberStatusCopy.left.body}</p>
+        </Card>
+      ) : authentication.kind === 'authenticated' && dashboardView !== null ? (
+        <div class="member-dashboard" data-member-dashboard>
+          <div class="member-column">
+            <Card class="member-card" data-member-card="status">
+              <div class="member-heading">
+                <Icon name="check" size="lg" />
+                <div>
+                  <h1>{memberStatusCopy.authenticated.heading}</h1>
+                  <p>{memberStatusCopy.authenticated.body}</p>
+                </div>
+              </div>
+              <dl class="member-stats">
+                {statusFields.map((field) => (
+                  <div class="member-stat" data-member-field={field.key}>
+                    <dt>{field.label}</dt>
+                    {field.key === 'accessWindow' && accessWindow !== null ? (
+                      <dd>
+                        <Pill variant="badge" data-access-wave>
+                          <data value={field.value}>
+                            {memberStatusCopy.authenticated.waveBadge(
+                              accessWindow,
+                            )}
+                          </data>
+                        </Pill>
+                      </dd>
+                    ) : (
+                      <dd class:list={[field.tabular && 'tabular-figure']}>
+                        {field.value}
+                      </dd>
+                    )}
+                  </div>
+                ))}
+              </dl>
+            </Card>
 
-        <dl class="member-status-summary">
-          {dashboardView.fields.map((field) => (
-            <div>
-              <dt>{field.label}</dt>
-              <dd class:list={[field.tabular && 'tabular-figure']}>
-                {field.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
+            <Card class="member-card" data-member-card="referral">
+              <h2>{memberStatusCopy.referral.heading}</h2>
+              <div class="member-link-control">
+                <Input
+                  aria-label={memberStatusCopy.referral.linkLabel}
+                  data-referral-link
+                  readonly
+                  type="url"
+                  value={dashboardView.referralLink}
+                />
+                <Button
+                  data-copy-failed={memberStatusCopy.referral.copyFailed}
+                  data-copy-referral
+                  data-copied={memberStatusCopy.referral.copied}
+                >
+                  {memberStatusCopy.referral.copy}
+                </Button>
+                <span
+                  data-share-host
+                  data-share-label={memberStatusCopy.referral.share}
+                  data-share-title={memberStatusCopy.referral.heading}
+                />
+              </div>
+              <p aria-live="polite" data-copy-status />
+              <dl class="member-stats">
+                {referralFields.map((field) => (
+                  <div class="member-stat" data-member-field={field.key}>
+                    <dt>{field.label}</dt>
+                    <dd class="member-figure tabular-figure">{field.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {ladderFigures !== null ? (
+                <div class="member-progress">
+                  <label class="tabular-figure" for="member-referral-progress">
+                    {memberStatusCopy.referral.progress(
+                      ladderFigures.progress,
+                      ladderFigures.threshold,
+                      ladderFigures.tier,
+                    )}
+                  </label>
+                  <progress
+                    id="member-referral-progress"
+                    data-referral-progress
+                    value={ladderFigures.progress}
+                    max={ladderFigures.threshold}
+                  />
+                </div>
+              ) : null}
+            </Card>
 
-        <section class="member-status-section">
-          <h2>{memberStatusCopy.marketing.heading}</h2>
-          <p>
-            {marketingEnabled
-              ? memberStatusCopy.marketing.enabled
-              : memberStatusCopy.marketing.disabled}
-          </p>
-          {!marketingEnabled ? (
-            <p>{memberStatusCopy.marketing.wording}</p>
-          ) : null}
-          <form
-            action="/api/me/marketing"
-            data-marketing-form
-            data-unavailable-message={memberStatusCopy.marketing.unavailable}
-            method="post"
-          >
-            <input name="t" type="hidden" value={token} />
-            <div
-              class="cf-turnstile"
-              data-sitekey={config.turnstileSiteKey}
-              data-response-field-name="turnstile_token"
-            />
-            <noscript>
-              <p>{memberStatusCopy.marketing.javaScriptRequired}</p>
-            </noscript>
-            <button
-              name="marketing"
-              type="submit"
-              value={marketingEnabled ? 'off' : 'on'}
-            >
-              {marketingEnabled
-                ? memberStatusCopy.marketing.turnOff
-                : memberStatusCopy.marketing.turnOn}
-            </button>
-            <p aria-live="polite" data-marketing-status />
-          </form>
-          <script
-            is:inline
-            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-            async
-            defer
-          />
-        </section>
+            <Card class="member-card" data-member-card="rewards">
+              <h2>{memberStatusCopy.rewards.heading}</h2>
+              <ul class="member-reward-key">
+                {rewardStates.map((state) => (
+                  <li data-reward-key={state}>
+                    <Icon name={rewardIcon[state]} />
+                    <span>
+                      <strong>{memberStatusCopy.rewards.states[state]}</strong>
+                      <span>
+                        {memberStatusCopy.rewards.explanations[state]}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {dashboardView.rewards.length === 0 ? (
+                <p>{memberStatusCopy.rewards.empty}</p>
+              ) : (
+                <ul class="member-rewards">
+                  {dashboardView.rewards.map((reward) => (
+                    <li
+                      class="member-reward"
+                      data-reward-state={reward.stateKey}
+                    >
+                      <span class="member-reward__name">
+                        <span>{reward.label}</span>
+                        <span class="member-reward__tier">{reward.tier}</span>
+                      </span>
+                      <strong
+                        class:list={[
+                          'member-reward__state',
+                          `member-reward__state--${reward.stateKey}`,
+                        ]}
+                      >
+                        <Icon name={rewardIcon[reward.stateKey]} size="sm" />
+                        {reward.state}
+                      </strong>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
 
-        <section class="member-status-section">
-          <h2>{memberStatusCopy.referral.heading}</h2>
-          <div class="referral-control">
-            <input
-              aria-label={memberStatusCopy.referral.linkLabel}
-              data-referral-link
-              readonly
-              type="url"
-              value={dashboardView.referralLink}
-            />
-            <button
-              data-copy-failed={memberStatusCopy.referral.copyFailed}
-              data-copy-referral
-              data-copied={memberStatusCopy.referral.copied}
-              type="button"
-            >
-              {memberStatusCopy.referral.copy}
-            </button>
+            {entriesField !== null ? (
+              <Card class="member-card" data-member-card="entries">
+                <dl class="member-stats">
+                  <div class="member-stat" data-member-field={entriesField.key}>
+                    <dt>{entriesField.label}</dt>
+                    <dd class="member-figure tabular-figure">
+                      {entriesField.value}
+                    </dd>
+                  </div>
+                </dl>
+              </Card>
+            ) : null}
           </div>
-          <p aria-live="polite" data-copy-status />
-        </section>
 
-        <section class="member-status-section">
-          <h2>{memberStatusCopy.rewards.heading}</h2>
-          <p>{memberStatusCopy.rewards.intro}</p>
-          {dashboardView.rewards.length === 0 ? (
-            <p>{memberStatusCopy.rewards.empty}</p>
-          ) : (
-            <ul class="reward-list">
-              {dashboardView.rewards.map((reward) => (
+          <div class="member-column">
+            <Card class="member-card" data-member-card="preferences">
+              <h2>{memberStatusCopy.preferences.heading}</h2>
+              <form
+                action="/api/me/marketing"
+                class="member-marketing"
+                data-marketing-form
+                data-unavailable-message={
+                  memberStatusCopy.marketing.unavailable
+                }
+                method="post"
+              >
+                <div class="member-switch-row">
+                  <h3>{memberStatusCopy.marketing.heading}</h3>
+                  <Pill data-marketing-state>
+                    {marketingEnabled
+                      ? memberStatusCopy.marketing.enabled
+                      : memberStatusCopy.marketing.disabled}
+                  </Pill>
+                </div>
+                {!marketingEnabled ? (
+                  <p>{memberStatusCopy.marketing.wording}</p>
+                ) : null}
+                <input name="t" type="hidden" value={token} />
+                <div
+                  class="cf-turnstile"
+                  data-sitekey={config.turnstileSiteKey}
+                  data-size="compact"
+                  data-response-field-name="turnstile_token"
+                />
+                <noscript>
+                  <p>{memberStatusCopy.marketing.javaScriptRequired}</p>
+                </noscript>
+                <button
+                  class:list={[
+                    'member-switch',
+                    marketingEnabled && 'member-switch--on',
+                  ]}
+                  data-marketing-switch
+                  name="marketing"
+                  type="submit"
+                  value={marketingEnabled ? 'off' : 'on'}
+                >
+                  <span class="member-switch__track">
+                    <span class="member-switch__thumb" />
+                  </span>
+                  <span>
+                    {marketingEnabled
+                      ? memberStatusCopy.marketing.turnOff
+                      : memberStatusCopy.marketing.turnOn}
+                  </span>
+                </button>
+                <p aria-live="polite" data-marketing-status />
+              </form>
+
+              {surveyEnabled ? (
+                <Accordion
+                  class="member-survey"
+                  summary={memberStatusCopy.survey.heading}
+                >
+                  <form
+                    action="/api/survey"
+                    class="member-survey-form"
+                    data-survey-form
+                    data-unavailable-message={surveyCopy.unavailable}
+                    method="post"
+                  >
+                    <input name="token" type="hidden" value={token} />
+                    <input
+                      name="version"
+                      type="hidden"
+                      value={currentSurveyVersion}
+                    />
+                    <fieldset>
+                      <legend>{verificationCopy.survey.categoryLabel}</legend>
+                      <div class="member-options member-options--chips">
+                        {verificationCopy.survey.categoryOptions.map(
+                          (option) => (
+                            <label>
+                              <input
+                                name="category_preference"
+                                type="checkbox"
+                                value={option.value}
+                              />
+                              <span>{option.label}</span>
+                            </label>
+                          ),
+                        )}
+                      </div>
+                    </fieldset>
+                    <fieldset>
+                      <legend>{verificationCopy.survey.frequencyLabel}</legend>
+                      <div class="member-options member-options--segments">
+                        {verificationCopy.survey.frequencyOptions.map(
+                          (option) => (
+                            <label>
+                              <input
+                                name="shopping_frequency"
+                                type="radio"
+                                value={option.value}
+                              />
+                              <span>{option.label}</span>
+                            </label>
+                          ),
+                        )}
+                      </div>
+                    </fieldset>
+                    <Button type="submit" variant="secondary">
+                      {memberStatusCopy.survey.submit}
+                    </Button>
+                    <p aria-live="polite" data-survey-status />
+                  </form>
+                </Accordion>
+              ) : null}
+              <script
+                is:inline
+                src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+                async
+                defer
+              />
+            </Card>
+
+            <Card class="member-card" data-member-card="data-rights">
+              <h2>{memberStatusCopy.dataRights.heading}</h2>
+              <ul class="member-links">
                 <li>
-                  <span>{reward.label}</span>
-                  <span>{reward.tier}</span>
-                  <strong>{reward.state}</strong>
+                  <a href="/dsr?operation=export">
+                    {dsrCopy.export.heading}
+                    <Icon name="arrow-right" size="sm" />
+                  </a>
                 </li>
-              ))}
-            </ul>
-          )}
-        </section>
+                <li>
+                  <a href="/dsr?operation=delete">
+                    {dsrCopy.delete.heading}
+                    <Icon name="arrow-right" size="sm" />
+                  </a>
+                </li>
+              </ul>
+            </Card>
 
-        {surveyEnabled ? (
-          <form
-            action="/api/survey"
-            class="member-status-section"
-            data-survey-form
-            data-unavailable-message={surveyCopy.unavailable}
-            method="post"
-          >
-            <h2>{memberStatusCopy.survey.heading}</h2>
-            <input name="token" type="hidden" value={token} />
-            <input name="version" type="hidden" value={currentSurveyVersion} />
-            <fieldset>
-              <legend>{verificationCopy.survey.categoryLabel}</legend>
-              {verificationCopy.survey.categoryOptions.map((option) => (
-                <label>
-                  <input
-                    name="category_preference"
-                    type="checkbox"
-                    value={option.value}
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </fieldset>
-            <fieldset>
-              <legend>{verificationCopy.survey.frequencyLabel}</legend>
-              {verificationCopy.survey.frequencyOptions.map((option) => (
-                <label>
-                  <input
-                    name="shopping_frequency"
-                    type="radio"
-                    value={option.value}
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </fieldset>
-            <button type="submit">{memberStatusCopy.survey.submit}</button>
-            <p aria-live="polite" data-survey-status />
-          </form>
-        ) : null}
-
-        <section class="member-status-section">
+            <section class="member-leave" data-member-card="leave">
+              <h2>{memberStatusCopy.leave.heading}</h2>
+              <p>{memberStatusCopy.leave.body}</p>
+              <form
+                action="/api/me/leave"
+                data-leave-form
+                data-unavailable-message={memberStatusCopy.leave.unavailable}
+                method="post"
+              >
+                <input name="t" type="hidden" value={token} />
+                <div
+                  class="cf-turnstile"
+                  data-sitekey={config.turnstileSiteKey}
+                  data-size="compact"
+                  data-response-field-name="turnstile_token"
+                />
+                <noscript>
+                  <p>{memberStatusCopy.leave.javaScriptRequired}</p>
+                </noscript>
+                <Button type="submit" variant="secondary">
+                  {memberStatusCopy.leave.submit}
+                </Button>
+                <p aria-live="polite" data-leave-status />
+              </form>
+            </section>
+          </div>
+        </div>
+      ) : authentication.kind === 'disabled' ? (
+        <Card class="member-boundary" data-member-state="disabled">
+          <Icon name="alert" size="lg" />
+          <h1>{memberStatusCopy.disabled.heading}</h1>
+          <p>{memberStatusCopy.disabled.body}</p>
+        </Card>
+      ) : (
+        <Card class="member-boundary" data-member-state="recovery">
+          <Icon name="link" size="lg" />
+          <h1>{memberStatusCopy.recovery.heading}</h1>
           <p>
-            <a href="/dsr?operation=export">{dsrCopy.export.heading}</a>
+            {replacementRequested
+              ? memberStatusCopy.recovery.sent
+              : challengeFailed
+                ? memberStatusCopy.recovery.challengeFailed
+                : memberStatusCopy.recovery.body}
           </p>
-          <p>
-            <a href="/dsr?operation=delete">{dsrCopy.delete.heading}</a>
-          </p>
-          <h2>{memberStatusCopy.leave.heading}</h2>
-          <p>{memberStatusCopy.leave.body}</p>
-          <form
-            action="/api/me/leave"
-            data-leave-form
-            data-unavailable-message={memberStatusCopy.leave.unavailable}
-            method="post"
-          >
-            <input name="t" type="hidden" value={token} />
-            <div
-              class="cf-turnstile"
-              data-sitekey={config.turnstileSiteKey}
-              data-response-field-name="turnstile_token"
+          {!replacementRequested ? (
+            <form method="post" class="member-recovery">
+              <div
+                class="cf-turnstile"
+                data-sitekey={config.turnstileSiteKey}
+                data-size="compact"
+                data-response-field-name="turnstile_token"
+              />
+              <noscript>
+                <p>{memberStatusCopy.recovery.javaScriptRequired}</p>
+              </noscript>
+              <Button type="submit">{memberStatusCopy.recovery.submit}</Button>
+            </form>
+          ) : null}
+          {!replacementRequested ? (
+            <script
+              is:inline
+              src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+              async
+              defer
             />
-            <noscript>
-              <p>{memberStatusCopy.leave.javaScriptRequired}</p>
-            </noscript>
-            <button type="submit">{memberStatusCopy.leave.submit}</button>
-            <p aria-live="polite" data-leave-status />
-          </form>
-        </section>
-      </div>
-    ) : authentication.kind === 'disabled' ? (
-      <section class="member-status-boundary">
-        <h1>{memberStatusCopy.disabled.heading}</h1>
-        <p>{memberStatusCopy.disabled.body}</p>
-      </section>
-    ) : (
-      <section class="member-status-boundary">
-        <h1>{memberStatusCopy.recovery.heading}</h1>
-        <p>
-          {replacementRequested
-            ? memberStatusCopy.recovery.sent
-            : challengeFailed
-              ? memberStatusCopy.recovery.challengeFailed
-              : memberStatusCopy.recovery.body}
-        </p>
-        {!replacementRequested ? (
-          <form method="post">
-            <div
-              class="cf-turnstile"
-              data-sitekey={config.turnstileSiteKey}
-              data-response-field-name="turnstile_token"
-            />
-            <noscript>
-              <p>{memberStatusCopy.recovery.javaScriptRequired}</p>
-            </noscript>
-            <button type="submit">{memberStatusCopy.recovery.submit}</button>
-          </form>
-        ) : null}
-        {!replacementRequested ? (
-          <script
-            is:inline
-            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-            async
-            defer
-          />
-        ) : null}
-      </section>
-    )
-  }
+          ) : null}
+        </Card>
+      )
+    }
+  </Container>
 </BaseLayout>
 
 <script is:inline>
@@ -342,6 +522,25 @@ const dashboardView =
         copyStatus.textContent = copyButton.dataset.copyFailed ?? '';
       }
     });
+    const shareHost = document.querySelector('[data-share-host]');
+    if (
+      shareHost instanceof HTMLElement &&
+      typeof navigator.share === 'function'
+    ) {
+      const shareButton = document.createElement('button');
+      shareButton.type = 'button';
+      shareButton.className = 'member-native-share';
+      shareButton.textContent = shareHost.dataset.shareLabel ?? '';
+      shareButton.addEventListener('click', () => {
+        void navigator
+          .share({
+            title: shareHost.dataset.shareTitle,
+            url: referralLink.value,
+          })
+          .catch(() => {});
+      });
+      shareHost.append(shareButton);
+    }
   }
 
   const surveyForm = document.querySelector('[data-survey-form]');
@@ -438,128 +637,417 @@ const dashboardView =
 </script>
 
 <style>
-  .member-status-boundary {
+  :global(.member-container) {
+    padding-block: var(--section-gap);
+  }
+
+  .member-dashboard,
+  .member-column,
+  :global(.member-card),
+  :global(.member-boundary),
+  .member-marketing,
+  .member-survey-form,
+  .member-progress,
+  .member-leave,
+  .member-leave form,
+  .member-recovery {
     display: grid;
     gap: var(--space-3);
-    margin-inline: auto;
-    padding: var(--space-3);
-    color: var(--ink);
-    font-family: var(--font-sans);
-    background: var(--surface);
-    border: thin solid var(--line);
-    border-radius: var(--radius-card);
   }
 
-  h1 {
-    margin-block: 0 var(--space-2);
-    font-size: var(--step-4);
-    line-height: var(--leading-4);
+  .member-dashboard,
+  .member-column {
+    align-content: start;
   }
 
+  :global(.member-boundary) {
+    max-inline-size: var(--measure);
+  }
+
+  :global(.member-boundary) :global(.icon),
+  :global(.member-heading) :global(.icon) {
+    color: var(--coral);
+  }
+
+  .member-heading,
+  .member-link-control,
+  .member-switch-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .member-heading {
+    align-items: flex-start;
+  }
+
+  /* The heading drops below its icon before it would wrap word by word. */
+  .member-heading > div {
+    flex: 1 1 calc(var(--space-10) * 2);
+    min-inline-size: 0;
+  }
+
+  h1,
   h2,
-  dt,
-  dd,
-  label,
-  input,
-  a,
-  strong {
-    color: var(--ink);
-  }
-
-  h2,
-  dt,
+  h3,
+  p,
+  dl,
   dd,
   ul {
     margin: 0;
   }
 
+  h1 {
+    font-size: var(--step-5);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-5);
+    letter-spacing: var(--tracking-tight);
+  }
+
   h2 {
+    font-size: var(--step-4);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-4);
+  }
+
+  h3 {
     font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
     line-height: var(--leading-3);
   }
 
-  p {
-    margin: 0;
-    color: var(--ink-600);
+  p,
+  legend,
+  label,
+  li {
     font-size: var(--step-2);
     line-height: var(--leading-2);
   }
 
-  .member-status-summary,
-  .member-status-section,
-  fieldset,
-  .reward-list {
+  p {
+    max-inline-size: var(--measure);
+    color: var(--ink-600);
+  }
+
+  .member-stats {
     display: grid;
     gap: var(--space-2);
   }
 
-  .member-status-summary > div,
-  .reward-list li,
-  .referral-control {
+  .member-stat {
+    display: grid;
+    gap: var(--space-1);
+    align-content: start;
+    padding: var(--space-2);
+    background-color: var(--paper);
+    border-radius: var(--radius-control);
+  }
+
+  dt {
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  dd {
+    color: var(--ink);
+    font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-3);
+  }
+
+  dd :global(.pill) {
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  .member-figure {
+    font-size: var(--step-5);
+    line-height: var(--leading-5);
+  }
+
+  /* The link takes its own line before it would shrink below a usable width. */
+  .member-link-control :global(.input) {
+    min-inline-size: 0;
+    flex: 1 1 calc(var(--space-10) * 2);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .member-link-control :global(.button) {
+    flex: none;
+  }
+
+  .member-progress label {
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  progress {
+    inline-size: 100%;
+    block-size: var(--space-2);
+    accent-color: var(--coral);
+  }
+
+  .member-reward-key,
+  .member-rewards,
+  .member-links {
+    display: grid;
+    gap: var(--space-2);
+    padding: 0;
+    list-style: none;
+  }
+
+  .member-reward-key li {
+    display: flex;
+    gap: var(--space-2);
+    align-items: flex-start;
+  }
+
+  .member-reward-key li > span {
+    display: grid;
+    min-inline-size: 0;
+  }
+
+  .member-reward-key :global(.icon) {
+    color: var(--coral);
+  }
+
+  .member-reward-key li > span > span {
+    color: var(--ink-600);
+  }
+
+  .member-reward {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
     align-items: center;
     justify-content: space-between;
-  }
-
-  dt {
-    color: var(--ink-600);
-  }
-
-  dd {
-    text-align: end;
-  }
-
-  .member-status-section {
-    padding-block-start: var(--space-3);
-    border-block-start: thin solid var(--line);
-  }
-
-  .referral-control input {
-    min-width: 0;
-    flex: auto;
-  }
-
-  .referral-control input,
-  fieldset {
-    padding: var(--space-1);
-    font: inherit;
-    background: var(--surface);
+    padding: var(--space-2);
     border: thin solid var(--line);
     border-radius: var(--radius-control);
   }
 
-  fieldset label {
-    display: flex;
+  .member-reward__name {
+    display: grid;
+    min-inline-size: 0;
+  }
+
+  .member-reward__tier {
+    color: var(--ink-600);
+    font-family: var(--font-mono);
+    font-size: var(--step-1);
+    font-variant-numeric: tabular-nums;
+    line-height: var(--leading-1);
+  }
+
+  .member-reward__state {
+    display: inline-flex;
     gap: var(--space-1);
     align-items: center;
-  }
-
-  .reward-list {
-    padding: 0;
-    list-style: none;
-  }
-
-  button,
-  a {
-    padding: var(--space-1) var(--space-2);
+    padding-block: var(--space-1);
+    padding-inline: var(--space-2);
     color: var(--midnight);
-    font: inherit;
-    background: var(--coral);
-    border: thin solid var(--coral);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    border-radius: var(--radius-pill);
+  }
+
+  .member-reward__state--settled {
+    background-color: var(--coral-tint);
+  }
+
+  .member-reward__state--held {
+    color: var(--ink);
+    background-color: var(--surface);
+    border: thin dashed var(--ink-600);
+  }
+
+  .member-switch-row h3 {
+    flex: 1 1 0;
+    min-inline-size: 0;
+  }
+
+  .member-switch {
+    box-sizing: border-box;
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+    justify-self: start;
+    min-block-size: var(--tap-min);
+    padding-block: var(--space-1);
+    padding-inline: var(--space-2);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-2);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-2);
+    text-align: start;
+    background-color: var(--surface);
+    border: thin solid var(--line);
     border-radius: var(--radius-control);
     cursor: pointer;
   }
 
-  a {
+  .member-switch:hover {
+    border-color: var(--coral);
+  }
+
+  .member-switch:focus-visible,
+  .member-links a:focus-visible,
+  :global(.member-native-share:focus-visible) {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  .member-switch:disabled {
+    color: var(--ink-600);
+    cursor: not-allowed;
+  }
+
+  .member-switch__track {
+    box-sizing: border-box;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    inline-size: var(--space-6);
+    block-size: var(--space-3);
+    padding: var(--space-1);
+    background-color: var(--line);
+    border: thin solid var(--ink-600);
+    border-radius: var(--radius-pill);
+  }
+
+  .member-switch__thumb {
+    inline-size: var(--space-2);
+    block-size: var(--space-2);
+    background-color: var(--surface);
+    border: thin solid var(--ink-600);
+    border-radius: var(--radius-pill);
+  }
+
+  .member-switch--on .member-switch__track {
+    justify-content: flex-end;
+    background-color: var(--coral);
+    border-color: var(--coral);
+  }
+
+  fieldset {
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  legend {
+    margin-block-end: var(--space-2);
+    font-weight: var(--weight-semibold);
+  }
+
+  .member-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .member-options label {
+    position: relative;
+    display: inline-flex;
+    min-block-size: var(--tap-min);
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .member-options input {
+    position: absolute;
+    inline-size: var(--tap-min);
+    block-size: var(--tap-min);
+    margin: 0;
+    opacity: 0;
+  }
+
+  .member-options span {
+    display: inline-flex;
+    min-block-size: var(--tap-min);
+    align-items: center;
+    padding-inline: var(--space-2);
+    color: var(--ink);
+    background-color: var(--paper);
+    border: thin solid var(--line);
+    border-radius: var(--radius-pill);
+  }
+
+  .member-options--segments span {
+    border-radius: var(--radius-control);
+  }
+
+  .member-options input:checked + span {
+    background-color: var(--coral-tint);
+    border-color: var(--coral);
+  }
+
+  .member-options label:focus-within span {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  .member-survey-form :global(.button) {
     justify-self: start;
   }
 
-  button:focus-visible,
-  input:focus-visible,
-  a:focus-visible {
-    outline: medium solid var(--ink);
-    outline-offset: var(--space-1);
+  .member-links a {
+    display: inline-flex;
+    gap: var(--space-1);
+    align-items: center;
+    min-block-size: var(--tap-min);
+    color: var(--ink);
+    font-weight: var(--weight-medium);
+    text-decoration: underline;
+    text-underline-offset: var(--space-1);
+  }
+
+  .member-links a :global(.icon) {
+    color: var(--coral);
+  }
+
+  .member-leave {
+    padding-block-start: var(--space-4);
+    border-block-start: thin solid var(--line);
+  }
+
+  .member-leave :global(.button) {
+    justify-self: start;
+  }
+
+  :global(.member-native-share) {
+    min-block-size: var(--tap-min);
+    min-inline-size: var(--tap-min);
+    padding-inline: var(--space-3);
+    color: var(--ink);
+    font: inherit;
+    background: var(--surface);
+    border: thin solid var(--line);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+  }
+
+  @media (min-width: 40rem) {
+    .member-stats {
+      grid-template-columns: repeat(auto-fit, minmax(var(--space-10), 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    :global(.member-container) {
+      padding-block: var(--section-gap-wide);
+    }
+
+    .member-dashboard {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      gap: var(--space-4);
+      align-items: start;
+    }
   }
 </style>
