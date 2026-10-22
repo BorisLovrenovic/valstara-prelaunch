@@ -9,7 +9,14 @@ type Props =
   | (HTMLAttributes<'button'> & { href?: undefined; variant?: Variant })
   | (HTMLAttributes<'a'> & { href: string; variant?: Variant });
 
-const { class: className, variant = 'primary', ...attributes } = Astro.props;
+// type leaves the spread so it renders once: a button defaults to button,
+// and an anchor keeps whatever type it was given.
+const {
+  class: className,
+  type,
+  variant = 'primary',
+  ...attributes
+} = Astro.props;
 const classes = ['button', `button--${variant}`, className];
 ---
 
@@ -17,13 +24,17 @@ const classes = ['button', `button--${variant}`, className];
   attributes.href === undefined ? (
     <button
       {...(attributes as HTMLAttributes<'button'>)}
-      type={(attributes as HTMLAttributes<'button'>).type ?? 'button'}
+      type={(type as HTMLAttributes<'button'>['type']) ?? 'button'}
       class:list={classes}
     >
       <slot />
     </button>
   ) : (
-    <a {...(attributes as HTMLAttributes<'a'>)} class:list={classes}>
+    <a
+      {...(attributes as HTMLAttributes<'a'>)}
+      type={type}
+      class:list={classes}
+    >
       <slot />
     </a>
   )
