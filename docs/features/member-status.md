@@ -13,10 +13,13 @@ The `/me` referral section is rendered by E6-05. The welcome and milestone email
 
 ## User flows
 E11.5-07 renders the verification success page's access wave from the same
-ReferralService.status result. With referrals enabled, it also renders the
-referral link, progress and attained reward states. The progress target and
-discount percentage come from the enabled milestone ladder. The existing
-signed status link remains a secondary action.
+ReferralService.status result, independent of the milestone ladder. With
+referrals enabled, it also renders the referral link, progress toward the
+next enabled tier, and that tier's held or settled reward states. Reward
+states of other tiers are not shown there; `/me` shows them. The
+progress target and discount percentage come from the enabled milestone
+ladder; with no enabled tier, no referral card renders. The existing signed
+status link remains a secondary action.
 
 1. **Receive** — every transactional email carries the signed status link.
 2. **View** — `/me?t=…` renders the bearer's own row, own rank and referral link, with a copy control.

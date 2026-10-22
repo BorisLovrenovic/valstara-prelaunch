@@ -299,6 +299,12 @@ test('verification states, exact figures, native actions and flags render access
     const revisedHtml = await revised.text();
     assert.match(revisedHtml, /2 of 3 to Tier 1/u);
     assert.match(revisedHtml, /Access wave 2/u);
+    for (const marker of ['data-copy-referral', 'data-survey-skip']) {
+      const tag = revisedHtml.match(
+        new RegExp('<button[^>]*' + marker + '[^>]*>', 'u'),
+      )?.[0];
+      assert.equal(tag?.match(/\stype=/gu)?.length, 1, marker);
+    }
 
     const invalid = await globalThis.fetch(
       'http://127.0.0.1:' + app.port + '/verify',

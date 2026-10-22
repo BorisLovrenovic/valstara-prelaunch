@@ -53,19 +53,61 @@ test('verification marketing copy stays within the E11.5 scan budget', () => {
 test('verification figures use the enabled ladder and exact shared count', () => {
   assert.deepEqual(verificationReferralFigures(baseStatus), {
     accessWindow: 'wave-2',
-    confirmedReferrals: 0,
-    discountPercent: 15,
-    progress: 0,
-    rewardStates: [],
-    threshold: 3,
-    tier: 1,
+    ladder: {
+      confirmedReferrals: 0,
+      discountPercent: 15,
+      progress: 0,
+      rewardStates: [],
+      threshold: 3,
+      tier: 1,
+    },
   });
   assert.equal(
     verificationReferralFigures({
       ...baseStatus,
       confirmedReferrals: 2,
-    })?.progress,
+    }).ladder?.progress,
     2,
+  );
+});
+
+test('verification ladder figures follow a non-default ladder', () => {
+  const ladder = [
+    { discountPercent: 15, enabled: false, number: 1, threshold: 3 },
+    { discountPercent: 20, enabled: true, number: 2, threshold: 4 },
+  ];
+  assert.deepEqual(
+    verificationReferralFigures(
+      {
+        ...baseStatus,
+        confirmedReferrals: 1,
+        rewards: [
+          { kind: 'wave_upgrade', state: 'settled', tier: 1 },
+          { kind: 'discount', state: 'held', tier: 2 },
+        ],
+      },
+      ladder,
+    ),
+    {
+      accessWindow: 'wave-2',
+      ladder: {
+        confirmedReferrals: 1,
+        discountPercent: 20,
+        progress: 1,
+        rewardStates: [{ kind: 'discount', state: 'held' }],
+        threshold: 4,
+        tier: 2,
+      },
+    },
+  );
+});
+
+test('the access wave survives a ladder with no enabled tier', () => {
+  assert.deepEqual(
+    verificationReferralFigures(baseStatus, [
+      { discountPercent: 15, enabled: false, number: 1, threshold: 3 },
+    ]),
+    { accessWindow: 'wave-2', ladder: null },
   );
 });
 
@@ -79,9 +121,9 @@ test('earned states come from status; a disabled tier is never promised', () => 
       { kind: 'discount', state: 'held', tier: 1 },
     ],
   });
-  assert.equal(result?.tier, 1);
-  assert.equal(result?.progress, 3);
-  assert.deepEqual(result?.rewardStates, [
+  assert.equal(result.ladder?.tier, 1);
+  assert.equal(result.ladder?.progress, 3);
+  assert.deepEqual(result.ladder?.rewardStates, [
     { kind: 'wave_upgrade', state: 'settled' },
     { kind: 'discount', state: 'held' },
   ]);

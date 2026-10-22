@@ -86,6 +86,7 @@ const referralFigures =
   completion.referralStatus === null
     ? null
     : verificationReferralFigures(completion.referralStatus);
+const ladderFigures = referralFigures?.ladder ?? null;
 const surveyEnabled =
   completed && !completion.surveyCompleted
     ? await getFlagService().isEnabled('survey.enabled')
@@ -142,7 +143,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
             ) : null}
           </Card>
 
-          {referralUrl !== null && referralFigures !== null ? (
+          {referralUrl !== null && ladderFigures !== null ? (
             <Card class="verification-success__section" data-referral-card>
               <h2>{verificationCopy.referral.label}</h2>
               <p>{verificationCopy.referral.link}</p>
@@ -158,7 +159,6 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
                   data-copy-referral
                   data-copied={verificationCopy.referral.copied}
                   data-copy-failed={verificationCopy.referral.copyFailed}
-                  type="button"
                 >
                   {verificationCopy.referral.copy}
                 </Button>
@@ -172,33 +172,33 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
               <div class="verification-progress">
                 <label for="referral-progress">
                   {verificationCopy.referral.progress(
-                    referralFigures.progress,
-                    referralFigures.threshold,
-                    referralFigures.tier,
+                    ladderFigures.progress,
+                    ladderFigures.threshold,
+                    ladderFigures.tier,
                   )}
                 </label>
                 <progress
                   id="referral-progress"
                   data-referral-progress
-                  value={referralFigures.progress}
-                  max={referralFigures.threshold}
+                  value={ladderFigures.progress}
+                  max={ladderFigures.threshold}
                 />
               </div>
               <div class="verification-rewards">
                 <h3>
-                  {verificationCopy.referral.unlocks(referralFigures.tier)}
+                  {verificationCopy.referral.unlocks(ladderFigures.tier)}
                 </h3>
                 <p class="verification-reward-name">
                   {verificationCopy.referral.reward(
-                    referralFigures.discountPercent,
+                    ladderFigures.discountPercent,
                   )}
                 </p>
                 <p>{verificationCopy.referral.waveReward}</p>
-                {referralFigures.rewardStates.map((reward) => (
+                {ladderFigures.rewardStates.map((reward) => (
                   <Pill>
                     {reward.kind === 'discount'
                       ? verificationCopy.referral.reward(
-                          referralFigures.discountPercent,
+                          ladderFigures.discountPercent,
                         )
                       : verificationCopy.referral.waveReward}
                     : {verificationCopy.referral[reward.state]}
@@ -263,7 +263,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
                   <Button type="submit" variant="secondary">
                     {verificationCopy.survey.submit}
                   </Button>
-                  <Button type="button" variant="secondary" data-survey-skip>
+                  <Button variant="secondary" data-survey-skip>
                     {verificationCopy.survey.skip}
                   </Button>
                 </div>
