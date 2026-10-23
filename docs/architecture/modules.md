@@ -111,7 +111,7 @@ valstara-prelaunch/
 | **ratelimit** | Per-IP-prefix and per-identity windows | Backed by the database; batch-capped cleanup |
 | **verification-rate** | Rolling verification-rate calculation, provider breakdown and collapse alert | Runs hourly; reports P1 only after the configured cohort is large enough |
 | **admin-auth** | Single-operator bearer credential, TOTP verification, actor propagation and admin-route registry | Stateless and fail-closed over every `/api/admin/*` route; no user, password, session or permission system |
-| **content** | Loads Markdown collections, validates frontmatter | Trust and legal prose only. No interface strings |
+| **content** | Loads Markdown collections, validates frontmatter; derives a page's contents list from the heading anchors already in its rendered content (`server/content/contents.ts`, E11.5-09) | Trust and legal prose only. No interface strings |
 
 ### Provider modules — the vendor SDK boundary
 

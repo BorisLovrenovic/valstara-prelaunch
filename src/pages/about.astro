@@ -11,6 +11,12 @@ if (!entry || entry.data.portTarget !== '/about') {
 const { Content } = await render(entry);
 ---
 
-<TrustPage title={entry.data.title} description={entry.data.description}>
+<TrustPage
+  title={entry.data.title}
+  description={entry.data.description}
+  kind="trust"
+  summary={entry.data.description}
+  renderedHtml={entry.rendered?.html ?? ''}
+>
   <Content />
 </TrustPage>

@@ -1,69 +1,33 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import DocumentPage from './document-page.astro';
+import { contentsFromRenderedHtml } from '../server/content/contents.ts';
 
 interface Props {
   title: string;
   description: string;
+  // Trust pages carry the guarantee card and the small-width join bar; legal
+  // pages carry a contents list of the content's own section anchors.
+  kind: 'trust' | 'legal';
+  summary: string;
+  renderedHtml: string;
 }
 
-const { title, description } = Astro.props;
+const { title, description, kind, summary, renderedHtml } = Astro.props;
+const contents = kind === 'legal' ? contentsFromRenderedHtml(renderedHtml) : [];
 ---
 
 {
   /*
-  Trust pages share the site shell. They ship no client JavaScript beyond the
-  page-view emitter (E9-02), so the shell renders without the theme toggle.
+  Trust and legal pages share the site shell. They ship no client JavaScript
+  beyond the page-view emitter (E9-02), so the shell renders without the theme
+  toggle.
 */
 }
 <BaseLayout title={title} description={description} themeToggle={false}>
-  <article class="trust-content">
-    <slot />
-  </article>
+  <DocumentPage kind={kind} summary={summary} contents={contents}>
+    <article class="document__prose">
+      <slot />
+    </article>
+  </DocumentPage>
 </BaseLayout>
-
-<style is:global>
-  .trust-content a {
-    color: var(--ink-600);
-  }
-
-  .trust-content a:focus-visible {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
-  }
-
-  .trust-content {
-    max-inline-size: 70ch;
-    margin-inline: auto;
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
-  }
-
-  .trust-content h1 {
-    font-size: var(--step-5);
-    line-height: var(--leading-5);
-  }
-
-  .trust-content h2 {
-    margin-block-start: var(--space-4);
-    font-size: var(--step-4);
-    line-height: var(--leading-4);
-  }
-
-  .trust-content p,
-  .trust-content ul,
-  .trust-content table {
-    margin-block: var(--space-2);
-  }
-
-  .trust-content table {
-    border-collapse: collapse;
-    overflow-wrap: anywhere;
-  }
-
-  .trust-content td,
-  .trust-content th {
-    padding: var(--space-1);
-    border-block-end: thin solid var(--line);
-    text-align: start;
-  }
-</style>

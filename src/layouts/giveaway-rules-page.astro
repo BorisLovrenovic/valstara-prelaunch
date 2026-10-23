@@ -1,8 +1,11 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import DocumentPage from './document-page.astro';
+import Icon from '../components/icon.astro';
 import { giveawayRulesCopy } from '../copy/giveaway-rules.ts';
 import { currentRules } from '../server/giveaway/rules-catalog.ts';
 import type { RulesRevision } from '../server/giveaway/rules.ts';
+import { contentsFromRenderedHtml } from '../server/content/contents.ts';
 import { jsonLd, rulesPageData, rulesPageMetadata } from '../server/seo.ts';
 
 interface Props {
@@ -25,69 +28,32 @@ const metadata = rulesPageMetadata(
     type="application/ld+json"
     set:html={jsonLd(rulesPageData(revision, Astro.url.pathname))}
   />
-  {
-    archived && (
-      <aside class="rules-content" data-archived-rules-notice>
-        <p>
-          {giveawayRulesCopy.archivedNoticeBeforeLink}
-          <a href="/giveaway/rules">{giveawayRulesCopy.archivedNoticeLink}</a>
-          {giveawayRulesCopy.archivedNoticeAfterLink}
-        </p>
-      </aside>
-    )
-  }
-  <article
-    class="rules-content"
-    data-rules-version={revision.rulesVersion}
-    data-rules-sha256={revision.sha256}
-    set:html={revision.html}
-  />
+  <DocumentPage
+    kind="rules"
+    summary={revision.description}
+    contents={contentsFromRenderedHtml(revision.html)}
+  >
+    {
+      archived && (
+        <aside
+          slot="notice"
+          class="rules-archived-notice"
+          data-archived-rules-notice
+        >
+          <Icon name="alert" />
+          <p>
+            {giveawayRulesCopy.archivedNoticeBeforeLink}
+            <a href="/giveaway/rules">{giveawayRulesCopy.archivedNoticeLink}</a>
+            {giveawayRulesCopy.archivedNoticeAfterLink}
+          </p>
+        </aside>
+      )
+    }
+    <article
+      class="document__prose"
+      data-rules-version={revision.rulesVersion}
+      data-rules-sha256={revision.sha256}
+      set:html={revision.html}
+    />
+  </DocumentPage>
 </BaseLayout>
-
-<style is:global>
-  .rules-content {
-    display: grid;
-    gap: var(--space-2);
-    max-inline-size: 70ch;
-    margin-inline: auto;
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
-  }
-
-  .rules-content h1,
-  .rules-content h2 {
-    margin-block: var(--space-3) 0;
-    line-height: var(--leading-4);
-  }
-
-  .rules-content h1 {
-    font-size: var(--step-5);
-    line-height: var(--leading-5);
-  }
-
-  .rules-content h2 {
-    font-size: var(--step-4);
-  }
-
-  .rules-content p,
-  .rules-content ul,
-  .rules-content ol {
-    margin-block: 0;
-  }
-
-  .rules-content ul,
-  .rules-content ol {
-    padding-inline-start: var(--space-3);
-  }
-
-  .rules-content a {
-    color: var(--ink-600);
-  }
-
-  .rules-content a:focus-visible {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
-  }
-</style>

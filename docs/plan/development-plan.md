@@ -2196,7 +2196,7 @@ Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache hea
 
 **Build:** Restyle the trust-page and giveaway-rules layouts and `/terms`, `/privacy` and `/privacy/storage`.
 
-- A page header band with the title and a one-line summary from the copy layer.
+- A page header band: an eyebrow label from the copy layer, the content's own H1 styled as the band title, and the summary from the content's description.
 - From large width, two columns, so there is no narrow column with wide empty margins (§7.3): the prose at `--measure` and a sticky side card. On trust pages the card is a guarantee summary with a Join button to `/#join`; on legal and rules pages it is a contents list linking to heading anchors **already present** in the rendered content (none renders where there are none).
 - Small widths: a single column. On `/legit`, `/guarantee` and `/about` only, a zero-JS sticky "Join the waitlist" link bar to `/#join` — a link, not a form. No sticky bar on legal or rules pages.
 - Prose styles for headings, lists, links, blockquotes and tables, with tables in a horizontally scrollable wrapper at small widths.
@@ -2210,6 +2210,8 @@ Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache hea
 
 **Tests:** Content-unchanged assertion · the rules hash suite · zero-JS · contents anchors · table overflow · layout checks · axe.
 **Docs:** `docs/features/trust-pages.md` · `docs/features/legal-and-dsr.md` · `docs/architecture/adr/017-content-files.md` · E7-02 · E11-04
+
+**Founder decisions (2026-10-23):** the content's existing leading H1 stays visible and is the page's only H1, styled with CSS as the band headline; it is never hidden and no byte changes. The band markup, outside the content and the hashed article, holds only an eyebrow label from the copy layer ("Trust", "Legal" or "Giveaway rules"), rendered immediately before the article, and the summary line, rendered after the title band area. No `display: none` on any part of the content or the rules article. The summary is read from each content file's frontmatter `description` (the revision's `description` for the rules pages); the legal pages keep their existing `src/copy/legal.ts` entries. `src/content/` is the copy layer for prose under the copy rules: no new summary text is written and no description is duplicated into `src/copy/`. Tests: exactly one H1 per page, no content element hidden, and the rules hash suites unchanged.
 
 ### E11.5-10 — Task pages, and branded 404 and 500 pages
 **Model:** GPT-6 Sol — Medium · **Priority:** Medium · **Flag:** — · **Area:** frontend
