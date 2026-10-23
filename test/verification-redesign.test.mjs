@@ -201,7 +201,7 @@ test('verification states, exact figures, native actions and flags render access
     app = await startVerificationApp();
     remote = await startBrowser();
     const origin = 'http://host.docker.internal:' + app.port;
-    assert.deepEqual(enforcedPages, ['/verify']);
+    assert.deepEqual(enforcedPages, ['/verify', '/me', '/leaderboard']);
     await assertEnforcedPages(remote.browser, origin);
 
     const confirmPath = '/verify?token=' + encodeURIComponent(data.token);

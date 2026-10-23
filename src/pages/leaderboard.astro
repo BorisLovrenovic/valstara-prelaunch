@@ -1,5 +1,6 @@
 ---
 import { leaderboardCopy } from '../copy/leaderboard.ts';
+import Container from '../components/container.astro';
 import Leaderboard from '../islands/Leaderboard.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getFlagService } from '../server/flags/app-service.ts';
@@ -13,5 +14,19 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
   title={leaderboardCopy.meta.title}
   description={leaderboardCopy.meta.description}
 >
-  {leaderboardEnabled ? <Leaderboard /> : null}
+  <Container class="leaderboard-container">
+    {leaderboardEnabled ? <Leaderboard /> : null}
+  </Container>
 </BaseLayout>
+
+<style>
+  :global(.leaderboard-container) {
+    padding-block: var(--section-gap);
+  }
+
+  @media (min-width: 64rem) {
+    :global(.leaderboard-container) {
+      padding-block: var(--section-gap-wide);
+    }
+  }
+</style>

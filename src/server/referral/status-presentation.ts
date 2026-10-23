@@ -19,33 +19,41 @@ export function presentReferralStatus(status: ReferralStatus) {
   };
   return {
     values,
+    // Each field keeps its key so /me can place it on its own card; the email
+    // surfaces print label and value only.
     fields: [
       {
+        key: 'subscriberStatus' as const,
         label: memberStatusCopy.authenticated.status,
         value: values.subscriberStatus,
         tabular: false,
       },
       {
+        key: 'confirmedReferrals' as const,
         label: memberStatusCopy.authenticated.confirmedReferrals,
         value: values.confirmedReferrals,
         tabular: true,
       },
       {
+        key: 'ownRank' as const,
         label: memberStatusCopy.authenticated.rank,
         value: values.ownRank,
         tabular: true,
       },
       {
+        key: 'tier' as const,
         label: memberStatusCopy.authenticated.tier,
         value: values.tier,
         tabular: true,
       },
       {
+        key: 'accessWindow' as const,
         label: memberStatusCopy.authenticated.wave,
         value: values.accessWindow,
         tabular: false,
       },
       {
+        key: 'giveawayEntries' as const,
         label: memberStatusCopy.authenticated.entries,
         value: values.giveawayEntries,
         tabular: true,
@@ -64,6 +72,7 @@ export function presentReferralStatus(status: ReferralStatus) {
         label: memberStatusCopy.rewards.kinds[reward.kind],
         tier: memberStatusCopy.rewards.tier(reward.tier),
         state: memberStatusCopy.rewards.states[reward.state],
+        stateKey: reward.state,
       })),
   };
 }

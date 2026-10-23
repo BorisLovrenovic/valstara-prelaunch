@@ -21,6 +21,20 @@ progress target and discount percentage come from the enabled milestone
 ladder; with no enabled tier, no referral card renders. The existing signed
 status link remains a secondary action.
 
+E11.5-08 lays `/me` out as cards, in this order: status (verified state, the
+access-wave badge and own rank); the referral card (link, copy, a native share
+button only where `navigator.share` exists, confirmed referrals, tier and
+progress to the next enabled tier from the ladder); rewards, where settled and
+held each carry an icon, a text label and their own explanation, so neither
+relies on colour; giveaway entries, only when the count is above zero;
+preferences (the marketing control, styled as a switch but still the
+Turnstile-protected form posting `POST /api/me/marketing`, and the survey
+re-answer in a closed disclosure); data rights (the `/dsr` links); and leaving
+the waitlist, set apart below the cards as one plain action with no
+confirmation step. Every figure still comes from the one
+`presentReferralStatus` result; the field keys only decide which card shows a
+field. The recovery, left and disabled states are single cards.
+
 1. **Receive** — every transactional email carries the signed status link.
 2. **View** — `/me?t=…` renders the bearer's own row, own rank and referral link, with a copy control.
 3. **Act** — re-answer the survey, switch marketing email on or off (ADR-027; switching off never affects the waitlist place or giveaway entries), or unsubscribe.

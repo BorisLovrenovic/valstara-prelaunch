@@ -129,7 +129,7 @@ test('Astro remote-image caching uses only the expected policy methods', async (
   const astroPackage = JSON.parse(
     await readFile(join(astroRoot, 'package.json'), 'utf8'),
   );
-  assert.equal(astroPackage.version, '7.2.8');
+  assert.equal(astroPackage.version, '7.3.3');
 
   const dist = join(astroRoot, 'dist');
   const files = (await readdir(dist, { recursive: true })).filter((file) =>

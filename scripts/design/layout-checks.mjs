@@ -6,7 +6,7 @@ export const designThemes = Object.freeze(['light', 'dark']);
 
 // Pages enter this list in the ticket that redesigns them. E11.5-12 compares
 // it to the complete rendered-page inventory.
-export const enforcedPages = Object.freeze(['/verify']);
+export const enforcedPages = Object.freeze(['/verify', '/me', '/leaderboard']);
 
 // The site shell: BaseLayout's header and footer landmarks. E11.5-03 enforces
 // the layout rules on these regions on every rendered page, while page bodies

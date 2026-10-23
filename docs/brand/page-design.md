@@ -34,6 +34,8 @@ Primitives live in `src/components/` and are zero-JS:
 | `pill.astro` | `pill` on `coral-tint`; `variant="badge"` on `coral` in mono. Both use tabular figures. |
 | `accordion.astro` | Native `<details>` with a chevron icon that turns when open. |
 
+The icon registry also holds a `clock`, used with `check` to tell held rewards from settled ones on `/me` (E11.5-08).
+
 ## Scan and copy budgets
 
 At about three seconds, the wordmark, plain description and guarantee should answer whether the site is legitimate. At about 20 seconds, headings, visuals and actions should explain what Valstara is and what a visitor gets. FAQ, trust pages and rules carry the deeper read.

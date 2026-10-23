@@ -8,7 +8,8 @@ export type IconName =
   | 'alert'
   | 'chevron-down'
   | 'sun'
-  | 'moon';
+  | 'moon'
+  | 'clock';
 export type IconSize = 'sm' | 'md' | 'lg';
 
 interface Props {
@@ -126,6 +127,18 @@ const { name, size = 'md', label, class: className } = Astro.props;
         fill="none"
         stroke="currentColor"
         stroke-width="2"
+        stroke-linejoin="round"
+      />
+    )
+  }
+  {
+    name === 'clock' && (
+      <path
+        d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4.5V12l3 2"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
         stroke-linejoin="round"
       />
     )

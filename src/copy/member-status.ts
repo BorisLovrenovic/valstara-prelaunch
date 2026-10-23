@@ -1,5 +1,9 @@
 import { marketingOptInCopy } from './marketing.ts';
 
+const settledExplanation = 'Settled rewards are already earned.';
+const heldExplanation =
+  'Held discounts require the referred person’s first order within 90 days after store launch.';
+
 export const memberStatusCopy = {
   authenticated: {
     body: 'This private page shows the waitlist details attached to this link.',
@@ -14,6 +18,12 @@ export const memberStatusCopy = {
     },
     tier: 'Referral tier',
     wave: 'Access wave',
+    // Only the wave-N format names a wave number; any other value is shown
+    // as stored rather than as a wrong number.
+    waveBadge: (window: string) => {
+      const wave = /^wave-(\d+)$/u.exec(window)?.[1];
+      return wave === undefined ? window : `Wave ${wave}`;
+    },
     wavePending: 'Not assigned yet',
   },
   referral: {
@@ -22,12 +32,20 @@ export const memberStatusCopy = {
     copyFailed: 'Copy failed. Select and copy the link instead.',
     heading: 'Your referral link',
     linkLabel: 'Referral link',
+    progress: (count: number, threshold: number, tier: number) =>
+      `${count} of ${threshold} to Tier ${tier}`,
+    share: 'Share link',
   },
   rewards: {
     empty: 'No referral rewards yet.',
     heading: 'Referral rewards',
-    intro:
-      'Settled rewards are already earned. Held discounts require the referred person’s first order within 90 days after store launch.',
+    // The email surfaces print both explanations as one paragraph; /me shows
+    // each beside its own state.
+    intro: `${settledExplanation} ${heldExplanation}`,
+    explanations: {
+      held: heldExplanation,
+      settled: settledExplanation,
+    },
     kinds: {
       discount: 'Launch discount',
       merch: 'Merchandise',
@@ -38,6 +56,9 @@ export const memberStatusCopy = {
       settled: 'Settled',
     },
     tier: (tier: number) => `Tier ${tier}`,
+  },
+  preferences: {
+    heading: 'Preferences',
   },
   survey: {
     heading: 'Update your launch preferences',
@@ -60,6 +81,9 @@ export const memberStatusCopy = {
       'We could not save that preference right now. Please try again later.',
     javaScriptRequired:
       'JavaScript is required to complete the security check.',
+  },
+  dataRights: {
+    heading: 'Your data',
   },
   leave: {
     heading: 'Leave the waitlist',
