@@ -12,7 +12,7 @@ You are diagnosing and **minimally** fixing a CI failure for the Valstara pre-la
 
 ## Step 1 — Identify the failing stage
 
-**PR pipeline:** install → lint → typecheck → tests against a disposable PostgreSQL → **build** → coverage gate → **security and privacy gates** (secret scan · dependency scan with an expiring allowlist · cookie and storage rule · fingerprinting rule · third-party request rule · vendor-boundary rule · forbidden-copy scan) → **migration check** (ledger checksums and schema reproducibility) → **accessibility pass**.
+**PR pipeline:** install → lint → typecheck → tests against a disposable PostgreSQL, run under coverage in four `test (n/4)` shards → **build** → coverage gate on the merged shard reports, which also proves every test file ran exactly once → `red-paths` → **security and privacy gates** (secret scan · dependency scan with an expiring allowlist · cookie and storage rule · fingerprinting rule · third-party request rule · vendor-boundary rule · forbidden-copy scan) → **migration check** (ledger checksums and schema reproducibility) → **accessibility pass**.
 
 **Main pipeline adds:** image build and GHCR push (path-filtered). It does not deploy.
 
@@ -20,11 +20,16 @@ You are diagnosing and **minimally** fixing a CI failure for the Valstara pre-la
 
 ## Step 2 — Reproduce locally, before changing anything
 
+Reproduce the failing check only, not the whole suite (`docs/engineering/ci-cd.md#local-checks`):
+
 ```
 docker compose -f infra/compose/docker-compose.yml up -d
-npm i && npm run lint && npm run typecheck && npm test && npm run build
-npm run test:privacy && npm run test:a11y
+npm i
+COVERAGE_SOURCE_MAPS=1 npm test -- <the failing test file>   # a test (n/4) failure
+npm run check                                                # lint, format, typecheck, security or build
 ```
+
+For a `coverage` failure, rerun the gate on CI's own shard reports: `gh run download <run-id> -p 'coverage-shard-*' -D coverage-shards`, then `node scripts/ci/merge-coverage.mjs coverage-shards && node scripts/ci/changed-coverage.mjs`. A `red-paths` failure reproduces with `npm run ci:red-paths`.
 
 Migration check → run the migrations into an empty database and compare. Security scans → run the scanner locally if available, otherwise reason strictly from the CI log.
 

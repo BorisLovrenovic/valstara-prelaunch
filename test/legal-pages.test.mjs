@@ -7,6 +7,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import { startAppServer } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path) => readFile(join(root, path), 'utf8');
@@ -396,12 +397,7 @@ test(
   'legal pages use founder-authorised draft content at permanent static URLs',
   { timeout: 150_000 },
   async () => {
-    const result = spawnSync('npm', ['run', 'build'], {
-      cwd: root,
-      encoding: 'utf8',
-      timeout: 110_000,
-    });
-    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    await ensureAppBuild();
 
     for (const slug of ['terms', 'privacy']) {
       const content = await read(`src/content/${slug}.md`);

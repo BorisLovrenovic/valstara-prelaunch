@@ -16,6 +16,7 @@ import { createPool } from '../src/server/db/pool.ts';
 import { createRankingIntegrityService } from '../src/server/referral/ranking.ts';
 import { createSharedLeaderboardSnapshotStore } from '../src/server/leaderboard/persisted.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const execFileAsync = promisify(execFile);
 // No fixed ports: the app server gets a reserved port below the kernel's
@@ -169,7 +170,7 @@ async function startBrowserServer() {
 }
 
 before(async () => {
-  await execFileAsync('npm', ['run', 'build']);
+  await ensureAppBuild();
   databaseFixture = await createDatabaseFixture();
   app = await startAppServer({
     label: 'Leaderboard test',

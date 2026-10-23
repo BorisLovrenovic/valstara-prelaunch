@@ -43,12 +43,13 @@ When every finding is addressed, **re-review your own diff as an independent rev
 ## Verify
 
 - Re-run the **specific check each finding names** — the failing test, the query, the command.
-- Then the full local gate:
+- Then the quick local gate:
   ```
   docker compose -f infra/compose/docker-compose.yml up -d
-  npm run lint && npm run typecheck && npm test && npm run build
-  npm run test:privacy && npm run test:a11y
+  npm run check
+  npm run test:changed -- <the ticket's Tests-line files and each finding's test>
   ```
+  `test:changed` also picks every test the fixes affect, and adds the privacy and accessibility suites when a fix can reach the browser. The full suite runs in CI on the pull request (`docs/engineering/ci-cd.md#local-checks`).
 - Schema touched? Add a **new forward-only migration** — never edit one that has already run.
 - Commit on that branch with Conventional Commits referencing the ticket ID.
 

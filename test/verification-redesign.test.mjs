@@ -19,6 +19,7 @@ import {
 } from '../scripts/design/layout-checks.mjs';
 import { captureContactSheet } from '../scripts/design/contact-sheet.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const executeFile = promisify(execFile);
 const databaseUrl =
@@ -173,7 +174,7 @@ async function axeViolations(page) {
 }
 
 test('verification states, exact figures, native actions and flags render accessibly', async () => {
-  await executeFile('npm', ['run', 'build']);
+  await ensureAppBuild();
   const data = await fixture();
   let app;
   let remote;

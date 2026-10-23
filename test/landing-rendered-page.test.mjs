@@ -11,6 +11,7 @@ import { Pool } from 'pg';
 import { landingCopy } from '../src/copy/landing.ts';
 import { signupFormCopy } from '../src/copy/signup.ts';
 import { createReferralCaptureService } from '../src/server/referral/capture.ts';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const executeFile = promisify(execFile);
 
@@ -180,7 +181,7 @@ const signupOn = { enabled: true, key: 'signup.enabled' };
 const signupOff = { enabled: false, key: 'signup.enabled' };
 
 before(async () => {
-  await executeFile('npm', ['run', 'build']);
+  await ensureAppBuild();
 });
 
 test('with signup.enabled on, the landing page renders the signup form and every section', async () => {

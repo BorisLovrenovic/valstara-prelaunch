@@ -57,12 +57,13 @@ Reviewed on every non-docs-only PR; they map one-to-one to `docs/engineering/ci-
 |---|---|
 | `lint` | Lint and format |
 | `typecheck` | TypeScript strict |
-| `test` | Unit, module-contract and integration tests |
+| `test (1/4)` … `test (4/4)` | Unit, module-contract and integration tests, run once under coverage and split across four runners by recorded file timings |
 | `build` | The Astro production build |
-| `coverage` | Changed-code and critical-module coverage gates |
+| `coverage` | Merges the shard reports, proves every test file ran exactly once, and applies the changed-code and critical-module coverage gates; fails when any shard fails |
+| `red-paths` | The E1-04 red-path fixtures for the lint, typecheck, test, build and coverage gates |
 | `security` | Secret, dependency, cookie/storage, fingerprinting, third-party request, vendor-boundary and forbidden-copy scans |
-| `migration` | Ledger checksums and schema reproducibility |
-| `a11y` | Automated accessibility pass over the built pages |
+| `migration` | Ledger checksums and schema reproducibility; runs as tests inside the `test` shards |
+| `a11y` | Automated accessibility pass over the built pages; runs as tests inside the `test` shards |
 
 Adding a gate there means adding it here in the same change.
 

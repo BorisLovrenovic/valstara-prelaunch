@@ -91,7 +91,7 @@ A ticket is done when **all** of the following hold:
 
 1. Every acceptance criterion is met and **demonstrated by a named test or a reproducible command**
 2. Every test on the ticket's **Tests** line exists and passes
-3. `lint`, `typecheck`, `test`, `build` clean locally
+3. `npm run check` and `npm run test:changed`, naming the Tests-line files, clean locally, and every CI check green on the pull request, where the full suite runs (`docs/engineering/ci-cd.md#local-checks`)
 4. Coverage bars hold
 5. Security and privacy gates green
 6. The ticket's flag is wired with a code-level fail-safe default, **and the flag-off path is tested**

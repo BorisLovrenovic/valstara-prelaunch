@@ -32,6 +32,7 @@ import {
 import { captureContactSheet } from '../scripts/design/contact-sheet.mjs';
 import { seedGiveawayEntryRows } from './helpers/giveaway-entry-rows.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const executeFile = promisify(execFile);
 const databaseUrl =
@@ -286,7 +287,7 @@ async function renderedFigure(page, selector) {
 }
 
 test('the member page and the leaderboard render every state from their sources, accessibly', async () => {
-  await executeFile('npm', ['run', 'build']);
+  await ensureAppBuild();
   const data = await fixture();
   let app;
   let remote;

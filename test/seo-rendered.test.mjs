@@ -1,21 +1,17 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
 test('built pages emit unique metadata, permanent canonicals and valid organisation/rules data without changing published article hashes', async () => {
-  const build = spawnSync('npm', ['run', 'build'], {
-    cwd: root,
-    encoding: 'utf8',
-    timeout: 120_000,
+  await ensureAppBuild({
     env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
   });
-  assert.equal(build.status, 0, `${build.stdout}\n${build.stderr}`);
 
   const versions = (await readdir(join(root, 'src/content/giveaway-rules')))
     .filter((file) => file.endsWith('.md'))

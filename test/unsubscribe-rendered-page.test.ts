@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
 import test from 'node:test';
-import { promisify } from 'node:util';
 
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool } from '../src/server/db/pool.ts';
@@ -13,8 +11,8 @@ import {
   startAppServer,
   type StartedAppServer,
 } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
-const execFileAsync = promisify(execFile);
 const adminDatabaseUrl =
   process.env.TEST_DATABASE_URL ??
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
@@ -87,7 +85,7 @@ test('E6-06 confirmation page keeps GET inert and offers an honest retry after a
     await owner.execute({
       text: 'CREATE TRIGGER reject_suppression BEFORE INSERT ON suppression FOR EACH ROW EXECUTE FUNCTION reject_suppression()',
     });
-    await execFileAsync('npm', ['run', 'build']);
+    await ensureAppBuild();
     alertServer.listen(0, '127.0.0.1');
     await once(alertServer, 'listening');
     const alertAddress = alertServer.address();

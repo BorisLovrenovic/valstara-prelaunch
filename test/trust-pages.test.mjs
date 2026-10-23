@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -65,12 +65,7 @@ test(
   'the two unchanged trust URLs build as static pages with only the approved page-view script',
   { timeout: 120_000 },
   async () => {
-    const result = spawnSync('npm', ['run', 'build'], {
-      cwd: root,
-      encoding: 'utf8',
-      timeout: 110_000,
-    });
-    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    await ensureAppBuild();
     // E9-08 exercises /legit at runtime.
     for (const slug of ['guarantee', 'about']) {
       const { title, description } = approvedPage(slug);

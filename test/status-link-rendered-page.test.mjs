@@ -8,6 +8,7 @@ import { Pool } from 'pg';
 import { seedGiveawayEntryRows } from './helpers/giveaway-entry-rows.ts';
 import { startAppServer } from './helpers/listen-port.mjs';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const executeFile = promisify(execFile);
 const defaultDatabaseUrl =
@@ -88,7 +89,7 @@ function startServer(databaseUrl) {
 }
 
 test('the status page makes expiry and tampering identical, sets no cookie, and offers one-click recovery', async () => {
-  await executeFile('npm', ['run', 'build']);
+  await ensureAppBuild();
   const fixture = await createDatabaseFixture();
   const subscriberId = randomUUID();
   const otherSubscriberId = randomUUID();
