@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -125,10 +125,7 @@ test(
   'the inventory page renders at its permanent route with plain no-banner reasoning',
   { timeout: 120_000 },
   async () => {
-    const result = spawnSync('npm', ['run', 'build'], {
-      cwd: root,
-      encoding: 'utf8',
-      timeout: 110_000,
+    await ensureAppBuild({
       env: {
         ...process.env,
         NODE_ENV: 'test',
@@ -151,7 +148,6 @@ test(
         TURNSTILE_SECRET_KEY: 'inventory-test-turnstile-secret',
       },
     });
-    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const html = await read('dist/client/privacy/storage/index.html');
     const privacyHtml = await read('dist/client/privacy/index.html');
     assert.match(

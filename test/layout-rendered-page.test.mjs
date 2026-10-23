@@ -7,6 +7,7 @@ import test, { after, before } from 'node:test';
 
 import { chromium } from 'playwright';
 import { startAppServer } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const execFileAsync = promisify(execFile);
 const browserContainer = `valstara-layout-playwright-${process.pid}`;
@@ -112,7 +113,7 @@ async function startBrowserServer() {
 }
 
 before(async () => {
-  await execFileAsync('npm', ['run', 'build']);
+  await ensureAppBuild();
   // A reserved port below the kernel's ephemeral range; only a lost bind
   // race is retried (test/helpers/listen-port.mjs).
   app = await startAppServer({

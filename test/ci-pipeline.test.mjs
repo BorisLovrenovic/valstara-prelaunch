@@ -14,7 +14,7 @@ const configUrl = new URL('../coverage.config.json', import.meta.url);
 
 test('the PR workflow exposes the mandatory E1-04 and E1-05 check names', async () => {
   const workflow = await readFile(workflowUrl, 'utf8');
-  const jobNames = [...workflow.matchAll(/^ {2}([a-z]+):$/gm)].map(
+  const jobNames = [...workflow.matchAll(/^ {2}([a-z-]+):$/gm)].map(
     (match) => match[1],
   );
 
@@ -24,17 +24,18 @@ test('the PR workflow exposes the mandatory E1-04 and E1-05 check names', async 
     'test',
     'build',
     'coverage',
+    'red-paths',
     'security',
   ]);
+  // Every job but coverage installs; coverage merges reports with Node alone.
   assert.equal((workflow.match(/- run: npm ci/g) ?? []).length, 6);
-  assert.equal((workflow.match(/node-version: 22\.22\.3/g) ?? []).length, 6);
+  assert.equal((workflow.match(/node-version: 22\.22\.3/g) ?? []).length, 7);
   assert.match(workflow, /npm run lint && npm run format/);
   assert.match(workflow, /npm run typecheck/);
-  assert.match(workflow, /npm test/);
   assert.match(workflow, /npm run build/);
-  assert.match(workflow, /npm run coverage/);
   assert.match(workflow, /npm run security/);
   assert.match(workflow, /npm run ci:security-red-paths/);
+  assert.match(workflow, /npm run ci:red-paths/);
 });
 
 test('developer, CI, and local Compose Node versions satisfy lint plugin engines', async () => {
@@ -92,6 +93,13 @@ test('the integrated QA privacy and accessibility commands are runnable scripts'
 test('docs-only pull requests are excluded without excluding other changes', async () => {
   const workflow = await readFile(workflowUrl, 'utf8');
 
+  // A QA gate can run the whole suite on main; its base is then main itself.
+  assert.match(workflow, /\n {2}workflow_dispatch:\n/);
+  assert.match(
+    workflow,
+    /RULES_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.sha \}\}/,
+  );
+
   assert.match(
     workflow,
     /pull_request:\n {4}paths-ignore:\n {6}- 'docs\/\*\*'/,
@@ -101,12 +109,28 @@ test('docs-only pull requests are excluded without excluding other changes', asy
   assert.doesNotMatch(workflow, /scripts\/\*\*/);
 });
 
-test('test and coverage run against disposable PostgreSQL services', async () => {
+test('the suite runs once, sharded, against disposable PostgreSQL services', async () => {
   const workflow = await readFile(workflowUrl, 'utf8');
 
-  assert.equal((workflow.match(/image: postgres:17-alpine/g) ?? []).length, 2);
-  assert.equal((workflow.match(/TEST_DATABASE_URL:/g) ?? []).length, 2);
-  // Both jobs start the stack with the CI overlay, which reuses the runner's
+  assert.equal((workflow.match(/image: postgres:17-alpine/g) ?? []).length, 1);
+  assert.equal((workflow.match(/TEST_DATABASE_URL:/g) ?? []).length, 1);
+  assert.match(
+    workflow,
+    /strategy:\n {6}fail-fast: false\n {6}matrix:\n {8}shard: \[1, 2, 3, 4\]/,
+  );
+  assert.match(
+    workflow,
+    /name: test \(\$\{\{ matrix\.shard \}\}\/\$\{\{ strategy\.job-total \}\}\)/,
+  );
+  // Each shard runs its planned files under coverage; nothing runs the whole
+  // suite a second time outside coverage.
+  assert.match(
+    workflow,
+    /- run: npm run coverage -- --shard \$\{\{ matrix\.shard \}\}\/\$\{\{ strategy\.job-total \}\}/,
+  );
+  assert.doesNotMatch(workflow, /- run: npm test/);
+  assert.match(workflow, /COVERAGE_SOURCE_MAPS: '1'/);
+  // The shard starts the stack with the CI overlay, which reuses the runner's
   // install instead of installing again inside a memory-capped container.
   assert.equal(
     (
@@ -114,17 +138,49 @@ test('test and coverage run against disposable PostgreSQL services', async () =>
         /docker compose -f infra\/compose\/docker-compose\.yml -f infra\/compose\/docker-compose\.ci\.yml up -d --wait/g,
       ) ?? []
     ).length,
+    1,
+  );
+  // The overlay serves the built app, so the shard builds first; its tests
+  // reuse that build while it is fresh.
+  assert.equal(
+    (workflow.match(/run: node scripts\/ci\/app-build\.mjs/g) ?? []).length,
+    1,
+  );
+  assert.equal((workflow.match(/run: npm run build/g) ?? []).length, 1);
+  assert.equal((workflow.match(/\.valstara-lock-checksum/g) ?? []).length, 1);
+  assert.equal(
+    (workflow.match(/actions\/upload-artifact@v7/g) ?? []).length,
     2,
   );
-  // The overlay serves the built app rather than the dev server, so both jobs
-  // must build first or the container has nothing to run.
-  assert.equal((workflow.match(/run: npm run build/g) ?? []).length, 3);
-  assert.equal((workflow.match(/\.valstara-lock-checksum/g) ?? []).length, 2);
-  assert.match(
-    workflow,
-    /COVERAGE_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+  assert.match(workflow, /name: coverage-shard-\$\{\{ matrix\.shard \}\}/);
+  assert.match(workflow, /if-no-files-found: error/);
+});
+
+test('coverage merges every shard and fails, not skips, when a shard fails', async () => {
+  const workflow = await readFile(workflowUrl, 'utf8');
+  const coverage = workflow.slice(
+    workflow.indexOf('\n  coverage:\n'),
+    workflow.indexOf('\n  red-paths:\n'),
   );
-  assert.match(workflow, /fetch-depth: 0/);
+
+  assert.match(coverage, /needs: test\n {4}if: \$\{\{ !cancelled\(\) \}\}/);
+  assert.match(
+    coverage,
+    /if: \$\{\{ needs\.test\.result != 'success' \}\}\n {8}run: \|\n[^\n]*\n {10}exit 1/,
+  );
+  assert.match(
+    coverage,
+    /COVERAGE_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.sha \}\}/,
+  );
+  assert.match(coverage, /fetch-depth: 0/);
+  assert.match(
+    coverage,
+    /uses: actions\/download-artifact@v8\n {8}with:\n {10}pattern: coverage-shard-\*/,
+  );
+  assert.match(
+    coverage,
+    /- run: node scripts\/ci\/merge-coverage\.mjs coverage-shards\n {6}- run: node scripts\/ci\/changed-coverage\.mjs/,
+  );
 });
 
 test('changed-line coverage passes at 80% and fails below it', () => {

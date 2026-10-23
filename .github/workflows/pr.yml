@@ -4,6 +4,9 @@ on:
   pull_request:
     paths-ignore:
       - 'docs/**'
+  # Runs the full suite on a branch, such as main at a QA gate. With no pull
+  # request, the base revisions fall back to the run's own commit.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -34,8 +37,16 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
 
+  # The suite runs once, under coverage, split across parallel runners by
+  # recorded file timings (scripts/ci/shard-timings.json). Each runner builds
+  # the app once; tests reuse that build while it is fresh.
   test:
+    name: test (${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     services:
       postgres:
         image: postgres:17-alpine
@@ -51,7 +62,8 @@ jobs:
           --health-timeout 5s
           --health-retries 12
     env:
-      RULES_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      COVERAGE_SOURCE_MAPS: '1'
+      RULES_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
       TEST_DATABASE_URL: postgresql://valstara:valstara-local-only@127.0.0.1:5432/postgres
       VALSTARA_APP_DB_PASSWORD: valstara-app-local-only
     steps:
@@ -73,12 +85,21 @@ jobs:
           echo "REFERRAL_SIGNING_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "RESEND_API_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "RESEND_TEST_RECIPIENT=delivered@resend.dev" >> "$GITHUB_ENV"
-      - name: Build the app the compose stack serves in CI
-        run: npm run build
+      - name: Build the app once for the compose stack and this shard's tests
+        run: node scripts/ci/app-build.mjs
       - name: Mark the runner's install as current for the compose stack
         run: sha256sum package-lock.json | cut -d ' ' -f 1 > node_modules/.valstara-lock-checksum
       - run: docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.ci.yml up -d --wait
-      - run: npm test
+      - run: npm run coverage -- --shard ${{ matrix.shard }}/${{ strategy.job-total }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: coverage-shard-${{ matrix.shard }}
+          path: |
+            coverage/lcov.info
+            coverage/shard.json
+            coverage/test-timings.json
+          if-no-files-found: error
+          retention-days: 7
 
   build:
     runs-on: ubuntu-latest
@@ -91,51 +112,51 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+  # Merges the shard reports, proves every test file ran exactly once, and
+  # applies the changed-line gate to the whole suite's coverage.
   coverage:
+    needs: test
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: valstara
-          POSTGRES_PASSWORD: valstara-local-only
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U valstara -d postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
     env:
-      COVERAGE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      TEST_DATABASE_URL: postgresql://valstara:valstara-local-only@127.0.0.1:5432/postgres
-      VALSTARA_APP_DB_PASSWORD: valstara-app-local-only
+      COVERAGE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
     steps:
+      - name: Require every test shard to pass
+        if: ${{ needs.test.result != 'success' }}
+        run: |
+          echo "::error::Not every test shard passed, so there is no complete coverage report to gate."
+          exit 1
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 22.22.3
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-shard-*
+          path: coverage-shards
+      - run: node scripts/ci/merge-coverage.mjs coverage-shards
+      - run: node scripts/ci/changed-coverage.mjs
+      - name: Keep the measured file timings for refreshing the shard plan
+        uses: actions/upload-artifact@v7
+        with:
+          name: shard-timings
+          path: coverage/test-timings.json
+          retention-days: 30
+
+  # The E1-04 red-path test runs every gate inside fixture repositories,
+  # coverage included, so the coverage run skips it. It runs here instead.
+  red-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.3
           cache: npm
       - run: npm ci
-      - name: Generate an ephemeral pgBackRest repository passphrase
-        run: |
-          echo "ADMIN_CREDENTIAL=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
-          echo "ADMIN_TOTP_SECRET=$(openssl rand 20 | base32 | tr -d '=\n')" >> "$GITHUB_ENV"
-          echo "PGBACKREST_REPO1_CIPHER_PASS=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
-          echo "TURNSTILE_SECRET_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
-          echo "IP_PREFIX_PEPPER=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
-          echo "REFERRAL_SIGNING_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
-          echo "RESEND_API_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
-          echo "RESEND_TEST_RECIPIENT=delivered@resend.dev" >> "$GITHUB_ENV"
-      - name: Build the app the compose stack serves in CI
-        run: npm run build
-      - name: Mark the runner's install as current for the compose stack
-        run: sha256sum package-lock.json | cut -d ' ' -f 1 > node_modules/.valstara-lock-checksum
-      - run: docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.ci.yml up -d --wait
-      - run: npm run coverage
+      - run: npm run ci:red-paths
 
   security:
     runs-on: ubuntu-latest

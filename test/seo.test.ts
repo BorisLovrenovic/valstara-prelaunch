@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   cp,
@@ -14,7 +13,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
 import sharp from 'sharp';
 import {
   checkSeoBuild,
@@ -35,9 +33,9 @@ import {
   sitemapPaths,
   validatePageMetadata,
 } from '../src/server/seo.ts';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const executeFile = promisify(execFile);
 const digest = (image: Buffer) =>
   createHash('sha256').update(image).digest('hex');
 
@@ -420,7 +418,7 @@ test('build generates page-specific PNGs and typed fallback crops from brand tok
 });
 
 test('a missing page PNG serves the typed fallback through both rendered card layouts', async () => {
-  await executeFile('npm', ['run', 'build'], { cwd: root });
+  await ensureAppBuild();
   for (const pathname of ['/terms', '/about']) {
     const imageUrl = socialImageUrl(pathname);
     const kind = socialPageKind(pathname);

@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import test from 'node:test';
 import { startAppServer } from './helpers/listen-port.mjs';
-
-const executeFile = promisify(execFile);
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 async function withServer(run) {
   // A reserved port below the kernel's ephemeral range (see
@@ -44,7 +41,7 @@ async function withServer(run) {
 }
 
 test('E9-08 keeps the profile link and not-yet Reviews copy without a widget', async () => {
-  await executeFile('npm', ['run', 'build']);
+  await ensureAppBuild();
   await withServer((html) => {
     assert.match(
       html,

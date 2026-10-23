@@ -9,6 +9,7 @@ import test from 'node:test';
 import { chromium } from 'playwright';
 import { Pool } from 'pg';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const executeFile = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -695,7 +696,7 @@ test(
   'E11-05 crawls every rendered route and completes Turnstile on every protected form',
   { timeout: 240_000 },
   async () => {
-    await executeFile('npm', ['run', 'build']);
+    await ensureAppBuild();
     const inventory = await sourcePagePaths();
     assert.ok(inventory.astro.length > 0, 'rendered pages must be inventoried');
     const errorPages = ['/not-a-page', '/giveaway/rules/not-a-version'];

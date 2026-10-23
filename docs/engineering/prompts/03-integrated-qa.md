@@ -22,11 +22,16 @@ Read fully: `docs/plan/development-plan.md` — the sections for these epics clo
 
 ```
 git checkout main && git pull
+gh workflow run pr.yml --ref main          # the full suite on main, sharded across CI runners
+gh run list --workflow pr.yml --branch main --event workflow_dispatch --limit 1
+gh run watch <that run's ID>
 docker compose -f infra/compose/docker-compose.yml up -d
-npm i && npm run lint && npm run typecheck && npm test && npm run build
+npm i && npm run check
 npm run test:privacy      # rendered-page cookie, storage, third-party and fingerprinting checks
 npm run test:a11y         # axe over the built pages, both themes
 ```
+
+The full suite runs in CI, not on this machine (`docs/engineering/ci-cd.md#local-checks`). Every job in that run must pass.
 
 Record every failure **and every flake — a flake is a finding, not noise.**
 

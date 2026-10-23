@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "astro build",
+    "check": "npm run lint && npm run format && npm run typecheck && npm run security && node scripts/ci/app-build.mjs",
     "prebuild": "tsx scripts/ci/seo-build-check.ts --sitemap",
     "postbuild": "tsx scripts/ci/seo-build-check.ts --check",
     "backup:drill": "sh infra/backups/restore-drill.sh",
@@ -18,6 +19,7 @@
     "fraud:allow-domain": "tsx scripts/allow-domain.ts",
     "lint": "eslint .",
     "security": "node scripts/ci/security-gates.mjs",
+    "test:changed": "node scripts/ci/changed-tests.mjs",
     "test:a11y": "RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test test/accessibility.test.mjs",
     "test:privacy": "node scripts/ci/security-gates.mjs && RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test --test-concurrency=1 test/e1-11-rendered-page.test.mjs test/signup-form-rendered-page.test.mjs",
     "preview": "astro preview",

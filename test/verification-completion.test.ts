@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import test from 'node:test';
-import { promisify } from 'node:util';
 
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
@@ -16,6 +14,7 @@ import {
   startAppServer,
   type StartedAppServer,
 } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
@@ -23,7 +22,6 @@ const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const now = new Date('2026-09-08T12:00:00.000Z');
 const tokenIds = new Map<string, string>();
-const executeFile = promisify(execFile);
 
 function tokenValue(label: string): string {
   const hex = createHash('sha256').update(label).digest('hex');
@@ -116,7 +114,7 @@ test('the application role completes verification and replay through the E3 tran
 });
 
 test('submit, verify and refer reconstruct from server transition events alone', async () => {
-  await executeFile('npm', ['run', 'build']);
+  await ensureAppBuild();
   const fixture = await createDatabaseFixture();
   const events: Array<{ name: string; data: Record<string, unknown> }> = [];
   const preload = `

@@ -8,16 +8,46 @@ Checks only, no build artifacts are published.
 
 1. Install with a frozen lockfile
 2. **Lint · format · typecheck**
-3. **Unit, module-contract and integration tests** against a disposable PostgreSQL service container
+3. **Unit, module-contract and integration tests** against a disposable PostgreSQL service container — run once, under coverage, split across four parallel runners ([below](#how-the-suite-runs))
 4. **The Astro production build** — a build failure is a blocker, and several gates below are build-time assertions
-5. **Coverage gate** — ≥80% changed code; ≥90% in `subscriber`, `verification`, `referral`, `giveaway`, `email`
+5. **Coverage gate** — on the merged report of all four shards: ≥80% changed code; ≥90% in `subscriber`, `verification`, `referral`, `giveaway`, `email`
 6. **Security and privacy gates** (below)
 7. **Migration check** — the ledger's checksums match, and the schema is reproducible from the migration files alone
 8. **Accessibility pass** — automated axe run over the built pages, at both themes
 
-**All are mandatory review gates. Never skip, delete or weaken one to get green.** Docs-only changes (`docs/**`) run nothing.
+**All are mandatory review gates. Never skip, delete or weaken one to get green.** Docs-only changes (`docs/**`) run nothing. The workflow can also be started by hand on any branch (`gh workflow run pr.yml --ref main`), which is how a QA gate runs the full suite on `main`; with no pull request, the base revisions for the rules, coverage and secret checks fall back to the run's own commit.
 
-The five critical-module thresholds are registered in `coverage.config.json` but remain unenforced until those modules exist. E1-04 enforces the 80% changed-line threshold from the first PR pipeline; the owning module tickets activate their 90% thresholds as the modules arrive. The lint, typecheck, test, build and coverage checks each have a committed red-path fixture exercised with `npm run ci:red-paths`.
+The five critical-module thresholds are registered in `coverage.config.json` but remain unenforced until those modules exist. E1-04 enforces the 80% changed-line threshold from the first PR pipeline; the owning module tickets activate their 90% thresholds as the modules arrive. The lint, typecheck, test, build and coverage checks each have a committed red-path fixture exercised with `npm run ci:red-paths`. That harness runs every gate, coverage included, inside fixture repositories, so the coverage run skips it; the `red-paths` job runs it on every pull request instead.
+
+### How the suite runs
+
+**Founder-authorised 2026-10-23.** The suite runs once per pull request, under coverage, on four GitHub-hosted runners in parallel. Before this, the `test` and `coverage` jobs each ran the whole suite serially, about 21 minutes apiece.
+
+- **Planning.** `scripts/ci/shard-plan.mjs` lets Node discover the test files: a hook records each test-file child's path and exits before any test runs, so the list is exactly what `npm test` runs. It splits them by the per-file durations in `scripts/ci/shard-timings.json`, longest first, each onto the shard with the least recorded time. A file with no recorded time weighs the median, so a new file is still placed exactly once.
+- **Shards.** Each `test (n/4)` job builds the app once with `node scripts/ci/app-build.mjs`, starts the CI Compose stack and runs its files with `npm run coverage -- --shard n/4`. It uploads its LCOV report, the list of files it ran and each file's measured time.
+- **Merging.** `coverage` downloads the four reports. `scripts/ci/merge-coverage.mjs` fails unless all four are present, all discovered the same files, and together ran each discovered file exactly once. It then sums each line's hits, and `changed-coverage.mjs` applies the gate. If any shard fails, `coverage` fails too instead of being skipped. **The merged report carries line coverage only**, which is what the gates measure. Line hits from separate runs sum to exactly what one run over every file reports: a test in `test/ci-sharding.test.mjs` proves this on real c8 output. c8 derives function and branch entries per run, including placeholders for files a run never loaded, so those cannot be combined faithfully and are not reported.
+- **Build reuse.** Tests that need the built app call `ensureAppBuild()` from `scripts/ci/app-build.mjs` instead of running `npm run build`. It rebuilds only when the build inputs, the build-relevant environment or `dist/` itself changed since the stamped build. The build-relevant environment is `NODE_ENV`, `COVERAGE_SOURCE_MAPS`, `PUBLIC_*` variables and any `.env*` file: on 2026-10-23 these were measured to be the only environment that changes the output, because secrets and URLs are read at runtime. A test that changes `dist/`, such as one deleting an image to exercise a fallback, makes the stamp stale, so the next test rebuilds. Tests that build a temporary copy of the project still build that copy.
+
+**Refreshing the shard plan.** The `coverage` job prints each shard's measured and planned time, and uploads the merged per-file times as the `shard-timings` artifact. When the shards drift noticeably apart, or after adding a slow test file, replace `scripts/ci/shard-timings.json` with that artifact in a small pull request. The plan only affects balance: a stale or missing time can make one shard slower, but it can never skip or repeat a file.
+
+### Local checks
+
+**Founder-authorised 2026-10-23:** a developer's machine runs quick, targeted checks; CI runs the full suite on the pull request.
+
+| Command | Runs |
+|---|---|
+| `npm run check` | Lint, format, typecheck, `npm run security` and the build, stamped so tests reuse it |
+| `npm run test:changed -- <files>` | Test files changed since the merge base with `origin/main` (committed, uncommitted or untracked); tests whose imports, including files read through `new URL(…, import.meta.url)`, reach a changed file; the files named; and the `test:privacy` and `test:a11y` suites whenever a change touches `src/pages`, `src/components`, `src/islands`, `src/layouts`, `src/styles`, `src/copy`, `src/content`, `src/middleware.ts`, `public/` or `astro.config.mjs` |
+
+A ticket names its Tests-line files explicitly, because rendered-page tests reach pages over HTTP, not by import. `npm run test:changed -- --dry-run` prints the selection and the reason for each file without running it. The full `npm test` and `npm run coverage` still work locally for diagnosing a failure that does not reproduce from its file, but they are not part of the routine gate.
+
+**Reproducing a CI failure.** Run the failing file with `npm test -- <file>`, prefixed with `COVERAGE_SOURCE_MAPS=1` to match the CI build exactly. For a coverage-gate failure, rerun the gate on CI's own reports in seconds:
+
+```sh
+gh run download <run-id> -p 'coverage-shard-*' -D coverage-shards
+node scripts/ci/merge-coverage.mjs coverage-shards
+node scripts/ci/changed-coverage.mjs
+```
 
 ### The security and privacy stage
 

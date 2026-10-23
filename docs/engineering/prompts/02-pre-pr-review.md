@@ -64,8 +64,11 @@ Read neighbouring tickets **only** to check the diff has not built their work. Y
 git fetch origin && git checkout <branch>
 git diff origin/main...HEAD
 docker compose -f infra/compose/docker-compose.yml up -d
-npm i && npm run lint && npm run typecheck && npm test && npm run build
+npm i && npm run check
+npm run test:changed -- <each test file on the ticket's Tests line>
 ```
+
+These are the quick local checks. The full suite runs in CI once the pull request opens, and it must be green before merge (`docs/engineering/ci-cd.md#local-checks`).
 
 Read the diff completely. Where it lacks context, read the full file.
 

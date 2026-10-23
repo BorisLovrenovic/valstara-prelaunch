@@ -9,6 +9,7 @@ import { chromium } from 'playwright';
 import axe from 'axe-core';
 import { signupFormCopy } from '../src/copy/signup.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const execFileAsync = promisify(execFile);
 // No fixed ports: the app server gets a reserved port below the kernel's
@@ -90,7 +91,7 @@ async function startBrowserServer() {
 }
 
 before(async () => {
-  await execFileAsync('npm', ['run', 'build']);
+  await ensureAppBuild();
   // No reachable database is needed: the landing flag read fails safe to its
   // registered default (signup on), so the form island renders. Most signup
   // requests are intercepted in-browser; the no-JS case deliberately reaches

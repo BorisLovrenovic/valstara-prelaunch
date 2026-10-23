@@ -8,6 +8,7 @@ import test from 'node:test';
 import { Pool } from 'pg';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 import { startAppServer } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const executeFile = promisify(execFile);
 const defaultDatabaseUrl =
@@ -149,7 +150,7 @@ function postVerification(port, token) {
 }
 
 test('scanner GETs are inert, then token-authenticated POST verifies and replays safely', async () => {
-  await executeFile('npm', ['run', 'build']);
+  await ensureAppBuild();
   const fixture = await createDatabaseFixture();
   const subscriberId = randomUUID();
   const tokenId = randomUUID();
@@ -328,7 +329,7 @@ test('scanner GETs are inert, then token-authenticated POST verifies and replays
 });
 
 test('with survey.enabled off, the rendered verification success page omits the survey form and questions', async () => {
-  await executeFile('npm', ['run', 'build']);
+  await ensureAppBuild();
   const fixture = await createDatabaseFixture();
   const subscriberId = randomUUID();
   const tokenId = randomUUID();

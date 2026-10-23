@@ -13,6 +13,7 @@ import { Pool } from 'pg';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 import { assertShellLayout } from '../scripts/design/layout-checks.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const execFileAsync = promisify(execFile);
 // No fixed ports: the app server gets a reserved port below the kernel's
@@ -242,7 +243,7 @@ async function axeViolations(page) {
 }
 
 before(async () => {
-  await execFileAsync('npm', ['run', 'build']);
+  await ensureAppBuild();
   databaseFixture = await createDatabaseFixture();
   app = await startAppServer({
     label: 'Accessibility test',

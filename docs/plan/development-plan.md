@@ -33,6 +33,8 @@ This plan is written against a **12-week campaign**, and three of its constraint
 
 **Per-ticket cycle:** implement (fresh session, the ticket's model) → **pre-PR review in a fresh session that has not seen the implementation** → fix blockers → push, PR, squash-merge to `main`. Prompts are in `docs/engineering/prompts/`.
 
+**Local checks, full suite in CI (founder-authorised 2026-10-23).** Before committing, a session runs only the quick local checks: `npm run check`, and `npm run test:changed` naming the ticket's Tests-line files. The full suite runs once per pull request in CI, under coverage, split across four parallel runners by recorded file timings, and every check must be green before merge (`docs/engineering/ci-cd.md#how-the-suite-runs`).
+
 **`main` is the only long-lived branch.** **Merged is not deployed:** before the campaign opens, deploying is a deliberate command; from campaign open, a **release tag** deploys.
 
 **Definition of Done** is `docs/testing/strategy.md#definition-of-done`.
@@ -277,6 +279,8 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 
 **Tests:** A red-path fixture branch per gate proving each fails.
 **Docs:** `docs/engineering/ci-cd.md#pr-pipeline` · `docs/engineering/git-workflow.md`
+
+**Founder-authorised amendment (2026-10-23):** the `test` and `coverage` jobs no longer each run the whole suite. The suite runs once, under coverage, in four `test (n/4)` shards planned from recorded file timings. Each shard builds the app once and tests reuse that build while it is fresh. `coverage` merges the shard reports, fails unless every discovered test file ran exactly once, and applies the same 80% changed-line gate; it fails, not skips, when a shard fails. The E1-04 red-path harness, which the coverage run skips to avoid nesting coverage, runs in its own `red-paths` job. The workflow can also be dispatched by hand, so a QA gate runs the full suite on `main` in CI. Every gate and red-path fixture is unchanged (`docs/engineering/ci-cd.md#how-the-suite-runs`).
 
 ### E1-05 — CI security and privacy gates
 **Model:** Tier B — High · **Priority:** Highest · **Flag:** — · **Area:** security

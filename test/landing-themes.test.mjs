@@ -9,6 +9,7 @@ import { chromium } from 'playwright';
 
 import { landingCopy } from '../src/copy/landing.ts';
 import { startAppServer } from './helpers/listen-port.mjs';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const execFileAsync = promisify(execFile);
 const browserContainer = `valstara-landing-playwright-${process.pid}`;
@@ -119,7 +120,7 @@ async function waitForBrowserAppServer() {
 }
 
 before(async () => {
-  await execFileAsync('npm', ['run', 'build']);
+  await ensureAppBuild();
   // A reserved port below the kernel's ephemeral range; only a lost bind
   // race is retried (test/helpers/listen-port.mjs).
   // No reachable database: the flag read fails safe to its registered default
