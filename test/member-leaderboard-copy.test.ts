@@ -98,6 +98,10 @@ test('E11.5-08 the per-state explanations are the email intro, split, not reword
     /first order within 90 days after store launch/u,
   );
   assert.equal(memberStatusCopy.authenticated.waveBadge('wave-2'), 'Wave 2');
+  // The badge reads the whole wave number and never invents one for a value
+  // in another format.
+  assert.equal(memberStatusCopy.authenticated.waveBadge('wave-12'), 'Wave 12');
+  assert.equal(memberStatusCopy.authenticated.waveBadge('early-3'), 'early-3');
   assert.equal(memberStatusCopy.referral.progress(2, 3, 1), '2 of 3 to Tier 1');
 });
 

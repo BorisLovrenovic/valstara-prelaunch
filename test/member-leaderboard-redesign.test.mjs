@@ -253,15 +253,19 @@ async function axeViolations(page) {
 }
 
 // Everything about a reward state that is not a colour: its words, its icon
-// geometry and its outline style.
+// geometry and its outline style. The icon's paint and hiding are read too,
+// since the clock is not in the E2-04 primitives fixture.
 async function rewardStateShape(page, state) {
   return page
     .locator(`[data-reward-state="${state}"] .member-reward__state`)
     .evaluate((element) => {
       const style = globalThis.getComputedStyle(element);
+      const path = element.querySelector('svg path');
       return {
         text: element.textContent.trim(),
-        icon: element.querySelector('svg path')?.getAttribute('d') ?? null,
+        icon: path?.getAttribute('d') ?? null,
+        paint: [path?.getAttribute('fill'), path?.getAttribute('stroke')],
+        hidden: element.querySelector('svg')?.getAttribute('aria-hidden'),
         border: style.borderTopStyle,
       };
     });
@@ -440,6 +444,10 @@ test('the member page and the leaderboard render every state from their sources,
     assert.ok(settled.icon !== null && held.icon !== null);
     assert.notEqual(settled.icon, held.icon);
     assert.notEqual(settled.border, held.border);
+    for (const shape of [settled, held]) {
+      assert.ok(shape.paint.includes('currentColor'), shape.text);
+      assert.equal(shape.hidden, 'true', shape.text);
+    }
     for (const state of ['settled', 'held']) {
       const key = page.locator(`[data-reward-key="${state}"]`);
       assert.equal(await key.locator('svg path').count(), 1);
@@ -614,8 +622,11 @@ test('the member page and the leaderboard render every state from their sources,
     await board.close();
 
     // Layout checks and axe on every state, at every width, in both themes.
+    // Headless Chromium has no navigator.share, so one state stubs it to put
+    // the native share button in front of the checks.
     const states = [
       ['member', mePath(data.tokens.member), '[data-member-dashboard]'],
+      ['member-share', mePath(data.tokens.member), '.member-native-share'],
       ['member-new', mePath(data.tokens.fresh), '[data-member-dashboard]'],
       ['member-recovery', mePath(data.tokens.expired), '.member-boundary'],
       ['member-left', mePath(data.tokens.left), '.member-boundary'],
@@ -630,6 +641,10 @@ test('the member page and the leaderboard render every state from their sources,
               colorScheme: theme,
             });
             try {
+              if (label === 'member-share')
+                await context.addInitScript(() => {
+                  globalThis.navigator.share = async () => {};
+                });
               const statePage = await context.newPage();
               await statePage.goto(origin + path);
               await statePage.locator(ready).first().waitFor();

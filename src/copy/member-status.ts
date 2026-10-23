@@ -18,7 +18,12 @@ export const memberStatusCopy = {
     },
     tier: 'Referral tier',
     wave: 'Access wave',
-    waveBadge: (window: string) => `Wave ${window.slice(-1)}`,
+    // Only the wave-N format names a wave number; any other value is shown
+    // as stored rather than as a wrong number.
+    waveBadge: (window: string) => {
+      const wave = /^wave-(\d+)$/u.exec(window)?.[1];
+      return wave === undefined ? window : `Wave ${wave}`;
+    },
     wavePending: 'Not assigned yet',
   },
   referral: {
@@ -63,7 +68,6 @@ export const memberStatusCopy = {
     heading: 'Marketing email',
     enabled: 'On',
     disabled: 'Off',
-    state: 'Currently',
     wording: marketingOptInCopy.wording,
     turnOn: 'Turn on marketing email',
     turnOff: 'Turn off marketing email',
