@@ -15,6 +15,9 @@ const { Content } = await render(entry);
 <TrustPage
   title={legalPageCopy.storage.title}
   description={legalPageCopy.storage.description}
+  kind="legal"
+  summary={legalPageCopy.storage.description}
+  renderedHtml={entry.rendered?.html ?? ''}
 >
   <Content />
 </TrustPage>

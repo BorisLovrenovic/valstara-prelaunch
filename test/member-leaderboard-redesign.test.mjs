@@ -315,7 +315,21 @@ test('the member page and the leaderboard render every state from their sources,
     remote = await startBrowser();
     const origin = 'http://host.docker.internal:' + app.port;
     const hostOrigin = 'http://127.0.0.1:' + app.port;
-    assert.deepEqual(enforcedPages, ['/verify', '/me', '/leaderboard']);
+    assert.deepEqual(enforcedPages, [
+      '/verify',
+      '/me',
+      '/leaderboard',
+      '/legit',
+      '/guarantee',
+      '/about',
+      '/terms',
+      '/privacy',
+      '/privacy/storage',
+      '/giveaway/rules',
+      '/giveaway/rules/VAL-GW-LAUNCH-20260925-r1',
+      '/giveaway/rules/VAL-GW-LAUNCH-20261001-r1',
+      '/giveaway/rules/VAL-GW-LAUNCH-20261009-r1',
+    ]);
 
     const mePath = (token) => '/me?t=' + encodeURIComponent(token);
     const fetchHtml = async (path) => {

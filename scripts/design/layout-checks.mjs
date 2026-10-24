@@ -6,7 +6,23 @@ export const designThemes = Object.freeze(['light', 'dark']);
 
 // Pages enter this list in the ticket that redesigns them. E11.5-12 compares
 // it to the complete rendered-page inventory.
-export const enforcedPages = Object.freeze(['/verify', '/me', '/leaderboard']);
+export const enforcedPages = Object.freeze([
+  '/verify',
+  '/me',
+  '/leaderboard',
+  // E11.5-09: the trust, legal and giveaway-rules pages, including every
+  // published rules revision at its permanent URL.
+  '/legit',
+  '/guarantee',
+  '/about',
+  '/terms',
+  '/privacy',
+  '/privacy/storage',
+  '/giveaway/rules',
+  '/giveaway/rules/VAL-GW-LAUNCH-20260925-r1',
+  '/giveaway/rules/VAL-GW-LAUNCH-20261001-r1',
+  '/giveaway/rules/VAL-GW-LAUNCH-20261009-r1',
+]);
 
 // The site shell: BaseLayout's header and footer landmarks. E11.5-03 enforces
 // the layout rules on these regions on every rendered page, while page bodies

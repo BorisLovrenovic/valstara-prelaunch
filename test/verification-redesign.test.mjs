@@ -202,7 +202,21 @@ test('verification states, exact figures, native actions and flags render access
     app = await startVerificationApp();
     remote = await startBrowser();
     const origin = 'http://host.docker.internal:' + app.port;
-    assert.deepEqual(enforcedPages, ['/verify', '/me', '/leaderboard']);
+    assert.deepEqual(enforcedPages, [
+      '/verify',
+      '/me',
+      '/leaderboard',
+      '/legit',
+      '/guarantee',
+      '/about',
+      '/terms',
+      '/privacy',
+      '/privacy/storage',
+      '/giveaway/rules',
+      '/giveaway/rules/VAL-GW-LAUNCH-20260925-r1',
+      '/giveaway/rules/VAL-GW-LAUNCH-20261001-r1',
+      '/giveaway/rules/VAL-GW-LAUNCH-20261009-r1',
+    ]);
     await assertEnforcedPages(remote.browser, origin);
 
     const confirmPath = '/verify?token=' + encodeURIComponent(data.token);

@@ -1,0 +1,446 @@
+---
+import Button from '../components/button.astro';
+import Container from '../components/container.astro';
+import { documentPagesCopy } from '../copy/document-pages.ts';
+import { landingCopy } from '../copy/landing.ts';
+import { layoutCopy } from '../copy/layout.ts';
+import type { ContentsEntry } from '../server/content/contents.ts';
+
+interface Props {
+  kind: 'trust' | 'legal' | 'rules';
+  // The page's summary line: its content description (trust, rules) or its
+  // legal.ts entry. It is never written here.
+  summary: string;
+  // Section anchors already present in the rendered content (legal, rules).
+  contents?: ContentsEntry[];
+}
+
+const { kind, summary, contents = [] } = Astro.props;
+const eyebrow = documentPagesCopy.eyebrow[kind];
+const onGuarantee = Astro.url.pathname.replace(/\/+$/u, '') === '/guarantee';
+---
+
+{
+  /*
+  E11.5-09. The default slot is the page's content article, with class
+  "document__prose": the content's own H1 is its first child and stays the
+  page's only H1. Nothing is added inside that article, and the giveaway
+  rules article stays byte-identical to its recorded hash. The eyebrow sits
+  immediately before the article and the summary immediately after it; the
+  grid below draws the H1 between them as the band headline. Styling is CSS
+  only and hides no part of the content.
+*/
+}
+<Container class="document-container">
+  <slot name="notice" />
+  <div class="document" data-document-kind={kind}>
+    <div class="document__main">
+      <p class="document__eyebrow" data-document-eyebrow>{eyebrow}</p>
+      <slot />
+      <p class="document__summary" data-document-summary>{summary}</p>
+    </div>
+    {
+      kind === 'trust' ? (
+        <aside
+          class="document__aside"
+          aria-label={documentPagesCopy.guarantee.label}
+        >
+          <div class="document__card" data-document-card="guarantee">
+            <h2 class="document__card-heading">
+              {documentPagesCopy.guarantee.heading}
+            </h2>
+            <ul class="document__promises">
+              {landingCopy.trust.promises.map((promise) => (
+                <li class="document__promise">
+                  <span class="document__numeral">{promise.numeral}</span>
+                  <span>{promise.title}</span>
+                </li>
+              ))}
+            </ul>
+            {!onGuarantee && (
+              <a class="document__card-link" href="/guarantee">
+                {documentPagesCopy.guarantee.readLink}
+              </a>
+            )}
+            <Button class="document__join" href={`/${layoutCopy.joinAnchor}`}>
+              {layoutCopy.joinLabel}
+            </Button>
+          </div>
+        </aside>
+      ) : (
+        contents.length > 0 && (
+          <nav
+            class="document__aside"
+            aria-label={documentPagesCopy.contents.label}
+          >
+            <div class="document__card" data-document-card="contents">
+              <h2 class="document__card-heading">
+                {documentPagesCopy.contents.heading}
+              </h2>
+              <ol class="document__contents">
+                {contents.map((entry) => (
+                  <li>
+                    <a href={`#${entry.id}`}>{entry.text}</a>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </nav>
+        )
+      )
+    }
+  </div>
+</Container>
+{
+  /* Small widths, trust pages only: a link to the signup form, not a form. It
+     needs no script, so it is always present below 40rem and never above. */
+  kind === 'trust' && (
+    <div class="document-join-bar" data-join-bar>
+      <Button
+        class="document-join-bar__link"
+        href={`/${layoutCopy.joinAnchor}`}
+      >
+        {documentPagesCopy.joinBar.label}
+      </Button>
+    </div>
+  )
+}
+
+<style is:global>
+  /* The band and the prose share one single-column grid. The article is
+     display: contents, so its children are grid items: the eyebrow, the
+     content's H1 and the summary take the first three rows over the band, and
+     the rest of the content flows below in source order. */
+  .document {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .document__main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    min-inline-size: 0;
+  }
+
+  .document__main::before {
+    grid-row: 1 / 4;
+    grid-column: 1;
+    background-color: var(--surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1);
+    content: '';
+  }
+
+  .document__eyebrow,
+  .document__prose > h1:first-child,
+  .document__summary {
+    grid-column: 1;
+    margin: 0;
+    padding-inline: var(--space-3);
+  }
+
+  .document__eyebrow {
+    grid-row: 1;
+    padding-block-start: var(--space-4);
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
+  }
+
+  .document__prose {
+    display: contents;
+  }
+
+  .document__prose > * {
+    grid-column: 1;
+    min-inline-size: 0;
+    margin-block: var(--space-2) 0;
+  }
+
+  .document__prose > h1:first-child {
+    grid-row: 2;
+    padding-block-start: var(--space-1);
+    color: var(--ink);
+    font-size: var(--step-5);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-5);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .document__summary {
+    grid-row: 3;
+    padding-block: var(--space-1) var(--space-4);
+    margin-block-end: var(--space-2);
+    color: var(--ink-600);
+    font-size: var(--step-3);
+    line-height: var(--leading-3);
+  }
+
+  .document__prose h2 {
+    margin-block-start: var(--space-5);
+    font-size: var(--step-4);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-4);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .document__prose h3 {
+    margin-block-start: var(--space-4);
+    font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-3);
+  }
+
+  .document__prose ul,
+  .document__prose ol {
+    padding-inline-start: var(--space-3);
+  }
+
+  .document__prose li + li {
+    margin-block-start: var(--space-1);
+  }
+
+  .document__prose strong {
+    font-weight: var(--weight-semibold);
+  }
+
+  .document__prose code {
+    font-family: var(--font-mono);
+    font-size: var(--step-1);
+  }
+
+  .document__prose blockquote {
+    margin-inline: 0;
+    padding-inline-start: var(--space-2);
+    color: var(--ink-600);
+    border-inline-start: medium solid var(--coral);
+  }
+
+  .document__prose a,
+  .document__card-link,
+  .document__contents a {
+    color: var(--ink-600);
+    text-decoration-line: underline;
+  }
+
+  .document__prose a:hover,
+  .document__card-link:hover,
+  .document__contents a:hover {
+    color: var(--ink);
+  }
+
+  .document__prose a:focus-visible,
+  .document__card-link:focus-visible,
+  .document__contents a:focus-visible {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  /* Small widths: every link in the prose and the cards is a full-size
+     target. From 40rem prose links return to plain inline text. */
+  .document__prose a,
+  .document__card-link,
+  .document__contents a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+    min-inline-size: var(--tap-min);
+    overflow-wrap: anywhere;
+  }
+
+  /* A table is its own horizontal scroll container, so it can never widen the
+     page. Its cells still wrap long words: a scrolling region with nothing
+     focusable inside is unreachable by keyboard (axe
+     scrollable-region-focusable), and the content markup cannot be given a
+     tabindex, so at the test widths the tables fit rather than scroll. */
+  .document__prose table {
+    display: block;
+    max-inline-size: 100%;
+    overflow-x: auto;
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    border-collapse: collapse;
+  }
+
+  .document__prose th,
+  .document__prose td {
+    padding: var(--space-1);
+    text-align: start;
+    vertical-align: top;
+    border-block-end: thin solid var(--line);
+    overflow-wrap: anywhere;
+  }
+
+  .document__prose th {
+    font-weight: var(--weight-semibold);
+  }
+
+  .document__card {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background-color: var(--surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1);
+  }
+
+  .document__card-heading {
+    margin: 0;
+    color: var(--ink);
+    font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-3);
+  }
+
+  .document__promises,
+  .document__contents {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .document__promise {
+    display: flex;
+    gap: var(--space-2);
+    align-items: baseline;
+  }
+
+  .document__numeral {
+    flex: none;
+    min-inline-size: var(--space-4);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-weight: var(--weight-bold);
+  }
+
+  .document__card-link {
+    justify-self: start;
+  }
+
+  .document__join {
+    justify-self: stretch;
+  }
+
+  .rules-archived-notice {
+    display: flex;
+    gap: var(--space-2);
+    align-items: start;
+    margin-block-end: var(--space-4);
+    padding: var(--space-3);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    background-color: var(--surface);
+    border-inline-start: medium solid var(--warning);
+    border-radius: var(--radius-card);
+  }
+
+  .rules-archived-notice p {
+    margin: 0;
+  }
+
+  .rules-archived-notice a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+    color: var(--ink-600);
+    overflow-wrap: anywhere;
+  }
+
+  .rules-archived-notice a:focus-visible {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  .document-join-bar {
+    position: fixed;
+    inset-inline: 0;
+    inset-block-end: 0;
+    z-index: var(--layer-dock);
+    padding-block-start: var(--space-1);
+    padding-block-end: calc(var(--space-1) + env(safe-area-inset-bottom));
+    padding-inline: var(--gutter);
+    background-color: var(--surface);
+    box-shadow: var(--shadow-2);
+  }
+
+  .document-join-bar__link {
+    inline-size: 100%;
+  }
+
+  /* The bar never covers content or a focused element (WCAG 2.2 SC 2.4.11):
+     the page reserves its height and scrolling keeps focus above it. */
+  html:has(.document-join-bar) {
+    --join-bar-block: calc(
+      var(--tap-min) + var(--space-1) * 2 + env(safe-area-inset-bottom)
+    );
+    scroll-padding-block-end: var(--join-bar-block);
+  }
+
+  body:has(.document-join-bar) {
+    padding-block-end: var(--join-bar-block);
+  }
+
+  @media (min-width: 40rem) {
+    .document__prose a,
+    .rules-archived-notice a {
+      display: inline;
+      min-block-size: auto;
+      min-inline-size: auto;
+    }
+
+    .document__summary {
+      font-size: var(--step-4);
+      line-height: var(--leading-4);
+    }
+
+    .document__prose table {
+      font-size: var(--step-2);
+      line-height: var(--leading-2);
+    }
+
+    .document-join-bar {
+      display: none;
+    }
+
+    html:has(.document-join-bar) {
+      scroll-padding-block-end: 0;
+    }
+
+    body:has(.document-join-bar) {
+      padding-block-end: 0;
+    }
+  }
+
+  /* Large widths: the prose, up to the measure, beside a sticky card that
+     takes the remaining width, so there is no narrow column inside wide empty
+     margins. The card column never narrows below a readable width. */
+  @media (min-width: 64rem) {
+    .document {
+      grid-template-columns:
+        minmax(0, var(--measure))
+        minmax(calc(var(--space-10) * 4), 1fr);
+      gap: var(--space-6);
+      align-items: start;
+    }
+
+    .document__aside {
+      position: sticky;
+      inset-block-start: var(--space-4);
+    }
+
+    .document__contents a {
+      min-block-size: auto;
+    }
+  }
+</style>
