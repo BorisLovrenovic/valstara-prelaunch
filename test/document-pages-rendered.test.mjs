@@ -493,7 +493,8 @@ test('no table causes page-level horizontal overflow at any test width', async (
 });
 
 test('the join bar shows below 40rem only', async () => {
-  for (const width of designWidths) {
+  // 639 and 640 pin the 40rem edge, which the design widths skip (390 → 768).
+  for (const width of [...designWidths, 639, 640]) {
     const context = await browser.newContext({
       viewport: { width, height: 900 },
     });
