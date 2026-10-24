@@ -36,7 +36,7 @@
     "astro": "7.3.3",
     "drand-client": "1.4.2",
     "imapflow": "2.1.2",
-    "mailparser": "3.9.31",
+    "mailparser": "3.12.4",
     "pg": "8.23.0"
   },
   "devDependencies": {
