@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   emailPreviewRenderers,
+  previewRulesVersion,
   renderEmailPreviews,
 } from '../scripts/design/email-previews.ts';
 import { dsrCopy } from '../src/copy/dsr.ts';
@@ -31,22 +32,34 @@ const preheaders: Readonly<Record<string, string>> = {
   weekly_campaign_update: emailCopy.weekly.preheader,
 };
 
+// The rules page for the fixture's own rules version, so the test does not
+// restate the version format the renderer already validates.
+const rulesPath = `/giveaway/rules/${previewRulesVersion}`;
+
 // The main action each message exists for, by first-party path.
-const mainActions: Readonly<Record<string, RegExp>> = {
-  verification_test: /^\/verify$/u,
-  verification_reminder: /^\/verify$/u,
-  welcome: /^\/me$/u,
-  milestone_reached: /^\/me$/u,
-  status_link: /^\/me$/u,
-  giveaway_entry_receipt: /^\/giveaway\/rules\/VAL-GW-/u,
-  giveaway_winner: /^\/giveaway\/award$/u,
-  dsr_export: /^\/dsr$/u,
-  dsr_delete: /^\/dsr$/u,
-  weekly_campaign_update: /^\/me$/u,
+const mainActions: Readonly<Record<string, string>> = {
+  verification_test: '/verify',
+  verification_reminder: '/verify',
+  welcome: '/me',
+  milestone_reached: '/me',
+  status_link: '/me',
+  giveaway_entry_receipt: rulesPath,
+  giveaway_winner: '/giveaway/award',
+  dsr_export: '/dsr',
+  dsr_delete: '/dsr',
+  weekly_campaign_update: '/me',
 };
 
-const firstPartyPaths =
-  /^\/(?:|verify|me|legit|unsubscribe|dsr|giveaway\/award|giveaway\/rules\/VAL-GW-[A-Z0-9]+-\d{8}-r\d+)$/u;
+const firstPartyPaths = new Set([
+  '/',
+  '/verify',
+  '/me',
+  '/legit',
+  '/unsubscribe',
+  '/dsr',
+  '/giveaway/award',
+  rulesPath,
+]);
 
 function html(message: { readonly html?: string }): string {
   assert.ok(message.html, 'every template has an HTML part');
@@ -163,7 +176,7 @@ test('E11.5-11 every template has no var(, no image and no remote URL beyond its
       const url = new URL(link);
       assert.equal(url.origin, baseUrl, `${template}: ${link}`);
       // A wrapped or rewritten link would leave this closed set of routes.
-      assert.match(url.pathname, firstPartyPaths, `${template}: ${link}`);
+      assert.ok(firstPartyPaths.has(url.pathname), `${template}: ${link}`);
     }
   }
 });
@@ -340,7 +353,7 @@ test('E11.5-11 the layout is at most 600px wide and its one button is at least 4
     assert.equal(declaration(anchorStyle, 'display'), 'block', template);
     const main = mainActions[template];
     assert.ok(main, template);
-    assert.match(new URL(decode(href)).pathname, main, template);
+    assert.equal(new URL(decode(href)).pathname, main, template);
     assert.equal(markup.split('class="v-button"').length, 2, template);
   }
 });

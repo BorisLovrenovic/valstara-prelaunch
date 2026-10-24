@@ -14,7 +14,7 @@ import type {
 import { createTransactionalRenderers } from '../../src/server/email/transactional-templates.ts';
 import { createWeeklyTemplate } from '../../src/server/email/weekly-template.ts';
 
-const rulesVersion = 'VAL-GW-LAUNCH-20261009-r1';
+export const previewRulesVersion = 'VAL-GW-LAUNCH-20261009-r1';
 const awardId = '11111111-1111-4111-8111-111111111111';
 
 const payloads: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
@@ -25,7 +25,7 @@ const payloads: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
   status_link: { token_id: 'status-id' },
   giveaway_entry_receipt: {
     status_token_id: 'status-id',
-    rules_version: rulesVersion,
+    rules_version: previewRulesVersion,
   },
   giveaway_winner: { token_id: 'status-id', award_id: awardId },
   dsr_export: { token_id: 'dsr-id' },
@@ -67,7 +67,7 @@ export function emailPreviewRenderers(
         async winnerDetails() {
           return {
             deadline: new Date('2027-04-15T09:00:00.000Z'),
-            rulesVersion,
+            rulesVersion: previewRulesVersion,
           };
         },
       },

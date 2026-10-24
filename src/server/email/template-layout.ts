@@ -369,7 +369,7 @@ function body(
     `<tr><td class="v-card" bgcolor="${light.surface}" style="${style({
       padding: `${px.space4}px ${px.space3}px`,
       'background-color': light.surface,
-      border: `1px solid ${light.line}`,
+      border: `thin solid ${light.line}`,
       'border-radius': px.radiusCard,
     })}">`,
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">',
