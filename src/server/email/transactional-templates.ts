@@ -104,6 +104,7 @@ export function createTransactionalRenderers(
       return render(
         {
           subject: emailCopy.verify.subject,
+          preheader: emailCopy.verify.preheader,
           paragraphs: [emailCopy.verify.firstLine, emailCopy.verify.body],
           links: [
             link(emailCopy.verify.action, verifyLink(base.origin, verifyToken)),
@@ -121,6 +122,7 @@ export function createTransactionalRenderers(
       return render(
         {
           subject: emailCopy.reminder.subject,
+          preheader: emailCopy.reminder.preheader,
           paragraphs: [emailCopy.reminder.firstLine, emailCopy.reminder.body],
           links: [
             link(
@@ -145,6 +147,7 @@ export function createTransactionalRenderers(
       return render(
         {
           subject: emailCopy.welcome.subject,
+          preheader: emailCopy.welcome.preheader,
           paragraphs: [
             emailCopy.welcome.firstLine,
             emailCopy.welcome.body,
@@ -180,6 +183,7 @@ export function createTransactionalRenderers(
       return render(
         {
           subject: emailCopy.milestone.subject(tier),
+          preheader: emailCopy.milestone.preheader,
           paragraphs: [
             emailCopy.milestone.firstLine(tier),
             emailCopy.milestone.body,
@@ -202,6 +206,7 @@ export function createTransactionalRenderers(
       return render(
         {
           subject: emailCopy.statusLink.subject,
+          preheader: emailCopy.statusLink.preheader,
           paragraphs: [
             emailCopy.statusLink.firstLine,
             emailCopy.statusLink.body,
@@ -228,6 +233,7 @@ export function createTransactionalRenderers(
       return render(
         {
           subject: emailCopy.receipt.subject,
+          preheader: emailCopy.receipt.preheader,
           paragraphs: [
             emailCopy.receipt.firstLine,
             emailCopy.receipt.count(entries, version),
@@ -254,6 +260,7 @@ export function createTransactionalRenderers(
       return render(
         {
           subject: emailCopy.winner.subject,
+          preheader: emailCopy.winner.preheader,
           paragraphs: [
             emailCopy.winner.firstLine,
             emailCopy.winner.deadline(details.deadline),

@@ -63,6 +63,18 @@ Icons: `shield` for a form to complete, `check` for done, `alert` for invalid, u
 
 `test/task-pages-redesign.test.mjs` renders every state, asserts the statuses and the 500 no-leak property, and runs the layout checks at every width and theme and axe in both themes.
 
+## The email layout (E11.5-11)
+
+Every template shares `src/server/email/template-layout.ts`: the seven transactional mails, the two data-rights mails and the weekly update. The layout is a 600px table that shrinks to the reading pane, with inline styles. From top to bottom it has the text wordmark, a `surface` card holding the paragraphs, the facts list in the mono face with tabular figures, one coral button for the message's main action (the document's first link), and the other links as underlined text. Below the card is a footer with the §3.4 legal line, `support@valstara.com` and the unsubscribe link. A hidden preheader from the copy layer opens the body. The plain text keeps the same order but has no wordmark and no preheader, so its first line is still the message's own first line.
+
+Mail clients ignore custom properties, so colours, font stacks, sizes, radii and the tap target are read from `tokens.css` at render time and inlined as literal values. The output contains no `var(`. The light `:root` block is inlined. A `prefers-color-scheme: dark` block carries the dark block's values for clients that honour it. The metric-matched fallback faces are site-only aliases, so the email stack names their `local()` fonts instead. An Outlook-only conditional block drops the web fonts, because Outlook on Windows would otherwise fall back to a serif. The button is a coloured table cell `--tap-min` tall. Its anchor fills the cell with padding around one line of body text. The card border is `thin solid` in the `line` colour, the same keyword the site's cards use, so it adds no width literal. No image, remote resource, tracking pixel or link wrapper appears in any template.
+
+A few fixed values in the layout are mail-client mechanics, not design values, and have no token. The 600px content width is set by E11.5-11. Rem tokens convert to px against the CSS initial root font size of 16px, because several clients do not resolve rem. The preheader is hidden with `display:none`, `max-height:0`, `mso-hide:all`, a 1px font size and line height and `opacity:0`. It is followed by 40 `&zwnj;&nbsp;` pairs so the inbox preview does not run on into the body text. None of these values is visible in a rendered message.
+
+The bare `<p>`, `<li>` and secondary `<a>` elements carry no attributes. The unchanged E8-03 suite matches them exactly, so they inherit type and colour from their inline-styled cells. Paragraph margins and the secondary-link colour come from the head `<style>`, and clients that drop it show their default margins and link colour.
+
+`npx tsx scripts/design/email-previews.ts` renders every registered template from fixture payloads into `.design-contact-sheets/email-html/`, together with a contact-sheet manifest. Serve that directory and run `contact-sheet.mjs --manifest .design-contact-sheets/email-html/manifest.json` against it to capture light and dark previews. The live check in real mail clients is E12-07's.
+
 ## Scan and copy budgets
 
 At about three seconds, the wordmark, plain description and guarantee should answer whether the site is legitimate. At about 20 seconds, headings, visuals and actions should explain what Valstara is and what a visitor gets. FAQ, trust pages and rules carry the deeper read.
