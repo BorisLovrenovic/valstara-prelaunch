@@ -7,6 +7,7 @@ import {
   ephemeralPortStart,
   reserveListenPort,
   startAppServer,
+  waitForConnections,
 } from './helpers/listen-port.mjs';
 
 // Under scripts/fixtures, like the other spawned server fixtures: `node --test`
@@ -168,4 +169,32 @@ test('repeated bind failures give up after three attempts with the server output
   } finally {
     await holder.release();
   }
+});
+
+test('a published port is ready only once it accepts connections', async () => {
+  const port = await reserveListenPort();
+  const server = createServer((socket) => socket.end());
+  // The forward comes up a few checks after the wait starts.
+  const listening = new Promise((resolve) =>
+    globalThis.setTimeout(() => {
+      server.listen(port, '127.0.0.1', resolve);
+    }, 350),
+  );
+  try {
+    await waitForConnections(port, { attempts: 50, label: 'late forward' });
+    await listening;
+    assert.equal(server.listening, true);
+  } finally {
+    await listening;
+    server.close();
+    await once(server, 'close');
+  }
+});
+
+test('a published port that never accepts connections fails after its attempts', async () => {
+  const port = await reserveListenPort();
+  await assert.rejects(
+    waitForConnections(port, { attempts: 3, label: 'dead forward' }),
+    /dead forward refused 3 connection attempts\./u,
+  );
 });

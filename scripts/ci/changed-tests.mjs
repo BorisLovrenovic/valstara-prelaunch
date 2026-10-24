@@ -39,12 +39,16 @@ const codeExtensions = new Set([
   '.mts',
   '.ts',
 ]);
-const specifierPatterns = [
-  /\bfrom\s*['"]([^'"]+)['"]/gu,
+// Statements that load a module when the file runs. Type-only imports are
+// erased by TypeScript and load nothing.
+const importPatterns = [
+  /\b(?:import|export)\s+(?!type\b)[^'";]*?\bfrom\s*['"]([^'"]+)['"]/gu,
   /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/gu,
   /\bimport\s+['"]([^'"]+)['"]/gu,
-  /\bnew URL\(\s*['"]([^'"]+)['"]\s*,\s*import\.meta\.url\s*\)/gu,
 ];
+// A file the test reads as data: only its own content matters.
+const readPattern =
+  /\bnew URL\(\s*['"]([^'"]+)['"]\s*,\s*import\.meta\.url\s*\)/gu;
 
 async function isFile(path) {
   try {
@@ -54,62 +58,161 @@ async function isFile(path) {
   }
 }
 
-/** Repository files a source file names by relative path. */
-export async function localDependencies(root, file, source) {
-  const dependencies = new Set();
-  for (const pattern of specifierPatterns) {
+/** Package names a source file imports by bare specifier, such as `pg`. */
+export function packageImports(source) {
+  const packages = new Set();
+  for (const pattern of importPatterns) {
     for (const [, specifier] of source.matchAll(pattern)) {
-      if (!specifier.startsWith('.')) continue;
-      const base = resolve(root, dirname(file), specifier);
-      for (const candidate of [
-        base,
-        `${base}.ts`,
-        `${base}.mjs`,
-        `${base}.js`,
-      ]) {
-        const path = relative(root, candidate).replaceAll('\\', '/');
-        if (path.startsWith('..') || path.includes('node_modules/')) break;
-        if (await isFile(candidate)) {
-          dependencies.add(path);
-          break;
+      if (/^[./]/u.test(specifier) || specifier.includes(':')) continue;
+      const parts = specifier.split('/');
+      packages.add(
+        specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0],
+      );
+    }
+  }
+  return packages;
+}
+
+const installedName = (path) =>
+  path.slice(path.lastIndexOf('node_modules/') + 'node_modules/'.length);
+
+/** Installed packages that appeared, disappeared or changed version. */
+export function changedPackages(baseLock, currentLock) {
+  const versions = (lock) =>
+    new Map(
+      Object.entries(lock.packages ?? {})
+        .filter(([path]) => path.includes('node_modules/'))
+        .map(([path, entry]) => [path, entry.version]),
+    );
+  const before = versions(baseLock);
+  const after = versions(currentLock);
+  const changed = new Set();
+  for (const path of new Set([...before.keys(), ...after.keys()])) {
+    if (before.get(path) !== after.get(path)) changed.add(installedName(path));
+  }
+  return changed;
+}
+
+/**
+ * The project's direct dependencies that a package change reaches: a changed
+ * package that is itself direct, and every direct dependency that depends on a
+ * changed package through the installed tree. Each maps to the changed
+ * packages behind it.
+ */
+export function affectedDependencies(locks, changed) {
+  const direct = new Set();
+  const dependents = new Map();
+  for (const lock of locks) {
+    for (const [path, entry] of Object.entries(lock.packages ?? {})) {
+      const dependencies = Object.keys({
+        ...entry.dependencies,
+        ...entry.optionalDependencies,
+        ...entry.peerDependencies,
+        ...(path === '' ? entry.devDependencies : {}),
+      });
+      if (path === '') {
+        for (const name of dependencies) direct.add(name);
+        continue;
+      }
+      for (const name of dependencies) {
+        dependents.set(
+          name,
+          (dependents.get(name) ?? new Set()).add(installedName(path)),
+        );
+      }
+    }
+  }
+  const affected = new Map();
+  for (const start of changed) {
+    const seen = new Set([start]);
+    const queue = [start];
+    while (queue.length > 0) {
+      const name = queue.shift();
+      if (direct.has(name)) {
+        affected.set(name, (affected.get(name) ?? new Set()).add(start));
+      }
+      for (const parent of dependents.get(name) ?? []) {
+        if (!seen.has(parent)) {
+          seen.add(parent);
+          queue.push(parent);
         }
       }
     }
+  }
+  return affected;
+}
+
+/**
+ * Repository files a source file names by relative path, each marked `import`
+ * when it runs with the file or `read` when the file only reads it.
+ */
+export async function localDependencies(root, file, source) {
+  const dependencies = new Map();
+  const add = async (specifier, kind) => {
+    if (!specifier.startsWith('.')) return;
+    const base = resolve(root, dirname(file), specifier);
+    for (const candidate of [base, `${base}.ts`, `${base}.mjs`, `${base}.js`]) {
+      const path = relative(root, candidate).replaceAll('\\', '/');
+      if (path.startsWith('..') || path.includes('node_modules/')) return;
+      if (await isFile(candidate)) {
+        if (dependencies.get(path) !== 'import') dependencies.set(path, kind);
+        return;
+      }
+    }
+  };
+  for (const pattern of importPatterns) {
+    for (const [, specifier] of source.matchAll(pattern)) {
+      await add(specifier, 'import');
+    }
+  }
+  for (const [, specifier] of source.matchAll(readPattern)) {
+    await add(specifier, 'read');
   }
   return dependencies;
 }
 
 /**
  * Picks the test files a change needs: changed tests, tests whose import graph
- * reaches a changed file, named suites, and the browser suites when a change
- * can reach a rendered page. Returns each file with the reason it was picked.
+ * reaches a changed file or a package a dependency change affects, named
+ * suites, and the browser suites when a change can reach a rendered page.
+ * Returns each file with the reason it was picked.
  */
 export async function selectTests({
   root,
   changedFiles,
   candidates,
   named = [],
+  dependencies = new Map(),
 }) {
   const changed = new Set(changedFiles);
   const selected = new Map();
-  const reachedFrom = new Map();
+  const reasons = new Map();
 
-  async function changedDependency(file, visiting = new Set()) {
-    if (reachedFrom.has(file)) return reachedFrom.get(file);
+  async function reachedChange(file, visiting = new Set()) {
+    if (reasons.has(file)) return reasons.get(file);
     if (visiting.has(file)) return null;
     visiting.add(file);
     let found = null;
     if (codeExtensions.has(extname(file))) {
       const source = await readFile(resolve(root, file), 'utf8');
-      for (const dependency of await localDependencies(root, file, source)) {
-        found = changed.has(dependency)
-          ? dependency
-          : await changedDependency(dependency, visiting);
+      for (const name of packageImports(source)) {
+        if (dependencies.has(name)) {
+          found = `uses ${name}, affected by changed ${[...dependencies.get(name)].sort().join(', ')}`;
+          break;
+        }
+      }
+      for (const [dependency, kind] of found
+        ? []
+        : await localDependencies(root, file, source)) {
+        if (changed.has(dependency)) found = `imports ${dependency}`;
+        else if (kind === 'import') {
+          found = await reachedChange(dependency, visiting);
+        }
         if (found) break;
       }
     }
     visiting.delete(file);
-    reachedFrom.set(file, found);
+    reasons.set(file, found);
     return found;
   }
 
@@ -120,8 +223,8 @@ export async function selectTests({
       selected.set(file, 'changed');
       continue;
     }
-    const dependency = await changedDependency(file);
-    if (dependency) selected.set(file, `imports ${dependency}`);
+    const reason = await reachedChange(file);
+    if (reason) selected.set(file, reason);
   }
   const browserChange = changedFiles.find(reachesBrowser);
   if (browserChange) {
@@ -138,8 +241,12 @@ function git(root, args) {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' });
 }
 
+export function mergeBaseOf(root, base) {
+  return git(root, ['merge-base', 'HEAD', base]).trim();
+}
+
 export function changedFilesSince(root, base) {
-  const mergeBase = git(root, ['merge-base', 'HEAD', base]).trim();
+  const mergeBase = mergeBaseOf(root, base);
   const lines = [
     ...git(root, ['diff', '--name-only', mergeBase]).split('\n'),
     ...git(root, ['ls-files', '--others', '--exclude-standard']).split('\n'),
@@ -172,11 +279,34 @@ async function main() {
     throw new Error(`Not a test file npm test runs: ${unknown.join(', ')}`);
   }
   const changedFiles = changedFilesSince(projectRoot, base);
+  let dependencies = new Map();
+  if (changedFiles.includes('package-lock.json')) {
+    let baseLock = {};
+    try {
+      baseLock = JSON.parse(
+        git(projectRoot, [
+          'show',
+          `${mergeBaseOf(projectRoot, base)}:package-lock.json`,
+        ]),
+      );
+    } catch {
+      // A lockfile new since the base: every installed package is new.
+    }
+    const currentLock = JSON.parse(
+      await readFile(resolve(projectRoot, 'package-lock.json'), 'utf8'),
+    );
+    const packages = changedPackages(baseLock, currentLock);
+    dependencies = affectedDependencies([baseLock, currentLock], packages);
+    console.log(
+      `Dependency change: ${[...packages].sort().join(', ') || 'none installed'}; reaches ${[...dependencies.keys()].sort().join(', ') || 'no direct dependency'}.`,
+    );
+  }
   const selected = await selectTests({
     root: projectRoot,
     changedFiles,
     candidates,
     named,
+    dependencies,
   });
   console.log(`${changedFiles.length} files changed since ${base}.`);
   if (selected.size === 0) {

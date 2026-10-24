@@ -221,22 +221,36 @@ async function startBrowser() {
   server.stderr.on('data', (chunk) => {
     output += chunk;
   });
-  for (
-    let attempt = 0;
-    attempt < 240 && !output.includes('Listening on');
-    attempt += 1
-  ) {
-    if (server.exitCode !== null) throw new Error(output);
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 250));
+  try {
+    for (
+      let attempt = 0;
+      attempt < 240 && !output.includes('Listening on');
+      attempt += 1
+    ) {
+      if (server.exitCode !== null) throw new Error(output);
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 250));
+    }
+    assert.match(output, /Listening on/u);
+    const browserEndpoint =
+      'ws://127.0.0.1:' + (await publishedPort(browserContainer, 3000)) + '/';
+    return {
+      server,
+      browserEndpoint,
+      browser: await chromium.connect(browserEndpoint),
+    };
+  } catch (error) {
+    // A browser that fails to start must not outlive the test: its running
+    // `docker run` client would keep this file's process, and the run, alive.
+    await executeFile('docker', ['rm', '--force', browserContainer]).catch(
+      () => {},
+    );
+    if (server.exitCode === null) {
+      const exited = once(server, 'exit');
+      server.kill();
+      await exited;
+    }
+    throw error;
   }
-  assert.match(output, /Listening on/u);
-  const browserEndpoint =
-    'ws://127.0.0.1:' + (await publishedPort(browserContainer, 3000)) + '/';
-  return {
-    server,
-    browserEndpoint,
-    browser: await chromium.connect(browserEndpoint),
-  };
 }
 
 async function axeViolations(page) {

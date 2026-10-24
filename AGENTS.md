@@ -75,7 +75,7 @@ npm run check
 npm run test:changed -- <each test file on your ticket's Tests line>
 ```
 
-`npm run check` runs lint, format, typecheck, the security and privacy scans, and the build. `npm run test:changed` runs every test file your branch changed, every test whose imports reach a changed file, the files you name, and the privacy and accessibility suites whenever a change can reach the browser. It prints why it picked each file. The full `npm test` is not part of the local gate. To reproduce a CI failure, run the failing file.
+`npm run check` runs lint, format, typecheck, the security and privacy scans, and the build. `npm run test:changed` runs every test file your branch changed, every test whose imports reach a changed file, the files you name, and the privacy and accessibility suites whenever a change can reach the browser. It prints why it picked each file. The full `npm test` is not part of the local gate, **including for a dependency upgrade**: `test:changed` also picks the tests that load an upgraded package, and `npm run check` rebuilds and audits. To reproduce a CI failure, run the failing file.
 
 Fix every failure. **Never skip, delete or weaken a test or gate to get green.** Branch `feat/<ticket-id>-<slug>` from `main`; Conventional Commits including the ticket ID. **Do not push or open a PR** — that happens only after the pre-PR review passes.
 

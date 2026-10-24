@@ -49,7 +49,7 @@ When every finding is addressed, **re-review your own diff as an independent rev
   npm run check
   npm run test:changed -- <the ticket's Tests-line files and each finding's test>
   ```
-  `test:changed` also picks every test the fixes affect, and adds the privacy and accessibility suites when a fix can reach the browser. The full suite runs in CI on the pull request (`docs/engineering/ci-cd.md#local-checks`).
+  `test:changed` also picks every test the fixes affect, and adds the privacy and accessibility suites when a fix can reach the browser. The full suite runs in CI on the pull request (`docs/engineering/ci-cd.md#local-checks`), so do not run it locally, even for a dependency upgrade.
 - Schema touched? Add a **new forward-only migration** — never edit one that has already run.
 - Commit on that branch with Conventional Commits referencing the ticket ID.
 

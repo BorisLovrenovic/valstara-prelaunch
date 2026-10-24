@@ -15,6 +15,7 @@ import {
   enforcedPages,
 } from '../scripts/design/layout-checks.mjs';
 import { runContactSheetActions } from '../scripts/design/contact-sheet.mjs';
+import { publishedPort } from './helpers/listen-port.mjs';
 
 const execFileAsync = promisify(execFile);
 const container = `valstara-design-layout-${process.pid}`;
@@ -65,14 +66,9 @@ before(async () => {
     await new Promise((resolve) => globalThis.setTimeout(resolve, 250));
   }
   assert.match(output, /Listening on/u);
-  const { stdout } = await execFileAsync('docker', [
-    'port',
-    container,
-    '3000/tcp',
-  ]);
-  const port = /127\.0\.0\.1:(\d+)/u.exec(stdout)?.[1];
-  assert.ok(port);
-  browser = await chromium.connect(`ws://127.0.0.1:${port}/`);
+  browser = await chromium.connect(
+    `ws://127.0.0.1:${await publishedPort(container, 3000)}/`,
+  );
 });
 
 after(async () => {

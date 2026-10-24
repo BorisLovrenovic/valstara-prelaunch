@@ -108,19 +108,33 @@ async function startBrowser() {
   child.stderr.on('data', (chunk) => {
     output += chunk;
   });
-  for (let attempt = 0; attempt < 240; attempt += 1) {
-    if (output.includes('Listening on')) {
-      return {
-        browser: await chromium.connect(
-          `ws://127.0.0.1:${await publishedPort(browserContainer, 3000)}/`,
-        ),
-        child,
-      };
+  try {
+    for (let attempt = 0; attempt < 240; attempt += 1) {
+      if (output.includes('Listening on')) {
+        return {
+          browser: await chromium.connect(
+            `ws://127.0.0.1:${await publishedPort(browserContainer, 3000)}/`,
+          ),
+          child,
+        };
+      }
+      if (child.exitCode !== null) throw new Error(output);
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 250));
     }
-    if (child.exitCode !== null) throw new Error(output);
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 250));
+    throw new Error(`Playwright container did not start: ${output}`);
+  } catch (error) {
+    // A browser that fails to start must not outlive the test: its running
+    // `docker run` client would keep this file's process, and the run, alive.
+    await executeFile('docker', ['rm', '--force', browserContainer]).catch(
+      () => {},
+    );
+    if (child.exitCode === null) {
+      const exited = once(child, 'exit');
+      child.kill();
+      await exited;
+    }
+    throw error;
   }
-  throw new Error(`Playwright container did not start: ${output}`);
 }
 
 async function withDatabase(run) {

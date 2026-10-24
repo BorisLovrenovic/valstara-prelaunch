@@ -65,7 +65,7 @@ test('the integrated QA privacy and accessibility commands are runnable scripts'
 
   assert.equal(
     packageJson.scripts['test:a11y'],
-    'RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test test/accessibility.test.mjs',
+    'RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test --test-force-exit test/accessibility.test.mjs',
   );
   assert.match(
     packageJson.scripts['test:privacy'],

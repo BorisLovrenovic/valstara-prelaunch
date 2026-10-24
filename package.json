@@ -20,10 +20,10 @@
     "lint": "eslint .",
     "security": "node scripts/ci/security-gates.mjs",
     "test:changed": "node scripts/ci/changed-tests.mjs",
-    "test:a11y": "RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test test/accessibility.test.mjs",
-    "test:privacy": "node scripts/ci/security-gates.mjs && RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test --test-concurrency=1 test/e1-11-rendered-page.test.mjs test/signup-form-rendered-page.test.mjs",
+    "test:a11y": "RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test --test-force-exit test/accessibility.test.mjs",
+    "test:privacy": "node scripts/ci/security-gates.mjs && RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test --test-force-exit --test-concurrency=1 test/e1-11-rendered-page.test.mjs test/signup-form-rendered-page.test.mjs",
     "preview": "astro preview",
-    "test": "RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --expose-gc --import tsx --test --test-concurrency=1",
+    "test": "RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --expose-gc --import tsx --test --test-force-exit --test-concurrency=1",
     "test:production-stack": "node infra/compose/assert-production-stack.mjs",
     "test:stack": "node infra/compose/assert-stack.mjs",
     "typecheck": "astro check"

@@ -1,7 +1,7 @@
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { readFile } from 'node:fs/promises';
-import { createServer } from 'node:net';
+import { connect, createServer } from 'node:net';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -186,7 +186,41 @@ export async function startAppServer({
 // The host port Docker assigned to a container published with
 // `--publish 127.0.0.1::<containerPort>`. Docker binds it atomically, so no
 // fixed host port can collide with another socket.
-export async function publishedPort(container, containerPort) {
+function acceptsConnections(port) {
+  return new Promise((resolve) => {
+    const socket = connect({ host: '127.0.0.1', port });
+    socket.once('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once('error', () => resolve(false));
+  });
+}
+
+/**
+ * Resolves once 127.0.0.1:port accepts a TCP connection, checking every 100ms;
+ * throws after `attempts` refusals.
+ */
+export async function waitForConnections(port, { attempts, label }) {
+  for (let attempt = 1; !(await acceptsConnections(port)); attempt += 1) {
+    if (attempt >= attempts) {
+      throw new Error(`${label} refused ${attempts} connection attempts.`);
+    }
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 100));
+  }
+}
+
+/**
+ * The host port Docker published for a container port, once it accepts
+ * connections. A server inside the container can report that it is listening
+ * before Docker's host-side forward is ready; connecting in that gap is
+ * refused (seen 2026-10-24 as ECONNREFUSED from a Playwright browser server).
+ */
+export async function publishedPort(
+  container,
+  containerPort,
+  { attempts = 300 } = {},
+) {
   const { stdout } = await execFileAsync('docker', [
     'port',
     container,
@@ -198,5 +232,9 @@ export async function publishedPort(container, containerPort) {
       `Docker did not publish ${container}:${containerPort}: ${stdout}`,
     );
   }
+  await waitForConnections(Number(port), {
+    attempts,
+    label: `${container}:${containerPort} published on 127.0.0.1:${port}`,
+  });
   return Number(port);
 }

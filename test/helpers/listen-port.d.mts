@@ -27,4 +27,10 @@ export function startAppServer(options: {
 export function publishedPort(
   container: string,
   containerPort: number,
+  options?: { attempts?: number },
 ): Promise<number>;
+
+export function waitForConnections(
+  port: number,
+  options: { attempts: number; label: string },
+): Promise<void>;
