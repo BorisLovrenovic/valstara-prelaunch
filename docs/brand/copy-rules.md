@@ -70,3 +70,5 @@ Plain, specific, no apology theatre, no vendor names, no machinery terms.
 
 ## Email copy
 Subject lines are descriptive, not curiosity-baiting. The verification mail's only job is to get one click, so it says what it is in the first line. Verification and verification-reminder mail carry no status-page link before the address is verified (founder-authorised 2026-09-28). **Every mail carries a one-click unsubscribe and a plain-text alternative**, and the unsubscribe is as easy as the signup was.
+
+Each template has a hidden preheader in the copy layer: one plain sentence that describes the message, never a teaser, and never a repeat of the subject (E11.5-11). It appears only in the inbox preview, so the verification mail's first line is still the first line of its body and its plain text. Every mail's footer carries the §3.4 legal line and `support@valstara.com`, shared with the site footer from `src/copy/layout.ts`.

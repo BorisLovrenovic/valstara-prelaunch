@@ -6,12 +6,14 @@ export const dsrCopy = {
     body: 'Confirm to download the data held about your waitlist record.',
     button: 'Download my data',
     subject: 'Your data export link',
+    preheader: 'Confirm your request to download your data.',
   },
   delete: {
     heading: 'Erase your data',
     body: 'Confirm to stop processing your waitlist record and request erasure. The privacy notice explains the retained award records, backups and delivery logs.',
     button: 'Request erasure',
     subject: 'Confirm your erasure request',
+    preheader: 'Confirm your request to erase your waitlist record.',
   },
   emailBody:
     'Use this link to confirm your request. It is valid for 24 hours. If you did not request it, no action is needed.',

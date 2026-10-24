@@ -22,6 +22,7 @@ export function dsrRenderers(
             unsubscribePageUrl: input.unsubscribePageUrl,
             document: {
               subject: dsrCopy[operation].subject,
+              preheader: dsrCopy[operation].preheader,
               paragraphs: [dsrCopy.emailBody],
               links: [
                 { label: dsrCopy[operation].button, url: url.toString() },

@@ -30,6 +30,7 @@ export function createWeeklyTemplate(input: {
         unsubscribePageUrl,
         document: {
           subject: emailCopy.weekly.subject,
+          preheader: emailCopy.weekly.preheader,
           paragraphs: [
             emailCopy.weekly.firstLine,
             emailCopy.weekly.leaderboardHeading,
