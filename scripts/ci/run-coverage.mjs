@@ -36,7 +36,9 @@ await rm(resolve(projectRoot, 'coverage'), { force: true, recursive: true });
 
 const selectedTest = argumentValue('--test');
 const shardArgument = argumentValue('--shard');
-const testArguments = ['--test', '--test-concurrency=1'];
+// A test file whose tests have finished exits even if a leaked handle, such as
+// a browser container that failed to start, would keep it alive forever.
+const testArguments = ['--test', '--test-force-exit', '--test-concurrency=1'];
 const reporterArguments = ['--reporter=text', '--reporter=lcov'];
 if (selectedTest) {
   testArguments.push(selectedTest);

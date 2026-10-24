@@ -6,8 +6,11 @@ import { dirname, join } from 'node:path';
 import test from 'node:test';
 
 import {
+  affectedDependencies,
   browserSuites,
   changedFilesSince,
+  changedPackages,
+  packageImports,
   reachesBrowser,
   selectTests,
 } from '../scripts/ci/changed-tests.mjs';
@@ -180,6 +183,144 @@ test('changed files include commits, uncommitted edits and untracked files since
       'src/b.ts',
       'src/new.ts',
     ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('only runtime imports of packages count, not type-only ones', () => {
+  assert.deepEqual(
+    [
+      ...packageImports(
+        [
+          "import type { APIRoute } from 'astro';",
+          "export type { Row } from 'pg';",
+          "import { z } from 'astro/zod';",
+          "import {\n  type Mail,\n  send,\n} from '@scope/mailer/client';",
+          "import 'side-effect';",
+          "const lazy = await import('lazy-package');",
+          "import { readFile } from 'node:fs/promises';",
+          "import { defineMiddleware } from 'astro:middleware';",
+          "import { local } from './local.ts';",
+        ].join('\n'),
+      ),
+    ].sort(),
+    ['@scope/mailer', 'astro', 'lazy-package', 'side-effect'],
+  );
+});
+
+const lock = (packages) => ({ lockfileVersion: 3, packages });
+const baseLock = lock({
+  '': {
+    dependencies: { mailparser: '1.0.0', astro: '7.3.3' },
+    devDependencies: { eslint: '9.0.0' },
+  },
+  'node_modules/mailparser': {
+    version: '1.0.0',
+    dependencies: { libmime: '^2' },
+  },
+  'node_modules/libmime': { version: '2.0.0' },
+  'node_modules/astro': { version: '7.3.3', dependencies: { undici: '^8' } },
+  'node_modules/undici': { version: '8.11.2' },
+  'node_modules/eslint': { version: '9.0.0', dependencies: { ajv: '^6' } },
+  'node_modules/ajv': { version: '6.0.0', dependencies: { 'fast-uri': '^3' } },
+  'node_modules/fast-uri': { version: '3.0.0' },
+  'node_modules/old-helper': { version: '1.0.0' },
+});
+const currentLock = lock({
+  ...baseLock.packages,
+  'node_modules/libmime': { version: '2.0.1' },
+  'node_modules/fast-uri': { version: '3.1.0' },
+  'node_modules/astro/node_modules/undici': { version: '8.12.0' },
+  'node_modules/old-helper': undefined,
+});
+delete currentLock.packages['node_modules/old-helper'];
+
+test('a lockfile change names each installed package that changed', () => {
+  assert.deepEqual([...changedPackages(baseLock, currentLock)].sort(), [
+    'fast-uri',
+    'libmime',
+    'old-helper',
+    'undici',
+  ]);
+  assert.deepEqual([...changedPackages(currentLock, currentLock)], []);
+});
+
+test('a changed package reaches every direct dependency that installs it', () => {
+  const affected = affectedDependencies(
+    [baseLock, currentLock],
+    changedPackages(baseLock, currentLock),
+  );
+  assert.deepEqual(
+    [...affected].map(([name, causes]) => [name, [...causes].sort()]).sort(),
+    [
+      ['astro', ['undici']],
+      ['eslint', ['fast-uri']],
+      ['mailparser', ['libmime']],
+    ],
+  );
+});
+
+test('a dependency change selects tests that load the affected package at runtime', async () => {
+  const root = await tree({
+    'src/server/email/seed.ts':
+      "import { simpleParser } from 'mailparser';\nexport const seed = simpleParser;\n",
+    'src/server/routes.ts':
+      "import type { APIRoute } from 'astro';\nexport const route = 1;\n",
+    'astro.config.mjs':
+      "import { defineConfig } from 'astro/config';\nexport default defineConfig({});\n",
+    'test/seed.test.ts':
+      "import { seed } from '../src/server/email/seed.ts';\n",
+    'test/routes.test.ts': "import { route } from '../src/server/routes.ts';\n",
+    'test/config.test.mjs':
+      "const config = new URL('../astro.config.mjs', import.meta.url);\n",
+    'test/build.test.mjs': "import { build } from 'astro';\n",
+  });
+  try {
+    const selected = await selectTests({
+      root,
+      changedFiles: ['package-lock.json'],
+      candidates: [
+        'test/build.test.mjs',
+        'test/config.test.mjs',
+        'test/routes.test.ts',
+        'test/seed.test.ts',
+      ],
+      dependencies: new Map([
+        ['mailparser', new Set(['libmime'])],
+        ['astro', new Set(['undici'])],
+      ]),
+    });
+    // routes.test.ts only imports astro's types, and config.test.mjs only reads
+    // astro.config.mjs as text, so neither loads the changed package.
+    assert.deepEqual(
+      [...selected],
+      [
+        ['test/build.test.mjs', 'uses astro, affected by changed undici'],
+        ['test/seed.test.ts', 'uses mailparser, affected by changed libmime'],
+      ],
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a file a test only reads selects the test when it changes, not when its imports do', async () => {
+  const root = await tree({
+    'src/data.ts': 'export const data = 1;\n',
+    'scripts/reader.mjs':
+      "import { data } from '../src/data.ts';\nexport default data;\n",
+    'test/reads.test.mjs':
+      "const file = new URL('../scripts/reader.mjs', import.meta.url);\n",
+  });
+  try {
+    const select = (changedFiles) =>
+      selectTests({ root, changedFiles, candidates: ['test/reads.test.mjs'] });
+    assert.deepEqual([...(await select(['src/data.ts']))], []);
+    assert.deepEqual(
+      [...(await select(['scripts/reader.mjs']))],
+      [['test/reads.test.mjs', 'imports scripts/reader.mjs']],
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

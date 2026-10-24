@@ -8,7 +8,7 @@ import test, { after, before } from 'node:test';
 import { chromium } from 'playwright';
 
 import { landingCopy } from '../src/copy/landing.ts';
-import { startAppServer } from './helpers/listen-port.mjs';
+import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -66,14 +66,7 @@ async function startBrowserServer() {
 
   for (let attempt = 0; attempt < 720; attempt += 1) {
     if (output.includes('Listening on')) {
-      const { stdout } = await execFileAsync('docker', [
-        'port',
-        browserContainer,
-        '3000/tcp',
-      ]);
-      const port = /^127\.0\.0\.1:(\d+)\s*$/mu.exec(stdout)?.[1];
-      assert.ok(port, `Docker did not publish the browser port: ${stdout}`);
-      return `ws://127.0.0.1:${port}/`;
+      return `ws://127.0.0.1:${await publishedPort(browserContainer, 3000)}/`;
     }
     if (browserServerError !== undefined) {
       throw new Error(
