@@ -1,0 +1,206 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import Card from '../components/card.astro';
+import Container from '../components/container.astro';
+import Icon, { type IconName } from '../components/icon.astro';
+
+// The one task-card pattern (E11.5-10): a left-aligned card in the container
+// with a state icon, the page's only H1 and, in the default slot, one line,
+// any form and one primary action. Zero JavaScript.
+type Props = HTMLAttributes<'article'> & {
+  heading: string;
+  icon: IconName;
+  state: string;
+};
+
+const { class: className, heading, icon, state, ...attributes } = Astro.props;
+---
+
+<Container class="task-container">
+  <Card
+    {...attributes}
+    class:list={['task-card', className]}
+    data-task-state={state}
+  >
+    <div class="task-card__heading">
+      <Icon name={icon} size="lg" class="task-card__icon" />
+      <h1>{heading}</h1>
+    </div>
+    <slot />
+  </Card>
+</Container>
+
+<style>
+  :global(.task-container) {
+    padding-block: var(--section-gap);
+  }
+
+  /* Left-aligned in the container and capped at the reading measure, so a
+     short task never stretches into one wide line (§7.3). */
+  .task-card {
+    display: grid;
+    gap: var(--space-3);
+    max-inline-size: var(--measure);
+  }
+
+  .task-card__heading {
+    display: flex;
+    gap: var(--space-2);
+    align-items: flex-start;
+  }
+
+  .task-card__heading :global(.task-card__icon) {
+    flex: none;
+    color: var(--ink);
+  }
+
+  .task-card h1 {
+    margin: 0;
+    font-size: var(--step-5);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-5);
+    letter-spacing: var(--tracking-tight);
+    overflow-wrap: anywhere;
+  }
+
+  .task-card :global(h2) {
+    margin: 0;
+    font-size: var(--step-4);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-4);
+  }
+
+  .task-card :global(p) {
+    margin: 0;
+    color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    overflow-wrap: anywhere;
+  }
+
+  .task-card :global(form),
+  .task-card :global(fieldset) {
+    display: grid;
+    gap: var(--space-3);
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .task-card :global(legend) {
+    margin-block-end: var(--space-2);
+    padding: 0;
+  }
+
+  /* One primary action first, then any secondary one, wrapping on small
+     widths; every action keeps its --tap-min size from the Button. */
+  .task-card :global(.task-card__actions) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .task-card :global(.task-card__actions .button) {
+    max-inline-size: 100%;
+    text-align: start;
+  }
+
+  /* A checkbox choice: the native input is a transparent --tap-min target
+     over a drawn box, so a long label can wrap beside it (as /verify's chips
+     do). Checked shows the check icon, never colour alone. */
+  .task-card :global(.task-card__choice) {
+    position: relative;
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    min-block-size: var(--tap-min);
+    color: var(--ink);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    cursor: pointer;
+  }
+
+  .task-card :global(.task-card__choice input) {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    inline-size: var(--tap-min);
+    block-size: var(--tap-min);
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .task-card :global(.task-card__box) {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--tap-min);
+    block-size: var(--tap-min);
+  }
+
+  .task-card :global(.task-card__mark) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--icon-md);
+    block-size: var(--icon-md);
+    color: transparent;
+    background-color: var(--surface);
+    border: medium solid var(--ink-600);
+    border-radius: var(--radius-control);
+  }
+
+  .task-card
+    :global(
+      .task-card__choice input:checked + .task-card__box .task-card__mark
+    ) {
+    color: var(--midnight);
+    background-color: var(--coral);
+    border-color: var(--coral);
+  }
+
+  .task-card
+    :global(
+      .task-card__choice input:focus-visible + .task-card__box .task-card__mark
+    ) {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+
+  /* An outcome notice carries its icon and text, so it never relies on
+     colour alone. */
+  .task-card :global(.task-card__notice) {
+    display: flex;
+    gap: var(--space-1);
+    align-items: flex-start;
+    padding-inline-start: var(--space-1);
+    color: var(--ink);
+    border-inline-start: medium solid var(--line);
+  }
+
+  .task-card :global(.task-card__notice[data-tone='error']) {
+    border-inline-start-color: var(--error);
+  }
+
+  .task-card :global(.task-card__notice p) {
+    color: var(--ink);
+  }
+
+  .task-card :global(.task-card__link) {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+    color: var(--ink);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .task-card :global(.task-card__link:focus-visible) {
+    outline: medium solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+</style>

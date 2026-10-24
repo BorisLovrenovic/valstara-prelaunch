@@ -96,7 +96,7 @@ valstara-prelaunch/
 | **subscriber** | The waitlist row: raw and normalised email, status, source, UTM, wave, provenance, marketing-consent state | **Normalisation happens before any uniqueness check.** The normalised address is the unique key; the raw address is what gets displayed and mailed | `docs/modules/subscriber.md` |
 | **verification** | Single-use verification tokens, hashed at rest, with an expiry and a consumption record | A token is consumed exactly once; a replay is a no-op, never an error the visitor sees | `docs/modules/verification.md` |
 | **referral** | Referral codes, the referral **edge** table, tier and milestone state, reward state | `confirmed_referrals` is **derived from edges and recomputable**, never blindly incremented | `docs/modules/referral.md` |
-| **giveaway** | Entry eligibility (no location), the entry ledger, the draw record, the award-time checks | Every entry stamps the global rules version and hash; location is collected only from provisional winners (ADR-026) | `docs/modules/giveaway.md` |
+| **giveaway** | Entry eligibility (no location), the entry ledger, the draw record, the award-time checks; maps an award page outcome and state to its message and icon (`server/giveaway/award-presentation.ts`, E11.5-10) | Every entry stamps the global rules version and hash; location is collected only from provisional winners (ADR-026) | `docs/modules/giveaway.md` |
 | **fraud** | Blocklist, MX results, velocity and self-referral signals, flags and their review state | Signals **flag, never auto-ban.** Every disqualification is a human decision and is audited | `docs/modules/fraud.md` |
 
 ### Cross-cutting services — no domain data of their own

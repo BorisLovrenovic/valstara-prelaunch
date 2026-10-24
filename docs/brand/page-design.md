@@ -48,6 +48,21 @@ The icon registry also holds a `clock`, used with `check` to tell held rewards f
 
 `test/document-pages-rendered.test.mjs` asserts the unchanged content and rules hashes, one H1, the band order, no hidden content element, zero JavaScript, the contents anchors, the table fit, the join bar, the layout checks and axe.
 
+## Task pages and error pages (E11.5-10)
+
+`/unsubscribe`, `/dsr` (request and confirmation) and `/giveaway/award` (every state) share `src/layouts/task-card.astro`. It is zero-JS: a Container holding a left-aligned Card capped at `--measure`, a state icon beside the page's only H1, then one line, any form and the actions. The card carries `data-task-state`, and its slot content gets these classes:
+
+- `task-card__actions`: one primary Button first, then at most one secondary Button. On `/unsubscribe` the primary action unsubscribes from the message and leaving the waitlist is the secondary. On the substitution form the primary action chooses replacement goods and the cash decline is the secondary. Both are one click.
+- `task-card__notice`: an outcome line with its icon, and an `--error` rule for errors, so it never relies on colour alone.
+- `task-card__choice`: a checkbox whose native input is a transparent `--tap-min` target over a drawn box (`task-card__box`, `task-card__mark`), with a check icon when ticked.
+- `task-card__link`: a plain secondary link at `--tap-min` height.
+
+Icons: `shield` for a form to complete, `check` for done, `alert` for invalid, unavailable or ineligible, and `clock` for rate limits and deadlines. Turnstile renders compact on these pages so it fits at 320px. Form fields, actions, token use, Turnstile and responses are unchanged. On `/giveaway/award` the outcome-to-message mapping is the unchanged E7-06 copy, and `server/giveaway/award-presentation.ts` adds the icon.
+
+`src/pages/404.astro` and `src/pages/500.astro` use the same card: a plain heading, one line, a primary link home and a secondary link to `/legit`. Both are prerendered and `noindex`, are absent from the sitemap, and send no page view. The Node adapter serves the built file for an unknown route (404) or a failed render (500), so neither page depends on the database, configuration or middleware, or renders anything from the failure. The 500 page has no URL of its own. `openRoute` in `scripts/design/layout-checks.mjs` serves the built file at `/500` for the layout checks and the accessibility suite.
+
+`test/task-pages-redesign.test.mjs` renders every state, asserts the statuses and the 500 no-leak property, and runs the layout checks at every width and theme and axe in both themes.
+
 ## Scan and copy budgets
 
 At about three seconds, the wordmark, plain description and guarantee should answer whether the site is legitimate. At about 20 seconds, headings, visuals and actions should explain what Valstara is and what a visitor gets. FAQ, trust pages and rules carry the deeper read.

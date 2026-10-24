@@ -26,6 +26,8 @@ Two rules make that safe, and they are what a reviewer checks:
 
 `message` is customer-facing copy from the copy layer, in brand voice. Diagnostics go to the log with a `request_id`, never to the response.
 
+A path under `/api/` that matches no route gets the branded HTML 404 page, and an exception a route does not handle gets the branded HTML 500 page, served byte for byte from the prerendered file (E11.5-10). Neither carries the envelope, nor anything from the request or the failure.
+
 ### Closed code set
 
 | Code | HTTP | Meaning |

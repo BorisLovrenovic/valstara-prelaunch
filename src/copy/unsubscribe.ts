@@ -22,6 +22,7 @@ export const unsubscribeCopy = {
     body: 'Your choice was not saved. Please try again.',
     retry: 'Try again',
   },
+  rateLimitedHeading: 'Please wait a moment',
   rateLimited: 'Too many attempts. Please try again in a few minutes.',
   invalidInput: 'This request could not be used.',
 } as const;

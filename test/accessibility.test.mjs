@@ -11,7 +11,10 @@ import axe from 'axe-core';
 import { chromium } from 'playwright';
 import { Pool } from 'pg';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
-import { assertShellLayout } from '../scripts/design/layout-checks.mjs';
+import {
+  assertShellLayout,
+  openRoute,
+} from '../scripts/design/layout-checks.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
@@ -305,6 +308,8 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
   // when a new route appears without joining the accessibility pass.
   assert.deepEqual(routes, [
     '/',
+    '/404',
+    '/500',
     '/about',
     '/dsr',
     '/giveaway/award',
@@ -327,11 +332,15 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
     for (const colorScheme of themes) {
       const context = await browser.newContext({ colorScheme });
       const page = await context.newPage();
-      const target =
-        route === '/me'
-          ? `${browserOrigin}/me?t=${encodeURIComponent(authenticatedStatusToken)}`
-          : `${browserOrigin}${route}`;
-      await page.goto(target, { waitUntil: 'load' });
+      if (route === '/me') {
+        await page.goto(
+          `${browserOrigin}/me?t=${encodeURIComponent(authenticatedStatusToken)}`,
+          { waitUntil: 'load' },
+        );
+      } else {
+        // The built 500 page has no URL of its own (E11.5-10).
+        await openRoute(page, route, browserOrigin);
+      }
       if (route === '/me') {
         const dashboardCount = await page
           .locator('[data-member-dashboard]')

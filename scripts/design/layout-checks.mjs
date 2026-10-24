@@ -1,4 +1,6 @@
 /* global document, window, getComputedStyle */
+import { readFile } from 'node:fs/promises';
+
 export const designWidths = Object.freeze([
   320, 360, 390, 768, 1024, 1280, 1440, 1920,
 ]);
@@ -22,7 +24,62 @@ export const enforcedPages = Object.freeze([
   '/giveaway/rules/VAL-GW-LAUNCH-20260925-r1',
   '/giveaway/rules/VAL-GW-LAUNCH-20261001-r1',
   '/giveaway/rules/VAL-GW-LAUNCH-20261009-r1',
+  // E11.5-10: the task pages and the branded error pages.
+  '/unsubscribe',
+  '/dsr',
+  '/giveaway/award',
+  '/404',
+  '/500',
 ]);
+
+// The prerendered 500 page has no URL of its own: the Node adapter serves its
+// built file, byte for byte, as the body of any response whose render fails
+// (E11.5-10). Browser checks open it at /500 by serving that same file.
+export const builtErrorPages = Object.freeze({
+  '/500': { status: 500, file: 'dist/client/500.html' },
+});
+
+const builtTypes = Object.freeze({
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+});
+
+export async function openRoute(page, route, origin) {
+  const target = new URL(route, origin);
+  const built = builtErrorPages[route];
+  if (built !== undefined) {
+    const body = await readFile(
+      new URL(`../../${built.file}`, import.meta.url),
+    );
+    // A document fulfilled by the test cannot load unrouted subresources in
+    // the connected browser, so the page's assets come from the same build.
+    await page.route('**/*', async (request) => {
+      const url = new URL(request.request().url());
+      if (url.origin !== target.origin) return request.continue();
+      if (url.href === target.href)
+        return request.fulfill({
+          status: built.status,
+          contentType: 'text/html; charset=utf-8',
+          body,
+        });
+      const type =
+        builtTypes[url.pathname.slice(url.pathname.lastIndexOf('.'))];
+      if (type === undefined) return request.continue();
+      return request.fulfill({
+        status: 200,
+        contentType: type,
+        body: await readFile(
+          new URL(`../../dist/client${url.pathname}`, import.meta.url),
+        ),
+      });
+    });
+  }
+  return page.goto(target.href);
+}
 
 // The site shell: BaseLayout's header and footer landmarks. E11.5-03 enforces
 // the layout rules on these regions on every rendered page, while page bodies
@@ -196,7 +253,7 @@ export async function assertEnforcedPages(browser, origin) {
         });
         try {
           const page = await context.newPage();
-          await page.goto(new URL(route, origin).href);
+          await openRoute(page, route, origin);
           const issues = await checkPageLayout(page);
           if (issues.length)
             throw new Error(
@@ -220,7 +277,7 @@ export async function assertShellLayout(browser, origin, routes) {
         });
         try {
           const page = await context.newPage();
-          await page.goto(new URL(route, origin).href);
+          await openRoute(page, route, origin);
           const issues = await checkShellLayout(page);
           if (issues.length)
             throw new Error(

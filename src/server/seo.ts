@@ -152,6 +152,9 @@ export function sitemapPaths(
     (route) =>
       route !== '/me' &&
       route !== '/verify' &&
+      // The branded error pages are noindex (E11.5-10).
+      route !== '/404' &&
+      route !== '/500' &&
       !route.startsWith('/api/') &&
       !route.includes('['),
   );
