@@ -343,6 +343,11 @@ test('the member page and the leaderboard render every state from their sources,
       '/giveaway/rules/VAL-GW-LAUNCH-20260925-r1',
       '/giveaway/rules/VAL-GW-LAUNCH-20261001-r1',
       '/giveaway/rules/VAL-GW-LAUNCH-20261009-r1',
+      '/unsubscribe',
+      '/dsr',
+      '/giveaway/award',
+      '/404',
+      '/500',
     ]);
 
     const mePath = (token) => '/me?t=' + encodeURIComponent(token);

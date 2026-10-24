@@ -28,12 +28,15 @@ A page shipped without metadata → **the build fails**; a trust page with no de
 
 E9-06 runs `scripts/ci/seo-build-check.ts` at build time. Its prebuild step writes `public/sitemap.xml` from the page files plus the current rules revision's permanent URL; its postbuild step validates metadata sources for every HTML route and static page bindings, then checks the emitted heads of prerendered pages for a unique title, description and self-canonical URL. `/me` and `/verify` are excluded from the sitemap in line with `robots.txt`; API routes are not HTML pages. Canonicals use the permanent `https://valstara.com` URLs without query parameters. The rules article bytes and recorded SHA-256 remain unchanged: only page metadata and the archive notice outside the article differ between current and superseded revisions.
 
+**Branded error pages (E11.5-10).** `src/pages/404.astro` and `src/pages/500.astro` are prerendered on the shell, carry `<meta name="robots" content="noindex">`, and are excluded from the sitemap by `sitemapPaths`. `robots.txt` does not disallow them, so a crawler can read the `noindex`. Their titles and descriptions are bound like every other page's. The Node adapter serves the built `404.html` with status 404 for an unknown route, and the built `500.html`, byte for byte, with status 500 for a render that fails; neither renders anything from the request or the failure.
+
 **Founder-authorised 2026-10-09:** Superseded rules revisions remain reachable and self-canonical, but carry `noindex` and the approved archive notice outside the hashed article. They are absent from the sitemap. `/giveaway/rules` and the current revision's permanent URL remain indexable and have no archive notice.
 
 ## Acceptance criteria
 - [ ] Every page has a unique title, description and canonical — **build-time enforced**
 - [ ] The sitemap is **generated from the route set**, not hand-maintained
 - [ ] `robots.txt` allows indexing of the trust and legal pages and excludes `/me`, `/verify` and `/api`
+- [ ] The 404 and 500 pages are `noindex`, absent from the sitemap and not disallowed by `robots.txt` (E11.5-10)
 - [ ] Structured data validates for the organisation and for each rules page
 - [ ] Rules-page structured data is schema.org WebPage JSON-LD generated from validated revision frontmatter. The current page and every immutable revision have their own permanent URL and self-canonical; each records its `rules_version` and `datePublished` and points to the Organisation publisher. It carries no Event, Offer, Product, prize, odds or date claims (E9-06, founder-authorised 2026-10-03).
 - [ ] OG images exist per page type and render correctly at the major platforms' crops

@@ -114,7 +114,9 @@ test('sitemap routes reconcile with page files and include only the current rule
     if (
       file.startsWith('src/pages/api/') ||
       file.endsWith('/me.astro') ||
-      file.endsWith('/verify.astro')
+      file.endsWith('/verify.astro') ||
+      file.endsWith('/404.astro') ||
+      file.endsWith('/500.astro')
     )
       continue;
     if (file.includes('[')) continue;
@@ -146,6 +148,12 @@ test('sitemap routes reconcile with page files and include only the current rule
   );
   assert.ok(!routes.includes('/me'));
   assert.ok(!routes.includes('/verify'));
+  // E11.5-10: the branded error pages are noindex and never in the sitemap.
+  assert.ok(pageFiles.includes('src/pages/404.astro'));
+  assert.ok(pageFiles.includes('src/pages/500.astro'));
+  assert.ok(!routes.includes('/404'));
+  assert.ok(!routes.includes('/500'));
+  assert.ok(!generatedUrls.some((url) => /\/(?:404|500)$/u.test(url)));
 });
 
 test('sitemap excludes r2 when r10 is published on the same day', () => {
@@ -169,7 +177,11 @@ test('robots excludes only the named private and API route prefixes', async () =
     'Disallow: /me',
     'Disallow: /verify',
   ]);
+  // The noindex error pages stay crawlable: a disallowed page's noindex is
+  // never read (E11.5-10).
   for (const publicRoute of [
+    '/404',
+    '/500',
     '/legit',
     '/guarantee',
     '/about',
@@ -184,6 +196,20 @@ test('robots excludes only the named private and API route prefixes', async () =
           publicRoute.startsWith(line.slice(10)),
       ),
     );
+  }
+});
+
+test('the branded 404 and 500 pages are built noindex and send no page view', async () => {
+  await ensureAppBuild();
+  for (const page of ['404', '500']) {
+    const html = await readFile(join(root, `dist/client/${page}.html`), 'utf8');
+    const head = /<head\b[^>]*>([\s\S]*?)<\/head>/u.exec(html)?.[1] ?? '';
+    assert.equal(
+      [...head.matchAll(/<meta name="robots" content="noindex">/gu)].length,
+      1,
+      `${page} is noindex`,
+    );
+    assert.doesNotMatch(html, /page-view\.js/u, `${page} sends no page view`);
   }
 });
 

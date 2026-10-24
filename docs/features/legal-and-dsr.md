@@ -19,6 +19,8 @@ The rules source is a versioned Markdown file in `src/content/giveaway-rules/`. 
 
 4. **Rights** — a request from `/me` or by email triggers a signed confirmation link; export returns the subject's data, erasure removes it.
 
+**Presentation (E11.5-10).** `/dsr` renders its request form and its signed-link confirmation on the shared task card (`docs/brand/page-design.md#task-pages-and-error-pages-e115-10`): a shield icon, the operation's heading and line, and one primary button. The form action, fields, Turnstile placement (compact) and responses are unchanged; outcomes are still the `/api/dsr/*` responses.
+
 ## Content sourcing — a named dependency
 The founder waived the representative prerequisite and authorised temporary draft text for `/terms` and `/privacy` on 2026-10-01 (ADR-029). Reviewed replacement wording remains a founder input. The draft status is visible on each page and must be addressed in the E11-05 privacy audit.
 

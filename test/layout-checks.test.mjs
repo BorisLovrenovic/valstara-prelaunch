@@ -99,6 +99,11 @@ test('closed widths and themes, with the redesigned pages enforced', () => {
     '/giveaway/rules/VAL-GW-LAUNCH-20260925-r1',
     '/giveaway/rules/VAL-GW-LAUNCH-20261001-r1',
     '/giveaway/rules/VAL-GW-LAUNCH-20261009-r1',
+    '/unsubscribe',
+    '/dsr',
+    '/giveaway/award',
+    '/404',
+    '/500',
   ]);
 });
 

@@ -1,13 +1,21 @@
 ---
+import Button from '../../components/button.astro';
+import Field from '../../components/field.astro';
+import Icon from '../../components/icon.astro';
+import Input from '../../components/input.astro';
+import TaskCard from '../../layouts/task-card.astro';
 import { giveawayAwardCopy as copy } from '../../copy/giveaway-award.ts';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getConfig } from '../../server/config.ts';
 import { createPool } from '../../server/db/pool.ts';
 import { getFlagService } from '../../server/flags/app-service.ts';
+import { createAwardService } from '../../server/giveaway/award.ts';
 import {
-  createAwardService,
-  type AwardOutcome,
-} from '../../server/giveaway/award.ts';
+  awardCardState,
+  awardNotice,
+  confirmedAwardMessage,
+  type AwardPageOutcome,
+} from '../../server/giveaway/award-presentation.ts';
 import { hashedIpPrefix } from '../../server/ratelimit/ip-prefix.ts';
 import { verifyTurnstileToken } from '../../server/turnstile/verify.ts';
 
@@ -16,7 +24,7 @@ Astro.response.headers.set('Referrer-Policy', 'no-referrer');
 const config = getConfig();
 const token = Astro.url.searchParams.get('t') ?? '';
 const awardId = Astro.url.searchParams.get('award') ?? '';
-let outcome: AwardOutcome | 'challenge_failed' | 'unavailable' | null = null;
+let outcome: AwardPageOutcome = null;
 let ownAward = null as Awaited<
   ReturnType<ReturnType<typeof createAwardService>['ownAward']>
 >;
@@ -101,115 +109,134 @@ if (token !== '' && awardId !== '') {
   }
 }
 
-const statusMessage =
-  outcome === 'challenge_failed'
-    ? copy.challengeFailed
-    : outcome === 'rate_limited'
-      ? copy.rateLimited
-      : outcome === 'disabled' || outcome === 'unavailable'
-        ? copy.paused
-        : outcome === 'invalid_input'
-          ? copy.invalidInput
-          : outcome === 'replaced'
-            ? copy.replaced
-            : outcome === null
-              ? null
-              : copy.saved;
+const notice = awardNotice(outcome);
+const card = awardCardState(ownAward);
+const challengeActive =
+  card.state === 'checks' || card.state === 'substitution';
 ---
 
 <BaseLayout title={copy.meta.title} description={copy.meta.description}>
-  <main class="award-page">
-    <h1>{copy.heading}</h1>
-    {statusMessage ? <p role="status">{statusMessage}</p> : null}
+  <TaskCard heading={copy.heading} icon={card.icon} state={card.state}>
+    {
+      notice ? (
+        <div class="task-card__notice" data-tone={notice.tone}>
+          <Icon name={notice.icon} size="md" />
+          <p role="status">{notice.message}</p>
+        </div>
+      ) : null
+    }
     {
       ownAward === null ? (
         <p>{copy.unavailable}</p>
       ) : ownAward.state === 'replaced' ? (
         <p>{copy.replaced}</p>
-      ) : ownAward.state === 'notified' ? (
+      ) : card.state === 'checks' ? (
         <form method="post">
           <input name="step" type="hidden" value="checks" />
-          <label>
-            {copy.checks.country}
-            <input
+          <h2>{copy.checks.heading}</h2>
+          <Field controlId="award-country" label={copy.checks.country}>
+            <Input
+              id="award-country"
               name="country"
               pattern="[A-Za-z]{2}"
               required
               maxlength="2"
             />
-          </label>
-          <label>
+          </Field>
+          <label class="task-card__choice">
             <input name="age_confirmed" type="checkbox" value="yes" />
-            {copy.checks.age}
+            <span class="task-card__box" aria-hidden="true">
+              <span class="task-card__mark">
+                <Icon name="check" size="sm" />
+              </span>
+            </span>
+            <span>{copy.checks.age}</span>
           </label>
-          <label>
-            {copy.checks.skill}
-            <input name="skill_answer" inputmode="numeric" />
-          </label>
-          <label>
+          <Field controlId="award-skill" label={copy.checks.skill}>
+            <Input id="award-skill" name="skill_answer" inputmode="numeric" />
+          </Field>
+          <label class="task-card__choice">
             <input name="publicity_permission" type="checkbox" value="yes" />
-            {copy.checks.publicity}
+            <span class="task-card__box" aria-hidden="true">
+              <span class="task-card__mark">
+                <Icon name="check" size="sm" />
+              </span>
+            </span>
+            <span>{copy.checks.publicity}</span>
           </label>
           <div
             class="cf-turnstile"
             data-sitekey={config.turnstileSiteKey}
+            data-size="compact"
             data-response-field-name="turnstile_token"
           />
           <noscript>
             <p>{copy.javaScriptRequired}</p>
           </noscript>
-          <button type="submit">{copy.checks.submit}</button>
+          <div class="task-card__actions">
+            <Button type="submit">{copy.checks.submit}</Button>
+          </div>
         </form>
-      ) : ownAward.state === 'confirmed' &&
-        ownAward.substitutionState === 'offered' ? (
+      ) : card.state === 'substitution' ? (
         <form method="post">
           <input name="step" type="hidden" value="substitution" />
           <h2>{copy.substitution.heading}</h2>
           <p>{copy.substitution.body}</p>
           {ownAward.substitutionDeadline ? (
-            <p>{copy.substitution.deadline(ownAward.substitutionDeadline)}</p>
+            <div class="task-card__notice">
+              <Icon name="clock" size="md" />
+              <p>{copy.substitution.deadline(ownAward.substitutionDeadline)}</p>
+            </div>
           ) : null}
-          {ownAward.replacements.map((product) => (
-            <label>
-              <input name="product" type="checkbox" value={product.id} />
-              {copy.substitution.product(
-                product.name,
-                product.retailValueEurCents,
-              )}
-            </label>
-          ))}
+          <fieldset>
+            {ownAward.replacements.map((product) => (
+              <label class="task-card__choice">
+                <input name="product" type="checkbox" value={product.id} />
+                <span class="task-card__box" aria-hidden="true">
+                  <span class="task-card__mark">
+                    <Icon name="check" size="sm" />
+                  </span>
+                </span>
+                <span>
+                  {copy.substitution.product(
+                    product.name,
+                    product.retailValueEurCents,
+                  )}
+                </span>
+              </label>
+            ))}
+          </fieldset>
           <div
             class="cf-turnstile"
             data-sitekey={config.turnstileSiteKey}
+            data-size="compact"
             data-response-field-name="turnstile_token"
           />
           <noscript>
             <p>{copy.javaScriptRequired}</p>
           </noscript>
-          <button name="choice" type="submit" value="replacement">
-            {copy.substitution.replacement}
-          </button>
-          <button name="choice" type="submit" value="decline">
-            {copy.substitution.decline}
-          </button>
+          <div class="task-card__actions">
+            <Button name="choice" type="submit" value="replacement">
+              {copy.substitution.replacement}
+            </Button>
+            <Button
+              name="choice"
+              type="submit"
+              value="decline"
+              variant="secondary"
+            >
+              {copy.substitution.decline}
+            </Button>
+          </div>
         </form>
-      ) : ownAward.state === 'confirmed' ? (
-        <p>
-          {ownAward.substitutionState === 'cash'
-            ? copy.cash
-            : ownAward.substitutionState === 'replacement'
-              ? copy.replacement
-              : copy.confirmed}
-        </p>
+      ) : card.state === 'confirmed' ? (
+        <p>{confirmedAwardMessage(ownAward)}</p>
       ) : (
         <p>{copy.exhausted}</p>
       )
     }
     {
-      ownAward !== null &&
-      (ownAward.state === 'notified' ||
-        (ownAward.state === 'confirmed' &&
-          ownAward.substitutionState === 'offered')) ? (
+      challengeActive ? (
         <script
           is:inline
           src="https://challenges.cloudflare.com/turnstile/v0/api.js"
@@ -218,5 +245,5 @@ const statusMessage =
         />
       ) : null
     }
-  </main>
+  </TaskCard>
 </BaseLayout>

@@ -1,4 +1,8 @@
 ---
+import Button from '../components/button.astro';
+import Field from '../components/field.astro';
+import Input from '../components/input.astro';
+import TaskCard from '../layouts/task-card.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { dsrCopy } from '../copy/dsr.ts';
 import { getConfig } from '../server/config.ts';
@@ -11,8 +15,11 @@ const copy = dsrCopy[operation];
 ---
 
 <BaseLayout title={dsrCopy.title} description={dsrCopy.description}>
-  <section>
-    <h1>{copy.heading}</h1>
+  <TaskCard
+    heading={copy.heading}
+    icon="shield"
+    state={`${operation}-${token !== null ? 'confirm' : 'request'}`}
+  >
     <p>{copy.body}</p>
     <form method="post" action={`/api/dsr/${operation}`}>
       {
@@ -20,17 +27,19 @@ const copy = dsrCopy[operation];
           <input type="hidden" name="token" value={token} />
         ) : (
           <>
-            <label for="dsr-email">{dsrCopy.email}</label>
-            <input
-              id="dsr-email"
-              name="email"
-              type="email"
-              required
-              autocomplete="email"
-            />
+            <Field controlId="dsr-email" label={dsrCopy.email}>
+              <Input
+                id="dsr-email"
+                name="email"
+                type="email"
+                required
+                autocomplete="email"
+              />
+            </Field>
             <div
               class="cf-turnstile"
               data-sitekey={getConfig().turnstileSiteKey}
+              data-size="compact"
               data-response-field-name="turnstile_token"
             />
             <noscript>
@@ -39,20 +48,22 @@ const copy = dsrCopy[operation];
           </>
         )
       }
-      <button type="submit"
-        >{token !== null ? copy.button : dsrCopy.request}</button
-      >
+      <div class="task-card__actions">
+        <Button type="submit"
+          >{token !== null ? copy.button : dsrCopy.request}</Button
+        >
+      </div>
     </form>
-    <p><a href="/privacy">{dsrCopy.privacy}</a></p>
-  </section>
-  {
-    token === null && (
-      <script
-        is:inline
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-        async
-        defer
-      />
-    )
-  }
+    <a class="task-card__link" href="/privacy">{dsrCopy.privacy}</a>
+    {
+      token === null && (
+        <script
+          is:inline
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          async
+          defer
+        />
+      )
+    }
+  </TaskCard>
 </BaseLayout>

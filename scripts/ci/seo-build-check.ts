@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
 import sharp from 'sharp';
 import { dsrCopy } from '../../src/copy/dsr.ts';
+import { errorPagesCopy } from '../../src/copy/error-pages.ts';
 import { giveawayAwardCopy } from '../../src/copy/giveaway-award.ts';
 import { landingCopy } from '../../src/copy/landing.ts';
 import { leaderboardCopy } from '../../src/copy/leaderboard.ts';
@@ -38,6 +39,8 @@ import {
 const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
 const pageBindings: Record<string, string> = {
   '/': 'landingCopy.meta',
+  '/404': 'errorPagesCopy.notFound.meta',
+  '/500': 'errorPagesCopy.serverError.meta',
   '/about': 'entry.data',
   '/dsr': 'dsrCopy',
   '/giveaway/award': 'copy.meta',
@@ -124,6 +127,8 @@ export async function collectSeoPages(
     page('/unsubscribe', unsubscribeCopy.meta),
     page('/dsr', dsrCopy),
     page('/giveaway/award', giveawayAwardCopy.meta),
+    page('/404', errorPagesCopy.notFound.meta),
+    page('/500', errorPagesCopy.serverError.meta),
     page('/giveaway/rules', rulesPageMetadata(current, true)),
     ...revisions.map((revision) =>
       page(

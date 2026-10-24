@@ -1,0 +1,29 @@
+---
+import Button from '../components/button.astro';
+import TaskCard from '../layouts/task-card.astro';
+import { errorPagesCopy } from '../copy/error-pages.ts';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Prerendered, so the Node adapter serves it from disk for every request that
+// fails this way: it needs no database, configuration or middleware, and it
+// renders nothing from the failure itself (E11.5-10).
+export const prerender = true;
+---
+
+<BaseLayout
+  title={errorPagesCopy.notFound.meta.title}
+  description={errorPagesCopy.notFound.meta.description}
+>
+  <meta slot="head" name="robots" content="noindex" />
+  <TaskCard
+    heading={errorPagesCopy.notFound.heading}
+    icon="link"
+    state="not-found"
+  >
+    <p>{errorPagesCopy.notFound.body}</p>
+    <div class="task-card__actions">
+      <Button href="/">{errorPagesCopy.home}</Button>
+      <Button href="/legit" variant="secondary">{errorPagesCopy.legit}</Button>
+    </div>
+  </TaskCard>
+</BaseLayout>

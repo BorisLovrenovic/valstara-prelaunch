@@ -1,4 +1,7 @@
 ---
+import Button from '../components/button.astro';
+import type { IconName } from '../components/icon.astro';
+import TaskCard from '../layouts/task-card.astro';
 import { unsubscribeCopy } from '../copy/unsubscribe.ts';
 import { createAnalyticsService } from '../server/analytics/service.ts';
 import type { EventProps } from '../server/analytics/registry.ts';
@@ -85,96 +88,63 @@ if (Astro.request.method === 'POST') {
     }
   }
 }
+// Each outcome renders as one task-card state with its icon (E11.5-10).
+const view: {
+  state: string;
+  icon: IconName;
+  heading: string;
+  body: string;
+} =
+  outcome === 'accepted' || outcome === 'already'
+    ? { state: 'complete', icon: 'check', ...unsubscribeCopy.complete }
+    : outcome === 'unavailable'
+      ? { state: 'unavailable', icon: 'alert', ...unsubscribeCopy.unavailable }
+      : outcome === 'rate_limited'
+        ? {
+            state: 'rate-limited',
+            icon: 'clock',
+            heading: unsubscribeCopy.rateLimitedHeading,
+            body: unsubscribeCopy.rateLimited,
+          }
+        : outcome === 'invalid' || token === ''
+          ? { state: 'invalid', icon: 'alert', ...unsubscribeCopy.invalid }
+          : { state: 'confirm', icon: 'shield', ...unsubscribeCopy.confirm };
 ---
 
 <BaseLayout
   title={unsubscribeCopy.meta.title}
   description={unsubscribeCopy.meta.description}
 >
-  <section class="unsubscribe-panel">
+  <TaskCard heading={view.heading} icon={view.icon} state={view.state}>
+    <p>{view.body}</p>
     {
-      outcome === 'accepted' || outcome === 'already' ? (
-        <>
-          <h1>{unsubscribeCopy.complete.heading}</h1>
-          <p>{unsubscribeCopy.complete.body}</p>
-        </>
-      ) : outcome === 'unavailable' ? (
-        <>
-          <h1>{unsubscribeCopy.unavailable.heading}</h1>
-          <p>{unsubscribeCopy.unavailable.body}</p>
-          <form method="post">
-            <input type="hidden" name="t" value={submittedToken} />
-            <button type="submit" name="intent" value={submittedIntent}>
+      view.state === 'unavailable' ? (
+        <form method="post">
+          <input type="hidden" name="t" value={submittedToken} />
+          <div class="task-card__actions">
+            <Button type="submit" name="intent" value={submittedIntent}>
               {unsubscribeCopy.unavailable.retry}
-            </button>
-          </form>
-        </>
-      ) : outcome === 'rate_limited' ? (
-        <p>{unsubscribeCopy.rateLimited}</p>
-      ) : outcome === 'invalid' || token === '' ? (
-        <>
-          <h1>{unsubscribeCopy.invalid.heading}</h1>
-          <p>{unsubscribeCopy.invalid.body}</p>
-        </>
-      ) : (
-        <>
-          <h1>{unsubscribeCopy.confirm.heading}</h1>
-          <p>{unsubscribeCopy.confirm.body}</p>
-          <form method="post">
-            <input type="hidden" name="t" value={token} />
-            <button type="submit" name="intent" value="message">
+            </Button>
+          </div>
+        </form>
+      ) : view.state === 'confirm' ? (
+        <form method="post">
+          <input type="hidden" name="t" value={token} />
+          <div class="task-card__actions">
+            <Button type="submit" name="intent" value="message">
               {unsubscribeCopy.confirm.message}
-            </button>
-            <button type="submit" name="intent" value="leave_waitlist">
+            </Button>
+            <Button
+              type="submit"
+              name="intent"
+              value="leave_waitlist"
+              variant="secondary"
+            >
               {unsubscribeCopy.confirm.leave}
-            </button>
-          </form>
-        </>
-      )
+            </Button>
+          </div>
+        </form>
+      ) : null
     }
-  </section>
+  </TaskCard>
 </BaseLayout>
-
-<style>
-  .unsubscribe-panel {
-    display: grid;
-    gap: var(--space-3);
-    margin-inline: auto;
-    padding: var(--space-3);
-    color: var(--ink);
-    background: var(--surface);
-    border: thin solid var(--line);
-    border-radius: var(--radius-card);
-  }
-  h1,
-  p {
-    margin: 0;
-  }
-  h1 {
-    font-size: var(--step-4);
-    line-height: var(--leading-4);
-  }
-  p {
-    color: var(--ink-600);
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
-  }
-  form {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-  button {
-    padding: var(--space-1) var(--space-2);
-    color: var(--midnight);
-    font: inherit;
-    background: var(--coral);
-    border: thin solid var(--coral);
-    border-radius: var(--radius-control);
-    cursor: pointer;
-  }
-  button:focus-visible {
-    outline: medium solid var(--ink);
-    outline-offset: var(--space-1);
-  }
-</style>

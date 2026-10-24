@@ -25,6 +25,17 @@ const emailTokenSecret = 'privacy-test-email-token-secret-32-chars';
 const turnstileHost = 'challenges.cloudflare.com';
 const turnstileTestSiteKey = '1x00000000000000000000AA';
 const turnstileStorageKey = 'cf.turnstile.u';
+// E11.5-10: unknown routes answer with the branded 404 page. The branded 500
+// page has no URL of its own; it is crawled where it is served, as the
+// response to a render that fails because the database is unreachable.
+const notFoundPaths = new Set([
+  '/404',
+  '/not-a-page',
+  '/giveaway/rules/not-a-version',
+]);
+const inducedServerErrorPath = '/me?t=induced-render-error';
+const unreachableDatabaseUrl =
+  'postgresql://valstara_app:unreachable@127.0.0.1:1/valstara_unreachable';
 const protectedPages = new Set([
   '/',
   '/verify',
@@ -312,8 +323,15 @@ async function withServer(databaseUrl, run) {
   }
 }
 
-async function crawl(browser, origin, path, storageMutation) {
+async function crawl(
+  browser,
+  origin,
+  path,
+  storageMutation,
+  { serverError = false } = {},
+) {
   const pageUrl = new URL(`http://valstara.test${path}`);
+  const expectedForms = serverError ? 0 : expectedProtectedFormCount(pageUrl);
   const page = await browser.newPage();
   const requests = [];
   const turnstileResponses = [];
@@ -440,8 +458,7 @@ async function crawl(browser, origin, path, storageMutation) {
       });
     });
     const response = await page.goto(pageUrl.toString(), {
-      waitUntil:
-        expectedProtectedFormCount(pageUrl) > 0 ? 'load' : 'networkidle',
+      waitUntil: expectedForms > 0 ? 'load' : 'networkidle',
     });
     const protectedForms = page.locator(
       'form:has(.cf-turnstile), form:has([data-turnstile-container])',
@@ -449,7 +466,7 @@ async function crawl(browser, origin, path, storageMutation) {
     const protectedFormCount = await protectedForms.count();
     assert.equal(
       protectedFormCount,
-      expectedProtectedFormCount(pageUrl),
+      expectedForms,
       `${path} protected-form count`,
     );
     if (pageUrl.pathname === '/') {
@@ -531,12 +548,20 @@ async function crawl(browser, origin, path, storageMutation) {
       );
     }
     assert.ok(response, `${path} has a response`);
-    assert.ok(
-      response.status() < 500,
-      `${path} must not be a server error (got ${response.status()})`,
-    );
     const pathname = pageUrl.pathname;
     const html = await page.content();
+    if (serverError) {
+      assert.equal(response.status(), 500, `${path} induced render error`);
+      assert.match(html, /data-task-state="server-error"/u);
+    } else if (notFoundPaths.has(path)) {
+      assert.equal(response.status(), 404, `${path} unknown route`);
+      assert.match(html, /data-task-state="not-found"/u);
+    } else {
+      assert.ok(
+        response.status() < 500,
+        `${path} must not be a server error (got ${response.status()})`,
+      );
+    }
     if (storageMutation) {
       await page.evaluate(storageMutation);
     }
@@ -551,7 +576,12 @@ async function crawl(browser, origin, path, storageMutation) {
         `${path} must carry its purpose-bound token`,
       );
     }
-    if (pathname === '/me' && query.has('t') && query.get('t') !== 'invalid') {
+    if (
+      !serverError &&
+      pathname === '/me' &&
+      query.has('t') &&
+      query.get('t') !== 'invalid'
+    ) {
       assert.ok(
         html.includes('data-member-dashboard'),
         `${path} must render the own-bearer view`,
@@ -731,7 +761,13 @@ test(
           '/dsr?operation=delete',
           '/dsr?operation=delete&t=invalid',
         ];
-        const paths = [...inventory.routes, ...emailLinked, ...errorPages];
+        assert.ok(inventory.routes.includes('/404'));
+        assert.ok(inventory.routes.includes('/500'));
+        const paths = [
+          ...inventory.routes.filter((route) => route !== '/500'),
+          ...emailLinked,
+          ...errorPages,
+        ];
         await withServer(databaseUrl, async (origin) => {
           await assert.rejects(
             crawl(remote.browser, origin, '/privacy', () => {
@@ -758,6 +794,15 @@ test(
           for (const path of paths)
             observations.push(await crawl(remote.browser, origin, path));
           assert.equal(observations.length, paths.length);
+        });
+        await withServer(unreachableDatabaseUrl, async (origin) => {
+          await crawl(
+            remote.browser,
+            origin,
+            inducedServerErrorPath,
+            undefined,
+            { serverError: true },
+          );
         });
       });
     } finally {
