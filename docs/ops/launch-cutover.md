@@ -39,6 +39,7 @@ Status: authoritative. This describes the **store launch**, which happens after 
 | `/unsubscribe`, `/api/unsubscribe` | Email preference and RFC 8058 one-click endpoint | Storefront handles every imported, unexpired token at these paths, hashing the presented token and applying marketing withdrawal; a transactional-origin token also suppresses non-essential mail. After the token expires, both paths `301` to storefront email preferences |
 | `/giveaway/award` | Provisional award response | `410`, only after the draw is published and every award is terminal |
 | `/verify`, all other `/api/*` | Campaign endpoints | `410` after the verification window. **Any live verification token becomes unusable — send the final reminder before the full freeze** |
+| `/404`, `/500` | Branded error pages (E11.5-10) | Not ported; the storefront's own error pages answer |
 
 Port the versioned Markdown sources from `src/content/giveaway-rules/` and preserve the recorded SHA-256 of each rendered rules article. The current revision is `VAL-GW-LAUNCH-20261009-r1`; the earlier `VAL-GW-LAUNCH-20260925-r1` and `VAL-GW-LAUNCH-20261001-r1` revisions remain directly served at their permanent URLs as archived records, with the E11-04 notice, `noindex`, and sitemap exclusion. The current URL and all three permanent URLs must remain directly served after cutover. The port-checklist reconciliation must assert that the revision named here equals `currentRules()`.
 
