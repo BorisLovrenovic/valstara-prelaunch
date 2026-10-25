@@ -64,6 +64,8 @@ docs/
     founder-prerequisites.md       what the founder must supply, with instructions
     p4-rules-page-draft.md         the founder-approved text E7-02 publishes at /giveaway/rules
     p4-research-brief.md           the P4 research prompt (historical — superseded by ADR-026)
+    p8-provider-list.md            the founder-confirmed launch providers E11.5-04 shows
+    p8-logos/                      the founder-supplied logo source files, as received
 ```
 
 ## What this site is not
