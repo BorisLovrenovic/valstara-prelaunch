@@ -16,7 +16,7 @@
 | **P5** | Upgrade Resend + Brevo past free tiers | 🔴 Partially evidenced; still outstanding | Turning `giveaway.open` on | Before E7 exit |
 | **P7** | The four seed mailboxes (Gmail, Outlook.com, GMX, Web.de) | 🔴 Outstanding | E12-07: the first live seed run and the rendering check | Before E12 |
 | **P3b** | Trust-page prose (`/legit`, `/guarantee`, `/about`) | ✅ Supplied 2026-09-30; E9-02 published it | E9-02 | Done |
-| **P8** | Launch provider list and logo files | ✅ Supplied 2026-10-25; four logos pending | E11.5-04: the provider showcase | Done |
+| **P8** | Launch provider list and logo files | ✅ Supplied 2026-10-25 | E11.5-04: the provider showcase | Done |
 | **P6** | Provision the production VPS | ⚪ Deferred (by design) | Epic E12 | Before E12 |
 | **P3a** | Brand token values | ✅ Satisfied | — | Done |
 
@@ -250,14 +250,15 @@ E8-04 builds the weekly seed harness and proves it against simulated mailboxes. 
 
 ## P8 — Launch provider list and logo files
 
-- **Status:** ✅ **Supplied 2026-10-25.** The list is in `docs/prerequisites/p8-provider-list.md`: 34 providers confirmed across AI tools, Streaming and subscriptions, Software and In-game currency, and 30 of them ready with a logo. Gift cards, game keys and game top-ups are not advertised pre-launch.
+- **Status:** ✅ **Supplied 2026-10-25.** The list is in `docs/prerequisites/p8-provider-list.md`: 34 providers confirmed across AI tools, Streaming and subscriptions, Software and In-game currency, all with a logo. Gift cards, game keys and game top-ups are not advertised pre-launch.
 - **Nature:** Founder input (founder-authorised 2026-10-19)
-- **Gates:** nothing any more; E11.5-04 can start. **Four logos are pending**: AION2, Adobe Creative Cloud, Microsoft 365 and CyberGhost. Each joins the showcase when a vector SVG is supplied, and none blocks E11.5-04.
+- **Gates:** nothing any more; E11.5-04 can start.
 - **Deadline:** Done.
 
 ### Amendments (founder-authorised 2026-10-25)
 - **Source:** where you have no source URL for a logo, the source is recorded as `founder-supplied` with the supply date.
 - **Brand colour:** where you have no hex value, it is derived from the supplied logo by the rule in the provider list.
+- **AION2's logo is a WebP**, because no SVG exists. It is the only non-SVG logo, and the 12 KB limit still applies.
 
 ### Why this matters
 The landing page shows real provider logos in composed banners, so a visitor sees at a glance what Valstara will sell. Each logo is a claim that the provider's goods will be on sale at launch. Only you can confirm that, and the claims audit (E11-04, re-run in E11.5-12) checks every logo against your confirmation.
