@@ -38,6 +38,7 @@ test('missing fields, confirmation, category and off-origin paths fail', async (
     ['name', undefined],
     ['brandColor', undefined],
     ['confirmation', undefined],
+    ['source', undefined],
     ['category', 'apparel'],
     ['logo', 'https://example.com/logo.svg'],
     ['logo', '/images/providers/absent.svg'],

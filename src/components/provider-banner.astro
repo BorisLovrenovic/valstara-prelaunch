@@ -57,30 +57,27 @@ const category =
     min-width: 0;
     min-height: calc(var(--space-10) * 3);
     padding: var(--space-3);
+    color: var(--provider-colour);
     background: var(--provider-colour);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-1);
   }
   .provider-banner__tone {
     position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: linear-gradient(
-      to bottom right,
-      color-mix(in srgb, var(--provider-colour), var(--surface) 45%),
-      transparent 60%
-    );
+    inset: var(--space-0);
+    z-index: var(--provider-layer-decor);
+    background: var(--provider-banner-tone);
   }
   .provider-banner__depth {
     position: absolute;
     inset-inline-end: var(--space-2);
     inset-block-end: var(--space-2);
-    z-index: -1;
+    z-index: var(--provider-layer-decor);
     width: var(--space-10);
     height: var(--space-10);
     border-radius: var(--radius-pill);
     background: var(--provider-colour);
-    filter: brightness(0.7);
+    filter: brightness(var(--provider-depth-brightness));
     box-shadow: var(--shadow-2);
   }
   .provider-banner__logo {
@@ -106,7 +103,7 @@ const category =
   .provider-banner__category {
     align-self: flex-start;
     max-width: 100%;
-    margin: var(--space-2) 0 0;
+    margin: var(--space-2) var(--space-0) var(--space-0);
     padding: var(--space-1) var(--space-2);
     color: var(--ink);
     font-size: var(--step-1);

@@ -16,6 +16,7 @@ FROM dependencies AS build
 COPY astro.config.mjs tsconfig.json ./
 COPY src ./src
 COPY public ./public
+COPY scripts/ci/provider-showcase-check.ts ./scripts/ci/provider-showcase-check.ts
 COPY scripts/ci/seo-build-check.ts ./scripts/ci/seo-build-check.ts
 RUN npm run build
 

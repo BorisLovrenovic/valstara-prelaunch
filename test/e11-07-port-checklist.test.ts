@@ -43,7 +43,11 @@ test('the checklist maps every portable Markdown source to one known storefront 
     .sort();
   assert.deepEqual(
     allContentFiles.filter((file) => !file.endsWith('.md')),
-    ['src/content/giveaway-award-catalog.json'],
+    [
+      'src/content/giveaway-award-catalog.json',
+      'src/content/provider-showcase.json',
+      'src/content/provider-showcase.ts',
+    ],
   );
   const rows = [
     ...checklist.matchAll(

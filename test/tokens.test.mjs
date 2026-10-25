@@ -88,6 +88,14 @@ const foundationTokens = {
   '--layer-skip': '30',
 };
 
+const providerShowcaseTokens = {
+  '--provider-layer-decor': '-1',
+  '--provider-banner-tone':
+    'linear-gradient( to bottom right, color-mix(in srgb, currentColor, var(--surface) 45%), transparent 60% )',
+  '--provider-depth-brightness': '0.7',
+  '--provider-rail-peek': '82%',
+};
+
 function declarations(block) {
   return new Map(
     [...block.matchAll(/(?<name>--[\w-]+):\s*(?<value>[^;]+);/g)].map(
@@ -146,6 +154,9 @@ test('tokens exactly transcribe the locked colour and typography sources', async
   for (const [name, value] of Object.entries(foundationTokens)) {
     assert.equal(root.get(name), value, name);
   }
+  for (const [name, value] of Object.entries(providerShowcaseTokens)) {
+    assert.equal(root.get(name), value, name);
+  }
 
   for (const name of [
     'paper',
@@ -186,6 +197,7 @@ test('tokens exactly transcribe the locked colour and typography sources', async
   assert.match(brandGuidelines, /JetBrains Mono/u);
 
   for (const [name, value] of Object.entries({
+    '--space-0': '0',
     '--space-1': '0.5rem',
     '--space-2': '1rem',
     '--space-3': '1.5rem',
@@ -238,6 +250,8 @@ test('every colour value reuses the locked §5 palette and the type scale has no
     [
       ...Object.keys(expectedRootTokens),
       ...Object.keys(foundationTokens),
+      '--space-0',
+      ...Object.keys(providerShowcaseTokens),
       ...Array.from({ length: 10 }, (_, index) => `--space-${index + 1}`),
     ].sort(),
     'bare :root declares exactly the authorised tokens, regardless of colour syntax or size name',

@@ -134,6 +134,19 @@ test('rail renders real logos, categories, alt text and only same-origin request
     ),
   );
   assert.equal(await page.locator('script').count(), 0);
+  const tones = await page
+    .locator('[data-provider-banner]')
+    .evaluateAll((banners) =>
+      banners
+        .slice(0, 2)
+        .map(
+          (banner) =>
+            getComputedStyle(banner.querySelector('.provider-banner__tone'))
+              .backgroundImage,
+        ),
+    );
+  assert.match(tones[0], /^linear-gradient\(/u);
+  assert.notEqual(tones[0], tones[1], 'tone follows each provider colour');
   await page.addScriptTag({ content: axe.source });
   for (const theme of designThemes) {
     await page.emulateMedia({ colorScheme: theme });
