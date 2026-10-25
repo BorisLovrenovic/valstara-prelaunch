@@ -1,0 +1,78 @@
+---
+import ProviderBanner from './provider-banner.astro';
+import { providerShowcaseCopy } from '../copy/provider-showcase.ts';
+import type { Provider } from '../content/provider-showcase.ts';
+
+interface Props {
+  providers: Provider[];
+}
+const { providers } = Astro.props;
+const categories = Object.entries(providerShowcaseCopy.categories).filter(
+  ([token]) => providers.some((provider) => provider.category === token),
+);
+---
+
+<div class="provider-rail">
+  {
+    categories.map(([token, label]) => (
+      <section class="provider-rail__category" aria-label={label}>
+        <h2>{label}</h2>
+        <div
+          class="provider-rail__track"
+          tabindex="0"
+          role="region"
+          aria-label={label}
+        >
+          {providers
+            .filter((provider) => provider.category === token)
+            .map((provider) => (
+              <ProviderBanner provider={provider} />
+            ))}
+        </div>
+      </section>
+    ))
+  }
+</div>
+<style>
+  .provider-rail {
+    display: grid;
+    gap: var(--section-gap);
+  }
+  .provider-rail__category {
+    min-width: 0;
+  }
+  h2 {
+    margin: var(--space-0) var(--space-0) var(--space-3);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+  .provider-rail__track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(
+      calc(var(--space-10) * 2),
+      var(--provider-rail-peek)
+    );
+    gap: var(--space-2);
+    overflow-x: auto;
+    padding: var(--space-1) var(--gutter) var(--space-3);
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-inline: contain;
+  }
+  .provider-rail__track > :global(*) {
+    scroll-snap-align: start;
+  }
+  .provider-rail__track:focus-visible {
+    outline: var(--space-1) solid var(--coral);
+    outline-offset: var(--space-1);
+  }
+  @media (min-width: 64rem) {
+    .provider-rail__track {
+      grid-auto-flow: initial;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      overflow: visible;
+      padding-inline: var(--space-0);
+      scroll-snap-type: none;
+    }
+  }
+</style>

@@ -243,6 +243,8 @@ test('all primitives and the icon registry are zero-JavaScript Astro components'
     'icon.astro',
     'input.astro',
     'pill.astro',
+    'provider-banner.astro',
+    'provider-rail.astro',
     'section.astro',
     'select.astro',
   ]);

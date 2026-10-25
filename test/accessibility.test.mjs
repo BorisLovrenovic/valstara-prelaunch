@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
 
 import axe from 'axe-core';
+import { providerShowcaseCopy } from '../src/copy/provider-showcase.ts';
 import { chromium } from 'playwright';
 import { Pool } from 'pg';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
@@ -357,6 +358,11 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
               ?.textContent !== '',
         );
       }
+      assert.equal(
+        await page.locator('footer .site-footer__trademark').textContent(),
+        providerShowcaseCopy.trademark,
+        `trademark notice on ${route} in ${colorScheme}`,
+      );
       const violations = await axeViolations(page);
       assert.deepEqual(
         violations,

@@ -94,3 +94,7 @@ The accessibility suite's reading-order check reads the controls inside one list
 `scripts/design/contact-sheet.mjs` captures the requested route/state manifest at all eight widths in both themes. For example: `node scripts/design/contact-sheet.mjs --origin http://127.0.0.1:4321 --route / --state landing-before`. The output is under `.design-contact-sheets/`, which is git-ignored. A JSON manifest can list `{ "route": "/path?state=…", "state": "label" }` entries; route URLs and their query tokens are never written to the index. Attach the relevant output to the PR without committing it.
 
 For interactive states, a manifest entry may add ordered `actions`: `click`, `focus`, `fill`, `press`, `waitFor` (each with a selector), or `scroll` (with nonnegative `y`). For example, `{ "route": "/", "state": "signup-error", "actions": [{ "action": "click", "selector": "[data-submit]" }, { "action": "waitFor", "selector": "[role=alert]" }] }`. The script records no action values in its index.
+
+## Provider showcase (E11.5-04)
+
+The provider list is `src/content/provider-showcase.json`, transcribed from P8 and checked at build time. `ProviderBanner` layers a tone and raised logo surface over the recorded provider colour; `ProviderRail` groups the confirmed entries in survey v2 order. At small widths each group scrolls and snaps without script; from 64rem it is a five-column grid. The landing composition belongs to E11.5-05. The footer carries the independent-seller trademark notice on every page. See ADR-032.

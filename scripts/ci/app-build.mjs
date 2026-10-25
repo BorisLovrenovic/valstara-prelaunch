@@ -19,6 +19,7 @@ const inputPaths = [
   'package-lock.json',
   'tsconfig.json',
   'scripts/ci/seo-build-check.ts',
+  'scripts/ci/provider-showcase-check.ts',
 ];
 
 export const stampName = '.valstara-build-stamp.json';

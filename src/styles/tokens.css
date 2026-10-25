@@ -93,6 +93,7 @@
   --tracking-normal: 0;
 
   /* spacing */
+  --space-0: 0;
   --space-1: 0.5rem;
   --space-2: 1rem;
   --space-3: 1.5rem;
@@ -128,6 +129,16 @@
   --icon-lg: 2.5rem;
   --layer-dock: 20;
   --layer-skip: 30;
+
+  /* provider showcase */
+  --provider-layer-decor: -1;
+  --provider-banner-tone: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, currentColor, var(--surface) 45%),
+    transparent 60%
+  );
+  --provider-depth-brightness: 0.7;
+  --provider-rail-peek: 82%;
 
   /* motion */
   --duration-fast: 150ms;

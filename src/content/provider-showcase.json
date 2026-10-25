@@ -1,0 +1,478 @@
+[
+  {
+    "name": "ChatGPT",
+    "category": "ai",
+    "logo": "/images/providers/chatgpt.svg",
+    "brandColor": "#000000",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Gemini",
+    "category": "ai",
+    "logo": "/images/providers/gemini.svg",
+    "brandColor": "#3186ff",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Perplexity",
+    "category": "ai",
+    "logo": "/images/providers/perplexity.svg",
+    "brandColor": "#13343b",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Cursor",
+    "category": "ai",
+    "logo": "/images/providers/cursor.svg",
+    "brandColor": "#26241e",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Bolt.new",
+    "category": "ai",
+    "logo": "/images/providers/bolt-new.svg",
+    "brandColor": "#000000",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Lovable",
+    "category": "ai",
+    "logo": "/images/providers/lovable.svg",
+    "brandColor": "#18181b",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "n8n",
+    "category": "ai",
+    "logo": "/images/providers/n8n.svg",
+    "brandColor": "#ea4b71",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Spotify",
+    "category": "subscriptions",
+    "logo": "/images/providers/spotify.svg",
+    "brandColor": "#1ed760",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "YouTube Premium",
+    "category": "subscriptions",
+    "logo": "/images/providers/youtube-premium.svg",
+    "brandColor": "#ff0000",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Prime Video",
+    "category": "subscriptions",
+    "logo": "/images/providers/prime-video.svg",
+    "brandColor": "#00a8e1",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Netflix",
+    "category": "subscriptions",
+    "logo": "/images/providers/netflix.svg",
+    "brandColor": "#d81f26",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Apple Music",
+    "category": "subscriptions",
+    "logo": "/images/providers/apple-music.svg",
+    "brandColor": "#fb5c74",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Apple TV",
+    "category": "subscriptions",
+    "logo": "/images/providers/apple-tv.svg",
+    "brandColor": "#0d0d0d",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Crunchyroll",
+    "category": "subscriptions",
+    "logo": "/images/providers/crunchyroll.svg",
+    "brandColor": "#f78b24",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Discord",
+    "category": "subscriptions",
+    "logo": "/images/providers/discord.svg",
+    "brandColor": "#5865f2",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Duolingo",
+    "category": "subscriptions",
+    "logo": "/images/providers/duolingo.svg",
+    "brandColor": "#78c800",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "LinkedIn",
+    "category": "subscriptions",
+    "logo": "/images/providers/linkedin.svg",
+    "brandColor": "#0a66c2",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "MyFitnessPal",
+    "category": "subscriptions",
+    "logo": "/images/providers/myfitnesspal.svg",
+    "brandColor": "#0066ee",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "PlayStation",
+    "category": "subscriptions",
+    "logo": "/images/providers/playstation.svg",
+    "brandColor": "#1f1f1f",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Xbox",
+    "category": "subscriptions",
+    "logo": "/images/providers/xbox.svg",
+    "brandColor": "#000000",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Microsoft",
+    "category": "software",
+    "logo": "/images/providers/microsoft.svg",
+    "brandColor": "#f35325",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Figma",
+    "category": "software",
+    "logo": "/images/providers/figma.svg",
+    "brandColor": "#ff7262",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Canva",
+    "category": "software",
+    "logo": "/images/providers/canva.svg",
+    "brandColor": "#00c4cc",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "CapCut",
+    "category": "software",
+    "logo": "/images/providers/capcut.svg",
+    "brandColor": "#000000",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Notion",
+    "category": "software",
+    "logo": "/images/providers/notion.svg",
+    "brandColor": "#000000",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Dropbox",
+    "category": "software",
+    "logo": "/images/providers/dropbox.svg",
+    "brandColor": "#0061ff",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "NordVPN",
+    "category": "software",
+    "logo": "/images/providers/nordvpn.svg",
+    "brandColor": "#4580ff",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Norton",
+    "category": "software",
+    "logo": "/images/providers/norton.svg",
+    "brandColor": "#fbde2a",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Kaspersky",
+    "category": "software",
+    "logo": "/images/providers/kaspersky.svg",
+    "brandColor": "#009982",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Adobe Creative Cloud",
+    "category": "software",
+    "logo": "/images/providers/adobe-creative-cloud.svg",
+    "brandColor": "#fb3f00",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "Microsoft 365",
+    "category": "software",
+    "logo": "/images/providers/microsoft-365.svg",
+    "brandColor": "#2d3f80",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "CyberGhost",
+    "category": "software",
+    "logo": "/images/providers/cyberghost.svg",
+    "brandColor": "#ffcc00",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "World of Warcraft",
+    "category": "in_game_currency",
+    "logo": "/images/providers/world-of-warcraft.svg",
+    "brandColor": "#efd11a",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  },
+  {
+    "name": "AION2",
+    "category": "in_game_currency",
+    "logo": "/images/providers/aion2.webp",
+    "brandColor": "#c7daff",
+    "confirmation": {
+      "name": "Boris Lovrenovic",
+      "date": "2026-10-25"
+    },
+    "source": {
+      "kind": "founder-supplied",
+      "date": "2026-10-25"
+    }
+  }
+]

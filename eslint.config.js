@@ -7,6 +7,7 @@ export default [
     ignores: [
       '.astro/',
       'test/fixtures/interface-primitives/.astro/',
+      'test/fixtures/provider-showcase/.astro/',
       'dist/',
       'node_modules/',
     ],
