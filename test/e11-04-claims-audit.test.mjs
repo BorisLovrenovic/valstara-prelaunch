@@ -4,6 +4,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { landingCopy } from '../src/copy/landing.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const currentVersion = 'VAL-GW-LAUNCH-20261009-r1';
@@ -116,6 +117,14 @@ test('current giveaway claims match the approved rules and prize limits', async 
   assert.match(rules, /5 prizes/u);
   assert.match(rules, /€300/u);
   assert.match(rules, /€1,500/u);
+  const landingPrize = landingCopy.rewards.prize({
+    prizeCount: count,
+    prizeApproxRetailValueEur: value,
+  });
+  assert.ok(landingPrize.includes(`${count} prizes`));
+  assert.ok(landingPrize.includes(`€${value}`));
+  assert.equal(landingCopy.rewards.freeEntry, 'No purchase necessary');
+  assert.equal(landingCopy.rewards.age, '18 and over');
   assert.match(adr, /€449 or less/u);
   assert.match(adr, /below US\$5,000/u);
 });

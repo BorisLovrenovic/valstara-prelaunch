@@ -1,0 +1,94 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+import { landingCopy } from '../src/copy/landing.ts';
+import { milestoneTiers } from '../src/server/referral/config.ts';
+
+const words = (value: string): number => value.trim().split(/\s+/u).length;
+
+test('landing marketing copy stays inside its heading, line, card and FAQ budgets', () => {
+  const headings = [
+    landingCopy.hero.heading,
+    landingCopy.paused.heading,
+    landingCopy.catalogue.heading,
+    landingCopy.how.heading,
+    landingCopy.rewards.heading,
+    landingCopy.rewards.accessHeading,
+    landingCopy.rewards.referralHeading,
+    landingCopy.rewards.giveawayHeading,
+    landingCopy.trust.heading,
+    landingCopy.trustLinks.heading,
+    landingCopy.faq.heading,
+    landingCopy.final.heading,
+    ...landingCopy.trust.promises.map((promise) => promise.title),
+    ...landingCopy.trustLinks.items.map((item) => item.heading),
+  ];
+  for (const heading of headings) assert.ok(words(heading) <= 7, heading);
+
+  const lines = [
+    landingCopy.hero.body,
+    landingCopy.paused.body,
+    landingCopy.catalogue.body,
+    landingCopy.rewards.accessBody,
+    landingCopy.rewards.held,
+    landingCopy.trust.intro,
+    ...landingCopy.trust.promises.map((promise) => promise.line),
+  ];
+  for (const line of lines) assert.ok(words(line) <= 20, line);
+
+  const cards = [
+    ...landingCopy.hero.facts.map((fact) => fact.text),
+    ...landingCopy.how.steps,
+    ...landingCopy.trustLinks.items.map((item) => item.line),
+    ...milestoneTiers
+      .filter((tier) => tier.enabled)
+      .map(landingCopy.rewards.tier),
+  ];
+  for (const card of cards) assert.ok(words(card) <= 15, card);
+  for (const item of landingCopy.faq.items) {
+    assert.ok(words(item.question) <= 7, item.question);
+    assert.ok(words(item.answer) <= 45, item.answer);
+  }
+});
+
+test('referral and prize copy derives its figures from injected source values', () => {
+  const tier = milestoneTiers.find((candidate) => candidate.enabled);
+  assert.ok(tier);
+  const renderedTier = landingCopy.rewards.tier(tier);
+  assert.match(renderedTier, new RegExp(`\\b${tier.threshold}\\b`, 'u'));
+  assert.match(renderedTier, new RegExp(`${tier.discountPercent}%`, 'u'));
+  assert.notEqual(
+    landingCopy.rewards.tier({
+      ...tier,
+      threshold: tier.threshold + 2,
+      discountPercent: tier.discountPercent + 7,
+    }),
+    renderedTier,
+  );
+  const rules = { prizeCount: 5, prizeApproxRetailValueEur: 300 };
+  const renderedPrize = landingCopy.rewards.prize(rules);
+  assert.match(renderedPrize, /5 prizes/u);
+  assert.match(renderedPrize, /€300/u);
+  assert.notEqual(
+    landingCopy.rewards.prize({
+      ...rules,
+      prizeCount: 7,
+      prizeApproxRetailValueEur: 400,
+    }),
+    renderedPrize,
+  );
+});
+
+test('landing copy and markup carry no countdown, scarcity, position or exit-intent mechanic', async () => {
+  const sources = await Promise.all([
+    readFile(new URL('../src/copy/landing.ts', import.meta.url), 'utf8'),
+    readFile(new URL('../src/pages/index.astro', import.meta.url), 'utf8'),
+  ]);
+  for (const source of sources) {
+    assert.doesNotMatch(
+      source,
+      /countdown|limited spots|spots left|your position|exit.intent/iu,
+    );
+  }
+});

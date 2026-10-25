@@ -98,3 +98,11 @@ For interactive states, a manifest entry may add ordered `actions`: `click`, `fo
 ## Provider showcase (E11.5-04)
 
 The provider list is `src/content/provider-showcase.json`, transcribed from P8 and checked at build time. `ProviderBanner` layers a tone and raised logo surface over the recorded provider colour; `ProviderRail` groups the confirmed entries in survey v2 order. At small widths each group scrolls and snaps without script; from 64rem it is a five-column grid. The landing composition belongs to E11.5-05. The footer carries the independent-seller trademark notice on every page. See ADR-032.
+
+## Landing page (E11.5-05)
+
+The landing page runs from the hero at `#join` through the provider catalogue, three-step explanation, reward cards, full-width midnight guarantee band, trust links, FAQ and final `#join` action. The hero places the form under the positioning line and H1; its provider banners become a compact same-origin logo strip below 40rem. The final action is a normal anchor, with the existing signup island moving focus to the hero email input when JavaScript is available.
+
+The early-access visual labels the four configured waves without exposing band thresholds. Enabled referral tiers render their threshold and discount from `milestoneTiers`; the giveaway card reads its count and per-prize approximate value from the validated `currentRules()` revision. The card and the form's no-purchase disclosure share `giveaway.open`. The referral card and leaderboard link follow their own flags. The paused signup panel replaces the form when `signup.enabled` is off.
+
+The landing route is in `enforcedPages`. Its page-specific browser checks cover the 390×844 and 1440×900 first view, every design width and both themes, and axe in both themes. The guarantee band's short lines are exact excerpts of the approved guarantee prose; no trust or rules content article is changed.

@@ -217,6 +217,7 @@ test('verification states, exact figures, native actions and flags render access
     remote = await startBrowser();
     const origin = 'http://host.docker.internal:' + app.port;
     assert.deepEqual(enforcedPages, [
+      '/',
       '/verify',
       '/me',
       '/leaderboard',

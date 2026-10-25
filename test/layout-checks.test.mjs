@@ -86,6 +86,7 @@ test('closed widths and themes, with the redesigned pages enforced', () => {
   assert.deepEqual(designWidths, [320, 360, 390, 768, 1024, 1280, 1440, 1920]);
   assert.deepEqual(designThemes, ['light', 'dark']);
   assert.deepEqual(enforcedPages, [
+    '/',
     '/verify',
     '/me',
     '/leaderboard',

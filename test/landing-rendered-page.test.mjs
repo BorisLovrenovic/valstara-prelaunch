@@ -197,13 +197,14 @@ test('with signup.enabled on, the landing page renders the signup form and every
   assert.ok(rendersCopy(body, landingCopy.hero.eyebrow));
   assert.ok(rendersCopy(body, landingCopy.hero.body));
   assert.ok(rendersCopy(body, landingCopy.form.submit));
-  assert.ok(rendersCopy(body, landingCopy.whatIs.heading));
-  assert.ok(rendersCopy(body, landingCopy.whatIs.body));
-  assert.ok(rendersCopy(body, landingCopy.whatIs.tagline));
+  assert.ok(rendersCopy(body, landingCopy.catalogue.heading));
+  assert.ok(rendersCopy(body, landingCopy.how.heading));
+  assert.ok(rendersCopy(body, landingCopy.rewards.heading));
   assert.ok(rendersCopy(body, landingCopy.trust.heading));
-  assert.ok(rendersCopy(body, landingCopy.trust.note));
+  assert.ok(rendersCopy(body, landingCopy.trust.intro));
   for (const promise of landingCopy.trust.promises) {
     assert.ok(rendersCopy(body, promise.title));
+    assert.ok(rendersCopy(body, promise.line));
   }
   for (const item of landingCopy.faq.items) {
     assert.ok(rendersCopy(body, item.question));
@@ -215,6 +216,52 @@ test('with signup.enabled on, the landing page renders the signup form and every
 
   // A rendered page sets no cookie.
   assert.equal(setCookie, null);
+});
+
+test('sections and header targets follow the landing brief in DOM order', async () => {
+  const { body } = await renderLanding();
+  const anchors = ['join', 'catalogue', 'how', 'rewards', 'guarantee', 'faq'];
+  const positions = anchors.map((id) => body.indexOf(`id="${id}"`));
+  assert.ok(positions.every((position) => position >= 0));
+  assert.deepEqual(
+    positions,
+    [...positions].sort((a, b) => a - b),
+  );
+  for (const anchor of ['#join', '#how', '#rewards', '#guarantee', '#faq']) {
+    assert.ok(body.includes(`href="${anchor}"`), anchor);
+  }
+  assert.ok(body.indexOf(landingCopy.trustLinks.heading) > positions[4]);
+  assert.ok(body.indexOf(landingCopy.final.heading) > positions[5]);
+});
+
+test('the four read-only flags remove only their own landing surfaces', async () => {
+  const allOn = await renderLanding({
+    flags: [{ key: 'giveaway.open', enabled: true }],
+  });
+  assert.match(allOn.body, /data-referral-card/u);
+  assert.match(allOn.body, /data-giveaway-card/u);
+  assert.match(allOn.body, /href="\/leaderboard"/u);
+  assert.ok(allOn.body.includes(landingCopy.rewards.freeEntry));
+  assert.ok(
+    allOn.body.includes(
+      landingCopy.rewards.prize({
+        prizeCount: 5,
+        prizeApproxRetailValueEur: 300,
+      }),
+    ),
+  );
+
+  const referralOff = await renderLanding({
+    flags: [{ key: 'referral.enabled', enabled: false }],
+  });
+  assert.doesNotMatch(referralOff.body, /data-referral-card/u);
+  const giveawayOff = await renderLanding();
+  assert.doesNotMatch(giveawayOff.body, /data-giveaway-card/u);
+  assert.ok(!giveawayOff.body.includes(landingCopy.rewards.freeEntry));
+  const leaderboardOff = await renderLanding({
+    flags: [{ key: 'leaderboard.public', enabled: false }],
+  });
+  assert.doesNotMatch(leaderboardOff.body, /href="\/leaderboard"/u);
 });
 
 test('with signup.enabled off, an honest paused message replaces the form', async () => {

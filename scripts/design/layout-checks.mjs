@@ -9,6 +9,7 @@ export const designThemes = Object.freeze(['light', 'dark']);
 // Pages enter this list in the ticket that redesigns them. E11.5-12 compares
 // it to the complete rendered-page inventory.
 export const enforcedPages = Object.freeze([
+  '/',
   '/verify',
   '/me',
   '/leaderboard',

@@ -1,28 +1,41 @@
 ---
 import Accordion from '../components/accordion.astro';
+import Button from '../components/button.astro';
+import Card from '../components/card.astro';
+import Container from '../components/container.astro';
+import Icon from '../components/icon.astro';
+import ProviderBanner from '../components/provider-banner.astro';
+import ProviderRail from '../components/provider-rail.astro';
+import Section from '../components/section.astro';
+import providerData from '../content/provider-showcase.json';
+import type { Provider } from '../content/provider-showcase.ts';
 import { landingCopy } from '../copy/landing.ts';
 import SignupForm from '../islands/SignupForm.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getFlagService } from '../server/flags/app-service.ts';
-import { getConfig } from '../server/config.ts';
-import { createReferralCaptureService } from '../server/referral/capture.ts';
 import {
   hasNonDefaultFlagState,
   landingCacheVary,
   landingFlagGeneration,
 } from '../server/cache/landing.ts';
+import { getConfig } from '../server/config.ts';
+import { getFlagService } from '../server/flags/app-service.ts';
+import { campaignFlagRegistry } from '../server/flags/registry.ts';
+import { currentRules } from '../server/giveaway/rules-catalog.ts';
+import { accessWindows, milestoneTiers } from '../server/referral/config.ts';
+import { createReferralCaptureService } from '../server/referral/capture.ts';
 
-// Fail-safe default: an unreadable flag resolves to the registered default
-// (signup on), so a database blip never silently pauses signups. Only an
-// operator turning the flag off replaces the form with the paused message.
 const flags = await getFlagService().list();
-const signupEnabled =
-  flags.find((flag) => flag.key === 'signup.enabled')?.enabled ?? true;
-const giveawayEnabled =
-  flags.find((flag) => flag.key === 'giveaway.open')?.enabled ?? false;
-const flagGeneration = landingFlagGeneration(flags);
-const referralEnabled =
-  flags.find((flag) => flag.key === 'referral.enabled')?.enabled ?? true;
+const enabled = (key: keyof typeof campaignFlagRegistry) =>
+  flags.find((flag) => flag.key === key)?.enabled ?? campaignFlagRegistry[key];
+const signupEnabled = enabled('signup.enabled');
+const referralEnabled = enabled('referral.enabled');
+const giveawayEnabled = enabled('giveaway.open');
+const leaderboardEnabled = enabled('leaderboard.public');
+const rules = giveawayEnabled ? currentRules() : null;
+const providers = providerData as Provider[];
+const heroProviders = providers.slice(0, 3);
+const enabledTiers = milestoneTiers.filter((tier) => tier.enabled);
+
 const referralCaptureService = createReferralCaptureService(
   getConfig().referralSigningSecret,
 );
@@ -39,219 +52,457 @@ Astro.response.headers.set(
   bypassLandingCache ? 'private, no-store' : 'public, max-age=0, s-maxage=300',
 );
 Astro.response.headers.set('Vary', landingCacheVary);
-Astro.response.headers.set('X-Valstara-Flag-Generation', flagGeneration);
+Astro.response.headers.set(
+  'X-Valstara-Flag-Generation',
+  landingFlagGeneration(flags),
+);
 ---
 
 <BaseLayout
   title={landingCopy.meta.title}
   description={landingCopy.meta.description}
 >
-  <div class="lp">
-    <section class="lp-hero" aria-labelledby="lp-hero-heading">
-      <p class="lp-hero__eyebrow">{landingCopy.hero.eyebrow}</p>
-      <h1 id="lp-hero-heading" class="lp-hero__heading">
-        {landingCopy.hero.heading}
-      </h1>
-      <p class="lp-hero__body">{landingCopy.hero.body}</p>
-
-      {
-        signupEnabled ? (
-          <SignupForm
-            signedReferralCapture={signedReferralCapture}
-            giveawayEnabled={giveawayEnabled}
-          />
-        ) : (
-          <div class="lp-paused">
-            <p class="lp-paused__title">{landingCopy.paused.heading}</p>
-            <p class="lp-paused__body">{landingCopy.paused.body}</p>
+  <div class="landing">
+    <section id="join" class="landing-hero" aria-labelledby="landing-title">
+      <Container>
+        <div class="landing-hero__grid">
+          <div class="landing-hero__copy">
+            <p class="landing-eyebrow">{landingCopy.hero.eyebrow}</p>
+            <h1 id="landing-title">{landingCopy.hero.heading}</h1>
+            <p class="landing-hero__body">{landingCopy.hero.body}</p>
+            {
+              signupEnabled ? (
+                <SignupForm
+                  signedReferralCapture={signedReferralCapture}
+                  giveawayEnabled={giveawayEnabled}
+                />
+              ) : (
+                <div class="landing-paused">
+                  <h2>{landingCopy.paused.heading}</h2>
+                  <p>{landingCopy.paused.body}</p>
+                </div>
+              )
+            }
+            <ul class="landing-facts">
+              {
+                landingCopy.hero.facts.map((fact) => (
+                  <li>
+                    <Icon name={fact.icon} size="sm" />
+                    <span>{fact.text}</span>
+                  </li>
+                ))
+              }
+            </ul>
+            <div class="landing-hero__strip">
+              {
+                heroProviders.map((provider) => (
+                  <img
+                    src={provider.logo}
+                    alt={provider.name}
+                    width="160"
+                    height="120"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ))
+              }
+            </div>
           </div>
-        )
-      }
+          <div class="landing-hero__visual" aria-hidden="true">
+            {
+              heroProviders.map((provider) => (
+                <ProviderBanner provider={provider} />
+              ))
+            }
+          </div>
+        </div>
+      </Container>
     </section>
 
-    <section class="lp-section" aria-labelledby="lp-about-heading">
-      <h2 id="lp-about-heading" class="lp-section__heading">
-        {landingCopy.whatIs.heading}
+    <Section id="catalogue" aria-labelledby="catalogue-title">
+      <h2 id="catalogue-title" slot="heading">
+        {landingCopy.catalogue.heading}
       </h2>
-      <p class="lp-section__body">{landingCopy.whatIs.body}</p>
-      <p class="lp-tagline">{landingCopy.whatIs.tagline}</p>
-    </section>
+      <p class="landing-intro">{landingCopy.catalogue.body}</p>
+      <ProviderRail providers={providers} />
+    </Section>
 
-    <section class="lp-section" aria-labelledby="lp-trust-heading">
-      <h2 id="lp-trust-heading" class="lp-section__heading">
-        {landingCopy.trust.heading}
-      </h2>
-      <p class="lp-section__body">{landingCopy.trust.intro}</p>
-      <ol class="lp-guarantee">
+    <Section id="how" aria-labelledby="how-title">
+      <h2 id="how-title" slot="heading">{landingCopy.how.heading}</h2>
+      <ol class="landing-steps">
         {
-          landingCopy.trust.promises.map((promise) => (
-            <li class="lp-guarantee__item">
-              <span aria-hidden="true" class="lp-guarantee__numeral">
-                {promise.numeral}
+          landingCopy.how.steps.map((step, index) => (
+            <li>
+              <span class="landing-steps__number" aria-hidden="true">
+                {index + 1}
               </span>
-              <span class="lp-guarantee__title">{promise.title}</span>
+              <p>{step}</p>
             </li>
           ))
         }
       </ol>
-      <p class="lp-note">{landingCopy.trust.note}</p>
-    </section>
+    </Section>
 
-    <section class="lp-section" aria-labelledby="lp-faq-heading">
-      <h2 id="lp-faq-heading" class="lp-section__heading">
-        {landingCopy.faq.heading}
+    <Section id="rewards" aria-labelledby="rewards-title">
+      <h2 id="rewards-title" slot="heading">{landingCopy.rewards.heading}</h2>
+      <div class="landing-rewards">
+        <Card>
+          <Icon name="clock" />
+          <h3>{landingCopy.rewards.accessHeading}</h3>
+          <p>{landingCopy.rewards.accessBody}</p>
+          <ol class="landing-waves">
+            {
+              accessWindows.map((_, index) => (
+                <li>{landingCopy.rewards.waveLabel(index + 1)}</li>
+              ))
+            }
+          </ol>
+        </Card>
+        {
+          referralEnabled && enabledTiers.length > 0 && (
+            <Card data-referral-card>
+              <Icon name="link" />
+              <h3>{landingCopy.rewards.referralHeading}</h3>
+              <ul class="landing-tiers">
+                {enabledTiers.map((tier) => (
+                  <li>{landingCopy.rewards.tier(tier)}</li>
+                ))}
+              </ul>
+              <p>{landingCopy.rewards.held}</p>
+              <p>{landingCopy.rewards.verifiedOnly}</p>
+            </Card>
+          )
+        }
+        {
+          rules !== null && (
+            <Card data-giveaway-card>
+              <Icon name="star" />
+              <h3>{landingCopy.rewards.giveawayHeading}</h3>
+              <p>{landingCopy.rewards.prize(rules)}</p>
+              <p>
+                {landingCopy.rewards.freeEntry} · {landingCopy.rewards.age}
+              </p>
+              <a href="/giveaway/rules">{landingCopy.rewards.rulesLink}</a>
+            </Card>
+          )
+        }
+      </div>
+      {
+        leaderboardEnabled && (
+          <p class="landing-leaderboard">
+            <a href="/leaderboard">{landingCopy.rewards.leaderboardLink}</a>
+          </p>
+        )
+      }
+    </Section>
+
+    <Section
+      id="guarantee"
+      variant="midnight"
+      aria-labelledby="guarantee-title"
+    >
+      <h2 id="guarantee-title" slot="heading">{landingCopy.trust.heading}</h2>
+      <p class="landing-intro">{landingCopy.trust.intro}</p>
+      <ol class="landing-guarantee">
+        {
+          landingCopy.trust.promises.map((promise) => (
+            <li>
+              <span class="landing-guarantee__numeral" aria-hidden="true">
+                {promise.numeral}
+              </span>
+              <h3>{promise.title}</h3>
+              <p>{promise.line}</p>
+            </li>
+          ))
+        }
+      </ol>
+      <a class="landing-guarantee__link" href="/guarantee">
+        {landingCopy.trust.link}
+      </a>
+    </Section>
+
+    <Section aria-labelledby="trust-links-title">
+      <h2 id="trust-links-title" slot="heading">
+        {landingCopy.trustLinks.heading}
       </h2>
-      <div class="lp-faq">
+      <div class="landing-trust-links">
+        {
+          landingCopy.trustLinks.items.map((item) => (
+            <Card interactive>
+              <h3>
+                <a href={item.href}>{item.heading}</a>
+              </h3>
+              <p>{item.line}</p>
+            </Card>
+          ))
+        }
+      </div>
+    </Section>
+
+    <Section id="faq" aria-labelledby="faq-title">
+      <h2 id="faq-title" slot="heading">{landingCopy.faq.heading}</h2>
+      <div class="landing-faq">
         {
           landingCopy.faq.items.map((item) => (
             <Accordion summary={item.question}>{item.answer}</Accordion>
           ))
         }
       </div>
-    </section>
+    </Section>
+
+    <Section class="landing-final" aria-labelledby="final-title">
+      <h2 id="final-title" slot="heading">{landingCopy.final.heading}</h2>
+      <Button href="#join" data-focus-signup>{landingCopy.final.action}</Button>
+    </Section>
   </div>
 </BaseLayout>
 
-<style is:global>
-  .lp {
-    display: grid;
-    gap: var(--space-7);
+<style>
+  .landing {
+    margin-inline: calc(-1 * var(--space-3));
+    margin-block: calc(-1 * var(--space-4));
   }
-
-  .lp-hero {
-    display: grid;
-    gap: var(--space-2);
+  .landing :global(h1),
+  .landing :global(h2),
+  .landing :global(h3),
+  .landing :global(p) {
+    margin-block-start: var(--space-0);
   }
-
-  .lp-hero__eyebrow {
-    margin: 0;
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
-  }
-
-  .lp-hero__heading {
-    margin: 0;
-    color: var(--ink);
-    font-family: var(--font-sans);
+  .landing :global(h1) {
     font-size: var(--step-5);
     line-height: var(--leading-5);
+    letter-spacing: var(--tracking-tight);
   }
-
-  .lp-hero__body {
-    margin: 0;
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--step-3);
-    line-height: var(--leading-3);
-  }
-
-  .lp-paused {
-    display: grid;
-    gap: var(--space-1);
-    margin-block-start: var(--space-2);
-    padding: var(--space-3);
-    background-color: var(--surface);
-    border: thin solid var(--line);
-    border-radius: var(--radius-card);
-  }
-
-  .lp-paused__title {
-    margin: 0;
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--step-3);
-    line-height: var(--leading-3);
-  }
-
-  .lp-paused__body {
-    margin: 0;
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
-  }
-
-  .lp-section {
-    display: grid;
-    gap: var(--space-2);
-  }
-
-  .lp-section__heading {
-    margin: 0;
-    color: var(--ink);
-    font-family: var(--font-sans);
+  .landing :global(h2) {
     font-size: var(--step-4);
     line-height: var(--leading-4);
   }
-
-  .lp-section__body {
-    margin: 0;
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
-  }
-
-  .lp-tagline {
-    margin: 0;
-    color: var(--ink);
-    font-family: var(--font-sans);
+  .landing :global(h3) {
     font-size: var(--step-3);
     line-height: var(--leading-3);
   }
-
-  .lp-guarantee {
+  .landing-hero {
+    padding-block: var(--space-2) var(--space-6);
+  }
+  .landing-hero__grid {
+    display: grid;
+    gap: var(--space-4);
+    align-items: center;
+  }
+  .landing-hero__copy {
     display: grid;
     gap: var(--space-2);
-    margin: 0;
-    padding: 0;
-    list-style: none;
+    min-width: 0;
   }
-
-  .lp-guarantee__item {
-    display: flex;
-    gap: var(--space-2);
-    align-items: center;
-    padding: var(--space-2) var(--space-3);
-    background-color: var(--surface);
-    border: thin solid var(--line);
-    border-radius: var(--radius-card);
-  }
-
-  .lp-guarantee__numeral {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    min-width: var(--space-4);
-    padding: var(--space-1) var(--space-2);
-    color: var(--midnight);
-    font-family: var(--font-sans);
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
-    background-color: var(--coral);
-    border-radius: var(--radius-pill);
-  }
-
-  .lp-guarantee__title {
+  .landing-eyebrow {
     color: var(--ink);
-    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
+  }
+  .landing-hero__body,
+  .landing-intro {
+    max-width: var(--measure);
     font-size: var(--step-2);
     line-height: var(--leading-2);
   }
-
-  .lp-note {
-    margin: 0;
-    color: var(--ink);
-    font-family: var(--font-sans);
+  .landing-paused {
+    padding: var(--space-3);
+    background: var(--surface);
+    border: thin solid var(--line);
+    border-radius: var(--radius-card);
+  }
+  .landing-facts,
+  .landing-steps,
+  .landing-waves,
+  .landing-tiers,
+  .landing-guarantee {
+    margin: var(--space-0);
+    padding: var(--space-0);
+    list-style: none;
+  }
+  .landing-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
     font-size: var(--step-1);
     line-height: var(--leading-1);
   }
-
-  .lp-faq {
+  .landing-facts li {
+    display: inline-flex;
+    gap: var(--space-1);
+    align-items: center;
+  }
+  .landing-hero__strip {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: space-between;
+    overflow: hidden;
+    padding: var(--space-1);
+    background: var(--surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1);
+  }
+  .landing-hero__strip img {
+    width: calc(var(--space-10) + var(--space-2));
+    height: var(--space-5);
+    object-fit: contain;
+  }
+  .landing-hero__visual {
+    display: none;
+  }
+  .landing :global(.section__heading) {
+    margin-block-end: var(--space-3);
+  }
+  .landing :global(.provider-banner__category) {
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+  }
+  .landing :global(valstara-signup-form .signup-marketing) {
+    min-block-size: calc(var(--leading-1) * 3);
+  }
+  .landing :global(valstara-signup-form .signup-marketing input) {
+    flex: none;
+    width: var(--tap-min);
+    height: var(--tap-min);
+    margin: var(--space-0);
+    accent-color: var(--coral);
+  }
+  .landing-intro {
+    margin-block-end: var(--space-4);
+  }
+  .landing-steps,
+  .landing-rewards,
+  .landing-guarantee,
+  .landing-trust-links {
+    display: grid;
+    gap: var(--space-3);
+  }
+  .landing-steps li {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    padding: var(--space-3);
+    background: var(--surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1);
+  }
+  .landing-steps__number {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: var(--space-5);
+    height: var(--space-5);
+    color: var(--midnight);
+    font-weight: var(--weight-bold);
+    background: var(--coral);
+    border-radius: var(--radius-pill);
+  }
+  .landing-steps p {
+    margin-block-end: var(--space-0);
+  }
+  .landing-rewards :global(.card) {
+    min-width: 0;
+  }
+  .landing-rewards :global(.icon) {
+    color: var(--coral);
+  }
+  .landing-rewards,
+  .landing-steps {
+    font-variant-numeric: tabular-nums;
+  }
+  .landing-waves {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-1);
+    margin-block-start: var(--space-3);
+  }
+  .landing-waves li {
+    padding: var(--space-1);
+    text-align: center;
+    font-size: var(--step-0);
+    background: var(--coral-tint);
+    color: var(--midnight);
+    border-radius: var(--radius-control);
+  }
+  .landing-tiers {
     display: grid;
     gap: var(--space-2);
+  }
+  .landing-tiers li {
+    font-weight: var(--weight-semibold);
+  }
+  .landing-leaderboard {
+    margin-block-start: var(--space-3);
+  }
+  .landing-guarantee__numeral {
+    display: block;
+    color: var(--coral);
+    font-size: var(--step-4);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-4);
+  }
+  .landing-guarantee p {
+    margin-block-end: var(--space-0);
+  }
+  .landing-guarantee__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
+    margin-block-start: var(--space-3);
+    color: var(--on-midnight);
+  }
+  .landing-trust-links :global(.card) {
+    min-width: 0;
+  }
+  .landing-trust-links a,
+  .landing-rewards a,
+  .landing-leaderboard a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
+    color: var(--ink);
+  }
+  .landing-faq {
+    display: grid;
+    gap: var(--space-2);
+    max-width: var(--measure);
+  }
+  .landing-final {
+    padding-block-end: var(--space-8);
+  }
+  @media (min-width: 40rem) {
+    .landing-hero__grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .landing-hero__strip {
+      display: none;
+    }
+    .landing-hero__visual {
+      display: grid;
+      gap: var(--space-2);
+    }
+    .landing-hero__visual :global(.provider-banner) {
+      min-height: calc(var(--space-10) * 2);
+      box-shadow: var(--shadow-2);
+    }
+    .landing-hero__visual :global(.provider-banner + .provider-banner) {
+      margin-block-start: calc(-1 * var(--space-5));
+      margin-inline-start: var(--space-3);
+    }
+  }
+  @media (min-width: 64rem) {
+    .landing-hero {
+      padding-block: var(--space-4) var(--space-8);
+    }
+    .landing-steps,
+    .landing-guarantee,
+    .landing-trust-links {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .landing-rewards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 </style>

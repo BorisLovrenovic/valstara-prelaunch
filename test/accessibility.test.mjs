@@ -894,8 +894,8 @@ test('signup and verification text clears AA contrast at rendered font sizes in 
       [
         '/',
         [
-          '.lp-hero__heading',
-          '.lp-hero__body',
+          '#landing-title',
+          '.landing-hero__body',
           '.field__label',
           '.field__description',
           '[data-submit]',
