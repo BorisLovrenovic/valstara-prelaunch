@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
@@ -8,6 +9,19 @@ import { milestoneTiers } from '../src/server/referral/config.ts';
 const words = (value: string): number => value.trim().split(/\s+/u).length;
 
 test('landing marketing copy stays inside its heading, line, card and FAQ budgets', () => {
+  const rulesSource = readFileSync(
+    new URL(
+      '../src/content/giveaway-rules/VAL-GW-LAUNCH-20261009-r1.md',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const prizeCount = Number(/^prizeCount: (\d+)$/mu.exec(rulesSource)?.[1]);
+  const prizeApproxRetailValueEur = Number(
+    /^prizeApproxRetailValueEur: (\d+)$/mu.exec(rulesSource)?.[1],
+  );
+  assert.ok(Number.isFinite(prizeCount));
+  assert.ok(Number.isFinite(prizeApproxRetailValueEur));
   const headings = [
     landingCopy.hero.heading,
     landingCopy.paused.heading,
@@ -41,9 +55,16 @@ test('landing marketing copy stays inside its heading, line, card and FAQ budget
     ...landingCopy.hero.facts.map((fact) => fact.text),
     ...landingCopy.how.steps,
     ...landingCopy.trustLinks.items.map((item) => item.line),
+    landingCopy.rewards.accessBody,
+    ...[1, 2, 3, 4].map(landingCopy.rewards.waveLabel),
     ...milestoneTiers
       .filter((tier) => tier.enabled)
       .map(landingCopy.rewards.tier),
+    landingCopy.rewards.held,
+    landingCopy.rewards.verifiedOnly,
+    landingCopy.rewards.prize({ prizeCount, prizeApproxRetailValueEur }),
+    `${landingCopy.rewards.freeEntry} · ${landingCopy.rewards.age}`,
+    landingCopy.rewards.rulesLink,
   ];
   for (const card of cards) assert.ok(words(card) <= 15, card);
   for (const item of landingCopy.faq.items) {

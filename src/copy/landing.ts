@@ -47,7 +47,7 @@ export const landingCopy = {
     referralHeading: 'Referral rewards',
     tier: (tier: MilestoneTier) =>
       `${tier.threshold} confirmed referrals → move up an access wave and ${tier.discountPercent}% off at launch`,
-    held: 'The discount unlocks when someone you referred places a first order within 90 days after launch.',
+    held: 'Discount unlocks when a referred person places a first order within 90 days after launch.',
     verifiedOnly: 'Only confirmed, verified referrals count.',
     giveawayHeading: 'The giveaway',
     prize: (

@@ -1,19 +1,28 @@
 import assert from 'node:assert/strict';
-import { execFile, spawn } from 'node:child_process';
-import { once } from 'node:events';
-import { randomUUID } from 'node:crypto';
-import { readdir } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import {
+  cp,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import test, { before } from 'node:test';
-
-import { Pool } from 'pg';
 
 import { landingCopy } from '../src/copy/landing.ts';
 import { signupFormCopy } from '../src/copy/signup.ts';
 import { createReferralCaptureService } from '../src/server/referral/capture.ts';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import { giveawayCard, renderLanding } from './helpers/landing-render.mjs';
 
 const executeFile = promisify(execFile);
+const projectRoot = new URL('../', import.meta.url).pathname;
 
 // Astro escapes text content the way the HTML spec requires, so copy strings
 // carrying an apostrophe or quote reach the page as entities. Assert against
@@ -30,153 +39,6 @@ function escapeHtml(value) {
 function rendersCopy(body, value) {
   return body.includes(escapeHtml(value));
 }
-const defaultDatabaseUrl =
-  'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
-const applicationRolePassword =
-  process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
-
-// Stay outside Linux's usual ephemeral client-port range during the full suite.
-let nextPort = 62_000;
-
-function startServer(databaseUrl) {
-  const port = (nextPort += 1);
-  const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
-    env: {
-      ...process.env,
-      ADMIN_CREDENTIAL: 'landing-rendered-admin-credential-32',
-      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
-      DATABASE_URL: databaseUrl,
-      IP_PREFIX_PEPPER: 'landing-rendered-page-prefix-pepper',
-      REFERRAL_SIGNING_SECRET: 'landing-rendered-page-referral-secret',
-      RESEND_API_KEY: 'landing-rendered-page-resend-key',
-      RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
-      RESEND_KEY_MODE: 'test',
-      RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
-      RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
-      RESEND_SENDING_DOMAIN: 'send.valstara.com',
-      TURNSTILE_SECRET_KEY: 'landing-rendered-page-turnstile-secret',
-      HOST: '127.0.0.1',
-      PORT: String(port),
-    },
-    stdio: ['ignore', 'ignore', 'pipe'],
-  });
-  let standardError = '';
-  server.stderr.setEncoding('utf8');
-  server.stderr.on('data', (chunk) => {
-    standardError = (standardError + chunk).slice(-8_192);
-  });
-  return { port, server, standardError: () => standardError };
-}
-
-async function createDatabaseFixture() {
-  const databaseName = `valstara_landing_${randomUUID().replaceAll('-', '')}`;
-  const adminUrl = new URL(process.env.TEST_DATABASE_URL ?? defaultDatabaseUrl);
-  const databaseUrl = new URL(adminUrl);
-  databaseUrl.pathname = `/${databaseName}`;
-  const admin = new Pool({ connectionString: adminUrl.toString() });
-  const database = new Pool({ connectionString: databaseUrl.toString() });
-
-  await admin.query(`CREATE DATABASE "${databaseName}"`);
-  try {
-    await executeFile(
-      'npx',
-      ['tsx', 'src/server/db/run-migrations.ts', 'landing-rendered-page-test'],
-      {
-        env: {
-          ...process.env,
-          MIGRATION_DATABASE_URL: databaseUrl.toString(),
-          VALSTARA_APP_DB_PASSWORD: applicationRolePassword,
-        },
-      },
-    );
-  } catch (error) {
-    await database.end();
-    await admin.query(`DROP DATABASE "${databaseName}"`);
-    await admin.end();
-    throw error;
-  }
-
-  return {
-    database,
-    databaseUrl: databaseUrl.toString(),
-    async dispose() {
-      await database.end();
-      try {
-        // Every client belongs to this fixture or its stopped child server.
-        // Let DROP DATABASE expose a leaked connection instead of terminating
-        // it and surfacing an unrelated asynchronous pool error.
-        await admin.query(`DROP DATABASE "${databaseName}"`);
-      } finally {
-        await admin.end();
-      }
-    },
-  };
-}
-
-async function fetchLanding(port, path = '/') {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    try {
-      const response = await globalThis.fetch(
-        `http://127.0.0.1:${port}${path}`,
-      );
-      if (response.ok) {
-        const body = await response.text();
-        return {
-          body,
-          cacheControl: response.headers.get('cache-control'),
-          flagGeneration: response.headers.get('x-valstara-flag-generation'),
-          setCookie: response.headers.get('set-cookie'),
-          vary: response.headers.get('vary'),
-        };
-      }
-    } catch {
-      // The standalone server has not started yet.
-    }
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
-  }
-  throw new Error('Landing rendered-page test server did not start.');
-}
-
-// `flags` seeds `campaign_flag` rows before the server boots, so the server's
-// first flag read already reflects them (its in-process cache starts empty).
-// `paths` fetches one or more paths from the same running server. The single
-// path is returned unwrapped so the common case reads as before.
-async function renderLanding({ flags = [], paths = ['/'] } = {}) {
-  const fixture = await createDatabaseFixture();
-  for (const { key, enabled } of flags) {
-    await fixture.database.query(
-      `INSERT INTO campaign_flag (key, enabled, updated_by) VALUES ($1, $2, $3)`,
-      [key, enabled, 'landing-rendered-page-test'],
-    );
-  }
-  const { port, server, standardError } = startServer(fixture.databaseUrl);
-  try {
-    const responses = [];
-    for (const path of paths) {
-      responses.push(await fetchLanding(port, path));
-    }
-    return paths.length === 1 ? responses[0] : responses;
-  } catch (error) {
-    if (server.exitCode !== null || server.signalCode !== null) {
-      throw new Error(
-        `Landing test server exited (code ${server.exitCode}, signal ${server.signalCode}): ${standardError()}`,
-        { cause: error },
-      );
-    }
-    throw error;
-  } finally {
-    try {
-      if (server.exitCode === null && server.signalCode === null) {
-        const exited = once(server, 'exit');
-        server.kill('SIGTERM');
-        await exited;
-      }
-    } finally {
-      await fixture.dispose();
-    }
-  }
-}
-
 const signupOn = { enabled: true, key: 'signup.enabled' };
 const signupOff = { enabled: false, key: 'signup.enabled' };
 
@@ -242,14 +104,7 @@ test('the four read-only flags remove only their own landing surfaces', async ()
   assert.match(allOn.body, /data-giveaway-card/u);
   assert.match(allOn.body, /href="\/leaderboard"/u);
   assert.ok(allOn.body.includes(landingCopy.rewards.freeEntry));
-  assert.ok(
-    allOn.body.includes(
-      landingCopy.rewards.prize({
-        prizeCount: 5,
-        prizeApproxRetailValueEur: 300,
-      }),
-    ),
-  );
+  assert.match(giveawayCard(allOn.body), /5 prizes, approximately €300 each/u);
 
   const referralOff = await renderLanding({
     flags: [{ key: 'referral.enabled', enabled: false }],
@@ -263,6 +118,112 @@ test('the four read-only flags remove only their own landing surfaces', async ()
   });
   assert.doesNotMatch(leaderboardOff.body, /href="\/leaderboard"/u);
 });
+
+test(
+  'the rendered reward cards follow changed ladder and current-rules fixtures',
+  { timeout: 150_000 },
+  async () => {
+    const flags = [{ key: 'giveaway.open', enabled: true }];
+    const [baseline, rulesPage] = await renderLanding({
+      flags,
+      paths: ['/', '/giveaway/rules'],
+    });
+    assert.match(
+      giveawayCard(baseline.body),
+      /5 prizes, approximately €300 each/u,
+    );
+    assert.match(
+      baseline.body,
+      /3 confirmed referrals → move up an access wave and 15% off at launch/u,
+    );
+
+    const article =
+      /<article\b[^>]*data-rules-version="[^"]+"[^>]*data-rules-sha256="[a-f0-9]{64}"[^>]*>([\s\S]*?)<\/article>/u.exec(
+        rulesPage.body,
+      )?.[1];
+    assert.ok(article, 'the current rules article is rendered');
+    const revisedArticle = article
+      .replace('5 prizes', '4 prizes')
+      .replace('€300', '€350')
+      .replace('€1,500', '€1,400');
+    assert.notEqual(revisedArticle, article);
+    const revisedHash = createHash('sha256')
+      .update(revisedArticle, 'utf8')
+      .digest('hex');
+    const root = await mkdtemp(join(tmpdir(), 'valstara-landing-'));
+    try {
+      for (const path of ['src', 'public']) {
+        await cp(join(projectRoot, path), join(root, path), {
+          recursive: true,
+        });
+      }
+      for (const path of [
+        'astro.config.mjs',
+        'package.json',
+        'tsconfig.json',
+      ]) {
+        await cp(join(projectRoot, path), join(root, path));
+      }
+      await symlink(
+        join(projectRoot, 'node_modules'),
+        join(root, 'node_modules'),
+      );
+      const rulesPath = join(
+        root,
+        'src/content/giveaway-rules/VAL-GW-LAUNCH-20261009-r1.md',
+      );
+      const rules = await readFile(rulesPath, 'utf8');
+      const revisedRules = rules
+        .replace('prizeCount: 5', 'prizeCount: 4')
+        .replace(
+          'prizeApproxRetailValueEur: 300',
+          'prizeApproxRetailValueEur: 350',
+        )
+        .replace('5 prizes', '4 prizes')
+        .replace('€300', '€350')
+        .replace('€1,500', '€1,400')
+        .replace(/sha256: '[a-f0-9]{64}'/u, `sha256: '${revisedHash}'`);
+      assert.notEqual(revisedRules, rules);
+      await writeFile(rulesPath, revisedRules);
+      const configPath = join(root, 'src/server/referral/config.ts');
+      const config = await readFile(configPath, 'utf8');
+      await writeFile(
+        configPath,
+        config
+          .replace('discountPercent: 15', 'discountPercent: 17')
+          .replace('threshold: 3', 'threshold: 4'),
+      );
+      await executeFile(
+        join(projectRoot, 'node_modules/.bin/astro'),
+        ['build'],
+        {
+          cwd: root,
+          env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
+          timeout: 120_000,
+        },
+      );
+      const changed = await renderLanding({ flags, root });
+      assert.match(
+        giveawayCard(changed.body),
+        /4 prizes, approximately €350 each/u,
+      );
+      assert.doesNotMatch(
+        giveawayCard(changed.body),
+        /5 prizes, approximately €300 each/u,
+      );
+      assert.match(
+        changed.body,
+        /4 confirmed referrals → move up an access wave and 17% off at launch/u,
+      );
+      assert.doesNotMatch(
+        changed.body,
+        /3 confirmed referrals → move up an access wave and 15% off at launch/u,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  },
+);
 
 test('with signup.enabled off, an honest paused message replaces the form', async () => {
   const { body, setCookie } = await renderLanding({ flags: [signupOff] });

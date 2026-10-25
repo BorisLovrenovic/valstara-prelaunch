@@ -2,13 +2,19 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import test from 'node:test';
+import test, { before } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { landingCopy } from '../src/copy/landing.ts';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import { giveawayCard, renderLanding } from './helpers/landing-render.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const currentVersion = 'VAL-GW-LAUNCH-20261009-r1';
 const rulesDirectory = join(root, 'src/content/giveaway-rules');
+
+before(async () => {
+  await ensureAppBuild();
+});
 
 async function filesUnder(directory, extensions) {
   return (await readdir(join(root, directory), { recursive: true }))
@@ -123,6 +129,16 @@ test('current giveaway claims match the approved rules and prize limits', async 
   });
   assert.ok(landingPrize.includes(`${count} prizes`));
   assert.ok(landingPrize.includes(`€${value}`));
+  const rendered = await renderLanding({
+    flags: [{ key: 'giveaway.open', enabled: true }],
+  });
+  const card = giveawayCard(rendered.body);
+  assert.ok(
+    card.includes(landingPrize),
+    'rendered giveaway card matches current rules figures',
+  );
+  assert.ok(card.includes(landingCopy.rewards.freeEntry));
+  assert.ok(card.includes(landingCopy.rewards.age));
   assert.equal(landingCopy.rewards.freeEntry, 'No purchase necessary');
   assert.equal(landingCopy.rewards.age, '18 and over');
   assert.match(adr, /€449 or less/u);
