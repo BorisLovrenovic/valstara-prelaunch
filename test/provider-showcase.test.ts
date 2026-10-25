@@ -76,6 +76,17 @@ test('oversized and dimensionless logos fail', async () => {
   }
 });
 
+test('logo source URLs require HTTPS', async () => {
+  const fixture = clone();
+  fixture[0].source = { kind: 'url', url: 'https://example.com/brand.svg' };
+  await validateProviderShowcase(fixture);
+  fixture[0].source = { kind: 'url', url: 'http://example.com/brand.svg' };
+  await assert.rejects(
+    validateProviderShowcase(fixture),
+    /Invalid source URL/u,
+  );
+});
+
 test('banners contain no price, discount, count or date markup', async () => {
   const banner = await readFile('src/components/provider-banner.astro', 'utf8');
   assert.doesNotMatch(banner, /price|discount|count|date|availability|stock/iu);
