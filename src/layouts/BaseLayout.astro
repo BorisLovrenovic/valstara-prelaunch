@@ -2,6 +2,7 @@
 import Button from '../components/button.astro';
 import Container from '../components/container.astro';
 import { layoutCopy } from '../copy/layout.ts';
+import { providerShowcaseCopy } from '../copy/provider-showcase.ts';
 import ThemeToggle from '../islands/ThemeToggle.astro';
 import PageViewEmitter from './page-view-emitter.astro';
 import { themeBootstrapScript } from '../islands/theme-toggle.ts';
@@ -146,6 +147,7 @@ const fallbackImage = socialFallbackImageUrl(
             </a>
           </div>
         </div>
+        <p class="site-footer__trademark">{providerShowcaseCopy.trademark}</p>
         <p class="site-footer__legal">{layoutCopy.legalLine}</p>
       </Container>
     </footer>
@@ -334,6 +336,13 @@ const fallbackImage = socialFallbackImageUrl(
   .site-name--footer:focus-visible {
     outline: medium solid var(--coral);
     outline-offset: var(--space-1);
+  }
+
+  .site-footer__trademark {
+    margin: var(--space-2) 0 0;
+    color: var(--on-midnight);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
   }
 
   .site-footer__legal {

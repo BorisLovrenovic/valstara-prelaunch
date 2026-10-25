@@ -57,6 +57,7 @@ A pre-launch page makes fewer claims than a storefront, and each one is load-bea
 - **The giveaway** — every claim on the site matches the current global rules page (ADR-026). Prize and its value, "no purchase necessary", 18+, one prize per person, the odds wording, the draw date, and the promoter's identity.
 - **Data** — describe what actually happens: what is collected, who it reaches, how long it is kept. **Never "we never share your data"** — it necessarily reaches the email providers.
 - **Trustpilot** — linked; no widget or rating pre-launch. A three-review score signals "unproven" more loudly than no score.
+- **Provider marks** — show only P8-confirmed launch providers. A banner carries no price, discount, product count, availability date or stock claim. The site footer states that the marks belong to their owners and that Valstara is an independent seller without affiliation or endorsement (ADR-032).
 - **The guarantee and sourcing** — stated only as the store documentation states them. **This repository does not author guarantee terms**, and a page that paraphrases them is a defect.
 
 ## Failure copy

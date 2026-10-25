@@ -1,0 +1,119 @@
+---
+import type { Provider } from '../content/provider-showcase.ts';
+import { providerShowcaseCopy } from '../copy/provider-showcase.ts';
+
+interface Props {
+  provider: Provider;
+}
+const { provider } = Astro.props;
+const category =
+  providerShowcaseCopy.categories[
+    provider.category as keyof typeof providerShowcaseCopy.categories
+  ];
+---
+
+<article
+  class="provider-banner"
+  style={`--provider-colour: ${provider.brandColor}`}
+  data-provider-banner
+>
+  <span class="provider-banner__tone" aria-hidden="true"></span>
+  <span class="provider-banner__depth" aria-hidden="true"></span>
+  <div
+    class="provider-banner__logo"
+    class:list={{
+      'provider-banner__logo--dark': provider.name === 'CyberGhost',
+    }}
+  >
+    <picture>
+      {
+        provider.logoDark && (
+          <source
+            media="(prefers-color-scheme: dark)"
+            srcset={provider.logoDark}
+          />
+        )
+      }
+      <img
+        src={provider.logo}
+        alt={provider.name}
+        width="160"
+        height="120"
+        loading="lazy"
+        decoding="async"
+      />
+    </picture>
+  </div>
+  <p class="provider-banner__category">{category}</p>
+</article>
+<style>
+  .provider-banner {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+    min-height: calc(var(--space-10) * 3);
+    padding: var(--space-3);
+    background: var(--provider-colour);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1);
+  }
+  .provider-banner__tone {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+      to bottom right,
+      color-mix(in srgb, var(--provider-colour), var(--surface) 45%),
+      transparent 60%
+    );
+  }
+  .provider-banner__depth {
+    position: absolute;
+    inset-inline-end: var(--space-2);
+    inset-block-end: var(--space-2);
+    z-index: -1;
+    width: var(--space-10);
+    height: var(--space-10);
+    border-radius: var(--radius-pill);
+    background: var(--provider-colour);
+    filter: brightness(0.7);
+    box-shadow: var(--shadow-2);
+  }
+  .provider-banner__logo {
+    display: grid;
+    place-items: center;
+    align-self: flex-start;
+    max-width: 100%;
+    padding: var(--space-2);
+    background: var(--on-midnight);
+    border-radius: var(--radius-control);
+    box-shadow: var(--shadow-2);
+  }
+  .provider-banner__logo--dark {
+    background: var(--midnight);
+  }
+  .provider-banner__logo img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: var(--space-8);
+    object-fit: contain;
+  }
+  .provider-banner__category {
+    align-self: flex-start;
+    max-width: 100%;
+    margin: var(--space-2) 0 0;
+    padding: var(--space-1) var(--space-2);
+    color: var(--ink);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
+    background: var(--surface);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-1);
+  }
+</style>

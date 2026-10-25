@@ -6,7 +6,7 @@
   "scripts": {
     "build": "astro build",
     "check": "npm run lint && npm run format && npm run typecheck && npm run security && node scripts/ci/app-build.mjs",
-    "prebuild": "tsx scripts/ci/seo-build-check.ts --sitemap",
+    "prebuild": "tsx scripts/ci/provider-showcase-check.ts && tsx scripts/ci/seo-build-check.ts --sitemap",
     "postbuild": "tsx scripts/ci/seo-build-check.ts --check",
     "backup:drill": "sh infra/backups/restore-drill.sh",
     "coverage": "RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node scripts/ci/run-coverage.mjs",

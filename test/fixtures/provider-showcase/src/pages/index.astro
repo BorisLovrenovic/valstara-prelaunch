@@ -1,0 +1,32 @@
+---
+import ProviderRail from '../../../../../src/components/provider-rail.astro';
+import providers from '../../../../../src/content/provider-showcase.json';
+import '../../../../../src/styles/tokens.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head
+    ><meta charset="utf-8" /><meta
+      name="viewport"
+      content="width=device-width"
+    /><title>Provider showcase fixture</title></head
+  >
+  <body
+    ><main data-design-container>
+      <ProviderRail providers={providers} />
+    </main></body
+  >
+</html>
+<style>
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--paper);
+  }
+  main {
+    margin-inline: auto;
+    max-width: var(--container-max);
+    padding-inline: var(--gutter);
+  }
+</style>

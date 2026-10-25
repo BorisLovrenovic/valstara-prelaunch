@@ -268,13 +268,13 @@ For each provider you want shown, supply:
 1. **Display name**, written as the provider writes it (for example "Spotify", not "SPOTIFY").
 2. **Category**, one of: AI tools · Streaming and subscriptions · Software · Gift cards · Game keys · Game top-ups · In-game currency.
 3. **Confirmation that its goods are on the launch catalogue.** The build records your name and the date.
-4. **The official SVG logo** from the provider's published brand or press resources, plus a version for dark backgrounds where the provider publishes one, and the URL you took it from.
-5. **Its brand colour**, as a hex value from the same brand resources.
+4. **The official SVG logo** from the provider's published brand or press resources, plus a version for dark backgrounds where the provider publishes one, and its source URL when available. The founder-supplied source/date exception applies where no URL exists; AION2 alone may use WebP.
+5. **Its brand colour**, as a hex value from the same brand resources or derived by the recorded P8 rule.
 
-Aim for four to five providers per category you want shown; a category with none is simply left out.
+The 2026-10-25 P8 list confirms all 34 providers across four categories; categories with no confirmed providers are left out.
 
 ### How the build confirms it
-E11.5-04 validates `src/content/provider-showcase.json` at build time. A missing field, a missing or oversized logo, an unknown category or an entry without your confirmation fails the build. Logos are served from valstara.com itself, never fetched from the provider, so the no-third-party-request gate still holds.
+E11.5-04 validates `src/content/provider-showcase.json` at build time. A missing field, a missing or oversized logo, an unknown category or an entry without your confirmation fails the build. Logos are served from valstara.com itself, never fetched from the provider, so the no-third-party-request gate still holds. The optimised assets live in `public/images/providers/`; only AION2 is WebP.
 
 ### Source docs
 `docs/prerequisites/p8-provider-list.md` · `docs/plan/development-plan.md` §2 (P8), E11.5-04 · `docs/brand/identity-guidelines.md` §5.3, §7
