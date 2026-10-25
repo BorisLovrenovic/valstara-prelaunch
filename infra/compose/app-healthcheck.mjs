@@ -39,3 +39,6 @@ const response = await globalThis.fetch('http://127.0.0.1:4321/');
 if (!response.ok) {
   throw new Error(`application health endpoint returned ${response.status}`);
 }
+
+// Release the large landing response before Docker's five-second probe deadline.
+await response.body?.cancel();
