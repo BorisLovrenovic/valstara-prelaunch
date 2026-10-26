@@ -82,7 +82,7 @@ const fallbackImage = socialFallbackImageUrl(
     {themeToggle && <script is:inline set:html={themeBootstrapScript} />}
   </head>
   <body>
-    <a class="skip-link" href="#main-content">{layoutCopy.skipToContent}</a>
+    <a class="skip-link" href="#main">{layoutCopy.skipToContent}</a>
     <header class="site-header">
       <Container class="site-header__inner">
         <a class="site-name" href="/">{layoutCopy.siteName}</a>
@@ -98,24 +98,26 @@ const fallbackImage = socialFallbackImageUrl(
           </ul>
         </nav>
         <div class="site-header__actions">
+          {themeToggle && <ThemeToggle />}
           <Button
             class="site-header__join"
+            size="xs"
             href={`${sectionPrefix}${layoutCopy.joinAnchor}`}
           >
             {layoutCopy.joinLabel}
           </Button>
-          {themeToggle && <ThemeToggle />}
         </div>
       </Container>
     </header>
-    <main id="main-content" class="site-main">
+    <main id="main" class="site-main">
       <slot />
     </main>
     <footer class="site-footer">
       <Container class="site-footer__inner">
-        <a class="site-name site-name--footer" href="/">{layoutCopy.siteName}</a
-        >
-        <div class="site-footer__columns">
+        <div class="site-footer__grid">
+          <a class="site-name site-name--footer" href="/"
+            >{layoutCopy.siteName}</a
+          >
           <nav class="site-footer__nav" aria-label={layoutCopy.footerNavLabel}>
             {
               footerGroups.map((group) => (
@@ -137,7 +139,7 @@ const fallbackImage = socialFallbackImageUrl(
               ))
             }
           </nav>
-          <div class="site-footer__column">
+          <div class="site-footer__column site-footer__column--contact">
             <h2 class="site-footer__heading">{layoutCopy.contactHeading}</h2>
             <a
               class="site-footer__contact"
@@ -147,8 +149,10 @@ const fallbackImage = socialFallbackImageUrl(
             </a>
           </div>
         </div>
-        <p class="site-footer__trademark">{providerShowcaseCopy.trademark}</p>
-        <p class="site-footer__legal">{layoutCopy.legalLine}</p>
+        <div class="site-footer__lines">
+          <p class="site-footer__trademark">{providerShowcaseCopy.trademark}</p>
+          <p class="site-footer__legal">{layoutCopy.legalLine}</p>
+        </div>
       </Container>
     </footer>
   </body>
@@ -162,10 +166,11 @@ const fallbackImage = socialFallbackImageUrl(
     background-color: var(--paper);
   }
 
+  /* Visually hidden until focused, then revealed at the gutter (E11.5-11b). */
   .skip-link {
     position: absolute;
     inset-block-start: var(--space-1);
-    inset-inline-start: var(--space-1);
+    inset-inline-start: var(--gutter);
     z-index: var(--layer-skip);
     padding: var(--space-1) var(--space-2);
     color: var(--midnight);
@@ -187,22 +192,22 @@ const fallbackImage = socialFallbackImageUrl(
     outline-offset: var(--space-1);
   }
 
-  /* The header is not sticky (E11.5-03), so it never obscures focus. */
+  /* The header is not sticky, so it never obscures focus. Small: 72px tall
+     with 8px gaps; the wordmark, then the toggle and Join (E11.5-11b). */
   .site-header {
-    padding-block: var(--space-2);
     background-color: var(--paper);
   }
 
   .site-header__inner {
     display: flex;
-    flex-wrap: wrap;
     gap: var(--space-1);
     align-items: center;
-    justify-content: space-between;
+    block-size: var(--header-height);
   }
 
   .site-name {
     display: inline-flex;
+    flex: none;
     align-items: center;
     min-block-size: var(--tap-min);
     color: var(--ink);
@@ -210,26 +215,28 @@ const fallbackImage = socialFallbackImageUrl(
     font-size: var(--step-3);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-3);
-    letter-spacing: var(--tracking-normal);
+    letter-spacing: var(--tracking-tight);
     text-decoration: none;
   }
 
   .site-name:focus-visible,
   .site-nav__links a:focus-visible {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
   }
 
-  /* Small widths: wordmark, Join and the theme toggle only. The section links
-     are not rendered as a menu; they simply appear from medium width. */
+  /* Small widths have no section links and no menu: the links are not
+     rendered until medium width. */
   .site-nav {
+    /* The medium link inset, 10px: half the 20px step. */
+    --nav-link-x: calc(var(--space-2-5) / 2);
+
     display: none;
   }
 
   .site-nav__links {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
+    gap: var(--space-0);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -238,17 +245,19 @@ const fallbackImage = socialFallbackImageUrl(
   .site-nav__links a {
     display: inline-flex;
     align-items: center;
-    min-block-size: var(--tap-min);
-    min-inline-size: var(--tap-min);
-    color: var(--ink);
+    padding-block: var(--space-1-5);
+    padding-inline: var(--nav-link-x);
+    color: var(--ink-600);
     font-size: var(--step-1);
     font-weight: var(--weight-medium);
     line-height: var(--leading-1);
+    white-space: nowrap;
     text-decoration: none;
+    border-radius: var(--radius-control);
   }
 
   .site-nav__links a:hover {
-    color: var(--ink-600);
+    color: var(--ink);
     text-decoration: underline;
   }
 
@@ -257,17 +266,17 @@ const fallbackImage = socialFallbackImageUrl(
     flex: none;
     gap: var(--space-1);
     align-items: center;
+    margin-inline-start: auto;
   }
 
-  /* A fixed, token-derived width: the label's width differs slightly between
-     the metric-matched fallback and the loaded face, and the right-aligned
-     actions must not move when the font swaps (zero CLS, E2-02). */
-  .site-header__join {
-    inline-size: calc(var(--space-10) + var(--space-7));
-    padding-inline: var(--space-1);
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
-    white-space: nowrap;
+  /* Below 22.5rem the Join button is the xs size so the row fits at 320px;
+     from 22.5rem it is h44. */
+  @media (min-width: 22.5rem) {
+    .site-header :global(.site-header__join) {
+      padding-inline: var(--space-2-5);
+      font-size: var(--step-2);
+      line-height: var(--leading-2);
+    }
   }
 
   .site-main {
@@ -275,27 +284,48 @@ const fallbackImage = socialFallbackImageUrl(
     padding-block: var(--space-4);
   }
 
-  /* The footer is a full-width midnight band (identity §5.2). */
+  /* The footer is a full-width midnight band (identity §5.2), the section
+     gap below the page. Small: the wordmark, then a 4-column grid with
+     Company and Legal side by side and Contact below (E11.5-11b). */
   .site-footer {
-    padding-block: var(--space-8);
+    margin-block-start: var(--section-gap);
+    padding-block: var(--space-8) var(--space-6);
     color: var(--on-midnight);
     background-color: var(--midnight);
+    box-shadow: var(--edge);
   }
 
-  .site-footer__inner {
+  .site-footer__grid {
     display: grid;
-    gap: var(--space-4);
+    grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+    column-gap: var(--grid-gap);
+    row-gap: var(--space-3);
   }
 
+  /* The wordmark keeps a 44px target. Its box starts 8px above the text, so
+     the text, not the box, sits on the band's padding, and the box's lower
+     8px plus the 24px row gap make the drawn 32px to the columns. */
   .site-name--footer {
-    justify-self: start;
+    grid-column: 1 / -1;
+    place-self: start;
+    --wordmark-lift: calc((var(--leading-3) - var(--tap-min)) / 2);
+
+    margin-block-start: var(--wordmark-lift);
     color: var(--on-midnight);
   }
 
-  .site-footer__columns,
   .site-footer__nav {
     display: grid;
-    gap: var(--space-4);
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+  }
+
+  .site-footer__nav .site-footer__column {
+    grid-column: span 2;
+  }
+
+  .site-footer__column--contact {
+    grid-column: 1 / -1;
   }
 
   .site-footer__heading {
@@ -309,6 +339,7 @@ const fallbackImage = socialFallbackImageUrl(
 
   .footer-links {
     display: grid;
+    justify-items: start;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -316,75 +347,132 @@ const fallbackImage = socialFallbackImageUrl(
 
   .footer-links a,
   .site-footer__contact {
-    display: inline-flex;
-    align-items: center;
-    min-block-size: var(--tap-min);
+    display: inline-block;
     min-inline-size: var(--tap-min);
+    padding-block: var(--space-1-5);
     color: var(--on-midnight);
     font-family: var(--font-sans);
     font-size: var(--step-1);
     line-height: var(--leading-1);
+    text-decoration: none;
   }
 
   .footer-links a:hover,
   .site-footer__contact:hover {
     color: var(--coral-lift);
+    text-decoration: underline;
   }
 
   .footer-links a:focus-visible,
   .site-footer__contact:focus-visible,
   .site-name--footer:focus-visible {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
+    outline: var(--focus-width) solid var(--coral-lift);
+    outline-offset: var(--focus-offset);
   }
 
-  .site-footer__trademark {
-    margin: var(--space-2) 0 0;
+  .site-footer__lines {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    /* The frames' 760px measure and 85% opacity for the two lines. */
+    max-inline-size: calc(var(--space-10) * 9.5);
+    margin-block-start: var(--space-4);
+    opacity: 0.85;
+  }
+
+  .site-footer__trademark,
+  .site-footer__legal {
+    margin: 0;
     color: var(--on-midnight);
     font-size: var(--step-1);
     line-height: var(--leading-1);
   }
 
-  .site-footer__legal {
-    margin: 0;
-    padding-block-start: var(--space-3);
-    color: var(--on-midnight);
-    font-size: var(--step-0);
-    line-height: var(--leading-0);
-    border-block-start: thin solid var(--ink-600);
-  }
-
+  /* Medium: 80px tall, 24px gaps, links padded 12px 10px. The footer
+     wordmark takes its own row over three equal columns. */
   @media (min-width: 48rem) {
+    .skip-link {
+      inset-inline-start: var(--gutter-wide);
+    }
+
     .site-header__inner {
-      gap: var(--space-2);
+      gap: var(--space-3);
+      block-size: var(--header-height-wide);
     }
 
     .site-nav {
       display: block;
-      margin-inline-start: auto;
     }
 
-    .site-header__join {
-      inline-size: calc(var(--space-10) * 2);
-      padding-inline: var(--space-3);
+    .site-header__actions {
+      gap: var(--space-1-5);
     }
 
-    .site-nav__links {
-      gap: var(--space-2);
-    }
-
-    .site-footer__columns {
-      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    .site-footer__grid {
+      grid-template-columns: repeat(var(--grid-columns-wide), minmax(0, 1fr));
+      column-gap: var(--grid-gap-wide);
     }
 
     .site-footer__nav {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-column: 1 / span 8;
+    }
+
+    .site-footer__nav .site-footer__column,
+    .site-footer__column--contact {
+      grid-column: span 4;
+    }
+
+    .site-footer__lines {
+      margin-block-start: var(--space-5);
     }
   }
 
+  /* Large: 40px gaps, links padded 12px with 4px between. The footer
+     columns sit on the 12-column grid: 1–4, 5–6, 7–8 and 9–12. */
   @media (min-width: 64rem) {
+    .site-header__inner {
+      gap: var(--space-5);
+    }
+
     .site-nav__links {
-      gap: var(--space-3);
+      gap: var(--space-0-5);
+    }
+
+    .site-nav__links a {
+      padding-inline: var(--space-1-5);
+    }
+
+    .site-footer {
+      margin-block-start: var(--section-gap-wide);
+    }
+
+    .site-footer__grid {
+      row-gap: var(--space-4);
+    }
+
+    .site-name--footer {
+      grid-column: 1 / span 4;
+    }
+
+    .site-footer__nav {
+      grid-column: 5 / span 4;
+    }
+
+    .site-footer__nav .site-footer__column {
+      grid-column: span 2;
+    }
+
+    .site-footer__column--contact {
+      grid-column: 9 / span 4;
+    }
+
+    .footer-links a,
+    .site-footer__contact {
+      padding-block: var(--space-0-75);
+    }
+
+    .site-footer__lines {
+      margin-block-start: var(--space-6);
     }
   }
 
