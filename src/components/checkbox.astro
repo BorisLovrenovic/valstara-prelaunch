@@ -1,0 +1,124 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import { primitivesCopy } from '../copy/primitives.ts';
+import Icon from './icon.astro';
+
+type Props = Omit<HTMLAttributes<'input'>, 'type'> & {
+  id: string;
+  // Shows the "Optional" pill before the label, as on the marketing box.
+  optional?: boolean;
+};
+
+const {
+  class: className,
+  id,
+  optional = false,
+  checked,
+  ...attributes
+} = Astro.props;
+
+// A consent box is never pre-ticked (ADR-024, ADR-027): ticking is the
+// visitor's own action, so the primitive refuses a server-set tick.
+if (checked !== undefined && checked !== false) {
+  throw new Error('A Checkbox is never pre-ticked.');
+}
+---
+
+<label class:list={['checkbox', className]} for={id}>
+  <span class="checkbox__control">
+    <input {...attributes} class="checkbox__input" id={id} type="checkbox" />
+    <span class="checkbox__box" aria-hidden="true">
+      <Icon name="check" size="sm" class="checkbox__mark" />
+    </span>
+  </span>
+  <span class="checkbox__text">
+    {
+      optional && (
+        <span class="checkbox__optional">{primitivesCopy.optional}</span>
+      )
+    }<slot />
+  </span>
+</label>
+
+<style>
+  .checkbox {
+    display: flex;
+    gap: var(--space-1-5);
+    align-items: flex-start;
+    color: var(--ink-600);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    cursor: pointer;
+  }
+
+  /* The drawn box is 20 × 20; the native input over it is a transparent
+     --tap-min square centred on the box, so the target is 44px without
+     moving the drawing. */
+  .checkbox__control {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    inline-size: var(--check-size);
+    block-size: var(--check-size);
+  }
+
+  .checkbox__input {
+    position: absolute;
+    inset: var(--check-target-offset);
+    inline-size: var(--tap-min);
+    block-size: var(--tap-min);
+    margin: var(--space-0);
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .checkbox__box {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--check-size);
+    block-size: var(--check-size);
+    color: transparent;
+    background-color: var(--surface);
+    border: var(--border-check) solid var(--field);
+    border-radius: var(--radius-check);
+    pointer-events: none;
+  }
+
+  .checkbox__input:hover + .checkbox__box {
+    border-color: var(--ink);
+  }
+
+  .checkbox__input:checked + .checkbox__box {
+    color: var(--paper);
+    background-color: var(--ink);
+    border-color: var(--ink);
+  }
+
+  .checkbox__input:focus-visible + .checkbox__box {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
+  }
+
+  .checkbox__input:disabled {
+    cursor: not-allowed;
+  }
+
+  .checkbox__input:disabled + .checkbox__box {
+    background-color: var(--paper);
+    border-color: var(--ink-300);
+  }
+
+  .checkbox__optional {
+    display: inline-block;
+    margin-inline-end: var(--space-0-75);
+    padding-inline: var(--space-1);
+    font-size: var(--step-0);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-0);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--inset-line);
+  }
+</style>

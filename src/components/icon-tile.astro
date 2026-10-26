@@ -1,0 +1,29 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import Icon, { type IconName } from './icon.astro';
+
+type Props = HTMLAttributes<'span'> & {
+  name: IconName;
+};
+
+const { class: className, name, ...attributes } = Astro.props;
+---
+
+<span {...attributes} class:list={['icon-tile', className]} aria-hidden="true">
+  <Icon name={name} size="base" />
+</span>
+
+<style>
+  /* The card's 40 × 40 icon tile on the paper ground. */
+  .icon-tile {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--tile-size);
+    block-size: var(--tile-size);
+    color: var(--ink);
+    background-color: var(--paper);
+    border-radius: var(--radius-control);
+  }
+</style>

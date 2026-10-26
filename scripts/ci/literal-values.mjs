@@ -1,7 +1,12 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 
-export const designBreakpoints = Object.freeze(['40rem', '64rem', '80rem']);
+export const designBreakpoints = Object.freeze([
+  '22.5rem',
+  '48rem',
+  '64rem',
+  '80rem',
+]);
 const allowedBreakpoints = new Set(designBreakpoints);
 const length =
   /-?(?:\d*\.)?\d+(?:px|rem|em|ch|ex|vw|vh|vmin|vmax|cqw|cqh)\b/giu;
@@ -10,7 +15,9 @@ const checkedProperty =
   /^(?:color|background(?:-color)?|border(?:-[\w-]+)?-color|outline-color|fill|stroke|font(?:-family|-size|-weight)?|line-height|letter-spacing|border-radius|box-shadow|z-index|(?:margin|padding|gap|row-gap|column-gap|inset|top|right|bottom|left|outline-offset)(?:-[\w-]+)?|(?:animation|transition)-duration|(?:min-|max-)?(?:width|height)|(?:inline|block)-size)$/u;
 
 function allowedValue(property, value) {
-  if (/^(?:(?:var\(--[\w-]+\)|0)(?:\s+|$))+$/u.test(value)) return true;
+  // A token list, such as a shadow layered from two tokens, is still tokens.
+  if (/^(?:var\(--[\w-]+\)|0)(?:\s*,?\s*(?:var\(--[\w-]+\)|0))*$/u.test(value))
+    return true;
   if (/^(?:inherit|initial|unset|revert)$/u.test(value)) return true;
   if (
     /^(?:min-|max-)?(?:width|height)$|^(?:inline|block)-size$/u.test(property)

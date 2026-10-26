@@ -1,0 +1,56 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'a'> & {
+  href: string;
+  // On a midnight band the text is on-midnight with a coral-lift underline.
+  variant?: 'default' | 'on-midnight';
+};
+
+const { class: className, variant = 'default', ...attributes } = Astro.props;
+---
+
+<a
+  {...attributes}
+  class:list={[
+    'text-link',
+    variant === 'on-midnight' && 'text-link--on-midnight',
+    className,
+  ]}><slot /></a
+>
+
+<style>
+  /* Ink text with a 2px coral underline: coral text on paper is 3.1:1, so
+     coral stays the accent and never carries the words. */
+  .text-link {
+    padding-block: var(--space-1-5);
+    color: var(--ink);
+    font-weight: var(--weight-medium);
+    text-decoration-line: underline;
+    text-decoration-color: var(--coral);
+    text-decoration-thickness: var(--underline-thickness);
+    text-underline-offset: var(--underline-offset);
+    border-radius: var(--radius-check);
+  }
+
+  .text-link--on-midnight {
+    color: var(--on-midnight);
+    text-decoration-color: var(--coral-lift);
+  }
+
+  .text-link:focus-visible {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
+  }
+
+  .text-link--on-midnight:focus-visible {
+    outline-color: var(--coral-lift);
+  }
+
+  /* The 12px vertical padding gives a 44px hit area at small widths only. */
+  @media (min-width: 48rem) {
+    .text-link {
+      padding-block: var(--space-0);
+    }
+  }
+</style>

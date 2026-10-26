@@ -492,9 +492,10 @@ test('no table causes page-level horizontal overflow at any test width', async (
   }
 });
 
-test('the join bar shows below 40rem only', async () => {
-  // 639 and 640 pin the 40rem edge, which the design widths skip (390 → 768).
-  for (const width of [...designWidths, 639, 640]) {
+test('the join bar shows below 48rem only', async () => {
+  // E11.5-11a moved the small layout's edge to 48rem (founder-authorised
+  // rewrite, 2026-10-26): 767 and 768 pin it, and 768 is also a design width.
+  for (const width of [...designWidths, 767]) {
     const context = await browser.newContext({
       viewport: { width, height: 900 },
     });
@@ -502,7 +503,7 @@ test('the join bar shows below 40rem only', async () => {
       const page = await context.newPage();
       await page.goto(origin + '/legit');
       const visible = await page.locator('[data-join-bar]').isVisible();
-      assert.equal(visible, width < 640, `${width}px`);
+      assert.equal(visible, width < 768, `${width}px`);
     } finally {
       await context.close();
     }

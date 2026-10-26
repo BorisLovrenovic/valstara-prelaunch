@@ -2,9 +2,12 @@
 import type { HTMLAttributes } from 'astro/types';
 
 type Props = HTMLAttributes<'span'> & {
-  // A pill is a quiet coral-tint label; a badge is the solid coral marker for
-  // a figure or state, set in mono with tabular figures (identity §6.2, §7).
-  variant?: 'pill' | 'badge';
+  // pill: the coral-tint reward pill, with an optional 16px icon.
+  // coral: the solid coral pill; wrap its figures in .tabular-figure.
+  // badge: the coral marker for a figure or state, set wholly in mono
+  // (identity §6.2), such as the access-wave badge.
+  // step: the 24px ink step badge, set in mono.
+  variant?: 'pill' | 'coral' | 'badge' | 'step';
 };
 
 const { class: className, variant = 'pill', ...attributes } = Astro.props;
@@ -12,7 +15,7 @@ const { class: className, variant = 'pill', ...attributes } = Astro.props;
 
 <span
   {...attributes}
-  class:list={['pill', variant === 'badge' && 'pill--badge', className]}
+  class:list={['pill', variant !== 'pill' && `pill--${variant}`, className]}
 >
   <slot />
 </span>
@@ -20,25 +23,40 @@ const { class: className, variant = 'pill', ...attributes } = Astro.props;
 <style>
   .pill {
     display: inline-flex;
-    gap: var(--space-1);
+    gap: var(--space-0-75);
     align-items: center;
-    padding-block: var(--space-1);
-    padding-inline: var(--space-2);
-    color: var(--midnight);
+    padding-block: var(--space-0-5);
+    padding-inline: var(--space-1-5);
+    color: var(--ink);
     font-family: var(--font-sans);
     font-size: var(--step-0);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-semibold);
     font-variant-numeric: tabular-nums;
     line-height: var(--leading-0);
+    white-space: nowrap;
     background-color: var(--coral-tint);
     border-radius: var(--radius-pill);
-    box-shadow: none;
+  }
+
+  .pill--coral,
+  .pill--badge {
+    color: var(--on-coral);
+    background-color: var(--coral);
   }
 
   .pill--badge {
     font-family: var(--font-mono);
-    font-weight: var(--weight-semibold);
-    background-color: var(--coral);
-    box-shadow: var(--shadow-1);
+  }
+
+  .pill--step {
+    box-sizing: border-box;
+    justify-content: center;
+    min-inline-size: var(--badge-size);
+    block-size: var(--badge-size);
+    padding-block: var(--space-0);
+    padding-inline: var(--space-0-75);
+    color: var(--paper);
+    font-family: var(--font-mono);
+    background-color: var(--ink);
   }
 </style>

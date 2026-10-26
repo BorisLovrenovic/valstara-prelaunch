@@ -153,7 +153,7 @@ async function checkLayout(page, regions) {
       }
     }
 
-    if (viewportWidth < 640) {
+    if (viewportWidth < 768) {
       for (const element of within(
         'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"]',
       )) {

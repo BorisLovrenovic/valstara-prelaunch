@@ -48,6 +48,10 @@ const expectedRootTokens = {
   '--ease-out': 'cubic-bezier(0.16, 1, 0.3, 1)',
 };
 
+// Values in both dark blocks. E11.5-11a replaces the E11.5-01 dark
+// --shadow-1 and --shadow-2 with the wireframe values and adds the dark line,
+// coral-tint, error text and edges; --shadow-3 keeps its E11.5-01 value,
+// because the wireframes give no dark overlay shadow.
 const expectedDarkTokens = {
   '--paper': '#0F0F1A',
   '--surface': '#171733',
@@ -55,19 +59,28 @@ const expectedDarkTokens = {
   '--ink-600': '#A0A0A8',
   '--coral': '#FF8A66',
   '--on-midnight': '#F0F0EE',
-  '--shadow-1': '0 1px 2px rgb(0 0 0 / 0.30), 0 2px 6px rgb(0 0 0 / 0.30)',
-  '--shadow-2': '0 2px 4px rgb(0 0 0 / 0.30), 0 8px 24px rgb(0 0 0 / 0.40)',
+  '--line': 'rgba(240,240,238,.14)',
+  '--coral-tint': 'rgba(255,138,102,.16)',
+  '--error-text': 'var(--ink)',
+  '--shadow-1': '0 1px 2px rgba(0,0,0,.4), 0 8px 20px rgba(0,0,0,.35)',
+  '--shadow-2': '0 2px 6px rgba(0,0,0,.45), 0 20px 48px rgba(0,0,0,.55)',
   '--shadow-3': '0 4px 8px rgb(0 0 0 / 0.40), 0 16px 40px rgb(0 0 0 / 0.50)',
+  '--edge': '0 0 0 1px rgba(240,240,238,.1)',
+  '--banner-edge': 'inset 0 0 0 1px rgba(240,240,238,.1)',
+  '--banner-edge-hero': 'inset 0 0 0 1px rgba(240,240,238,.12)',
+  '--banner-edge-hover': 'inset 0 0 0 1px rgba(240,240,238,.14)',
+  '--shadow-band': '0 0 0 1px rgba(240,240,238,.1), 0 24px 64px rgba(0,0,0,.6)',
 };
 
+// E11.5-01 values, with the light elevations replaced by the E11.5-11a
+// wireframe values (founder-authorised 2026-10-26), written as the ticket
+// states them.
 const foundationTokens = {
   '--on-midnight': '#fafafa',
-  '--shadow-1':
-    '0 1px 2px rgb(16 16 20 / 0.06), 0 2px 6px rgb(16 16 20 / 0.06)',
-  '--shadow-2':
-    '0 2px 4px rgb(16 16 20 / 0.06), 0 8px 24px rgb(16 16 20 / 0.10)',
+  '--shadow-1': '0 1px 2px rgba(16,16,20,.05), 0 6px 16px rgba(16,16,20,.06)',
+  '--shadow-2': '0 2px 6px rgba(16,16,20,.07), 0 18px 44px rgba(16,16,20,.14)',
   '--shadow-3':
-    '0 4px 8px rgb(16 16 20 / 0.08), 0 16px 40px rgb(16 16 20 / 0.14)',
+    '0 10px 28px rgba(16,16,20,.16), 0 36px 80px rgba(16,16,20,.22)',
   '--container-max': '75rem',
   '--gutter': 'var(--space-2)',
   '--gutter-wide': 'var(--space-4)',
@@ -87,6 +100,78 @@ const foundationTokens = {
   '--layer-dock': '20',
   '--layer-skip': '30',
 };
+
+// E11.5-11a: the wireframe roles, component values, layout and sizes, light
+// values on bare :root. Roles and component values are as the ticket states
+// them; sizes are the sheet's pixel values in rem (16px root).
+const wireframeTokens = {
+  '--edge': '0 0 0 0 transparent',
+  '--field': 'var(--ink-600)',
+  '--on-coral': '#101014',
+  '--error-text': 'var(--error)',
+  '--radius-check': '4px',
+  '--shadow-button': '0 1px 2px rgba(16,16,20,.14)',
+  '--overlay-hover': 'inset 0 0 0 100px rgba(16,16,20,.08)',
+  '--overlay-active': 'inset 0 0 0 100px rgba(16,16,20,.16)',
+  '--on-midnight-border': 'rgba(250,250,250,.45)',
+  '--on-midnight-hover': 'rgba(250,250,250,.08)',
+  '--on-midnight-active': 'rgba(250,250,250,.14)',
+  '--on-midnight-disabled': 'rgba(250,250,250,.45)',
+  '--on-midnight-disabled-border': 'rgba(250,250,250,.2)',
+  '--inset-on-midnight': 'inset 0 0 0 1px var(--on-midnight-border)',
+  '--inset-on-midnight-disabled':
+    'inset 0 0 0 1px var(--on-midnight-disabled-border)',
+  '--shadow-chip': '0 1px 2px rgba(0,0,0,.2), 0 6px 14px rgba(0,0,0,.16)',
+  '--banner-tone-dark': 'rgba(255,255,255,.13)',
+  '--banner-tone-light': 'rgba(255,255,255,.16)',
+  '--banner-tone-ink': 'rgba(16,16,20,.10)',
+  '--banner-edge': '0 0 0 0 transparent',
+  '--banner-edge-hero': '0 0 0 0 transparent',
+  '--banner-edge-hover': '0 0 0 0 transparent',
+  '--shadow-sticky':
+    '0 -2px 6px rgba(16,16,20,.06), 0 -16px 40px rgba(16,16,20,.14)',
+  '--shadow-band': '0 0 0 0 transparent',
+  '--grid-columns': '4',
+  '--grid-columns-wide': '12',
+  '--grid-gap': 'var(--space-2)',
+  '--grid-gap-wide': 'var(--space-3)',
+  '--header-height': 'var(--space-9)',
+  '--header-height-wide': 'var(--space-10)',
+  '--space-0-5': '0.25rem',
+  '--space-0-75': '0.375rem',
+  '--space-1-5': '0.75rem',
+  '--space-2-5': '1.25rem',
+  '--border-thin': '1px',
+  '--border-check': '1.5px',
+  '--border-strong': '2px',
+  '--focus-width': '2px',
+  '--focus-offset': '2px',
+  '--underline-thickness': '2px',
+  '--underline-offset': '3px',
+  '--ring-focus': '0 0 0 2px var(--surface), 0 0 0 4px var(--coral)',
+  '--inset-line': 'inset 0 0 0 1px var(--line)',
+  '--inset-strong': 'inset 0 0 0 1px var(--ink-300)',
+  '--icon-base': '1.25rem',
+  '--star-sm': '0.75rem',
+  '--star-md': '1rem',
+  '--control-height': '3rem',
+  '--control-inset-strong': 'calc(var(--space-2) - var(--border-thin))',
+  '--check-size': '1.25rem',
+  '--check-target-offset': 'calc((var(--check-size) - var(--tap-min)) / 2)',
+  '--badge-size': '1.5rem',
+  '--tile-size': '2.5rem',
+};
+
+// Compares CSS values as written: whitespace, a leading zero and trailing
+// zeros on a number are formatting, not value.
+function cssValue(value) {
+  return value
+    .replaceAll(/\s+/gu, ' ')
+    .replaceAll(/\s*([(),/])\s*/gu, '$1')
+    .replaceAll(/-?\d*\.?\d+/gu, (number) => String(Number(number)))
+    .trim()
+    .toLowerCase();
+}
 
 const providerShowcaseTokens = {
   '--provider-layer-decor': '-1',
@@ -151,8 +236,12 @@ test('tokens exactly transcribe the locked colour and typography sources', async
   for (const [name, value] of Object.entries(expectedRootTokens)) {
     assert.equal(root.get(name)?.toUpperCase(), value.toUpperCase(), name);
   }
-  for (const [name, value] of Object.entries(foundationTokens)) {
-    assert.equal(root.get(name), value, name);
+  for (const [name, value] of Object.entries({
+    ...foundationTokens,
+    ...wireframeTokens,
+  })) {
+    assert.ok(root.has(name), `${name} is declared on bare :root`);
+    assert.equal(cssValue(root.get(name)), cssValue(value), name);
   }
   for (const [name, value] of Object.entries(providerShowcaseTokens)) {
     assert.equal(root.get(name), value, name);
@@ -250,6 +339,7 @@ test('every colour value reuses the locked §5 palette and the type scale has no
     [
       ...Object.keys(expectedRootTokens),
       ...Object.keys(foundationTokens),
+      ...Object.keys(wireframeTokens),
       '--space-0',
       ...Object.keys(providerShowcaseTokens),
       ...Array.from({ length: 10 }, (_, index) => `--space-${index + 1}`),
@@ -280,6 +370,7 @@ test('every colour value reuses the locked §5 palette and the type scale has no
       .filter(([, value]) => value.startsWith('#'))
       .map(([name]) => name),
     '--on-midnight',
+    '--on-coral',
   ]);
   assert.deepEqual(
     new Set(
@@ -339,12 +430,13 @@ test('tokens are a framework-free, light-first portable CSS file', async () => {
   assert.deepEqual(systemDark, explicitDark);
 
   for (const [name, value] of Object.entries(expectedDarkTokens)) {
-    assert.equal(
-      explicitDark.get(name)?.toUpperCase(),
-      value.toUpperCase(),
-      name,
-    );
+    assert.ok(explicitDark.has(name), `${name} is in the dark blocks`);
+    assert.equal(cssValue(explicitDark.get(name)), cssValue(value), name);
   }
+  assert.deepEqual(
+    [...explicitDark.keys()].sort(),
+    Object.keys(expectedDarkTokens).sort(),
+  );
 
   for (const name of explicitDark.keys()) {
     assert.ok(root.has(name), `${name} must have a light base definition`);
@@ -454,5 +546,186 @@ test('self-hosted Latin variable fonts have metric fallbacks and tabular-figure 
   assert.match(
     source,
     /\.tabular-figure\s*\{[\s\S]*font-family: var\(--font-mono\);[\s\S]*font-variant-numeric: tabular-nums;/u,
+  );
+});
+
+// E11.5-11a: the colour of every token, as [r, g, b, alpha], from a hex,
+// rgb() or rgba() literal.
+function colourLiterals(value) {
+  const colours = [];
+  for (const [hex] of value.matchAll(/#[0-9a-f]{6}\b/giu)) {
+    const channels = hex
+      .slice(1)
+      .match(/.{2}/gu)
+      .map((channel) => Number.parseInt(channel, 16));
+    colours.push([...channels, 1]);
+  }
+  for (const [, body] of value.matchAll(/rgba?\(([^)]*)\)/gu)) {
+    const [red, green, blue, alpha = 1] = body
+      .split(/[\s,/]+/u)
+      .filter(Boolean)
+      .map(Number);
+    colours.push([red, green, blue, alpha]);
+  }
+  return colours;
+}
+
+function blockOf(source, pattern) {
+  return declarations(source.match(pattern).groups.block);
+}
+
+test('no new hue: every colour token is a locked palette value, an alpha variant of one, or a black-based shadow', async () => {
+  const [source, guidelines] = await Promise.all([
+    readFile(tokenPath, 'utf8'),
+    readFile(brandGuidelinesPath, 'utf8'),
+  ]);
+  const palette = new Set(
+    [
+      'paper',
+      'surface',
+      'ink',
+      'ink-600',
+      'ink-300',
+      'line',
+      'coral',
+      'coral-lift',
+      'coral-tint',
+      'midnight',
+      'midnight-deep',
+    ].map((name) => lockedColour(guidelines, name).toLowerCase()),
+  );
+  // The dark palette and the functional colours, each quoted in §5.
+  for (const value of ['#0F0F1A', '#F0F0EE', '#C0392B', '#B7791F', '#2E7D57']) {
+    assert.match(guidelines, new RegExp(value, 'iu'));
+    palette.add(value.toLowerCase());
+  }
+  const hex = ([red, green, blue]) =>
+    `#${[red, green, blue].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+  const blocks = [
+    blockOf(source, /:root\s*\{(?<block>[\s\S]*?)\}/u),
+    blockOf(
+      source,
+      /:root\[data-theme=['"]dark['"]\]\s*\{(?<block>[\s\S]*?)\}/u,
+    ),
+  ];
+  let checked = 0;
+  for (const block of blocks) {
+    for (const [name, value] of block) {
+      for (const colour of colourLiterals(value)) {
+        checked += 1;
+        const shade = hex(colour);
+        if (palette.has(shade)) continue;
+        // Black appears only inside a shadow or edge value, never as a fill.
+        assert.equal(shade, '#000000', `${name} adds the hue ${shade}`);
+        assert.match(
+          name,
+          /^--(?:shadow|edge)/u,
+          `${name} uses black outside a shadow`,
+        );
+        assert.match(value, /\d+px/u, `${name} is a shadow value`);
+      }
+    }
+  }
+  // The alpha variants named by the ticket are among the colours checked.
+  assert.ok(checked >= 40, `${checked} colour literals checked`);
+  const root = blocks[0];
+  assert.deepEqual(colourLiterals(root.get('--banner-tone-dark')), [
+    [255, 255, 255, 0.13],
+  ]);
+  assert.deepEqual(colourLiterals(blocks[1].get('--line')), [
+    [240, 240, 238, 0.14],
+  ]);
+  assert.deepEqual(colourLiterals(blocks[1].get('--coral-tint')), [
+    [255, 138, 102, 0.16],
+  ]);
+});
+
+test('every text pairing on the component sheet clears its WCAG threshold in both themes', async () => {
+  const source = await readFile(tokenPath, 'utf8');
+  const root = blockOf(source, /:root\s*\{(?<block>[\s\S]*?)\}/u);
+  const dark = blockOf(
+    source,
+    /:root\[data-theme=['"]dark['"]\]\s*\{(?<block>[\s\S]*?)\}/u,
+  );
+  const toHex = ([red, green, blue]) =>
+    `#${[red, green, blue].map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`;
+
+  for (const [themeName, scheme] of [
+    ['light', root],
+    ['dark', new Map([...root, ...dark])],
+  ]) {
+    // A token's opaque colour, following var() references, with a
+    // translucent colour composited over the ground it sits on.
+    const resolve = (name) => {
+      let value = scheme.get(name);
+      assert.ok(value, `${themeName} ${name}`);
+      for (let depth = 0; value.startsWith('var('); depth += 1) {
+        assert.ok(depth < 4);
+        value = scheme.get(value.slice(4, -1));
+      }
+      return value;
+    };
+    const opaque = (name, ground) => {
+      const [colour] = colourLiterals(resolve(name));
+      if (colour[3] === 1) return toHex(colour);
+      const [base] = colourLiterals(opaque(ground));
+      return toHex(
+        colour
+          .slice(0, 3)
+          .map(
+            (channel, index) =>
+              channel * colour[3] + base[index] * (1 - colour[3]),
+          ),
+      );
+    };
+    const pairs = [
+      // [foreground, background, ground for a translucent background, min]
+      // Primary label on coral; the sheet's 5.8:1.
+      ['--on-coral', '--coral', null, 4.5],
+      // Labels, field text and secondary button text.
+      ['--ink', '--surface', null, 4.5],
+      ['--ink', '--paper', null, 4.5],
+      // Hint, placeholder (ink-600), checkbox label, Optional pill, FAQ answer.
+      ['--ink-600', '--surface', null, 4.5],
+      ['--ink-600', '--paper', null, 4.5],
+      // Field error message.
+      ['--error-text', '--surface', null, 4.5],
+      ['--error-text', '--paper', null, 4.5],
+      // Reward pill text on coral-tint, over a card and over the page.
+      ['--ink', '--coral-tint', '--surface', 4.5],
+      ['--ink', '--coral-tint', '--paper', 4.5],
+      // Step badge and the ticked checkbox's check.
+      ['--paper', '--ink', null, 4.5],
+      // On-midnight label at rest and over its hover and active fills.
+      ['--on-midnight', '--midnight', null, 4.5],
+      ['--on-midnight', '--on-midnight-hover', '--midnight', 4.5],
+      ['--on-midnight', '--on-midnight-active', '--midnight', 4.5],
+      // Non-text: field and checkbox boundary, error icon and border, the
+      // focus outline and the link underline (3:1, WCAG 1.4.11).
+      ['--field', '--surface', null, 3],
+      ['--error', '--surface', null, 3],
+      ['--coral', '--paper', null, 3],
+      ['--coral', '--surface', null, 3],
+      ['--coral-lift', '--midnight', null, 3],
+    ];
+    for (const [foreground, background, ground, minimum] of pairs) {
+      const ratio = contrastRatio(
+        opaque(foreground),
+        opaque(background, ground),
+      );
+      assert.ok(
+        ratio >= minimum,
+        `${themeName} ${foreground} on ${background}: ${ratio.toFixed(2)}`,
+      );
+    }
+    // The primary label is #101014 on coral in both themes.
+    assert.equal(resolve('--on-coral').toLowerCase(), '#101014');
+  }
+  // Disabled states (primary ink-600 on coral-tint, secondary ink-300, the
+  // on-midnight .45 label) are inactive controls, exempt from 1.4.3.
+  // Light --ink-300 is never a placeholder or text colour on the sheet:
+  assert.ok(
+    contrastRatio(root.get('--ink-300'), root.get('--surface')) < 4.5,
+    'ink-300 would fail as placeholder text, hence ink-600',
   );
 });

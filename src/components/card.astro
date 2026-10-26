@@ -17,13 +17,15 @@ const { class: className, interactive = false, ...attributes } = Astro.props;
 </article>
 
 <style>
+  /* --edge is transparent in light and a 1px light edge in dark, so every
+     elevated surface keeps its outline on the dark ground. */
   .card {
     padding: var(--space-3);
     color: var(--ink);
     font-family: var(--font-sans);
     background-color: var(--surface);
     border-radius: var(--radius-card);
-    box-shadow: var(--shadow-1);
+    box-shadow: var(--shadow-1), var(--edge);
   }
 
   .card--interactive {
@@ -34,7 +36,7 @@ const { class: className, interactive = false, ...attributes } = Astro.props;
 
   .card--interactive:hover,
   .card--interactive:focus-within {
-    box-shadow: var(--shadow-2);
+    box-shadow: var(--shadow-2), var(--edge);
   }
 
   @media (prefers-reduced-motion: reduce) {

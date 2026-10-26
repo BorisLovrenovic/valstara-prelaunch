@@ -18,21 +18,24 @@ const { class: className, invalid = false, ...attributes } = Astro.props;
   .input {
     box-sizing: border-box;
     width: 100%;
-    min-block-size: var(--tap-min);
-    padding-block: var(--space-1);
+    min-inline-size: 0;
+    block-size: var(--control-height);
+    padding-block: var(--space-0);
     padding-inline: var(--space-2);
     color: var(--ink);
     font-family: var(--font-sans);
     font-size: var(--step-2);
     line-height: var(--leading-2);
     background-color: var(--surface);
-    border: thin solid var(--ink-600);
+    border: var(--border-thin) solid var(--field);
     border-radius: var(--radius-control);
-    transition-property: border-color;
+    transition-property: border-color, box-shadow;
     transition-duration: var(--duration-fast);
     transition-timing-function: var(--ease-out);
   }
 
+  /* ink-600, not the drawn ink-300: ink-300 is 2.60:1 on surface in light
+     (founder-authorised 2026-10-26). Dark ink-600 is the drawn value. */
   .input::placeholder {
     color: var(--ink-600);
   }
@@ -41,17 +44,22 @@ const { class: className, invalid = false, ...attributes } = Astro.props;
     border-color: var(--ink);
   }
 
+  /* The drawn ring is a box shadow. The transparent outline is invisible in
+     normal rendering and becomes the focus indicator in forced-colours mode,
+     where box shadows are removed. */
   .input:focus-visible {
     border-color: var(--coral);
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
+    outline: var(--focus-width) solid transparent;
+    box-shadow: var(--ring-focus);
   }
 
-  /* Invalid is shown by a heavier border as well as the error colour, and the
-     Field pairs it with an icon and text, so it never relies on colour. */
+  /* Invalid is a 2px border as well as the error colour, and the Field pairs
+     it with an icon and text, so it never relies on colour. The padding
+     drops by the extra border width, so the text does not move. */
   .input[aria-invalid='true'] {
+    padding-inline: var(--control-inset-strong);
     border-color: var(--error);
-    border-width: medium;
+    border-width: var(--border-strong);
   }
 
   .input:disabled {

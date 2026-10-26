@@ -93,7 +93,7 @@ const onGuarantee = Astro.url.pathname.replace(/\/+$/u, '') === '/guarantee';
 </Container>
 {
   /* Small widths, trust pages only: a link to the signup form, not a form. It
-     needs no script, so it is always present below 40rem and never above. */
+     needs no script, so it is always present below 48rem and never above. */
   kind === 'trust' && (
     <div class="document-join-bar" data-join-bar>
       <Button
@@ -244,7 +244,7 @@ const onGuarantee = Astro.url.pathname.replace(/\/+$/u, '') === '/guarantee';
   }
 
   /* Small widths: every link in the prose and the cards is a full-size
-     target. From 40rem prose links return to plain inline text. */
+     target. From 48rem prose links return to plain inline text. */
   .document__prose a,
   .document__card-link,
   .document__contents a {
@@ -391,7 +391,7 @@ const onGuarantee = Astro.url.pathname.replace(/\/+$/u, '') === '/guarantee';
     padding-block-end: var(--join-bar-block);
   }
 
-  @media (min-width: 40rem) {
+  @media (min-width: 48rem) {
     .document__prose a,
     .rules-archived-notice a {
       display: inline;
