@@ -743,7 +743,17 @@ test('the member page and the leaderboard render every state from their sources,
       captures.length,
       designWidths.length * designThemes.length * 6,
     );
-    assert.ok(captures.every((capture) => capture.layoutIssues.length === 0));
+    assert.deepEqual(
+      captures
+        .filter((capture) => capture.layoutIssues.length > 0)
+        .map(({ state, width, theme, layoutIssues }) => ({
+          state,
+          width,
+          theme,
+          layoutIssues,
+        })),
+      [],
+    );
 
     // With member.dashboard off, /me renders its unavailable card and nothing
     // of the bearer's status.
