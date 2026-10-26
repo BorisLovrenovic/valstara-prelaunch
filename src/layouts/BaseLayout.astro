@@ -228,9 +228,6 @@ const fallbackImage = socialFallbackImageUrl(
   /* Small widths have no section links and no menu: the links are not
      rendered until medium width. */
   .site-nav {
-    /* The medium link inset, 10px: half the 20px step. */
-    --nav-link-x: calc(var(--space-2-5) / 2);
-
     display: none;
   }
 
@@ -246,7 +243,8 @@ const fallbackImage = socialFallbackImageUrl(
     display: inline-flex;
     align-items: center;
     padding-block: var(--space-1-5);
-    padding-inline: var(--nav-link-x);
+    /* 10px: half the 20px step. */
+    padding-inline: calc(var(--space-2-5) / 2);
     color: var(--ink-600);
     font-size: var(--step-1);
     font-weight: var(--weight-medium);
@@ -308,9 +306,7 @@ const fallbackImage = socialFallbackImageUrl(
   .site-name--footer {
     grid-column: 1 / -1;
     place-self: start;
-    --wordmark-lift: calc((var(--leading-3) - var(--tap-min)) / 2);
-
-    margin-block-start: var(--wordmark-lift);
+    margin-block-start: calc((var(--leading-3) - var(--tap-min)) / 2);
     color: var(--on-midnight);
   }
 
