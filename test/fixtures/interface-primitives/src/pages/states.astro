@@ -83,8 +83,11 @@ import '../../../../../src/styles/tokens.css';
     background-color: var(--paper);
   }
 
+  /* E11.5-11a: buttons keep their label on one line and do not shrink, so
+     the row wraps at small widths instead of widening the page. */
   .row {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
   }
 </style>

@@ -12,7 +12,7 @@ const { class: className, summary, ...attributes } = Astro.props;
 <details {...attributes} class:list={['accordion', className]}>
   <summary class="accordion__summary">
     <span class="accordion__question">{summary}</span>
-    <Icon name="chevron-down" class="accordion__chevron" />
+    <Icon name="chevron-down" size="base" class="accordion__chevron" />
   </summary>
   <div class="accordion__content">
     <slot />
@@ -20,12 +20,15 @@ const { class: className, summary, ...attributes } = Astro.props;
 </details>
 
 <style>
+  /* The FAQ item is unboxed: the card that holds a list of items belongs to
+     the section, and consecutive items are divided by a 1px line. */
   .accordion {
     color: var(--ink);
     font-family: var(--font-sans);
-    background-color: var(--surface);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow-1);
+  }
+
+  .accordion + .accordion {
+    border-block-start: var(--border-thin) solid var(--line);
   }
 
   .accordion__summary {
@@ -33,15 +36,16 @@ const { class: className, summary, ...attributes } = Astro.props;
     gap: var(--space-2);
     align-items: center;
     justify-content: space-between;
-    min-block-size: var(--tap-min);
-    padding-block: var(--space-1);
-    padding-inline: var(--space-3);
+    min-block-size: var(--space-8);
+    box-sizing: border-box;
+    padding-block: var(--space-2-5);
+    padding-inline: var(--space-0);
     font-size: var(--step-2);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-semibold);
     line-height: var(--leading-2);
     list-style: none;
     cursor: pointer;
-    border-radius: var(--radius-card);
+    border-radius: var(--radius-control);
   }
 
   .accordion__summary::-webkit-details-marker {
@@ -49,12 +53,12 @@ const { class: className, summary, ...attributes } = Astro.props;
   }
 
   .accordion__summary:focus-visible {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
   }
 
   .accordion :global(.accordion__chevron) {
-    color: var(--coral);
+    color: var(--ink-600);
     transition-property: transform;
     transition-duration: var(--duration-base);
     transition-timing-function: var(--ease-out);
@@ -65,8 +69,9 @@ const { class: className, summary, ...attributes } = Astro.props;
   }
 
   .accordion__content {
+    max-inline-size: var(--measure);
     padding-block-end: var(--space-3);
-    padding-inline: var(--space-3);
+    color: var(--ink-600);
     font-size: var(--step-2);
     line-height: var(--leading-2);
   }

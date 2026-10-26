@@ -24,7 +24,7 @@ The founder-approved page copy and claim-by-claim source notes are in `docs/prer
 | `src/content/guarantee.md` | `/guarantee` |
 | `src/content/about.md` | `/about` |
 
-**Presentation (E11.5-09).** The three pages use the shared document layout (`docs/brand/page-design.md#trust-legal-and-rules-pages-e115-09`): a "Trust" eyebrow, the content's own H1 as the band title, and the frontmatter `description` as the summary. A Triple Guarantee card with a Join button sits beside the prose as a sticky card from 64rem, and renders as a block after the prose below 64rem. Below 40rem a fixed "Join the waitlist" link bar goes to `/#join`; it is a link, not a form, and needs no script. The content files are unchanged.
+**Presentation (E11.5-09).** The three pages use the shared document layout (`docs/brand/page-design.md#trust-legal-and-rules-pages-e115-09`): a "Trust" eyebrow, the content's own H1 as the band title, and the frontmatter `description` as the summary. A Triple Guarantee card with a Join button sits beside the prose as a sticky card from 64rem, and renders as a block after the prose below 64rem. Below 48rem a fixed "Join the waitlist" link bar goes to `/#join`; it is a link, not a form, and needs no script. The content files are unchanged.
 
 `/guarantee` and `/about` are prerendered. `/legit` remains server-rendered and always shows the original Reviews paragraph and plain profile link. It emits no Trustpilot script. The shared trust-page layout has only the first-party page-view emitter; the light and dark palettes follow the visitor's colour-scheme preference through `src/styles/tokens.css`.
 

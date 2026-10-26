@@ -32,19 +32,21 @@ if (error !== undefined && errorId === undefined) {
 ---
 
 <div {...attributes} class:list={['field', className]}>
-  <label class="field__label" for={controlId}>{label}</label>
-  {
-    description !== undefined && (
-      <span class="field__description" id={descriptionId}>
-        {description}
-      </span>
-    )
-  }
+  <div class="field__head">
+    <label class="field__label" for={controlId}>{label}</label>
+    {
+      description !== undefined && (
+        <span class="field__description" id={descriptionId}>
+          {description}
+        </span>
+      )
+    }
+  </div>
   <slot />
   {
     error !== undefined && (
       <div class="field__error-row">
-        <Icon name="alert" size="sm" class="field__error-icon" />
+        <Icon name="alert-circle" size="base" class="field__error-icon" />
         <span class="field__error" id={errorId} role="alert" aria-atomic="true">
           {error}
         </span>
@@ -54,6 +56,9 @@ if (error !== undefined && errorId === undefined) {
 </div>
 
 <style>
+  /* Label, then the hint 4px below it (the hint sits between label and field,
+     so an error sits directly under the field), then the field and its error
+     8px apart. */
   .field {
     display: grid;
     gap: var(--space-1);
@@ -61,10 +66,15 @@ if (error !== undefined && errorId === undefined) {
     font-family: var(--font-sans);
   }
 
+  .field__head {
+    display: grid;
+    gap: var(--space-0-5);
+  }
+
   .field__label {
-    font-size: var(--step-0);
-    font-weight: var(--weight-medium);
-    line-height: var(--leading-0);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
   }
 
   .field__description,
@@ -80,16 +90,16 @@ if (error !== undefined && errorId === undefined) {
   .field__error-row {
     display: flex;
     gap: var(--space-1);
-    align-items: center;
-    padding-inline-start: var(--space-1);
-    border-inline-start: medium solid var(--error);
+    align-items: flex-start;
   }
 
   .field__error-row :global(.field__error-icon) {
     color: var(--error);
   }
 
+  /* Dark error text is ink: --error on midnight surface is 3.2:1. */
   .field__error {
-    color: var(--ink);
+    color: var(--error-text);
+    font-weight: var(--weight-semibold);
   }
 </style>

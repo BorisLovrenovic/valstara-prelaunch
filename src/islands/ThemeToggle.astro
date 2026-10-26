@@ -5,8 +5,16 @@ import { themeToggleCopy } from '../copy/theme-toggle.ts';
 
 <valstara-theme-toggle>
   <button type="button" aria-pressed="false" disabled>
-    <Icon name="moon" class="theme-toggle__icon theme-toggle__icon--moon" />
-    <Icon name="sun" class="theme-toggle__icon theme-toggle__icon--sun" />
+    <Icon
+      name="moon"
+      size="base"
+      class="theme-toggle__icon theme-toggle__icon--moon"
+    />
+    <Icon
+      name="sun"
+      size="base"
+      class="theme-toggle__icon theme-toggle__icon--sun"
+    />
     <span class="theme-toggle__label" data-theme-toggle-label
       >{themeToggleCopy.useDark}</span
     >
@@ -129,7 +137,7 @@ import { themeToggleCopy } from '../copy/theme-toggle.ts';
     color: var(--ink);
     font: inherit;
     background-color: var(--surface);
-    border: thin solid var(--line);
+    border: var(--border-thin) solid var(--line);
     border-radius: var(--radius-control);
     cursor: pointer;
     transition-property: border-color, box-shadow;
@@ -147,8 +155,8 @@ import { themeToggleCopy } from '../copy/theme-toggle.ts';
   }
 
   button:focus-visible {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
   }
 
   button:disabled {

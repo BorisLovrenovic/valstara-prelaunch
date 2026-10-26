@@ -85,7 +85,24 @@ The media block exists because **the site must render the system-preferred theme
 
 **E11.5-01 foundation (founder-authorised 2026-10-19).** `--on-midnight` is the foreground role for all text and icons on a `midnight` surface. Its light value is locked `paper` (`#FAFAFA`); its dark value is locked dark `ink` (`#F0F0EE`) in both dark blocks. The role adds no palette colour. The contrast gate checks this pairing at body-text AA in each theme, and `coral` on `midnight` at large-text/graphic AA for accents only.
 
-The portable file also carries `--shadow-1` through `--shadow-3` (with paired dark elevations), `--container-max`, `--gutter`, `--gutter-wide`, `--section-gap`, `--section-gap-wide`, `--measure`, four weight tokens, two tracking tokens, `--tap-min`, three icon sizes, and `--layer-dock`/`--layer-skip`. Their exact values are specified in E11.5-01 of the development plan and tested against the file. The only media-query length literals allowed are **40rem, 64rem and 80rem**: small is below 40rem, medium begins at 40rem, large at 64rem and wide at 80rem. CSS custom properties cannot be used inside media conditions.
+The portable file also carries `--shadow-1` through `--shadow-3` (with paired dark elevations), `--container-max`, `--gutter`, `--gutter-wide`, `--section-gap`, `--section-gap-wide`, `--measure`, four weight tokens, two tracking tokens, `--tap-min`, three icon sizes, and `--layer-dock`/`--layer-skip`. Their exact values are specified in E11.5-01 of the development plan and tested against the file.
+
+**E11.5-11a wireframe tokens (founder-authorised 2026-10-26).** The founder's wireframes ([page-design reference](page-design.md#the-wireframes-e115-11a-to-e115-11h)) replace the light `--shadow-1` to `--shadow-3` and the dark `--shadow-1` and `--shadow-2`; the dark `--shadow-3` keeps its E11.5-01 value, because the wireframes draw no dark overlay. Every colour below is a LOCKED palette value, an alpha variant of one, or black inside a shadow. **No hue is added**, and a test asserts it.
+
+| Group | Tokens | Light | Dark (both blocks) |
+|---|---|---|---|
+| Edge | `--edge`, added to every elevated surface's shadow | `0 0 0 0 transparent` | `0 0 0 1px rgba(240,240,238,.1)` |
+| Dark redefinitions | `--line`, `--coral-tint` | unchanged | `rgba(240,240,238,.14)`, `rgba(255,138,102,.16)` |
+| Roles | `--field` (input and checkbox border) · `--on-coral` (primary label) · `--error-text` | `var(--ink-600)` · `#101014` · `var(--error)` | `--field` and `--on-coral` unchanged · `--error-text: var(--ink)` (`#C0392B` on `#171733` is 3.2:1) |
+| Component values | `--shadow-button` · `--overlay-hover`, `--overlay-active` · `--on-midnight-border`, `-hover`, `-active`, `-disabled`, `-disabled-border` · `--shadow-chip` · `--banner-tone-dark`, `-light`, `-ink` · `--shadow-sticky` | the ticket's values | unchanged |
+| Dark-only values | `--banner-edge`, `--banner-edge-hero`, `--banner-edge-hover`, `--shadow-band` | `0 0 0 0 transparent` (light base) | the 1px light edges at .1, .12 and .14, and the guarantee-band shadow |
+| Composites | `--ring-focus`, `--inset-line`, `--inset-strong`, `--inset-on-midnight`, `--inset-on-midnight-disabled` | a token colour with a fixed width | follow their colours |
+| Layout | `--grid-columns` 4 / `--grid-columns-wide` 12, `--grid-gap` 16px / `--grid-gap-wide` 24px, `--header-height` 72px / `--header-height-wide` 80px | — | — |
+| Lines and focus | `--radius-check` 4px, `--border-thin` 1px, `--border-check` 1.5px, `--border-strong` 2px, `--focus-width` 2px, `--focus-offset` 2px, `--underline-thickness` 2px, `--underline-offset` 3px | — | — |
+| Spacing off the 8px ramp | `--space-0-5` 4px, `--space-0-75` 6px, `--space-1-5` 12px, `--space-2-5` 20px (named for their share of the 8px step) | — | — |
+| Sizes | `--icon-base` 20px, `--star-sm` 12px and `--star-md` 16px wide (2:3), `--control-height` 48px, `--check-size` 20px, `--badge-size` 24px, `--tile-size` 40px, and the derived `--control-inset-strong` and `--check-target-offset` | — | — |
+
+**The closed breakpoint set is `22.5rem`, `48rem`, `64rem` and `80rem`** (E11.5-11a amends E11.5 design rule 7). Small is below 48rem, medium is 48rem to below 64rem, large is 64rem and up, and wide is 80rem and up. `22.5rem` is used only by the header's Join button. `40rem` is no longer in the set, because no query uses it. These are the only literal lengths permitted in an `@media` condition, because CSS custom properties cannot be used there.
 
 E11.5-04 moves the provider showcase's existing presentation values into the portable file: `--space-0: 0`, `--provider-layer-decor: -1`, `--provider-banner-tone: linear-gradient(to bottom right, color-mix(in srgb, currentColor, var(--surface) 45%), transparent 60%)`, `--provider-depth-brightness: 0.7`, and `--provider-rail-peek: 82%`. The gradient uses each banner's provider colour through `currentColor`; it adds no palette colour. The exact-token test includes these five values.
 
@@ -125,6 +142,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 | Font files and `@font-face` declarations | Storefront font layer | E11-07 |
 
 **E11.5-01 port addition:** copy the expanded `tokens.css` verbatim, including `--on-midnight`, the three shadow pairs, layout, type-weight, tracking, sizing and layering tokens. Re-run the contrast and dark-name-set tests after the port. The breakpoint literals above travel with page CSS; they are documented here because media conditions cannot reference custom properties.
+
+**E11.5-11a port addition:** the file is still copied verbatim. It now also carries the wireframe elevations, `--edge` and the dark-only edge and band values, the `--field`, `--on-coral` and `--error-text` roles, the dark `--line` and `--coral-tint`, the button, on-midnight, chip, banner and sticky-bar component values, the grid and header tokens, the line and focus widths, the four off-ramp spacing steps and the control sizes. Re-run the no-new-hue, contrast-matrix and dark-name-set tests after the port. The storefront's media queries use the closed set `22.5rem`, `48rem`, `64rem` and `80rem`.
 
 E11-07 source-to-target reconciliation (targets are the storefront routes to build and verify before the DNS swap):
 

@@ -2,12 +2,15 @@
 import type { HTMLAttributes } from 'astro/types';
 
 type Variant = 'primary' | 'secondary' | 'on-midnight';
+// The component sheet's sizes: 48px by default, h44 and xs at 44px.
+type Size = 'default' | 'h44' | 'xs';
+type Shared = { variant?: Variant; size?: Size; full?: boolean };
 
 // With an href the button is a link styled as a button: navigation stays a
 // native anchor, so it works without JavaScript.
 type Props =
-  | (HTMLAttributes<'button'> & { href?: undefined; variant?: Variant })
-  | (HTMLAttributes<'a'> & { href: string; variant?: Variant });
+  | (HTMLAttributes<'button'> & Shared & { href?: undefined })
+  | (HTMLAttributes<'a'> & Shared & { href: string });
 
 // type leaves the spread so it renders once: a button defaults to button,
 // and an anchor keeps whatever type it was given.
@@ -15,9 +18,17 @@ const {
   class: className,
   type,
   variant = 'primary',
+  size = 'default',
+  full = false,
   ...attributes
 } = Astro.props;
-const classes = ['button', `button--${variant}`, className];
+const classes = [
+  'button',
+  `button--${variant}`,
+  size !== 'default' && `button--${size}`,
+  full && 'button--full',
+  className,
+];
 ---
 
 {
@@ -41,90 +52,143 @@ const classes = ['button', `button--${variant}`, className];
 }
 
 <style>
+  /* Primary: coral with the ink label (5.8:1), never white (3.3:1). Hover and
+     active darken through an inset overlay, so the fill stays coral. The
+     button keeps its width (flex: none) and one-line height, and its label
+     wraps only when the button alone is wider than its container, so a long
+     label on a narrow task page never widens the page. */
   .button {
     box-sizing: border-box;
     display: inline-flex;
+    flex: none;
     align-items: center;
     justify-content: center;
     gap: var(--space-1);
-    min-block-size: var(--tap-min);
+    min-block-size: var(--control-height);
     min-inline-size: var(--tap-min);
-    padding-block: var(--space-1);
+    max-inline-size: 100%;
+    padding-block: var(--space-0);
     padding-inline: var(--space-3);
-    color: var(--midnight);
+    color: var(--on-coral);
     font-family: var(--font-sans);
     font-size: var(--step-2);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-2);
+    text-align: center;
     text-decoration: none;
     background-color: var(--coral);
-    border: thin solid var(--coral);
+    border: none;
     border-radius: var(--radius-control);
-    box-shadow: none;
+    box-shadow: var(--shadow-button);
     cursor: pointer;
-    transition-property: background-color, border-color, box-shadow, color;
+    transition-property: background-color, box-shadow, color;
     transition-duration: var(--duration-fast);
     transition-timing-function: var(--ease-out);
   }
 
-  .button:hover {
-    background-color: var(--coral-lift);
-    border-color: var(--coral-lift);
-    box-shadow: var(--shadow-1);
+  .button--h44 {
+    min-block-size: var(--tap-min);
+    padding-inline: var(--space-2-5);
   }
 
-  .button:active {
-    background-color: var(--coral);
-    border-color: var(--coral);
-    box-shadow: none;
+  .button--xs {
+    min-block-size: var(--tap-min);
+    padding-inline: var(--space-1-5);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
   }
 
+  .button--full {
+    inline-size: 100%;
+  }
+
+  .button--primary:hover {
+    box-shadow: var(--overlay-hover), var(--shadow-1);
+  }
+
+  .button--primary:active {
+    box-shadow: var(--overlay-active);
+  }
+
+  /* Mobile-first: below 48rem the secondary button is 44px with 14/20 text,
+     and 48px with 16/24 text from 48rem. */
   .button--secondary {
+    min-block-size: var(--tap-min);
+    padding-inline: var(--space-2);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
     color: var(--ink);
     background-color: var(--surface);
-    border-color: var(--line);
+    box-shadow: var(--inset-line), var(--shadow-1);
   }
 
   .button--secondary:hover {
-    background-color: var(--surface);
-    border-color: var(--coral);
+    box-shadow: var(--inset-strong), var(--shadow-2);
   }
 
   .button--secondary:active {
-    background-color: var(--paper);
-    border-color: var(--coral);
+    box-shadow: var(--inset-strong);
   }
 
   .button--on-midnight {
+    padding-inline: var(--space-2-5);
     color: var(--on-midnight);
-    background-color: var(--midnight);
-    border-color: var(--on-midnight);
+    background-color: transparent;
+    box-shadow: var(--inset-on-midnight);
   }
 
-  .button--on-midnight:hover,
+  .button--on-midnight:hover {
+    background-color: var(--on-midnight-hover);
+  }
+
   .button--on-midnight:active {
-    color: var(--midnight);
-    background-color: var(--on-midnight);
-    border-color: var(--on-midnight);
+    background-color: var(--on-midnight-active);
   }
 
   .button:focus-visible {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
   }
 
-  .button:disabled,
-  .button:disabled:hover {
+  .button--on-midnight:focus-visible {
+    outline-color: var(--coral-lift);
+  }
+
+  .button--primary:disabled,
+  .button--primary:disabled:hover {
     color: var(--ink-600);
-    background-color: var(--line);
-    border-color: var(--line);
+    background-color: var(--coral-tint);
     box-shadow: none;
+  }
+
+  .button--secondary:disabled,
+  .button--secondary:disabled:hover {
+    color: var(--ink-300);
+    box-shadow: var(--inset-line);
+  }
+
+  .button--on-midnight:disabled,
+  .button--on-midnight:disabled:hover {
+    color: var(--on-midnight-disabled);
+    background-color: transparent;
+    box-shadow: var(--inset-on-midnight-disabled);
+  }
+
+  .button:disabled {
     cursor: not-allowed;
+  }
+
+  @media (min-width: 48rem) {
+    .button--secondary {
+      min-block-size: var(--control-height);
+      padding-inline: var(--space-2-5);
+      font-size: var(--step-2);
+      line-height: var(--leading-2);
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .button {
-      transition-duration: var(--duration-fast);
       transition-property: none;
     }
   }

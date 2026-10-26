@@ -4,9 +4,9 @@ The [development plan](../plan/development-plan.md#epic-e115--frontend-design) g
 
 ## Grid and rhythm
 
-Use the mobile-first container: `--container-max: 75rem`, `--gutter` below 40rem and `--gutter-wide` from 40rem. Content follows one container grid; use `data-design-container` on the container and `data-grid-align="start"` or `"end"` on items whose edge must line up. Sections sit on the page ground with `--section-gap` (64px) below 64rem and `--section-gap-wide` (80px) from 64rem. Long prose has `--measure: 68ch`; it sits within the wider composition rather than creating a narrow centred page.
+Use the mobile-first container: `--container-max: 75rem`, `--gutter` below 48rem and `--gutter-wide` from 48rem. Content follows one container grid; use `data-design-container` on the container and `data-grid-align="start"` or `"end"` on items whose edge must line up. Sections sit on the page ground with `--section-gap` (64px) below 64rem and `--section-gap-wide` (80px) from 64rem. Long prose has `--measure: 68ch`; it sits within the wider composition rather than creating a narrow centred page.
 
-The closed breakpoints are **40rem, 64rem and 80rem**. Test at 320, 360, 390, 768, 1024, 1280, 1440 and 1920 CSS pixels, in light and dark themes. The CI literal scan rejects other media-query lengths and values embedded in any `src/**/*.astro` style, including inline Astro style expressions.
+The closed breakpoints are **22.5rem, 48rem, 64rem and 80rem** (E11.5-11a): small is below 48rem, medium is 48rem to below 64rem, large is 64rem and up, and wide is 80rem and up. `22.5rem` is used only by the header's Join button. Test at 320, 360, 390, 768, 1024, 1280, 1440 and 1920 CSS pixels, in light and dark themes. The CI literal scan rejects other media-query lengths and values embedded in any `src/**/*.astro` style, including inline Astro style expressions.
 
 ## Depth, type and icons
 
@@ -18,7 +18,7 @@ Use the existing §6.1 type sizes with weight and tracking tokens. Headings and 
 
 `src/layouts/BaseLayout.astro` is the one shell. Trust and legal pages render it through `src/layouts/trust-page.astro` with `themeToggle={false}`, because they ship no client JavaScript beyond the page-view emitter.
 
-- **Header**, not sticky: the text wordmark on the left. From 40rem, the section links (How it works · What you get · Guarantee · FAQ) and a primary "Join the waitlist" link styled as a button. They point at `#how`, `#rewards`, `#guarantee`, `#faq` and `#join` on the landing page and at `/#…` elsewhere. Below 40rem the header shows the wordmark, Join and the theme toggle only. The section links are `display: none` there, so there is no menu, disclosure or script.
+- **Header**, not sticky: the text wordmark on the left. From 48rem, the section links (How it works · What you get · Guarantee · FAQ) and a primary "Join the waitlist" link styled as a button. They point at `#how`, `#rewards`, `#guarantee`, `#faq` and `#join` on the landing page and at `/#…` elsewhere. Below 48rem the header shows the wordmark, Join and the theme toggle only. The section links are `display: none` there, so there is no menu, disclosure or script.
 - **Footer**: a full-width `midnight` band with the wordmark, two link columns — Company (About, Legit, Guarantee) and Legal (Terms, Privacy, Storage inventory, Giveaway rules) — the `support@valstara.com` contact, and the §3.4 legal line. Text and links use `--on-midnight`.
 - **Theme toggle**: a 44px icon button, a moon offering dark and a sun offering light. The label stays in the accessible name and the status is still announced; storage key, behaviour and the no-flash bootstrap are unchanged.
 
@@ -26,15 +26,37 @@ Primitives live in `src/components/` and are zero-JS:
 
 | Primitive | Use |
 |---|---|
-| `container.astro` | A three-track grid that centres a content track capped at `--container-max`, with `--gutter` outer tracks (`--gutter-wide` from 40rem). The content element carries `data-design-container`. |
+| `container.astro` | A three-track grid that centres a content track capped at `--container-max`, with `--gutter` outer tracks (`--gutter-wide` from 48rem). The content element carries `data-design-container`. |
 | `section.astro` | Section rhythm (`--section-gap`, `--section-gap-wide` from 64rem) around a Container, an optional `midnight` variant, and a left-aligned `heading` slot. |
-| `button.astro` | `primary` (coral), `secondary` and `on-midnight`, with hover, active, focus-visible and disabled states, at least `--tap-min` each way. With `href` it renders a native link. |
-| `input.astro`, `select.astro`, `field.astro` | A coral focus ring. Invalid controls get a heavier `--error` border, and the Field shows the error text with an alert icon, so an error never relies on colour. |
-| `card.astro` | `--shadow-1` at rest; `interactive` cards rise to `--shadow-2` on hover and focus-within. |
-| `pill.astro` | `pill` on `coral-tint`; `variant="badge"` on `coral` in mono. Both use tabular figures. |
-| `accordion.astro` | Native `<details>` with a chevron icon that turns when open. |
+| `button.astro` | `primary` (coral, `--on-coral` label), `secondary` and `on-midnight`, with hover, active, focus-visible and disabled states (E11.5-11a values below). Sizes: 48px by default, `size="h44"` and `size="xs"` at 44px, and `full` for full width. Below 48rem the secondary button is 44px with 14/20 text. A button keeps its width and one-line height; its label wraps only when the button alone is wider than its container, so a long task-page label never widens the page at 320px. With `href` it renders a native link. |
+| `text-link.astro` | Ink text at 500 weight with a 2px coral underline offset 3px; `variant="on-midnight"` uses `--on-midnight` text and a `coral-lift` underline. Below 48rem, 12px vertical padding gives a 44px hit area. |
+| `input.astro`, `select.astro`, `field.astro` | The Input is 48px with a 1px `--field` border and an `ink-600` placeholder. Focus is a coral border and the `--ring-focus` ring, with a transparent 2px outline for forced-colours mode. The Field shows a 14/20 600 label, the hint 4px below it and the field 8px below that. An invalid Input has a 2px `--error` border, and the Field puts a 20px alert-circle icon and the `--error-text` message 8px below it, so an error never relies on colour. The Select keeps its E11.5-03 styling. |
+| `checkbox.astro` | A 20 × 20 box with a 1.5px `--field` border and `--radius-check`; ticked is an `ink` fill with a `paper` check. A transparent `--tap-min` input is centred on the box, so the target is 44px. `optional` adds the "Optional" pill from `src/copy/primitives.ts`. It refuses a server-set tick: a consent box is never pre-ticked. |
+| `card.astro`, `icon-tile.astro` | `--shadow-1` plus `--edge` at rest; `interactive` cards rise to `--shadow-2` plus `--edge` on hover and focus-within. The icon tile is 40 × 40 on `paper` with a 20px icon. |
+| `pill.astro` | `pill`: the reward pill on `coral-tint`, ink 13/18 600 text and an optional 16px icon. `coral`: the coral pill with the `--on-coral` label, its figures wrapped in `.tabular-figure`. `badge`: the coral marker set wholly in mono, as on the access-wave badge. `step`: the 24px ink step badge in mono. |
+| `accordion.astro` | The FAQ item: a native `<details>`, unboxed, with a 1px `line` divider between consecutive items. The summary is at least 64px with 20px vertical padding and 16/24 600 text, and the 20px `ink-600` chevron turns 180° when open, with no motion under reduced motion. The answer is 16/24 `ink-600`, at most `--measure` wide. |
 
 The icon registry also holds a `clock`, used with `check` to tell held rewards from settled ones on `/me` (E11.5-08).
+
+## The wireframes (E11.5-11a to E11.5-11h)
+
+The founder's mid-fidelity wireframes are the canvas "Valstara waitlist wireframes" at `https://claude.ai/artifact/UpBYawiwLUpinVSYfBQneJ`, pinned to version `1792974724-d356` (founder-authorised 2026-10-26). They bind the landing page, its signup form and the mobile sticky bar. Where a wireframe and an earlier E11.5 ticket's layout differ, the wireframe wins; behaviour is unchanged. The development plan's wireframe rules govern each ticket. In short:
+
+- The blue annotation layer is never built.
+- The wireframe's CSS values are the specification. Every value goes through `tokens.css`.
+- Copy is verbatim. Values marked `{dyn}` come from their source computation.
+- Placeholders (the dashed logo square, the hard-coded provider list, the grey security-check box, placeholder links) are replaced with the real logos, `src/content/provider-showcase.json`, the Turnstile widget and the permanent routes.
+- Fonts stay self-hosted.
+- Breakpoints map as follows: the 390 frame is small (below 48rem), the 768 frame is medium (48rem to below 64rem), and the 1440 frame is large (64rem and up). Each layout is fluid between its breakpoints, and the container caps at 1200px (1264px with its 32px gutters).
+- Geometry is asserted at 1440, 768 and 390 px, and at 320 where drawn, with a 1px tolerance, in both themes.
+
+**Layout values.** Sections are 80px apart at large widths and 64px at medium and small. Gutters are 32px at medium and large and 16px at small. Medium and large use a 12-column grid with 24px gaps (`--grid-columns-wide`, `--grid-gap-wide`); small uses a 4-column grid with 16px gaps. The header is 80px tall at medium and large and 72px at small.
+
+**Primary is reserved for "Join the waitlist" on the landing page** (founder-authorised 2026-10-26): the header, the hero, the final call to action and the sticky bar. Other pages keep their single primary action from E11.5-07 and E11.5-10, such as `/verify`'s confirm button, the task pages' actions and the 404 and 500 home links, and take the new primary styling.
+
+**Recorded deviation from the component sheet:** the input placeholder is `ink-600`, not the drawn `ink-300`, because `ink-300` is 2.60:1 on surface in light and fails WCAG 1.4.3. Dark `ink-600` is the drawn `#A0A0A8`. No contrast exception is recorded.
+
+**Icons.** `src/components/icon.astro` holds every icon the wireframes draw, transcribed as 24-unit stroke icons (stroke 1.75, round caps and joins): check, link, shield, shield-check, mail, check-circle, upload-share, building, office, people, person, gift, clock, arrow-right, arrow-up, chevron-down, search-check, moon, sun, info, alert-circle, refresh and pause. They render at `size="sm"` (16px), `"base"` (20px) or `"md"` (24px); `"lg"` (40px) remains. The four-point star is the wireframe's 16 × 24 path at `sm` (12 × 18) or `md` (16 × 24), coloured by its parent: coral at 12 × 18 and `coral-lift` at 16 × 24. The E11.5-03 triangle `alert` stays for the task pages.
 
 ## Trust, legal and rules pages (E11.5-09)
 
@@ -42,8 +64,8 @@ The icon registry also holds a `clock`, used with `check` to tell held rewards f
 
 - **Header band** (founder decisions 2026-10-23). The band markup is an eyebrow from `src/copy/document-pages.ts` ("Trust", "Legal" or "Giveaway rules"), placed immediately before the content article, and the summary line, placed immediately after it. The content's own leading H1 is the page's only H1. The article is `display: contents` inside a single-column grid, so the eyebrow, the H1 and the summary take the first three rows over a `surface` band, and the rest of the content flows below in source order. Some older Safari and Chromium releases drop the landmark role of a `display: contents` element; the founder accepted this on 2026-10-24, because the H1 cannot move and the article markup cannot change. Nothing in the content is hidden. The summary is the content file's frontmatter `description`, or the revision's `description` on rules pages. Legal pages use their existing `src/copy/legal.ts` description, because their content files have no description.
 - **Columns.** Single column below 64rem, where the side card renders as a block after the prose, not sticky. From 64rem, the prose runs up to `--measure` beside a sticky side card, which takes the remaining width and never narrows below `--space-10 × 4`. On trust pages the card summarises the Triple Guarantee: the numerals and titles are the approved `landingCopy.trust.promises`, with a link to `/guarantee` (left out on `/guarantee` itself) and a Join button to `/#join`. On legal and rules pages it is a contents list of the `h2` anchors already in the rendered content (`src/server/content/contents.ts`). No list renders where there are none (`/terms`, `/privacy/storage`). A superseded rules revision keeps its archived notice above the band, outside the hashed article.
-- **Join bar.** On the three trust pages only, below 40rem: a fixed link to `/#join`, with no form and no script. The page reserves its height with `padding-block-end` and `scroll-padding-block-end`, including `env(safe-area-inset-bottom)`, so it never covers a focused element.
-- **Prose.** Headings, lists, blockquotes, code and links are styled on tokens. Below 40rem, prose and card links are at least `--tap-min` each way; from 40rem prose links are inline text again.
+- **Join bar.** On the three trust pages only, below 48rem: a fixed link to `/#join`, with no form and no script. The page reserves its height with `padding-block-end` and `scroll-padding-block-end`, including `env(safe-area-inset-bottom)`, so it never covers a focused element.
+- **Prose.** Headings, lists, blockquotes, code and links are styled on tokens. Below 48rem, prose and card links are at least `--tap-min` each way; from 48rem prose links are inline text again.
 - **Tables.** Each table is its own horizontal scroll container (`display: block; overflow-x: auto`), so it can never widen the page. Cells still wrap long words (`overflow-wrap: anywhere`), so at every test width the tables fit rather than scroll. A scroll region with nothing focusable inside cannot be reached by keyboard (axe `scrollable-region-focusable`), and the content markup cannot be given a `tabindex`.
 
 `test/document-pages-rendered.test.mjs` asserts the unchanged content and rules hashes, one H1, the band order, no hidden content element, zero JavaScript, the contents anchors, the table fit, the join bar, the layout checks and axe.
@@ -101,7 +123,7 @@ The provider list is `src/content/provider-showcase.json`, transcribed from P8 a
 
 ## Landing page (E11.5-05)
 
-The landing page runs from the hero at `#join` through the provider catalogue, three-step explanation, reward cards, full-width midnight guarantee band, trust links, FAQ and final `#join` action. The hero places the form under the positioning line and H1; its provider banners become a compact same-origin logo strip below 40rem. The final action is a normal anchor, with the existing signup island moving focus to the hero email input when JavaScript is available.
+The landing page runs from the hero at `#join` through the provider catalogue, three-step explanation, reward cards, full-width midnight guarantee band, trust links, FAQ and final `#join` action. The hero places the form under the positioning line and H1; its provider banners become a compact same-origin logo strip below 48rem. The final action is a normal anchor, with the existing signup island moving focus to the hero email input when JavaScript is available.
 
 The early-access visual labels the four configured waves without exposing band thresholds. Enabled referral tiers render their threshold and discount from `milestoneTiers`; the giveaway card reads its count and per-prize approximate value from the validated `currentRules()` revision. The card and the form's no-purchase disclosure share `giveaway.open`. The referral card and leaderboard link follow their own flags. The paused signup panel replaces the form when `signup.enabled` is off.
 

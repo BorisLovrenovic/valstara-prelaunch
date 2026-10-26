@@ -361,7 +361,7 @@ test('the header shows wordmark, Join and toggle at small widths, and the sectio
         }));
         const expected = [
           { href: '/', name: 'Valstara', tag: 'A' },
-          ...(width >= 640
+          ...(width >= 768
             ? sectionLinks.map((link, index) => ({
                 ...link,
                 name: ['How it works', 'What you get', 'Guarantee', 'FAQ'][

@@ -1,0 +1,187 @@
+---
+// E11.5-11a: every primitive on the wireframe component sheet, in each state
+// a visitor can put it in, so the geometry tests read the real components.
+import Accordion from '../../../../../src/components/accordion.astro';
+import Button from '../../../../../src/components/button.astro';
+import Card from '../../../../../src/components/card.astro';
+import Checkbox from '../../../../../src/components/checkbox.astro';
+import Field from '../../../../../src/components/field.astro';
+import Icon from '../../../../../src/components/icon.astro';
+import IconTile from '../../../../../src/components/icon-tile.astro';
+import Input from '../../../../../src/components/input.astro';
+import Pill from '../../../../../src/components/pill.astro';
+import Section from '../../../../../src/components/section.astro';
+import TextLink from '../../../../../src/components/text-link.astro';
+import ThemeToggle from '../../../../../src/islands/ThemeToggle.astro';
+import '../../../../../src/styles/tokens.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Component sheet fixture</title>
+  </head>
+  <body>
+    <main>
+      <div class="sheet">
+        <div class="row">
+          <Button id="primary">Join the waitlist</Button>
+          <Button id="primary-disabled" disabled>Join the waitlist</Button>
+          <Button id="primary-h44" size="h44" href="#join"
+            >Join the waitlist</Button
+          >
+          <Button id="primary-xs" size="xs" href="#join"
+            >Join the waitlist</Button
+          >
+        </div>
+        <div class="stretch" id="full-parent">
+          <Button id="primary-full" full>Join the waitlist</Button>
+        </div>
+        <div class="row">
+          <Button id="secondary" variant="secondary">Send the link again</Button
+          >
+          <Button id="secondary-disabled" variant="secondary" disabled
+            >Send the link again</Button
+          >
+        </div>
+        <p class="body">
+          Text link on paper: <TextLink id="text-link" href="#join"
+            >See the giveaway rules</TextLink
+          >
+        </p>
+        <Field
+          id="field"
+          controlId="sheet-email"
+          label="Email address"
+          description="We'll email you a link to confirm your address."
+          descriptionId="sheet-email-hint"
+        >
+          <Input
+            id="sheet-email"
+            type="email"
+            placeholder="you@example.com"
+            aria-describedby="sheet-email-hint"
+          />
+        </Field>
+        <Field
+          id="field-error"
+          controlId="sheet-error"
+          label="Email address"
+          description="We'll email you a link to confirm your address."
+          descriptionId="sheet-error-hint"
+          error="Enter a valid email address."
+          errorId="sheet-error-message"
+        >
+          <Input
+            id="sheet-error"
+            type="email"
+            value="alex.morgan@example"
+            invalid
+            aria-describedby="sheet-error-hint sheet-error-message"
+          />
+        </Field>
+        <Input id="sheet-input-disabled" type="email" disabled />
+        <Checkbox id="sheet-check" name="marketing" optional
+          >Yes, email me weekly updates and product news from Valstara. I can
+          switch this off at any time.</Checkbox
+        >
+        <Checkbox id="sheet-check-disabled" disabled>Disabled choice</Checkbox>
+        <div class="row">
+          <Pill id="reward-pill"
+            ><Icon name="arrow-up" size="sm" />Up one access wave</Pill
+          >
+          <Pill id="coral-pill" variant="coral"
+            ><span class="tabular-figure">15%</span> off at launch</Pill
+          >
+          <Pill id="step-badge" variant="step">1</Pill>
+        </div>
+        <Card id="sheet-card">
+          <IconTile id="sheet-tile" name="people" />
+          <p>Referral rewards</p>
+        </Card>
+        <Card id="sheet-card-link" interactive>
+          <a href="#join">Is Valstara legit?</a>
+        </Card>
+        <div class="faq-card" id="faq">
+          <Accordion id="faq-closed" summary="What happens when I sign up?"
+            >We send one verification link.</Accordion
+          >
+          <Accordion id="faq-open" summary="Can I leave the waitlist?" open
+            >Yes. Every email we send carries a one-click unsubscribe.</Accordion
+          >
+        </div>
+        <div class="row">
+          <span id="star-sm" class="star-coral"
+            ><Icon name="star" size="sm" /></span
+          >
+          <span id="star-md" class="star-lift"
+            ><Icon name="star" size="md" /></span
+          >
+          <ThemeToggle />
+        </div>
+        <p id="join">Join target</p>
+      </div>
+      <Section id="sheet-midnight" variant="midnight">
+        <div class="row">
+          <Button id="sheet-on-midnight" variant="on-midnight"
+            >Read the guarantee</Button
+          >
+          <Button id="sheet-on-midnight-disabled" variant="on-midnight" disabled
+            >Read the guarantee</Button
+          >
+        </div>
+        <p class="body">
+          Text link on midnight: <TextLink
+            id="text-link-midnight"
+            variant="on-midnight"
+            href="#join">Read the guarantee</TextLink
+          >
+        </p>
+      </Section>
+    </main>
+  </body>
+</html>
+
+<style>
+  html,
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    background-color: var(--paper);
+  }
+
+  .sheet {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .body {
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .faq-card {
+    padding-inline: var(--space-3);
+    background-color: var(--surface);
+    border-radius: var(--radius-card);
+  }
+
+  .star-coral {
+    color: var(--coral);
+  }
+
+  .star-lift {
+    color: var(--coral-lift);
+  }
+</style>

@@ -855,7 +855,9 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
     border-radius: var(--radius-pill);
   }
 
+  /* Ink on coral-tint: dark coral-tint is translucent (E11.5-11a). */
   .member-reward__state--settled {
+    color: var(--ink);
     background-color: var(--coral-tint);
   }
 
@@ -1033,7 +1035,7 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
     cursor: pointer;
   }
 
-  @media (min-width: 40rem) {
+  @media (min-width: 48rem) {
     .member-stats {
       grid-template-columns: repeat(auto-fit, minmax(var(--space-10), 1fr));
     }

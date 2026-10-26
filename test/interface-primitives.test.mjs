@@ -10,6 +10,8 @@ import { promisify } from 'node:util';
 
 import { chromium } from 'playwright';
 
+import { primitivesCopy } from '../src/copy/primitives.ts';
+import { themeToggleCopy } from '../src/copy/theme-toggle.ts';
 import { publishedPort } from './helpers/listen-port.mjs';
 
 const executeFile = promisify(execFile);
@@ -53,6 +55,25 @@ function contrastRatio(first, second) {
     (Math.max(firstLuminance, secondLuminance) + 0.05) /
     (Math.min(firstLuminance, secondLuminance) + 0.05)
   );
+}
+
+// An rgb() or rgba() string as [r, g, b, alpha].
+function parseColor(color) {
+  const [red, green, blue, alpha = 1] = color.match(/[\d.]+/gu).map(Number);
+  return [red, green, blue, alpha];
+}
+
+// A translucent fill as the opaque colour it shows over its background.
+function composite(fill, background) {
+  const [red, green, blue, alpha] = parseColor(fill);
+  const base = parseColor(background);
+  const mix = (top, bottom) => Math.round(top * alpha + bottom * (1 - alpha));
+  return `rgb(${mix(red, base[0])}, ${mix(green, base[1])}, ${mix(blue, base[2])})`;
+}
+
+// The colours of a computed box-shadow list, in order.
+function shadowColors(boxShadow) {
+  return [...boxShadow.matchAll(/rgba?\([^)]*\)/gu)].map((match) => match[0]);
 }
 
 async function componentSources() {
@@ -233,13 +254,16 @@ after(async () => {
 
 test('all primitives and the icon registry are zero-JavaScript Astro components', async () => {
   const components = await componentSources();
-  // E11.5-03 adds the zero-JS Container and Section layout primitives.
+  // E11.5-03 adds the zero-JS Container and Section layout primitives, and
+  // E11.5-11a the checkbox, icon tile and text link from the component sheet.
   assert.deepEqual(components.map(({ name }) => name).sort(), [
     'accordion.astro',
     'button.astro',
     'card.astro',
+    'checkbox.astro',
     'container.astro',
     'field.astro',
+    'icon-tile.astro',
     'icon.astro',
     'input.astro',
     'pill.astro',
@@ -247,6 +271,7 @@ test('all primitives and the icon registry are zero-JavaScript Astro components'
     'provider-rail.astro',
     'section.astro',
     'select.astro',
+    'text-link.astro',
   ]);
 
   for (const { name, source } of components) {
@@ -267,22 +292,23 @@ test('icons render in currentColor at token sizes with decorative hiding', async
         label: element.getAttribute('aria-label'),
         width: getComputedStyle(element).width,
         height: getComputedStyle(element).height,
-        colors: [...element.querySelectorAll('path')].map((path) => [
-          path.getAttribute('fill'),
-          path.getAttribute('stroke'),
-        ]),
+        colors: [...element.querySelectorAll('path, circle, rect')].map(
+          (path) => [path.getAttribute('fill'), path.getAttribute('stroke')],
+        ),
       })),
     );
-    // E11.5-03: the field error state adds the small alert icon and the
-    // accordion its chevron, after the five registry icons.
+    // E11.5-03: the field error state adds its alert icon and the accordion
+    // its chevron, after the five registry icons. E11.5-11a (founder-
+    // authorised rewrite, 2026-10-26): the error icon is the 20px
+    // alert-circle, the chevron is 20px and the small star is 12 × 18.
     assert.equal(icons.length, 7);
     assert.deepEqual(
       icons.map((icon) => icon.width),
-      ['16px', '24px', '40px', '24px', '24px', '16px', '24px'],
+      ['12px', '24px', '40px', '24px', '24px', '20px', '20px'],
     );
     assert.deepEqual(
       icons.map((icon) => icon.height),
-      icons.map((icon) => icon.width),
+      ['18px', '24px', '40px', '24px', '24px', '20px', '20px'],
     );
     assert.equal(icons[0].hidden, 'true');
     assert.equal(icons[1].role, 'img');
@@ -299,23 +325,39 @@ test('icons render in currentColor at token sizes with decorative hiding', async
 });
 
 test('the decorative star has four sharp, concave points and 1.5:1 symmetric arms', async () => {
+  // E11.5-11a (founder-authorised rewrite, 2026-10-26): the wireframe's
+  // star, drawn in its own 16 × 24 box with quadratic, concave sides.
   const source = await readFile(
     join(componentsDirectory, 'icon.astro'),
     'utf8',
   );
-  const path = /name === 'star'[\s\S]*?<path\s+d="([^"]+)"/u.exec(source)?.[1];
-  assert.ok(path);
+  assert.match(source, /viewBox=\{isStar \? '0 0 16 24'/u);
+  const path = /isStar && \([\s\S]*?<path\s+d="([^"]+)"/u.exec(source)?.[1];
+  assert.equal(path, 'M8 0Q9 11 16 12Q9 13 8 24Q7 13 0 12Q7 11 8 0Z');
   const numbers = [...path.matchAll(/-?\d+(?:\.\d+)?/gu)].map((match) =>
     Number(match[0]),
   );
-  assert.deepEqual(
-    numbers,
-    [
-      12, 1.5, 12, 8, 13, 12, 19, 12, 13, 12, 12, 16, 12, 22.5, 12, 16, 11, 12,
-      5, 12, 11, 12, 12, 8, 12, 1.5,
-    ],
-  );
-  assert.equal((22.5 - 1.5) / (19 - 5), 1.5);
+  const points = [];
+  for (let index = 0; index < numbers.length; index += 2)
+    points.push([numbers[index], numbers[index + 1]]);
+  // Tips at the box edges: top, right, bottom, left.
+  const tips = [points[0], points[2], points[4], points[6], points[8]];
+  assert.deepEqual(tips, [
+    [8, 0],
+    [16, 12],
+    [8, 24],
+    [0, 12],
+    [8, 0],
+  ]);
+  // Each side's control point sits inside the box, near the centre, so the
+  // sides are concave and the tips sharp.
+  for (const [x, y] of [points[1], points[3], points[5], points[7]]) {
+    assert.ok(Math.abs(x - 8) <= 1 && Math.abs(y - 12) <= 1, `${x},${y}`);
+  }
+  // Symmetric about the vertical axis x = 8.
+  const mirrored = points.map(([x, y]) => `${16 - x},${y}`).sort();
+  assert.deepEqual(mirrored, points.map(([x, y]) => `${x},${y}`).sort());
+  assert.equal((24 - 0) / (16 - 0), 1.5);
   assert.match(path, /^M[^Z]+Z$/u);
 });
 
@@ -379,6 +421,7 @@ test('native controls follow keyboard order and show contrasting focus indicator
           const background = element.closest(containingSelector);
           return {
             background: globalThis.getComputedStyle(background).backgroundColor,
+            boxShadow: focusStyle.boxShadow,
             outline: focusStyle.outlineColor,
             outlineStyle: focusStyle.outlineStyle,
             outlineWidth: focusStyle.outlineWidth,
@@ -386,10 +429,41 @@ test('native controls follow keyboard order and show contrasting focus indicator
         }, backgroundSelector);
       assert.notEqual(colors.outlineStyle, 'none', selector);
       assert.notEqual(colors.outlineWidth, '0px', selector);
-      assert.ok(
-        contrastRatio(colors.outline, colors.background) >= 3,
-        `${selector} in ${colorScheme}`,
-      );
+      if (selector === 'input') {
+        // The ring eases in over --duration-fast; read it once it settles.
+        await page
+          .locator(selector)
+          .evaluate((element) =>
+            Promise.all(
+              element.getAnimations().map((animation) => animation.finished),
+            ),
+          );
+        colors.boxShadow = await page
+          .locator(selector)
+          .evaluate(
+            (element) => globalThis.getComputedStyle(element).boxShadow,
+          );
+        // E11.5-11a (founder-authorised rewrite, 2026-10-26): the input's
+        // focus indicator is the drawn ring, a 2px surface gap inside a 2px
+        // coral band. Its outline is transparent, kept for forced colours.
+        assert.equal(colors.outline, 'rgba(0, 0, 0, 0)', colorScheme);
+        assert.equal(colors.outlineWidth, '2px', colorScheme);
+        const [gap, ring] = shadowColors(colors.boxShadow);
+        assert.match(
+          colors.boxShadow,
+          /^rgb\([^)]*\) 0px 0px 0px 2px, rgb\([^)]*\) 0px 0px 0px 4px$/u,
+        );
+        assert.equal(gap, colors.background, colorScheme);
+        assert.ok(
+          contrastRatio(ring, colors.background) >= 3,
+          `input ring in ${colorScheme}`,
+        );
+      } else {
+        assert.ok(
+          contrastRatio(colors.outline, colors.background) >= 3,
+          `${selector} in ${colorScheme}`,
+        );
+      }
 
       if (selector === 'button') {
         await page.keyboard.press('Enter');
@@ -489,16 +563,19 @@ test('all primitives resolve theme tokens in light and dark modes', async () => 
     await context.close();
   }
 
+  // E11.5-11a (founder-authorised rewrite, 2026-10-26): the button label is
+  // --on-coral (#101014) in both themes, the pill label is ink, the dark pill
+  // is the dark coral-tint, and the FAQ item is unboxed (no background).
   assert.deepEqual(renderedThemes, [
     {
       accordion: {
-        background: 'rgb(255, 255, 255)',
+        background: 'rgba(0, 0, 0, 0)',
         color: 'rgb(16, 16, 20)',
         visible: true,
       },
       button: {
         background: 'rgb(232, 101, 74)',
-        color: 'rgb(23, 23, 51)',
+        color: 'rgb(16, 16, 20)',
         visible: true,
       },
       card: {
@@ -523,7 +600,7 @@ test('all primitives resolve theme tokens in light and dark modes', async () => 
       },
       pill: {
         background: 'rgb(253, 238, 233)',
-        color: 'rgb(23, 23, 51)',
+        color: 'rgb(16, 16, 20)',
         visible: true,
       },
       select: {
@@ -534,13 +611,13 @@ test('all primitives resolve theme tokens in light and dark modes', async () => 
     },
     {
       accordion: {
-        background: 'rgb(23, 23, 51)',
+        background: 'rgba(0, 0, 0, 0)',
         color: 'rgb(240, 240, 238)',
         visible: true,
       },
       button: {
         background: 'rgb(255, 138, 102)',
-        color: 'rgb(23, 23, 51)',
+        color: 'rgb(16, 16, 20)',
         visible: true,
       },
       card: {
@@ -564,8 +641,8 @@ test('all primitives resolve theme tokens in light and dark modes', async () => 
         visible: true,
       },
       pill: {
-        background: 'rgb(253, 238, 233)',
-        color: 'rgb(23, 23, 51)',
+        background: 'rgba(255, 138, 102, 0.16)',
+        color: 'rgb(240, 240, 238)',
         visible: true,
       },
       select: {
@@ -598,6 +675,23 @@ function computed(page, selector, properties) {
   }, properties);
 }
 
+// Any token expression, such as a two-token shadow list, as computed.
+function resolvedValue(page, property, value) {
+  return page.evaluate(
+    ([name, expression]) => {
+      const probe = globalThis.document.createElement('div');
+      // A border width computes to 0 unless the border has a style.
+      probe.style.borderStyle = 'solid';
+      probe.style[name] = expression;
+      globalThis.document.body.append(probe);
+      const resolved = globalThis.getComputedStyle(probe)[name];
+      probe.remove();
+      return resolved;
+    },
+    [property, value],
+  );
+}
+
 function resolvedToken(page, property, token) {
   return page.evaluate(
     ([name, value]) => {
@@ -618,26 +712,47 @@ test('buttons show distinct hover, active, focus-visible and disabled states at 
     try {
       const properties = ['backgroundColor', 'boxShadow', 'cursor'];
       const coral = await resolvedToken(page, 'backgroundColor', '--coral');
-      const coralLift = await resolvedToken(
+      // E11.5-11a (founder-authorised rewrite, 2026-10-26): primary rests on
+      // its own shadow, and hover and active darken through an inset overlay
+      // over the unchanged coral fill.
+      const restShadow = await resolvedToken(
         page,
-        'backgroundColor',
-        '--coral-lift',
+        'boxShadow',
+        '--shadow-button',
       );
-      const shadow1 = await resolvedToken(page, 'boxShadow', '--shadow-1');
+      const hoverShadow = await resolvedValue(
+        page,
+        'boxShadow',
+        'var(--overlay-hover), var(--shadow-1)',
+      );
+      const activeShadow = await resolvedToken(
+        page,
+        'boxShadow',
+        '--overlay-active',
+      );
+      assert.equal(restShadow, 'rgba(16, 16, 20, 0.14) 0px 1px 2px 0px');
+      assert.match(
+        hoverShadow,
+        /^rgba\(16, 16, 20, 0\.08\) 0px 0px 0px 100px inset, /u,
+      );
+      assert.equal(
+        activeShadow,
+        'rgba(16, 16, 20, 0.16) 0px 0px 0px 100px inset',
+      );
 
       const rest = await computed(page, '#primary', properties);
       assert.equal(rest.backgroundColor, coral, colorScheme);
-      assert.equal(rest.boxShadow, 'none');
+      assert.equal(rest.boxShadow, restShadow);
 
       await page.locator('#primary').hover();
       const hover = await computed(page, '#primary', properties);
-      assert.equal(hover.backgroundColor, coralLift, colorScheme);
-      assert.equal(hover.boxShadow, shadow1);
+      assert.equal(hover.backgroundColor, coral, colorScheme);
+      assert.equal(hover.boxShadow, hoverShadow);
 
       await page.mouse.down();
       const active = await computed(page, '#primary', properties);
       assert.equal(active.backgroundColor, coral);
-      assert.equal(active.boxShadow, 'none');
+      assert.equal(active.boxShadow, activeShadow);
       await page.mouse.up();
 
       // A fresh load, so the first Tab is keyboard focus with no prior click.
@@ -662,8 +777,9 @@ test('buttons show distinct hover, active, focus-visible and disabled states at 
       const disabled = await computed(page, '#disabled', properties);
       assert.equal(
         disabled.backgroundColor,
-        await resolvedToken(page, 'backgroundColor', '--line'),
+        await resolvedToken(page, 'backgroundColor', '--coral-tint'),
       );
+      assert.equal(disabled.boxShadow, 'none');
       assert.equal(disabled.cursor, 'not-allowed');
       assert.equal(await page.locator('#disabled').isDisabled(), true);
 
@@ -714,8 +830,18 @@ test('a button with an href is a native link, and on-midnight reads on the band'
         'color',
       ]);
       assert.notEqual(hovered.backgroundColor, onMidnight.backgroundColor);
+      // E11.5-11a (founder-authorised rewrite, 2026-10-26): the hover fill is
+      // translucent, so its contrast is read on the fill composited over the
+      // midnight band it sits on.
+      assert.equal(
+        hovered.backgroundColor,
+        await resolvedToken(page, 'backgroundColor', '--on-midnight-hover'),
+      );
       assert.ok(
-        contrastRatio(hovered.color, hovered.backgroundColor) >= 4.5,
+        contrastRatio(
+          hovered.color,
+          composite(hovered.backgroundColor, band.backgroundColor),
+        ) >= 4.5,
         colorScheme,
       );
     } finally {
@@ -797,9 +923,25 @@ test('cards rest on shadow-1 and only an interactive card rises to shadow-2 on h
   for (const colorScheme of ['light', 'dark']) {
     const { context, page } = await statesPage({ colorScheme });
     try {
-      const shadow1 = await resolvedToken(page, 'boxShadow', '--shadow-1');
-      const shadow2 = await resolvedToken(page, 'boxShadow', '--shadow-2');
+      // E11.5-11a (founder-authorised rewrite, 2026-10-26): every elevated
+      // surface adds --edge, transparent in light and a 1px edge in dark.
+      const shadow1 = await resolvedValue(
+        page,
+        'boxShadow',
+        'var(--shadow-1), var(--edge)',
+      );
+      const shadow2 = await resolvedValue(
+        page,
+        'boxShadow',
+        'var(--shadow-2), var(--edge)',
+      );
       assert.notEqual(shadow1, shadow2);
+      assert.equal(
+        shadowColors(shadow1).at(-1),
+        colorScheme === 'dark'
+          ? 'rgba(240, 240, 238, 0.1)'
+          : 'rgba(0, 0, 0, 0)',
+      );
       for (const selector of ['#static-card', '#interactive-card']) {
         assert.equal(
           (await computed(page, selector, ['boxShadow'])).boxShadow,
@@ -901,6 +1043,1034 @@ test('Container caps content at --container-max with gutters, and Section headin
       assert.equal(heading.textAlign, 'start');
       const headingBox = await page.locator('#default-heading').boundingBox();
       assert.equal(Math.round(headingBox.x), Math.round(box.x));
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+// E11.5-11a: the wireframe component sheet. Each primitive is measured in
+// the states a visitor can put it in, at the large and small widths, in both
+// themes, against the sheet's stated dimensions (1px tolerance).
+async function sheetPage(options = {}) {
+  const context = await browser.newContext({
+    reducedMotion: 'reduce',
+    viewport: { width: 1440, height: 2400 },
+    ...options,
+  });
+  const page = await context.newPage();
+  await page.goto(`${browserOrigin}/sheet`);
+  return { context, page };
+}
+
+function box(page, selector) {
+  return page.locator(selector).evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+    };
+  });
+}
+
+function near(actual, expected, message) {
+  assert.ok(
+    Math.abs(actual - expected) <= 1,
+    `${message}: ${actual} is not ${expected}`,
+  );
+}
+
+async function keyboardFocus(page, selector) {
+  // Tab from the start until the element holds keyboard focus, so the
+  // :focus-visible state is the one a keyboard user sees.
+  await page.locator('body').evaluate((body) => body.focus());
+  for (let step = 0; step < 60; step += 1) {
+    await page.keyboard.press('Tab');
+    if (
+      await page
+        .locator(selector)
+        .evaluate(
+          (element) =>
+            element === globalThis.document.activeElement &&
+            element.matches(':focus-visible'),
+        )
+    )
+      return;
+  }
+  throw new Error(`${selector} never took keyboard focus`);
+}
+
+const themes = ['light', 'dark'];
+
+test('the primary button matches the sheet in every state and size, with the ink label in both themes', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await sheetPage({ colorScheme });
+    try {
+      const coral = await resolvedToken(page, 'backgroundColor', '--coral');
+      const rest = await computed(page, '#primary', [
+        'backgroundColor',
+        'color',
+        'fontSize',
+        'fontWeight',
+        'lineHeight',
+        'paddingLeft',
+        'paddingRight',
+        'borderTopLeftRadius',
+        'boxShadow',
+      ]);
+      assert.deepEqual(
+        { ...rest, backgroundColor: rest.backgroundColor === coral },
+        {
+          backgroundColor: true,
+          color: 'rgb(16, 16, 20)',
+          fontSize: '16px',
+          fontWeight: '600',
+          lineHeight: '24px',
+          paddingLeft: '24px',
+          paddingRight: '24px',
+          borderTopLeftRadius: '8px',
+          boxShadow: 'rgba(16, 16, 20, 0.14) 0px 1px 2px 0px',
+        },
+        colorScheme,
+      );
+      near((await box(page, '#primary')).height, 48, 'primary height');
+
+      await page.locator('#primary').hover();
+      assert.equal(
+        (await computed(page, '#primary', ['boxShadow'])).boxShadow,
+        await resolvedValue(
+          page,
+          'boxShadow',
+          'var(--overlay-hover), var(--shadow-1)',
+        ),
+      );
+      await page.mouse.down();
+      const active = await computed(page, '#primary', [
+        'backgroundColor',
+        'boxShadow',
+      ]);
+      assert.equal(active.backgroundColor, coral);
+      assert.equal(
+        active.boxShadow,
+        'rgba(16, 16, 20, 0.16) 0px 0px 0px 100px inset',
+      );
+      await page.mouse.up();
+      await page.mouse.move(0, 0);
+
+      await keyboardFocus(page, '#primary');
+      assert.deepEqual(
+        await computed(page, '#primary', [
+          'outlineStyle',
+          'outlineWidth',
+          'outlineOffset',
+          'outlineColor',
+        ]),
+        {
+          outlineStyle: 'solid',
+          outlineWidth: '2px',
+          outlineOffset: '2px',
+          outlineColor: coral,
+        },
+      );
+
+      const disabled = await computed(page, '#primary-disabled', [
+        'backgroundColor',
+        'color',
+        'boxShadow',
+      ]);
+      assert.deepEqual(disabled, {
+        backgroundColor: await resolvedToken(
+          page,
+          'backgroundColor',
+          '--coral-tint',
+        ),
+        color: await resolvedToken(page, 'color', '--ink-600'),
+        boxShadow: 'none',
+      });
+
+      for (const [selector, height, padding, size] of [
+        ['#primary-h44', 44, '20px', ['16px', '24px']],
+        ['#primary-xs', 44, '12px', ['14px', '20px']],
+      ]) {
+        near((await box(page, selector)).height, height, selector);
+        const style = await computed(page, selector, [
+          'paddingLeft',
+          'fontSize',
+          'lineHeight',
+          'color',
+        ]);
+        assert.equal(style.paddingLeft, padding, selector);
+        assert.deepEqual([style.fontSize, style.lineHeight], size, selector);
+        assert.equal(style.color, 'rgb(16, 16, 20)', selector);
+      }
+      near(
+        (await box(page, '#primary-full')).width,
+        (await box(page, '#full-parent')).width,
+        'full width',
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('the secondary button matches the sheet in every state, and is 44px with 14/20 text below 48rem', async () => {
+  for (const colorScheme of themes) {
+    for (const [width, height, padding, font] of [
+      [1440, 48, '20px', ['16px', '24px']],
+      [767, 44, '16px', ['14px', '20px']],
+      [390, 44, '16px', ['14px', '20px']],
+    ]) {
+      const { context, page } = await sheetPage({
+        colorScheme,
+        viewport: { width, height: 2400 },
+      });
+      try {
+        near((await box(page, '#secondary')).height, height, `${width}`);
+        const rest = await computed(page, '#secondary', [
+          'backgroundColor',
+          'color',
+          'paddingLeft',
+          'fontSize',
+          'lineHeight',
+          'boxShadow',
+        ]);
+        assert.equal(rest.paddingLeft, padding);
+        assert.deepEqual([rest.fontSize, rest.lineHeight], font);
+        assert.equal(
+          rest.backgroundColor,
+          await resolvedToken(page, 'backgroundColor', '--surface'),
+        );
+        assert.equal(rest.color, await resolvedToken(page, 'color', '--ink'));
+        assert.equal(
+          rest.boxShadow,
+          await resolvedValue(
+            page,
+            'boxShadow',
+            'var(--inset-line), var(--shadow-1)',
+          ),
+        );
+        assert.match(rest.boxShadow, /0px 0px 0px 1px inset/u);
+
+        await page.locator('#secondary').hover();
+        assert.equal(
+          (await computed(page, '#secondary', ['boxShadow'])).boxShadow,
+          await resolvedValue(
+            page,
+            'boxShadow',
+            'var(--inset-strong), var(--shadow-2)',
+          ),
+        );
+        await page.mouse.down();
+        assert.equal(
+          (await computed(page, '#secondary', ['boxShadow'])).boxShadow,
+          await resolvedToken(page, 'boxShadow', '--inset-strong'),
+        );
+        await page.mouse.up();
+        await page.mouse.move(0, 0);
+
+        await keyboardFocus(page, '#secondary');
+        const focus = await computed(page, '#secondary', [
+          'outlineWidth',
+          'outlineOffset',
+          'outlineColor',
+        ]);
+        assert.deepEqual(focus, {
+          outlineWidth: '2px',
+          outlineOffset: '2px',
+          outlineColor: await resolvedToken(page, 'color', '--coral'),
+        });
+
+        const disabled = await computed(page, '#secondary-disabled', [
+          'color',
+          'boxShadow',
+        ]);
+        assert.equal(
+          disabled.color,
+          await resolvedToken(page, 'color', '--ink-300'),
+        );
+        assert.equal(
+          disabled.boxShadow,
+          await resolvedToken(page, 'boxShadow', '--inset-line'),
+        );
+      } finally {
+        await context.close();
+      }
+    }
+  }
+});
+
+test('the on-midnight button and the text links match the sheet, on paper and on midnight', async () => {
+  for (const colorScheme of themes) {
+    for (const width of [1440, 390]) {
+      const { context, page } = await sheetPage({
+        colorScheme,
+        viewport: { width, height: 2400 },
+      });
+      try {
+        const midnight = await resolvedToken(
+          page,
+          'backgroundColor',
+          '--midnight',
+        );
+        near((await box(page, '#sheet-on-midnight')).height, 48, 'height');
+        const rest = await computed(page, '#sheet-on-midnight', [
+          'backgroundColor',
+          'color',
+          'paddingLeft',
+          'boxShadow',
+        ]);
+        assert.deepEqual(rest, {
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+          color: await resolvedToken(page, 'color', '--on-midnight'),
+          paddingLeft: '20px',
+          boxShadow: 'rgba(250, 250, 250, 0.45) 0px 0px 0px 1px inset',
+        });
+        await page.locator('#sheet-on-midnight').hover();
+        const hover = await computed(page, '#sheet-on-midnight', [
+          'backgroundColor',
+          'color',
+        ]);
+        assert.equal(hover.backgroundColor, 'rgba(250, 250, 250, 0.08)');
+        assert.ok(
+          contrastRatio(
+            hover.color,
+            composite(hover.backgroundColor, midnight),
+          ) >= 4.5,
+        );
+        await page.mouse.down();
+        assert.equal(
+          (await computed(page, '#sheet-on-midnight', ['backgroundColor']))
+            .backgroundColor,
+          'rgba(250, 250, 250, 0.14)',
+        );
+        await page.mouse.up();
+        await page.mouse.move(0, 0);
+        await keyboardFocus(page, '#sheet-on-midnight');
+        const coralLift = await resolvedToken(page, 'color', '--coral-lift');
+        assert.equal(
+          (await computed(page, '#sheet-on-midnight', ['outlineColor']))
+            .outlineColor,
+          coralLift,
+        );
+        assert.ok(contrastRatio(coralLift, midnight) >= 3);
+        assert.deepEqual(
+          await computed(page, '#sheet-on-midnight-disabled', [
+            'color',
+            'boxShadow',
+          ]),
+          {
+            color: 'rgba(250, 250, 250, 0.45)',
+            boxShadow: 'rgba(250, 250, 250, 0.2) 0px 0px 0px 1px inset',
+          },
+        );
+
+        const link = await computed(page, '#text-link', [
+          'color',
+          'fontWeight',
+          'textDecorationLine',
+          'textDecorationColor',
+          'textDecorationThickness',
+          'textUnderlineOffset',
+          'paddingTop',
+          'paddingBottom',
+        ]);
+        assert.deepEqual(link, {
+          color: await resolvedToken(page, 'color', '--ink'),
+          fontWeight: '500',
+          textDecorationLine: 'underline',
+          textDecorationColor: await resolvedToken(page, 'color', '--coral'),
+          textDecorationThickness: '2px',
+          textUnderlineOffset: '3px',
+          paddingTop: width < 768 ? '12px' : '0px',
+          paddingBottom: width < 768 ? '12px' : '0px',
+        });
+        // Below 48rem the 12px vertical padding gives a 44px hit area.
+        if (width < 768)
+          assert.ok(
+            (await box(page, '#text-link')).height >= 44,
+            'link hit area',
+          );
+        const midnightLink = await computed(page, '#text-link-midnight', [
+          'color',
+          'textDecorationColor',
+        ]);
+        assert.deepEqual(midnightLink, {
+          color: await resolvedToken(page, 'color', '--on-midnight'),
+          textDecorationColor: coralLift,
+        });
+        await keyboardFocus(page, '#text-link');
+        assert.deepEqual(
+          await computed(page, '#text-link', ['outlineWidth', 'outlineColor']),
+          {
+            outlineWidth: '2px',
+            outlineColor: await resolvedToken(page, 'color', '--coral'),
+          },
+        );
+      } finally {
+        await context.close();
+      }
+    }
+  }
+});
+
+test('the input, label, hint and error match the sheet in every state', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await sheetPage({ colorScheme });
+    try {
+      const field = await resolvedToken(page, 'color', '--ink-600');
+      const input = await computed(page, '#sheet-email', [
+        'borderTopWidth',
+        'borderTopColor',
+        'borderTopLeftRadius',
+        'paddingLeft',
+        'fontSize',
+        'lineHeight',
+      ]);
+      assert.deepEqual(input, {
+        borderTopWidth: '1px',
+        borderTopColor: field,
+        borderTopLeftRadius: '8px',
+        paddingLeft: '16px',
+        fontSize: '16px',
+        lineHeight: '24px',
+      });
+      near((await box(page, '#sheet-email')).height, 48, 'field height');
+      // The placeholder is ink-600 in both themes (founder-authorised
+      // 2026-10-26); in dark that is the drawn #A0A0A8.
+      const placeholder = await page
+        .locator('#sheet-email')
+        .evaluate(
+          (element) =>
+            globalThis.getComputedStyle(element, '::placeholder').color,
+        );
+      assert.equal(placeholder, field);
+      if (colorScheme === 'dark') assert.equal(field, 'rgb(160, 160, 168)');
+      const surface = await resolvedToken(page, 'backgroundColor', '--surface');
+      assert.ok(contrastRatio(placeholder, surface) >= 4.5, 'placeholder');
+      assert.ok(contrastRatio(field, surface) >= 3, 'field boundary');
+
+      const label = await computed(page, '#field .field__label', [
+        'fontSize',
+        'lineHeight',
+        'fontWeight',
+      ]);
+      assert.deepEqual(label, {
+        fontSize: '14px',
+        lineHeight: '20px',
+        fontWeight: '600',
+      });
+      const hint = await computed(page, '#sheet-email-hint', [
+        'fontSize',
+        'lineHeight',
+        'color',
+      ]);
+      assert.deepEqual(hint, {
+        fontSize: '14px',
+        lineHeight: '20px',
+        color: field,
+      });
+      const labelBox = await box(page, '#field .field__label');
+      const hintBox = await box(page, '#sheet-email-hint');
+      const inputBox = await box(page, '#sheet-email');
+      near(hintBox.top - labelBox.bottom, 4, 'hint 4px below the label');
+      near(inputBox.top - hintBox.bottom, 8, 'field 8px below the hint');
+
+      await page.locator('#sheet-email').hover();
+      assert.equal(
+        (await computed(page, '#sheet-email', ['borderTopColor']))
+          .borderTopColor,
+        await resolvedToken(page, 'color', '--ink'),
+      );
+      await page.mouse.move(0, 0);
+      await keyboardFocus(page, '#sheet-email');
+      const focus = await computed(page, '#sheet-email', [
+        'borderTopColor',
+        'boxShadow',
+        'outlineStyle',
+        'outlineWidth',
+        'outlineColor',
+      ]);
+      assert.deepEqual(focus, {
+        borderTopColor: await resolvedToken(page, 'color', '--coral'),
+        boxShadow: await resolvedToken(page, 'boxShadow', '--ring-focus'),
+        outlineStyle: 'solid',
+        outlineWidth: '2px',
+        outlineColor: 'rgba(0, 0, 0, 0)',
+      });
+      assert.match(
+        focus.boxShadow,
+        /^rgb\([^)]*\) 0px 0px 0px 2px, rgb\([^)]*\) 0px 0px 0px 4px$/u,
+      );
+
+      const error = await computed(page, '#sheet-error', [
+        'borderTopWidth',
+        'borderTopColor',
+        'paddingLeft',
+      ]);
+      assert.deepEqual(error, {
+        borderTopWidth: '2px',
+        borderTopColor: await resolvedToken(page, 'color', '--error'),
+        paddingLeft: '15px',
+      });
+      const errorBox = await box(page, '#field-error .field__error-row');
+      near(
+        errorBox.top - (await box(page, '#sheet-error')).bottom,
+        8,
+        'message 8px below the field',
+      );
+      const icon = await computed(page, '#field-error .field__error-row svg', [
+        'width',
+        'height',
+        'color',
+      ]);
+      assert.deepEqual(icon, {
+        width: '20px',
+        height: '20px',
+        color: await resolvedToken(page, 'color', '--error'),
+      });
+      assert.equal(
+        await page.locator('#field-error .field__error-row svg circle').count(),
+        1,
+        'the alert-circle icon',
+      );
+      const message = await computed(page, '#sheet-error-message', [
+        'fontSize',
+        'lineHeight',
+        'fontWeight',
+        'color',
+      ]);
+      assert.deepEqual(message, {
+        fontSize: '14px',
+        lineHeight: '20px',
+        fontWeight: '600',
+        color: await resolvedToken(page, 'color', '--error-text'),
+      });
+      assert.equal(
+        message.color,
+        colorScheme === 'dark' ? 'rgb(240, 240, 238)' : 'rgb(192, 57, 43)',
+      );
+      assert.ok(contrastRatio(message.color, surface) >= 4.5, 'error text');
+      assert.deepEqual(
+        (await page.locator('#sheet-error').getAttribute('aria-describedby'))
+          .split(' ')
+          .sort(),
+        ['sheet-error-hint', 'sheet-error-message'],
+      );
+
+      const disabled = await computed(page, '#sheet-input-disabled', [
+        'backgroundColor',
+        'borderTopColor',
+      ]);
+      assert.deepEqual(disabled, {
+        backgroundColor: await resolvedToken(
+          page,
+          'backgroundColor',
+          '--paper',
+        ),
+        borderTopColor: await resolvedToken(page, 'color', '--line'),
+      });
+      assert.equal(
+        await page.locator('#sheet-input-disabled').isDisabled(),
+        true,
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('the checkbox is 20px, never pre-ticked, ticks to ink with a paper check, and has a 44px target', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await sheetPage({ colorScheme });
+    try {
+      const checkbox = page.locator('#sheet-check');
+      assert.equal(await checkbox.isChecked(), false);
+      assert.equal(await checkbox.getAttribute('checked'), null);
+      const drawn = '.checkbox:has(#sheet-check) .checkbox__box';
+      const boxBox = await box(page, drawn);
+      near(boxBox.width, 20, 'box width');
+      near(boxBox.height, 20, 'box height');
+      const rest = await computed(page, drawn, [
+        'borderTopWidth',
+        'borderTopColor',
+        'borderTopLeftRadius',
+        'backgroundColor',
+      ]);
+      // Chromium snaps a 1.5px border to whole pixels, so the box is checked
+      // against the token as declared and as the engine renders it.
+      assert.equal(
+        await page.evaluate(() =>
+          globalThis
+            .getComputedStyle(globalThis.document.documentElement)
+            .getPropertyValue('--border-check')
+            .trim(),
+        ),
+        '1.5px',
+      );
+      assert.deepEqual(rest, {
+        borderTopWidth: await resolvedValue(
+          page,
+          'borderTopWidth',
+          'var(--border-check)',
+        ),
+        borderTopColor: await resolvedToken(page, 'color', '--field'),
+        borderTopLeftRadius: '4px',
+        backgroundColor: await resolvedToken(
+          page,
+          'backgroundColor',
+          '--surface',
+        ),
+      });
+      // The native input is a 44px target centred on the drawn box.
+      const target = await box(page, '#sheet-check');
+      near(target.width, 44, 'target width');
+      near(target.height, 44, 'target height');
+      near(target.left + 22, boxBox.left + 10, 'target centred across');
+      near(target.top + 22, boxBox.top + 10, 'target centred down');
+
+      const text = await box(
+        page,
+        '.checkbox:has(#sheet-check) .checkbox__text',
+      );
+      near(text.left - boxBox.right, 12, 'label 12px from the box');
+      assert.deepEqual(
+        await computed(page, '.checkbox:has(#sheet-check)', [
+          'fontSize',
+          'lineHeight',
+          'color',
+        ]),
+        {
+          fontSize: '14px',
+          lineHeight: '20px',
+          color: await resolvedToken(page, 'color', '--ink-600'),
+        },
+      );
+      const optional = '.checkbox:has(#sheet-check) .checkbox__optional';
+      assert.equal(
+        (await page.locator(optional).textContent()).trim(),
+        primitivesCopy.optional,
+      );
+      assert.deepEqual(
+        await computed(page, optional, [
+          'paddingLeft',
+          'paddingRight',
+          'marginRight',
+          'borderTopLeftRadius',
+          'boxShadow',
+          'fontSize',
+          'lineHeight',
+          'fontWeight',
+        ]),
+        {
+          paddingLeft: '8px',
+          paddingRight: '8px',
+          marginRight: '6px',
+          borderTopLeftRadius: '999px',
+          boxShadow: await resolvedToken(page, 'boxShadow', '--inset-line'),
+          fontSize: '13px',
+          lineHeight: '18px',
+          fontWeight: '600',
+        },
+      );
+
+      await checkbox.hover();
+      assert.equal(
+        (await computed(page, drawn, ['borderTopColor'])).borderTopColor,
+        await resolvedToken(page, 'color', '--ink'),
+      );
+      await checkbox.click();
+      assert.equal(await checkbox.isChecked(), true);
+      const ink = await resolvedToken(page, 'backgroundColor', '--ink');
+      const ticked = await computed(page, drawn, [
+        'backgroundColor',
+        'borderTopColor',
+        'color',
+      ]);
+      assert.deepEqual(ticked, {
+        backgroundColor: ink,
+        borderTopColor: ink,
+        color: await resolvedToken(page, 'color', '--paper'),
+      });
+      assert.ok(contrastRatio(ticked.color, ink) >= 3, 'check mark');
+      await page.mouse.move(0, 0);
+      await keyboardFocus(page, '#sheet-check');
+      assert.deepEqual(
+        await computed(page, drawn, [
+          'outlineWidth',
+          'outlineOffset',
+          'outlineColor',
+        ]),
+        {
+          outlineWidth: '2px',
+          outlineOffset: '2px',
+          outlineColor: await resolvedToken(page, 'color', '--coral'),
+        },
+      );
+      await page.keyboard.press('Space');
+      assert.equal(await checkbox.isChecked(), false, 'keyboard unticks');
+      assert.equal(
+        (
+          await computed(
+            page,
+            '.checkbox:has(#sheet-check-disabled) .checkbox__box',
+            ['borderTopColor'],
+          )
+        ).borderTopColor,
+        await resolvedToken(page, 'color', '--ink-300'),
+      );
+      assert.equal(
+        await page.locator('#sheet-check-disabled').isDisabled(),
+        true,
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('the pills, step badge, card and icon tile match the sheet in both themes', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await sheetPage({ colorScheme });
+    try {
+      const reward = await computed(page, '#reward-pill', [
+        'paddingTop',
+        'paddingLeft',
+        'borderTopLeftRadius',
+        'backgroundColor',
+        'color',
+        'fontSize',
+        'lineHeight',
+        'fontWeight',
+        'columnGap',
+      ]);
+      assert.deepEqual(reward, {
+        paddingTop: '4px',
+        paddingLeft: '12px',
+        borderTopLeftRadius: '999px',
+        backgroundColor: await resolvedToken(
+          page,
+          'backgroundColor',
+          '--coral-tint',
+        ),
+        color: await resolvedToken(page, 'color', '--ink'),
+        fontSize: '13px',
+        lineHeight: '18px',
+        fontWeight: '600',
+        columnGap: '6px',
+      });
+      const surface = await resolvedToken(page, 'backgroundColor', '--surface');
+      assert.ok(
+        contrastRatio(
+          reward.color,
+          composite(reward.backgroundColor, surface),
+        ) >= 4.5,
+        'reward pill text',
+      );
+      near((await box(page, '#reward-pill svg')).width, 16, 'pill icon');
+
+      const coral = await computed(page, '#coral-pill', [
+        'backgroundColor',
+        'color',
+        'fontFamily',
+      ]);
+      assert.equal(
+        coral.backgroundColor,
+        await resolvedToken(page, 'backgroundColor', '--coral'),
+      );
+      assert.equal(coral.color, 'rgb(16, 16, 20)');
+      assert.doesNotMatch(coral.fontFamily, /Mono/u);
+      assert.ok(contrastRatio(coral.color, coral.backgroundColor) >= 4.5);
+      const figure = await computed(page, '#coral-pill .tabular-figure', [
+        'fontFamily',
+        'fontVariantNumeric',
+      ]);
+      assert.match(figure.fontFamily, /^"JetBrains Mono"/u);
+      assert.equal(figure.fontVariantNumeric, 'tabular-nums');
+
+      const step = await box(page, '#step-badge');
+      near(step.width, 24, 'step width');
+      near(step.height, 24, 'step height');
+      const stepStyle = await computed(page, '#step-badge', [
+        'backgroundColor',
+        'color',
+        'fontFamily',
+        'fontSize',
+        'lineHeight',
+        'fontWeight',
+      ]);
+      assert.equal(
+        stepStyle.backgroundColor,
+        await resolvedToken(page, 'backgroundColor', '--ink'),
+      );
+      assert.equal(
+        stepStyle.color,
+        await resolvedToken(page, 'color', '--paper'),
+      );
+      assert.match(stepStyle.fontFamily, /^"JetBrains Mono"/u);
+      assert.deepEqual(
+        [stepStyle.fontSize, stepStyle.lineHeight, stepStyle.fontWeight],
+        ['13px', '18px', '600'],
+      );
+      assert.ok(
+        contrastRatio(stepStyle.color, stepStyle.backgroundColor) >= 4.5,
+      );
+
+      const card = await computed(page, '#sheet-card', [
+        'backgroundColor',
+        'borderTopLeftRadius',
+        'paddingTop',
+        'paddingLeft',
+        'boxShadow',
+      ]);
+      assert.deepEqual(card, {
+        backgroundColor: surface,
+        borderTopLeftRadius: '12px',
+        paddingTop: '24px',
+        paddingLeft: '24px',
+        boxShadow: await resolvedValue(
+          page,
+          'boxShadow',
+          'var(--shadow-1), var(--edge)',
+        ),
+      });
+      await page.locator('#sheet-card-link').hover();
+      assert.equal(
+        (await computed(page, '#sheet-card-link', ['boxShadow'])).boxShadow,
+        await resolvedValue(page, 'boxShadow', 'var(--shadow-2), var(--edge)'),
+      );
+      await page.mouse.move(0, 0);
+
+      const tile = await box(page, '#sheet-tile');
+      near(tile.width, 40, 'tile width');
+      near(tile.height, 40, 'tile height');
+      assert.deepEqual(
+        await computed(page, '#sheet-tile', [
+          'backgroundColor',
+          'borderTopLeftRadius',
+        ]),
+        {
+          backgroundColor: await resolvedToken(
+            page,
+            'backgroundColor',
+            '--paper',
+          ),
+          borderTopLeftRadius: '8px',
+        },
+      );
+      assert.equal(
+        await page.locator('#sheet-tile').getAttribute('aria-hidden'),
+        'true',
+      );
+      near((await box(page, '#sheet-tile svg')).width, 20, 'tile icon');
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('the FAQ item is an unboxed native disclosure with dividers, a 64px summary and a turning 20px chevron', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await sheetPage({ colorScheme });
+    try {
+      const summary = '#faq-closed summary';
+      near((await box(page, summary)).height, 64, 'summary height');
+      assert.deepEqual(
+        await computed(page, summary, [
+          'paddingTop',
+          'paddingBottom',
+          'fontSize',
+          'lineHeight',
+          'fontWeight',
+        ]),
+        {
+          paddingTop: '20px',
+          paddingBottom: '20px',
+          fontSize: '16px',
+          lineHeight: '24px',
+          fontWeight: '600',
+        },
+      );
+      const chevron = await computed(page, '#faq-closed svg', [
+        'width',
+        'color',
+        'transform',
+        'transitionProperty',
+      ]);
+      assert.deepEqual(chevron, {
+        width: '20px',
+        color: await resolvedToken(page, 'color', '--ink-600'),
+        transform: 'none',
+        transitionProperty: 'none',
+      });
+      assert.equal(
+        (await computed(page, '#faq-open svg', ['transform'])).transform,
+        'matrix(-1, 0, 0, -1, 0, 0)',
+      );
+      await page.locator(summary).click();
+      assert.equal(await page.locator('#faq-closed').getAttribute('open'), '');
+      await page.locator(summary).click();
+      assert.equal(
+        await page.locator('#faq-closed').getAttribute('open'),
+        null,
+      );
+
+      const answer = await page
+        .locator('#faq-open .accordion__content')
+        .evaluate((element) => {
+          const style = globalThis.getComputedStyle(element);
+          const probe = globalThis.document.createElement('div');
+          probe.style.maxWidth = '68ch';
+          element.append(probe);
+          const measure = globalThis.getComputedStyle(probe).maxWidth;
+          probe.remove();
+          return {
+            color: style.color,
+            fontSize: style.fontSize,
+            lineHeight: style.lineHeight,
+            maxWidth: style.maxWidth,
+            measure,
+            paddingBottom: style.paddingBottom,
+          };
+        });
+      assert.equal(
+        answer.color,
+        await resolvedToken(page, 'color', '--ink-600'),
+      );
+      assert.deepEqual(
+        [answer.fontSize, answer.lineHeight, answer.paddingBottom],
+        ['16px', '24px', '24px'],
+      );
+      assert.equal(answer.maxWidth, answer.measure);
+
+      for (const selector of ['#faq-closed', '#faq-open']) {
+        assert.equal(
+          (await computed(page, selector, ['backgroundColor', 'boxShadow']))
+            .backgroundColor,
+          'rgba(0, 0, 0, 0)',
+        );
+      }
+      assert.equal(
+        (await computed(page, '#faq-closed', ['borderTopWidth']))
+          .borderTopWidth,
+        '0px',
+      );
+      assert.deepEqual(
+        await computed(page, '#faq-open', ['borderTopWidth', 'borderTopColor']),
+        {
+          borderTopWidth: '1px',
+          borderTopColor: await resolvedToken(page, 'color', '--line'),
+        },
+      );
+      await keyboardFocus(page, summary);
+      assert.equal(
+        (await computed(page, summary, ['outlineColor'])).outlineColor,
+        await resolvedToken(page, 'color', '--coral'),
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('the theme toggle is a 44px bordered icon button offering the other theme, and the stars render at 12 × 18 and 16 × 24', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await sheetPage({ colorScheme });
+    try {
+      const button = 'valstara-theme-toggle button';
+      await page.waitForFunction(
+        (selector) =>
+          globalThis.document.querySelector(selector)?.disabled === false,
+        button,
+      );
+      const toggle = await box(page, button);
+      near(toggle.width, 44, 'toggle width');
+      near(toggle.height, 44, 'toggle height');
+      assert.deepEqual(
+        await computed(page, button, [
+          'borderTopWidth',
+          'borderTopColor',
+          'borderTopLeftRadius',
+          'backgroundColor',
+        ]),
+        {
+          borderTopWidth: '1px',
+          borderTopColor: await resolvedToken(page, 'color', '--line'),
+          borderTopLeftRadius: '8px',
+          backgroundColor: await resolvedToken(
+            page,
+            'backgroundColor',
+            '--surface',
+          ),
+        },
+      );
+      const visibleIcon = await page
+        .locator(`${button} svg`)
+        .evaluateAll((icons) =>
+          icons
+            .filter((icon) => icon.getClientRects().length > 0)
+            .map((icon) => ({
+              name: [...icon.classList].find((name) =>
+                /^icon--(?:moon|sun)$/u.test(name),
+              ),
+              width: icon.getBoundingClientRect().width,
+            })),
+        );
+      assert.deepEqual(visibleIcon, [
+        {
+          name: colorScheme === 'dark' ? 'icon--sun' : 'icon--moon',
+          width: 20,
+        },
+      ]);
+      assert.equal(
+        await page
+          .getByRole('button', {
+            name:
+              colorScheme === 'dark'
+                ? themeToggleCopy.useLight
+                : themeToggleCopy.useDark,
+          })
+          .count(),
+        1,
+      );
+      await keyboardFocus(page, button);
+      assert.deepEqual(
+        await computed(page, button, [
+          'outlineWidth',
+          'outlineOffset',
+          'outlineColor',
+        ]),
+        {
+          outlineWidth: '2px',
+          outlineOffset: '2px',
+          outlineColor: await resolvedToken(page, 'color', '--coral'),
+        },
+      );
+
+      for (const [selector, width, height, token] of [
+        ['#star-sm svg', 12, 18, '--coral'],
+        ['#star-md svg', 16, 24, '--coral-lift'],
+      ]) {
+        const star = await box(page, selector);
+        near(star.width, width, `${selector} width`);
+        near(star.height, height, `${selector} height`);
+        assert.equal(
+          (await computed(page, selector, ['color'])).color,
+          await resolvedToken(page, 'color', token),
+        );
+        assert.equal(
+          await page.locator(selector).getAttribute('aria-hidden'),
+          'true',
+        );
+        assert.equal(
+          await page.locator(`${selector} path`).getAttribute('fill'),
+          'currentColor',
+        );
+      }
     } finally {
       await context.close();
     }
