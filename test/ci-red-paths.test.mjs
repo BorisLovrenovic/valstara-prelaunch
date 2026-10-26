@@ -134,7 +134,11 @@ test(
           `${name} fixture failed for the wrong reason`,
         );
       } finally {
-        await rm(temporaryRoot, { force: true, recursive: true });
+        await rm(temporaryRoot, {
+          force: true,
+          recursive: true,
+          maxRetries: 3,
+        });
       }
     }
   },
