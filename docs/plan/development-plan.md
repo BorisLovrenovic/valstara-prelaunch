@@ -76,7 +76,7 @@ The Codex roster on 2026-09-28 was GPT-5.6 Luna, Terra and Sol, and GPT-6 Luna, 
 | **GPT-6 Luna** | Small, low-stakes tickets with no terminal work, no audit and no new factual claim, where an existing gate catches the dangerous failure | 14–16 points below Sol on the Coding Agent Index (41 vs 57). It is cheaper, not faster: it writes more tokens per task |
 | GPT-5.6 Sol, Terra, Luna | Not used | GPT-6 Sol matches or beats GPT-5.6 Sol and Terra at every level for less; GPT-6 Luna matches or beats GPT-5.6 Luna from Light to High |
 
-**E11.5 (founder-authorised 2026-10-19) follows the same binding:** its eleven code tickets go to GPT-6 Sol and its design-QA and re-audit ticket, E11.5-12, to GPT-6 Astra.
+**E11.5 (founder-authorised 2026-10-19) follows the same binding:** its nineteen code tickets, including the eight wireframe tickets added 2026-10-26, go to GPT-6 Sol and its design-QA and re-audit ticket, E11.5-12, to GPT-6 Astra.
 
 **Two tickets are exceptions to "code goes to Sol":** E9-05, because its erasure design spans every table and conflicts with the append-only audit log and six-year award retention, and E11-06, because it is the campaign's unrecoverable output and includes the scratch-database rehearsals. Both go to Astra.
 
@@ -1960,7 +1960,9 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 
 Founder-authorised 2026-10-20: E11.5-04 and E11.5-05 wait for P8; E11.5-06 to E11.5-11 run first; E11.5-12 stays last.
 
-**Goal:** every page a visitor can reach looks finished, reads in seconds and works as well on a phone as on a desktop — without changing what the system does, what it collects or what it claims. *12 tickets.*
+Founder-authorised 2026-10-26: the eight wireframe tickets E11.5-11a to E11.5-11h run after E11.5-11, in order, and before E11.5-12, which stays last.
+
+**Goal:** every page a visitor can reach looks finished, reads in seconds and works as well on a phone as on a desktop — without changing what the system does, what it collects or what it claims. *20 tickets* (12, plus the 8 wireframe tickets added 2026-10-26).
 
 **Why this epic exists.** E2 built a correct, accessible and portable design system, and E3–E9 built every page on it, but no ticket owned the visual design. The site passes its gates and still reads as a wireframe, which `docs/brand/identity-guidelines.md` §7.3 names as an anti-pattern. A visitor sees the design, not the backend. For a brand whose whole proposition is trust, a page that looks unfinished is the conversion failure.
 
@@ -2243,6 +2245,331 @@ Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache hea
 **Tests:** The no-`var(`, no-image and no-remote assertion · the token-trace test · preheader presence · the existing template suites.
 **Docs:** `docs/features/email-campaign.md` · `docs/modules/email.md` · `docs/brand/copy-rules.md#email-copy` · `docs/architecture/adr/015-portable-design-tokens.md`
 
+### The wireframe tickets (E11.5-11a to E11.5-11h)
+
+**Founder-authorised 2026-10-26.** The founder supplied mid-fidelity wireframes for the landing page, its signup form and the mobile sticky bar. These eight tickets build the landing page's exact layout and structure from them. They run after E11.5-11 and before E11.5-12, in order a → h. **Where a wireframe and an earlier E11.5 ticket's layout differ, the wireframe wins; the behaviour those tickets built is unchanged.**
+
+**The source.** The canvas "Valstara waitlist wireframes" at `https://claude.ai/artifact/UpBYawiwLUpinVSYfBQneJ`, **pinned to version `1792974724-d356`**. Read its artboard files under `project/` with the Artifact tool's `read` action. Each ticket names the artboards it implements. The artboards and what they bind:
+
+| Artboard file | Title on the canvas | Binds |
+|---|---|---|
+| `Main.dc.html` | 1 · Desktop 1440 · light · annotated | Large-width layout of every landing section, the header and the footer |
+| `Phone.dc.html` | 2 · Phone 390 · light · annotated | Small-width layout, including the sticky bar's position |
+| `Tablet.dc.html` | 3 · Tablet 768 · light | Medium-width layout |
+| `DarkDesktop.dc.html`, `DarkPhone.dc.html` | Dark theme sheet | Dark-theme values; same layout as the light frames |
+| `Fold.dc.html` | 4 · Above-the-fold crops | What must be visible without scrolling at 1440 × 900, 390 × 844 and 320 |
+| `Components.dc.html` | Component sheet | Every primitive and its states |
+| `StatesDesktop.dc.html`, `StatesPhone.dc.html` | 5a and 5b · Signup form states | The 17 signup form states |
+| `Sticky.dc.html` | 6 · Mobile sticky bar · 7 frames | The sticky bar's states and visibility |
+| `Switches.dc.html` | 7 · Feature-switch variants | What changes when a flag is off |
+| `Proposals.dc.html` | Proposals | **P2 (hero trio) is adopted** and already appears in the main frames. **P1 (seven-across catalogue) is not adopted** |
+| `canvas.json` notes | "Decisions where the brief is silent", legend, scan map | Binding, except where the rules below override them |
+
+### Wireframe rules for every E11.5-11a to E11.5-11h ticket
+
+Not restated per ticket. They add to the E11.5 design rules above; **violating one fails review.**
+
+1. **The blue annotation layer is never built.** The blue (`#1F5EDB`) pills, numbered circles, dashed boxes, grid overlay and fold lines document the design; they are not part of it. Each artboard's `annotations` tweak switches them off.
+2. **The wireframe's CSS values are the specification.** Sizes, spacing, radii, weights, colours, shadows and breakpoints are implemented exactly. Every value goes through `tokens.css` (E11.5-11a), never as a literal in a component.
+3. **Copy is verbatim.** Every customer-visible string in the binding frames goes into the copy layer exactly as written, including punctuation. Values the wireframes mark `{dyn}` (tier thresholds and discounts, prize count and value, the rate-limit wait) come from their source computation, never from copy.
+4. **Placeholders are replaced, never built.**
+   - The dashed 16px logo square becomes the provider's real logo from `src/content/provider-showcase.json`.
+   - The provider list, order, categories and brand colours come from that file, not from the wireframe's hard-coded list.
+   - The grey "Cloudflare security check" box is where the real Turnstile widget renders.
+   - Placeholder links point at the real permanent routes: `#` for the giveaway rules → `/giveaway/rules`; `/storage` → `/privacy/storage`; `/giveaway-rules` → `/giveaway/rules`.
+5. **Fonts stay self-hosted.** The wireframes load Google Fonts only to render the canvas. The site keeps its self-hosted Instrument Sans and JetBrains Mono (ADR-016).
+6. **Breakpoint mapping.** The 390 frame is the small layout, below 48rem. The 768 frame is the medium layout, 48rem to below 64rem. The 1440 frame is the large layout, 64rem and up. Each layout is fluid between its breakpoints, and the content container caps at 1200px (1264px including its 32px gutters). E11.5-11a amends design rule 7 to match.
+7. **Geometry is asserted.** Each ticket's rendered-page tests measure the stated dimensions at 1440, 768 and 390 px, and at 320 px where the wireframes show it, with a 1px tolerance, in both themes. A visual difference that the stated numbers don't catch is a review finding against the frame, not a matter of taste.
+8. **Standing rules still win.** If a wireframe detail would add a request, a storage write, an island, a collected field or a claim the rules page doesn't support, the agent stops with `BLOCKED:` rather than building it. The known resolutions are recorded in each ticket.
+
+### E11.5-11a — Wireframe foundations: tokens, breakpoints, icons and primitives
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Why this model:** `tokens.css` is inherited verbatim by the storefront (ADR-015), and every later wireframe ticket builds on these primitives.
+
+**Build:** Implement the wireframes' token set and the component sheet (`Components.dc.html`; values also in the `<style>` block of `Main.dc.html`).
+
+1. **Tokens.** The wireframe values below are founder-authorised 2026-10-26. They replace the E11.5-01 values where they differ. Alpha variants of LOCKED palette colours, and black-based shadows, are permitted; **no new hue is added.**
+   - Elevation, light: `--shadow-1: 0 1px 2px rgba(16,16,20,.05), 0 6px 16px rgba(16,16,20,.06)` · `--shadow-2: 0 2px 6px rgba(16,16,20,.07), 0 18px 44px rgba(16,16,20,.14)` · `--shadow-3: 0 10px 28px rgba(16,16,20,.16), 0 36px 80px rgba(16,16,20,.22)`. Dark, in both dark blocks: `--shadow-1: 0 1px 2px rgba(0,0,0,.4), 0 8px 20px rgba(0,0,0,.35)` · `--shadow-2: 0 2px 6px rgba(0,0,0,.45), 0 20px 48px rgba(0,0,0,.55)`. New `--edge`: `0 0 0 0 transparent` in light and `0 0 0 1px rgba(240,240,238,.1)` in dark, added to every elevated surface's shadow.
+   - Dark-theme redefinitions, in both dark blocks: `--line: rgba(240,240,238,.14)` · `--coral-tint: rgba(255,138,102,.16)`. The dark `--ink-300` stays `#A0A0A8`.
+   - Roles: `--field` (input and checkbox border) = `ink-600`, so light `#55555E` and dark `#A0A0A8` · `--on-coral: #101014` in both themes (primary button label, 5.8:1) · `--error-text`, light `#C0392B` and dark `#F0F0EE` (dark error text uses ink, because `#C0392B` on `#171733` is 3.2:1) · `--radius-check: 4px`.
+   - Component values: the primary button rest shadow `0 1px 2px rgba(16,16,20,.14)`; button hover and active overlays `inset 0 0 0 100px rgba(16,16,20,.08)` and `.16`; on-midnight button border `rgba(250,250,250,.45)`, hover fill `.08`, active fill `.14`, disabled text `.45` and border `.2`; the logo-chip shadow `0 1px 2px rgba(0,0,0,.2), 0 6px 14px rgba(0,0,0,.16)`; banner tonal layers white at 13% and 16% and ink at 10%; the dark banner edge `inset 0 0 0 1px rgba(240,240,238,.1)` (`.12` on hero banners, `.14` on hover); the sticky-bar shadow `0 -2px 6px rgba(16,16,20,.06), 0 -16px 40px rgba(16,16,20,.14)`; the dark guarantee-band shadow `0 0 0 1px rgba(240,240,238,.1), 0 24px 64px rgba(0,0,0,.6)`.
+   - Layout: section gap 80px at large widths and 64px at medium and small; gutters 32px at medium and large, 16px at small; the 12-column grid with 24px column gaps at medium and large and a 4-column grid with 16px gaps at small; header height 80px at medium and large, 72px at small.
+2. **Breakpoints.** Amend E11.5 design rule 7 to: small below 48rem, medium 48rem to below 64rem, large 64rem and up, wide 80rem and up, plus a `22.5rem` step used only by the header's Join button. Move every existing small-layout query from 40rem to 48rem. Update the literal-value scan's closed set to `22.5rem`, `48rem`, `64rem` and `80rem`, plus `40rem` only if something still uses it. The 360px test width is added to the header check.
+3. **Icons.** Add every icon the wireframes draw to the E11.5-01 registry, as 24-unit stroke icons (stroke 1.75, round caps and joins): check, link, shield, shield-check, mail, check-circle, upload-share, building, office, people, person, gift, clock, arrow-right, arrow-up, chevron-down, search-check, moon, sun, info, alert-circle, refresh and pause. Sizes are 16, 20 and 24px. The four-point star renders at 12 × 18px in coral and 16 × 24px in `coral-lift`.
+4. **Primitives**, matching the component sheet in all five states (default, hover, focus, disabled, active) and both themes:
+   - **Primary button:** coral background with an `--on-coral` label, 600 weight 16/24, radius 8. Sizes: 48px tall with 0 24px padding; `h44` at 44px with 0 20px padding; `xs` at 44px with 0 12px padding and 14/20 text. Full-width variant. Disabled: `coral-tint` background, `ink-600` label, no shadow. Focus: a 2px coral outline offset 2px. **On the landing page, primary is reserved for "Join the waitlist"** (founder-authorised 2026-10-26); other pages keep their single primary action from E11.5-07 and E11.5-10 and take the new primary styling.
+   - **Secondary button:** surface, inset 1px `line` plus `--shadow-1`; hover inset 1px `ink-300` plus `--shadow-2`; active inset `ink-300` with no shadow; disabled `ink-300` text. 48px tall with 0 20px padding, or 44px with 0 16px and 14/20 text at small widths.
+   - **On-midnight button:** transparent with an `--on-midnight` label and the alpha border above; its focus outline is `coral-lift`.
+   - **Text link:** `ink` text at 500 weight with a 2px coral underline, offset 3px. On midnight: `--on-midnight` text with a `coral-lift` underline. At small widths links get a 44px hit area through 12px vertical padding.
+   - **Input with label, hint and error:** visible 14/20 600 label; the hint between label and field (14/20 `ink-600`, 4px above); field 48px tall, radius 8, 1px `--field` border, 0 16px padding, `ink-600` placeholder (founder-authorised 2026-10-26: the drawn `ink-300` is 2.60:1 on surface in light and fails WCAG 1.4.3; dark `ink-600` is `#A0A0A8`, as drawn). Focus: coral border plus a `0 0 0 2px surface, 0 0 0 4px coral` ring, with `outline: 2px solid transparent` so focus stays visible in forced-colours mode. Error: 2px `--error` border with 15px padding, then an alert-circle icon (in `--error`) and the message (14/20 600 `--error-text`) 8px below, linked by `aria-describedby`.
+   - **Checkbox:** 20 × 20, `--radius-check`, 1.5px `--field` border. Ticked: `ink` fill with a `paper` check. Never pre-ticked. Its label row is 14/20 `ink-600` with a 12px gap, preceded by an **"Optional"** pill: 0 8px padding, radius 999, inset 1px `line`, 13/18 600 `ink-600`, 6px right margin.
+   - **Pills and badge:** the reward pill (4px 12px padding, radius 999, `coral-tint` background, 13/18 600 `ink`, optional 16px icon) and the coral pill (coral background, `--on-coral` text, figures in mono). The step badge is a 24px `ink` circle with 13/18 600 mono `paper` text.
+   - **Cards:** surface, radius 12, 24px padding, `--shadow-1` plus `--edge`; interactive cards take `--shadow-2` on hover. Icon tile: 40 × 40, radius 8, `paper` background.
+   - **FAQ item:** native `details`; summary at least 64px tall with 20px vertical padding, 16/24 600, a 20px `ink-600` chevron that rotates 180° when open (no motion under reduced motion); answer 16/24 `ink-600`, at most 68ch, 24px bottom padding; items divided by 1px `line`.
+   - **Theme toggle:** 44 × 44, radius 8, 1px `line` border, surface background. Moon icon with "Use dark theme" in light; sun icon with "Use light theme" in dark, both labels from the copy layer.
+5. Update `docs/brand/tokens.md`, `docs/brand/page-design.md` (breakpoints, the wireframe source and these rules) and the port checklist.
+
+**Acceptance criteria:**
+- Every token above has its stated value, and **both dark blocks declare the identical name set** — the E2-01 and E11.5-01 token tests extended
+- **No new hue**: every colour token is a LOCKED palette value, an alpha variant of one, or black-based shadow — asserted
+- The literal-value scan accepts exactly the new closed breakpoint set; a planted `40rem` small-layout query fails it unless `40rem` is retained
+- Every primitive renders all five states in both themes and matches the component sheet's stated dimensions — geometry tests
+- The primary label is `#101014` on coral in both themes, and every text pairing on the sheet clears its WCAG threshold — the contrast matrix extended
+- `tokens.css` is still copyable verbatim — the port-checklist test passes
+
+**Tests:** Token presence, values and dark-set identity · the no-new-hue assertion · the breakpoint-set scan with its planted fixture · primitive state rendering and geometry · the extended contrast matrix · the port-checklist reconciliation.
+**Named test rewrites (founder-authorised 2026-10-26):** each asserts the new exact value; none is removed or loosened, and each is listed in the PR. `test/interface-primitives.test.mjs`: primary rest shadow, hover (coral plus overlay) and disabled (`coral-tint`) backgrounds; button label `--on-coral` and pill label `ink`; dark pill background (dark `coral-tint`); the FAQ item unboxed with dividers; the icon size list (20px alert-circle and chevron, 12 × 18 star); the star path (the wireframe's 16 × 24 path); card shadow `--shadow-1` plus `--edge`; on-midnight hover contrast computed on the fill composited over `midnight`; input focus measured as the ring's colour and contrast. `test/document-pages-rendered.test.mjs` "the join bar shows below 40rem only": 767/768px. `test/layout-rendered-page.test.mjs`: `width >= 768`.
+**Docs:** `Components.dc.html` · `docs/brand/tokens.md` · `docs/brand/page-design.md` · `docs/architecture/adr/015-portable-design-tokens.md`
+
+### E11.5-11b — Wireframe shell: header and footer
+**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+
+**Build:** The header and footer from `Main.dc.html`, `Tablet.dc.html` and `Phone.dc.html`, on every page that uses the shell.
+
+- **Skip link** "Skip to content", visually hidden and the first focusable element, targeting `#main`.
+- **Header, large** (not sticky): 80px tall, items centred, 40px gaps. The wordmark is 20/28 600 with −0.01em tracking. The section nav has 4px gaps between links, each 14/20 500 `ink-600` with 12px padding: How it works (`#how`), What you get (`#rewards`), Guarantee (`#guarantee`), FAQ (`#faq`). On the right, with 12px gaps: the theme toggle, then the `h44` primary "Join the waitlist" linking to `#join`.
+- **Header, medium:** the same, with 24px gaps and nav links padded 12px 10px.
+- **Header, small:** 72px tall with 8px gaps; the wordmark, then the toggle and the `h44` Join button. No nav links and no menu. **Below 22.5rem the Join button uses the `xs` size** so the wordmark, toggle and button fit at 320px.
+- On pages other than the landing page, the anchors point at `/#…`. The E11.5-03 trust-page exception (no theme toggle on `/legit`, `/guarantee` and `/about`) stands.
+- **Footer:** a full-width `midnight` band with `--on-midnight` text, 64px top and 48px bottom padding, and the section gap above it.
+  - Large: on the 12-column grid with 32px row gaps — the wordmark in columns 1–4; a Company list in 5–6 (About, Legit, Guarantee); a Legal list in 7–8 (Terms, Privacy, Storage inventory, Giveaway rules); a Contact column in 9–12 with `support@valstara.com` as a `mailto:` link. Column headings are 14/20 600 with 8px below; links are 14/20 `--on-midnight` with 6px vertical padding.
+  - Medium: the wordmark on its own row, then three equal columns (span 4) 32px below with 24px row gaps; links padded 12px.
+  - Small: the wordmark, then a 4-column grid 32px below — Company span 2, Legal span 2, Contact span 4; links padded 12px for a 44px target.
+  - Below the columns, 48px down (40px medium, 32px small): the trademark line and the §3.4 legal line, 14/20, 8px apart, maximum width 760px, at 85% opacity.
+- **No payment logos, social links or cookie banner** in the footer.
+- Footer links use the permanent routes: `/about`, `/legit`, `/guarantee`, `/terms`, `/privacy`, `/privacy/storage`, `/giveaway/rules`.
+
+**Acceptance criteria:**
+- Header and footer geometry matches the frames at 1440, 768, 390, 360 and 320 px, in both themes
+- At 320 px the header fits with no horizontal overflow and the Join button is `xs`; at 360 px and up it is `h44`
+- **The skip link is the first focusable element**, and every header and footer link reaches a real route
+- Footer link targets are at least 44px tall at small widths
+- The shell check (`assertShellLayout`) passes on every rendered page
+
+**Tests:** Header geometry per breakpoint, including the 22.5rem step · footer grid per breakpoint · link-target and route resolution · skip-link order · the shell check · axe in both themes.
+**Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `DarkDesktop.dc.html` · `DarkPhone.dc.html` · E11.5-03
+
+### E11.5-11c — Wireframe hero and above-the-fold
+**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** `signup.enabled` · `giveaway.open` (read only) · **Area:** frontend
+
+**Build:** The `#join` hero from `Main.dc.html`, `Tablet.dc.html`, `Phone.dc.html` and `Fold.dc.html`. Form states and the sticky bar are E11.5-11g and E11.5-11h.
+
+- **Copy, verbatim:** the positioning line "Digital goods you know are real." with the coral star before it; the H1 "Premium digital goods, for less."; the supporting line "Join the waitlist for earlier access to Valstara, a direct seller of digital goods backed by the Triple Guarantee."; the label "Email address"; the hint "We'll email you a link to confirm your address."; the placeholder "you@example.com"; the button "Join the waitlist"; the microline "Open to people aged 18 and over. No purchase necessary. See the giveaway rules." (the last sentence is a link to `/giveaway/rules`); the trust facts "Free to join" (check icon), "One-click unsubscribe" (link icon) and "Your data is never sold" (shield icon); and the marketing checkbox with its Optional pill and the existing versioned wording.
+- **Large:** 48px top padding. On the 12-column grid, rows centred: the text column spans 1–7. The positioning line is 16/24 500 `ink-600` with an 8px gap to the star. The H1 sits 12px below it, and the supporting line 16px below that at 16/24 `ink-600`, maximum 600px wide. The form starts 32px below, at most 560px wide. Inside the form: the label, the hint 4px below it, then 8px below that a row with an 8px gap holding the field (flexible) and the 48px button. Then the microline 12px below (14/20 `ink-600`), the trust facts 20px below that (wrapping row with 8px by 24px gaps, 14/20 500, 20px `ink-600` icons with 8px gaps), and the checkbox row 24px below.
+- **The banner stack** sits in columns 8–12, 400px tall, `aria-hidden`. Three hero banners, each 184px tall with 24px padding and `--shadow-2`, a 48px logo chip (0 16px padding, 16/24) and the category label:
+  - ChatGPT at top 0, right 0 (tonal shape t3)
+  - Microsoft 365 at top 104px, right 73px (shape t1)
+  - Netflix at top 208px, right 146px (shape t2), drawn on top
+  - At 1440 each banner is 340px wide. Width and right offsets scale with the column (70%, 15% and 30% of its width), so **the stack never crosses into column 7** at any large width.
+  - The three providers and their order come from a validated list in `src/content/landing-hero.json`; the build fails if a name isn't in the showcase.
+- **Medium:** 40px top padding; the same 7/5 split. The positioning line is 14/20; the button has 0 20px padding; the trust facts have 8px by 20px gaps. The stack is 290px tall with 136px banners (16px padding, 40px chip with 0 14px padding), 236px wide at 768 (85% of the column), at offsets top 0 / 76px / 152px and right 0 / 8% / 16%.
+- **Small:** 24px top padding, a single column. The positioning line is 14/20; the supporting line sits 12px below the H1. The form starts 24px below and stacks the field and a **full-width** button with a 12px gap. The trust facts sit 16px below the microline with 8px by 20px gaps; the checkbox row 20px below. Then, 24px below the form, the **logo strip**: three 56px banners (8px padding, 8px gaps, `aria-hidden`) in the order ChatGPT, Netflix, Microsoft 365, with flex ratios 1 : 1 : 1.35, each showing a 32px name chip (0 8px padding, 13/18) and no category label.
+- **The Turnstile widget** renders directly under the microline, 12px below it, and opens only when Cloudflare needs interaction (about 300 × 65).
+- **Giveaway off:** the microline is only "Open to people aged 18 and over." (`Switches.dc.html` variant B).
+- **Signups off:** the paused panel replaces the form (E11.5-11g styles it). The header Join and the final call to action scroll to it (variant G).
+
+**Acceptance criteria:**
+- **Above the fold, per `Fold.dc.html`:**
+  - At 1440 × 900 the positioning line, H1, field, button, microline, trust facts and checkbox are all above 900px, and the "What you'll find" heading starts above 900px.
+  - At 390 × 844 the field and button end above 500px, and the microline, trust facts, checkbox and logo strip all fit above 844px.
+  - At 320 px there is no horizontal overflow.
+- Hero geometry matches the stated values at 1440, 768 and 390 px; **the banner stack stays inside columns 8–12** at every large and medium width
+- The hero banners and strip are `aria-hidden` and use the real logos (logos in the stack; names only in the strip)
+- The giveaway-off and signups-off variants render as specified
+- The landing page still ships exactly the theme toggle and signup form islands, and its cache headers are unchanged — existing tests
+
+**Tests:** Fold assertions at the three viewports · hero geometry per breakpoint · stack containment at 1024, 1280 and 1440 px · the microline flag variants · the paused variant · island count and cache headers · axe in both themes.
+**Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `Fold.dc.html` · `Proposals.dc.html` (P2) · `Switches.dc.html` (B, G) · E11.5-05
+
+### E11.5-11d — Wireframe catalogue and "How it works"
+**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** The `#catalogue` and `#how` sections from `Main.dc.html`, `Tablet.dc.html`, `Phone.dc.html` and the provider banner on `Components.dc.html`.
+
+- **Section frame** (every landing section): the section gap above it; a header block holding the H2 (24/32 600, −0.01em tracking) and an optional supporting line 8px below it (16/24 `ink-600`), with 32px below the block (24px at small widths).
+- **Catalogue copy:** the H2 "What you'll find"; the supporting line "AI tools, subscriptions, software and in-game currency from confirmed launch providers."
+- **Groups:** one per v2 category that has providers, in v2 order. Each has a group label of the category name (14/20 600 `ink-600`) with 12px below it at large widths and 8px at medium and small. Groups are 32px apart at large widths, 24px at medium and 20px at small.
+- **Large:** a grid of five equal columns with 16px gaps; banners 96px tall (227px wide at 1440).
+- **Medium and small:** one scroll-snap rail per group, with 12px gaps and banners at a fixed 224px basis snapping to their start. The rail bleeds to the right viewport edge (negative right margin equal to the gutter), the next banner peeks, the scrollbar is hidden, and the rail is keyboard-focusable (`tabindex="0"`, labelled with the category name). No auto-advance and no script.
+- **Provider banner anatomy:**
+  - Radius 12, 16px padding, `--shadow-1` at rest and `--shadow-2` on hover; in dark, plus the 1px light edge. Full-bleed brand colour.
+  - One tonal layer, `aria-hidden`, whose shape cycles t1 to t6 across the whole catalogue in order. Its colour is white at 13% when the brand colour's relative luminance is below 0.03, otherwise white at 16% where white text has the higher contrast, else ink at 10%.
+  - The logo chip: `#FFFFFF`, radius 8, 36px tall, 0 12px padding, 14/20 600 `#101014` name, the 16px logo with an 8px gap, and the chip shadow. **The chip stays light in dark mode.** A provider whose logo is white-only gets the dark chip (`#101014` with white text), marked by a new `chipTone: "dark"` field in the showcase file; CyberGhost is the current case.
+  - The category label is 13/18 500 at the bottom, coloured ink or white by higher contrast with the brand colour (computed at build).
+  - Shape geometry is copied from the wireframe's `.t1` to `.t6` classes.
+  - At large widths below 1440, a long name may wrap to two lines inside the chip (13/18, 6px 10px padding, minimum 32px tall). It never overflows or truncates.
+  - **No price, discount, count or date.**
+- **"How it works"** (`#how`): the H2 "How it works"; an ordered list of three steps.
+  - Large and medium: three equal columns, 24px gaps. Each step is a column with 16px gaps: a 56 × 56 icon tile (radius 12, surface, `--shadow-1` plus edge, 24px icon), the step badge at −10px top and left, and the title at 20/28 600.
+  - A 2px `ink-300` connector runs from 72px right of the tile's left edge to 8px short of the next column, at 27px from the top, ending in an arrowhead. The connector from step 2 to step 3 is dashed.
+  - Steps: 1 "Join with your email" (mail icon); 2 "Confirm the link we send" (check-circle icon); 3 "Share your link, if you like" (upload-share icon). Step 3 is drawn as optional: `paper` tile, 1.5px dashed `ink-300` border, no shadow, `ink-600` icon and badge, `ink-600` title.
+  - Small: one column with 28px gaps. Each step is a row with the tile on the left and the title (16/24) centred beside it. The connector is vertical, 2px by 24px, at 27px from the left and 60px from the top, with no arrowhead; dashed for 2 → 3.
+
+**Acceptance criteria:**
+- Catalogue and step geometry matches the frames at 1440, 768 and 390 px, in both themes
+- **Every banner uses its real logo, its data-file brand colour and its computed label colour**; the dark chip renders only for `chipTone: "dark"`
+- Tonal shapes cycle in catalogue order and are hidden from assistive technology
+- **No chip text overflows or truncates** at any test width
+- Rails scroll by keyboard and touch with no script, and each is labelled
+- Step 3 renders in the optional style, and the connectors match the frame per breakpoint
+
+**Tests:** Banner anatomy and computed colours over the full data file · `chipTone` schema validation · grid and rail geometry per breakpoint · chip-overflow check at every test width · rail keyboard scrolling and labelling · step layout per breakpoint · axe in both themes.
+**Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `Components.dc.html` · E11.5-04
+
+### E11.5-11e — Wireframe "What you get" and its feature-switch variants
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `referral.enabled` · `giveaway.open` · `leaderboard.public` (read only) · **Area:** frontend
+**Why this model:** every figure on these cards is a claim read from configuration or the published rules, across a seven-variant flag matrix.
+
+**Build:** The `#rewards` section from `Main.dc.html`, `Tablet.dc.html`, `Phone.dc.html` and `Switches.dc.html`.
+
+- **The H2** "What you get". Large: three equal columns with 24px gaps, stretched to equal height. Small: one column with 16px gaps.
+- **Card anatomy:** a card with the icon tile, the H3 (20/28 600) 12px below, and a visual block 8px below that: 20px top padding over a 1px `line` divider, a column with 16px gaps.
+- **Earlier access** (building icon): the body line "Earlier confirmed signups get earlier access." (16/24 `ink-600`). Then the wave track: four rows 10px apart, each a 56px mono 13/18 label ("Wave 1" to "Wave 4") and an 8px `line` track (radius 999) whose `ink` fill runs to the right end from 0%, 25%, 50% and 75%. Then the axis labels "earlier" and "later" (13/18 `ink-600`, `aria-hidden`), indented 68px.
+- **Referral rewards** (people icon), only with `referral.enabled`. One row per configured tier, read from the ladder (ADR-025):
+  - A visually hidden sentence: "N confirmed referrals → move up an access wave and X% off at launch".
+  - An `aria-hidden` equation with 16px gaps: on the left, N in mono 32/40 600, N person icons (16px, `ink-600`) and "confirmed referrals" (13/18 `ink-600`); a 24px `ink-600` arrow; on the right, a column with 6px gaps holding the reward pill "Up one access wave" (arrow-up icon), a "+" (13/18 `ink-600`, 12px left padding) and the coral pill "X% off at launch".
+  - A second tier row adds 4px top margin, 16px top padding and a 1px `line` divider.
+  - After the tiers, the held note: clock icon, then "Discount unlocks when a referred person places a first order within 90 days after launch." (14/20 `ink-600`).
+- **The giveaway** (gift icon), only with `giveaway.open`: the prize line, baseline-aligned and wrapping — the prize count in mono 32/40 600, "prizes, approximately" (16/24 500), the value in mono 32/40 600, "each" (16/24 500). The count and value come from `currentRules()`. Then "No purchase necessary · 18 and over" (14/20 `ink-600`) and the link "Read the giveaway rules" (14/20) to `/giveaway/rules`.
+- **The footer row**, 24px below the cards, wrapping with 12px by 32px gaps: a shield-check icon with "Only confirmed, verified referrals count." (14/20 500), shown when `referral.enabled` or `leaderboard.public` is on; and the link "See the leaderboard" to `/leaderboard`, shown when `leaderboard.public` is on. With neither, the row is absent.
+- **Medium:** a 2-column grid. Earlier access spans both columns as an inner two-column card (text left, track right, 32px column gap); the remaining cards share the next row — two side by side, or one at full width.
+- **The variants, exactly as `Switches.dc.html`:**
+  - A: everything on — three cards.
+  - B: giveaway off — two equal cards (access, referral).
+  - C: referral off — two equal halves (access, giveaway), with the footer row still shown.
+  - D: leaderboard off — only the leaderboard link disappears.
+  - E: referral, giveaway and leaderboard off — one full-width card with a two-column composition (40px padding, 64px column gap, the visual block without its divider), and no footer row.
+  - F: second tier configured — the referral card adds the second row and the grid row grows.
+  - **No variant leaves an empty grid cell.**
+
+**Acceptance criteria:**
+- Card geometry matches the frames at 1440, 768 and 390 px, in both themes
+- **Every figure comes from its source:** a test changes the ladder or rules fixture and the rendered N, X, person-icon count, prize count and value all change; none is literal in copy
+- Each of variants A to F renders exactly as specified at 1440 and 390 px, with no grid holes
+- The hidden tier sentence is read by assistive technology and the equation is hidden from it
+- The E11-04 claim-to-rules reconciliation covers the giveaway card
+
+**Tests:** Card anatomy and geometry per breakpoint · configuration- and rules-derived figures · the six-variant flag matrix at two widths · grid-hole check · assistive-technology tree for the tier row · claims reconciliation · axe in both themes.
+**Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `Switches.dc.html` · `docs/architecture/adr/025-campaign-configuration.md` · `docs/features/giveaway.md`
+
+### E11.5-11f — Wireframe guarantee band, trust cards, FAQ and final call to action
+**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Build:** The last four landing sections from `Main.dc.html`, `Tablet.dc.html` and `Phone.dc.html`.
+
+- **Guarantee band (`#guarantee`):**
+  - Full-bleed `midnight` with `--on-midnight` text, padded 80px at large widths and 64px at medium and small. In dark, it takes the dark band shadow.
+  - The H2 "The Triple Guarantee" and the line "Every order at launch is covered by three promises." (16/24).
+  - An ordered list in three equal columns with 24px gaps (one column with 40px gaps at small widths). Each column, with 12px gaps: a Roman numeral ring (64 × 64, radius 999, inset 1.5px coral, coral numeral at 32/40 700, 8px below, `aria-hidden`); the H3 with a visually hidden "I. ", "II. " or "III. " prefix; and the body (16/24, maximum 340px).
+  - Copy, verbatim: "Delivered within 24 hours." / "Every order is fulfilled by hand, Monday to Friday, within 24 hours of purchase." · "Protected, start to finish." / "256-bit encryption throughout. PCI-compliant payment handling. Your data is never sold." · "Resolved, replaced, or refunded." / "If it cannot be resolved, we replace it. If it cannot be replaced, we refund you."
+  - Then the on-midnight text link "Read the guarantee" with a 16px arrow, to `/guarantee`: 40px below at large widths, 32px with 12px vertical padding at medium and small.
+  - At large widths only, a decorative `coral-lift` star (16 × 24, `aria-hidden`) at 160px from the right and 80px from the top.
+- **"Get to know Valstara":**
+  - The H2, then three link cards in equal columns with 24px gaps (one column with 16px gaps at small widths).
+  - **The whole card is the link**: `--shadow-1` at rest, `--shadow-2` on hover, the 2px coral focus outline. Each holds the icon tile, an H3 with a trailing 16px `ink-600` arrow (large and small widths only; medium has no arrow), and a 16/24 `ink-600` line.
+  - "Is Valstara legit?" / "See the evidence before you join." (search-check icon, `/legit`) · "Who we are" / "Meet the company behind the store." (office icon, `/about`) · "Contact us" / "Email support@valstara.com." (mail icon, `mailto:support@valstara.com`).
+- **FAQ (`#faq`):**
+  - Large: on the 12-column grid, the H2 "Common questions" in columns 1–4 and the FAQ card in columns 5–12. Medium and small: the H2 above the card.
+  - The card has 0 24px padding (0 20px at small widths) and holds the four FAQ items in order, the first open by default. Copy, verbatim:
+    - "What happens when I sign up?" / "We send one verification link. Click it to confirm your place. Nothing counts until you verify."
+    - "What do you do with my email?" / "We store it to run your waitlist place and send your verification link and launch updates. Our email providers process it to deliver those messages. Our privacy notice explains how we use and keep it."
+    - "When does Valstara launch?" / "We're in pre-launch. Join the waitlist and we'll email you when it's ready — we won't promise a date we can't hold."
+    - "Can I leave the waitlist?" / "Yes. Every email we send carries a one-click unsubscribe."
+- **Final call to action:**
+  - A surface card (`--shadow-1`, on the light page, not `midnight`) across all 12 columns. Large: a row with space-between and 24px gaps, 40px padding (32px at medium), holding the H2 "Ready when you are" and the primary "Join the waitlist" linking to `#join`. Small: a column with stretched items, 24px padding and a full-width button.
+  - The button scrolls to `#join` and moves focus to the email field (the island handles focus; without JavaScript the anchor scroll alone). With signups off it scrolls to the paused panel.
+
+**Acceptance criteria:**
+- Geometry of all four sections matches the frames at 1440, 768 and 390 px, in both themes
+- The numerals are hidden from assistive technology, and each H3 is announced with its "I.", "II." or "III." prefix
+- Each trust card is a single link with a visible focus state; the contact card opens `mailto:support@valstara.com`
+- The first FAQ item is open on load; each answer is at most 68ch wide
+- **Primary coral appears exactly four times on the landing page at small widths** (header, hero, final call to action, sticky bar) and three times at medium and large widths
+- All copy matches the frames verbatim — the copy-layer test
+
+**Tests:** Section geometry per breakpoint · numeral and prefix accessibility · trust-card link and focus · FAQ default state and measure · the primary-button count per breakpoint · copy match · axe in both themes.
+**Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `Components.dc.html` · `docs/brand/identity-guidelines.md` §2
+
+### E11.5-11g — Wireframe signup form states
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
+**Why this model:** this restyles every state of the only public write path, where the membership-oracle and privacy properties live.
+
+**Build:** The 17 states of `StatesDesktop.dc.html` (on the large hero) and `StatesPhone.dc.html` (on the small hero), styled exactly as drawn. Behaviour, the error mapping and the response copy rules from E3-05, E11.5-06 and S-01 are unchanged. **Server-supplied messages render the copy-layer strings below;** if a string differs, update the copy-layer entry to the wireframe text, keeping it identical for every address.
+
+| # | State | What renders |
+|---|---|---|
+| 01 | Idle | The default form |
+| 02 | Focused | Coral focus ring on the field |
+| 03 | Inline error · empty | Error field and message "Enter your email address."; focus returns to the field |
+| 04 | Inline error · invalid | "Enter a valid email address." |
+| 05 | Blocked domain | "Use a permanent email address to join the waitlist." |
+| 06 | Security check in progress | Disabled button with a 16px spinner and the label "Completing the security check…" |
+| 07 | Submitting | Disabled button with the spinner and "Adding you to the waitlist…" |
+| 08 | Security check visible | Disabled button labelled "Completing the security check…"; the Turnstile widget open under the microline |
+| 09 | Check failed | Form notice "We couldn't confirm that request. Please try again."; focus moves to the notice |
+| 10 | Network error | "We couldn't reach the waitlist just now — check your connection and try again." |
+| 11 | Unavailable | "We can't take signups right now — try again in a few minutes." |
+| 12 | Rate limited | "Too many attempts — try again in N minutes.", with N from the server |
+| 13 | Success · first 60 seconds | The success panel, with no resend control |
+| 14 | Success · after 60 seconds | Adds the secondary "Send the link again" (refresh icon) |
+| 15 | Success · re-sent | Adds the check-icon line "If there's a pending signup for that email, we'll send a new confirmation link shortly." |
+| 16 | JavaScript disabled | Neutral notice "JavaScript is required to complete the security check and join the waitlist." above the form, which stays visible 16px below it |
+| 17 | Signups paused | The paused panel replaces the form |
+
+- **Field error** (03–05): the input error style; the message sits under the field row (desktop) or under the field (phone), linked by `aria-describedby`.
+- **Form notice** (09–12): inside the form above the label, 20px above it (16px on phone), `role="alert"`; 16px padding, radius 8, surface, inset 2px `--error` border, 12px gap, the alert-circle icon in `--error`, 14/20 `ink` text.
+- **Neutral notice** (16): the same shape with an inset 1px `line` border and an info icon.
+- **Spinner:** 16px, a 2px `ink-300` ring with an `ink` top segment. It spins only without reduced motion; the label explains the wait either way.
+- **Success panel** (13–15): replaces the form, `role="status"`, at most 560px wide. Large: 32px padding, 32px top margin, 12px gaps. Small: 24px padding, 24px top margin.
+  - Contents: a 48 × 48 `coral-tint` tile (radius 8) with a 24px mail icon; the H2 "Check your inbox"; the echoed address (mono 14/20, 8px 12px padding, radius 8, `paper` background, inset 1px `line`, wrapping anywhere at small widths); and the body "If an email from Valstara arrives, open it and click the link to confirm your address. Nothing counts until you do." (16/24 `ink-600`).
+  - Actions: large, a wrapping row with 12px gaps, 8px below; small, a stretched column with 8px gaps, 4px below. They hold the secondary "Use a different address" and, after 60 seconds, "Send the link again".
+  - **It never says an email was sent and never shows a position or count.** The echoed address is the visitor's own input.
+- **Paused panel** (17): the same panel with a pause icon, the H2 "Signups are paused" and the body "We're not taking new signups right now. Check back in a little while — the waitlist will reopen soon."
+- **Copy-budget exception (founder-authorised 2026-10-26):** the success-panel body is 21 words. The copy-budget test lists it by key as a named exception; no other limit changes.
+
+**Acceptance criteria:**
+- **All 17 states render as drawn** at 1440 × 900 and 390 × 844, in both themes — one rendered-page test per state with its geometry and copy asserted
+- Every message string matches the table verbatim and comes from the copy layer
+- Focus moves to the field (03–05) and to the notice (09–12) as stated
+- **The success panel is identical for unknown, pending and verified addresses**, echoes only client input, and shows no position or count — existing E11.5-06 tests extended
+- The spinner does not animate under reduced motion
+- The copy-budget exception is narrow: removing the key from the exception list fails the test
+
+**Tests:** One state test per row at two viewports · copy match · focus targets · success-state equivalence · reduced-motion spinner · the named copy-budget exception · axe on states 03, 09, 13 and 16 in both themes.
+**Docs:** `StatesDesktop.dc.html` · `StatesPhone.dc.html` · `docs/features/signup.md` · E3-05 · E3-09 · E11.5-06
+
+### E11.5-11h — Wireframe mobile sticky signup bar
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
+**Why this model:** the bar is the second entry to the public write path; it must change appearance only, never the single-island submission contract.
+
+**Build:** The bar from `Sticky.dc.html` (seven frames) and its placement in `Phone.dc.html`. The E11.5-06 contract is unchanged: part of the `SignupForm` island, one Turnstile widget, one submission path, only the hero input named `email`, and no marketing checkbox.
+
+- **Small layout only** (below 48rem). Never on medium or large widths, never a modal, never over the hero.
+- **The bar:** docked at the bottom on surface with the sticky-bar shadow (plus edge in dark), a labelled region "Join the waitlist", padded 12px 16px and, at the bottom, `max(12px, env(safe-area-inset-bottom))` — 34px on a phone with a home indicator, as drawn. Contents:
+  - the label "Email address" (13/18 600, visible)
+  - 4px below, a row with an 8px gap holding the field (flexible, 48px) and the primary "Join the waitlist" (48px, 0 16px padding)
+  - 6px below, the microline (13/18 `ink-600`): "Open to people aged 18 and over. No purchase necessary. See the giveaway rules.", or only the first sentence with the giveaway off
+- **The seven frames:**
+  1. **Hero in view:** the bar is hidden while the hero form is on screen.
+  2. **Scrolled past the hero:** the bar slides in (150–200ms, none under reduced motion). The page gains bottom padding equal to the bar's height.
+  3. **Focus while tabbing:** `scroll-padding-bottom` equals the bar's height plus 16px, so a focused element always lands at least 16px clear of the bar.
+  4. **Inline error:** the bar grows upward to show the field error ("Enter a valid email address.", in the input error style) under the row, linked by `aria-describedby`.
+  5. **Submitting:** the button is disabled with the spinner and "Adding you to the waitlist…"; the field stays readable.
+  6. **Success:** the bar collapses to one row (`role="status"`) with space-between and 12px gaps — a check icon and "Check your inbox." (16/24 600) on the left, the secondary "Close" on the right. No position, count or rank.
+  7. **Footer in view:** the bar hides so the footer links and legal lines are never covered.
+- **Signups paused:** no bar on the page.
+
+**Acceptance criteria:**
+- **Each of the seven frames is reproduced** at 390 × 844 in both themes — one rendered-page test per frame, asserting geometry, copy and visibility
+- The bar never renders at 48rem or wider, over the hero form, while the footer is in view, or with signups paused
+- **No focused element is obscured by the bar, and each focused element sits at least 16px above it** — asserted by tabbing through the whole page
+- With a simulated 34px safe-area inset the bottom padding is 34px; without one it is 12px
+- One island, one Turnstile widget, one submission path, and a bar submission body identical to a hero submission — the existing E11.5-06 tests pass unchanged
+- The slide does not animate under reduced motion
+
+**Tests:** One test per frame · the visibility matrix (widths, hero, footer, paused) · the focus walk with the 16px clearance · the safe-area padding · the existing E11.5-06 contract suite · reduced motion · axe with the bar visible in both themes.
+**Docs:** `Sticky.dc.html` · `Phone.dc.html` · E11.5-06 · `docs/architecture/adr/001-astro-node-adapter.md`
+
 ### E11.5-12 — Design QA, the re-audits and founder sign-off
 **Model:** GPT-6 Astra — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 **Why this model:** a reasoning-led audit across every page (§3), and E11's audits ran against the old surfaces.
@@ -2251,7 +2578,7 @@ Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache hea
 1. **The full contact sheet:** every public page and state — the landing page per flag state, every signup state with and without the sticky bar, every `/verify` and `/me` state, the leaderboard, trust and legal pages, current and archived rules, the task pages, 404 and 500 — at every test width in both themes, plus every email preview. Generated by E11.5-01's script, not committed; its index is recorded in `docs/testing/e11-5-design-qa.md`.
 2. **Re-run E11's audits on the new surfaces:** the E11-03 accessibility scope (keyboard-only journey including the sticky bar, a screen-reader pass, contrast at real sizes on `midnight` bands and banners); the E11-04 claims audit over all new copy, every showcase entry against its P8 confirmation, and every reward and prize figure; the E11-05 page inventory and rendered privacy probe, including 404, 500 and the logos; and the E11-07 port checklist for `tokens.css`.
 3. **Performance** on the landing page at 390px with 4× CPU throttling in the local harness: layout shift 0, largest contentful paint at most 2.5 s, first-party JavaScript recorded before and after E11.5, and total logo bytes recorded.
-4. **Founder visual review** of the contact sheet. Every finding is fixed in this ticket or recorded as a founder-accepted deviation; the sign-off is recorded with its date.
+4. **Founder visual review** of the contact sheet, landing-page frames side by side with their wireframe artboards (pinned version `1792974724-d356`). Every finding is fixed in this ticket or recorded as a founder-accepted deviation; the sign-off is recorded with its date.
 5. Update the rows of `docs/ops/e11-08-launch-readiness.md` that the re-audits touch.
 
 **Acceptance criteria:**
@@ -2417,15 +2744,15 @@ Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache hea
 | E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, legal pages, inventory, DSR, SEO, OG, llms.txt |
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
-| E11.5 Frontend design | 12 | Foundations, survey v2, shell, **provider showcase**, landing, **mobile sticky signup bar**, verify, `/me` and leaderboard, content pages, task and error pages, email layout, design QA and re-audits |
+| E11.5 Frontend design | 20 | Foundations, survey v2, shell, **provider showcase**, landing, **mobile sticky signup bar**, verify, `/me` and leaderboard, content pages, task and error pages, email layout, **the eight wireframe tickets**, design QA and re-audits |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
-| **Total** | **109** | |
+| **Total** | **117** | |
 
 **Model distribution (2026-09-28, the 34 tickets not yet merged):** GPT-6 Astra 16 (Extra High 1 · High 8 · Medium 6 · Light 1) · GPT-6 Sol 16 (High 10 · Medium 6) · GPT-6 Luna 2 (High 2). **Astra carries the operations and audit work of E11 and E12**, plus E9-05 and E10-01; **Sol carries the code of E8–E10**; Luna carries two small tickets whose dangerous failures an existing gate already catches (§3).
 
 E8-03a was added after that model distribution was recorded, with an explicit founder assignment of Tier B — Medium (2026-09-28).
 
-**E11.5 (founder-authorised 2026-10-19), 12 tickets:** GPT-6 Sol 11 (High 7 · Medium 4) · GPT-6 Astra 1 (Medium 1).
+**E11.5 (founder-authorised 2026-10-19; wireframe tickets added 2026-10-26), 20 tickets:** GPT-6 Sol 19 (High 11 · Medium 8) · GPT-6 Astra 1 (Medium 1).
 
 **Tier distribution before 2026-09-28** (all 96 tickets as first planned; the merged ones keep these tiers): Tier B Extra High 4 · Tier B High 15 · Tier B Medium 30 · Tier A High 16 · Tier A Medium 31. *(2026-09-25: S-01 added at Tier B High; E7-01 moved from Tier B High to Tier A Medium once jurisdiction gating was removed; E7-06 moved from Tier A Medium to Tier B Medium because it now collects provisional winners' countries of residence and runs the sanctions check. 2026-09-27: E8-08 removed from Tier B High by ADR-028.)*
 
@@ -2437,7 +2764,7 @@ Under the tier policy, **Tier B carried the personal data, the privacy propertie
 
 ## Effort reconciliation
 
-The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each, plus E11.5's 12 design tickets (founder-authorised 2026-10-19), which are heavier per ticket and are not in the stack-decisions estimate. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
+The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each, plus E11.5's 20 design tickets (founder-authorised 2026-10-19 and 2026-10-26), which are heavier per ticket and are not in the stack-decisions estimate. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
 
 | Cut | Removes | Saves |
 |---|---|---|
