@@ -549,23 +549,65 @@ test('self-hosted Latin variable fonts have metric fallbacks and tabular-figure 
   );
 });
 
-// E11.5-11a: the colour of every token, as [r, g, b, alpha], from a hex,
-// rgb() or rgba() literal.
+// E11.5-11a: read the colour forms used by tokens.css and fail closed on
+// other colour syntax, so a new spelling cannot evade the palette check.
 function colourLiterals(value) {
   const colours = [];
-  for (const [hex] of value.matchAll(/#[0-9a-f]{6}\b/giu)) {
-    const channels = hex
-      .slice(1)
-      .match(/.{2}/gu)
-      .map((channel) => Number.parseInt(channel, 16));
-    colours.push([...channels, 1]);
-  }
-  for (const [, body] of value.matchAll(/rgba?\(([^)]*)\)/gu)) {
-    const [red, green, blue, alpha = 1] = body
-      .split(/[\s,/]+/u)
-      .filter(Boolean)
-      .map(Number);
+  let remainder = value.replaceAll(/#[0-9a-f]+/giu, (literal) => {
+    const digits = literal.slice(1);
+    assert.match(digits, /^(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/iu);
+    const expanded =
+      digits.length <= 4
+        ? [...digits].map((digit) => digit.repeat(2))
+        : digits.match(/.{2}/gu);
+    const [red, green, blue, alpha = 255] = expanded.map((channel) =>
+      Number.parseInt(channel, 16),
+    );
+    colours.push([red, green, blue, alpha / 255]);
+    return '';
+  });
+  assert.doesNotMatch(remainder, /#/u, `unsupported colour in ${value}`);
+  remainder = remainder.replaceAll(/\brgba?\(([^()]*)\)/giu, (_, body) => {
+    const parts = body.split(/[\s,/]+/u).filter(Boolean);
+    assert.ok(
+      (parts.length === 3 || parts.length === 4) &&
+        parts.every((part) => /^(?:\d+(?:\.\d*)?|\.\d+)$/u.test(part)),
+      `unsupported colour in ${value}`,
+    );
+    const [red, green, blue, alpha = 1] = parts.map(Number);
+    assert.ok(
+      [red, green, blue].every((channel) => channel <= 255) && alpha <= 1,
+      `unsupported colour in ${value}`,
+    );
     colours.push([red, green, blue, alpha]);
+    return '';
+  });
+  const allowedWords = new Set([
+    'bottom',
+    'calc',
+    'color-mix',
+    'cubic-bezier',
+    'currentcolor',
+    'in',
+    'inset',
+    'linear-gradient',
+    'monospace',
+    'right',
+    'sans-serif',
+    'srgb',
+    'system-ui',
+    'to',
+    'transparent',
+    'ui-monospace',
+  ]);
+  remainder = remainder
+    .replaceAll(/var\(--[\w-]+\)/gu, '')
+    .replaceAll(/'[^']*'|"[^"]*"/gu, '');
+  for (const [word] of remainder.matchAll(/\b[a-z][a-z-]*\b/giu)) {
+    assert.ok(
+      allowedWords.has(word.toLowerCase()),
+      `unsupported colour in ${value}`,
+    );
   }
   return colours;
 }
@@ -575,6 +617,11 @@ function blockOf(source, pattern) {
 }
 
 test('no new hue: every colour token is a locked palette value, an alpha variant of one, or a black-based shadow', async () => {
+  assert.deepEqual(colourLiterals('#f00'), [[255, 0, 0, 1]]);
+  assert.deepEqual(colourLiterals('#f008'), [[255, 0, 0, 136 / 255]]);
+  assert.deepEqual(colourLiterals('#ff000088'), [[255, 0, 0, 136 / 255]]);
+  assert.throws(() => colourLiterals('hsl(0 100% 50%)'), /unsupported colour/u);
+  assert.throws(() => colourLiterals('red'), /unsupported colour/u);
   const [source, guidelines] = await Promise.all([
     readFile(tokenPath, 'utf8'),
     readFile(brandGuidelinesPath, 'utf8'),
@@ -608,24 +655,32 @@ test('no new hue: every colour token is a locked palette value, an alpha variant
       /:root\[data-theme=['"]dark['"]\]\s*\{(?<block>[\s\S]*?)\}/u,
     ),
   ];
-  let checked = 0;
-  for (const block of blocks) {
-    for (const [name, value] of block) {
-      for (const colour of colourLiterals(value)) {
-        checked += 1;
-        const shade = hex(colour);
-        if (palette.has(shade)) continue;
-        // Black appears only inside a shadow or edge value, never as a fill.
-        assert.equal(shade, '#000000', `${name} adds the hue ${shade}`);
-        assert.match(
-          name,
-          /^--(?:shadow|edge)/u,
-          `${name} uses black outside a shadow`,
-        );
-        assert.match(value, /\d+px/u, `${name} is a shadow value`);
+  const assertNoNewHue = (checkedBlocks) => {
+    let checked = 0;
+    for (const block of checkedBlocks) {
+      for (const [name, value] of block) {
+        for (const colour of colourLiterals(value)) {
+          checked += 1;
+          const shade = hex(colour);
+          if (palette.has(shade)) continue;
+          // Black appears only inside a shadow or edge value, never as a fill.
+          assert.equal(shade, '#000000', `${name} adds the hue ${shade}`);
+          assert.match(
+            name,
+            /^--(?:shadow|edge)/u,
+            `${name} uses black outside a shadow`,
+          );
+          assert.match(value, /\d+px/u, `${name} is a shadow value`);
+        }
       }
     }
-  }
+    return checked;
+  };
+  const checked = assertNoNewHue(blocks);
+  assert.throws(
+    () => assertNoNewHue([new Map([['--on-coral', '#f00']])]),
+    /--on-coral adds the hue #ff0000/u,
+  );
   // The alpha variants named by the ticket are among the colours checked.
   assert.ok(checked >= 40, `${checked} colour literals checked`);
   const root = blocks[0];
