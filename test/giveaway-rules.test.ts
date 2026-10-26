@@ -68,6 +68,11 @@ test('the approved rules have every required section and statement', () => {
   const revision = validateRulesRevision(fixture());
   assert.equal(revision.rulesVersion, rulesVersion);
   assert.equal(revision.publishedOn, '2026-10-01');
+  assert.equal(revision.prizeCount, baseData.prizeCount);
+  assert.equal(
+    revision.prizeApproxRetailValueEur,
+    baseData.prizeApproxRetailValueEur,
+  );
   assert.equal(
     body.trim(),
     approvedSource

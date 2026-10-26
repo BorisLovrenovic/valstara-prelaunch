@@ -330,6 +330,7 @@ test('the member page and the leaderboard render every state from their sources,
     const origin = 'http://host.docker.internal:' + app.port;
     const hostOrigin = 'http://127.0.0.1:' + app.port;
     assert.deepEqual(enforcedPages, [
+      '/',
       '/verify',
       '/me',
       '/leaderboard',

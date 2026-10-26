@@ -273,7 +273,14 @@ test('organisation and every rules-page schema have permanent URLs and only appr
     ),
   ] as const) {
     const data = rulesPageData(
-      { ...revision, sha256: '', html: '', revision: 1 },
+      {
+        ...revision,
+        sha256: '',
+        html: '',
+        revision: 1,
+        prizeCount: 5,
+        prizeApproxRetailValueEur: 300,
+      },
       path,
     );
     assert.deepEqual(

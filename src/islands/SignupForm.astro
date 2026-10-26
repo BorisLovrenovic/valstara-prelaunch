@@ -258,6 +258,15 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       );
       this.#dock = this.querySelector('[data-dock]');
       this.#dockInput = this.querySelector('#signup-dock-email');
+      document.querySelectorAll('[data-focus-signup]').forEach((link) => {
+        link.addEventListener('click', () => {
+          requestAnimationFrame(() => {
+            this.querySelector<HTMLInputElement>('#signup-email')?.focus({
+              preventScroll: true,
+            });
+          });
+        });
+      });
 
       // With the island active, custom validation governs; native constraint
       // validation would otherwise pop its own UI before the submit handler

@@ -30,6 +30,8 @@ export interface RulesRevision {
   description: string;
   publishedOn: string;
   revision: number;
+  prizeCount: number;
+  prizeApproxRetailValueEur: number;
 }
 
 export function compareRulesRevisions(
@@ -207,6 +209,8 @@ export function validateRulesRevision(input: {
     description: data.description,
     publishedOn: data.publishedOn,
     revision: data.revision,
+    prizeCount: data.prizeCount,
+    prizeApproxRetailValueEur: data.prizeApproxRetailValueEur,
   };
 }
 

@@ -6,8 +6,14 @@ import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
 
 import { chromium } from 'playwright';
+import axe from 'axe-core';
 
 import { landingCopy } from '../src/copy/landing.ts';
+import {
+  checkPageLayout,
+  designWidths,
+  enforcedPages,
+} from '../scripts/design/layout-checks.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
@@ -179,7 +185,7 @@ test('the landing page renders every section, in light and dark, at both extreme
       await page.setViewportSize({ width, height: 900 });
       await page.goto(browserOrigin);
 
-      // The hero, the "what is", the guarantee, and the FAQ sections are all
+      // The hero, catalogue, guarantee, and FAQ sections are all
       // present and their copy is on the page.
       await assert.doesNotReject(
         page
@@ -189,7 +195,10 @@ test('the landing page renders every section, in light and dark, at both extreme
       );
       assert.equal(
         await page
-          .getByRole('heading', { level: 2, name: landingCopy.whatIs.heading })
+          .getByRole('heading', {
+            level: 2,
+            name: landingCopy.catalogue.heading,
+          })
           .isVisible(),
         true,
       );
@@ -202,7 +211,7 @@ test('the landing page renders every section, in light and dark, at both extreme
 
       // The three guarantee promises render, and no more.
       assert.equal(
-        await page.locator('.lp-guarantee__item').count(),
+        await page.locator('.landing-guarantee > li').count(),
         landingCopy.trust.promises.length,
       );
 
@@ -249,6 +258,88 @@ test('the ref-less landing response varies only by flag generation while ref byp
 
   const referred = await globalThis.fetch(`${hostOrigin}/?ref=signed-ref`);
   assert.equal(referred.headers.get('cache-control'), 'private, no-store');
+});
+
+test('the landing hero keeps its positioning, email field and submit visible above the fold', async () => {
+  for (const { width, height } of [
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ]) {
+    const context = await browser.newContext({ viewport: { width, height } });
+    const page = await context.newPage();
+    await page.goto(browserOrigin);
+    for (const selector of [
+      '.landing-eyebrow',
+      '#landing-title',
+      '#signup-email',
+      '[data-submit]',
+    ]) {
+      const box = await page.locator(selector).boundingBox();
+      assert.ok(box, `${selector} exists at ${width}px`);
+      assert.ok(
+        box.y >= 0 && box.y + box.height <= height,
+        `${selector} is inside ${width}×${height}: ${JSON.stringify(box)}`,
+      );
+    }
+    await context.close();
+  }
+});
+
+test('the final call to action focuses the hero email with the island and remains an anchor without script', async () => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto(browserOrigin);
+  await page.evaluate(() =>
+    globalThis.customElements.whenDefined('valstara-signup-form'),
+  );
+  await page.locator('[data-focus-signup]').click();
+  await page.waitForFunction(
+    () => globalThis.document.activeElement?.id === 'signup-email',
+  );
+  await context.close();
+
+  const noScript = await browser.newContext({ javaScriptEnabled: false });
+  const staticPage = await noScript.newPage();
+  await staticPage.goto(browserOrigin);
+  assert.equal(
+    await staticPage.locator('[data-focus-signup]').getAttribute('href'),
+    '#join',
+  );
+  await staticPage.locator('[data-focus-signup]').click();
+  assert.equal(new URL(staticPage.url()).hash, '#join');
+  await noScript.close();
+});
+
+test('the landing joins layout enforcement and passes WCAG axe in both themes', async () => {
+  assert.ok(enforcedPages.includes('/'));
+  for (const colorScheme of ['light', 'dark']) {
+    const context = await browser.newContext({ colorScheme });
+    const page = await context.newPage();
+    for (const width of designWidths) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(browserOrigin);
+      assert.deepEqual(
+        await checkPageLayout(page),
+        [],
+        `landing layout ${colorScheme} at ${width}px`,
+      );
+    }
+    await page.addScriptTag({ content: axe.source });
+    const violations = await page.evaluate(async () => {
+      const result = await globalThis.axe.run(globalThis.document, {
+        runOnly: {
+          type: 'tag',
+          values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'],
+        },
+      });
+      return result.violations.map((violation) => ({
+        id: violation.id,
+        targets: violation.nodes.map((node) => node.target),
+      }));
+    });
+    assert.deepEqual(violations, [], `landing axe ${colorScheme}`);
+    await context.close();
+  }
 });
 
 test('the delayed self-hosted above-fold font swaps with zero rendered CLS and selective preload', async () => {

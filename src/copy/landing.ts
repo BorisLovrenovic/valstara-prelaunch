@@ -1,13 +1,21 @@
+import type { MilestoneTier } from '../server/referral/config.ts';
+import type { RulesRevision } from '../server/giveaway/rules.ts';
+
 export const landingCopy = {
   meta: {
     title: 'Valstara waitlist',
     description:
-      'Join the waitlist for Valstara — a direct seller of digital goods, well below list price and backed by a guarantee.',
+      'Join the waitlist for Valstara, a direct seller of digital goods backed by the Triple Guarantee.',
   },
   hero: {
     eyebrow: 'Digital goods you know are real.',
-    heading: 'Join the waitlist for the Valstara launch.',
-    body: 'Add your email to be first in line when we open. We send one link to confirm it — nothing counts until you verify.',
+    heading: 'Premium digital goods, for less.',
+    body: 'Join the waitlist for earlier access to Valstara, a direct seller of digital goods backed by the Triple Guarantee.',
+    facts: [
+      { icon: 'check', text: 'Free to join' },
+      { icon: 'link', text: 'One-click unsubscribe' },
+      { icon: 'shield', text: 'Your data is never sold' },
+    ],
   },
   form: {
     label: 'Email address',
@@ -19,24 +27,82 @@ export const landingCopy = {
     heading: 'Signups are paused',
     body: "We're not taking new signups right now. Check back in a little while — the waitlist will reopen soon.",
   },
-  whatIs: {
-    heading: 'What Valstara is',
-    body: 'Valstara is a direct seller of digital goods — subscriptions, software licences, gift cards, game keys and in-game currency — at prices well below list. We are the seller, not a listing board, so when something goes wrong there is no third party to point at.',
-    tagline: 'Premium for less.',
+  catalogue: {
+    heading: "What you'll find",
+    body: 'AI tools, subscriptions, software and in-game currency from confirmed launch providers.',
+  },
+  how: {
+    heading: 'How it works',
+    steps: [
+      'Join with your email',
+      'Confirm the link we send',
+      'Share your link, if you like',
+    ],
+  },
+  rewards: {
+    heading: 'What you get',
+    accessHeading: 'Earlier access',
+    accessBody: 'Earlier confirmed signups get earlier access.',
+    waveLabel: (wave: number) => `Wave ${wave}`,
+    referralHeading: 'Referral rewards',
+    tier: (tier: MilestoneTier) =>
+      `${tier.threshold} confirmed referrals → move up an access wave and ${tier.discountPercent}% off at launch`,
+    held: 'Discount unlocks when a referred person places a first order within 90 days after launch.',
+    verifiedOnly: 'Only confirmed, verified referrals count.',
+    giveawayHeading: 'The giveaway',
+    prize: (
+      rules: Pick<RulesRevision, 'prizeCount' | 'prizeApproxRetailValueEur'>,
+    ) =>
+      `${rules.prizeCount} prizes, approximately €${rules.prizeApproxRetailValueEur.toLocaleString('en-US')} each`,
+    freeEntry: 'No purchase necessary',
+    age: '18 and over',
+    rulesLink: 'Read the giveaway rules',
+    leaderboardLink: 'See the leaderboard',
   },
   trust: {
-    heading: 'The guarantee behind every order',
-    intro: 'Every order at launch is covered by the Triple Guarantee.',
+    heading: 'The Triple Guarantee',
+    intro: 'Every order at launch is covered by three promises.',
     promises: [
-      { numeral: 'I', title: 'Delivered within 24 hours' },
-      { numeral: 'II', title: 'Protected, start to finish' },
-      { numeral: 'III', title: 'Resolved, replaced, or refunded' },
+      {
+        numeral: 'I',
+        title: 'Delivered within 24 hours',
+        line: 'Every order is fulfilled by hand, Monday to Friday, within 24 hours of purchase.',
+      },
+      {
+        numeral: 'II',
+        title: 'Protected, start to finish',
+        line: '256-bit encryption throughout. PCI-compliant payment handling. Your data is never sold.',
+      },
+      {
+        numeral: 'III',
+        title: 'Resolved, replaced, or refunded',
+        line: 'If it cannot be resolved, we replace it. If it cannot be replaced, we refund you.',
+      },
     ],
-    note: 'No countdown and no invented scarcity. The waitlist has no deadline, and the count you earn is the real one.',
+    link: 'Read the guarantee',
+  },
+  trustLinks: {
+    heading: 'Get to know Valstara',
+    items: [
+      {
+        href: '/legit',
+        heading: 'Is Valstara legit?',
+        line: 'See the evidence before you join.',
+      },
+      {
+        href: '/about',
+        heading: 'Who we are',
+        line: 'Meet the company behind the store.',
+      },
+      {
+        href: 'mailto:support@valstara.com',
+        heading: 'Contact us',
+        line: 'Email support@valstara.com.',
+      },
+    ],
   },
   faq: {
     heading: 'Common questions',
-    label: 'Common questions',
     items: [
       {
         question: 'What happens when I sign up?',
@@ -51,13 +117,16 @@ export const landingCopy = {
       {
         question: 'When does Valstara launch?',
         answer:
-          "We're in pre-launch. Join the waitlist and we'll email you the moment it's ready — we won't promise a date we can't hold.",
+          "We're in pre-launch. Join the waitlist and we'll email you when it's ready — we won't promise a date we can't hold.",
       },
       {
         question: 'Can I leave the waitlist?',
-        answer:
-          'Yes. Every email we send carries a one-click unsubscribe, as easy as signing up was.',
+        answer: 'Yes. Every email we send carries a one-click unsubscribe.',
       },
     ],
+  },
+  final: {
+    heading: 'Ready when you are',
+    action: 'Join the waitlist',
   },
 } as const;

@@ -123,6 +123,10 @@ test('the runbook current rules version agrees with the catalog used by currentR
         html: '',
         title: '',
         description: '',
+        prizeCount: Number(frontmatterValue(markdown, 'prizeCount')),
+        prizeApproxRetailValueEur: Number(
+          frontmatterValue(markdown, 'prizeApproxRetailValueEur'),
+        ),
       };
     }),
   );
