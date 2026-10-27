@@ -450,6 +450,15 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
           this.#widgetId = turnstile.render(container, {
             sitekey,
             appearance: 'interaction-only',
+            // The hidden widget still mounts a child, so the slot is marked
+            // open only while Cloudflare shows it; the 12px gap under the
+            // microline follows the mark (E11.5-11c).
+            'before-interactive-callback': () => {
+              container.toggleAttribute('data-open', true);
+            },
+            'after-interactive-callback': () => {
+              container.toggleAttribute('data-open', false);
+            },
             callback: (token: string) => {
               if (token !== '' && this.#tokenInput !== null) {
                 this.#tokenInput.value = token;
@@ -853,9 +862,10 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     full-width button 12px below it. From 48rem the field and the button share
     one row, 8px apart. The Field's wrapper steps aside (display: contents) so
     its label and hint span the row above. Under the row: the microline 12px
-    below, the Turnstile slot 12px below that only while it holds the widget,
-    the trust facts 20px below (16px small) and the marketing box 24px below
-    (20px small). Rows that hold only hidden elements collapse to nothing.
+    below, the Turnstile slot 12px below that only while Cloudflare shows
+    the widget, the trust facts 20px below (16px small) and the marketing box
+    24px below (20px small). Rows that hold only hidden elements collapse to
+    nothing.
   */
   valstara-signup-form form:not([hidden]) {
     display: grid;
@@ -911,6 +921,9 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
   valstara-signup-form .signup-turnstile {
     grid-area: check;
+  }
+
+  valstara-signup-form .signup-turnstile[data-open] {
     margin-block-start: var(--space-1-5);
   }
 

@@ -629,6 +629,91 @@ test('the small hero matches Phone.dc.html at 390, in both themes', async () => 
   }
 });
 
+// A stand-in for Cloudflare's api.js, served at its real URL, so the island's
+// own render call mounts it. Like the real widget with appearance:
+// 'interaction-only', it mounts a 0px child on the first keystroke and grows
+// to the drawn 300 × 65 only between its before- and after-interactive
+// callbacks.
+const turnstileStandIn = `
+  globalThis.turnstile = {
+    render(container, options) {
+      const widget = globalThis.document.createElement('div');
+      widget.style.cssText = 'width: 0; height: 0';
+      container.append(widget);
+      globalThis.turnstileStandIn = {
+        open() {
+          options['before-interactive-callback']?.();
+          widget.style.cssText = 'width: 300px; height: 65px';
+        },
+        close() {
+          widget.style.cssText = 'width: 0; height: 0';
+          options['after-interactive-callback']?.();
+        },
+      };
+      return 'stand-in';
+    },
+    reset() {},
+  };
+`;
+
+test('the Turnstile slot sits 12px under the microline only while Cloudflare shows the widget', async () => {
+  for (const colorScheme of themes) {
+    for (const [width, factsGap] of [
+      [1440, 20],
+      [390, 16],
+    ]) {
+      const context = await browser.newContext({
+        viewport: { width, height: 900 },
+        colorScheme,
+      });
+      await context.route('https://challenges.cloudflare.com/**', (route) =>
+        route.fulfill({
+          body: turnstileStandIn,
+          contentType: 'text/javascript',
+        }),
+      );
+      const page = await context.newPage();
+      await page.goto(browserOrigin);
+      const slot = () =>
+        page.evaluate(() => {
+          const { document } = globalThis;
+          const bottom = (selector) =>
+            document.querySelector(selector).getBoundingClientRect().bottom;
+          const top = (selector) =>
+            document.querySelector(selector).getBoundingClientRect().top;
+          return {
+            micro: bottom('form > .signup-age'),
+            slotTop: top('[data-turnstile-container]'),
+            slotBottom: bottom('[data-turnstile-container]'),
+            facts: top('.landing-facts'),
+          };
+        });
+      const label = `${width}px, ${colorScheme}`;
+
+      // The first keystroke mounts the hidden widget: no gap appears.
+      await page.locator('#signup-email').fill('a');
+      await page.waitForFunction(
+        () => globalThis.turnstileStandIn !== undefined,
+      );
+      const hidden = await slot();
+      near(hidden.facts - hidden.micro, factsGap, `hidden widget, ${label}`);
+
+      // Cloudflare needs interaction: the widget opens under the microline.
+      await page.evaluate(() => globalThis.turnstileStandIn.open());
+      const open = await slot();
+      near(open.slotTop - open.micro, 12, `widget under microline, ${label}`);
+      near(open.slotBottom - open.slotTop, 65, `widget height, ${label}`);
+      near(open.facts - open.slotBottom, factsGap, `facts below, ${label}`);
+
+      // The challenge is done: the slot gives its space back.
+      await page.evaluate(() => globalThis.turnstileStandIn.close());
+      const closed = await slot();
+      near(closed.facts - closed.micro, factsGap, `widget closed, ${label}`);
+      await context.close();
+    }
+  }
+});
+
 test('the banner stack stays inside columns 8–12 at every medium and large width', async () => {
   for (const width of [768, 1024, 1280, 1440, 1920]) {
     const { context, page } = await openHero({ width });
