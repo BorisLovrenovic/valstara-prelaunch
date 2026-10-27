@@ -586,6 +586,10 @@ test('the header matches the wireframe geometry at every frame width in both the
         element.append(probe);
         const ink600 = style(probe).color;
         probe.remove();
+        // Widen the label, as a font swap can, and measure Join again.
+        join.style.letterSpacing = '0.1em';
+        const widerLabelWidth = join.getBoundingClientRect().width;
+        join.style.removeProperty('letter-spacing');
         return {
           box: box(element),
           scrollWidth: element.scrollWidth,
@@ -612,6 +616,7 @@ test('the header matches the wireframe geometry at every frame width in both the
           toggle: box(toggle),
           join: {
             ...box(join),
+            widerLabelWidth,
             fontSize: style(join).fontSize,
             lineHeight: style(join).lineHeight,
             paddingLeft: style(join).paddingLeft,
@@ -665,6 +670,13 @@ test('the header matches the wireframe geometry at every frame width in both the
       const xs = width < 360;
       // The frames' widths: the label plus 20px padding (12px for xs).
       near(header.join.width, xs ? 130 : 159, `${label}: join width`);
+      // The width is fixed, not the label's, so the right-aligned actions
+      // do not move when the font swaps (E2-02).
+      assert.equal(
+        header.join.widerLabelWidth,
+        header.join.width,
+        `${label}: join width ignores the label width`,
+      );
       assert.equal(header.join.fontSize, xs ? '14px' : '16px', label);
       assert.equal(header.join.lineHeight, xs ? '20px' : '24px', label);
       assert.equal(header.join.paddingLeft, xs ? '12px' : '20px', label);
