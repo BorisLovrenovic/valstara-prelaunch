@@ -122,6 +122,10 @@ const wireframeTokens = {
   '--inset-on-midnight-disabled':
     'inset 0 0 0 1px var(--on-midnight-disabled-border)',
   '--shadow-chip': '0 1px 2px rgba(0,0,0,.2), 0 6px 14px rgba(0,0,0,.16)',
+  // E11.5-11c (founder-authorised 2026-10-27): the banner chip and white
+  // banner text stay #FFFFFF, and the chip name #101014, in both themes.
+  '--banner-white': '#ffffff',
+  '--banner-ink': '#101014',
   '--banner-tone-dark': 'rgba(255,255,255,.13)',
   '--banner-tone-light': 'rgba(255,255,255,.16)',
   '--banner-tone-ink': 'rgba(16,16,20,.10)',
@@ -371,6 +375,8 @@ test('every colour value reuses the locked §5 palette and the type scale has no
       .map(([name]) => name),
     '--on-midnight',
     '--on-coral',
+    '--banner-white',
+    '--banner-ink',
   ]);
   assert.deepEqual(
     new Set(

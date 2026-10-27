@@ -2380,6 +2380,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 - The landing page still ships exactly the theme toggle and signup form islands, and its cache headers are unchanged — existing tests
 
 **Tests:** Fold assertions at the three viewports · hero geometry per breakpoint · stack containment at 1024, 1280 and 1440 px · the microline flag variants · the paused variant · island count and cache headers · axe in both themes.
+**Founder decisions (2026-10-27):** (1) Two constant tokens, `--banner-white: #ffffff` and `--banner-ink: #101014`, go on bare `:root` with no dark redefinition, for the banner chip and the text on a brand colour. They are LOCKED palette values, so no hue is added. `test/tokens.test.mjs` adds both names to its authorised set, additively; nothing is removed or loosened. (2) The hero's logo strip uses the `22.5rem` step for the 320 frame's tighter padding (banners 4px, chips 6px), alongside the header's Join button.
 **Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `Fold.dc.html` · `Proposals.dc.html` (P2) · `Switches.dc.html` (B, G) · E11.5-05
 
 ### E11.5-11d — Wireframe catalogue and "How it works"

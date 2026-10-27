@@ -3,10 +3,15 @@ import Accordion from '../components/accordion.astro';
 import Button from '../components/button.astro';
 import Card from '../components/card.astro';
 import Container from '../components/container.astro';
+import HeroBanner from '../components/hero-banner.astro';
 import Icon from '../components/icon.astro';
-import ProviderBanner from '../components/provider-banner.astro';
 import ProviderRail from '../components/provider-rail.astro';
 import Section from '../components/section.astro';
+import landingHeroList from '../content/landing-hero.json';
+import {
+  resolveLandingHero,
+  svgIntrinsicSize,
+} from '../content/landing-hero.ts';
 import providerData from '../content/provider-showcase.json';
 import type { Provider } from '../content/provider-showcase.ts';
 import { landingCopy } from '../copy/landing.ts';
@@ -33,7 +38,17 @@ const giveawayEnabled = enabled('giveaway.open');
 const leaderboardEnabled = enabled('leaderboard.public');
 const rules = giveawayEnabled ? currentRules() : null;
 const providers = providerData as Provider[];
-const heroProviders = providers.slice(0, 3);
+// The logos' declared sizes, bundled at build time, so each hero image
+// reserves its box before it loads (no layout shift).
+const logoSources = import.meta.glob<string>('/public/images/providers/*.svg', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+});
+const hero = resolveLandingHero(landingHeroList, providers, (logo) => {
+  const source = logoSources[`/public${logo}`];
+  return source === undefined ? null : svgIntrinsicSize(source);
+});
 const enabledTiers = milestoneTiers.filter((tier) => tier.enabled);
 
 const referralCaptureService = createReferralCaptureService(
@@ -67,7 +82,9 @@ Astro.response.headers.set(
       <Container>
         <div class="landing-hero__grid">
           <div class="landing-hero__copy">
-            <p class="landing-eyebrow">{landingCopy.hero.eyebrow}</p>
+            <p class="landing-eyebrow">
+              <Icon name="star" size="sm" />{landingCopy.hero.eyebrow}
+            </p>
             <h1 id="landing-title">{landingCopy.hero.heading}</h1>
             <p class="landing-hero__body">{landingCopy.hero.body}</p>
             {
@@ -75,7 +92,16 @@ Astro.response.headers.set(
                 <SignupForm
                   signedReferralCapture={signedReferralCapture}
                   giveawayEnabled={giveawayEnabled}
-                />
+                >
+                  <ul class="landing-facts" slot="facts">
+                    {landingCopy.hero.facts.map((fact) => (
+                      <li>
+                        <Icon name={fact.icon} size="base" />
+                        <span>{fact.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </SignupForm>
               ) : (
                 <div class="landing-paused">
                   <h2>{landingCopy.paused.heading}</h2>
@@ -83,35 +109,18 @@ Astro.response.headers.set(
                 </div>
               )
             }
-            <ul class="landing-facts">
+            <div class="landing-hero__strip" aria-hidden="true">
               {
-                landingCopy.hero.facts.map((fact) => (
-                  <li>
-                    <Icon name={fact.icon} size="sm" />
-                    <span>{fact.text}</span>
-                  </li>
-                ))
-              }
-            </ul>
-            <div class="landing-hero__strip">
-              {
-                heroProviders.map((provider) => (
-                  <img
-                    src={provider.logo}
-                    alt={provider.name}
-                    width="160"
-                    height="120"
-                    loading="lazy"
-                    decoding="async"
-                  />
+                hero.strip.map((banner) => (
+                  <HeroBanner banner={banner} size="strip" />
                 ))
               }
             </div>
           </div>
-          <div class="landing-hero__visual" aria-hidden="true">
+          <div class="landing-hero__stack" aria-hidden="true">
             {
-              heroProviders.map((provider) => (
-                <ProviderBanner provider={provider} />
+              hero.stack.map((banner) => (
+                <HeroBanner banner={banner} size="stack" />
               ))
             }
           </div>
@@ -270,6 +279,7 @@ Astro.response.headers.set(
   }
   .landing :global(h1) {
     font-size: var(--step-5);
+    font-weight: var(--weight-bold);
     line-height: var(--leading-5);
     letter-spacing: var(--tracking-tight);
   }
@@ -281,30 +291,90 @@ Astro.response.headers.set(
     font-size: var(--step-3);
     line-height: var(--leading-3);
   }
+  /*
+    The #join hero from the wireframes (E11.5-11c). Small: one column, 24px
+    top padding, the logo strip 24px below the form. Medium (48rem): 40px top
+    padding, the text in columns 1-7 and the banner stack in 8-12, rows
+    centred. Large (64rem): 48px top padding and the large stack. The section
+    gap above the catalogue is the only space below the hero.
+  */
   .landing-hero {
-    padding-block: var(--space-2) var(--space-6);
-  }
-  .landing-hero__grid {
-    display: grid;
-    gap: var(--space-4);
-    align-items: center;
+    padding-block-start: var(--space-3);
   }
   .landing-hero__copy {
-    display: grid;
-    gap: var(--space-2);
     min-width: 0;
   }
   .landing-eyebrow {
-    color: var(--ink);
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    color: var(--ink-600);
     font-size: var(--step-1);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-1);
   }
-  .landing-hero__body,
+  .landing-eyebrow :global(.icon) {
+    color: var(--coral);
+  }
+  .landing-hero h1,
+  .landing-hero :global(p) {
+    margin-block-end: var(--space-0);
+  }
+  .landing-hero h1 {
+    margin-block-start: var(--space-1-5);
+  }
+  /* Under .landing-hero so it outranks the page's paragraph reset. */
+  .landing-hero .landing-hero__body {
+    max-inline-size: calc(var(--space-10) * 7.5);
+    margin-block-start: var(--space-1-5);
+    color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
   .landing-intro {
     max-width: var(--measure);
     font-size: var(--step-2);
     line-height: var(--leading-2);
+  }
+  .landing-hero :global(valstara-signup-form),
+  .landing-paused {
+    max-inline-size: calc(var(--space-10) * 7);
+    margin-block-start: var(--space-3);
+  }
+  .landing-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2-5);
+    margin: var(--space-0);
+    padding: var(--space-0);
+    color: var(--ink);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+    list-style: none;
+  }
+  .landing-facts li {
+    display: inline-flex;
+    gap: var(--space-1);
+    align-items: center;
+  }
+  .landing-facts :global(.icon) {
+    color: var(--ink-600);
+  }
+  /* Three 56px banners, 8px apart, flexing 1 : 1 : 1.35. */
+  .landing-hero__strip {
+    display: flex;
+    gap: var(--space-1);
+    margin-block-start: var(--space-3);
+  }
+  .landing-hero__strip :global(.hero-banner) {
+    flex: 1 1 0;
+  }
+  .landing-hero__strip :global(.hero-banner:last-child) {
+    flex-grow: 1.35;
+  }
+  .landing-hero__stack {
+    display: none;
   }
   .landing-paused {
     padding: var(--space-3);
@@ -312,7 +382,6 @@ Astro.response.headers.set(
     border: thin solid var(--line);
     border-radius: var(--radius-card);
   }
-  .landing-facts,
   .landing-steps,
   .landing-waves,
   .landing-tiers,
@@ -321,53 +390,12 @@ Astro.response.headers.set(
     padding: var(--space-0);
     list-style: none;
   }
-  .landing-facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1) var(--space-3);
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
-  }
-  .landing-facts li {
-    display: inline-flex;
-    gap: var(--space-1);
-    align-items: center;
-  }
-  .landing-hero__strip {
-    display: flex;
-    gap: var(--space-2);
-    align-items: center;
-    justify-content: space-between;
-    overflow: hidden;
-    padding: var(--space-1);
-    background: var(--surface);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow-1);
-  }
-  .landing-hero__strip img {
-    width: calc(var(--space-10) + var(--space-2));
-    height: var(--space-5);
-    object-fit: contain;
-  }
-  .landing-hero__visual {
-    display: none;
-  }
   .landing :global(.section__heading) {
     margin-block-end: var(--space-3);
   }
   .landing :global(.provider-banner__category) {
     box-sizing: border-box;
     overflow-wrap: anywhere;
-  }
-  .landing :global(valstara-signup-form .signup-marketing) {
-    min-block-size: calc(var(--leading-1) * 3);
-  }
-  .landing :global(valstara-signup-form .signup-marketing input) {
-    flex: none;
-    width: var(--tap-min);
-    height: var(--tap-min);
-    margin: var(--space-0);
-    accent-color: var(--coral);
   }
   .landing-intro {
     margin-block-end: var(--space-4);
@@ -473,28 +501,86 @@ Astro.response.headers.set(
     padding-block-end: var(--space-8);
   }
   @media (min-width: 48rem) {
+    .landing-hero {
+      padding-block-start: var(--space-5);
+    }
     .landing-hero__grid {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      display: grid;
+      grid-template-columns: repeat(var(--grid-columns-wide), minmax(0, 1fr));
+      column-gap: var(--grid-gap-wide);
+      align-items: center;
+    }
+    .landing-hero__copy {
+      grid-column: 1 / span 7;
+    }
+    .landing-hero .landing-hero__body {
+      margin-block-start: var(--space-2);
+    }
+    .landing-hero :global(valstara-signup-form),
+    .landing-paused {
+      margin-block-start: var(--space-4);
     }
     .landing-hero__strip {
       display: none;
     }
-    .landing-hero__visual {
-      display: grid;
-      gap: var(--space-2);
+    /*
+      Medium: 290px tall; 136px banners at 84.5% of the column (236px at
+      768), stepped 76px down and 8% and 15.5% of the column in (22px and
+      43px at 768, drawn 22 and 44). Width plus the last offset is exactly
+      the column, so the stack never crosses into column 7. Netflix, last,
+      is drawn on top.
+    */
+    .landing-hero__stack {
+      position: relative;
+      display: block;
+      grid-column: 8 / span 5;
+      block-size: calc(var(--space-10) * 3.625);
     }
-    .landing-hero__visual :global(.provider-banner) {
-      min-height: calc(var(--space-10) * 2);
-      box-shadow: var(--shadow-2);
+    .landing-hero__stack :global(.hero-banner) {
+      position: absolute;
+      width: 84.5%;
     }
-    .landing-hero__visual :global(.provider-banner + .provider-banner) {
-      margin-block-start: calc(-1 * var(--space-5));
-      margin-inline-start: var(--space-3);
+    .landing-hero__stack :global(.hero-banner:nth-child(1)) {
+      top: var(--space-0);
+      right: var(--space-0);
+    }
+    .landing-hero__stack :global(.hero-banner:nth-child(2)) {
+      top: calc(var(--space-1) * 9.5);
+      right: calc(100% * 0.08);
+    }
+    .landing-hero__stack :global(.hero-banner:nth-child(3)) {
+      top: calc(var(--space-1) * 19);
+      right: calc(100% * 0.155);
     }
   }
   @media (min-width: 64rem) {
     .landing-hero {
-      padding-block: var(--space-4) var(--space-8);
+      padding-block-start: var(--space-6);
+    }
+    .landing-eyebrow {
+      font-size: var(--step-2);
+      line-height: var(--leading-2);
+    }
+    .landing-facts {
+      column-gap: var(--space-3);
+    }
+    /*
+      Large: 400px tall; 184px banners at 70% of the column (340px at 1440),
+      stepped 104px down and 15% of the column in.
+    */
+    .landing-hero__stack {
+      block-size: calc(var(--space-10) * 5);
+    }
+    .landing-hero__stack :global(.hero-banner) {
+      width: 70%;
+    }
+    .landing-hero__stack :global(.hero-banner:nth-child(2)) {
+      top: calc(var(--space-1) * 13);
+      right: calc(100% * 0.15);
+    }
+    .landing-hero__stack :global(.hero-banner:nth-child(3)) {
+      top: calc(var(--space-1) * 26);
+      right: calc(100% * 0.3);
     }
     .landing-steps,
     .landing-guarantee,

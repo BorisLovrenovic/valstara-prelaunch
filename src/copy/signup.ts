@@ -39,7 +39,9 @@ export const signupFormCopy = {
   marketing: marketingOptInCopy,
   ageStatement: 'Open to people aged 18 and over.',
   freeEntryDisclosure: 'No purchase necessary.',
-  giveawayRulesLink: 'See the giveaway rules.',
+  // The link is the sentence; its full stop sits after it (E11.5-11c).
+  giveawayRulesLink: 'See the giveaway rules',
+  giveawayRulesLinkEnd: '.',
   successHeading: 'Check your inbox',
   successStep:
     'If an email from Valstara arrives, open it and click the link to confirm your address. Nothing counts until you do.',
