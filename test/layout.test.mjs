@@ -50,29 +50,64 @@ test('the layout selectively preloads only the above-fold Instrument Sans WOFF2'
   assert.doesNotMatch(preloads[0], /jetbrains/u);
 });
 
-test('the layout carries no literal colour, font, radius, spacing or duration value', async () => {
-  const source = await layoutSource();
-  const literalColour = /#[\da-f]{3,8}\b|\b(?:rgb|hsl)a?\(/iu;
-  const tokenisedProperties = [
-    /\b(?:background-)?color\s*:\s*([^;]+)/giu,
-    /\bfont(?:-family|-size)?\s*:\s*([^;]+)/giu,
-    /\bline-height\s*:\s*([^;]+)/giu,
-    /\bborder-radius\s*:\s*([^;]+)/giu,
-    /\b(?:margin|padding|gap|inset|top|right|bottom|left|outline-offset)(?:-[\w-]+)?\s*:\s*([^;]+)/giu,
-    /\b(?:animation|transition)-duration\s*:\s*([^;]+)/giu,
-  ];
+const literalColour = /#[\da-f]{3,8}\b|\b(?:rgb|hsl)a?\(/iu;
+const tokenisedProperties = [
+  /\b(?:background-)?color\s*:\s*([^;]+)/giu,
+  /\bfont(?:-family|-size)?\s*:\s*([^;]+)/giu,
+  /\bline-height\s*:\s*([^;]+)/giu,
+  /\bborder-radius\s*:\s*([^;]+)/giu,
+  /\b(?:margin|padding|gap|inset|top|right|bottom|left|outline-offset)(?:-[\w-]+)?\s*:\s*([^;]+)/giu,
+  /\b(?:animation|transition)-duration\s*:\s*([^;]+)/giu,
+];
 
-  assert.doesNotMatch(source, literalColour, 'layout has a literal colour');
+// Tokens carry themed values; unitless zero and keywords are not values a
+// token could hold, so they are permitted. A calc() built only from var()
+// tokens, unitless numbers and operators is still tokens, as in the E11.5-01
+// scan (E11.5-11b, founder-authorised 2026-10-26).
+function tokenisedValue(value) {
+  if (
+    /^(?:var\(|inherit\b|currentColor\b|transparent\b|0\b|none\b|auto\b)/u.test(
+      value,
+    )
+  )
+    return true;
+  if (!value.startsWith('calc(')) return false;
+  const outsideTokens = value
+    .replace(/var\(--[\w-]+\)/gu, '')
+    .replace(/^calc/u, '');
+  return /^[\d.\s()+\-*/]*$/u.test(outsideTokens);
+}
+
+function literalValues(source) {
+  const found = [];
+  if (literalColour.test(source)) found.push('a literal colour');
   for (const propertyPattern of tokenisedProperties) {
     for (const match of source.matchAll(propertyPattern)) {
-      assert.match(
-        match[1].trim(),
-        // Tokens carry themed values; unitless zero and keywords are not values
-        // a token could hold, so they are permitted.
-        /^(?:var\(|inherit\b|currentColor\b|transparent\b|0\b|none\b|auto\b)/u,
-        `layout has a literal value in "${match[0]}"`,
-      );
+      if (!tokenisedValue(match[1].trim())) found.push(match[0]);
     }
+  }
+  return found;
+}
+
+test('the layout carries no literal colour, font, radius, spacing or duration value', async () => {
+  assert.deepEqual(literalValues(await layoutSource()), []);
+});
+
+test('a token-only calc() passes the layout scan and a calc() with a literal length fails it', () => {
+  for (const sound of [
+    '.a { padding-inline: calc(var(--space-2-5) / 2); }',
+    '.a { margin-block-start: calc((var(--leading-3) - var(--tap-min)) / 2); }',
+    '.a { gap: var(--space-1); }',
+  ]) {
+    assert.deepEqual(literalValues(sound), [], sound);
+  }
+  for (const planted of [
+    '.a { padding-inline: calc(var(--space-2) + 3px); }',
+    '.a { margin-block-start: calc(var(--space-1) * 1rem); }',
+    '.a { gap: calc(10px); }',
+    '.a { padding-inline: 10px; }',
+  ]) {
+    assert.equal(literalValues(planted).length, 1, planted);
   }
 });
 

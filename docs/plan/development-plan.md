@@ -2347,6 +2347,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 - The shell check (`assertShellLayout`) passes on every rendered page
 
 **Tests:** Header geometry per breakpoint, including the 22.5rem step · footer grid per breakpoint · link-target and route resolution · skip-link order · the shell check · axe in both themes.
+**Named test rewrites (founder-authorised 2026-10-26):** test/layout-rendered-page.test.mjs — the skip link and main landmark use `#main`; the header’s right-hand order is theme toggle, then Join. test/layout.test.mjs — a layout value passes if it is a `var()` or a `calc()` built only from `var()` tokens, unitless numbers and operators, matching the E11.5-01 scan; a planted `calc()` containing a literal length still fails.
 **Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `DarkDesktop.dc.html` · `DarkPhone.dc.html` · E11.5-03
 
 ### E11.5-11c — Wireframe hero and above-the-fold

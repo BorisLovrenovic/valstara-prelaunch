@@ -161,7 +161,8 @@ test('the shell exposes one main landmark and a skip link as the first focusable
   assert.equal(await page.getByRole('main').count(), 1);
   assert.equal(await page.getByRole('banner').count(), 1);
   assert.equal(await page.getByRole('contentinfo').count(), 1);
-  assert.equal(await page.locator('main').getAttribute('id'), 'main-content');
+  // E11.5-11b: the skip link targets #main, as the wireframe frames draw it.
+  assert.equal(await page.locator('main').getAttribute('id'), 'main');
 
   // The very first Tab lands on the skip link, and it points at the main.
   await page.keyboard.press('Tab');
@@ -171,7 +172,7 @@ test('the shell exposes one main landmark and a skip link as the first focusable
     true,
     'the skip link is the first focusable element',
   );
-  assert.equal(await skipLink.getAttribute('href'), '#main-content');
+  assert.equal(await skipLink.getAttribute('href'), '#main');
 
   // Hidden off-screen by default, it becomes visible within the viewport once
   // focused, so a keyboard visitor can see and use it. The reveal is a timed
@@ -189,7 +190,7 @@ test('the shell exposes one main landmark and a skip link as the first focusable
 
   // Following it moves the document to the main content.
   await skipLink.press('Enter');
-  assert.equal(new URL(page.url()).hash, '#main-content');
+  assert.equal(new URL(page.url()).hash, '#main');
 
   await context.close();
 });
@@ -369,10 +370,11 @@ test('the header shows wordmark, Join and toggle at small widths, and the sectio
                 ],
               }))
             : []),
-          { href: `${prefix}#join`, name: 'Join the waitlist', tag: 'A' },
+          // E11.5-11b: the theme toggle, then Join, as the frames draw them.
           { href: null, name: 'Use dark theme', tag: 'BUTTON' },
+          { href: `${prefix}#join`, name: 'Join the waitlist', tag: 'A' },
         ];
-        if (colorScheme === 'dark') expected.at(-1).name = 'Use light theme';
+        if (colorScheme === 'dark') expected.at(-2).name = 'Use light theme';
         await page.waitForFunction(
           () =>
             globalThis.document.querySelector('valstara-theme-toggle button')
@@ -522,4 +524,499 @@ test('the page never scrolls horizontally from 320px upward', async () => {
   }
 
   await context.close();
+});
+
+// E11.5-11b: the header and footer geometry from Main.dc.html (1440),
+// Tablet.dc.html (768) and Phone.dc.html (390), plus 360 and 320 for the
+// 22.5rem Join step, in both themes. Every value is a frame value, measured
+// with a 1px tolerance.
+const wireframeWidths = [1440, 768, 390, 360, 320];
+
+function near(actual, expected, message) {
+  assert.ok(
+    Math.abs(actual - expected) <= 1,
+    `${message}: ${actual} is not ${expected} ± 1`,
+  );
+}
+
+async function openSettled(width, colorScheme, path = '/') {
+  const context = await browser.newContext({
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const page = await context.newPage();
+  await page.goto(`${browserOrigin}${path}`);
+  await page.evaluate(() => globalThis.document.fonts.ready);
+  return { context, page };
+}
+
+// The container's content edges at a width: 16px gutters below 48rem, 32px
+// from 48rem, and a 1200px cap.
+function containerEdges(width) {
+  const gutter = width >= 768 ? 32 : 16;
+  const content = Math.min(width - gutter * 2, 1200);
+  const left = (width - content) / 2;
+  return { left, right: left + content, width: content };
+}
+
+test('the header matches the wireframe geometry at every frame width in both themes', async () => {
+  for (const width of wireframeWidths) {
+    for (const colorScheme of ['light', 'dark']) {
+      const { context, page } = await openSettled(width, colorScheme);
+      const label = `${width}px ${colorScheme}`;
+      const header = await page.getByRole('banner').evaluate((element) => {
+        const box = (node) => {
+          const rect = node.getBoundingClientRect();
+          return {
+            bottom: rect.bottom,
+            height: rect.height,
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            width: rect.width,
+          };
+        };
+        const style = (node) => globalThis.getComputedStyle(node);
+        const wordmark = element.querySelector('.site-name');
+        const toggle = element.querySelector('valstara-theme-toggle button');
+        const join = element.querySelector('.site-header__join');
+        const links = [...element.querySelectorAll('.site-nav__links a')];
+        const probe = globalThis.document.createElement('span');
+        probe.style.color = 'var(--ink-600)';
+        element.append(probe);
+        const ink600 = style(probe).color;
+        probe.remove();
+        // Widen the label, as a font swap can, and measure Join again.
+        join.style.letterSpacing = '0.1em';
+        const widerLabelWidth = join.getBoundingClientRect().width;
+        join.style.removeProperty('letter-spacing');
+        return {
+          box: box(element),
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          position: style(element).position,
+          ink600,
+          wordmark: {
+            ...box(wordmark),
+            fontSize: style(wordmark).fontSize,
+            lineHeight: style(wordmark).lineHeight,
+            fontWeight: style(wordmark).fontWeight,
+            letterSpacing: style(wordmark).letterSpacing,
+          },
+          navDisplay: style(element.querySelector('.site-nav')).display,
+          links: links.map((link) => ({
+            ...box(link),
+            color: style(link).color,
+            fontSize: style(link).fontSize,
+            lineHeight: style(link).lineHeight,
+            fontWeight: style(link).fontWeight,
+            paddingTop: style(link).paddingTop,
+            paddingLeft: style(link).paddingLeft,
+          })),
+          toggle: box(toggle),
+          join: {
+            ...box(join),
+            widerLabelWidth,
+            fontSize: style(join).fontSize,
+            lineHeight: style(join).lineHeight,
+            paddingLeft: style(join).paddingLeft,
+            paddingRight: style(join).paddingRight,
+          },
+        };
+      });
+      const edges = containerEdges(width);
+      const large = width >= 1024;
+      const medium = width >= 768 && !large;
+      const height = width >= 768 ? 80 : 72;
+
+      assert.equal(header.position, 'static', `${label}: not sticky`);
+      near(header.box.height, height, `${label}: header height`);
+      assert.ok(
+        header.scrollWidth <= header.clientWidth,
+        `${label}: the header fits with no horizontal overflow`,
+      );
+
+      // The wordmark: 20/28 600 with -0.01em tracking, on the container edge.
+      assert.equal(header.wordmark.fontSize, '20px', label);
+      assert.equal(header.wordmark.lineHeight, '28px', label);
+      assert.equal(header.wordmark.fontWeight, '600', label);
+      assert.equal(header.wordmark.letterSpacing, '-0.2px', label);
+      near(header.wordmark.left, edges.left, `${label}: wordmark left`);
+
+      // Every item is centred in the header row.
+      for (const [name, item] of [
+        ['wordmark', header.wordmark],
+        ['toggle', header.toggle],
+        ['join', header.join],
+      ]) {
+        near(
+          item.top + item.height / 2,
+          header.box.top + height / 2,
+          `${label}: ${name} centred`,
+        );
+      }
+
+      // The toggle is 44 × 44; the h44 Join (xs below 22.5rem) ends on the
+      // container edge, 12px after the toggle (8px at small widths).
+      near(header.toggle.width, 44, `${label}: toggle width`);
+      near(header.toggle.height, 44, `${label}: toggle height`);
+      near(header.join.height, 44, `${label}: join height`);
+      near(header.join.right, edges.right, `${label}: join right edge`);
+      near(
+        header.join.left - header.toggle.right,
+        width >= 768 ? 12 : 8,
+        `${label}: toggle to join gap`,
+      );
+      const xs = width < 360;
+      // The frames' widths: the label plus 20px padding (12px for xs).
+      near(header.join.width, xs ? 130 : 159, `${label}: join width`);
+      // The width is fixed, not the label's, so the right-aligned actions
+      // do not move when the font swaps (E2-02).
+      assert.equal(
+        header.join.widerLabelWidth,
+        header.join.width,
+        `${label}: join width ignores the label width`,
+      );
+      assert.equal(header.join.fontSize, xs ? '14px' : '16px', label);
+      assert.equal(header.join.lineHeight, xs ? '20px' : '24px', label);
+      assert.equal(header.join.paddingLeft, xs ? '12px' : '20px', label);
+      assert.equal(header.join.paddingRight, xs ? '12px' : '20px', label);
+
+      if (width < 768) {
+        // No nav links and no menu at small widths.
+        assert.equal(header.navDisplay, 'none', label);
+      } else {
+        assert.equal(header.links.length, 4, label);
+        near(
+          header.links[0].left - header.wordmark.right,
+          large ? 40 : 24,
+          `${label}: wordmark to nav gap`,
+        );
+        header.links.forEach((link, index) => {
+          assert.equal(link.fontSize, '14px', label);
+          assert.equal(link.lineHeight, '20px', label);
+          assert.equal(link.fontWeight, '500', label);
+          assert.equal(link.color, header.ink600, `${label}: ink-600 link`);
+          assert.equal(link.paddingTop, '12px', label);
+          assert.equal(link.paddingLeft, medium ? '10px' : '12px', label);
+          near(link.height, 44, `${label}: nav link height`);
+          if (index > 0) {
+            near(
+              link.left - header.links[index - 1].right,
+              large ? 4 : 0,
+              `${label}: nav link gap`,
+            );
+          }
+        });
+      }
+      await context.close();
+    }
+  }
+});
+
+test('the header Join button steps from xs to h44 at 22.5rem', async () => {
+  for (const [width, padding] of [
+    [359, '12px'],
+    [360, '20px'],
+  ]) {
+    const { context, page } = await openSettled(width, 'light');
+    const join = page.locator('.site-header__join');
+    assert.equal(
+      await join.evaluate(
+        (element) => globalThis.getComputedStyle(element).paddingLeft,
+      ),
+      padding,
+      `${width}px`,
+    );
+    assert.equal(
+      await page.evaluate(
+        () =>
+          globalThis.document.documentElement.scrollWidth <=
+          globalThis.document.documentElement.clientWidth,
+      ),
+      true,
+      `${width}px has no horizontal overflow`,
+    );
+    await context.close();
+  }
+});
+
+test('the footer matches the wireframe grid at every frame width in both themes', async () => {
+  for (const width of wireframeWidths) {
+    for (const colorScheme of ['light', 'dark']) {
+      const { context, page } = await openSettled(width, colorScheme);
+      const label = `${width}px ${colorScheme}`;
+      const footer = await page.getByRole('contentinfo').evaluate((element) => {
+        const box = (node) => {
+          const rect = node.getBoundingClientRect();
+          return {
+            bottom: rect.bottom,
+            height: rect.height,
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            width: rect.width,
+          };
+        };
+        const style = (node) => globalThis.getComputedStyle(node);
+        const probe = globalThis.document.createElement('span');
+        probe.style.color = 'var(--on-midnight)';
+        probe.style.backgroundColor = 'var(--midnight)';
+        element.append(probe);
+        const onMidnight = style(probe).color;
+        const midnight = style(probe).backgroundColor;
+        probe.remove();
+        const columns = [...element.querySelectorAll('.site-footer__column')];
+        const lines = element.querySelector('.site-footer__lines');
+        return {
+          box: box(element),
+          background: style(element).backgroundColor,
+          color: style(element).color,
+          boxShadow: style(element).boxShadow,
+          marginTop: style(element).marginTop,
+          paddingTop: style(element).paddingTop,
+          paddingBottom: style(element).paddingBottom,
+          midnight,
+          onMidnight,
+          wordmark: box(element.querySelector('.site-name--footer')),
+          grid: box(element.querySelector('.site-footer__grid')),
+          columns: columns.map((column) => {
+            const heading = column.querySelector('.site-footer__heading');
+            const links = [...column.querySelectorAll('a')];
+            return {
+              ...box(column),
+              heading: {
+                ...box(heading),
+                fontSize: style(heading).fontSize,
+                lineHeight: style(heading).lineHeight,
+                fontWeight: style(heading).fontWeight,
+              },
+              links: links.map((link) => ({
+                ...box(link),
+                color: style(link).color,
+                fontSize: style(link).fontSize,
+                lineHeight: style(link).lineHeight,
+                paddingTop: style(link).paddingTop,
+              })),
+            };
+          }),
+          lines: {
+            ...box(lines),
+            maxWidth: style(lines).maxWidth,
+            opacity: style(lines).opacity,
+            paragraphs: [...lines.querySelectorAll('p')].map((paragraph) => ({
+              ...box(paragraph),
+              fontSize: style(paragraph).fontSize,
+              lineHeight: style(paragraph).lineHeight,
+            })),
+          },
+        };
+      });
+      const edges = containerEdges(width);
+      const large = width >= 1024;
+      const medium = width >= 768 && !large;
+      const columnsWide = width >= 768 ? 12 : 4;
+      const gap = width >= 768 ? 24 : 16;
+      const track = (edges.width - gap * (columnsWide - 1)) / columnsWide;
+      const columnStart = (column) => edges.left + (column - 1) * (track + gap);
+
+      // A full-width midnight band, padded 64 / 48, the section gap above it.
+      assert.equal(footer.background, footer.midnight, label);
+      assert.equal(footer.color, footer.onMidnight, label);
+      near(footer.box.left, 0, `${label}: band left`);
+      near(footer.box.width, width, `${label}: band width`);
+      assert.equal(footer.paddingTop, '64px', label);
+      assert.equal(footer.paddingBottom, '48px', label);
+      assert.equal(footer.marginTop, large ? '80px' : '64px', label);
+      // Only the section gap sits above the footer: main adds no bottom
+      // padding, on the landing page and on a document page alike.
+      for (const path of ['/', '/terms']) {
+        const shell = await openSettled(width, colorScheme, path);
+        near(
+          await shell.page.evaluate(() => {
+            const main = globalThis.document.querySelector('main');
+            const footer = globalThis.document.querySelector('body > footer');
+            return (
+              footer.getBoundingClientRect().top -
+              main.lastElementChild.getBoundingClientRect().bottom
+            );
+          }),
+          large ? 80 : 64,
+          `${label} ${path}: gap above the footer`,
+        );
+        await shell.context.close();
+      }
+      // The dark frames edge the band with the 1px `--edge` line.
+      if (colorScheme === 'dark') {
+        assert.match(
+          footer.boxShadow,
+          /rgba\(240, 240, 238, 0\.1\) 0px 0px 0px 1px/u,
+        );
+      } else {
+        assert.match(footer.boxShadow, /rgba\(0, 0, 0, 0\) 0px 0px 0px 0px/u);
+      }
+
+      // The wordmark's text sits on the padding; its 44px target extends 8px
+      // above and below the 28px line.
+      const wordmarkText = footer.wordmark.top + 8;
+      near(wordmarkText, footer.box.top + 64, `${label}: wordmark top`);
+      near(footer.wordmark.height, 44, `${label}: wordmark target`);
+      near(footer.wordmark.left, edges.left, `${label}: wordmark left`);
+
+      const [company, legal, contact] = footer.columns;
+      assert.deepEqual(
+        footer.columns.map((column) => column.links.length),
+        [3, 4, 1],
+        label,
+      );
+      if (large) {
+        // Columns 1–4, 5–6, 7–8 and 9–12, all on the wordmark's row.
+        near(company.left, columnStart(5), `${label}: Company column`);
+        near(legal.left, columnStart(7), `${label}: Legal column`);
+        near(contact.left, columnStart(9), `${label}: Contact column`);
+        for (const column of footer.columns) {
+          near(column.top, wordmarkText, `${label}: column top`);
+        }
+      } else {
+        // The wordmark on its own row, the columns 32px below its text.
+        const columnsTop = wordmarkText + 28 + 32;
+        near(company.top, columnsTop, `${label}: columns top`);
+        near(legal.top, columnsTop, `${label}: columns top`);
+        near(company.left, edges.left, `${label}: Company column`);
+        if (medium) {
+          // Three equal columns, span 4 each.
+          near(legal.left, columnStart(5), `${label}: Legal column`);
+          near(contact.left, columnStart(9), `${label}: Contact column`);
+          near(contact.top, columnsTop, `${label}: Contact top`);
+          near(company.width, track * 4 + gap * 3, `${label}: span 4`);
+        } else {
+          // Company span 2, Legal span 2, Contact span 4 on the next row.
+          near(legal.left, columnStart(3), `${label}: Legal column`);
+          near(company.width, track * 2 + gap, `${label}: span 2`);
+          near(contact.left, edges.left, `${label}: Contact column`);
+          near(contact.width, edges.width, `${label}: span 4`);
+          near(
+            contact.top - Math.max(company.bottom, legal.bottom),
+            24,
+            `${label}: row gap`,
+          );
+        }
+      }
+
+      for (const column of footer.columns) {
+        assert.equal(column.heading.fontSize, '14px', label);
+        assert.equal(column.heading.lineHeight, '20px', label);
+        assert.equal(column.heading.fontWeight, '600', label);
+        near(
+          column.links[0].top - column.heading.bottom,
+          8,
+          `${label}: heading to links`,
+        );
+        for (const link of column.links) {
+          assert.equal(link.color, footer.onMidnight, label);
+          assert.equal(link.fontSize, '14px', label);
+          assert.equal(link.lineHeight, '20px', label);
+          assert.equal(link.paddingTop, large ? '6px' : '12px', label);
+          near(link.height, large ? 32 : 44, `${label}: link height`);
+        }
+      }
+
+      // The trademark and legal lines: 48 / 40 / 32px below the columns,
+      // 14/20, 8px apart, at most 760px wide, at 85% opacity.
+      near(
+        footer.lines.top - footer.grid.bottom,
+        large ? 48 : medium ? 40 : 32,
+        `${label}: lines below the columns`,
+      );
+      assert.equal(footer.lines.maxWidth, '760px', label);
+      assert.equal(footer.lines.opacity, '0.85', label);
+      assert.ok(footer.lines.width <= 760, label);
+      const [trademark, legalLine] = footer.lines.paragraphs;
+      near(legalLine.top - trademark.bottom, 8, `${label}: lines gap`);
+      for (const paragraph of footer.lines.paragraphs) {
+        assert.equal(paragraph.fontSize, '14px', label);
+        assert.equal(paragraph.lineHeight, '20px', label);
+      }
+      near(
+        footer.box.bottom - footer.lines.bottom,
+        48,
+        `${label}: bottom padding`,
+      );
+      await context.close();
+    }
+  }
+});
+
+test('every header and footer link reaches a real route, and footer targets are 44px at small widths', async () => {
+  const landing = await openSettled(390, 'light');
+  const landingIds = await landing.page.evaluate(() =>
+    [...globalThis.document.querySelectorAll('[id]')].map(
+      (element) => element.id,
+    ),
+  );
+  await landing.context.close();
+
+  for (const path of ['/', '/legit', '/verify', '/terms']) {
+    const { context, page } = await openSettled(1440, 'light', path);
+    // The skip link targets the page's one main.
+    assert.equal(
+      await page.locator('a.skip-link').getAttribute('href'),
+      '#main',
+    );
+    assert.equal(await page.locator('main#main').count(), 1, path);
+
+    const hrefs = await page
+      .locator('body > header a[href], body > footer a[href]')
+      .evaluateAll((anchors) =>
+        anchors.map((anchor) => anchor.getAttribute('href')),
+      );
+    assert.ok(hrefs.length >= 14, `${path}: ${hrefs.length} shell links`);
+    for (const href of hrefs) {
+      if (href.startsWith('mailto:')) {
+        assert.equal(href, 'mailto:support@valstara.com', path);
+        continue;
+      }
+      const target = new URL(href, `${browserOrigin}${path}`);
+      if (target.hash !== '') {
+        // Section anchors live on the landing page; elsewhere they lead back.
+        assert.equal(target.pathname, '/', `${path}: ${href}`);
+        assert.ok(
+          landingIds.includes(target.hash.slice(1)),
+          `${path}: ${href} resolves on the landing page`,
+        );
+        if (path !== '/') assert.ok(href.startsWith('/#'), `${path}: ${href}`);
+        continue;
+      }
+      const response = await page.request.get(target.href, {
+        maxRedirects: 0,
+      });
+      assert.equal(response.status(), 200, `${path}: ${href}`);
+    }
+    await context.close();
+  }
+
+  for (const width of [320, 360, 390]) {
+    for (const colorScheme of ['light', 'dark']) {
+      const { context, page } = await openSettled(width, colorScheme);
+      const targets = await page
+        .locator('body > footer a[href]')
+        .evaluateAll((anchors) =>
+          anchors.map((anchor) => {
+            const rect = anchor.getBoundingClientRect();
+            return {
+              href: anchor.getAttribute('href'),
+              height: rect.height,
+              width: rect.width,
+            };
+          }),
+        );
+      for (const target of targets) {
+        assert.ok(
+          target.height >= 44 && target.width >= 44,
+          `${width}px ${colorScheme}: ${target.href} is ${target.width}x${target.height}`,
+        );
+      }
+      await context.close();
+    }
+  }
 });
