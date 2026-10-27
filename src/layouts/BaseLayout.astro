@@ -287,9 +287,11 @@ const fallbackImage = socialFallbackImageUrl(
     }
   }
 
+  /* The footer's section gap is the only space above it on every page, so
+     main has no bottom padding (E11.5-11b). */
   .site-main {
     padding-inline: var(--space-3);
-    padding-block: var(--space-4);
+    padding-block-start: var(--space-4);
   }
 
   /* The footer is a full-width midnight band (identity §5.2), the section

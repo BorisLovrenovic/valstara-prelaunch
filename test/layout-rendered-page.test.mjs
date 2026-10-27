@@ -816,6 +816,24 @@ test('the footer matches the wireframe grid at every frame width in both themes'
       assert.equal(footer.paddingTop, '64px', label);
       assert.equal(footer.paddingBottom, '48px', label);
       assert.equal(footer.marginTop, large ? '80px' : '64px', label);
+      // Only the section gap sits above the footer: main adds no bottom
+      // padding, on the landing page and on a document page alike.
+      for (const path of ['/', '/terms']) {
+        const shell = await openSettled(width, colorScheme, path);
+        near(
+          await shell.page.evaluate(() => {
+            const main = globalThis.document.querySelector('main');
+            const footer = globalThis.document.querySelector('body > footer');
+            return (
+              footer.getBoundingClientRect().top -
+              main.lastElementChild.getBoundingClientRect().bottom
+            );
+          }),
+          large ? 80 : 64,
+          `${label} ${path}: gap above the footer`,
+        );
+        await shell.context.close();
+      }
       // The dark frames edge the band with the 1px `--edge` line.
       if (colorScheme === 'dark') {
         assert.match(
