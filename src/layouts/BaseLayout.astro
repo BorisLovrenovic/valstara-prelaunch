@@ -101,7 +101,7 @@ const fallbackImage = socialFallbackImageUrl(
           {themeToggle && <ThemeToggle />}
           <Button
             class="site-header__join"
-            size="xs"
+            size="h44"
             href={`${sectionPrefix}${layoutCopy.joinAnchor}`}
           >
             {layoutCopy.joinLabel}
@@ -267,13 +267,23 @@ const fallbackImage = socialFallbackImageUrl(
     margin-inline-start: auto;
   }
 
-  /* Below 22.5rem the Join button is the xs size so the row fits at 320px;
-     from 22.5rem it is h44. */
-  @media (min-width: 22.5rem) {
+  /* A fixed, token-derived width: the label's width differs slightly between
+     the metric-matched fallback and the loaded face, and the right-aligned
+     actions must not move when the font swaps (zero CLS, E2-02). 160px is the
+     frames' h44 Join, a 119px label padded 20px each side, within 1px. */
+  .site-header :global(.site-header__join) {
+    inline-size: calc(var(--space-10) * 2);
+    white-space: nowrap;
+  }
+
+  /* Below 22.5rem the Join button is the xs size so the row fits at 320px:
+     130px, a 106px label padded 12px each side. */
+  @media (width < 22.5rem) {
     .site-header :global(.site-header__join) {
-      padding-inline: var(--space-2-5);
-      font-size: var(--step-2);
-      line-height: var(--leading-2);
+      inline-size: calc(var(--space-2-5) * 6.5);
+      padding-inline: var(--space-1-5);
+      font-size: var(--step-1);
+      line-height: var(--leading-1);
     }
   }
 

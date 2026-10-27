@@ -663,6 +663,8 @@ test('the header matches the wireframe geometry at every frame width in both the
         `${label}: toggle to join gap`,
       );
       const xs = width < 360;
+      // The frames' widths: the label plus 20px padding (12px for xs).
+      near(header.join.width, xs ? 130 : 159, `${label}: join width`);
       assert.equal(header.join.fontSize, xs ? '14px' : '16px', label);
       assert.equal(header.join.lineHeight, xs ? '20px' : '24px', label);
       assert.equal(header.join.paddingLeft, xs ? '12px' : '20px', label);
