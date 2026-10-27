@@ -129,6 +129,14 @@ const wireframeTokens = {
   '--banner-tone-dark': 'rgba(255,255,255,.13)',
   '--banner-tone-light': 'rgba(255,255,255,.16)',
   '--banner-tone-ink': 'rgba(16,16,20,.10)',
+  // E11.5-11c (founder-authorised 2026-10-27): the wireframe's .t1 to .t3
+  // tonal-shape offsets, one token per side each shape sets.
+  '--banner-shape-t1-top': '-80%',
+  '--banner-shape-t1-right': '-12%',
+  '--banner-shape-t2-right': '-20%',
+  '--banner-shape-t2-bottom': '-75%',
+  '--banner-shape-t3-top': '-140%',
+  '--banner-shape-t3-left': '-34%',
   '--banner-edge': '0 0 0 0 transparent',
   '--banner-edge-hero': '0 0 0 0 transparent',
   '--banner-edge-hover': '0 0 0 0 transparent',
@@ -144,6 +152,8 @@ const wireframeTokens = {
   '--space-0-5': '0.25rem',
   '--space-0-75': '0.375rem',
   '--space-1-5': '0.75rem',
+  // E11.5-11c (founder-authorised 2026-10-27): the medium hero chip's 14px.
+  '--space-1-75': '0.875rem',
   '--space-2-5': '1.25rem',
   '--border-thin': '1px',
   '--border-check': '1.5px',

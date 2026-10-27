@@ -112,6 +112,7 @@
   --space-0-5: 0.25rem;
   --space-0-75: 0.375rem;
   --space-1-5: 0.75rem;
+  --space-1-75: 0.875rem;
   --space-2-5: 1.25rem;
 
   /* layout */
@@ -171,6 +172,12 @@
   --banner-tone-dark: rgba(255, 255, 255, 0.13);
   --banner-tone-light: rgba(255, 255, 255, 0.16);
   --banner-tone-ink: rgba(16, 16, 20, 0.1);
+  --banner-shape-t1-top: -80%;
+  --banner-shape-t1-right: -12%;
+  --banner-shape-t2-right: -20%;
+  --banner-shape-t2-bottom: -75%;
+  --banner-shape-t3-top: -140%;
+  --banner-shape-t3-left: -34%;
   --banner-edge: 0 0 0 0 transparent;
   --banner-edge-hero: 0 0 0 0 transparent;
   --banner-edge-hover: 0 0 0 0 transparent;
