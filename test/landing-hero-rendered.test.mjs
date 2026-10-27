@@ -351,9 +351,20 @@ function columns(container) {
   };
 }
 
-test('above the fold matches Fold.dc.html at 1440 × 900, 390 × 844 and 320, in both themes', async () => {
-  for (const colorScheme of themes) {
-    const desktop = await openHero({ width: 1440, height: 900, colorScheme });
+// Fold.dc.html draws the giveaway-open microline, which wraps at small
+// widths; the default page carries only the 18+ line. Both must fit.
+test('above the fold matches Fold.dc.html at 1440 × 900, 390 × 844 and 320, in both themes and both microline states', async () => {
+  for (const [colorScheme, html] of themes.flatMap((theme) => [
+    [theme, undefined],
+    [theme, giveawayOpenPage],
+  ])) {
+    const variant = html === undefined ? 'giveaway off' : 'giveaway open';
+    const desktop = await openHero({
+      width: 1440,
+      height: 900,
+      colorScheme,
+      html,
+    });
     const large = await measureHero(desktop.page);
     for (const key of [
       'eyebrow',
@@ -367,36 +378,46 @@ test('above the fold matches Fold.dc.html at 1440 × 900, 390 × 844 and 320, in
       assert.ok(large[key].top >= 0, `${key} starts on screen`);
       assert.ok(
         large[key].bottom <= 900,
-        `${key} ends above 900 in ${colorScheme}: ${large[key].bottom}`,
+        `${key} ends above 900 in ${colorScheme}, ${variant}: ${large[key].bottom}`,
       );
     }
     assert.ok(
       large.catalogueHeading.top < 900,
-      `"What you'll find" starts above 900: ${large.catalogueHeading.top}`,
+      `"What you'll find" starts above 900, ${variant}: ${large.catalogueHeading.top}`,
     );
     await desktop.context.close();
 
-    const phone = await openHero({ width: 390, height: 844, colorScheme });
+    const phone = await openHero({
+      width: 390,
+      height: 844,
+      colorScheme,
+      html,
+    });
     const small = await measureHero(phone.page);
     for (const key of ['input', 'submit']) {
       assert.ok(
         small[key].bottom <= 500,
-        `${key} ends above 500 in ${colorScheme}: ${small[key].bottom}`,
+        `${key} ends above 500 in ${colorScheme}, ${variant}: ${small[key].bottom}`,
       );
     }
     for (const key of ['micro', 'factsList', 'consent', 'strip']) {
       assert.ok(
         small[key].bottom <= 844,
-        `${key} fits above 844 in ${colorScheme}: ${small[key].bottom}`,
+        `${key} fits above 844 in ${colorScheme}, ${variant}: ${small[key].bottom}`,
       );
     }
     await phone.context.close();
 
-    const smallest = await openHero({ width: 320, height: 568, colorScheme });
+    const smallest = await openHero({
+      width: 320,
+      height: 568,
+      colorScheme,
+      html,
+    });
     const narrow = await measureHero(smallest.page);
     assert.ok(
       narrow.scrollWidth <= 320,
-      `no horizontal overflow at 320 in ${colorScheme}: ${narrow.scrollWidth}`,
+      `no horizontal overflow at 320 in ${colorScheme}, ${variant}: ${narrow.scrollWidth}`,
     );
     for (const banner of narrow.stripBanners) {
       assert.ok(banner.box.right <= 320 - 16 + tolerance, banner.name);
