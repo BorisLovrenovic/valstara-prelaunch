@@ -146,6 +146,9 @@
   --ring-focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--coral);
   --inset-line: inset 0 0 0 1px var(--line);
   --inset-strong: inset 0 0 0 1px var(--ink-300);
+  /* E11.5-11f (founder-authorised 2026-10-29): the guarantee numeral ring.
+     No dark override: dark redefines --coral. */
+  --ring-numeral: inset 0 0 0 1.5px var(--coral);
 
   /* elevation, sizing and layering */
   --shadow-1:

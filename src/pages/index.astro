@@ -334,27 +334,40 @@ Astro.response.headers.set(
 
     <Section
       id="guarantee"
+      class="landing-band"
       variant="midnight"
       aria-labelledby="guarantee-title"
     >
       <h2 id="guarantee-title" slot="heading">{landingCopy.trust.heading}</h2>
-      <p class="landing-intro">{landingCopy.trust.intro}</p>
+      <p slot="heading">{landingCopy.trust.intro}</p>
       <ol class="landing-guarantee">
         {
           landingCopy.trust.promises.map((promise) => (
-            <li>
-              <span class="landing-guarantee__numeral" aria-hidden="true">
+            <li class="landing-promise">
+              <span class="landing-promise__numeral" aria-hidden="true">
                 {promise.numeral}
               </span>
-              <h3>{promise.title}</h3>
-              <p>{promise.line}</p>
+              <h3 class="landing-promise__title">
+                <span class="landing-promise__prefix landing-hidden">
+                  {landingCopy.trust.prefix(promise.numeral)}
+                </span>
+                {promise.title}
+              </h3>
+              <p class="landing-promise__line">{promise.line}</p>
             </li>
           ))
         }
       </ol>
-      <a class="landing-guarantee__link" href="/guarantee">
+      <TextLink
+        href="/guarantee"
+        variant="on-midnight"
+        class="landing-guarantee__link"
+      >
         {landingCopy.trust.link}
-      </a>
+        <Icon name="arrow-right" size="sm" />
+      </TextLink>
+      {/* Decorative, at large widths only. */}
+      <Icon name="star" size="md" class="landing-band__star" />
     </Section>
 
     <Section aria-labelledby="trust-links-title">
@@ -364,31 +377,45 @@ Astro.response.headers.set(
       <div class="landing-trust-links">
         {
           landingCopy.trustLinks.items.map((item) => (
-            <Card interactive>
-              <h3>
-                <a href={item.href}>{item.heading}</a>
+            <Card href={item.href} interactive class="landing-trust-card">
+              <IconTile name={item.icon} />
+              <h3 class="landing-trust-card__title">
+                {item.heading}
+                <Icon
+                  name="arrow-right"
+                  size="sm"
+                  class="landing-trust-card__arrow"
+                />
               </h3>
-              <p>{item.line}</p>
+              <p class="landing-trust-card__line">{item.line}</p>
             </Card>
           ))
         }
       </div>
     </Section>
 
-    <Section id="faq" aria-labelledby="faq-title">
+    <Section id="faq" class="landing-faq" aria-labelledby="faq-title">
       <h2 id="faq-title" slot="heading">{landingCopy.faq.heading}</h2>
-      <div class="landing-faq">
+      <Card class="landing-faq__card">
         {
-          landingCopy.faq.items.map((item) => (
-            <Accordion summary={item.question}>{item.answer}</Accordion>
+          landingCopy.faq.items.map((item, index) => (
+            <Accordion summary={item.question} open={index === 0}>
+              {item.answer}
+            </Accordion>
           ))
         }
-      </div>
+      </Card>
     </Section>
 
     <Section class="landing-final" aria-labelledby="final-title">
-      <h2 id="final-title" slot="heading">{landingCopy.final.heading}</h2>
-      <Button href="#join" data-focus-signup>{landingCopy.final.action}</Button>
+      <Card class="landing-final__card">
+        <h2 id="final-title" class="landing-final__title">
+          {landingCopy.final.heading}
+        </h2>
+        <Button href="#join" class="landing-final__action" data-focus-signup>
+          {landingCopy.final.action}
+        </Button>
+      </Card>
     </Section>
   </div>
 </BaseLayout>
@@ -458,11 +485,6 @@ Astro.response.headers.set(
     font-size: var(--step-2);
     line-height: var(--leading-2);
   }
-  .landing-intro {
-    max-width: var(--measure);
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
-  }
   .landing-hero :global(valstara-signup-form),
   .landing-paused {
     max-inline-size: calc(var(--space-10) * 7);
@@ -515,9 +537,6 @@ Astro.response.headers.set(
     padding: var(--space-0);
     list-style: none;
   }
-  .landing-intro {
-    margin-block-end: var(--space-4);
-  }
   /*
     Below 64rem the catalogue rail bleeds into the right gutter. Its content
     cell spans that gutter as padding, so the bleed stays inside a box.
@@ -525,11 +544,6 @@ Astro.response.headers.set(
   .landing :global(#catalogue .container__content) {
     grid-column: 2 / 4;
     padding-inline-end: var(--gutter);
-  }
-  .landing-guarantee,
-  .landing-trust-links {
-    display: grid;
-    gap: var(--space-3);
   }
   /*
     "How it works" (E11.5-11d). Small: one column, 28px apart, each step a row
@@ -824,39 +838,190 @@ Astro.response.headers.set(
     font-weight: var(--weight-medium);
     line-height: var(--leading-1);
   }
-  .landing-guarantee__numeral {
-    display: block;
-    color: var(--coral);
-    font-size: var(--step-4);
-    font-weight: var(--weight-bold);
-    line-height: var(--leading-4);
+  /*
+    The closing sections (E11.5-11f).
+
+    The guarantee band: full-bleed midnight, padded by the section gap, with
+    the dark band shadow in dark. Its promises are an ordered list: one
+    column 40px apart at small widths, three equal columns 24px apart from
+    48rem. Each is a column with 12px gaps: the 64px numeral ring (a 1.5px
+    inset coral ring, --ring-numeral, aria-hidden, 8px of extra space below it),
+    the H3 with a visually
+    hidden "I. " prefix, and the body, at most 340px wide at large widths.
+    The on-midnight link sits 32px below the list with a 44px hit area
+    (12px above and below its line) under 64rem, and 40px below with none
+    from 64rem, where the coral-lift star sits 160px from the band's right
+    edge and 80px from its top.
+  */
+  .landing :global(.landing-band) {
+    position: relative;
+    box-shadow: var(--shadow-band);
   }
-  .landing-guarantee p {
-    margin-block-end: var(--space-0);
+  .landing-guarantee {
+    display: grid;
+    gap: var(--space-5);
   }
-  .landing-guarantee__link {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--tap-min);
-    margin-block-start: var(--space-3);
-    color: var(--on-midnight);
-  }
-  .landing-trust-links :global(.card) {
+  .landing-promise {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    align-items: flex-start;
     min-width: 0;
   }
-  .landing-trust-links a {
-    display: inline-flex;
+  .landing-promise__numeral {
+    display: flex;
     align-items: center;
-    min-height: var(--tap-min);
-    color: var(--ink);
+    justify-content: center;
+    inline-size: var(--space-8);
+    block-size: var(--space-8);
+    margin-block-end: var(--space-1);
+    color: var(--coral);
+    font-size: var(--step-5);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-5);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--ring-numeral);
   }
-  .landing-faq {
+  .landing .landing-promise__title,
+  .landing .landing-trust-card__title {
+    position: relative;
+    margin-block: var(--space-0);
+    font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-3);
+    letter-spacing: var(--tracking-tight);
+  }
+  .landing .landing-promise__line {
+    margin-block: var(--space-0);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+  .landing :global(.text-link.landing-guarantee__link) {
+    display: inline-flex;
+    gap: var(--space-1);
+    align-items: center;
+    margin-block-start: var(--space-4);
+    padding-block: var(--space-1-5);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+  .landing :global(.landing-band__star) {
+    display: none;
+    color: var(--coral-lift);
+  }
+  /*
+    "Get to know Valstara": one column 16px apart at small widths, three
+    equal columns 24px apart from 48rem. The whole card is the link: a
+    column with 12px gaps holding the icon tile, the 20/28 H3 with a 16px
+    ink-600 arrow 8px after it (not at medium widths), and the 16/24 ink-600
+    line.
+  */
+  .landing-trust-links {
     display: grid;
     gap: var(--space-2);
-    max-width: var(--measure);
   }
-  .landing-final {
-    padding-block-end: var(--space-8);
+  .landing :global(.landing-trust-card) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    align-items: flex-start;
+    min-width: 0;
+  }
+  .landing .landing-trust-card__title {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+  }
+  .landing :global(.landing-trust-card__arrow) {
+    color: var(--ink-600);
+  }
+  .landing .landing-trust-card__line {
+    margin-block: var(--space-0);
+    color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+  /*
+    FAQ: the H2 above the card below 64rem; from 64rem, on the 12-column
+    grid, the H2 in columns 1-4 and the card in 5-12. The card is padded
+    0 20px at small widths and 0 24px from 48rem, and holds the native
+    details items, the first open.
+  */
+  .landing :global(.card.landing-faq__card) {
+    padding-block: var(--space-0);
+    padding-inline: var(--space-2-5);
+  }
+  /*
+    The final call to action: one surface card across the content width.
+    Small: a column with stretched items, 24px gaps and padding, so the
+    button is full width. Medium: a row with the H2 and the button at either
+    end, 24px apart, 32px padding; large: 40px padding. The section gap
+    above the footer is the only space below it.
+  */
+  .landing :global(.card.landing-final__card) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: stretch;
+  }
+  .landing .landing-final__title {
+    margin-block: var(--space-0);
+    font-size: var(--step-4);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-4);
+    letter-spacing: var(--tracking-tight);
+  }
+  @media (min-width: 48rem) {
+    .landing-guarantee,
+    .landing-trust-links {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-3);
+    }
+    .landing :global(.card.landing-faq__card) {
+      padding-inline: var(--space-3);
+    }
+    .landing :global(.card.landing-final__card) {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-4);
+    }
+  }
+  @media (min-width: 48rem) and (width < 64rem) {
+    .landing :global(.landing-trust-card__arrow) {
+      display: none;
+    }
+  }
+  @media (min-width: 64rem) {
+    .landing .landing-promise__line {
+      max-inline-size: calc(var(--space-10) * 4.25);
+    }
+    .landing :global(.text-link.landing-guarantee__link) {
+      margin-block-start: var(--space-5);
+      padding-block: var(--space-0);
+    }
+    .landing :global(.landing-band__star) {
+      position: absolute;
+      top: var(--space-10);
+      right: calc(var(--space-10) * 2);
+      display: block;
+    }
+    .landing :global(.landing-faq .container__content) {
+      display: grid;
+      grid-template-columns: repeat(var(--grid-columns-wide), minmax(0, 1fr));
+      column-gap: var(--grid-gap-wide);
+      align-items: start;
+    }
+    .landing :global(.landing-faq .section__heading) {
+      grid-column: 1 / span 4;
+      margin-block-end: var(--space-0);
+    }
+    .landing :global(.card.landing-faq__card) {
+      grid-column: 5 / span 8;
+    }
+    .landing :global(.card.landing-final__card) {
+      padding: var(--space-5);
+    }
   }
   @media (min-width: 48rem) {
     .landing :global(#catalogue .container__content) {
@@ -1011,10 +1176,6 @@ Astro.response.headers.set(
     .landing-hero__stack :global(.hero-banner:nth-child(3)) {
       top: calc(var(--space-1) * 26);
       right: calc(100% * 0.3);
-    }
-    .landing-guarantee,
-    .landing-trust-links {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     /*
       Large: the cards share one row in equal, equal-height columns: three,

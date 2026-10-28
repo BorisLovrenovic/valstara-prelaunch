@@ -1,20 +1,40 @@
 ---
 import type { HTMLAttributes } from 'astro/types';
 
-type Props = HTMLAttributes<'article'> & {
+type Shared = {
   // An interactive card (one that is, or wraps, a single link) lifts on hover.
   interactive?: boolean;
 };
 
+// With an href the whole card is the link: one native anchor, so it works
+// without JavaScript and is announced as a single link.
+type Props =
+  | (HTMLAttributes<'article'> & Shared & { href?: undefined })
+  | (HTMLAttributes<'a'> & Shared & { href: string });
+
 const { class: className, interactive = false, ...attributes } = Astro.props;
+const classes = [
+  'card',
+  interactive && 'card--interactive',
+  attributes.href !== undefined && 'card--link',
+  className,
+];
 ---
 
-<article
-  {...attributes}
-  class:list={['card', interactive && 'card--interactive', className]}
->
-  <slot />
-</article>
+{
+  attributes.href === undefined ? (
+    <article
+      {...(attributes as HTMLAttributes<'article'>)}
+      class:list={classes}
+    >
+      <slot />
+    </article>
+  ) : (
+    <a {...(attributes as HTMLAttributes<'a'>)} class:list={classes}>
+      <slot />
+    </a>
+  )
+}
 
 <style>
   /* --edge is transparent in light and a 1px light edge in dark, so every
@@ -26,6 +46,15 @@ const { class: className, interactive = false, ...attributes } = Astro.props;
     background-color: var(--surface);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-1), var(--edge);
+  }
+
+  .card--link {
+    text-decoration: none;
+  }
+
+  .card--link:focus-visible {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
   }
 
   .card--interactive {

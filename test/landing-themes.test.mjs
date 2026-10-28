@@ -215,11 +215,15 @@ test('the landing page renders every section, in light and dark, at both extreme
         landingCopy.trust.promises.length,
       );
 
-      // The FAQ is a native disclosure: closed by default, opens on the page.
-      const firstFaq = page.locator('details').first();
-      assert.equal(await firstFaq.getAttribute('open'), null);
-      await firstFaq.locator('summary').click();
-      assert.equal(await firstFaq.getAttribute('open'), '');
+      // The FAQ is a native disclosure: the first item is open on load and
+      // the second closed, and the second opens on the page (E11.5-11f,
+      // founder-authorised 2026-10-29).
+      const faqItems = page.locator('#faq details');
+      assert.equal(await faqItems.nth(0).getAttribute('open'), '');
+      const secondFaq = faqItems.nth(1);
+      assert.equal(await secondFaq.getAttribute('open'), null);
+      await secondFaq.locator('summary').click();
+      assert.equal(await secondFaq.getAttribute('open'), '');
 
       // The signup form is present (the flag fell back to its default).
       assert.equal(await page.locator('form input[name="email"]').count(), 1);
