@@ -438,6 +438,7 @@
     "category": "software",
     "logo": "/images/providers/cyberghost.svg",
     "brandColor": "#ffcc00",
+    "chipTone": "dark",
     "confirmation": {
       "name": "Boris Lovrenovic",
       "date": "2026-10-25"

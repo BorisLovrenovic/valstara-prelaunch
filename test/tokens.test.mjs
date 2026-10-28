@@ -69,6 +69,8 @@ const expectedDarkTokens = {
   '--banner-edge': 'inset 0 0 0 1px rgba(240,240,238,.1)',
   '--banner-edge-hero': 'inset 0 0 0 1px rgba(240,240,238,.12)',
   '--banner-edge-hover': 'inset 0 0 0 1px rgba(240,240,238,.14)',
+  '--shadow-chip-dark':
+    '0 0 0 1px rgba(240,240,238,.18), 0 6px 14px rgba(0,0,0,.3)',
   '--shadow-band': '0 0 0 1px rgba(240,240,238,.1), 0 24px 64px rgba(0,0,0,.6)',
 };
 
@@ -137,6 +139,15 @@ const wireframeTokens = {
   '--banner-shape-t2-bottom': '-75%',
   '--banner-shape-t3-top': '-140%',
   '--banner-shape-t3-left': '-34%',
+  // E11.5-11d (founder-authorised 2026-10-28): the .t4 to .t6 offsets, and
+  // the dark chip's shadow, which the dark frames draw with a light ring.
+  '--banner-shape-t4-top': '-90%',
+  '--banner-shape-t4-right': '16%',
+  '--banner-shape-t5-top': '-64%',
+  '--banner-shape-t5-right': '6%',
+  '--banner-shape-t6-top': '38%',
+  '--banner-shape-t6-left': '52%',
+  '--shadow-chip-dark': '0 1px 2px rgba(0,0,0,.2), 0 6px 14px rgba(0,0,0,.16)',
   '--banner-edge': '0 0 0 0 transparent',
   '--banner-edge-hero': '0 0 0 0 transparent',
   '--banner-edge-hover': '0 0 0 0 transparent',
@@ -186,14 +197,6 @@ function cssValue(value) {
     .trim()
     .toLowerCase();
 }
-
-const providerShowcaseTokens = {
-  '--provider-layer-decor': '-1',
-  '--provider-banner-tone':
-    'linear-gradient( to bottom right, color-mix(in srgb, currentColor, var(--surface) 45%), transparent 60% )',
-  '--provider-depth-brightness': '0.7',
-  '--provider-rail-peek': '82%',
-};
 
 function declarations(block) {
   return new Map(
@@ -256,9 +259,6 @@ test('tokens exactly transcribe the locked colour and typography sources', async
   })) {
     assert.ok(root.has(name), `${name} is declared on bare :root`);
     assert.equal(cssValue(root.get(name)), cssValue(value), name);
-  }
-  for (const [name, value] of Object.entries(providerShowcaseTokens)) {
-    assert.equal(root.get(name), value, name);
   }
 
   for (const name of [
@@ -355,7 +355,6 @@ test('every colour value reuses the locked §5 palette and the type scale has no
       ...Object.keys(foundationTokens),
       ...Object.keys(wireframeTokens),
       '--space-0',
-      ...Object.keys(providerShowcaseTokens),
       ...Array.from({ length: 10 }, (_, index) => `--space-${index + 1}`),
     ].sort(),
     'bare :root declares exactly the authorised tokens, regardless of colour syntax or size name',

@@ -254,9 +254,10 @@ after(async () => {
 
 test('all primitives and the icon registry are zero-JavaScript Astro components', async () => {
   const components = await componentSources();
-  // E11.5-03 adds the zero-JS Container and Section layout primitives,
-  // E11.5-11a the checkbox, icon tile and text link from the component sheet,
-  // and E11.5-11c the hero banner (founder-authorised 2026-10-27).
+  // E11.5-03 adds the zero-JS Container and Section layout primitives, and
+  // E11.5-11a the checkbox, icon tile and text link from the component sheet.
+  // E11.5-11c's hero banner became the provider banner's stack and strip
+  // sizes in E11.5-11d (founder-authorised 2026-10-28).
   assert.deepEqual(components.map(({ name }) => name).sort(), [
     'accordion.astro',
     'button.astro',
@@ -264,7 +265,6 @@ test('all primitives and the icon registry are zero-JavaScript Astro components'
     'checkbox.astro',
     'container.astro',
     'field.astro',
-    'hero-banner.astro',
     'icon-tile.astro',
     'icon.astro',
     'input.astro',

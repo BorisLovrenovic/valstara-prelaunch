@@ -178,6 +178,14 @@
   --banner-shape-t2-bottom: -75%;
   --banner-shape-t3-top: -140%;
   --banner-shape-t3-left: -34%;
+  --banner-shape-t4-top: -90%;
+  --banner-shape-t4-right: 16%;
+  --banner-shape-t5-top: -64%;
+  --banner-shape-t5-right: 6%;
+  --banner-shape-t6-top: 38%;
+  --banner-shape-t6-left: 52%;
+  --shadow-chip-dark:
+    0 1px 2px rgba(0, 0, 0, 0.2), 0 6px 14px rgba(0, 0, 0, 0.16);
   --banner-edge: 0 0 0 0 transparent;
   --banner-edge-hero: 0 0 0 0 transparent;
   --banner-edge-hover: 0 0 0 0 transparent;
@@ -199,16 +207,6 @@
   --tile-size: 2.5rem;
   --layer-dock: 20;
   --layer-skip: 30;
-
-  /* provider showcase */
-  --provider-layer-decor: -1;
-  --provider-banner-tone: linear-gradient(
-    to bottom right,
-    color-mix(in srgb, currentColor, var(--surface) 45%),
-    transparent 60%
-  );
-  --provider-depth-brightness: 0.7;
-  --provider-rail-peek: 82%;
 
   /* motion */
   --duration-fast: 150ms;
@@ -240,6 +238,8 @@
     --banner-edge: inset 0 0 0 1px rgba(240, 240, 238, 0.1);
     --banner-edge-hero: inset 0 0 0 1px rgba(240, 240, 238, 0.12);
     --banner-edge-hover: inset 0 0 0 1px rgba(240, 240, 238, 0.14);
+    --shadow-chip-dark:
+      0 0 0 1px rgba(240, 240, 238, 0.18), 0 6px 14px rgba(0, 0, 0, 0.3);
     --shadow-band:
       0 0 0 1px rgba(240, 240, 238, 0.1), 0 24px 64px rgba(0, 0, 0, 0.6);
   }
@@ -263,6 +263,8 @@
   --banner-edge: inset 0 0 0 1px rgba(240, 240, 238, 0.1);
   --banner-edge-hero: inset 0 0 0 1px rgba(240, 240, 238, 0.12);
   --banner-edge-hover: inset 0 0 0 1px rgba(240, 240, 238, 0.14);
+  --shadow-chip-dark:
+    0 0 0 1px rgba(240, 240, 238, 0.18), 0 6px 14px rgba(0, 0, 0, 0.3);
   --shadow-band:
     0 0 0 1px rgba(240, 240, 238, 0.1), 0 24px 64px rgba(0, 0, 0, 0.6);
 }

@@ -342,7 +342,14 @@ test('the landing joins layout enforcement and passes WCAG axe in both themes', 
   }
 });
 
-test('the delayed self-hosted above-fold font swaps with zero rendered CLS and selective preload', async () => {
+// Loads the landing page with every font delayed 350ms and measures the
+// layout shift its arrival causes. A probe of mono figures with markers
+// beside and below them is added to the page: a marker moves if the mono face
+// arrives with metrics its fallback did not reserve.
+// `withoutFallback` plants the stylesheet with the metric-matched JetBrains
+// Mono fallback removed.
+async function fontSwap({ withoutFallback = false } = {}) {
+  let plantedOut = false;
   const context = await browser.newContext({
     viewport: { width: 375, height: 900 },
   });
@@ -372,9 +379,60 @@ test('the delayed self-hosted above-fold font swaps with zero rendered CLS and s
     await new Promise((resolve) => globalThis.setTimeout(resolve, 350));
     await route.fulfill({ response });
   });
+  // The probe goes in as the body opens, before the first paint.
+  await context.addInitScript(() => {
+    const { document } = globalThis;
+    new globalThis.MutationObserver((records, observer) => {
+      if (!document.body) return;
+      observer.disconnect();
+      // Mono figures at the normal line height, with a marker after them on
+      // the line and another below: a different advance width moves the
+      // first, a different line height the second.
+      const probe = document.createElement('p');
+      probe.dataset.fontProbe = '';
+      probe.textContent = '0123456789'.repeat(2);
+      Object.assign(probe.style, {
+        margin: '0',
+        font: '400 1rem/normal var(--font-mono)',
+      });
+      const marker = () => {
+        const element = document.createElement('span');
+        element.dataset.fontProbe = 'marker';
+        Object.assign(element.style, {
+          display: 'inline-block',
+          width: '2rem',
+          height: '1rem',
+          background: 'currentColor',
+        });
+        return element;
+      };
+      probe.append(marker());
+      const below = document.createElement('div');
+      below.append(marker());
+      document.body.prepend(probe, below);
+    }).observe(document, { childList: true, subtree: true });
+  });
+  if (withoutFallback)
+    await context.route('**/*.css', async (route) => {
+      const response = await route.fetch();
+      const css = await response.text();
+      const planted = css.replace(
+        /@font-face\s*\{[^}]*JetBrains Mono Fallback[^}]*\}/gu,
+        '',
+      );
+      if (planted !== css) plantedOut = true;
+      await route.fulfill({ response, body: planted });
+    });
 
   const page = await context.newPage();
   await page.goto(browserOrigin, { waitUntil: 'domcontentloaded' });
+  // The step badges request the mono face on their own; wait for its arrival
+  // without loading it from the test.
+  await page.waitForFunction(() =>
+    globalThis.performance
+      .getEntriesByType('resource')
+      .some((entry) => entry.name.includes('/fonts/jetbrains-mono')),
+  );
   await page.evaluate(() => globalThis.document.fonts.ready);
   await page.waitForTimeout(100);
 
@@ -383,17 +441,48 @@ test('the delayed self-hosted above-fold font swaps with zero rendered CLS and s
     layoutShiftSources: globalThis.__fontLayoutShiftSources,
     fonts: globalThis.performance
       .getEntriesByType('resource')
-      .map((entry) => entry.name)
+      .map((entry) => new URL(entry.name).pathname)
       .filter((name) => name.includes('/fonts/')),
     preloads: [
       ...globalThis.document.querySelectorAll('link[rel="preload"][as="font"]'),
     ].map((link) => link.getAttribute('href')),
   }));
+  await context.close();
+  assert.equal(plantedOut, withoutFallback, 'the fallback is planted out');
+  return result;
+}
+
+test('the delayed self-hosted fonts swap with zero rendered CLS and selective preload', async () => {
+  const result = await fontSwap();
   assert.equal(result.cls, 0, JSON.stringify(result.layoutShiftSources));
   assert.deepEqual(result.preloads, [
     '/fonts/instrument-sans-latin-wght-normal.woff2',
   ]);
   assert.ok(result.fonts.some((url) => url.includes('instrument-sans')));
-  assert.ok(result.fonts.every((url) => !url.includes('jetbrains-mono')));
-  await context.close();
+  // E11.5-11d (founder-authorised 2026-10-28): the step badges, and later the
+  // reward figures, set in JetBrains Mono. It is requested only as the
+  // self-hosted WOFF2, is never preloaded, and arrives with no layout shift.
+  assert.deepEqual(
+    result.fonts.filter((url) => url.includes('jetbrains-mono')),
+    ['/fonts/jetbrains-mono-latin-wght-normal.woff2'],
+  );
+  assert.ok(result.preloads.every((href) => !href.includes('jetbrains-mono')));
+});
+
+test('without the metric-matched JetBrains Mono fallback, the mono swap shifts the layout', async () => {
+  // The planted fixture: the same page with the fallback face removed. The
+  // zero-shift assertion above must fail on it.
+  const result = await fontSwap({ withoutFallback: true });
+  assert.ok(
+    result.fonts.includes('/fonts/jetbrains-mono-latin-wght-normal.woff2'),
+  );
+  assert.throws(() =>
+    assert.equal(result.cls, 0, JSON.stringify(result.layoutShiftSources)),
+  );
+  assert.ok(
+    result.layoutShiftSources.some((source) =>
+      source.node?.includes('data-font-probe'),
+    ),
+    JSON.stringify(result.layoutShiftSources),
+  );
 });

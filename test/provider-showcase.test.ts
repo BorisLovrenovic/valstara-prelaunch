@@ -97,3 +97,24 @@ test('banners contain no price, discount, count or date markup', async () => {
   assert.match(rail, /scroll-snap-type: x mandatory/u);
   assert.doesNotMatch(rail, /<script|setInterval|autoplay/iu);
 });
+
+test('chipTone accepts only "dark", and only CyberGhost carries it', async () => {
+  // E11.5-11d: a white-only logo gets the dark chip, marked in the data file.
+  assert.deepEqual(
+    valid
+      .filter((entry) => 'chipTone' in entry)
+      .map((entry) => [entry.name, entry.chipTone]),
+    [['CyberGhost', 'dark']],
+  );
+  const fixture = clone();
+  fixture[0].chipTone = 'dark';
+  await validateProviderShowcase(fixture);
+  for (const tone of ['light', 'Dark', '', 1, null]) {
+    fixture[0].chipTone = tone;
+    await assert.rejects(
+      validateProviderShowcase(fixture),
+      /Invalid chip tone: ChatGPT/u,
+      String(tone),
+    );
+  }
+});

@@ -9,6 +9,8 @@ export interface Provider {
   logo: string;
   logoDark?: string;
   brandColor: string;
+  // The dark name chip, for a logo drawn only in white (E11.5-11d).
+  chipTone?: 'dark';
   confirmation: { name: string; date: string };
   source:
     { kind: 'url'; url: string } | { kind: 'founder-supplied'; date: string };
@@ -47,6 +49,8 @@ export async function validateProviderShowcase(
     const brandColor = requiredText(entry.brandColor, 'brandColor');
     if (!/^#[0-9a-fA-F]{6}$/u.test(brandColor))
       throw new Error(`Invalid brand colour: ${name}`);
+    if (entry.chipTone !== undefined && entry.chipTone !== 'dark')
+      throw new Error(`Invalid chip tone: ${name}`);
     const confirmation = entry.confirmation as
       Record<string, unknown> | undefined;
     requiredText(confirmation?.name, 'confirmation.name');

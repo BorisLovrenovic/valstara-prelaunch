@@ -1,5 +1,10 @@
 ---
 import ProviderBanner from './provider-banner.astro';
+import {
+  catalogueShape,
+  composeBanner,
+  svgIntrinsicSize,
+} from './provider-banner.ts';
 import { providerShowcaseCopy } from '../copy/provider-showcase.ts';
 import type { Provider } from '../content/provider-showcase.ts';
 
@@ -7,71 +12,141 @@ interface Props {
   providers: Provider[];
 }
 const { providers } = Astro.props;
-const categories = Object.entries(providerShowcaseCopy.categories).filter(
-  ([token]) => providers.some((provider) => provider.category === token),
-);
+// The logos' declared sizes, bundled at build time, so each image reserves
+// its box before it loads (no layout shift).
+const logoSources = import.meta.glob<string>('/public/images/providers/*.svg', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+});
+const logoSize = (logo: string) => {
+  const source = logoSources[`/public${logo}`];
+  return source === undefined ? null : svgIntrinsicSize(source);
+};
+// One group per v2 category with providers, in v2 order. The tonal shape
+// cycles t1 to t6 across the whole catalogue in this order.
+let position = 0;
+const groups = Object.entries(providerShowcaseCopy.categories)
+  .map(([token, label]) => ({
+    label,
+    banners: providers
+      .filter((provider) => provider.category === token)
+      .map((provider) =>
+        composeBanner(provider, catalogueShape(position++), logoSize),
+      ),
+  }))
+  .filter((group) => group.banners.length > 0);
 ---
 
 <div class="provider-rail">
   {
-    categories.map(([token, label]) => (
-      <section class="provider-rail__category" aria-label={label}>
-        <h2>{label}</h2>
+    groups.map((group) => (
+      <div class="provider-rail__category">
+        <h3 class="provider-rail__label">{group.label}</h3>
         <div
           class="provider-rail__track"
           tabindex="0"
           role="region"
-          aria-label={label}
+          aria-label={group.label}
         >
-          {providers
-            .filter((provider) => provider.category === token)
-            .map((provider) => (
-              <ProviderBanner provider={provider} />
-            ))}
+          {group.banners.map((banner) => (
+            <ProviderBanner banner={banner} size="catalogue" />
+          ))}
         </div>
-      </section>
+      </div>
     ))
   }
 </div>
 <style>
+  /*
+    The catalogue (E11.5-11d). Small and medium: one scroll-snap rail per
+    group, bleeding to the right viewport edge so the next banner peeks, with
+    the scrollbar hidden and no script. Large (64rem): a five-column grid.
+    The bleed is a negative right margin of one gutter on the whole rail, so
+    the parent must hold that gutter as its padding, and then no box overflows.
+  */
   .provider-rail {
-    display: grid;
-    gap: var(--section-gap);
+    --rail-bleed: calc(-1 * var(--gutter));
+
+    margin-inline-end: var(--rail-bleed);
   }
+
   .provider-rail__category {
-    min-width: 0;
+    min-inline-size: 0;
   }
-  h2 {
-    margin: var(--space-0) var(--space-0) var(--space-3);
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
+
+  .provider-rail__category + .provider-rail__category {
+    margin-block-start: var(--space-2-5);
   }
+
+  /* Under the group, so it outranks the landing page's heading reset. */
+  .provider-rail__category .provider-rail__label {
+    margin: var(--space-0) var(--space-0) var(--space-1);
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
+    letter-spacing: var(--tracking-normal);
+  }
+
   .provider-rail__track {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(
-      calc(var(--space-10) * 2),
-      var(--provider-rail-peek)
-    );
-    gap: var(--space-2);
+    display: flex;
+    gap: var(--space-1-5);
+    padding-block: var(--space-0-5) var(--space-1-5);
+    padding-inline: var(--space-0) var(--gutter);
     overflow-x: auto;
-    padding: var(--space-1) var(--gutter) var(--space-3);
     scroll-snap-type: x mandatory;
     overscroll-behavior-inline: contain;
+    scrollbar-width: none;
   }
+
+  .provider-rail__track::-webkit-scrollbar {
+    display: none;
+  }
+
   .provider-rail__track > :global(*) {
+    flex: 0 0 calc(var(--space-1) * 28);
     scroll-snap-align: start;
   }
+
   .provider-rail__track:focus-visible {
-    outline: var(--space-1) solid var(--coral);
-    outline-offset: var(--space-1);
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
   }
-  @media (min-width: 64rem) {
+
+  @media (min-width: 48rem) {
+    .provider-rail__category + .provider-rail__category {
+      margin-block-start: var(--space-3);
+    }
+
+    .provider-rail {
+      --rail-bleed: calc(-1 * var(--gutter-wide));
+    }
+
     .provider-rail__track {
-      grid-auto-flow: initial;
+      padding-inline-end: var(--gutter-wide);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .provider-rail {
+      margin-inline-end: var(--space-0);
+    }
+
+    .provider-rail__category + .provider-rail__category {
+      margin-block-start: var(--space-4);
+    }
+
+    .provider-rail__category .provider-rail__label {
+      margin-block-end: var(--space-1-5);
+    }
+
+    .provider-rail__track {
+      display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: var(--space-2);
+      padding: var(--space-0);
       overflow: visible;
-      padding-inline: var(--space-0);
       scroll-snap-type: none;
     }
   }

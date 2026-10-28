@@ -29,4 +29,10 @@ import '../../../../../src/styles/tokens.css';
     max-width: var(--container-max);
     padding-inline: var(--gutter);
   }
+  /* The real container's gutter, which the rail bleeds through. */
+  @media (min-width: 48rem) {
+    main {
+      padding-inline: var(--gutter-wide);
+    }
+  }
 </style>
