@@ -919,6 +919,34 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     margin-block-start: var(--space-1-5);
   }
 
+  /*
+    Below 48rem the giveaway-rules link's 12px padding makes a 44px hit
+    area. As an inline-block with matching negative margins it takes only
+    its 20px line, and the microline holds the lower 12px in its own
+    padding, so neither sticks out of its box and the row does not move.
+  */
+  valstara-signup-form form > .signup-age .text-link {
+    display: inline-block;
+    margin-block: calc(-1 * var(--space-1-5));
+  }
+
+  valstara-signup-form form > .signup-age:not([hidden]):has(.text-link) {
+    margin-block-end: calc(-1 * var(--space-1-5));
+    padding-block-end: var(--space-1-5);
+  }
+
+  @media (min-width: 48rem) {
+    valstara-signup-form form > .signup-age .text-link {
+      display: inline;
+      margin-block: var(--space-0);
+    }
+
+    valstara-signup-form form > .signup-age:not([hidden]):has(.text-link) {
+      margin-block-end: var(--space-0);
+      padding-block-end: var(--space-0);
+    }
+  }
+
   valstara-signup-form .signup-turnstile {
     grid-area: check;
   }

@@ -4,10 +4,12 @@ import Button from '../components/button.astro';
 import Card from '../components/card.astro';
 import Container from '../components/container.astro';
 import Icon from '../components/icon.astro';
+import IconTile from '../components/icon-tile.astro';
 import Pill from '../components/pill.astro';
 import ProviderBanner from '../components/provider-banner.astro';
 import ProviderRail from '../components/provider-rail.astro';
 import Section from '../components/section.astro';
+import TextLink from '../components/text-link.astro';
 import landingHeroList from '../content/landing-hero.json';
 import { svgIntrinsicSize } from '../components/provider-banner.ts';
 import { resolveLandingHero } from '../content/landing-hero.ts';
@@ -49,6 +51,11 @@ const hero = resolveLandingHero(landingHeroList, providers, (logo) => {
   return source === undefined ? null : svgIntrinsicSize(source);
 });
 const enabledTiers = milestoneTiers.filter((tier) => tier.enabled);
+// "What you get" (E11.5-11e): the cards reflow across three, two and one
+// with no grid hole, and the footer row shows only with something to say.
+const showReferralCard = referralEnabled && enabledTiers.length > 0;
+const rewardCards = 1 + Number(showReferralCard) + Number(rules !== null);
+const showRewardsFooter = referralEnabled || leaderboardEnabled;
 // The "How it works" step icons, in step order (E11.5-11d).
 const stepIcons = ['mail', 'check-circle', 'upload-share'] as const;
 
@@ -179,53 +186,148 @@ Astro.response.headers.set(
 
     <Section id="rewards" aria-labelledby="rewards-title">
       <h2 id="rewards-title" slot="heading">{landingCopy.rewards.heading}</h2>
-      <div class="landing-rewards">
-        <Card>
-          <Icon name="clock" />
-          <h3>{landingCopy.rewards.accessHeading}</h3>
-          <p>{landingCopy.rewards.accessBody}</p>
-          <ol class="landing-waves">
-            {
-              accessWindows.map((_, index) => (
-                <li>{landingCopy.rewards.waveLabel(index + 1)}</li>
-              ))
-            }
-          </ol>
+      <div class="landing-rewards" data-reward-cards={rewardCards}>
+        <Card class="landing-reward landing-reward--access" data-access-card>
+          <div class="landing-reward__intro">
+            <IconTile name="building" />
+            <h3>{landingCopy.rewards.accessHeading}</h3>
+            <p class="landing-reward__body">
+              {landingCopy.rewards.accessBody}
+            </p>
+          </div>
+          <div class="landing-reward__visual">
+            <ol class="landing-waves">
+              {
+                accessWindows.map((_, index) => (
+                  <li class="landing-wave">
+                    <span class="landing-wave__label tabular-figure">
+                      {landingCopy.rewards.waveLabel(index + 1)}
+                    </span>
+                    <span class="landing-wave__track">
+                      {/* Each wave starts later along the same track. */}
+                      <span
+                        class="landing-wave__fill"
+                        style={`--wave-start: ${(index / accessWindows.length) * 100}%`}
+                      />
+                    </span>
+                  </li>
+                ))
+              }
+            </ol>
+            <p class="landing-wave-axis" aria-hidden="true">
+              <span>{landingCopy.rewards.waveAxis.earlier}</span>
+              <span>{landingCopy.rewards.waveAxis.later}</span>
+            </p>
+          </div>
         </Card>
         {
-          referralEnabled && enabledTiers.length > 0 && (
-            <Card data-referral-card>
-              <Icon name="link" />
+          showReferralCard && (
+            <Card class="landing-reward" data-referral-card>
+              <IconTile name="people" />
               <h3>{landingCopy.rewards.referralHeading}</h3>
-              <ul class="landing-tiers">
+              <div class="landing-reward__visual">
                 {enabledTiers.map((tier) => (
-                  <li>{landingCopy.rewards.tier(tier)}</li>
+                  <div class="landing-tier" data-tier={tier.number}>
+                    <p class="landing-hidden">
+                      {landingCopy.rewards.tier(tier)}
+                    </p>
+                    <div class="landing-tier__equation" aria-hidden="true">
+                      <div class="landing-tier__referrals">
+                        <span class="landing-figure tabular-figure">
+                          {tier.threshold}
+                        </span>
+                        <span class="landing-tier__people">
+                          {Array.from({ length: tier.threshold }, () => (
+                            <Icon name="person" size="sm" />
+                          ))}
+                        </span>
+                        <span class="landing-tier__label">
+                          {landingCopy.rewards.tierReferrals}
+                        </span>
+                      </div>
+                      <Icon
+                        name="arrow-right"
+                        size="md"
+                        class="landing-tier__arrow"
+                      />
+                      <div class="landing-tier__reward">
+                        <Pill>
+                          <Icon name="arrow-up" size="sm" />
+                          {landingCopy.rewards.tierWave}
+                        </Pill>
+                        <span class="landing-tier__plus">
+                          {landingCopy.rewards.tierPlus}
+                        </span>
+                        <Pill variant="coral">
+                          <span class="tabular-figure">
+                            {landingCopy.rewards.tierDiscount(tier)}
+                          </span>{' '}
+                          {landingCopy.rewards.tierDiscountLabel}
+                        </Pill>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </ul>
-              <p>{landingCopy.rewards.held}</p>
-              <p>{landingCopy.rewards.verifiedOnly}</p>
+                <p class="landing-held">
+                  <Icon name="clock" size="sm" />
+                  {landingCopy.rewards.held}
+                </p>
+              </div>
             </Card>
           )
         }
         {
           rules !== null && (
-            <Card data-giveaway-card>
-              <Icon name="star" />
+            <Card class="landing-reward" data-giveaway-card>
+              <IconTile name="gift" />
               <h3>{landingCopy.rewards.giveawayHeading}</h3>
-              <p>{landingCopy.rewards.prize(rules)}</p>
-              <p>
-                {landingCopy.rewards.freeEntry} · {landingCopy.rewards.age}
-              </p>
-              <a href="/giveaway/rules">{landingCopy.rewards.rulesLink}</a>
+              <div class="landing-reward__visual">
+                <div class="landing-prize">
+                  <p class="landing-hidden">
+                    {landingCopy.rewards.prize(rules)}
+                  </p>
+                  <p class="landing-prize__line" aria-hidden="true">
+                    <span class="landing-figure tabular-figure">
+                      {rules.prizeCount}
+                    </span>{' '}
+                    <span class="landing-prize__words">
+                      {landingCopy.rewards.prizeCountLabel}
+                    </span>{' '}
+                    <span class="landing-figure tabular-figure">
+                      {landingCopy.rewards.prizeValue(rules)}
+                    </span>{' '}
+                    <span class="landing-prize__words">
+                      {landingCopy.rewards.prizeEach}
+                    </span>
+                  </p>
+                </div>
+                <p class="landing-reward__note">
+                  {landingCopy.rewards.freeEntry} · {landingCopy.rewards.age}
+                </p>
+                <TextLink href="/giveaway/rules" class="landing-reward__link">
+                  {landingCopy.rewards.rulesLink}
+                </TextLink>
+              </div>
             </Card>
           )
         }
       </div>
       {
-        leaderboardEnabled && (
-          <p class="landing-leaderboard">
-            <a href="/leaderboard">{landingCopy.rewards.leaderboardLink}</a>
-          </p>
+        showRewardsFooter && (
+          <div class="landing-rewards__footer">
+            <p class="landing-rewards__verified">
+              <Icon name="shield-check" size="base" />
+              {landingCopy.rewards.verifiedOnly}
+            </p>
+            {leaderboardEnabled && (
+              <TextLink
+                href="/leaderboard"
+                class="landing-reward__link landing-reward__link--last"
+              >
+                {landingCopy.rewards.leaderboardLink}
+              </TextLink>
+            )}
+          </div>
         )
       }
     </Section>
@@ -408,8 +510,6 @@ Astro.response.headers.set(
     border-radius: var(--radius-card);
   }
   .landing-steps,
-  .landing-waves,
-  .landing-tiers,
   .landing-guarantee {
     margin: var(--space-0);
     padding: var(--space-0);
@@ -426,7 +526,6 @@ Astro.response.headers.set(
     grid-column: 2 / 4;
     padding-inline-end: var(--gutter);
   }
-  .landing-rewards,
   .landing-guarantee,
   .landing-trust-links {
     display: grid;
@@ -506,38 +605,224 @@ Astro.response.headers.set(
   .landing-step--optional .landing-step__title {
     color: var(--ink-600);
   }
-  .landing-rewards :global(.card) {
-    min-width: 0;
-  }
-  .landing-rewards :global(.icon) {
-    color: var(--coral);
-  }
+  /*
+    "What you get" (E11.5-11e). Small: one column, 16px apart. Each card has
+    the 40px icon tile, the 20/28 H3 12px below it, then the visual block
+    20px below that: a 1px divider, 20px of padding and 16px gaps. The
+    earlier-access track starts each wave a quarter later; a referral tier is
+    a hidden sentence over an aria-hidden equation; the prize figures are the
+    rules' own. The footer row sits 24px below the cards.
+  */
   .landing-rewards {
-    font-variant-numeric: tabular-nums;
-  }
-  .landing-waves {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--space-1);
-    margin-block-start: var(--space-3);
-  }
-  .landing-waves li {
-    padding: var(--space-1);
-    text-align: center;
-    font-size: var(--step-0);
-    background: var(--coral-tint);
-    color: var(--ink);
-    border-radius: var(--radius-control);
-  }
-  .landing-tiers {
     display: grid;
     gap: var(--space-2);
   }
-  .landing-tiers li {
-    font-weight: var(--weight-semibold);
+  .landing-rewards :global(.landing-reward) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    align-items: flex-start;
+    min-width: 0;
   }
-  .landing-leaderboard {
+  .landing-reward__intro {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    align-items: flex-start;
+  }
+  .landing-rewards h3 {
+    margin-block: var(--space-0);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-tight);
+  }
+  .landing-rewards p {
+    margin-block: var(--space-0);
+  }
+  .landing-rewards .landing-reward__body {
+    color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+  .landing-reward__visual {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    align-self: stretch;
+    margin-block-start: var(--space-1);
+    padding-block-start: var(--space-2-5);
+    border-block-start: var(--border-thin) solid var(--line);
+  }
+  .landing-waves {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space-1) * 1.25);
+    margin: var(--space-0);
+    padding: var(--space-0);
+    list-style: none;
+  }
+  .landing-wave {
+    display: flex;
+    gap: var(--space-1-5);
+    align-items: center;
+  }
+  .landing-wave__label {
+    flex: none;
+    inline-size: var(--space-7);
+    font-size: var(--step-0);
+    line-height: var(--leading-0);
+  }
+  .landing-wave__track {
+    position: relative;
+    flex: 1;
+    block-size: var(--space-1);
+    background-color: var(--line);
+    border-radius: var(--radius-pill);
+  }
+  .landing-wave__fill {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: var(--wave-start);
+    inset-inline-end: 0;
+    background-color: var(--ink);
+    border-radius: var(--radius-pill);
+  }
+  .landing-rewards .landing-wave-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-inline-start: calc(var(--space-7) + var(--space-1-5));
+    color: var(--ink-600);
+    font-size: var(--step-0);
+    line-height: var(--leading-0);
+  }
+  /* Read by assistive technology, clipped to nothing on screen, and boxed
+     inside its parent so it never widens the page. */
+  .landing-hidden {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .landing-tier,
+  .landing-prize {
+    position: relative;
+  }
+  .landing-tier + .landing-tier {
+    margin-block-start: var(--space-0-5);
+    padding-block-start: var(--space-2);
+    border-block-start: var(--border-thin) solid var(--line);
+  }
+  /*
+    As drawn, the referrals column gives way first: it takes the width the
+    arrow and the pills leave, up to its own, so "confirmed referrals" breaks
+    onto two lines in a narrow card. Only where even its narrowest form does
+    not fit (a 320px card) do the pills wrap below.
+  */
+  .landing-tier__equation {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+  .landing-tier__referrals {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: calc(var(--space-0-5) / 2);
+    max-inline-size: max-content;
+  }
+  .landing-figure {
+    font-size: var(--step-5);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-5);
+  }
+  .landing-tier__people {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--space-0-5) / 2);
+    color: var(--ink-600);
+  }
+  .landing-tier__label,
+  .landing-tier__plus {
+    color: var(--ink-600);
+    font-size: var(--step-0);
+    line-height: var(--leading-0);
+  }
+  .landing-rewards :global(.landing-tier__arrow) {
+    color: var(--ink-600);
+  }
+  .landing-tier__reward {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-0-75);
+    align-items: flex-start;
+  }
+  .landing-tier__plus {
+    padding-inline-start: var(--space-1-5);
+  }
+  .landing-rewards .landing-held {
+    display: flex;
+    gap: var(--space-1);
+    align-items: flex-start;
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+  .landing-held :global(.icon) {
+    margin-block-start: calc(var(--space-0-5) / 2);
+  }
+  .landing-rewards .landing-prize__line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-0) var(--space-1);
+    align-items: baseline;
+  }
+  .landing-prize__words {
+    font-size: var(--step-2);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-2);
+  }
+  .landing-rewards .landing-reward__note {
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+  /*
+    14/20 links. Below 64rem each is a 44px hit area on a 20px line: 12px of
+    padding above and below, which negative margins keep out of the layout,
+    as the frames draw it. A box that sticks out of its parent counts as
+    overflow, so the giveaway card's visual block holds the rules link's
+    lower 12px in its own padding, and the leaderboard link, the last thing
+    in the section, takes all 24px above its line instead.
+  */
+  .landing :global(.landing-reward__link) {
+    margin-block: calc(-1 * var(--space-1-5));
+    padding-block: var(--space-1-5);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+  .landing :global(.landing-reward__link--last) {
+    margin-block: calc(-1 * var(--space-3)) var(--space-0);
+    padding-block: var(--space-3) var(--space-0);
+  }
+  [data-giveaway-card] .landing-reward__visual {
+    margin-block-end: calc(-1 * var(--space-1-5));
+    padding-block-end: var(--space-1-5);
+  }
+  .landing-rewards__footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1-5) var(--space-4);
+    align-items: center;
     margin-block-start: var(--space-3);
+  }
+  .landing .landing-rewards__verified {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    margin-block: var(--space-0);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
   }
   .landing-guarantee__numeral {
     display: block;
@@ -559,9 +844,7 @@ Astro.response.headers.set(
   .landing-trust-links :global(.card) {
     min-width: 0;
   }
-  .landing-trust-links a,
-  .landing-rewards a,
-  .landing-leaderboard a {
+  .landing-trust-links a {
     display: inline-flex;
     align-items: center;
     min-height: var(--tap-min);
@@ -579,6 +862,33 @@ Astro.response.headers.set(
     .landing :global(#catalogue .container__content) {
       padding-inline-end: var(--gutter-wide);
     }
+    /*
+      Medium: two columns, 24px apart. Earlier access spans both as an inner
+      two-column card (text left, track right, 32px apart, no divider); the
+      other cards share the next row, or one takes it whole.
+    */
+    .landing-rewards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-3);
+    }
+    .landing-rewards :global(.landing-reward--access) {
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: var(--space-4);
+      align-items: start;
+    }
+    .landing-reward--access .landing-reward__visual {
+      align-self: auto;
+      gap: var(--space-1-5);
+      margin-block-start: var(--space-0);
+      padding-block-start: var(--space-0);
+      border-block-start: none;
+    }
+    .landing-rewards[data-reward-cards='2'] > :global(:last-child) {
+      grid-column: 1 / -1;
+    }
+
     .landing-steps {
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: var(--space-3);
@@ -706,8 +1016,53 @@ Astro.response.headers.set(
     .landing-trust-links {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
-    .landing-rewards {
+    /*
+      Large: the cards share one row in equal, equal-height columns: three,
+      two or one. One card alone is a two-column panel, 40px padded with a
+      64px column gap and no divider.
+    */
+    .landing-rewards[data-reward-cards='3'] {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .landing-rewards[data-reward-cards='1'] {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .landing-rewards :global(.landing-reward--access) {
+      display: flex;
+      grid-column: auto;
+    }
+    .landing-reward--access .landing-reward__visual {
+      align-self: stretch;
+      gap: var(--space-2);
+      margin-block-start: var(--space-1);
+      padding-block-start: var(--space-2-5);
+      border-block-start: var(--border-thin) solid var(--line);
+    }
+    .landing-rewards[data-reward-cards='2'] > :global(:last-child) {
+      grid-column: auto;
+    }
+    .landing-rewards[data-reward-cards='1'] :global(.landing-reward--access) {
+      display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: var(--space-8);
+      align-items: center;
+      padding: var(--space-5);
+    }
+    .landing-rewards[data-reward-cards='1']
+      .landing-reward--access
+      .landing-reward__visual {
+      align-self: auto;
+      margin-block-start: var(--space-0);
+      padding-block-start: var(--space-0);
+      border-block-start: none;
+    }
+    .landing :global(.landing-reward__link) {
+      margin-block: var(--space-0);
+      padding-block: var(--space-0);
+    }
+    [data-giveaway-card] .landing-reward__visual {
+      margin-block-end: var(--space-0);
+      padding-block-end: var(--space-0);
     }
   }
 </style>

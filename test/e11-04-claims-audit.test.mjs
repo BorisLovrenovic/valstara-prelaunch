@@ -137,6 +137,29 @@ test('current giveaway claims match the approved rules and prize limits', async 
     card.includes(landingPrize),
     'rendered giveaway card matches current rules figures',
   );
+  // The figures readers see are drawn apart from that sentence.
+  const drawnLine =
+    /<p\b[^>]*class="landing-prize__line"[^>]*>([\s\S]*?)<\/p>/u.exec(
+      card,
+    )?.[1];
+  assert.ok(drawnLine, 'rendered giveaway card draws the prize line');
+  assert.deepEqual(
+    [
+      ...drawnLine.matchAll(
+        /<span\b[^>]*class="landing-figure\b[^"]*"[^>]*>([^<]*)<\/span>/gu,
+      ),
+    ].map(([, text]) => text.trim()),
+    [String(count), `€${value.toLocaleString('en-US')}`],
+    'drawn prize figures match current rules figures',
+  );
+  assert.equal(
+    drawnLine
+      .replace(/<[^>]+>/gu, '')
+      .replace(/\s+/gu, ' ')
+      .trim(),
+    landingPrize,
+    'drawn prize line states the same claim',
+  );
   assert.ok(card.includes(landingCopy.rewards.freeEntry));
   assert.ok(card.includes(landingCopy.rewards.age));
   assert.equal(landingCopy.rewards.freeEntry, 'No purchase necessary');
