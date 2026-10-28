@@ -89,7 +89,10 @@ The root multi-stage `Dockerfile` installs from the frozen lockfile once,
 builds the Astro standalone output in one stage and prunes production
 dependencies in another. Its final stage runs as the unprivileged `node` user,
 carries a health check, and includes the existing forward-only migration runner
-and SQL files used by the production Compose migration gate.
+and SQL files used by the production Compose migration gate. The health check
+requests the landing page and releases the response body once the status is
+known. Left unread, the 68 KB landing response kept the probe process alive
+for about six seconds, past its three-second timeout.
 
 ## Environments
 
