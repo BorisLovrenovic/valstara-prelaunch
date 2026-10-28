@@ -479,6 +479,50 @@ test('banner anatomy matches the component sheet at 1440, in both themes', async
       // The category label sits at the bottom, inside the padding.
       near(banner.box.bottom - banner.categoryBox.bottom, 16, `${label} label`);
     }
+    // The chip shadow is --shadow-chip in light; the dark chip adds its light
+    // ring in dark (--shadow-chip-dark).
+    const shadowChip = await page.evaluate(() => {
+      const element = globalThis.document.createElement('span');
+      element.style.boxShadow = 'var(--shadow-chip)';
+      globalThis.document.body.append(element);
+      const resolved = globalThis.getComputedStyle(element).boxShadow;
+      element.remove();
+      return resolved;
+    });
+    const darkChips = bannersOf(result.catalogue).filter((banner) =>
+      showcase.some(
+        (provider) =>
+          provider.name === banner.name && provider.chipTone === 'dark',
+      ),
+    );
+    assert.ok(darkChips.length > 0, 'a dark chip is in the catalogue');
+    for (const banner of darkChips) {
+      const label = `${colorScheme} ${banner.name} chip shadow`;
+      if (colorScheme === 'dark')
+        assert.match(
+          banner.chipStyle.boxShadow,
+          /rgba\(240, 240, 238, 0\.18\) 0px 0px 0px 1px/u,
+          label,
+        );
+      else assert.equal(banner.chipStyle.boxShadow, shadowChip, label);
+    }
+    // Shadow 2 on hover, plus the 0.14 light edge in dark.
+    const hovered = page.locator('[data-provider-banner]').first();
+    await hovered.hover();
+    const hoverShadow = await hovered.evaluate(async (banner) => {
+      await Promise.all(
+        banner.getAnimations().map((animation) => animation.finished),
+      );
+      return globalThis.getComputedStyle(banner).boxShadow;
+    });
+    if (colorScheme === 'dark') {
+      assert.match(hoverShadow, /20px 48px/u, 'dark hover shadow');
+      assert.match(
+        hoverShadow,
+        /rgba\(240, 240, 238, 0\.14\) 0px 0px 0px 1px inset/u,
+        'dark hover edge',
+      );
+    } else assert.match(hoverShadow, /18px 44px/u, 'light hover shadow');
     await context.close();
   }
 });
