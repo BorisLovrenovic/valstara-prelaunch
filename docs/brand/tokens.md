@@ -96,7 +96,8 @@ The portable file also carries `--shadow-1` through `--shadow-3` (with paired da
 | Roles | `--field` (input and checkbox border) · `--on-coral` (primary label) · `--error-text` | `var(--ink-600)` · `#101014` · `var(--error)` | `--field` and `--on-coral` unchanged · `--error-text: var(--ink)` (`#C0392B` on `#171733` is 3.2:1) |
 | Component values | `--shadow-button` · `--overlay-hover`, `--overlay-active` · `--on-midnight-border`, `-hover`, `-active`, `-disabled`, `-disabled-border` · `--shadow-chip` · `--banner-tone-dark`, `-light`, `-ink` · `--shadow-sticky` | the ticket's values | unchanged |
 | Banner constants (E11.5-11c, founder-authorised 2026-10-27) | `--banner-white` (the logo chip, and white text on a brand colour) · `--banner-ink` (the chip's name, and ink text on a light brand colour) | `#ffffff` (LOCKED `surface`) · `#101014` (LOCKED `ink`) | unchanged: the chip stays light and banner text keeps its contrast on the brand colour in both themes |
-| Banner shapes (E11.5-11c, founder-authorised 2026-10-27) | `--banner-shape-t1-top`, `-t1-right`, `-t2-right`, `-t2-bottom`, `-t3-top`, `-t3-left`: the wireframe's `.t1` to `.t3` tonal-shape offsets, one token per side each shape sets, in percentages of the banner | `-80%` · `-12%` · `-20%` · `-75%` · `-140%` · `-34%` | unchanged |
+| Banner shapes (E11.5-11c, founder-authorised 2026-10-27; t4 to t6 E11.5-11d, 2026-10-28) | `--banner-shape-t1-top`, `-t1-right`, `-t2-right`, `-t2-bottom`, `-t3-top`, `-t3-left`, `-t4-top`, `-t4-right`, `-t5-top`, `-t5-right`, `-t6-top`, `-t6-left`: the wireframe's `.t1` to `.t6` tonal-shape offsets, one token per side each shape sets, in percentages of the banner | `-80%` · `-12%` · `-20%` · `-75%` · `-140%` · `-34%` · `-90%` · `16%` · `-64%` · `6%` · `38%` · `52%` | unchanged |
+| Dark chip shadow (E11.5-11d, founder-authorised 2026-10-28) | `--shadow-chip-dark`: the shadow of the dark chip a white-only logo takes | the `--shadow-chip` value | `0 0 0 1px rgba(240,240,238,.18), 0 6px 14px rgba(0,0,0,.3)`, a light ring so the dark chip holds its edge on a dark page |
 | Dark-only values | `--banner-edge`, `--banner-edge-hero`, `--banner-edge-hover`, `--shadow-band` | `0 0 0 0 transparent` (light base) | the 1px light edges at .1, .12 and .14, and the guarantee-band shadow |
 | Composites | `--ring-focus`, `--inset-line`, `--inset-strong`, `--inset-on-midnight`, `--inset-on-midnight-disabled` | a token colour with a fixed width | follow their colours |
 | Layout | `--grid-columns` 4 / `--grid-columns-wide` 12, `--grid-gap` 16px / `--grid-gap-wide` 24px, `--header-height` 72px / `--header-height-wide` 80px | — | — |
@@ -106,7 +107,7 @@ The portable file also carries `--shadow-1` through `--shadow-3` (with paired da
 
 **The closed breakpoint set is `22.5rem`, `48rem`, `64rem` and `80rem`** (E11.5-11a amends E11.5 design rule 7). Small is below 48rem, medium is 48rem to below 64rem, large is 64rem and up, and wide is 80rem and up. `22.5rem` is used by the header's Join button and, as the 320 frame draws it, by the landing hero's tight logo strip (E11.5-11c, founder-authorised 2026-10-27). `40rem` is no longer in the set, because no query uses it. These are the only literal lengths permitted in an `@media` condition, because CSS custom properties cannot be used there.
 
-E11.5-04 moves the provider showcase's existing presentation values into the portable file: `--space-0: 0`, `--provider-layer-decor: -1`, `--provider-banner-tone: linear-gradient(to bottom right, color-mix(in srgb, currentColor, var(--surface) 45%), transparent 60%)`, `--provider-depth-brightness: 0.7`, and `--provider-rail-peek: 82%`. The gradient uses each banner's provider colour through `currentColor`; it adds no palette colour. The exact-token test includes these five values.
+E11.5-04 moved the provider showcase's presentation values into the portable file. `--space-0: 0` remains. E11.5-11d (founder-authorised 2026-10-28) removed the other four, `--provider-layer-decor`, `--provider-banner-tone`, `--provider-depth-brightness` and `--provider-rail-peek`, because the wireframe banner replaced the gradient tone, the depth circle and the peeking rail column, and nothing referenced them.
 
 The [page-design engineering reference](page-design.md) defines how pages use the grid, elevations and layout checks.
 
@@ -128,7 +129,7 @@ The [page-design engineering reference](page-design.md) defines how pages use th
 
 - **Never the Google Fonts CDN.** The Munich ruling makes it a live liability in a named target market, and self-hosting is the correct default regardless.
 - **Metric-matched fallbacks with `size-adjust` and `ascent-override` from the first commit.** Söhne is bought at store launch, and the swap should then be one `@font-face` change plus a QA pass — not a re-layout.
-- Subset to the Latin ranges actually used. Only Instrument Sans WOFF2 is preloaded because it is the above-fold face; JetBrains Mono loads only when a changing figure needs it. `.tabular-figure` applies the mono family and `font-variant-numeric: tabular-nums` together.
+- Subset to the Latin ranges actually used. Only Instrument Sans WOFF2 is preloaded because it is the above-fold face; JetBrains Mono loads only when a changing figure needs it. On the landing page that is the step badges and the reward figures; it is never preloaded. `.tabular-figure` applies the mono family and `font-variant-numeric: tabular-nums` together.
 
 ## Port checklist
 
@@ -148,6 +149,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 **E11.5-11a port addition:** the file is still copied verbatim. It now also carries the wireframe elevations, `--edge` and the dark-only edge and band values, the `--field`, `--on-coral` and `--error-text` roles, the dark `--line` and `--coral-tint`, the button, on-midnight, chip, banner and sticky-bar component values, the grid and header tokens, the line and focus widths, the four off-ramp spacing steps and the control sizes. Re-run the no-new-hue, contrast-matrix and dark-name-set tests after the port. The storefront's media queries use the closed set `22.5rem`, `48rem`, `64rem` and `80rem`.
 
 **E11.5-11c port addition:** the file also carries `--banner-white` and `--banner-ink`, declared once on `:root` with no dark redefinition, because a provider banner's chip and text do not change with the theme, plus `--space-1-75` and the six `--banner-shape-t*` offsets.
+
+**E11.5-11d port change:** the file adds the six `--banner-shape-t4/t5/t6-*` offsets and `--shadow-chip-dark`, which has a dark value in both dark blocks. It drops `--provider-layer-decor`, `--provider-banner-tone`, `--provider-depth-brightness` and `--provider-rail-peek`. A storefront that copied an earlier version must remove those four. Re-run the dark-name-set and no-new-hue tests after the port.
 
 E11-07 source-to-target reconciliation (targets are the storefront routes to build and verify before the DNS swap):
 

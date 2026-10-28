@@ -3,15 +3,14 @@ import Accordion from '../components/accordion.astro';
 import Button from '../components/button.astro';
 import Card from '../components/card.astro';
 import Container from '../components/container.astro';
-import HeroBanner from '../components/hero-banner.astro';
 import Icon from '../components/icon.astro';
+import Pill from '../components/pill.astro';
+import ProviderBanner from '../components/provider-banner.astro';
 import ProviderRail from '../components/provider-rail.astro';
 import Section from '../components/section.astro';
 import landingHeroList from '../content/landing-hero.json';
-import {
-  resolveLandingHero,
-  svgIntrinsicSize,
-} from '../content/landing-hero.ts';
+import { svgIntrinsicSize } from '../components/provider-banner.ts';
+import { resolveLandingHero } from '../content/landing-hero.ts';
 import providerData from '../content/provider-showcase.json';
 import type { Provider } from '../content/provider-showcase.ts';
 import { landingCopy } from '../copy/landing.ts';
@@ -50,6 +49,8 @@ const hero = resolveLandingHero(landingHeroList, providers, (logo) => {
   return source === undefined ? null : svgIntrinsicSize(source);
 });
 const enabledTiers = milestoneTiers.filter((tier) => tier.enabled);
+// The "How it works" step icons, in step order (E11.5-11d).
+const stepIcons = ['mail', 'check-circle', 'upload-share'] as const;
 
 const referralCaptureService = createReferralCaptureService(
   getConfig().referralSigningSecret,
@@ -112,7 +113,7 @@ Astro.response.headers.set(
             <div class="landing-hero__strip" aria-hidden="true">
               {
                 hero.strip.map((banner) => (
-                  <HeroBanner banner={banner} size="strip" />
+                  <ProviderBanner banner={banner} size="strip" />
                 ))
               }
             </div>
@@ -120,7 +121,7 @@ Astro.response.headers.set(
           <div class="landing-hero__stack" aria-hidden="true">
             {
               hero.stack.map((banner) => (
-                <HeroBanner banner={banner} size="stack" />
+                <ProviderBanner banner={banner} size="stack" />
               ))
             }
           </div>
@@ -132,7 +133,7 @@ Astro.response.headers.set(
       <h2 id="catalogue-title" slot="heading">
         {landingCopy.catalogue.heading}
       </h2>
-      <p class="landing-intro">{landingCopy.catalogue.body}</p>
+      <p slot="heading">{landingCopy.catalogue.body}</p>
       <ProviderRail providers={providers} />
     </Section>
 
@@ -140,14 +141,38 @@ Astro.response.headers.set(
       <h2 id="how-title" slot="heading">{landingCopy.how.heading}</h2>
       <ol class="landing-steps">
         {
-          landingCopy.how.steps.map((step, index) => (
-            <li>
-              <span class="landing-steps__number" aria-hidden="true">
-                {index + 1}
-              </span>
-              <p>{step}</p>
-            </li>
-          ))
+          landingCopy.how.steps.map((step, index) => {
+            // The last step, sharing your link, is drawn as optional.
+            const optional = index === landingCopy.how.steps.length - 1;
+            return (
+              <li
+                class:list={[
+                  'landing-step',
+                  { 'landing-step--optional': optional },
+                ]}
+              >
+                <span class="landing-step__tile" aria-hidden="true">
+                  <Pill variant="step" class="landing-step__badge">
+                    {index + 1}
+                  </Pill>
+                  <Icon name={stepIcons[index]} size="md" />
+                </span>
+                {!optional && (
+                  <span
+                    class:list={[
+                      'landing-step__connector',
+                      {
+                        'landing-step__connector--dashed':
+                          index === landingCopy.how.steps.length - 2,
+                      },
+                    ]}
+                    aria-hidden="true"
+                  />
+                )}
+                <p class="landing-step__title">{step}</p>
+              </li>
+            );
+          })
         }
       </ol>
     </Section>
@@ -390,45 +415,96 @@ Astro.response.headers.set(
     padding: var(--space-0);
     list-style: none;
   }
-  .landing :global(.section__heading) {
-    margin-block-end: var(--space-3);
-  }
-  .landing :global(.provider-banner__category) {
-    box-sizing: border-box;
-    overflow-wrap: anywhere;
-  }
   .landing-intro {
     margin-block-end: var(--space-4);
   }
-  .landing-steps,
+  /*
+    Below 64rem the catalogue rail bleeds into the right gutter. Its content
+    cell spans that gutter as padding, so the bleed stays inside a box.
+  */
+  .landing :global(#catalogue .container__content) {
+    grid-column: 2 / 4;
+    padding-inline-end: var(--gutter);
+  }
   .landing-rewards,
   .landing-guarantee,
   .landing-trust-links {
     display: grid;
     gap: var(--space-3);
   }
-  .landing-steps li {
+  /*
+    "How it works" (E11.5-11d). Small: one column, 28px apart, each step a row
+    of the 56px tile and its 16/24 title, joined by a 2px by 24px vertical
+    connector 27px from the left and 60px from the top. Medium and large:
+    three columns, 24px apart, each step a column with 16px gaps, the 20/28
+    title, and a horizontal connector 27px from the top, from 72px right of
+    the tile to 8px short of the column's end, with an arrowhead. The
+    connector into the optional third step is dashed.
+  */
+  /* The 28px between small steps is each step's own bottom padding, so the
+     connector into the next step stays inside its list item. */
+  .landing-steps {
+    display: grid;
+  }
+  .landing-step:not(:last-child) {
+    padding-block-end: calc(var(--space-1) * 3.5);
+  }
+  .landing-step {
+    position: relative;
     display: flex;
     gap: var(--space-2);
     align-items: center;
-    padding: var(--space-3);
+  }
+  .landing-step__tile {
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--space-7);
+    block-size: var(--space-7);
+    color: var(--ink);
     background: var(--surface);
     border-radius: var(--radius-card);
-    box-shadow: var(--shadow-1);
+    box-shadow: var(--shadow-1), var(--edge);
   }
-  .landing-steps__number {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: var(--space-5);
-    height: var(--space-5);
-    color: var(--midnight);
-    font-weight: var(--weight-bold);
-    background: var(--coral);
-    border-radius: var(--radius-pill);
+  .landing-step__tile :global(.landing-step__badge) {
+    position: absolute;
+    top: calc(var(--space-1) * -1.25);
+    left: calc(var(--space-1) * -1.25);
   }
-  .landing-steps p {
-    margin-block-end: var(--space-0);
+  .landing-step--optional .landing-step__tile {
+    color: var(--ink-600);
+    background: var(--paper);
+    border: var(--border-check) dashed var(--ink-300);
+    box-shadow: none;
+  }
+  .landing-step--optional .landing-step__tile :global(.landing-step__badge) {
+    background-color: var(--ink-600);
+  }
+  .landing-step__connector {
+    position: absolute;
+    top: calc(var(--space-1) * 7.5);
+    left: calc(var(--space-1) * 3.375);
+    inline-size: var(--border-strong);
+    block-size: var(--space-3);
+    background: var(--ink-300);
+  }
+  .landing-step__connector--dashed {
+    inline-size: var(--space-0);
+    background: none;
+    border-inline-start: var(--border-strong) dashed var(--ink-300);
+  }
+  .landing .landing-step__title {
+    margin-block: var(--space-0);
+    font-size: var(--step-2);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-2);
+    letter-spacing: var(--tracking-tight);
+  }
+  .landing-step--optional .landing-step__title {
+    color: var(--ink-600);
   }
   .landing-rewards :global(.card) {
     min-width: 0;
@@ -436,8 +512,7 @@ Astro.response.headers.set(
   .landing-rewards :global(.icon) {
     color: var(--coral);
   }
-  .landing-rewards,
-  .landing-steps {
+  .landing-rewards {
     font-variant-numeric: tabular-nums;
   }
   .landing-waves {
@@ -501,6 +576,47 @@ Astro.response.headers.set(
     padding-block-end: var(--space-8);
   }
   @media (min-width: 48rem) {
+    .landing :global(#catalogue .container__content) {
+      padding-inline-end: var(--gutter-wide);
+    }
+    .landing-steps {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-3);
+    }
+    .landing-step:not(:last-child) {
+      padding-block-end: var(--space-0);
+    }
+    .landing-step {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .landing-step__connector {
+      top: calc(var(--space-1) * 3.375);
+      right: var(--space-1);
+      left: calc(var(--space-1) * 9);
+      inline-size: auto;
+      block-size: var(--border-strong);
+    }
+    .landing-step__connector::after {
+      position: absolute;
+      top: calc(var(--space-1) * -0.625);
+      right: calc(var(--space-1) * -0.25);
+      border-block: calc(var(--space-1) * 0.75) solid transparent;
+      border-inline-start: calc(var(--space-1) * 0.875) solid var(--ink-300);
+      content: '';
+    }
+    .landing-step__connector--dashed {
+      block-size: var(--space-0);
+      border-inline-start: none;
+      border-block-start: var(--border-strong) dashed var(--ink-300);
+    }
+    .landing-step__connector--dashed::after {
+      top: calc(var(--space-1) * -0.875);
+    }
+    .landing .landing-step__title {
+      font-size: var(--step-3);
+      line-height: var(--leading-3);
+    }
     .landing-hero {
       padding-block-start: var(--space-5);
     }
@@ -554,6 +670,10 @@ Astro.response.headers.set(
     }
   }
   @media (min-width: 64rem) {
+    .landing :global(#catalogue .container__content) {
+      grid-column: 2;
+      padding-inline-end: var(--space-0);
+    }
     .landing-hero {
       padding-block-start: var(--space-6);
     }
@@ -582,7 +702,6 @@ Astro.response.headers.set(
       top: calc(var(--space-1) * 26);
       right: calc(100% * 0.3);
     }
-    .landing-steps,
     .landing-guarantee,
     .landing-trust-links {
       grid-template-columns: repeat(3, minmax(0, 1fr));

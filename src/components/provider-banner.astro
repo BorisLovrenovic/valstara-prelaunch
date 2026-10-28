@@ -1,116 +1,351 @@
 ---
-import type { Provider } from '../content/provider-showcase.ts';
+import type { ProviderBannerModel } from './provider-banner.ts';
 import { providerShowcaseCopy } from '../copy/provider-showcase.ts';
 
 interface Props {
-  provider: Provider;
+  banner: ProviderBannerModel;
+  // catalogue: the 96px catalogue banner, chip with logo and category.
+  // stack: the hero stack's 136px (medium) and 184px (large) banner.
+  // strip: the small hero strip's 56px banner, a name-only chip.
+  size: 'catalogue' | 'stack' | 'strip';
 }
-const { provider } = Astro.props;
+const { banner, size } = Astro.props;
+const { provider } = banner;
 const category =
   providerShowcaseCopy.categories[
     provider.category as keyof typeof providerShowcaseCopy.categories
   ];
+const hero = size !== 'catalogue';
+const logo = {
+  src: provider.logo,
+  width: banner.logoWidth,
+  height: banner.logoHeight,
+  loading: 'lazy',
+  decoding: 'async',
+} as const;
 ---
 
-<article
-  class="provider-banner"
+{
+  /*
+  A composed provider banner (E11.5-11d): the full-bleed brand colour, one
+  tonal shape, the name chip and the category label. The tone is clipped by
+  its own box, so the banner never reports clipped text. The hero's stack and
+  strip are aria-hidden, so their logos are decorative; in the catalogue the
+  logo carries the name and the visible name is hidden from assistive
+  technology. The hero-banner hooks are the classes the E11.5-11c geometry
+  tests and the landing layout read.
+*/
+}
+<div
+  class:list={[
+    'provider-banner',
+    `provider-banner--${size}`,
+    `provider-banner--tone-${banner.tone}`,
+    `provider-banner--on-${banner.foreground}`,
+    { 'hero-banner': hero },
+  ]}
   style={`--provider-colour: ${provider.brandColor}`}
-  data-provider-banner
+  data-provider-banner={hero ? undefined : provider.name}
+  data-hero-banner={hero ? provider.name : undefined}
 >
-  <span class="provider-banner__tone" aria-hidden="true"></span>
-  <span class="provider-banner__depth" aria-hidden="true"></span>
-  <div
-    class="provider-banner__logo"
-    class:list={{
-      'provider-banner__logo--dark': provider.name === 'CyberGhost',
-    }}
+  <span class="provider-banner__clip" aria-hidden="true">
+    <span
+      class:list={[
+        'provider-banner__tone',
+        `provider-banner__tone--${banner.shape}`,
+      ]}></span>
+  </span>
+  <span
+    class:list={[
+      'provider-banner__logo',
+      `provider-banner__logo--${banner.chipTone}`,
+      { 'hero-banner__chip': hero },
+    ]}
   >
-    <picture>
-      {
-        provider.logoDark && (
-          <source
-            media="(prefers-color-scheme: dark)"
-            srcset={provider.logoDark}
-          />
-        )
-      }
-      <img
-        src={provider.logo}
-        alt={provider.name}
-        width="160"
-        height="120"
-        loading="lazy"
-        decoding="async"
-      />
-    </picture>
-  </div>
-  <p class="provider-banner__category">{category}</p>
-</article>
+    {
+      size === 'catalogue' ? (
+        <>
+          <img {...logo} alt={provider.name} />
+          <span class="provider-banner__name" aria-hidden="true">
+            {provider.name}
+          </span>
+        </>
+      ) : (
+        <>
+          {size === 'stack' && <img {...logo} alt="" />}
+          {provider.name}
+        </>
+      )
+    }
+  </span>
+  {
+    size !== 'strip' && (
+      <span
+        class:list={[
+          'provider-banner__category',
+          { 'hero-banner__category': hero },
+        ]}
+      >
+        {category}
+      </span>
+    )
+  }
+</div>
+
 <style>
   .provider-banner {
     position: relative;
-    isolation: isolate;
-    overflow: hidden;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     justify-content: space-between;
-    min-width: 0;
-    min-height: calc(var(--space-10) * 3);
-    padding: var(--space-3);
-    color: var(--provider-colour);
+    min-inline-size: 0;
     background: var(--provider-colour);
     border-radius: var(--radius-card);
-    box-shadow: var(--shadow-1);
   }
-  .provider-banner__tone {
+
+  .provider-banner--on-white {
+    color: var(--banner-white);
+  }
+
+  .provider-banner--on-ink {
+    color: var(--banner-ink);
+  }
+
+  /*
+    Catalogue: 96px tall with 16px padding; raised on hover. It may grow
+    where a narrow large-width column wraps its chip or category label, so no
+    text ever overflows.
+  */
+  .provider-banner--catalogue {
+    min-block-size: calc(var(--space-1) * 12);
+    padding: var(--space-2);
+    box-shadow: var(--shadow-1), var(--banner-edge);
+    transition: box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  .provider-banner--catalogue:hover {
+    box-shadow: var(--shadow-2), var(--banner-edge-hover);
+  }
+
+  /* Medium: 136px tall with 16px padding. Large: 184px with 24px padding. */
+  .provider-banner--stack {
+    block-size: calc(var(--space-1) * 17);
+    padding: var(--space-2);
+    box-shadow: var(--shadow-2), var(--banner-edge-hero);
+  }
+
+  /* Small: 56px tall with 8px padding; 4px below 22.5rem, the 320 frame. */
+  .provider-banner--strip {
+    block-size: var(--space-7);
+    padding: var(--space-1);
+    justify-content: center;
+    box-shadow: var(--shadow-1), var(--banner-edge);
+  }
+
+  .provider-banner__clip {
     position: absolute;
     inset: var(--space-0);
-    z-index: var(--provider-layer-decor);
-    background: var(--provider-banner-tone);
+    overflow: hidden;
+    border-radius: inherit;
   }
-  .provider-banner__depth {
+
+  .provider-banner__tone {
     position: absolute;
-    inset-inline-end: var(--space-2);
-    inset-block-end: var(--space-2);
-    z-index: var(--provider-layer-decor);
-    width: var(--space-10);
-    height: var(--space-10);
+    pointer-events: none;
+  }
+
+  .provider-banner--tone-dark .provider-banner__tone {
+    background: var(--banner-tone-dark);
+  }
+
+  .provider-banner--tone-light .provider-banner__tone {
+    background: var(--banner-tone-light);
+  }
+
+  .provider-banner--tone-ink .provider-banner__tone {
+    background: var(--banner-tone-ink);
+  }
+
+  /* The wireframe's .t1 to .t6 shapes, proportional to the banner. */
+  .provider-banner__tone--t1 {
+    top: var(--banner-shape-t1-top);
+    right: var(--banner-shape-t1-right);
+    width: 55%;
+    height: 260%;
+    transform: rotate(24deg);
+  }
+
+  .provider-banner__tone--t2 {
+    right: var(--banner-shape-t2-right);
+    bottom: var(--banner-shape-t2-bottom);
+    width: 62%;
+    aspect-ratio: 1;
     border-radius: var(--radius-pill);
-    background: var(--provider-colour);
-    filter: brightness(var(--provider-depth-brightness));
-    box-shadow: var(--shadow-2);
   }
+
+  .provider-banner__tone--t3 {
+    top: var(--banner-shape-t3-top);
+    left: var(--banner-shape-t3-left);
+    width: 80%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-pill);
+  }
+
+  .provider-banner__tone--t4 {
+    top: var(--banner-shape-t4-top);
+    right: var(--banner-shape-t4-right);
+    width: 36%;
+    height: 280%;
+    transform: rotate(-22deg);
+  }
+
+  .provider-banner__tone--t5 {
+    top: var(--banner-shape-t5-top);
+    right: var(--banner-shape-t5-right);
+    width: 46%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-pill);
+  }
+
+  .provider-banner__tone--t6 {
+    top: var(--banner-shape-t6-top);
+    left: var(--banner-shape-t6-left);
+    width: 80%;
+    height: 110%;
+    transform: rotate(-14deg);
+    border-radius: var(--radius-card);
+  }
+
+  /*
+    The chip stays light in both themes, with the ink name; a white-only logo
+    takes the dark chip. The catalogue chip is 36px with 14/20 text and may
+    wrap rather than overflow; the hero chips keep one line.
+  */
   .provider-banner__logo {
-    display: grid;
-    place-items: center;
-    align-self: flex-start;
-    max-width: 100%;
-    padding: var(--space-2);
-    background: var(--on-midnight);
-    border-radius: var(--radius-control);
-    box-shadow: var(--shadow-2);
-  }
-  .provider-banner__logo--dark {
-    background: var(--midnight);
-  }
-  .provider-banner__logo img {
-    display: block;
-    width: auto;
-    max-width: 100%;
-    height: var(--space-8);
-    object-fit: contain;
-  }
-  .provider-banner__category {
-    align-self: flex-start;
-    max-width: 100%;
-    margin: var(--space-2) var(--space-0) var(--space-0);
-    padding: var(--space-1) var(--space-2);
-    color: var(--ink);
+    position: relative;
+    box-sizing: border-box;
+    display: inline-flex;
+    flex: none;
+    gap: var(--space-1);
+    align-items: center;
+    min-block-size: calc(var(--space-1) * 4.5);
+    padding-inline: var(--space-1-5);
+    color: var(--banner-ink);
+    font-family: var(--font-sans);
     font-size: var(--step-1);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-1);
-    background: var(--surface);
-    border-radius: var(--radius-pill);
-    box-shadow: var(--shadow-1);
+    background: var(--banner-white);
+    border-radius: var(--radius-control);
+    box-shadow: var(--shadow-chip);
+  }
+
+  /*
+    Many real logos are wordmarks, wider than the frame's 16px square. In a
+    chip too narrow for logo and name, the logo gives way first (scaled to
+    fit, down to 16px wide); only then does the name wrap, at a space where it
+    has one.
+  */
+  .provider-banner--catalogue .provider-banner__logo {
+    max-inline-size: 100%;
+  }
+
+  .provider-banner--catalogue .provider-banner__logo img {
+    flex: 0 1 auto;
+    min-inline-size: var(--icon-sm);
+    object-fit: contain;
+    object-position: left center;
+  }
+
+  .provider-banner__name {
+    flex: none;
+    max-inline-size: calc(100% - var(--icon-sm) - var(--space-1));
+    overflow-wrap: anywhere;
+  }
+
+  .provider-banner__logo--dark {
+    color: var(--banner-white);
+    background: var(--banner-ink);
+    box-shadow: var(--shadow-chip-dark);
+  }
+
+  .provider-banner__logo img {
+    display: block;
+    flex: none;
+    inline-size: auto;
+    block-size: var(--icon-sm);
+  }
+
+  .provider-banner--stack .provider-banner__logo {
+    min-block-size: var(--space-5);
+    padding-inline: var(--space-1-75);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    white-space: nowrap;
+  }
+
+  .provider-banner--strip .provider-banner__logo {
+    gap: var(--space-0-75);
+    min-block-size: var(--space-4);
+    padding-inline: var(--space-1);
+    font-size: var(--step-0);
+    line-height: var(--leading-0);
+    white-space: nowrap;
+  }
+
+  .provider-banner__category {
+    position: relative;
+    font-family: var(--font-sans);
+    font-size: var(--step-0);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .provider-banner--catalogue {
+      transition: none;
+    }
+  }
+
+  @media (width < 22.5rem) {
+    .provider-banner--strip {
+      padding: var(--space-0-5);
+    }
+
+    .provider-banner--strip .provider-banner__logo {
+      padding-inline: var(--space-0-75);
+    }
+  }
+
+  /*
+    Large widths below 80rem narrow the catalogue banner below the 1440
+    frame's 227px, so its chip takes the compact two-line style: 13/18 with
+    6px 10px padding and at least 32px tall.
+  */
+  @media (min-width: 64rem) and (width < 80rem) {
+    .provider-banner--catalogue .provider-banner__logo {
+      /* 10px, from the 8px step. */
+      --chip-indent-compact: calc(var(--space-1) * 1.25);
+
+      min-block-size: var(--space-4);
+      padding-block: var(--space-0-75);
+      padding-inline: var(--chip-indent-compact);
+      font-size: var(--step-0);
+      line-height: var(--leading-0);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .provider-banner--stack {
+      block-size: calc(var(--space-1) * 23);
+      padding: var(--space-3);
+    }
+
+    .provider-banner--stack .provider-banner__logo {
+      min-block-size: var(--control-height);
+      padding-inline: var(--space-2);
+    }
   }
 </style>

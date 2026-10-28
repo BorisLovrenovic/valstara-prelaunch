@@ -8,6 +8,7 @@ import test, { after, before } from 'node:test';
 import { chromium } from 'playwright';
 import axe from 'axe-core';
 import providers from '../src/content/provider-showcase.json' with { type: 'json' };
+import { bannerTone } from '../src/components/provider-banner.ts';
 import { publishedPort } from './helpers/listen-port.mjs';
 import {
   checkPageLayout,
@@ -119,7 +120,9 @@ test('rail renders real logos, categories, alt text and only same-origin request
   await page.goto(origin);
   assert.equal(await page.locator('[data-provider-banner]').count(), 34);
   assert.deepEqual(
-    await page.locator('.provider-rail__category h2').allTextContents(),
+    // E11.5-11d (founder-authorised 2026-10-28): group labels are <h3>, under
+    // the section's "What you'll find" <h2>.
+    await page.locator('.provider-rail__category h3').allTextContents(),
     ['AI tools', 'Streaming and subscriptions', 'Software', 'In-game currency'],
   );
   assert.deepEqual(
@@ -128,25 +131,80 @@ test('rail renders real logos, categories, alt text and only same-origin request
       .evaluateAll((images) => images.map((image) => image.alt)),
     providers.map((provider) => provider.name),
   );
-  assert.ok(
-    (await page.locator('[data-provider-banner]').allInnerTexts()).every(
-      (text) => !/\d/u.test(text),
-    ),
-  );
+  // E11.5-11d (founder-authorised 2026-10-28): the chip shows the provider's
+  // name, and n8n, Microsoft 365 and AION2 have digits in theirs. Each
+  // banner's own name is removed before checking that no figure remains.
+  const figures = (banners) =>
+    banners
+      .map((banner) => ({
+        name: banner.dataset.providerBanner,
+        rest: banner.innerText.replaceAll(banner.dataset.providerBanner, ''),
+      }))
+      .filter(({ rest }) => /\d/u.test(rest))
+      .map(({ name }) => name);
+  // The rail ships no script; the check below is the test's own.
   assert.equal(await page.locator('script').count(), 0);
+  await page.addScriptTag({
+    content: `globalThis.bannerFigures = ${figures.toString()};`,
+  });
+  assert.deepEqual(
+    await page
+      .locator('[data-provider-banner]')
+      .evaluateAll((banners) => globalThis.bannerFigures(banners)),
+    [],
+  );
+  // A planted figure in a banner still fails the check.
+  assert.deepEqual(
+    await page.locator('[data-provider-banner]').evaluateAll((banners) => {
+      const planted = banners[0].cloneNode(true);
+      planted.append(
+        Object.assign(globalThis.document.createElement('span'), {
+          textContent: '€300',
+        }),
+      );
+      banners[0].after(planted);
+      const found = globalThis.bannerFigures([planted]);
+      planted.remove();
+      return found;
+    }),
+    [providers[0].name],
+  );
+  // E11.5-11d (founder-authorised 2026-10-28): each banner's tone is the
+  // token its brand colour selects: white 13% on near-black, white 16% under
+  // white text, else ink 10%.
   const tones = await page
     .locator('[data-provider-banner]')
-    .evaluateAll((banners) =>
-      banners
-        .slice(0, 2)
-        .map(
-          (banner) =>
-            getComputedStyle(banner.querySelector('.provider-banner__tone'))
-              .backgroundImage,
-        ),
+    .evaluateAll((banners) => {
+      const probe = globalThis.document.createElement('span');
+      globalThis.document.body.append(probe);
+      const token = (name) => {
+        probe.style.backgroundColor = `var(--banner-tone-${name})`;
+        return getComputedStyle(probe).backgroundColor;
+      };
+      const tokens = Object.fromEntries(
+        ['dark', 'light', 'ink'].map((name) => [name, token(name)]),
+      );
+      probe.remove();
+      return {
+        tokens,
+        banners: banners.map((banner) => ({
+          name: banner.dataset.providerBanner,
+          tone: getComputedStyle(banner.querySelector('.provider-banner__tone'))
+            .backgroundColor,
+        })),
+      };
+    });
+  assert.equal(tones.banners.length, 34);
+  assert.equal(new Set(Object.values(tones.tokens)).size, 3);
+  for (const [index, banner] of tones.banners.entries()) {
+    const provider = providers.find((entry) => entry.name === banner.name);
+    assert.ok(provider, banner.name);
+    assert.equal(
+      banner.tone,
+      tones.tokens[bannerTone(provider.brandColor)],
+      `${index} ${banner.name}`,
     );
-  assert.match(tones[0], /^linear-gradient\(/u);
-  assert.notEqual(tones[0], tones[1], 'tone follows each provider colour');
+  }
   await page.addScriptTag({ content: axe.source });
   for (const theme of designThemes) {
     await page.emulateMedia({ colorScheme: theme });

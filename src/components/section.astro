@@ -31,25 +31,63 @@ const { class: className, variant = 'default', ...attributes } = Astro.props;
 </section>
 
 <style>
+  /*
+    The landing section frame (E11.5-11d): the section gap above each section,
+    then a header block of the H2 and an optional supporting line 8px below
+    it, with 32px below the block (24px at small widths). The midnight band
+    also pads its own ground.
+  */
   .section {
-    padding-block: var(--section-gap);
+    margin-block-start: var(--section-gap);
     color: var(--ink);
     font-family: var(--font-sans);
   }
 
   .section--midnight {
+    padding-block: var(--section-gap);
     color: var(--on-midnight);
     background-color: var(--midnight);
   }
 
   /* Section headings are left-aligned, never centred (identity §6.1, §7.3). */
   .section__heading {
-    margin-block-end: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-block-end: var(--space-3);
     text-align: start;
+  }
+
+  .section__heading :global(h2) {
+    margin-block: var(--space-0);
+    font-size: var(--step-4);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-4);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .section__heading :global(p) {
+    margin-block: var(--space-0);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .section:not(.section--midnight) .section__heading :global(p) {
+    color: var(--ink-600);
+  }
+
+  @media (min-width: 48rem) {
+    .section__heading {
+      margin-block-end: var(--space-4);
+    }
   }
 
   @media (min-width: 64rem) {
     .section {
+      margin-block-start: var(--section-gap-wide);
+    }
+
+    .section--midnight {
       padding-block: var(--section-gap-wide);
     }
   }

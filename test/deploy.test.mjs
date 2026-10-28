@@ -11,6 +11,7 @@ const productionComposeUrl = new URL(
   '../infra/compose/docker-compose.production.yml',
   import.meta.url,
 );
+const dockerfileUrl = new URL('../Dockerfile', import.meta.url);
 const oldImage =
   'ghcr.io/example/valstara-prelaunch:1111111111111111111111111111111111111111';
 const newImage =
@@ -397,9 +398,14 @@ test(
         migrationPath,
         'CREATE TABLE local_deployment_drill_marker (id integer PRIMARY KEY);\n',
       );
+      // The drill gates on the image's own probe, with shorter timings.
+      const shippedProbe = (await readFile(dockerfileUrl, 'utf8')).match(
+        /^HEALTHCHECK [^\n]*\\\n\s*(CMD \[[^\n]*\])$/mu,
+      )?.[1];
+      assert.ok(shippedProbe, 'the Dockerfile declares a HEALTHCHECK command');
       await writeFile(
         initialDockerfile,
-        `FROM ${sourceImage}\nHEALTHCHECK --interval=1s --timeout=1s --start-period=0s --retries=2 CMD ["node", "-e", "fetch('http://127.0.0.1:4321/').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))"]\n`,
+        `FROM ${sourceImage}\nHEALTHCHECK --interval=1s --timeout=1s --start-period=0s --retries=2 ${shippedProbe}\n`,
       );
       await writeFile(
         deployedDockerfile,
