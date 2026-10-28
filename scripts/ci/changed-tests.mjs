@@ -58,6 +58,44 @@ async function isFile(path) {
   }
 }
 
+// String and template literals in test code. A test that scans a directory or
+// reads a file through `fs` names it as one of these, whatever helper it
+// passes the path to: `'src/content'`, `` `${root}/src/pages` ``, or
+// `'../src/islands/'` in a `new URL()`.
+const literalPattern = /'([^'\n]*)'|"([^"\n]*)"|`([^`]*)`/gu;
+// Read results that never come from the repository's tracked sources.
+const unreadRoots = new Set(['.git', 'dist', 'node_modules']);
+
+/**
+ * Repository paths a test file names in its literals, each marked as a
+ * directory or a file. A directory covers every file beneath it, including one
+ * added after the test was written. Only literals that resolve to an existing
+ * path below the root count, so routes, URLs and messages are ignored.
+ */
+export async function repositoryReads(root, file, source) {
+  const reads = new Map();
+  for (const match of source.matchAll(literalPattern)) {
+    const text = match[1] ?? match[2] ?? match[3];
+    for (const piece of text.split(/\$\{[^}]*\}/u)) {
+      // A glob reads the directory its static prefix names.
+      const literal = piece.split(/[*?[{]/u)[0];
+      if (!literal.includes('/') || !/^[\w./@+-]+$/u.test(literal)) continue;
+      const absolute = /^\.\.?\//u.test(literal)
+        ? resolve(root, dirname(file), literal)
+        : resolve(root, literal.replace(/^\/+/u, ''));
+      const path = relative(root, absolute).replaceAll('\\', '/');
+      if (path === '' || path.startsWith('..') || reads.has(path)) continue;
+      if (unreadRoots.has(path.split('/')[0])) continue;
+      try {
+        reads.set(path, (await stat(absolute)).isDirectory());
+      } catch {
+        // Not a repository path: a route, a URL or a fixture name.
+      }
+    }
+  }
+  return reads;
+}
+
 /** Package names a source file imports by bare specifier, such as `pg`. */
 export function packageImports(source) {
   const packages = new Set();
@@ -209,6 +247,26 @@ export async function selectTests({
           found = await reachedChange(dependency, visiting);
         }
         if (found) break;
+      }
+      // Test code (a test or a helper it imports) that reads the repository
+      // through `fs`: a changed file it names, or any change beneath a
+      // directory it names, such as a component added to a scanned folder.
+      if (!found && file.startsWith('test/')) {
+        for (const [path, directory] of await repositoryReads(
+          root,
+          file,
+          source,
+        )) {
+          const hit = directory
+            ? changedFiles.find((changedFile) =>
+                changedFile.startsWith(`${path}/`),
+              )
+            : changed.has(path) && path;
+          if (hit) {
+            found = directory ? `reads ${path}/ (${hit})` : `reads ${hit}`;
+            break;
+          }
+        }
       }
     }
     visiting.delete(file);

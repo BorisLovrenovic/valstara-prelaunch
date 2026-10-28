@@ -12,6 +12,7 @@ import {
   changedPackages,
   packageImports,
   reachesBrowser,
+  repositoryReads,
   selectTests,
 } from '../scripts/ci/changed-tests.mjs';
 
@@ -320,6 +321,142 @@ test('a file a test only reads selects the test when it changes, not when its im
     assert.deepEqual(
       [...(await select(['scripts/reader.mjs']))],
       [['test/reads.test.mjs', 'imports scripts/reader.mjs']],
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+// Tests that scan the repository through fs name what they read in string
+// literals. Seen on PR #122: an added component and an added content file
+// failed closed-registry tests in CI that the import graph never selected.
+const scanningTree = {
+  'src/components/button.astro': '<button />\n',
+  'src/content/legit.md': '# Legit\n',
+  'src/pages/index.astro': '<main />\n',
+  'src/server/config.ts': 'export const config = {};\n',
+  'public/images/providers/a.svg': '<svg />\n',
+  'docs/brand/tokens.md': '# Tokens\n',
+  'test/components.test.mjs':
+    "const names = await readdir(new URL('../src/components/', import.meta.url));\n",
+  'test/helpers/content.mjs':
+    "export const list = () => readdir(join(root, 'src/content'));\n",
+  'test/content.test.ts': "import { list } from './helpers/content.mjs';\n",
+  'test/pages.test.mjs':
+    'const pages = await readdir(`${root}/src/pages`, { recursive: true });\n',
+  'test/logos.test.mjs':
+    "const logos = import.meta.glob('/public/images/providers/*.svg');\n",
+  'test/checklist.test.ts':
+    "const checklist = await readFile(source('docs/brand/tokens.md'));\n",
+  'test/routes.test.mjs': [
+    "await page.goto('/src/components');",
+    "assert.equal(url, 'https://example.com/src/content');",
+    "assert.ok(found, 'src/pages and src/content');",
+    "const missing = 'src/content/missing.json';",
+    '',
+  ].join('\n'),
+};
+const scanningCandidates = Object.keys(scanningTree).filter((file) =>
+  /^test\/[^/]+\.test\.(?:mjs|ts)$/u.test(file),
+);
+
+test('a test names the repository paths it reads, as directories or files', async () => {
+  const root = await tree(scanningTree);
+  try {
+    const reads = async (file) => [
+      ...(await repositoryReads(root, file, scanningTree[file])),
+    ];
+    assert.deepEqual(await reads('test/components.test.mjs'), [
+      ['src/components', true],
+    ]);
+    assert.deepEqual(await reads('test/helpers/content.mjs'), [
+      ['src/content', true],
+    ]);
+    assert.deepEqual(await reads('test/pages.test.mjs'), [['src/pages', true]]);
+    assert.deepEqual(await reads('test/logos.test.mjs'), [
+      ['public/images/providers', true],
+    ]);
+    assert.deepEqual(await reads('test/checklist.test.ts'), [
+      ['docs/brand/tokens.md', false],
+    ]);
+    // A route that is also a folder name still names a repository path, but a
+    // URL, a sentence and a path that does not exist name nothing.
+    assert.deepEqual(await reads('test/routes.test.mjs'), [
+      ['src/components', true],
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('an added component or content file selects the tests that scan its directory', async () => {
+  const root = await tree(scanningTree);
+  try {
+    // The browser suites a browser-facing change adds are covered above.
+    const select = async (changedFiles) =>
+      [
+        ...(await selectTests({
+          root,
+          changedFiles,
+          candidates: scanningCandidates.filter(
+            (file) => file !== 'test/routes.test.mjs',
+          ),
+        })),
+      ].filter(([file]) => !browserSuites.includes(file));
+    assert.deepEqual(await select(['src/components/hero-banner.astro']), [
+      [
+        'test/components.test.mjs',
+        'reads src/components/ (src/components/hero-banner.astro)',
+      ],
+    ]);
+    // Through a helper the test imports.
+    assert.deepEqual(await select(['src/content/landing-hero.json']), [
+      [
+        'test/content.test.ts',
+        'reads src/content/ (src/content/landing-hero.json)',
+      ],
+    ]);
+    assert.deepEqual(await select(['src/pages/giveaway/rules.astro']), [
+      [
+        'test/pages.test.mjs',
+        'reads src/pages/ (src/pages/giveaway/rules.astro)',
+      ],
+    ]);
+    assert.deepEqual(await select(['public/images/providers/b.svg']), [
+      [
+        'test/logos.test.mjs',
+        'reads public/images/providers/ (public/images/providers/b.svg)',
+      ],
+    ]);
+    assert.deepEqual(await select(['docs/brand/tokens.md']), [
+      ['test/checklist.test.ts', 'reads docs/brand/tokens.md'],
+    ]);
+    // A named file covers only itself, and a change elsewhere selects none.
+    assert.deepEqual(await select(['docs/brand/page-design.md']), []);
+    assert.deepEqual(await select(['src/server/config.ts']), []);
+    // A directory's name is not a file beneath it.
+    assert.deepEqual(await select(['src/components-old/a.astro']), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('only test code is read for repository paths, not the modules it imports', async () => {
+  const root = await tree({
+    'src/content/legit.md': '# Legit\n',
+    'scripts/ci/roots.mjs': "export const roots = ['src/content'];\n",
+    'test/roots.test.mjs': "import { roots } from '../scripts/ci/roots.mjs';\n",
+  });
+  try {
+    assert.deepEqual(
+      [
+        ...(await selectTests({
+          root,
+          changedFiles: ['src/content/new.json'],
+          candidates: ['test/roots.test.mjs'],
+        })),
+      ].filter(([file]) => !browserSuites.includes(file)),
+      [],
     );
   } finally {
     await rm(root, { recursive: true, force: true });
