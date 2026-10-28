@@ -1,7 +1,9 @@
 ---
 import Button from '../components/button.astro';
+import Checkbox from '../components/checkbox.astro';
 import Field from '../components/field.astro';
 import Input from '../components/input.astro';
+import TextLink from '../components/text-link.astro';
 import { landingCopy } from '../copy/landing.ts';
 import { signupFormCopy } from '../copy/signup.ts';
 import { getConfig } from '../server/config.ts';
@@ -50,32 +52,28 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     >
     </p>
 
-    <label class="signup-marketing">
-      <input
-        type="checkbox"
-        name="marketing_opt_in"
-        value={signupFormCopy.marketing.version}
-      />
-      <span>{signupFormCopy.marketing.wording}</span>
-    </label>
-
     {
       /*
-      The signed ref (E4-02) rides through as a hidden field the server renders;
-      the island never reads or writes it — it simply posts the whole form, so
-      whatever hidden fields exist are carried through unchanged.
+      The wireframe order (E11.5-11c): the field and the button in one row,
+      the 18+ microline beside the button, the Turnstile slot under the
+      microline, then the trust facts and the optional marketing box.
     */
     }
-    {
-      signedReferralCapture !== null && (
-        <input
-          name="referral_capture"
-          type="hidden"
-          value={signedReferralCapture}
-        />
-      )
-    }
-    <input name="turnstile_token" type="hidden" />
+    <Button type="submit" data-submit>{landingCopy.form.submit}</Button>
+    <p class="signup-age">
+      {signupFormCopy.ageStatement}{
+        giveawayEnabled && (
+          <>
+            {' '}
+            {signupFormCopy.freeEntryDisclosure}{' '}
+            <TextLink href="/giveaway/rules">
+              {signupFormCopy.giveawayRulesLink}
+            </TextLink>
+            {signupFormCopy.giveawayRulesLinkEnd}
+          </>
+        )
+      }
+    </p>
     <div class="signup-turnstile" data-turnstile-container></div>
 
     <p
@@ -96,16 +94,34 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     >
     </p>
 
-    <Button type="submit" data-submit>{landingCopy.form.submit}</Button>
-    <p class="signup-age">{signupFormCopy.ageStatement}</p>
+    <div class="signup-facts"><slot name="facts" /></div>
+    <Checkbox
+      id="signup-marketing"
+      class="signup-marketing"
+      name="marketing_opt_in"
+      value={signupFormCopy.marketing.version}
+      optional
+    >
+      {signupFormCopy.marketing.wording}
+    </Checkbox>
+
     {
-      giveawayEnabled && (
-        <p class="signup-age">
-          {signupFormCopy.freeEntryDisclosure}{' '}
-          <a href="/giveaway/rules">{signupFormCopy.giveawayRulesLink}</a>
-        </p>
+      /*
+      The signed ref (E4-02) rides through as a hidden field the server renders;
+      the island never reads or writes it — it simply posts the whole form, so
+      whatever hidden fields exist are carried through unchanged.
+    */
+    }
+    {
+      signedReferralCapture !== null && (
+        <input
+          name="referral_capture"
+          type="hidden"
+          value={signedReferralCapture}
+        />
       )
     }
+    <input name="turnstile_token" type="hidden" />
   </form>
 
   <section
@@ -168,6 +184,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
               {' '}
               {signupFormCopy.freeEntryDisclosure}{' '}
               <a href="/giveaway/rules">{signupFormCopy.giveawayRulesLink}</a>
+              {signupFormCopy.giveawayRulesLinkEnd}
             </>
           )
         }
@@ -433,6 +450,15 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
           this.#widgetId = turnstile.render(container, {
             sitekey,
             appearance: 'interaction-only',
+            // The hidden widget still mounts a child, so the slot is marked
+            // open only while Cloudflare shows it; the 12px gap under the
+            // microline follows the mark (E11.5-11c).
+            'before-interactive-callback': () => {
+              container.toggleAttribute('data-open', true);
+            },
+            'after-interactive-callback': () => {
+              container.toggleAttribute('data-open', false);
+            },
             callback: (token: string) => {
               if (token !== '' && this.#tokenInput !== null) {
                 this.#tokenInput.value = token;
@@ -831,20 +857,136 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     so a bare `form { display: grid }` would keep a `form.hidden = true` form
     visible. The island hides the form this way once a signup succeeds.
   */
+  /*
+    The hero form from the wireframes (E11.5-11c). Small: the field, then a
+    full-width button 12px below it. From 48rem the field and the button share
+    one row, 8px apart. The Field's wrapper steps aside (display: contents) so
+    its label and hint span the row above. Under the row: the microline 12px
+    below, the Turnstile slot 12px below that only while Cloudflare shows
+    the widget, the trust facts 20px below (16px small) and the marketing box
+    24px below (20px small). Rows that hold only hidden elements collapse to
+    nothing.
+  */
   valstara-signup-form form:not([hidden]) {
     display: grid;
-    gap: var(--space-2);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'notice'
+      'head'
+      'field'
+      'error'
+      'submit'
+      'micro'
+      'check'
+      'alert'
+      'status'
+      'facts'
+      'consent';
+  }
+
+  valstara-signup-form form > noscript {
+    grid-area: notice;
+  }
+
+  /* :not([hidden]) lifts the rule over the Field's scoped display. */
+  valstara-signup-form form > .field:not([hidden]) {
+    display: contents;
+  }
+
+  valstara-signup-form form .field__head {
+    grid-area: head;
+  }
+
+  valstara-signup-form #signup-email {
+    grid-area: field;
+    margin-block-start: var(--space-1);
+  }
+
+  valstara-signup-form #signup-email-error {
+    grid-area: error;
+    margin-block-start: var(--space-1);
+  }
+
+  valstara-signup-form form > .button[data-submit] {
+    grid-area: submit;
+    inline-size: 100%;
+    margin-block-start: var(--space-1-5);
+  }
+
+  /* :not([hidden]) lifts these over the landing page's paragraph reset. */
+  valstara-signup-form form > .signup-age:not([hidden]) {
+    grid-area: micro;
+    margin-block-start: var(--space-1-5);
+  }
+
+  valstara-signup-form .signup-turnstile {
+    grid-area: check;
+  }
+
+  valstara-signup-form .signup-turnstile[data-open] {
+    margin-block-start: var(--space-1-5);
+  }
+
+  valstara-signup-form form > [data-form-error]:not([hidden]) {
+    grid-area: alert;
     margin-block-start: var(--space-2);
   }
 
+  valstara-signup-form form > [data-form-status]:not([hidden]) {
+    grid-area: status;
+    margin-block-start: var(--space-2);
+  }
+
+  valstara-signup-form .signup-facts {
+    grid-area: facts;
+    margin-block-start: var(--space-2);
+  }
+
+  valstara-signup-form .signup-facts:empty {
+    display: none;
+  }
+
   valstara-signup-form .signup-marketing {
-    display: flex;
-    gap: var(--space-2);
-    align-items: start;
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
+    grid-area: consent;
+    margin-block-start: var(--space-2-5);
+  }
+
+  @media (min-width: 48rem) {
+    valstara-signup-form form:not([hidden]) {
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: var(--space-1);
+      grid-template-areas:
+        'notice notice'
+        'head head'
+        'field submit'
+        'error error'
+        'micro micro'
+        'check check'
+        'alert alert'
+        'status status'
+        'facts facts'
+        'consent consent';
+    }
+
+    valstara-signup-form form > .button[data-submit] {
+      inline-size: auto;
+      margin-block-start: var(--space-1);
+      padding-inline: var(--space-2-5);
+    }
+
+    valstara-signup-form .signup-facts {
+      margin-block-start: var(--space-2-5);
+    }
+
+    valstara-signup-form .signup-marketing {
+      margin-block-start: var(--space-3);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    valstara-signup-form form > .button[data-submit] {
+      padding-inline: var(--space-3);
+    }
   }
 
   valstara-signup-form .signup-age {

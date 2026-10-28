@@ -45,6 +45,9 @@ test('the checklist maps every portable Markdown source to one known storefront 
     allContentFiles.filter((file) => !file.endsWith('.md')),
     [
       'src/content/giveaway-award-catalog.json',
+      // E11.5-11c (founder-authorised 2026-10-27): the landing hero's list.
+      'src/content/landing-hero.json',
+      'src/content/landing-hero.ts',
       'src/content/provider-showcase.json',
       'src/content/provider-showcase.ts',
     ],
