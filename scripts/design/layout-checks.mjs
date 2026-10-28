@@ -95,6 +95,12 @@ export async function checkShellLayout(page) {
   return checkLayout(page, shellRegions);
 }
 
+// The same checks within named regions only, such as one landing section
+// under a flag state the enforced page list does not render.
+export async function checkRegionLayout(page, regions) {
+  return checkLayout(page, regions);
+}
+
 async function checkLayout(page, regions) {
   return page.evaluate((scopes) => {
     const issues = [];

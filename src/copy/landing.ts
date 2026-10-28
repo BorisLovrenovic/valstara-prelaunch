@@ -44,16 +44,29 @@ export const landingCopy = {
     accessHeading: 'Earlier access',
     accessBody: 'Earlier confirmed signups get earlier access.',
     waveLabel: (wave: number) => `Wave ${wave}`,
+    waveAxis: { earlier: 'earlier', later: 'later' },
     referralHeading: 'Referral rewards',
+    // Read by assistive technology; the equation below it is aria-hidden.
     tier: (tier: MilestoneTier) =>
       `${tier.threshold} confirmed referrals → move up an access wave and ${tier.discountPercent}% off at launch`,
+    tierReferrals: 'confirmed referrals',
+    tierWave: 'Up one access wave',
+    tierPlus: '+',
+    tierDiscount: (tier: Pick<MilestoneTier, 'discountPercent'>) =>
+      `${tier.discountPercent}%`,
+    tierDiscountLabel: 'off at launch',
     held: 'Discount unlocks when a referred person places a first order within 90 days after launch.',
     verifiedOnly: 'Only confirmed, verified referrals count.',
     giveawayHeading: 'The giveaway',
+    // Read by assistive technology; the prize figures below it are aria-hidden.
     prize: (
       rules: Pick<RulesRevision, 'prizeCount' | 'prizeApproxRetailValueEur'>,
     ) =>
       `${rules.prizeCount} prizes, approximately €${rules.prizeApproxRetailValueEur.toLocaleString('en-US')} each`,
+    prizeCountLabel: 'prizes, approximately',
+    prizeValue: (rules: Pick<RulesRevision, 'prizeApproxRetailValueEur'>) =>
+      `€${rules.prizeApproxRetailValueEur.toLocaleString('en-US')}`,
+    prizeEach: 'each',
     freeEntry: 'No purchase necessary',
     age: '18 and over',
     rulesLink: 'Read the giveaway rules',
