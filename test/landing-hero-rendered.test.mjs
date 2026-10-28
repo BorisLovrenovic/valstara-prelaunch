@@ -15,6 +15,10 @@ import { signupFormCopy } from '../src/copy/signup.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { renderLanding } from './helpers/landing-render.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import {
+  checkRegionLayout,
+  designWidths,
+} from '../scripts/design/layout-checks.mjs';
 
 // E11.5-11c: the #join hero from Main.dc.html, Tablet.dc.html, Phone.dc.html
 // and Fold.dc.html. Every number below is the frame's, with a 1px tolerance.
@@ -873,6 +877,33 @@ test('with signups paused the panel replaces the form, and the header Join and f
       assert.equal(new URL(page.url()).hash, '#join');
     }
     await context.close();
+  }
+});
+
+// The enforced landing check renders the default flags, where the microline
+// has no link. With the giveaway open, the rules link's 44px hit area must
+// neither fall short nor stick out of the microline at any design width.
+test('with the giveaway open, the hero passes the layout checks at every design width, in both themes', async () => {
+  for (const colorScheme of themes) {
+    for (const width of designWidths) {
+      const { context, page } = await openHero({
+        width,
+        colorScheme,
+        html: giveawayOpenPage,
+      });
+      assert.deepEqual(
+        await checkRegionLayout(page, ['#join']),
+        [],
+        `giveaway-open hero layout, ${colorScheme}, ${width}px`,
+      );
+      if (width < 768) {
+        const link = await page
+          .locator('#join form .signup-age a[href="/giveaway/rules"]')
+          .boundingBox();
+        assert.ok(link.height >= 44, `rules link target ${link.height}px`);
+      }
+      await context.close();
+    }
   }
 });
 
