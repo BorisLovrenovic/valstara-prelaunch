@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { landingCopy } from '../src/copy/landing.ts';
+import { resendVerificationCopy } from '../src/copy/resend-verification.ts';
+import { signupCopy, signupFormCopy } from '../src/copy/signup.ts';
 import { milestoneTiers } from '../src/server/referral/config.ts';
 
 const words = (value: string): number => value.trim().split(/\s+/u).length;
@@ -71,6 +73,52 @@ test('landing marketing copy stays inside its heading, line, card and FAQ budget
     assert.ok(words(item.question) <= 7, item.question);
     assert.ok(words(item.answer) <= 45, item.answer);
   }
+});
+
+// E11.5-11g: the signup states' copy, by key, under the marketing-surface
+// budgets: a heading at most 7 words, every other line at most 20.
+const signupStateHeadings = {
+  'signupFormCopy.successHeading': signupFormCopy.successHeading,
+} as const;
+const signupStateLines = {
+  'signupFormCopy.emailRequired': signupFormCopy.emailRequired,
+  'signupCopy.invalidEmail': signupCopy.invalidEmail,
+  'signupCopy.blockedDomain': signupCopy.blockedDomain,
+  'signupFormCopy.challengePending': signupFormCopy.challengePending,
+  'signupFormCopy.submitting': signupFormCopy.submitting,
+  'signupCopy.challengeFailed': signupCopy.challengeFailed,
+  'signupFormCopy.connection': signupFormCopy.connection,
+  'signupCopy.unavailable': signupCopy.unavailable,
+  'signupCopy.rateLimitedWait': signupCopy.rateLimitedWait(15),
+  'signupFormCopy.successStep': signupFormCopy.successStep,
+  'signupFormCopy.differentAddress': signupFormCopy.differentAddress,
+  'signupFormCopy.resendLink': signupFormCopy.resendLink,
+  'resendVerificationCopy.accepted': resendVerificationCopy.accepted,
+  'signupFormCopy.javaScriptRequired': signupFormCopy.javaScriptRequired,
+} as const;
+// Founder-authorised 2026-10-26: the success-panel body is 21 words. It is
+// the only exception, and only to the line budget.
+const signupStateBudgetExceptions = ['signupFormCopy.successStep'];
+
+function signupStateOverBudget(exceptions: readonly string[]): string[] {
+  return [
+    ...Object.entries(signupStateHeadings).filter(
+      ([, heading]) => words(heading) > 7,
+    ),
+    ...Object.entries(signupStateLines).filter(
+      ([key, line]) => words(line) > 20 && !exceptions.includes(key),
+    ),
+  ].map(([key]) => key);
+}
+
+test('signup state copy stays inside its budgets, with one named exception', () => {
+  assert.deepEqual(signupStateOverBudget(signupStateBudgetExceptions), []);
+});
+
+test('the signup copy-budget exception is narrow: without it the success body fails', () => {
+  assert.deepEqual(signupStateBudgetExceptions, ['signupFormCopy.successStep']);
+  assert.equal(words(signupFormCopy.successStep), 21);
+  assert.deepEqual(signupStateOverBudget([]), ['signupFormCopy.successStep']);
 });
 
 test('referral and prize copy derives its figures from injected source values', () => {

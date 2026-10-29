@@ -646,7 +646,30 @@ test('success is identical for unknown, pending and verified responses and echoe
       await page.fill('#signup-email', 'typed@example.com');
       await page.click('[data-submit]');
       await page.waitForSelector('[data-success]:not([hidden])');
-      results.push(await page.locator('[data-success]').innerText());
+      // E11.5-11g: the drawn panel is identical too, element for element and
+      // box for box, and carries no digit (no position or count).
+      results.push(
+        await page.locator('[data-success]').evaluate((panel) => {
+          const origin = panel.getBoundingClientRect();
+          return {
+            text: panel.innerText,
+            markup: panel.outerHTML,
+            boxes: [panel, ...panel.querySelectorAll('*')]
+              .filter((element) => element.getClientRects().length > 0)
+              .map((element) => {
+                const rect = element.getBoundingClientRect();
+                return [
+                  element.tagName,
+                  rect.left - origin.left,
+                  rect.top - origin.top,
+                  rect.width,
+                  rect.height,
+                ];
+              }),
+          };
+        }),
+      );
+      assert.doesNotMatch(results.at(-1).text, /\d/u);
       assert.equal(await page.locator('[data-resend]').isVisible(), false);
       assert.equal(
         await page.locator('[data-success-address]').textContent(),

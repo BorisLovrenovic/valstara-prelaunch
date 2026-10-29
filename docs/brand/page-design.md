@@ -50,6 +50,7 @@ The founder's mid-fidelity wireframes are the canvas "Valstara waitlist wirefram
 - Fonts stay self-hosted.
 - Breakpoints map as follows: the 390 frame is small (below 48rem), the 768 frame is medium (48rem to below 64rem), and the 1440 frame is large (64rem and up). Each layout is fluid between its breakpoints, and the container caps at 1200px (1264px with its 32px gutters).
 - Geometry is asserted at 1440, 768 and 390 px, and at 320 where drawn, with a 1px tolerance, in both themes.
+- Where artboards disagree on a primitive's size or style, `Components.dc.html` wins; page and state artboards govern placement and layout (founder-authorised 2026-10-29).
 
 **Layout values.** Sections are 80px apart at large widths and 64px at medium and small. Gutters are 32px at medium and large and 16px at small. Medium and large use a 12-column grid with 24px gaps (`--grid-columns-wide`, `--grid-gap-wide`); small uses a 4-column grid with 16px gaps. The header is 80px tall at medium and large and 72px at small.
 
@@ -102,7 +103,7 @@ The bare `<p>`, `<li>` and secondary `<a>` elements carry no attributes. The unc
 
 At about three seconds, the wordmark, plain description and guarantee should answer whether the site is legitimate. At about 20 seconds, headings, visuals and actions should explain what Valstara is and what a visitor gets. FAQ, trust pages and rules carry the deeper read.
 
-On marketing surfaces, headings have at most **7 words**, supporting lines **20**, card, step and badge text **15**, and FAQ answers **45**. Legal, rules and founder-approved trust content are exempt. All customer-visible strings live in `src/copy/` or `src/content/`.
+On marketing surfaces, headings have at most **7 words**, supporting lines **20**, card, step and badge text **15**, and FAQ answers **45**. Legal, rules and founder-approved trust content are exempt. One named exception is founder-authorised (2026-10-26): the signup success-panel body, `signupFormCopy.successStep`, is 21 words. `test/landing-design.test.ts` lists it by key, and a check that runs without the exception fails on exactly that key. All customer-visible strings live in `src/copy/` or `src/content/`.
 
 The waitlist has no storefront search, category nav, currency selector, account, cart, prices, discounts, review score or Trustpilot rating. It uses a text wordmark only until the vector redraw. The §7.3 anti-patterns apply, including centred hero text and centred section headings. State-change motion uses the existing 150–200ms ease-out tokens and stops under `prefers-reduced-motion`.
 
@@ -177,3 +178,30 @@ The last four landing sections follow `Main.dc.html`, `Tablet.dc.html` and `Phon
 `test/landing-catalogue-rendered.test.mjs` asserts the banner anatomy and computed colours over the full data file, the grid and rail geometry at 1440, 768 and 390, chips that never overflow or truncate at every test width, the compact style at 1024, rail keyboard scrolling and labels, the step layout per breakpoint and axe, all in both themes. `test/provider-banner.test.ts` covers the shared function, and `test/provider-showcase.test.ts` the `chipTone` schema.
 
 `test/landing-hero-rendered.test.mjs` asserts the fold at 1440 × 900, 390 × 844 and 320 with the giveaway off and on (the drawn microline), the geometry at 1440, 768 and 390 in both themes, stack containment from 768 to 1920, the real logos and the `aria-hidden` visuals, the Turnstile slot with a stand-in widget (no gap while hidden, 12px under the microline while shown), the microline variants, the paused variant and axe. `test/landing-hero.test.ts` covers the list validation, the build failure and the colour rule.
+
+### The signup form states (E11.5-11g)
+
+The 17 states of `StatesDesktop.dc.html` (on the large hero) and `StatesPhone.dc.html` (on the small hero) restyle the `SignupForm` island. Behaviour, the error mapping and the response copy are unchanged (E3-05, E11.5-06, S-01). Every value is a token or a `calc()` of tokens.
+
+- **Field error** (empty, invalid, blocked domain). The input's 2px `--error` border. Then, 8px under the field (under the field and button row from 48rem), the 20px alert-circle in `--error` and the 14/20 600 message in `--error-text`, 8px apart. The field's `aria-describedby` names the message, and focus returns to the field. Below 48rem the full-width button follows 12px under the message.
+- **Form notice** (check failed, network, unavailable, rate limited). The notice sits inside the form above the label: 16px above it at small widths, 20px from 48rem. It has `role="alert"` and takes focus when it appears. It has 16px padding, radius 8, a surface fill, a 2px `--error` edge, and the alert-circle in `--error` 12px before the 14/20 500 `ink` text. The drawn edge is an inset shadow. Here it is a real border with the padding reduced by its width, so the boxes match and the edge survives forced-colours mode. The rate-limit wait is the server's.
+- **Neutral notice** (JavaScript disabled). The same shape, with a 1px `line` edge and the `ink` info icon. It is the `<noscript>` content, so the form stays visible 16px below it.
+- **In flight.** The disabled primary (`coral-tint`, `ink-600` label) holds a 16px spinner 8px before the label: "Completing the security check…" while Turnstile runs, then "Adding you to the waitlist…". The spinner is a 2px `ink-300` ring with an `ink` top segment, turning once every `calc(var(--duration-base) * 4)` (800ms). It does not turn under `prefers-reduced-motion`. It steps aside while the Turnstile widget is open (the slot's `data-open`), because then the visitor is the one who must act. The separate in-flight status line is still announced, but it is clipped from view, because the button already shows the wait.
+- **Success panel.** It replaces the form, in the form's place: 24px under the supporting line, or 32px from 48rem. It has `role="status"` and is at most 560px wide. It is a surface card (radius 12, `--shadow-1` plus the dark-only edge) with 24px padding (32px from 48rem), holding a column with 12px gaps:
+  - the 48px `coral-tint` tile (radius 8) with the 24px mail icon;
+  - the 24/32 600 heading;
+  - the echoed address: mono 14/20 on `paper` with the inset 1px `line`, padded 8px 12px, radius 8. It wraps anywhere below 48rem, and from 48rem it breaks only where it would otherwise overflow;
+  - the 16/24 `ink-600` body;
+  - the actions: a stretched column 8px apart and 4px below the body at small widths, and a wrapping row 12px apart and 8px below from 48rem. They hold the E11.5-11a secondary primitive at its component-sheet sizes (founder-authorised 2026-10-29): 44px, padded 16px, 14/20 below 48rem, and 48px, padded 20px, 16/24 from 48rem. The states artboards draw 44px on desktop too, but they set only the panel's layout. The buttons are "Use a different address", and after 60 seconds "Send the link again" with the 16px refresh icon;
+  - after a resend, the 14/20 `ink-600` acknowledgement, with the 16px check only on the route's acknowledgement.
+
+  The panel is identical for every address, echoes only the visitor's input, and never says an email was sent or shows a position or count.
+- **Paused panel** (`signup.enabled` off). It uses the same panel geometry, with the pause icon, "Signups are paused" and its body. It replaces the form, the trust facts and the marketing box.
+
+`test/signup-states-rendered.test.mjs` renders each state at 1440 × 900 and 390 × 844, in both themes, with the giveaway open as the frames draw it. It compares every drawn element's box, relative to the H1, with the box read from that state's frame, rendered on the self-hosted fonts within 1px. Elements the frame does not draw must be absent. At 1440 the success actions, and the boxes they move, are read from the page instead, because the component sheet sets their size. The frames' own `.v p` and `.v ul` resets drop the hint, microline, field-error and trust-fact margins their CSS states, so those stated margins (E11.5-11c) were restored before reading. The suite also asserts:
+
+- each state's copy-layer text, token colours, borders, shadows, fonts and focus target;
+- the reduced-motion spinner;
+- axe on states 03, 09, 13 and 16 in both themes. State 16 is audited as its JavaScript-disabled DOM snapshot, because axe cannot run in a page without JavaScript.
+
+`test/signup-form.test.ts` checks every state string against the ticket's table, and `test/signup-form-rendered-page.test.mjs` asserts the success panel's markup and boxes are identical for unknown, pending and verified addresses.

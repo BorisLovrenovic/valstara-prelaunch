@@ -111,7 +111,10 @@ Astro.response.headers.set(
                   </ul>
                 </SignupForm>
               ) : (
-                <div class="landing-paused">
+                <div class="landing-paused" role="status">
+                  <span class="landing-paused__tile">
+                    <Icon name="pause" size="md" />
+                  </span>
                   <h2>{landingCopy.paused.heading}</h2>
                   <p>{landingCopy.paused.body}</p>
                 </div>
@@ -525,11 +528,46 @@ Astro.response.headers.set(
   .landing-hero__stack {
     display: none;
   }
+  /*
+    The paused panel (E11.5-11g, state 17) is the signup form's success
+    panel with the pause icon: a surface card, radius 12, --shadow-1 plus
+    the dark-only edge, 24px padding (32px from 48rem), a column with 12px
+    gaps holding the 48px coral-tint tile, the 24/32 600 heading and the
+    16/24 ink-600 body.
+  */
   .landing-paused {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    align-items: flex-start;
     padding: var(--space-3);
-    background: var(--surface);
-    border: thin solid var(--line);
+    background-color: var(--surface);
     border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1), var(--edge);
+  }
+  .landing-paused__tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
+    color: var(--ink);
+    background-color: var(--coral-tint);
+    border-radius: var(--radius-control);
+  }
+  .landing-paused h2 {
+    margin: var(--space-0);
+    font-size: var(--step-4);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-4);
+    letter-spacing: var(--tracking-tight);
+  }
+  .landing-hero .landing-paused p {
+    margin: var(--space-0);
+    color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
   }
   .landing-steps,
   .landing-guarantee {
@@ -1110,6 +1148,9 @@ Astro.response.headers.set(
     .landing-hero :global(valstara-signup-form),
     .landing-paused {
       margin-block-start: var(--space-4);
+    }
+    .landing-paused {
+      padding: var(--space-4);
     }
     .landing-hero__strip {
       display: none;
