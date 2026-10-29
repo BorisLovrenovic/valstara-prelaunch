@@ -2,6 +2,7 @@
 import Button from '../components/button.astro';
 import Checkbox from '../components/checkbox.astro';
 import Field from '../components/field.astro';
+import Icon from '../components/icon.astro';
 import Input from '../components/input.astro';
 import TextLink from '../components/text-link.astro';
 import { landingCopy } from '../copy/landing.ts';
@@ -23,9 +24,33 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
 <valstara-signup-form data-sitekey={turnstileSiteKey}>
   <form action="/api/signup" method="post">
+    {
+      /*
+      The form states from StatesDesktop.dc.html and StatesPhone.dc.html
+      (E11.5-11g). Without JavaScript, the neutral notice sits above the form,
+      which stays visible 16px below it. A form-level message is the error
+      notice above the label, focused when it appears. Each message sits in
+      its own [data-message] span beside a decorative icon, so the element's
+      text is exactly the message.
+    */
+    }
     <noscript>
-      <p class="signup-error">{signupFormCopy.javaScriptRequired}</p>
+      <p class="signup-notice">
+        <Icon name="info" size="base" /><span
+          >{signupFormCopy.javaScriptRequired}</span
+        >
+      </p>
     </noscript>
+    <p
+      class="signup-notice signup-notice--error"
+      data-form-error
+      role="alert"
+      aria-atomic="true"
+      tabindex="-1"
+      hidden
+    >
+      <Icon name="alert-circle" size="base" /><span data-message></span>
+    </p>
     <Field
       controlId="signup-email"
       description={landingCopy.form.hint}
@@ -43,13 +68,14 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       />
     </Field>
     <p
-      class="signup-error"
+      class="signup-field-error"
       id="signup-email-error"
       data-error-for="email"
       role="alert"
       aria-atomic="true"
       hidden
     >
+      <Icon name="alert-circle" size="base" /><span data-message></span>
     </p>
 
     {
@@ -59,7 +85,10 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       microline, then the trust facts and the optional marketing box.
     */
     }
-    <Button type="submit" data-submit>{landingCopy.form.submit}</Button>
+    <Button type="submit" data-submit
+      ><span class="signup-spinner" data-spinner aria-hidden="true" hidden
+      ></span><span data-submit-label>{landingCopy.form.submit}</span></Button
+    >
     <p class="signup-age">
       {signupFormCopy.ageStatement}{
         giveawayEnabled && (
@@ -76,15 +105,12 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     </p>
     <div class="signup-turnstile" data-turnstile-container></div>
 
-    <p
-      class="signup-error"
-      data-form-error
-      role="alert"
-      aria-atomic="true"
-      tabindex="-1"
-      hidden
-    >
-    </p>
+    {
+      /*
+      The in-flight announcement. The button's spinner and label show the
+      wait on screen, so this line is read by assistive technology only.
+    */
+    }
     <p
       class="signup-status"
       data-form-status
@@ -124,6 +150,14 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     <input name="turnstile_token" type="hidden" />
   </form>
 
+  {
+    /*
+    The success panel replaces the form. It is identical for every address:
+    the echoed address is the visitor's own input, and it never says an email
+    was sent or shows a position or count. The check icon marks only the
+    resend route's acknowledgement.
+  */
+  }
   <section
     class="signup-success"
     data-success
@@ -132,19 +166,27 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     tabindex="-1"
     hidden
   >
-    <span class="signup-success__icon" aria-hidden="true">✉</span>
+    <span class="signup-success__tile"><Icon name="mail" size="md" /></span>
     <h2>{signupFormCopy.successHeading}</h2>
-    <p data-success-address></p>
-    <p>{signupFormCopy.successStep}</p>
+    <p class="signup-success__address" data-success-address></p>
+    <p class="signup-success__step">{signupFormCopy.successStep}</p>
     <div class="signup-success__actions">
       <Button type="button" data-different-address variant="secondary">
         {signupFormCopy.differentAddress}
       </Button>
-      <Button type="button" data-resend hidden>
-        {signupFormCopy.resendLink}
+      <Button type="button" data-resend variant="secondary" hidden>
+        <Icon name="refresh" size="sm" />{signupFormCopy.resendLink}
       </Button>
     </div>
-    <p data-resend-status role="status" aria-live="polite" hidden></p>
+    <p
+      class="signup-success__resent"
+      data-resend-status
+      role="status"
+      aria-live="polite"
+      hidden
+    >
+      <Icon name="check" size="sm" /><span data-message></span>
+    </p>
   </section>
 
   <section
@@ -246,6 +288,8 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   class ValstaraSignupForm extends HTMLElement {
     #form: HTMLFormElement | null = null;
     #submit: HTMLButtonElement | null = null;
+    #submitLabel: HTMLElement | null = null;
+    #spinner: HTMLElement | null = null;
     #tokenInput: HTMLInputElement | null = null;
     #turnstileContainer: HTMLElement | null = null;
     #widgetId: string | undefined;
@@ -268,7 +312,9 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       }
       this.#form = form;
       this.#submit = form.querySelector('[data-submit]');
-      this.#idleLabel = this.#submit?.textContent?.trim() ?? '';
+      this.#submitLabel = form.querySelector('[data-submit-label]');
+      this.#spinner = form.querySelector('[data-spinner]');
+      this.#idleLabel = this.#submitLabel?.textContent?.trim() ?? '';
       this.#tokenInput = form.querySelector('input[name="turnstile_token"]');
       this.#turnstileContainer = form.querySelector(
         '[data-turnstile-container]',
@@ -608,10 +654,12 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       message: string = signupFormCopy.submitting,
     ): void {
       this.#inFlight = inFlight;
-      if (this.#submit !== null) {
-        this.#submit.disabled = inFlight;
-        this.#submit.textContent = inFlight ? message : this.#idleLabel;
-      }
+      if (this.#submit !== null) this.#submit.disabled = inFlight;
+      if (this.#submitLabel !== null)
+        this.#submitLabel.textContent = inFlight ? message : this.#idleLabel;
+      // The spinner shows the wait; CSS hides it while the Turnstile widget
+      // is open, because then the visitor is the one who must act.
+      if (this.#spinner !== null) this.#spinner.hidden = !inFlight;
       const dockSubmit =
         this.querySelector<HTMLButtonElement>('[data-dock-submit]');
       if (dockSubmit !== null) {
@@ -659,7 +707,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         `[data-error-for="${field}"]`,
       );
       if (element !== null) {
-        element.textContent = message;
+        this.#setMessage(element, message);
         element.hidden = false;
       }
       this.querySelector(`#signup-${field}`)?.setAttribute(
@@ -674,16 +722,23 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         `[data-error-for="${field}"]`,
       );
       if (element !== null) {
-        element.textContent = '';
+        this.#setMessage(element, '');
         element.hidden = true;
       }
       this.querySelector(`#signup-${field}`)?.removeAttribute('aria-invalid');
     }
 
+    // A message element holds its text in a [data-message] span beside its
+    // decorative icon; one without that span holds the text itself.
+    #setMessage(element: HTMLElement, message: string): void {
+      (element.querySelector('[data-message]') ?? element).textContent =
+        message;
+    }
+
     #showFormError(message: string): void {
       const element = this.querySelector<HTMLElement>('[data-form-error]');
       if (element !== null) {
-        element.textContent = message;
+        this.#setMessage(element, message);
         element.hidden = false;
         if (this.#entryPoint === 'hero') element.focus();
       }
@@ -765,7 +820,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       const status = this.querySelector<HTMLElement>('[data-resend-status]');
       if (status !== null) {
         status.hidden = true;
-        status.textContent = '';
+        this.#setMessage(status, '');
       }
       const email = this.querySelector<HTMLInputElement>('#signup-email');
       if (email !== null) {
@@ -809,12 +864,21 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
             typeof record.error === 'object' && record.error !== null
               ? (record.error as Record<string, unknown>)
               : {};
-          status.textContent = this.#messageOf(record.message ?? error.message);
+          this.#setMessage(
+            status,
+            this.#messageOf(record.message ?? error.message),
+          );
+          // Only the route's acknowledgement carries the check icon.
+          status.toggleAttribute(
+            'data-acknowledged',
+            typeof record.message === 'string',
+          );
           status.hidden = false;
         }
       } catch {
         if (status !== null) {
-          status.textContent = signupFormCopy.connection;
+          this.#setMessage(status, signupFormCopy.connection);
+          status.toggleAttribute('data-acknowledged', false);
           status.hidden = false;
         }
       } finally {
@@ -868,24 +932,88 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     nothing.
   */
   valstara-signup-form form:not([hidden]) {
+    position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       'notice'
+      'alert'
       'head'
       'field'
       'error'
       'submit'
       'micro'
       'check'
-      'alert'
-      'status'
       'facts'
       'consent';
   }
 
   valstara-signup-form form > noscript {
     grid-area: notice;
+  }
+
+  /*
+    The notices (E11.5-11g): 16px padding, radius 8, surface, a 12px gap
+    between the 20px icon and the 14/20 500 ink text. The neutral notice has
+    a 1px line edge and the info icon; the error notice a 2px --error edge and
+    the alert-circle icon in --error. The drawn inset edge is a real border
+    here, with the padding reduced by its width, so the boxes match and the
+    edge survives forced-colours mode.
+  */
+  valstara-signup-form .signup-notice {
+    display: flex;
+    gap: var(--space-1-5);
+    align-items: flex-start;
+    margin: var(--space-0);
+    padding: var(--control-inset-strong);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+    background-color: var(--surface);
+    border: var(--border-thin) solid var(--line);
+    border-radius: var(--radius-control);
+  }
+
+  valstara-signup-form .signup-notice--error {
+    padding: calc(var(--space-2) - var(--border-strong));
+    border: var(--border-strong) solid var(--error);
+  }
+
+  valstara-signup-form .signup-notice--error .icon {
+    color: var(--error);
+  }
+
+  /* Without JavaScript the form stays visible 16px below the notice.
+     :not([hidden]) lifts these over the landing page's paragraph reset. */
+  valstara-signup-form form > noscript > .signup-notice:not([hidden]) {
+    margin-block-end: var(--space-2);
+  }
+
+  /* The error notice sits 16px above the label (20px from 48rem). */
+  valstara-signup-form form > [data-form-error]:not([hidden]) {
+    grid-area: alert;
+    margin-block-end: var(--space-2);
+  }
+
+  /* The field error: the 20px alert-circle in --error, then the 14/20 600
+     message in --error-text, 8px apart and 8px under the field (under the
+     field row from 48rem). */
+  valstara-signup-form .signup-field-error {
+    display: flex;
+    gap: var(--space-1);
+    align-items: flex-start;
+    margin: var(--space-0);
+    color: var(--error-text);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
+  }
+
+  valstara-signup-form .signup-field-error .icon {
+    color: var(--error);
   }
 
   /* :not([hidden]) lifts the rule over the Field's scoped display. */
@@ -955,14 +1083,34 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     margin-block-start: var(--space-1-5);
   }
 
-  valstara-signup-form form > [data-form-error]:not([hidden]) {
-    grid-area: alert;
-    margin-block-start: var(--space-2);
+  /*
+    The spinner (E11.5-11g): 16px, a 2px ink-300 ring with an ink top
+    segment, 8px before the label. It turns only without reduced motion; the
+    label explains the wait either way. While the Turnstile widget is open
+    the visitor must act, so the spinner steps aside (state 08).
+  */
+  valstara-signup-form .signup-spinner {
+    box-sizing: border-box;
+    flex: none;
+    inline-size: var(--icon-sm);
+    block-size: var(--icon-sm);
+    border: var(--border-strong) solid var(--ink-300);
+    border-block-start-color: var(--ink);
+    border-radius: var(--radius-pill);
+    animation-name: signup-spin;
+    animation-duration: calc(var(--duration-base) * 4);
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
   }
 
-  valstara-signup-form form > [data-form-status]:not([hidden]) {
-    grid-area: status;
-    margin-block-start: var(--space-2);
+  valstara-signup-form form:has(.signup-turnstile[data-open]) .signup-spinner {
+    display: none;
+  }
+
+  @keyframes signup-spin {
+    to {
+      transform: rotate(1turn);
+    }
   }
 
   valstara-signup-form .signup-facts {
@@ -985,15 +1133,18 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       column-gap: var(--space-1);
       grid-template-areas:
         'notice notice'
+        'alert alert'
         'head head'
         'field submit'
         'error error'
         'micro micro'
         'check check'
-        'alert alert'
-        'status status'
         'facts facts'
         'consent consent';
+    }
+
+    valstara-signup-form form > [data-form-error]:not([hidden]) {
+      margin-block-end: var(--space-2-5);
     }
 
     valstara-signup-form form > .button[data-submit] {
@@ -1035,46 +1186,139 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     border-inline-start: medium solid var(--error);
   }
 
+  /* Read by assistive technology, clipped to nothing on screen, and boxed
+     inside the form so it never widens the page. */
   valstara-signup-form .signup-status {
-    margin: 0;
-    color: var(--ink-600);
-    font-family: var(--font-sans);
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
+    position: absolute;
+    inset: 0;
+    margin: var(--space-0);
+    overflow: hidden;
+    clip-path: inset(50%);
   }
 
   valstara-signup-form .signup-turnstile:empty {
     display: none;
   }
 
-  valstara-signup-form .signup-success {
-    margin-block-start: var(--space-2);
+  /*
+    The success panel (E11.5-11g) replaces the form, so it takes the form's
+    place 24px under the supporting line (32px from 48rem). A surface card,
+    radius 12, --shadow-1 plus the dark-only edge, 24px padding (32px from
+    48rem), a column with 12px gaps: the 48px coral-tint tile with the 24px
+    mail icon, the 24/32 600 heading, the echoed address (mono 14/20 on
+    paper, inset 1px line, padded 8px 12px), the 16/24 ink-600 body, the
+    actions and the resent line.
+  */
+  valstara-signup-form .signup-success:not([hidden]) {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    align-items: flex-start;
     padding: var(--space-3);
     color: var(--ink);
     font-family: var(--font-sans);
-    font-size: var(--step-3);
-    line-height: var(--leading-3);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
     background-color: var(--surface);
-    border: thin solid var(--line);
     border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1), var(--edge);
   }
 
   valstara-signup-form .signup-success h2,
   valstara-signup-form .signup-success p {
-    margin: 0;
+    margin: var(--space-0);
   }
 
-  valstara-signup-form .signup-success__icon {
-    display: inline-block;
-    color: var(--coral);
+  valstara-signup-form .signup-success h2 {
     font-size: var(--step-4);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-4);
+    letter-spacing: var(--tracking-tight);
   }
 
+  valstara-signup-form .signup-success__tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
+    color: var(--ink);
+    background-color: var(--coral-tint);
+    border-radius: var(--radius-control);
+  }
+
+  /* The address wraps anywhere at small widths, as drawn; from 48rem it
+     breaks only if it would otherwise overflow the panel. */
+  valstara-signup-form .signup-success__address {
+    max-inline-size: 100%;
+    padding: var(--space-1) var(--space-1-5);
+    font-family: var(--font-mono);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    word-break: break-all;
+    background-color: var(--paper);
+    border-radius: var(--radius-control);
+    box-shadow: var(--inset-line);
+  }
+
+  valstara-signup-form .signup-success__step {
+    color: var(--ink-600);
+  }
+
+  /* Small: a stretched column, 8px apart and 4px below the body. */
   valstara-signup-form .signup-success__actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin-block-start: var(--space-2);
+    flex-direction: column;
+    gap: var(--space-1);
+    align-self: stretch;
+    margin-block-start: var(--space-0-5);
+  }
+
+  /* The drawn compact secondary: 44px, padded 16px, 14/20, at every width. */
+  valstara-signup-form .signup-success__actions .button {
+    min-block-size: var(--tap-min);
+    padding-inline: var(--space-2);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  valstara-signup-form .signup-success__resent {
+    display: flex;
+    gap: var(--space-1);
+    align-items: flex-start;
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  /* The 16px check sits centred on the first 20px line. */
+  valstara-signup-form .signup-success__resent .icon {
+    margin-block-start: calc((var(--leading-1) - var(--icon-sm)) / 2);
+  }
+
+  valstara-signup-form .signup-success__resent:not([data-acknowledged]) .icon {
+    display: none;
+  }
+
+  @media (min-width: 48rem) {
+    valstara-signup-form .signup-success:not([hidden]) {
+      padding: var(--space-4);
+    }
+
+    valstara-signup-form .signup-success__address {
+      word-break: normal;
+      overflow-wrap: anywhere;
+    }
+
+    /* A wrapping row, 12px apart and 8px below the body. */
+    valstara-signup-form .signup-success__actions {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: var(--space-1-5);
+      align-self: flex-start;
+      margin-block-start: var(--space-1);
+    }
   }
 
   valstara-signup-form .signup-dock:not([hidden]) {
@@ -1135,6 +1379,10 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   @media (prefers-reduced-motion: reduce) {
     valstara-signup-form .signup-dock {
       transition-property: none;
+    }
+
+    valstara-signup-form .signup-spinner {
+      animation-name: none;
     }
   }
 </style>
