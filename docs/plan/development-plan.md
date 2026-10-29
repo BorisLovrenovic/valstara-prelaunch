@@ -2493,6 +2493,8 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
   - A surface card (`--shadow-1`, on the light page, not `midnight`) across all 12 columns. Large: a row with space-between and 24px gaps, 40px padding (32px at medium), holding the H2 "Ready when you are" and the primary "Join the waitlist" linking to `#join`. Small: a column with stretched items, 24px padding and a full-width button.
   - The button scrolls to `#join` and moves focus to the email field (the island handles focus; without JavaScript the anchor scroll alone). With signups off it scrolls to the paused panel.
 
+- **Founder decisions (2026-10-29).** (1) The numeral ring is the new token `--ring-numeral: inset 0 0 0 1.5px var(--coral)` on bare `:root`, with no dark override because dark redefines `--coral`. A 1.5px `border` built from `--border-check` was rejected: Chromium snaps it to 1px at 1×. The rendered test asserts the computed ring is 1.5px coral at 1440, 768 and 390 in both themes. (2) The first FAQ item is open on load, which reverses the E11.5-05 assertion that it starts closed; the native-disclosure check moves to the second item.
+
 **Acceptance criteria:**
 - Geometry of all four sections matches the frames at 1440, 768 and 390 px, in both themes
 - The numerals are hidden from assistive technology, and each H3 is announced with its "I.", "II." or "III." prefix
@@ -2502,6 +2504,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 - All copy matches the frames verbatim — the copy-layer test
 
 **Tests:** Section geometry per breakpoint · numeral and prefix accessibility · trust-card link and focus · FAQ default state and measure · the primary-button count per breakpoint · copy match · axe in both themes.
+**Named test rewrites (founder-authorised 2026-10-29):** test/tokens.test.mjs — the authorised set gains `--ring-numeral`. test/landing-themes.test.mjs — the first FAQ item is open on load and the second opens on click.
 **Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `Components.dc.html` · `docs/brand/identity-guidelines.md` §2
 
 ### E11.5-11g — Wireframe signup form states

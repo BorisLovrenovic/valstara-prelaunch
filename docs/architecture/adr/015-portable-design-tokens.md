@@ -34,4 +34,6 @@ Values are **transcribed** from the brand guidelines, not invented here. A place
 
 **E11.5-11d amendment, founder-authorised 2026-10-28:** the portable file adds the six offsets for the wireframe's tonal shapes `.t4` to `.t6`, under the E11.5-11c naming, and `--shadow-chip-dark`. In light, `--shadow-chip-dark` is the `--shadow-chip` value. In both dark blocks it is the drawn `0 0 0 1px rgba(240,240,238,.18), 0 6px 14px rgba(0,0,0,.3)`: a LOCKED dark-ink ring and a black shadow. The file removes the four E11.5-04 provider tokens that nothing references any more. No hue is added.
 
+**E11.5-11f amendment, founder-authorised 2026-10-29:** the portable file adds `--ring-numeral: inset 0 0 0 1.5px var(--coral)`, the guarantee band's numeral ring. It is declared once on `:root` with no dark redefinition, because dark redefines `--coral`; it adds no hue.
+
 **E11.5-11 note (2026-10-24):** email clients such as Gmail and Outlook ignore CSS custom properties, so the email layout cannot use `var()`. It reads `tokens.css` at render time and inlines the resolved colour, font, size and radius values, including the dark block for `prefers-color-scheme: dark`. The token file stays the only place those values are defined, and a test changes a token fixture and checks that the mail output follows. This adds no token and changes no value.

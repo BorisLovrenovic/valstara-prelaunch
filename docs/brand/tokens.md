@@ -99,7 +99,7 @@ The portable file also carries `--shadow-1` through `--shadow-3` (with paired da
 | Banner shapes (E11.5-11c, founder-authorised 2026-10-27; t4 to t6 E11.5-11d, 2026-10-28) | `--banner-shape-t1-top`, `-t1-right`, `-t2-right`, `-t2-bottom`, `-t3-top`, `-t3-left`, `-t4-top`, `-t4-right`, `-t5-top`, `-t5-right`, `-t6-top`, `-t6-left`: the wireframe's `.t1` to `.t6` tonal-shape offsets, one token per side each shape sets, in percentages of the banner | `-80%` · `-12%` · `-20%` · `-75%` · `-140%` · `-34%` · `-90%` · `16%` · `-64%` · `6%` · `38%` · `52%` | unchanged |
 | Dark chip shadow (E11.5-11d, founder-authorised 2026-10-28) | `--shadow-chip-dark`: the shadow of the dark chip a white-only logo takes | the `--shadow-chip` value | `0 0 0 1px rgba(240,240,238,.18), 0 6px 14px rgba(0,0,0,.3)`, a light ring so the dark chip holds its edge on a dark page |
 | Dark-only values | `--banner-edge`, `--banner-edge-hero`, `--banner-edge-hover`, `--shadow-band` | `0 0 0 0 transparent` (light base) | the 1px light edges at .1, .12 and .14, and the guarantee-band shadow |
-| Composites | `--ring-focus`, `--inset-line`, `--inset-strong`, `--inset-on-midnight`, `--inset-on-midnight-disabled` | a token colour with a fixed width | follow their colours |
+| Composites | `--ring-focus`, `--inset-line`, `--inset-strong`, `--ring-numeral` (E11.5-11f), `--inset-on-midnight`, `--inset-on-midnight-disabled` | a token colour with a fixed width | follow their colours |
 | Layout | `--grid-columns` 4 / `--grid-columns-wide` 12, `--grid-gap` 16px / `--grid-gap-wide` 24px, `--header-height` 72px / `--header-height-wide` 80px | — | — |
 | Lines and focus | `--radius-check` 4px, `--border-thin` 1px, `--border-check` 1.5px, `--border-strong` 2px, `--focus-width` 2px, `--focus-offset` 2px, `--underline-thickness` 2px, `--underline-offset` 3px | — | — |
 | Spacing off the 8px ramp | `--space-0-5` 4px, `--space-0-75` 6px, `--space-1-5` 12px, `--space-1-75` 14px (E11.5-11c, the medium hero chip), `--space-2-5` 20px (named for their share of the 8px step) | — | — |
@@ -151,6 +151,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 **E11.5-11c port addition:** the file also carries `--banner-white` and `--banner-ink`, declared once on `:root` with no dark redefinition, because a provider banner's chip and text do not change with the theme, plus `--space-1-75` and the six `--banner-shape-t*` offsets.
 
 **E11.5-11d port change:** the file adds the six `--banner-shape-t4/t5/t6-*` offsets and `--shadow-chip-dark`, which has a dark value in both dark blocks. It drops `--provider-layer-decor`, `--provider-banner-tone`, `--provider-depth-brightness` and `--provider-rail-peek`. A storefront that copied an earlier version must remove those four. Re-run the dark-name-set and no-new-hue tests after the port.
+
+**E11.5-11f port addition:** the file adds `--ring-numeral` (founder-authorised 2026-10-29), declared once on `:root`; its colour follows `--coral` in both themes.
 
 E11-07 source-to-target reconciliation (targets are the storefront routes to build and verify before the DNS swap):
 

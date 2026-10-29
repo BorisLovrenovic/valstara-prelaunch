@@ -176,6 +176,8 @@ const wireframeTokens = {
   '--ring-focus': '0 0 0 2px var(--surface), 0 0 0 4px var(--coral)',
   '--inset-line': 'inset 0 0 0 1px var(--line)',
   '--inset-strong': 'inset 0 0 0 1px var(--ink-300)',
+  // E11.5-11f (founder-authorised 2026-10-29): the guarantee numeral ring.
+  '--ring-numeral': 'inset 0 0 0 1.5px var(--coral)',
   '--icon-base': '1.25rem',
   '--star-sm': '0.75rem',
   '--star-md': '1rem',

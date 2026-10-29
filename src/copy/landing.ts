@@ -78,20 +78,23 @@ export const landingCopy = {
     promises: [
       {
         numeral: 'I',
-        title: 'Delivered within 24 hours',
+        title: 'Delivered within 24 hours.',
         line: 'Every order is fulfilled by hand, Monday to Friday, within 24 hours of purchase.',
       },
       {
         numeral: 'II',
-        title: 'Protected, start to finish',
+        title: 'Protected, start to finish.',
         line: '256-bit encryption throughout. PCI-compliant payment handling. Your data is never sold.',
       },
       {
         numeral: 'III',
-        title: 'Resolved, replaced, or refunded',
+        title: 'Resolved, replaced, or refunded.',
         line: 'If it cannot be resolved, we replace it. If it cannot be replaced, we refund you.',
       },
     ],
+    // Read before each title by assistive technology; the drawn numeral is
+    // aria-hidden.
+    prefix: (numeral: string) => `${numeral}. `,
     link: 'Read the guarantee',
   },
   trustLinks: {
@@ -99,16 +102,19 @@ export const landingCopy = {
     items: [
       {
         href: '/legit',
+        icon: 'search-check',
         heading: 'Is Valstara legit?',
         line: 'See the evidence before you join.',
       },
       {
         href: '/about',
+        icon: 'office',
         heading: 'Who we are',
         line: 'Meet the company behind the store.',
       },
       {
         href: 'mailto:support@valstara.com',
+        icon: 'mail',
         heading: 'Contact us',
         line: 'Email support@valstara.com.',
       },
