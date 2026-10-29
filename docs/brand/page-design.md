@@ -50,6 +50,7 @@ The founder's mid-fidelity wireframes are the canvas "Valstara waitlist wirefram
 - Fonts stay self-hosted.
 - Breakpoints map as follows: the 390 frame is small (below 48rem), the 768 frame is medium (48rem to below 64rem), and the 1440 frame is large (64rem and up). Each layout is fluid between its breakpoints, and the container caps at 1200px (1264px with its 32px gutters).
 - Geometry is asserted at 1440, 768 and 390 px, and at 320 where drawn, with a 1px tolerance, in both themes.
+- Where artboards disagree on a primitive's size or style, `Components.dc.html` wins; page and state artboards govern placement and layout (founder-authorised 2026-10-29).
 
 **Layout values.** Sections are 80px apart at large widths and 64px at medium and small. Gutters are 32px at medium and large and 16px at small. Medium and large use a 12-column grid with 24px gaps (`--grid-columns-wide`, `--grid-gap-wide`); small uses a 4-column grid with 16px gaps. The header is 80px tall at medium and large and 72px at small.
 
@@ -191,13 +192,13 @@ The 17 states of `StatesDesktop.dc.html` (on the large hero) and `StatesPhone.dc
   - the 24/32 600 heading;
   - the echoed address: mono 14/20 on `paper` with the inset 1px `line`, padded 8px 12px, radius 8. It wraps anywhere below 48rem, and from 48rem it breaks only where it would otherwise overflow;
   - the 16/24 `ink-600` body;
-  - the actions: a stretched column 8px apart and 4px below the body at small widths, and a wrapping row 12px apart and 8px below from 48rem. They hold the drawn compact secondary buttons (44px, padded 16px, 14/20 at every width): "Use a different address", and after 60 seconds "Send the link again" with the 16px refresh icon;
+  - the actions: a stretched column 8px apart and 4px below the body at small widths, and a wrapping row 12px apart and 8px below from 48rem. They hold the E11.5-11a secondary primitive at its component-sheet sizes (founder-authorised 2026-10-29): 44px, padded 16px, 14/20 below 48rem, and 48px, padded 20px, 16/24 from 48rem. The states artboards draw 44px on desktop too, but they set only the panel's layout. The buttons are "Use a different address", and after 60 seconds "Send the link again" with the 16px refresh icon;
   - after a resend, the 14/20 `ink-600` acknowledgement, with the 16px check only on the route's acknowledgement.
 
   The panel is identical for every address, echoes only the visitor's input, and never says an email was sent or shows a position or count.
 - **Paused panel** (`signup.enabled` off). It uses the same panel geometry, with the pause icon, "Signups are paused" and its body. It replaces the form, the trust facts and the marketing box.
 
-`test/signup-states-rendered.test.mjs` renders each state at 1440 × 900 and 390 × 844, in both themes, with the giveaway open as the frames draw it. It compares every drawn element's box, relative to the H1, with the box read from that state's frame, rendered on the self-hosted fonts within 1px. Elements the frame does not draw must be absent. The frames' own `.v p` and `.v ul` resets drop the hint, microline, field-error and trust-fact margins their CSS states, so those stated margins (E11.5-11c) were restored before reading. The suite also asserts:
+`test/signup-states-rendered.test.mjs` renders each state at 1440 × 900 and 390 × 844, in both themes, with the giveaway open as the frames draw it. It compares every drawn element's box, relative to the H1, with the box read from that state's frame, rendered on the self-hosted fonts within 1px. Elements the frame does not draw must be absent. At 1440 the success actions, and the boxes they move, are read from the page instead, because the component sheet sets their size. The frames' own `.v p` and `.v ul` resets drop the hint, microline, field-error and trust-fact margins their CSS states, so those stated margins (E11.5-11c) were restored before reading. The suite also asserts:
 
 - each state's copy-layer text, token colours, borders, shadows, fonts and focus target;
 - the reduced-motion spinner;

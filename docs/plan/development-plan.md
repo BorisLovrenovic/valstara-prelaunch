@@ -2282,6 +2282,8 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 7. **Geometry is asserted.** Each ticket's rendered-page tests measure the stated dimensions at 1440, 768 and 390 px, and at 320 px where the wireframes show it, with a 1px tolerance, in both themes. A visual difference that the stated numbers don't catch is a review finding against the frame, not a matter of taste.
 8. **Standing rules still win.** If a wireframe detail would add a request, a storage write, an island, a collected field or a claim the rules page doesn't support, the agent stops with `BLOCKED:` rather than building it. The known resolutions are recorded in each ticket.
 
+**Artboard precedence (2026-10-29).** Where artboards disagree on a primitive's size or style, Components.dc.html wins; page and state artboards govern placement and layout (founder-authorised 2026-10-29).
+
 ### E11.5-11a — Wireframe foundations: tokens, breakpoints, icons and primitives
 **Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
 **Why this model:** `tokens.css` is inherited verbatim by the storefront (ADR-015), and every later wireframe ticket builds on these primitives.
@@ -2552,6 +2554,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 - The spinner does not animate under reduced motion
 - The copy-budget exception is narrow: removing the key from the exception list fails the test
 
+**Founder decision (2026-10-29):** the success-panel buttons ("Use a different address", "Send the link again") use the E11.5-11a secondary primitive as the component sheet draws it: 48px with 0 20px padding and 16/24 text at medium and large widths, and 44px with 0 16px padding and 14/20 text at small widths. The states artboards set the panel's layout (padding, gaps, the row on desktop and the stretched column on phones), not the button's size.
 **Tests:** One state test per row at two viewports · copy match · focus targets · success-state equivalence · reduced-motion spinner · the named copy-budget exception · axe on states 03, 09, 13 and 16 in both themes.
 **Docs:** `StatesDesktop.dc.html` · `StatesPhone.dc.html` · `docs/features/signup.md` · E3-05 · E3-09 · E11.5-06
 

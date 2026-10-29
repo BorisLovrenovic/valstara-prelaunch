@@ -1207,7 +1207,9 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     48rem), a column with 12px gaps: the 48px coral-tint tile with the 24px
     mail icon, the 24/32 600 heading, the echoed address (mono 14/20 on
     paper, inset 1px line, padded 8px 12px), the 16/24 ink-600 body, the
-    actions and the resent line.
+    actions and the resent line. The actions are the E11.5-11a secondary
+    primitive at its own sizes (founder-authorised 2026-10-29: the component
+    sheet sets a primitive's size, the states artboards its placement).
   */
   valstara-signup-form .signup-success:not([hidden]) {
     box-sizing: border-box;
@@ -1273,14 +1275,6 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     gap: var(--space-1);
     align-self: stretch;
     margin-block-start: var(--space-0-5);
-  }
-
-  /* The drawn compact secondary: 44px, padded 16px, 14/20, at every width. */
-  valstara-signup-form .signup-success__actions .button {
-    min-block-size: var(--tap-min);
-    padding-inline: var(--space-2);
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
   }
 
   valstara-signup-form .signup-success__resent {

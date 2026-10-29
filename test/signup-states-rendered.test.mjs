@@ -69,7 +69,14 @@ const selectors = {
   resentIcon: '[data-resend-status] .icon',
 };
 
-// [x, y, width, height] relative to the H1's top-left, per state.
+// [x, y, width, height] relative to the H1's top-left, per state. One
+// founder decision overrides the frame (2026-10-29): the success panel's
+// buttons are the E11.5-11a secondary primitive as Components.dc.html draws
+// it, 48px with 20px padding and 16/24 text from 48rem (the states artboard
+// draws them at 44px). So at 1440 the actions, the icon in the second, the
+// resent line and the panel's height are read from the page with that
+// primitive, in the frame's placement: the row 8px under the body, 12px
+// apart. Below 48rem the primitive is the drawn 44px, so 390 is the frame's.
 const frames = {
   1440: {
     '01': {
@@ -202,41 +209,41 @@ const frames = {
       consent: [[0, 404, 560, 40]],
     },
     13: {
-      panel: [[0, 136, 560, 328]],
+      panel: [[0, 136, 560, 332]],
       tile: [[32, 168, 48, 48]],
       tileIcon: [[44, 180, 24, 24]],
       heading: [[32, 228, 193.17, 32]],
       address: [[32, 272, 208, 36]],
       body: [[32, 320, 496, 48]],
-      actions: [[32, 388, 186, 44]],
+      actions: [[32, 388, 213, 48]],
     },
     14: {
-      panel: [[0, 136, 560, 328]],
+      panel: [[0, 136, 560, 332]],
       tile: [[32, 168, 48, 48]],
       tileIcon: [[44, 180, 24, 24]],
       heading: [[32, 228, 193.17, 32]],
       address: [[32, 272, 208, 36]],
       body: [[32, 320, 496, 48]],
       actions: [
-        [32, 388, 186, 44],
-        [230, 388, 186, 44],
+        [32, 388, 213, 48],
+        [257, 388, 207, 48],
       ],
-      actionIcon: [[246, 402, 16, 16]],
+      actionIcon: [[277, 404, 16, 16]],
     },
     15: {
-      panel: [[0, 136, 560, 380]],
+      panel: [[0, 136, 560, 384]],
       tile: [[32, 168, 48, 48]],
       tileIcon: [[44, 180, 24, 24]],
       heading: [[32, 228, 193.17, 32]],
       address: [[32, 272, 208, 36]],
       body: [[32, 320, 496, 48]],
       actions: [
-        [32, 388, 186, 44],
-        [230, 388, 186, 44],
+        [32, 388, 213, 48],
+        [257, 388, 207, 48],
       ],
-      actionIcon: [[246, 402, 16, 16]],
-      resent: [[32, 444, 496, 40]],
-      resentIcon: [[32, 446, 16, 16]],
+      actionIcon: [[277, 404, 16, 16]],
+      resent: [[32, 448, 496, 40]],
+      resentIcon: [[32, 450, 16, 16]],
     },
     16: {
       note: [[0, 136, 560, 52]],
@@ -953,6 +960,7 @@ function styles(page) {
           css.borderBottomWidth,
           css.borderLeftWidth,
         ],
+        padding: css.paddingLeft,
         role: element.getAttribute('role'),
       };
     };
@@ -973,7 +981,7 @@ function text(page, selector) {
 }
 
 // The drawn styles and copy that the boxes cannot show.
-async function assertDrawn(page, number, state, where) {
+async function assertDrawn(page, number, state, where, width) {
   const tokens = await resolveTokens(page);
   const css = await styles(page);
   const error = state.message !== undefined && !state.field;
@@ -1118,7 +1126,14 @@ async function assertDrawn(page, number, state, where) {
     assert.equal(css.address.background, tokens.paper, where);
     assert.equal(css.address.shadow, tokens.insetLine, where);
     assert.equal(css.address.radius, '8px', where);
-    assert.equal(css.actions.font, '14px/20px 600', where);
+    // The secondary primitive: 16/24 and 20px padding from 48rem, 14/20
+    // and 16px padding below (founder-authorised 2026-10-29).
+    assert.equal(
+      css.actions.font,
+      width >= 768 ? '16px/24px 600' : '14px/20px 600',
+      where,
+    );
+    assert.equal(css.actions.padding, width >= 768 ? '20px' : '16px', where);
     assert.equal(css.actions.background, tokens.surface, where);
     if (state.resend)
       assert.equal(
@@ -1179,7 +1194,7 @@ for (const [number, state] of Object.entries(states)) {
               });
             });
           }
-          await assertDrawn(page, number, state, where);
+          await assertDrawn(page, number, state, where, Number(width));
         } finally {
           await context.close();
         }
