@@ -189,6 +189,14 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     </p>
   </section>
 
+  {
+    /*
+    The mobile sticky bar from Sticky.dc.html (E11.5-11h): the label, the
+    field and Join in one row, the field error under the row, and the 18+
+    microline. A bar submission is the hero form's submission; only the hero
+    input is named `email`. Success collapses the bar to one status row.
+  */
+  }
   <section
     class="signup-dock"
     data-dock
@@ -196,9 +204,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     aria-label={signupFormCopy.barLabel}
     hidden
   >
-    <div data-dock-entry>
+    <div class="signup-dock__entry" data-dock-entry>
+      <label class="signup-dock__label" for="signup-dock-email"
+        >{signupFormCopy.barEmailLabel}</label
+      >
       <div class="signup-dock__row">
-        <label for="signup-dock-email">{signupFormCopy.barEmailLabel}</label>
         <Input
           id="signup-dock-email"
           type="email"
@@ -206,34 +216,49 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
           placeholder={landingCopy.form.placeholder}
           aria-describedby="signup-dock-error"
         />
-        <Button type="button" data-dock-submit>{landingCopy.form.submit}</Button
+        <Button type="button" data-dock-submit
+          ><span
+            class="signup-spinner"
+            data-dock-spinner
+            aria-hidden="true"
+            hidden></span><span data-dock-submit-label
+            >{landingCopy.form.submit}</span
+          ></Button
         >
       </div>
       <p
         id="signup-dock-error"
-        class="signup-error"
+        class="signup-field-error signup-dock__error"
         data-dock-error
         role="alert"
         aria-atomic="true"
         hidden
       >
+        <Icon name="alert-circle" size="base" /><span data-message></span>
       </p>
       <p class="signup-age">
-        {signupFormCopy.ageStatement}
-        {
+        {signupFormCopy.ageStatement}{
           giveawayEnabled && (
             <>
               {' '}
               {signupFormCopy.freeEntryDisclosure}{' '}
-              <a href="/giveaway/rules">{signupFormCopy.giveawayRulesLink}</a>
+              <TextLink href="/giveaway/rules">
+                {signupFormCopy.giveawayRulesLink}
+              </TextLink>
               {signupFormCopy.giveawayRulesLinkEnd}
             </>
           )
         }
       </p>
     </div>
-    <div data-dock-confirmation hidden>
-      <p>{signupFormCopy.barConfirmation}</p>
+    <div
+      class="signup-dock__done"
+      data-dock-confirmation
+      role="status"
+      aria-live="polite"
+      hidden
+    >
+      <p><Icon name="mail" size="base" />{signupFormCopy.barConfirmation}</p>
       <Button type="button" data-dock-close variant="secondary"
         >{signupFormCopy.barClose}</Button
       >
@@ -299,9 +324,12 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     #inFlight = false;
     #dock: HTMLElement | null = null;
     #dockInput: HTMLInputElement | null = null;
+    #dockResize: ResizeObserver | null = null;
     #entryPoint: 'hero' | 'dock' = 'hero';
     #signedUpEmail = '';
     #succeeded = false;
+    // A bar submission's confirmation stays in the bar until it is closed.
+    #dockConfirming = false;
     #resendTimer: number | undefined;
     #idleLabel = '';
 
@@ -369,6 +397,14 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       window.addEventListener('scroll', this.#updateDock, { passive: true });
       window.addEventListener('resize', this.#updateDock);
       document.addEventListener('focusin', this.#protectFocus);
+      // The bar grows upward with an error and collapses on success, so the
+      // reserved space follows its measured height while it shows.
+      if (this.#dock !== null && 'ResizeObserver' in window) {
+        this.#dockResize = new ResizeObserver(() => {
+          if (this.#dock?.hidden === false) this.#reserveDock(true);
+        });
+        this.#dockResize.observe(this.#dock);
+      }
       this.#updateDock();
       // A real visitor types their address first, so the invisible challenge is
       // already resolving by the time they submit. Rendering lazily (never on
@@ -385,6 +421,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       window.removeEventListener('scroll', this.#updateDock);
       window.removeEventListener('resize', this.#updateDock);
       document.removeEventListener('focusin', this.#protectFocus);
+      this.#dockResize?.disconnect();
       window.clearTimeout(this.#resendTimer);
       this.#reserveDock(false);
     }
@@ -410,20 +447,27 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       );
     };
 
+    // The bar shows at small widths only (below 48rem), once the hero form
+    // has left the viewport and while the footer has not entered it. After a
+    // signup only a bar submission's confirmation shows, by the same rules;
+    // after a hero submission the bar stays hidden.
     readonly #updateDock = (): void => {
       if (this.#dock === null || this.#form === null) return;
-      const small = window.matchMedia('(max-width: 39.999rem)').matches;
-      if (this.#succeeded) {
-        this.#reserveDock(small && !this.#dock.hidden);
-        return;
-      }
+      const small = !window.matchMedia('(min-width: 48rem)').matches;
+      const hero = this.#form.hidden
+        ? this.querySelector<HTMLElement>('[data-success]')
+        : this.#form;
       const footer = document.querySelector('body > footer');
-      const heroOut = this.#form.getBoundingClientRect().bottom <= 0;
+      const heroOut = (hero?.getBoundingClientRect().bottom ?? 0) <= 0;
       const footerIn =
         footer !== null &&
         footer.getBoundingClientRect().top < window.innerHeight;
-      const visible = small && heroOut && !footerIn && !this.#succeeded;
-      if (visible && this.#dock.hidden) this.#mirrorHero();
+      const visible =
+        small &&
+        heroOut &&
+        !footerIn &&
+        (!this.#succeeded || this.#dockConfirming);
+      if (visible && this.#dock.hidden && !this.#succeeded) this.#mirrorHero();
       this.#dock.hidden = !visible;
       this.#reserveDock(visible);
     };
@@ -442,10 +486,15 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     }
 
     readonly #closeDock = (): void => {
+      this.#dockConfirming = false;
       if (this.#dock !== null) this.#dock.hidden = true;
       this.#reserveDock(false);
     };
 
+    // The page's scroll padding is the bar's height plus the clearance, so a
+    // focused element lands clear of the bar. Where the browser has not
+    // scrolled it there, this lifts it by the shortfall. Reading the padding
+    // rather than the bar's box keeps the slide-in from skewing it.
     readonly #protectFocus = (): void => {
       window.requestAnimationFrame(() => {
         const focused = document.activeElement;
@@ -455,10 +504,14 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
           this.#dock.contains(focused)
         )
           return;
+        const padding = Number.parseFloat(
+          getComputedStyle(document.documentElement).scrollPaddingBottom,
+        );
+        if (!Number.isFinite(padding)) return;
         const target = focused.getBoundingClientRect();
-        const dock = this.#dock.getBoundingClientRect();
-        if (target.bottom > dock.top && target.top < dock.bottom) {
-          window.scrollBy(0, Math.ceil(target.bottom - dock.top));
+        const limit = window.innerHeight - padding;
+        if (target.bottom > limit && target.top < window.innerHeight) {
+          window.scrollBy(0, Math.ceil(target.bottom - limit));
         }
       });
     };
@@ -662,10 +715,16 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       if (this.#spinner !== null) this.#spinner.hidden = !inFlight;
       const dockSubmit =
         this.querySelector<HTMLButtonElement>('[data-dock-submit]');
-      if (dockSubmit !== null) {
-        dockSubmit.disabled = inFlight;
-        dockSubmit.textContent = inFlight ? message : this.#idleLabel;
-      }
+      if (dockSubmit !== null) dockSubmit.disabled = inFlight;
+      const dockLabel = this.querySelector<HTMLElement>(
+        '[data-dock-submit-label]',
+      );
+      if (dockLabel !== null)
+        dockLabel.textContent = inFlight ? message : this.#idleLabel;
+      const dockSpinner = this.querySelector<HTMLElement>(
+        '[data-dock-spinner]',
+      );
+      if (dockSpinner !== null) dockSpinner.hidden = !inFlight;
       const status = this.querySelector<HTMLElement>('[data-form-status]');
       if (status !== null) {
         status.textContent = inFlight ? message : '';
@@ -755,7 +814,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     #showDockError(message: string, emailInvalid = false): void {
       const error = this.querySelector<HTMLElement>('[data-dock-error]');
       if (error !== null) {
-        error.textContent = message;
+        this.#setMessage(error, message);
         error.hidden = false;
       }
       if (emailInvalid) this.#dockInput?.setAttribute('aria-invalid', 'true');
@@ -765,7 +824,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     #clearDockError(): void {
       const error = this.querySelector<HTMLElement>('[data-dock-error]');
       if (error !== null) {
-        error.textContent = '';
+        this.#setMessage(error, '');
         error.hidden = true;
       }
       this.#dockInput?.removeAttribute('aria-invalid');
@@ -782,6 +841,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       const showConfirmation =
         this.#entryPoint === 'dock' && this.#dock?.hidden === false;
       this.#succeeded = true;
+      this.#dockConfirming = showConfirmation;
       if (this.#form !== null) {
         this.#form.hidden = true;
       }
@@ -811,6 +871,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       window.clearTimeout(this.#resendTimer);
       this.#signedUpEmail = '';
       this.#succeeded = false;
+      this.#dockConfirming = false;
       this.#resetChallenge();
       const success = this.querySelector<HTMLElement>('[data-success]');
       if (success !== null) success.hidden = true;
@@ -903,8 +964,10 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   valstara-signup-form [hidden] {
     display: none !important;
   }
+  /* While the bar shows, the page reserves its height below the content,
+     and a focused element lands at least 16px clear of it (E11.5-11h). */
   html[data-signup-dock='visible'] {
-    scroll-padding-block-end: var(--signup-dock-height);
+    scroll-padding-block-end: calc(var(--signup-dock-height) + var(--space-2));
   }
 
   html[data-signup-dock='visible'] body {
@@ -1103,7 +1166,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     animation-iteration-count: infinite;
   }
 
-  valstara-signup-form form:has(.signup-turnstile[data-open]) .signup-spinner {
+  valstara-signup-form:has(.signup-turnstile[data-open]) .signup-spinner {
     display: none;
   }
 
@@ -1174,16 +1237,6 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     font-family: var(--font-sans);
     font-size: var(--step-1);
     line-height: var(--leading-1);
-  }
-
-  valstara-signup-form .signup-error {
-    margin: 0;
-    padding-inline-start: var(--space-1);
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
-    border-inline-start: medium solid var(--error);
   }
 
   /* Read by assistive technology, clipped to nothing on screen, and boxed
@@ -1315,52 +1368,117 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     }
   }
 
+  /*
+    The sticky bar (E11.5-11h, Sticky.dc.html): docked at the bottom on
+    surface with the sticky shadow plus the dark-only edge, padded 12px 16px
+    and, at the bottom, the safe area or 12px, whichever is larger. A column:
+    the 13/18 600 label; 4px below, the 48px field and the 48px Join (padded
+    16px) in one row 8px apart; the field error 8px under the row, so the bar
+    grows upward; and the 13/18 ink-600 microline 6px below. It slides in
+    from below once per reveal.
+  */
   valstara-signup-form .signup-dock:not([hidden]) {
     position: fixed;
     z-index: var(--layer-dock);
     inset-inline: 0;
     inset-block-end: 0;
-    display: grid;
-    gap: var(--space-1);
-    padding: var(--space-2);
-    padding-block-end: max(var(--space-2), env(safe-area-inset-bottom));
+    display: block;
+    padding: var(--space-1-5) var(--space-2);
+    padding-block-end: max(var(--space-1-5), env(safe-area-inset-bottom));
     color: var(--ink);
-    background: var(--surface);
-    box-shadow: var(--shadow-2);
-    transition: transform var(--duration-fast) var(--ease-out);
+    font-family: var(--font-sans);
+    background-color: var(--surface);
+    box-shadow: var(--shadow-sticky), var(--edge);
+    animation-name: signup-dock-in;
+    animation-duration: var(--duration-fast);
+    animation-timing-function: var(--ease-out);
+  }
+
+  @keyframes signup-dock-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
+
+  valstara-signup-form .signup-dock__entry:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  valstara-signup-form .signup-dock__label {
+    font-size: var(--step-0);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-0);
   }
 
   valstara-signup-form .signup-dock__row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-1);
-    align-items: end;
-  }
-
-  valstara-signup-form .signup-dock__row label {
-    grid-column: 1 / -1;
-    font-size: var(--step-1);
-  }
-
-  valstara-signup-form .signup-dock__row input {
-    min-width: 0;
-  }
-
-  valstara-signup-form .signup-dock .signup-age {
-    font-size: var(--step-0);
-  }
-
-  valstara-signup-form .signup-dock [data-dock-confirmation]:not([hidden]) {
     display: flex;
+    gap: var(--space-1);
+    margin-block-start: var(--space-0-5);
+  }
+
+  /* Join keeps its one-line width wherever the row has room, as drawn at
+     390px. Where it has not, as with the security-check label at 320px, the
+     field keeps the tap minimum and Join's label wraps inside its 48px. */
+  valstara-signup-form .signup-dock__row .input {
+    flex: 1 1 0;
+    min-inline-size: var(--tap-min);
+  }
+
+  valstara-signup-form .signup-dock__row .button {
+    flex: 0 1 auto;
+    padding-inline: var(--space-2);
+  }
+
+  /* :not([hidden]) and the bar's class lift these over the landing page's
+     paragraph reset. */
+  valstara-signup-form .signup-dock .signup-dock__error:not([hidden]) {
+    margin-block-start: var(--space-1);
+  }
+
+  valstara-signup-form .signup-dock .signup-age:not([hidden]) {
+    margin-block-start: var(--space-0-75);
+    font-size: var(--step-0);
+    line-height: var(--leading-0);
+  }
+
+  /*
+    The rules link's hit area is 44px on its 18px line: 14px above and the
+    bar's own 12px minimum bottom padding below, kept out of the layout by
+    matching negative margins. The microline and its column hold the lower
+    12px in their padding, so no box sticks out of its parent or the bar.
+  */
+  valstara-signup-form .signup-dock .signup-age .text-link {
+    display: inline-block;
+    padding-block: calc(var(--tap-min) - var(--leading-0) - var(--space-1-5))
+      var(--space-1-5);
+    margin-block: calc(var(--leading-0) + var(--space-1-5) - var(--tap-min))
+      calc(-1 * var(--space-1-5));
+  }
+
+  valstara-signup-form .signup-dock .signup-age:not([hidden]):has(.text-link),
+  valstara-signup-form .signup-dock__entry:not([hidden]):has(.text-link) {
+    margin-block-end: calc(-1 * var(--space-1-5));
+    padding-block-end: var(--space-1-5);
+  }
+
+  /* Success: one status row, the mail icon and 16/24 600 line on the left
+     and the secondary Close on the right, 12px apart. */
+  valstara-signup-form .signup-dock__done:not([hidden]) {
+    display: flex;
+    gap: var(--space-1-5);
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-2);
   }
 
-  valstara-signup-form .signup-dock [data-dock-confirmation] p {
-    margin: 0;
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
+  valstara-signup-form .signup-dock__done p {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    margin: var(--space-0);
+    font-size: var(--step-2);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-2);
     white-space: nowrap;
   }
 
@@ -1371,8 +1489,8 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    valstara-signup-form .signup-dock {
-      transition-property: none;
+    valstara-signup-form .signup-dock:not([hidden]) {
+      animation-name: none;
     }
 
     valstara-signup-form .signup-spinner {

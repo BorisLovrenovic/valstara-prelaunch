@@ -10,7 +10,7 @@ The closed breakpoints are **22.5rem, 48rem, 64rem and 80rem** (E11.5-11a): smal
 
 ## Depth, type and icons
 
-`--shadow-1` is for cards at rest; `--shadow-2` is for the raised hero visual, hovered interactive card and sticky bar; `--shadow-3` is for overlays. Use the dark versions on dark surfaces. `--on-midnight` colours all text and icons on `midnight`. `coral` on `midnight` is reserved for large text and accents. No new colour or type-size token is introduced.
+`--shadow-1` is for cards at rest; `--shadow-2` is for the raised hero visual and hovered interactive card; `--shadow-sticky` (plus the dark-only `--edge`) is for the mobile sticky signup bar (E11.5-11h); `--shadow-3` is for overlays. Use the dark versions on dark surfaces. `--on-midnight` colours all text and icons on `midnight`. `coral` on `midnight` is reserved for large text and accents. No new colour or type-size token is introduced.
 
 Use the existing §6.1 type sizes with weight and tracking tokens. Headings and hero copy are left-aligned. `src/components/icon.astro` is a closed inline-SVG registry with token sizes, `currentColor` and decorative hiding by default. The four-point star is a decorative accent only; never arrange three as a rating row. No icon font or remote asset is loaded.
 
@@ -205,3 +205,30 @@ The 17 states of `StatesDesktop.dc.html` (on the large hero) and `StatesPhone.dc
 - axe on states 03, 09, 13 and 16 in both themes. State 16 is audited as its JavaScript-disabled DOM snapshot, because axe cannot run in a page without JavaScript.
 
 `test/signup-form.test.ts` checks every state string against the ticket's table, and `test/signup-form-rendered-page.test.mjs` asserts the success panel's markup and boxes are identical for unknown, pending and verified addresses.
+
+### The mobile sticky signup bar (E11.5-11h)
+
+The bar follows `Sticky.dc.html` (seven frames) and its placement in `Phone.dc.html`. It belongs to the `SignupForm` island: one Turnstile widget, one submission path, only the hero input named `email`, and no marketing checkbox (E11.5-06). Every value is a token or a `calc()` of tokens.
+
+- **Where.** Small widths only, below 48rem. The island checks `(min-width: 48rem)` and the stylesheet hides the bar from 48rem, so it never renders at medium or large widths. It is server-rendered hidden, so it never appears without JavaScript, and with `signup.enabled` off the island is not on the page.
+- **When.** It shows once the hero form is wholly above the viewport (frame 2). It hides while any of the hero form is on screen (frame 1) and while the footer is in view (frame 7), so it never covers the hero, the footer links or the legal lines. After a hero signup it stays hidden. After a bar signup, the one-row confirmation follows the same hero and footer rules until it is closed. The hero rule then measures the success panel that replaced the form.
+- **The bar.** It is docked at the bottom on `surface` with `--shadow-sticky` plus `--edge`, at `--layer-dock`. It is a `region` labelled "Join the waitlist" and padded 12px 16px. Its bottom padding is `max(12px, env(safe-area-inset-bottom))`: 34px on a phone with a home indicator, as drawn, and 12px otherwise. It holds a column:
+  - the visible label "Email address" (13/18 600);
+  - 4px below, a row with an 8px gap holding the field (flexible, 48px) and the primary "Join the waitlist" (48px, padded 16px). Join keeps its one-line width wherever the row has room, as drawn at 390px. Where it has not, as with "Completing the security check…" at 320px (no frame draws it), the field keeps the 44px tap minimum and Join's label wraps to two lines inside its 48px;
+  - with an error, the message 8px under the row in the input error style: the 20px alert-circle in `--error` and the 14/20 600 `--error-text` message. The field's `aria-describedby` names it, and the bar grows upward (frame 4). Form-level errors show in the same place without marking the field invalid;
+  - 6px below, the microline (13/18 `ink-600`): "Open to people aged 18 and over. No purchase necessary. See the giveaway rules.", or only the first sentence with the giveaway off. The rules link is the `TextLink` with a 44px hit area on its 18px line: 14px above, and 12px below held in the microline's and column's padding with matching negative margins. So no box sticks out of the bar and nothing moves.
+- **In flight** (frame 5). Join is the disabled primary (`coral-tint`, `ink-600`) holding the 16px spinner and the hero's label ("Completing the security check…", then "Adding you to the waitlist…"). The field stays enabled and readable. The spinner steps aside while the Turnstile widget is open, as on the hero.
+- **Success** (frame 6). The bar collapses to one `role="status"` row with space-between and 12px gaps. On the left are the 20px mail icon and "Check your inbox." (16/24 600), 8px apart. The frame draws mail; the ticket text said check, and the founder chose the frame on 2026-10-29. On the right is the secondary "Close". Focus moves to Close, and Close dismisses the bar. There is no position, count or rank.
+- **Space and focus** (frames 2 and 3). While the bar shows, the page's bottom padding equals the bar's measured height, and `scroll-padding-block-end` is that height plus 16px. A resize observer keeps both in step as the bar grows or collapses. A focused element lands at least 16px above the bar. Where the browser has not scrolled it there, the island lifts it by the shortfall, read from the computed scroll padding.
+- **Motion.** The bar slides in from below over `--duration-fast` (150ms) with `--ease-out`, once per reveal. Under `prefers-reduced-motion` it appears at rest.
+
+`test/signup-sticky-bar-rendered.test.mjs` reproduces each frame at 390 × 844 in both themes, with a 34px bottom safe area emulated through the DevTools protocol, as the frames draw. It compares every bar element's box, relative to the bar, with the box read from the frame's CSS rendered on the self-hosted fonts, within 1px. The frame's `.v p` reset drops the field error's stated 8px margin (8px in the component sheet too), so that margin was restored before reading, as E11.5-11g did. The suite also covers:
+
+- the copy, colours, type and shadow per frame;
+- the visibility matrix: a scroll sweep from 320 to 1440 px, signups paused, no JavaScript, and a resize to medium;
+- a whole-page Tab walk at 320, 360 and 390 px asserting the 16px clearance;
+- the safe-area padding (34px with the inset; 12px with none or a smaller one);
+- the giveaway-off microline and reduced motion;
+- axe and the layout checks with the bar visible (entry, error, both in-flight labels and success) at 320, 360 and 390 in both themes.
+
+The E11.5-06 contract in `test/signup-form-rendered-page.test.mjs` passes unchanged.
