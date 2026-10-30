@@ -468,6 +468,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         !footerIn &&
         (!this.#succeeded || this.#dockConfirming);
       if (visible && this.#dock.hidden && !this.#succeeded) this.#mirrorHero();
+      if (!visible) this.#releaseDockFocus();
       this.#dock.hidden = !visible;
       this.#reserveDock(visible);
     };
@@ -487,9 +488,26 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
     readonly #closeDock = (): void => {
       this.#dockConfirming = false;
+      this.#releaseDockFocus();
       if (this.#dock !== null) this.#dock.hidden = true;
       this.#reserveDock(false);
     };
+
+    // Focus inside the bar's confirmation would drop to the page when the bar
+    // closes or hides, so it moves to the hero's confirmation, without
+    // scrolling there.
+    #releaseDockFocus(): void {
+      if (
+        !this.#succeeded ||
+        this.#dock === null ||
+        this.#dock.hidden ||
+        !this.#dock.contains(document.activeElement)
+      )
+        return;
+      this.querySelector<HTMLElement>('[data-success]')?.focus({
+        preventScroll: true,
+      });
+    }
 
     // The page's scroll padding is the bar's height plus the clearance, so a
     // focused element lands clear of the bar. Where the browser has not

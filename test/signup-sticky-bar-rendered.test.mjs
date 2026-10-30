@@ -910,9 +910,42 @@ test('frame 6, success: the bar collapses to one status row with no position, co
           .evaluate((element) => element === globalThis.document.activeElement),
         `${where}: focus moves to Close`,
       );
+      // Focus never drops to the page when the bar hides from under it: it
+      // moves to the hero's confirmation, which stays above the viewport.
+      const focusAfterHiding = () =>
+        page.evaluate(() => {
+          const { document } = globalThis;
+          const success = document.querySelector('[data-success]');
+          return {
+            onConfirmation: document.activeElement === success,
+            scrolledThere: success.getBoundingClientRect().bottom > 0,
+          };
+        });
+      const resting = await page.evaluate(() => globalThis.scrollY);
+      await page.evaluate(() =>
+        globalThis.document
+          .querySelector('body > footer')
+          .scrollIntoView({ block: 'start' }),
+      );
+      await page.waitForFunction(
+        () => globalThis.document.querySelector('[data-dock]').hidden,
+      );
+      assert.deepEqual(
+        await focusAfterHiding(),
+        { onConfirmation: true, scrolledThere: false },
+        `${where}: footer in view moves focus to the hero confirmation`,
+      );
+      await page.evaluate((y) => globalThis.scrollTo(0, y), resting);
+      await page.waitForFunction(barShown);
+      await settle(page);
       // Close dismisses the bar and releases the reserved space.
       await page.locator(selectors.close).click();
       assert.equal(await page.evaluate(barShown), false);
+      assert.deepEqual(
+        await focusAfterHiding(),
+        { onConfirmation: true, scrolledThere: false },
+        `${where}: Close moves focus to the hero confirmation`,
+      );
       assert.equal(
         await page.evaluate(
           () => globalThis.document.documentElement.dataset.signupDock,
