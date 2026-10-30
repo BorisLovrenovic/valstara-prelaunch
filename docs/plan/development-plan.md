@@ -2588,6 +2588,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 - The slide does not animate under reduced motion
 
 **Founder decision (2026-10-29):** the success row's icon is the mail icon `Sticky.dc.html` frame 6 draws, not the check icon the Build text above names.
+**Founder confirmation (2026-10-30):** the canvas pin stays `1792974724-d356`; the live version `1793339448-d948`, against which this ticket's frame boxes were verified, has unchanged `Sticky.dc.html` and `Phone.dc.html` frames.
 **Tests:** One test per frame · the visibility matrix (widths, hero, footer, paused) · the focus walk with the 16px clearance · the safe-area padding · the existing E11.5-06 contract suite · reduced motion · axe with the bar visible in both themes.
 **Docs:** `Sticky.dc.html` · `Phone.dc.html` · E11.5-06 · `docs/architecture/adr/001-astro-node-adapter.md`
 
