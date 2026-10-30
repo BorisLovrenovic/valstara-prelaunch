@@ -13,6 +13,7 @@ import {
   designThemes,
   designWidths,
   enforcedPages,
+  settlePage,
 } from '../scripts/design/layout-checks.mjs';
 import { runContactSheetActions } from '../scripts/design/contact-sheet.mjs';
 import { publishedPort } from './helpers/listen-port.mjs';
@@ -190,6 +191,103 @@ test('visibly overflowing text fails the layout harness', async () => {
         issue.includes('overflowing text'),
       ),
     );
+  } finally {
+    await page.close();
+  }
+});
+
+// A disclosure chevron turning 180° is wider than its box mid-turn. The
+// checks measure the state the page comes to rest in, not a frame of a
+// transition, so a check started mid-turn waits for it to end.
+test('the layout checks measure the page at rest, after running transitions end', async () => {
+  const page = await browser.newPage({ viewport: { width: 320, height: 600 } });
+  try {
+    await page.setContent(
+      good.replace(
+        '</main>',
+        '<p style="width:20px"><span data-turn style="display:inline-block;width:20px;height:20px;transition:transform 600ms linear">x</span></p></main>',
+      ),
+    );
+    const at = await page.evaluate(() => {
+      const turn = globalThis.document.querySelector('[data-turn]');
+      turn.getBoundingClientRect();
+      turn.style.transform = 'rotate(180deg)';
+      return globalThis.performance.now();
+    });
+    // 150ms into the linear 600ms turn: 45°, its widest.
+    await page.waitForTimeout(150);
+    assert.deepEqual(await checkPageLayout(page), []);
+    assert.ok(
+      (await page.evaluate(() => globalThis.performance.now())) - at >= 550,
+      'the check waited for the turn to end',
+    );
+    // A box that still overflows at rest still fails.
+    await page.evaluate(() => {
+      globalThis.document.querySelector('[data-turn]').style.width = '80px';
+    });
+    assert.ok(
+      (await checkPageLayout(page)).some((issue) =>
+        issue.includes('overflowing text'),
+      ),
+    );
+  } finally {
+    await page.close();
+  }
+});
+
+// A contact-sheet state reached by posting a form is a new document. Its
+// content can show while a subresource is still loading, so the screenshot
+// and the checks wait for its load event, not just for the content.
+test('a state reached by an action that loads a new document settles once that document has loaded', async () => {
+  const page = await browser.newPage({ viewport: { width: 320, height: 600 } });
+  try {
+    await page.route('http://sheet.test/**', async (route) => {
+      const { pathname } = new URL(route.request().url());
+      if (pathname === '/slow.png') {
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 1_500));
+        return route.fulfill({ contentType: 'image/png', body: '' });
+      }
+      return route.fulfill({
+        contentType: 'text/html; charset=utf-8',
+        body:
+          pathname === '/done'
+            ? '<!doctype html><main class="done"><p>Done</p><img src="/slow.png" width="1" height="1" alt=""></main>'
+            : '<!doctype html><form method="post" action="/done"><button>Confirm</button></form>',
+      });
+    });
+    await page.goto('http://sheet.test/');
+    await runContactSheetActions(page, [
+      { action: 'click', selector: 'button' },
+      { action: 'waitFor', selector: '.done' },
+    ]);
+    await settlePage(page);
+    assert.equal(
+      await page.evaluate(() => globalThis.document.readyState),
+      'complete',
+    );
+  } finally {
+    await page.close();
+  }
+});
+
+test('the layout checks do not wait on infinite or paused animations', async () => {
+  const page = await browser.newPage({ viewport: { width: 320, height: 600 } });
+  try {
+    await page.setContent(
+      good.replace(
+        '</main>',
+        '<style>@keyframes spin{to{transform:rotate(1turn)}}</style><span data-spin style="display:inline-block;width:16px;height:16px;animation:spin 1s linear infinite"></span><span data-held style="display:inline-block;width:16px;height:16px;animation:spin 60s linear 1"></span></main>',
+      ),
+    );
+    await page.evaluate(() => {
+      for (const animation of globalThis.document
+        .querySelector('[data-held]')
+        .getAnimations())
+        animation.pause();
+    });
+    const started = Date.now();
+    assert.deepEqual(await checkPageLayout(page), []);
+    assert.ok(Date.now() - started < 5_000, 'the check did not wait');
   } finally {
     await page.close();
   }
