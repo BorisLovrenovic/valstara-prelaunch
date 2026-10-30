@@ -109,7 +109,7 @@ The waitlist has no storefront search, category nav, currency selector, account,
 
 ## Layout evidence
 
-`scripts/design/layout-checks.mjs` checks horizontal overflow, clipped or visibly overflowing text, 44×44px small-screen targets, focused elements obscured by sticky content, image dimensions and container-grid alignment. The enforced-pages list starts empty in E11.5-01. Each later page ticket adds its redesigned routes; E11.5-12 compares it with the rendered-page inventory.
+`scripts/design/layout-checks.mjs` checks horizontal overflow, clipped or visibly overflowing text, 44×44px small-screen targets, focused elements obscured by sticky content, image dimensions and container-grid alignment. It measures the page at rest: before checking, it lets every running animation and transition that has an end finish, so a frame mid-transition (a disclosure chevron mid-turn is wider than its box) is never reported, while infinite animations such as spinners and paused ones are measured as they stand. The enforced-pages list starts empty in E11.5-01. Each later page ticket adds its redesigned routes; E11.5-12 compares it with the rendered-page inventory.
 
 The shell is enforced separately (E11.5-03, founder decision 2026-10-20). `checkShellLayout` applies the same rules to the `body > header` and `body > footer` regions only, and `assertShellLayout` runs it on every rendered page at all eight widths in both themes, in the accessibility suite. `enforcedPages` is unchanged by this.
 

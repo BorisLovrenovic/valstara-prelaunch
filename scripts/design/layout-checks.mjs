@@ -101,7 +101,34 @@ export async function checkRegionLayout(page, regions) {
   return checkLayout(page, regions);
 }
 
+// The checks measure the state a page comes to rest in. A frame of a running
+// transition is not a layout: a disclosure chevron turning 180° is wider than
+// its box mid-turn. So every running animation with an end is let finish
+// first. Infinite ones (spinners) and paused ones (a test holding a frame)
+// have no end to wait for and are measured as they stand.
+async function settleAnimations(page) {
+  await page.evaluate(async () => {
+    const finite = () =>
+      document
+        .getAnimations()
+        .filter(
+          (animation) =>
+            animation.playState === 'running' &&
+            Number.isFinite(animation.effect?.getComputedTiming().endTime),
+        );
+    // An animation that ends can start another (a transition's end changing
+    // a property), so this repeats until nothing with an end is running, a
+    // bounded number of times so a self-restarting chain cannot hang a check.
+    for (let pass = 0; pass < 10; pass += 1) {
+      const pending = finite();
+      if (pending.length === 0) break;
+      await Promise.allSettled(pending.map((animation) => animation.finished));
+    }
+  });
+}
+
 async function checkLayout(page, regions) {
+  await settleAnimations(page);
   return page.evaluate((scopes) => {
     const issues = [];
     const viewportWidth = document.documentElement.clientWidth;
