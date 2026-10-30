@@ -761,6 +761,63 @@ test('frame 4, inline error: the bar grows upward with the field error linked to
         ),
       );
       near(reserved, boxes.bar[0][3], `${where}: body padding follows`);
+      // A corrected resubmission clears the error, and the bar shrinks back
+      // to frame 2's height. The hero's matching field error clears too, and
+      // Chromium's scroll anchoring answers that with a scroll event, which
+      // re-measures the bar. Without scroll anchoring, nothing re-measures it
+      // on that path but the resize observer, so anchoring is switched off
+      // here: the reserved space and the scroll padding must follow the bar
+      // down without a scroll.
+      await page.evaluate(() => {
+        const { document } = globalThis;
+        document.documentElement.style.overflowAnchor = 'none';
+        document.body.style.overflowAnchor = 'none';
+      });
+      const scrolled = await page.evaluate(() => globalThis.scrollY);
+      await page.unroute('**/api/signup');
+      await page.route('**/api/signup', () => undefined);
+      await page.locator(selectors.input).fill('alex@example.com');
+      await page.locator(selectors.button).click();
+      await page.waitForFunction(() => {
+        const { document } = globalThis;
+        return (
+          document.querySelector('[data-dock-error]').hidden &&
+          document.querySelector('[data-dock-submit]').disabled
+        );
+      });
+      await settle(page);
+      await page.evaluate(
+        () =>
+          new Promise((resolve) =>
+            globalThis.requestAnimationFrame(() =>
+              globalThis.requestAnimationFrame(resolve),
+            ),
+          ),
+      );
+      assert.equal(
+        await page.evaluate(() => globalThis.scrollY),
+        scrolled,
+        `${where}: no scroll on the way down`,
+      );
+      const shrunk = (await measure(page)).bar[0];
+      near(shrunk[3], frames[2].bar[3], `${where}: the bar shrinks back`);
+      const space = await page.evaluate(() => {
+        const { document, getComputedStyle } = globalThis;
+        return {
+          body: Number.parseFloat(
+            getComputedStyle(document.body).paddingBottom,
+          ),
+          scroll: Number.parseFloat(
+            getComputedStyle(document.documentElement).scrollPaddingBottom,
+          ),
+        };
+      });
+      near(space.body, shrunk[3], `${where}: body padding shrinks with it`);
+      near(
+        space.scroll,
+        shrunk[3] + clearance,
+        `${where}: scroll padding shrinks with it`,
+      );
     } finally {
       await context.close();
     }
