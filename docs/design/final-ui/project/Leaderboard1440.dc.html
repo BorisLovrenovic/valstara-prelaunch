@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>/leaderboard · every state · 1440</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 9008px">
+<h1 class="sheet__title">/leaderboard · every state · 1440</h1>
+<p class="sheet__lede">An anonymised top 10 by confirmed referrals. The list takes cols 1–8 with a side panel in cols 9–12; on phone the panel follows the list. "Join the waitlist" in the side panel is the page's only primary. {dyn}: handles, counts, snapshot time and age.</p>
+<section class="sheet__section">
+<h2>1440 wide</h2>
+<div class="frames" style="column-gap: 48px">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">01</span><span class="frame__name">Full top 10</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">Ranked by exact confirmed referrals. Rank is mono in a quiet tile; no medals, gold or avatars, because rank does not win anything.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Leaderboard" theme="{{themeName}}" annotations="{{ann}}" state="full" uid="lea1440full" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">02</span><span class="frame__name">Short board · 3 rows</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">Never padded with empty rows; the meta line follows the last row.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Leaderboard" theme="{{themeName}}" annotations="{{ann}}" state="short" uid="lea1440short" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">03</span><span class="frame__name">Empty</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">No verified referrals in this snapshot yet.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Leaderboard" theme="{{themeName}}" annotations="{{ann}}" state="empty" uid="lea1440empty" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">04</span><span class="frame__name">Loading</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">Five skeleton rows and a live status line. No layout shift when rows arrive.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Leaderboard" theme="{{themeName}}" annotations="{{ann}}" state="loading" uid="lea1440loading" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">05</span><span class="frame__name">Paused</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">The leaderboard switch is off.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Leaderboard" theme="{{themeName}}" annotations="{{ann}}" state="paused" uid="lea1440paused" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">06</span><span class="frame__name">Unavailable</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">The snapshot could not be read.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Leaderboard" theme="{{themeName}}" annotations="{{ann}}" state="unavailable" uid="lea1440unavailable" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":9008,"height":2600}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    return { themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light', ann: !!this.props.annotations };
+  }
+}
+</script>
+</body>
+</html>

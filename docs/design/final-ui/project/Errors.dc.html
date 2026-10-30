@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>404 and 500</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 3056px">
+<h1 class="sheet__title">404 and 500</h1>
+<p class="sheet__lede">Both use the task-card pattern with the primary "Go to the home page" and the secondary "Is Valstara legit?".</p>
+<section class="sheet__section">
+<h2>1440 wide</h2>
+<div class="frames" style="column-gap: 48px">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">404</span><span class="frame__name">Page not found</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">A plain heading, one line, two links; no jokes, no broken robots, no technical detail.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="e404" uid="err1440e404" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">500</span><span class="frame__name">Server error</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">Same card; the tile is neutral.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="e500" uid="err1440e500" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+</div>
+</section>
+<section class="sheet__section">
+<h2>390 wide</h2>
+<div class="frames" style="column-gap: 48px">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">404</span><span class="frame__name">Page not found</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">A plain heading, one line, two links; no jokes, no broken robots, no technical detail.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="e404" uid="err390e404" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">500</span><span class="frame__name">Server error</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Same card; the tile is neutral.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="e500" uid="err390e500" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":3056,"height":2400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    return { themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light', ann: !!this.props.annotations };
+  }
+}
+</script>
+</body>
+</html>

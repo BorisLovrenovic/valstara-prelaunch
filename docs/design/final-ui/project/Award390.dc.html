@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>/giveaway/award · every state · 390</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 3146px">
+<h1 class="sheet__title">/giveaway/award · every state · 390</h1>
+<p class="sheet__lede">The provisional winner’s private page: the moment the giveaway proves it is real, so everything is exact and calm. Same task-card pattern; H1 "Your giveaway award". Euro values appear only here, as prize values from the award catalogue ({dyn}).</p>
+<section class="sheet__section">
+<h2>390 wide</h2>
+<div class="frames" style="column-gap: 48px">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">01</span><span class="frame__name">Eligibility</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">The only place a country is collected. The publicity checkbox is optional, unticked and tagged "Optional".</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="award-eligibility" uid="awa390awardeligibility" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">02</span><span class="frame__name">Eligibility · invalid answer</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">The skill-testing answer is wrong; the message sits under its field.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="award-errors" uid="awa390awarderrors" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">03</span><span class="frame__name">Choose a replacement</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Selectable options with mono values ({dyn}); the decline is a full-width secondary that wraps.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="award-substitution" uid="awa390awardsubstitution" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">04</span><span class="frame__name">Confirmed</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">The award is confirmed.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="award-confirmed" uid="awa390awardconfirmed" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">05</span><span class="frame__name">Recorded outcomes</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Response, replacement and cash substitution recorded.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="award-recorded" uid="awa390awardrecorded" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">06</span><span class="frame__name">Closed outcomes</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">No reserve, not eligible, link not available, responses paused. Neutral, never alarming.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="award-closed" uid="awa390awardclosed" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">07</span><span class="frame__name">Check failed · rate limited · no JavaScript</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">As on /unsubscribe and /dsr.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="award-blocked" uid="awa390awardblocked" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":3146,"height":3000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    return { themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light', ann: !!this.props.annotations };
+  }
+}
+</script>
+</body>
+</html>

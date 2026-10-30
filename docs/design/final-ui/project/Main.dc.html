@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Valstara · landing page</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="page {{themeCls}} {{annCls}}">
+
+<div class="ann ann-grid" aria-hidden="true"><div class="wrap"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+<sc-if value="{{showFold}}" hint-placeholder-val="{{false}}"><div class="ann fold-line" style="top: {{foldTop}}"><span>fold · {{foldLabel}}</span></div></sc-if>
+
+<div class="rel">
+<dc-import name="Header" theme="{{themeName}}" annotations="{{ann}}" context="landing" hint-size="100%,80px"></dc-import>
+<div class="wrap" style="position: absolute; top: 0; left: 0; right: 0; pointer-events: none"><span class="ann" style="left: -12px; top: 22px"><span class="ann ann__num" style="position: static">1</span></span></div>
+</div>
+
+<main id="main">
+<dc-import name="Hero" theme="{{themeName}}" annotations="{{ann}}" state="{{heroState}}" giveaway="{{giveaway}}" uid="{{uid}}" hint-size="100%,760px"></dc-import>
+
+<section class="section" id="catalogue" aria-labelledby="cat-title-{{uid}}">
+<div class="wrap">
+<div class="section-head rel">
+<h2 class="t-h2" id="cat-title-{{uid}}">What you'll find</h2>
+<p class="t-body">AI tools, subscriptions, software and in-game currency from confirmed launch providers.</p>
+<span class="ann" style="left: -40px; top: 2px"><span class="ann ann__num ann__num--20" style="position: static">6</span></span>
+<span class="ann" style="left: 0; top: -34px"><span class="ann__chip">↕ 80 lg / 64 md, small · H2 t-h2 · supporting t-body ink-600</span></span>
+</div>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+<div class="catalogue__group">
+<h3 class="catalogue__label">{{g.cat}}</h3>
+<ul class="rail" tabindex="0" role="region" aria-label="{{g.cat}}">
+<sc-for list="{{g.items}}" as="p" hint-placeholder-count="5">
+<li class="banner banner--{{p.t}}" style="background: {{p.color}}; color: {{p.fg}}; --tone: {{p.tone}}; --ring: {{p.ring}}"><i class="banner__shape" aria-hidden="true"></i><i class="banner__ring" aria-hidden="true"></i><span class="banner__chip {{p.chipCls}}"><sc-if value="{{p.word}}" hint-placeholder-val="{{false}}"><img class="banner__logo banner__logo--word" src="{{p.src}}" width="{{p.w}}" height="{{p.h}}" alt="{{p.name}}" style="{{p.lh}}"></sc-if><sc-if value="{{p.icon}}" hint-placeholder-val="{{true}}"><img class="banner__logo" src="{{p.src}}" width="{{p.w}}" height="{{p.h}}" alt=""><span class="banner__name">{{p.name}}</span></sc-if></span><span class="banner__cat">{{g.cat}}</span></li>
+</sc-for>
+</ul>
+</div>
+</sc-for>
+<span class="ann" style="right: 0; top: 40px"><span class="ann__chip">lg: 5 equal cols, gap 16 · below 64rem: scroll-snap rail, 224 banners, next one peeks · E1 → E2 hover</span></span>
+</div>
+</section>
+
+<section class="section" id="how" aria-labelledby="how-title-{{uid}}">
+<div class="wrap">
+<div class="section-head rel"><h2 class="t-h2" id="how-title-{{uid}}">How it works</h2>
+<span class="ann" style="left: -40px; top: 2px"><span class="ann ann__num ann__num--20" style="position: static">7</span></span>
+</div>
+<div class="steps-panel rel">
+<ol class="steps">
+<li class="step"><span class="step__tile"><span class="badge-step" aria-hidden="true">1</span><svg class="icon" aria-hidden="true"><use href="./icons.svg#mail"></use></svg></span><span class="step__connector" aria-hidden="true"></span><p class="step__title">Join with your email</p></li>
+<li class="step"><span class="step__tile"><span class="badge-step" aria-hidden="true">2</span><svg class="icon" aria-hidden="true"><use href="./icons.svg#check-circle"></use></svg></span><span class="step__connector step__connector--dashed" aria-hidden="true"></span><p class="step__title">Confirm the link we send</p></li>
+<li class="step step--optional"><span class="step__tile"><span class="badge-step" aria-hidden="true">3</span><svg class="icon" aria-hidden="true"><use href="./icons.svg#upload-share"></use></svg></span><p class="step__title">Share your link, if you like</p></li>
+</ol>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">panel E1 · pad 40/48 lg · 3 cols · connector 2px ink-300 · into step 3 dashed</span></span>
+</div>
+</div>
+</section>
+
+<dc-import name="Rewards" theme="{{themeName}}" annotations="{{ann}}" referral="{{referral}}" giveaway="{{giveaway}}" leaderboard="{{leaderboard}}" tier2="{{tier2}}" uid="{{uid}}" hint-size="100%,640px"></dc-import>
+
+<section class="band" id="guarantee" aria-labelledby="g-title-{{uid}}">
+<div class="wrap">
+<svg class="star star--md band__star" aria-hidden="true"><use href="./icons.svg#star"></use></svg>
+<div class="band__head rel"><h2 class="t-h2" id="g-title-{{uid}}">The Triple Guarantee</h2><p class="t-body">Every order at launch is covered by three promises.</p>
+<span class="ann" style="left: -40px; top: 2px"><span class="ann ann__num ann__num--20" style="position: static">9</span></span>
+</div>
+<ol class="promises rel">
+<li class="promise"><span class="promise__numeral" aria-hidden="true">I</span><h3 class="t-h3 promise__title"><span class="vh">I. </span>Delivered within 24 hours.</h3><p class="t-body promise__text">Every order is fulfilled by hand, Monday to Friday, within 24 hours of purchase.</p></li>
+<li class="promise"><span class="promise__numeral" aria-hidden="true">II</span><h3 class="t-h3 promise__title"><span class="vh">II. </span>Protected, start to finish.</h3><p class="t-body promise__text">256-bit encryption throughout. PCI-compliant payment handling. Your data is never sold.</p></li>
+<li class="promise"><span class="promise__numeral" aria-hidden="true">III</span><h3 class="t-h3 promise__title"><span class="vh">III. </span>Resolved, replaced, or refunded.</h3><p class="t-body promise__text">If it cannot be resolved, we replace it. If it cannot be replaced, we refund you.</p></li>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">midnight band, full bleed · panels midnight-deep · numeral ring 64 coral · pad 32</span></span>
+</ol>
+<a class="link link--midnight link-arrow link--tap band__link" href="/guarantee">Read the guarantee<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a>
+</div>
+</section>
+
+<section class="section" aria-labelledby="trust-title-{{uid}}">
+<div class="wrap">
+<div class="section-head"><h2 class="t-h2" id="trust-title-{{uid}}">Get to know Valstara</h2></div>
+<div class="trust-cards rel">
+<a class="card card--link trust-card" href="/legit"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#search-check"></use></svg></span><h3 class="t-h3 trust-card__title">Is Valstara legit?<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></h3><p class="t-body">See the evidence before you join.</p></a>
+<a class="card card--link trust-card" href="/about"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#office"></use></svg></span><h3 class="t-h3 trust-card__title">Who we are<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></h3><p class="t-body">Meet the company behind the store.</p></a>
+<a class="card card--link trust-card" href="mailto:support@valstara.com"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#mail"></use></svg></span><h3 class="t-h3 trust-card__title">Contact us<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></h3><p class="t-body">Email support@valstara.com.</p></a>
+<span class="ann" style="right: 0; top: -30px"><span class="ann__chip">whole-card links · E1 → E2 + 2px lift on hover · cols 1–4 · 5–8 · 9–12</span></span>
+</div>
+</div>
+</section>
+
+<section class="section" id="faq" aria-labelledby="faq-title-{{uid}}">
+<div class="wrap">
+<div class="faq rel">
+<div class="faq__head"><h2 class="t-h2" id="faq-title-{{uid}}">Common questions</h2></div>
+<div class="card faq__list">
+<details class="qa" open="open"><summary>What happens when I sign up?<span class="qa__chev" aria-hidden="true"><svg class="icon"><use href="./icons.svg#chevron-down"></use></svg></span></summary><p class="qa__answer t-body">We send one verification link. Click it to confirm your place. Nothing counts until you verify.</p></details>
+<details class="qa"><summary>What do you do with my email?<span class="qa__chev" aria-hidden="true"><svg class="icon"><use href="./icons.svg#chevron-down"></use></svg></span></summary><p class="qa__answer t-body">We store it to run your waitlist place and send your verification link and launch updates. Our email providers process it to deliver those messages. Our privacy notice explains how we use and keep it.</p></details>
+<details class="qa"><summary>When does Valstara launch?<span class="qa__chev" aria-hidden="true"><svg class="icon"><use href="./icons.svg#chevron-down"></use></svg></span></summary><p class="qa__answer t-body">We're in pre-launch. Join the waitlist and we'll email you when it's ready — we won't promise a date we can't hold.</p></details>
+<details class="qa"><summary class="{{faqFocus}}">Can I leave the waitlist?<span class="qa__chev" aria-hidden="true"><svg class="icon"><use href="./icons.svg#chevron-down"></use></svg></span></summary><p class="qa__answer t-body">Yes. Every email we send carries a one-click unsubscribe.</p></details>
+</div>
+<span class="ann" style="right: 0; top: -30px"><span class="ann__chip">lg: heading cols 1–4 · card cols 5–12 · native details · answers ≤ 68ch</span></span>
+</div>
+</div>
+</section>
+
+<section class="section" aria-labelledby="cta-title-{{uid}}">
+<div class="wrap">
+<div class="card cta rel">
+<div class="cta__text">
+<h2 class="t-h2" id="cta-title-{{uid}}">Ready when you are</h2>
+<span class="rel"><a class="btn btn--primary" href="#join">Join the waitlist</a><span class="ann" style="left: -40px; top: 10px"><span class="ann ann__num ann__num--20" style="position: static">10</span></span></span>
+</div>
+<div class="cta__visual" aria-hidden="true">
+<div class="banner banner--t5" style="background: #000000; color: #ffffff; --tone: var(--banner-tone-dark); --ring: var(--banner-ring-dark)"><i class="banner__shape"></i><i class="banner__ring"></i><span class="banner__chip"><img class="banner__logo" src="./logos/chatgpt.svg" width="24" height="24" alt=""></span></div>
+<div class="banner banner--t2" style="background: #d81f26; color: #ffffff; --tone: var(--banner-tone-light); --ring: var(--banner-ring-dark)"><i class="banner__shape"></i><i class="banner__ring"></i><span class="banner__chip"><img class="banner__logo banner__logo--word" src="./logos/netflix.svg" width="67" height="18" alt=""></span></div>
+<div class="banner banner--t1" style="background: #2d3f80; color: #ffffff; --tone: var(--banner-tone-light); --ring: var(--banner-ring-dark)"><i class="banner__shape"></i><i class="banner__ring"></i><span class="banner__chip"><img class="banner__logo" src="./logos/microsoft-365.svg" width="22" height="24" alt=""></span></div>
+</div>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">surface card E1 · pad 48 lg · text cols 1–7 · decorative fan cols 8–12, aria-hidden</span></span>
+</div>
+</div>
+</section>
+</main>
+
+<div class="footer-slot"><dc-import name="Footer" theme="{{themeName}}" annotations="{{ann}}" hint-size="100%,360px"></dc-import></div>
+
+<sc-if value="{{stickyOn}}" hint-placeholder-val="{{false}}">
+<div class="demo-viewport" style="top: {{stickyTop}}; height: 844px">
+<div class="sticky-bar" role="region" aria-label="Join the waitlist">
+<label class="field__label t-label" for="bar-{{uid}}" style="font-size: var(--step-0); line-height: var(--leading-0)">Email address</label>
+<div class="sticky-bar__row"><input class="input" id="bar-{{uid}}" type="email" autocomplete="email" placeholder="you@example.com"><button class="btn btn--primary" type="submit">Join the waitlist</button></div>
+<p class="sticky-bar__micro">Open to people aged 18 and over.<sc-if value="{{giveaway}}" hint-placeholder-val="{{true}}"> No purchase necessary. <a class="link link--tap" href="/giveaway/rules">See the giveaway rules</a>.</sc-if></p>
+<span class="ann" style="right: 8px; top: -26px"><span class="ann__chip">sticky bar · surface · E2 upward · safe area 34 · primary 4 of 4</span></span>
+</div>
+<span class="ann" style="left: 8px; top: 8px"><span class="ann__chip">viewport 390 × 844 after scrolling past the hero</span></span>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"giveaway":{"editor":"boolean","default":true,"section":"Feature switches"},"referral":{"editor":"boolean","default":true,"section":"Feature switches"},"leaderboard":{"editor":"boolean","default":true,"section":"Feature switches"},"tier2":{"editor":"boolean","default":false,"section":"Feature switches"},"signups":{"editor":"boolean","default":true,"section":"Feature switches"},"heroState":{"editor":"enum","options":["idle","focus","empty","invalid","blocked","checking","submitting","check-visible","check-failed","network","unavailable","rate-limited","success","success-60","resent","no-js"],"default":"idle"},"sticky":{"editor":"boolean","default":false},"stickyTop":{"editor":null,"default":"1600px"},"foldTop":{"editor":null,"default":"900px"},"foldLabel":{"editor":null,"default":"1440 × 900"},"uid":{"editor":null,"default":"m"},"focusDemo":{"editor":null,"default":false},"$preview":{"width":1440,"height":5200}}'>
+class Component extends DCLogic {
+  providers() {
+    // name, logo file, brand colour, kind (i = icon mark, w = wordmark that spells the name), logo width, logo height
+    // name, logo file, brand colour, kind (i = icon mark, w = wordmark that spells the name), aspect ratio (w / h), optical height in px
+    var P = [
+      ['AI tools', [['ChatGPT','chatgpt.svg','#000000','i',1,24],['Gemini','gemini.svg','#3186FF','i',1,24],['Perplexity','perplexity.svg','#13343B','w',4.162,22],['Cursor','cursor.svg','#26241E','w',4.11,18],['Bolt.new','bolt-new.svg','#000000','w',3.578,18],['Lovable','lovable.svg','#18181B','w',5.524,16],['n8n','n8n.svg','#EA4B71','w',2.5,30]]],
+      ['Streaming and subscriptions', [['Spotify','spotify.svg','#1ED760','w',2,34],['YouTube Premium','youtube-premium.svg','#FF0000','w',4.862,18],['Prime Video','prime-video.svg','#00A8E1','w',3.249,24],['Netflix','netflix.svg','#D81F26','w',3.7,18],['Apple Music','apple-music.svg','#FB5C74','i',1,24],['Apple TV','apple-tv.svg','#0D0D0D','w',1.98,20],['Crunchyroll','crunchyroll.svg','#F78B24','i',0.9,24],['Discord','discord.svg','#5865F2','i',1,24],['Duolingo','duolingo.svg','#78C800','i',0.897,24],['LinkedIn','linkedin.svg','#0A66C2','w',4.1,18],['MyFitnessPal','myfitnesspal.svg','#0066EE','w',6.636,15],['PlayStation','playstation.svg','#1F1F1F','i',1.292,24],['Xbox','xbox.svg','#000000','i',1,24]]],
+      ['Software', [['Microsoft','microsoft.svg','#F35325','i',1,24],['Figma','figma.svg','#FF7262','i',0.667,24],['Canva','canva.svg','#00C4CC','w',3.119,24],['CapCut','capcut.svg','#000000','i',1.005,24],['Notion','notion.svg','#000000','i',1,24],['Dropbox','dropbox.svg','#0061FF','w',5.079,17],['NordVPN','nordvpn.svg','#4580FF','w',4.606,22],['Norton','norton.svg','#FBDE2A','w',4.26,20],['Kaspersky','kaspersky.svg','#009982','w',4.832,17],['Adobe Creative Cloud','adobe-creative-cloud.svg','#FB3F00','i',1.026,24],['Microsoft 365','microsoft-365.svg','#2D3F80','i',0.909,24],['CyberGhost','cyberghost.svg','#FFCC00','w',4.378,20]]],
+      ['In-game currency', [['World of Warcraft','world-of-warcraft.svg','#EFD11A','i',1,24],['AION2','aion2.webp','#C7DAFF','i',1,24]]]
+    ];
+    function lum(h) { var n = parseInt(h.slice(1), 16); var c = [n >> 16 & 255, n >> 8 & 255, n & 255].map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+    var k = 0, T = ['t1','t2','t3','t4','t5','t6'];
+    return P.map(function (g) {
+      return { cat: g[0], items: g[1].map(function (x) {
+        var L = lum(x[2]); var onWhite = 1.05 / (L + 0.05), onInk = (L + 0.05) / 0.0550;
+        var white = onWhite >= onInk;
+        return { name: x[0], src: './logos/' + x[1], color: x[2], word: x[3] === 'w', icon: x[3] === 'i', w: Math.round(x[4] * x[5]), h: x[5], lh: '--lh: ' + x[5] + 'px',
+          fg: white ? 'var(--banner-white)' : 'var(--banner-ink)',
+          tone: L < 0.03 ? 'var(--banner-tone-dark)' : (white ? 'var(--banner-tone-light)' : 'var(--banner-tone-ink)'),
+          ring: white ? 'var(--banner-ring-dark)' : 'var(--banner-ring-ink)',
+          t: T[(k++) % 6], chipCls: x[0] === 'CyberGhost' ? 'banner__chip--dark' : '' };
+      }) };
+    });
+  }
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    var ann = !!this.props.annotations;
+    return {
+      groups: this.providers(),
+      themeCls: dark ? 'dark' : '',
+      themeName: dark ? 'dark' : 'light',
+      ann: ann,
+      annCls: ann ? 'show-ann' : '',
+      giveaway: this.props.giveaway !== false,
+      referral: this.props.referral !== false,
+      leaderboard: this.props.leaderboard !== false,
+      tier2: !!this.props.tier2,
+      heroState: this.props.signups === false ? 'paused' : (this.props.heroState || 'idle'),
+      stickyOn: !!this.props.sticky && this.props.signups !== false,
+      stickyTop: this.props.stickyTop || '1600px',
+      showFold: ann,
+      foldTop: this.props.foldTop || '900px',
+      foldLabel: this.props.foldLabel || '1440 × 900',
+      faqFocus: this.props.focusDemo ? 'is-focus' : '',
+      uid: this.props.uid || 'm'
+    };
+  }
+}
+</script>
+</body>
+</html>

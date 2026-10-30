@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>/giveaway/rules · archived revision</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 2006px">
+<h1 class="sheet__title">/giveaway/rules · archived revision</h1>
+<p class="sheet__lede">An archived revision (here VAL-GW-LAUNCH-20261001-r1) keeps the identical layout and adds one notice above the band: full-bleed coral-tint, history icon, t-small 500. Unmistakable, calm, never an alarm.</p>
+<section class="sheet__section" style="margin-top: var(--space-5)">
+<div class="frames" style="column-gap: 48px">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">1440</span><span class="frame__name">Archived revision</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">The address in the notice links to the rules in force.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Doc" theme="{{themeName}}" annotations="{{ann}}" page="rules-archived" uid="rule1440rulesarchived" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">390</span><span class="frame__name">Archived revision</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">The notice wraps to four lines; the band follows.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Doc" theme="{{themeName}}" annotations="{{ann}}" page="rules-archived" uid="rule390rulesarchived" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":2006,"height":6000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    return { themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light', ann: !!this.props.annotations };
+  }
+}
+</script>
+</body>
+</html>

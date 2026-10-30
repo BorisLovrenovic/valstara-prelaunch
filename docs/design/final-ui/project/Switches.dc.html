@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Feature-switch variants</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}} {{annCls}}" style="width: 3964px">
+<h1 class="sheet__title">Feature-switch variants</h1>
+<p class="sheet__lede">Four independent switches: signups, referral rewards, the giveaway and the leaderboard link. "What you get" reflows across three, two and one card with no empty grid cell; a lone access card becomes a wide two-column panel. A second referral tier adds a row to the same card. Each variant at 1440 and 390.</p>
+<div class="frames">
+<sc-for list="{{frames}}" as="f" hint-placeholder-count="16">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">{{f.n}}</span><span class="frame__name">{{f.name}}</span></div>
+<p class="frame__note" style="max-width: {{f.w}}; min-height: 40px">{{f.note}}</p>
+<div class="frame__screen" style="width: {{f.w}}; height: {{f.h}}">
+<sc-if value="{{f.rewards}}" hint-placeholder-val="{{true}}">
+<div class="page page--fit {{themeCls}}" style="padding-bottom: var(--space-8)">
+<dc-import name="Rewards" theme="{{themeName}}" annotations="{{ann}}" referral="{{f.referral}}" giveaway="{{f.giveaway}}" leaderboard="{{f.leaderboard}}" tier2="{{f.tier2}}" uid="{{f.uid}}" hint-size="100%,640px"></dc-import>
+</div>
+</sc-if>
+<sc-if value="{{f.hero}}" hint-placeholder-val="{{false}}">
+<div class="page page--fit {{themeCls}}">
+<dc-import name="Header" theme="{{themeName}}" hint-size="100%,80px"></dc-import>
+<dc-import name="Hero" theme="{{themeName}}" annotations="{{ann}}" state="{{f.state}}" giveaway="{{f.giveaway}}" uid="{{f.uid}}" hint-size="100%,780px"></dc-import>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":3964,"height":7000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    var V = [
+      ['A', 'Everything on', 'Three cards, the referral line and the leaderboard link.', { referral: true, giveaway: true, leaderboard: true, tier2: false }],
+      ['B', 'Giveaway off', 'Two equal cards. The microline loses "No purchase necessary" (hero frames in row 4).', { referral: true, giveaway: false, leaderboard: true, tier2: false }],
+      ['C', 'Referral off', 'Access and giveaway rebalance to two equal halves.', { referral: false, giveaway: true, leaderboard: true, tier2: false }],
+      ['D', 'Leaderboard off', 'Only the "See the leaderboard" link goes. Nothing else moves.', { referral: true, giveaway: true, leaderboard: false, tier2: false }],
+      ['E', 'Only earlier access', 'Referral and giveaway off: one wide two-column panel, never an orphan card.', { referral: false, giveaway: false, leaderboard: false, tier2: false }],
+      ['F', 'Second referral tier on', 'The referral card takes a second equation row; nothing is redesigned.', { referral: true, giveaway: true, leaderboard: true, tier2: true }]
+    ];
+    var frames = [];
+    V.forEach(function (v) {
+      frames.push(Object.assign({ n: v[0] + ' · 1440', name: v[1], note: v[2], w: '1440px', h: 'auto', rewards: true, hero: false, uid: 'sw' + v[0] + 'd' }, v[3]));
+      frames.push(Object.assign({ n: v[0] + ' · 390', name: v[1], note: v[2], w: '390px', h: 'auto', rewards: true, hero: false, uid: 'sw' + v[0] + 'p' }, v[3]));
+    });
+    frames.push({ n: 'B · 1440', name: 'Giveaway off · hero', note: 'Microline is the 18+ sentence only; the rules link goes.', w: '1440px', h: '900px', rewards: false, hero: true, state: 'idle', giveaway: false, uid: 'swBhd' });
+    frames.push({ n: 'B · 390', name: 'Giveaway off · hero', note: 'Same on phone; the sticky bar microline matches.', w: '390px', h: '844px', rewards: false, hero: true, state: 'idle', giveaway: false, uid: 'swBhp' });
+    frames.push({ n: 'G · 1440', name: 'Signups off', note: 'Paused panel replaces the form; header Join and the final CTA scroll to it.', w: '1440px', h: '900px', rewards: false, hero: true, state: 'paused', giveaway: true, uid: 'swGd' });
+    frames.push({ n: 'G · 390', name: 'Signups off', note: 'No sticky bar appears on this page.', w: '390px', h: '844px', rewards: false, hero: true, state: 'paused', giveaway: true, uid: 'swGp' });
+    return {
+      themeCls: dark ? 'dark' : '',
+      themeName: dark ? 'dark' : 'light',
+      ann: !!this.props.annotations,
+      annCls: this.props.annotations ? 'show-ann' : '',
+      frames: frames
+    };
+  }
+}
+</script>
+</body>
+</html>

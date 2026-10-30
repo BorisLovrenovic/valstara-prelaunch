@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Image manifest</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 1600px">
+<h1 class="sheet__title">Image manifest</h1>
+<p class="sheet__lede">Section 9. Every image slot on the site, with the brief a photographer or the founder needs. Zero stock imagery.</p>
+<div class="sheet__section" style="display: grid; grid-template-columns: 22rem minmax(0, 1fr); gap: 48px; align-items: start">
+<div class="stack" style="gap: 16px">
+<div class="page page--fit" style="background: transparent; width: 352px"><div class="ph" style="width: 240px; height: 300px" role="img" aria-label="Boris Lovrenovic, founder of Valstara"><span class="ph__id">IMG-01</span><span class="ph__ratio">4:5</span></div></div>
+<div class="row" style="gap: 16px; align-items: flex-end"><div class="ph" style="width: 80px; height: 80px"><span class="ph__id" style="font-size: 14px; line-height: 20px">IMG-01</span><span class="ph__ratio">1:1</span></div><p class="t-small c-600">Phone crop, 80 × 80</p></div>
+<p class="t-small c-600">One image on the whole site. Everything else is real logos, drawn data graphics and the guarantee. Black block on light grounds, white on dark.</p>
+</div>
+<div class="spec-card" style="padding: 0; overflow: hidden"><table class="spec-table"><tbody><tr><th scope="row" style="width: 14rem">ID</th><td>IMG-01</td></tr><tr><th scope="row" style="width: 14rem">Where</th><td>/about · document band, right of the eyebrow, H1 and summary from 768; above the eyebrow on phone. Frames: /about 1440, 768 and 390 (Trust · About board), light and dark.</td></tr><tr><th scope="row" style="width: 14rem">Purpose</th><td>Shows the real person behind Valstara, so a sceptical visitor can put a face to the founder named in the text.</td></tr><tr><th scope="row" style="width: 14rem">Subject</th><td>Boris Lovrenovic, head and shoulders, facing the camera or turned slightly (about 15°) toward the page text on the left. Eye line in the upper third; shoulders cropped at the bottom edge. Plain, cool light-grey wall or an uncluttered modern office background, softly out of focus (f/2.8–f/4). No negative space needed for text: nothing overlaps the photo.</td></tr><tr><th scope="row" style="width: 14rem">Mood and treatment</th><td>Soft daylight or a large diffused key, neutral to slightly cool white balance (about 5500–6000 K), natural skin tones, moderate contrast, no filters, no warm, cream or sepia cast. Clothing in neutral or dark tones so it sits with ink, paper and midnight. In dark mode the photo is unchanged; its 12px radius and the band edge separate it from the dark surface.</td></tr><tr><th scope="row" style="width: 14rem">Must not include</th><td>Any provider logo or product UI; screens, devices or packaging showing goods; money, cards or price cues; hoodies, neon or "underground" styling; props that imply gaming or gambling; heavy retouching; a stock model.</td></tr><tr><th scope="row" style="width: 14rem">Sizes</th><td>390: 80 × 80 (1:1 square crop centred on the face) · 768: 216 × 270 (4:5) · 1024: 240 × 300 (4:5) · 1440: 240 × 300 (4:5). Radius 12. Export at 2×: 480 × 600 (4:5) and 160 × 160 (1:1 crop).</td></tr><tr><th scope="row" style="width: 14rem">Format and weight</th><td>AVIF at about 35 KB (4:5) and 8 KB (1:1), with WebP fallbacks at about 55 KB and 12 KB. Same-origin files.</td></tr><tr><th scope="row" style="width: 14rem">Loading</th><td>Above the fold on /about at every width. Eager, not lazy, with fixed width and height (no layout shift). It can become the LCP element at 768 and up, so it keeps the small weights above; decoding="async".</td></tr><tr><th scope="row" style="width: 14rem">Alt text</th><td>Boris Lovrenovic, founder of Valstara</td></tr><tr><th scope="row" style="width: 14rem">Source</th><td>Founder-supplied real photo, not stock.</td></tr><tr><th scope="row" style="width: 14rem">Search terms</th><td>Not applicable: never stock. If no photo is supplied, the slot is removed and the band text spans the full width (the layout holds without it).</td></tr></tbody></table></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":1600,"height":1200}}'>
+class Component extends DCLogic {
+  renderVals() { return { themeCls: this.props.theme === 'dark' ? 'dark' : '' }; }
+}
+</script>
+</body>
+</html>

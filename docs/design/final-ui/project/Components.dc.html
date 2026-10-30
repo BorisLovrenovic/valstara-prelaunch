@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Component library</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.cl-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4);margin-top:var(--space-6);align-items:start}
+.cl-col{display:flex;flex-direction:column;gap:var(--space-4)}
+.cp{background:var(--surface);color:var(--ink);border-radius:var(--radius-card);box-shadow:var(--shadow-1),var(--edge);padding:var(--space-4)}
+.cp > h2{font-size:var(--step-3);line-height:var(--leading-3);font-weight:600;letter-spacing:var(--tracking-tight)}
+.cp > p{margin-top:var(--space-0-5);color:var(--ink-600);font-size:var(--step-1);line-height:var(--leading-1);max-width:60rem;text-wrap:pretty}
+.cp-body{margin-top:var(--space-3)}
+.cp-ground{background:var(--paper);border-radius:var(--radius-control);padding:var(--space-3)}
+.cp-ground--mid{background:var(--midnight);color:var(--on-midnight)}
+.cl-state{font-family:var(--font-mono);font-size:var(--step-0);line-height:var(--leading-0);color:var(--ink-600);font-weight:500}
+.cp-ground--mid .cl-state{color:var(--on-midnight-600)}
+.cl-matrix{display:grid;grid-template-columns:11rem repeat(6,minmax(0,1fr));gap:var(--space-2) var(--space-1-5);align-items:center}
+.cl-row{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:flex-start}
+.cl-cell{display:flex;flex-direction:column;gap:var(--space-1);min-width:0}
+.cl-redline{position:relative;display:inline-flex}
+.cl-redline::after{content:attr(data-r);position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:var(--step-0);line-height:var(--leading-0);color:var(--coral);white-space:nowrap}
+.cl-hit{outline:1.5px dashed var(--coral);outline-offset:0}
+</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 2400px">
+<h1 class="sheet__title">Component library · {{themeLabel}}</h1>
+<p class="sheet__lede">Every component in every state at real size. Redlines in coral mono name the token. State classes (is-hover, is-focus, is-active, is-disabled, is-loading, is-selected, is-checked, is-on) mirror :hover, :focus-visible, :active, :disabled and aria state in the build. Transitions are on the Token sheet.</p>
+
+<div class="cl-cols">
+<div style="grid-column: 1 / -1">
+<section class="cp">
+<h2>Buttons</h2>
+<p>Primary (coral, --on-coral label 5.78:1), secondary (surface, inset line + E1) and on-midnight (transparent, alpha border). 48 default, 44, compact 44 (14/20, below 360 only) and full width. One primary per page; on the landing page it is always "Join the waitlist". Secondary drops to 44 with 14/20 text below 768.</p>
+<div class="cp-body">
+<div class="cl-matrix">
+<span></span><span class="cl-state">default</span><span class="cl-state">hover</span><span class="cl-state">focus-visible</span><span class="cl-state">active</span><span class="cl-state">disabled</span><span class="cl-state">loading</span>
+<sc-for list="{{btnRows}}" as="r" hint-placeholder-count="5">
+<span class="cl-state">{{r.label}}</span>
+<sc-for list="{{r.cells}}" as="c" hint-placeholder-count="6">
+<span><button class="btn {{r.cls}} {{c.cls}}" type="button"><sc-if value="{{c.spin}}" hint-placeholder-val="{{false}}"><span class="spinner" aria-hidden="true"></span></sc-if>{{r.text}}</button></span>
+</sc-for>
+</sc-for>
+</div>
+<div class="cp-ground cp-ground--mid" style="margin-top: var(--space-3)">
+<div class="cl-matrix">
+<span class="cl-state">on-midnight 48</span>
+<span><button class="btn btn--midnight" type="button">Read the guarantee</button></span>
+<span><button class="btn btn--midnight is-hover" type="button">Read the guarantee</button></span>
+<span><button class="btn btn--midnight is-focus" type="button">Read the guarantee</button></span>
+<span><button class="btn btn--midnight is-active" type="button">Read the guarantee</button></span>
+<span><button class="btn btn--midnight is-disabled" type="button" disabled="disabled">Read the guarantee</button></span>
+<span><button class="btn btn--midnight is-disabled" type="button"><span class="spinner" aria-hidden="true"></span>Read the guarantee</button></span>
+</div>
+</div>
+<div class="cl-row" style="margin-top: var(--space-3); align-items: end">
+<div class="cl-cell" style="width: 358px"><span class="cl-state">primary · full width (phone hero, 358)</span><button class="btn btn--primary btn--full" type="button">Join the waitlist</button></div>
+<div class="cl-cell"><span class="cl-state">icon button · toggle 44</span><div class="row" style="gap: var(--space-1-5)"><button class="icon-button" type="button" aria-label="Use dark theme"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#moon"></use></svg></button><button class="icon-button is-hover" type="button" aria-label="Use dark theme"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#moon"></use></svg></button><button class="icon-button is-focus" type="button" aria-label="Use dark theme"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#moon"></use></svg></button><button class="icon-button is-active" type="button" aria-label="Use dark theme"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#moon"></use></svg></button><span class="dark" style="display: inline-flex; padding: 4px; border-radius: 10px; background: var(--paper)"><button class="icon-button" type="button" aria-label="Use light theme"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#sun"></use></svg></button></span></div></div>
+<div class="cl-cell"><span class="cl-state">spinner 16 · 2px · 0.8s linear</span><div class="row" style="gap: var(--space-2); height: 48px"><span class="spinner" aria-hidden="true"></span><span class="spinner" aria-hidden="true" style="color: var(--ink-600)"></span></div></div>
+</div>
+</div>
+</section>
+</div>
+<div class="cl-col">
+
+
+
+<section class="cp">
+<h2>Text links</h2>
+<p>Ink text at 500 with a 2px coral underline offset 3px; hover turns the underline ink. On midnight: on-midnight text, coral-lift underline. Below 768 every link gets 12px of vertical padding for a 44px target (dashed box).</p>
+<div class="cp-body" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3)">
+<div class="cp-ground stack" style="gap: var(--space-2)">
+<span class="cl-state">light · default / hover / focus</span>
+<div class="row" style="gap: var(--space-4)"><a class="link" href="#">See the giveaway rules</a><a class="link is-hover" href="#">See the giveaway rules</a><a class="link is-focus" href="#">See the giveaway rules</a></div>
+<span class="cl-state">standalone with arrow · hover moves 2px</span>
+<div class="row" style="gap: var(--space-4)"><a class="link link-arrow" href="#">See the leaderboard<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a><a class="link link-arrow is-hover" href="#">See the leaderboard<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a></div>
+<span class="cl-state">inline in prose</span>
+<p class="t-body" style="max-width: 32rem">The launch giveaway has <a class="link" href="#">separate rules</a>. Joining the waitlist and entering the giveaway do not require marketing consent or a purchase.</p>
+<span class="cl-state">small-screen hit area · 44</span>
+<p class="t-small c-600">No purchase necessary. <a class="link cl-hit" href="#" style="display: inline-block; padding: 12px 0; margin: -12px 0">See the giveaway rules</a>.</p>
+</div>
+<div class="cp-ground cp-ground--mid stack" style="gap: var(--space-2)">
+<span class="cl-state">on midnight · default / hover / focus</span>
+<div class="row" style="gap: var(--space-4)"><a class="link link--midnight" href="#">Read the guarantee</a><a class="link link--midnight is-hover" href="#">Read the guarantee</a><a class="link link--midnight is-focus" href="#">Read the guarantee</a></div>
+<span class="cl-state">standalone with arrow</span>
+<a class="link link--midnight link-arrow" href="#">Read the guarantee<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a>
+<span class="cl-state">footer link · default / hover / focus</span>
+<div class="footer-col row" style="gap: var(--space-4)"><a href="#">Storage inventory</a><a class="is-hover" href="#">Storage inventory</a><a class="is-focus" href="#">Storage inventory</a></div>
+</div>
+</div>
+</section>
+
+<section class="cp">
+<h2>Inputs</h2>
+<p>48px, 16px text (no iOS zoom), 1px --field border, label above, hint 4px below the label, field 8px below. Placeholder is ink-600 (ink-300 fails at 2.60:1). Error: 2px --error border, 20px alert-circle and --error-text message 8px under the field, linked with aria-describedby.</p>
+<div class="cp-body" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3) var(--space-4)">
+<sc-for list="{{inputs}}" as="i" hint-placeholder-count="6">
+<div class="field"><span class="cl-state" style="margin-bottom: var(--space-1)">{{i.state}}</span>
+<label class="field__label" for="cl-in-{{i.id}}">Email address</label>
+<p class="field__hint">We'll email you a link to confirm your address.</p>
+<input class="input field__control {{i.cls}}" id="cl-in-{{i.id}}" type="email" placeholder="you@example.com" value="{{i.value}}" readonly="readonly">
+<sc-if value="{{i.err}}" hint-placeholder-val="{{false}}"><p class="field__error"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#alert-circle"></use></svg>Enter a valid email address.</p></sc-if>
+</div>
+</sc-for>
+</div>
+<div class="cp-body" style="display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4)">
+<div class="field"><span class="cl-state" style="margin-bottom: var(--space-1)">read-only link box + copy · wraps at "?ref=", never truncates</span><span class="field__label">Your referral link</span><div class="ref-row"><p class="linkbox" aria-label="Referral link">https://valstara.com/<wbr>?ref=<span class="linkbox__code">K7QX2MPR9AZB</span></p><button class="btn btn--primary" type="button"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#copy"></use></svg>Copy link</button></div></div>
+<div class="field"><span class="cl-state" style="margin-bottom: var(--space-1)">short numeric field</span><label class="field__label" for="cl-num">If you live in Canada: what is (8 × 7) − 6?</label><input class="input input--short field__control" id="cl-num" type="text" inputmode="numeric" value="50" readonly="readonly"></div>
+<div class="field"><span class="cl-state" style="margin-bottom: var(--space-1)">select · two-letter country</span><label class="field__label" for="cl-sel">Country of residence (two-letter country code)</label><div class="select-wrap field__control"><select class="input" id="cl-sel"><option>SE</option><option>US</option><option>GB</option></select><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#chevron-down"></use></svg></div></div>
+</div>
+<div class="cp-body row" style="gap: var(--space-4); flex-wrap: wrap">
+<div class="cl-cell"><span class="cl-state">copied</span><p class="notice notice--plain" role="status"><svg class="icon icon--20" aria-hidden="true" style="color: var(--success)"><use href="./icons.svg#check-circle"></use></svg>Link copied.</p></div>
+<div class="cl-cell"><span class="cl-state">copy failed (link box selected)</span><p class="notice notice--plain" role="status"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#info"></use></svg>Select and copy the link instead.</p></div>
+<div class="cl-cell"><span class="cl-state">copy button · copied (2s, then reverts)</span><button class="btn btn--primary" type="button"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#check"></use></svg>Link copied.</button></div>
+</div>
+</section>
+
+<section class="cp">
+<h2>Choices</h2>
+<p>Checkbox: 20 box, 1.5px --field, radius 4, transparent 44px native target, never pre-ticked; ticked is ink fill with a paper check. Switch: knob position, check glyph and the On/Off label carry the state, never colour alone. Chips (multi-select) gain an ink fill, a check and 600 weight. Segments (single-select) rise to surface with E1, a check and 600 weight.</p>
+<div class="cp-body" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4)">
+<div class="stack" style="gap: var(--space-2)">
+<span class="cl-state">checkbox with the Optional pill · unticked / hover / focus / ticked</span>
+<sc-for list="{{checks}}" as="c" hint-placeholder-count="4">
+<label class="check {{c.cls}}" for="cl-ck-{{c.id}}"><input class="check__input" id="cl-ck-{{c.id}}" type="checkbox"><span class="check__box"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg></span><span class="check__text"><span class="pill--optional">Optional</span>Yes, email me weekly updates and product news from Valstara. I can switch this off at any time.</span></label>
+</sc-for>
+</div>
+<div class="stack" style="gap: var(--space-2)">
+<span class="cl-state">switch · off / on / hover / focus / disabled</span>
+<div class="switch-row"><button class="switch" type="button" role="switch" aria-checked="false" aria-label="Marketing email"><span class="switch__knob"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg></span></button><span class="switch-state">Off</span></div>
+<div class="switch-row"><button class="switch is-on" type="button" role="switch" aria-checked="true" aria-label="Marketing email"><span class="switch__knob"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg></span></button><span class="switch-state">On</span></div>
+<div class="switch-row"><button class="switch is-hover" type="button" role="switch" aria-checked="false" aria-label="Marketing email"><span class="switch__knob"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg></span></button><span class="switch-state">Off</span><button class="switch is-on is-focus" type="button" role="switch" aria-checked="true" aria-label="Marketing email" style="margin-left: var(--space-3)"><span class="switch__knob"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg></span></button><span class="switch-state">On</span><button class="switch is-disabled" type="button" role="switch" aria-checked="false" aria-label="Marketing email" disabled="disabled" style="margin-left: var(--space-3)"><span class="switch__knob"></span></button><span class="switch-state c-600">Off</span></div>
+</div>
+<div class="stack" style="gap: var(--space-2)">
+<span class="cl-state">chips · unselected / hover / selected / focus / disabled</span>
+<div class="chips">
+<label class="chip-option"><input type="checkbox"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>AI tools</label>
+<label class="chip-option is-hover"><input type="checkbox"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>Software</label>
+<label class="chip-option is-selected"><input type="checkbox" checked="checked"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>Streaming and subscriptions</label>
+<label class="chip-option is-selected is-focus"><input type="checkbox" checked="checked"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>Game keys</label>
+<label class="chip-option is-disabled"><input type="checkbox" disabled="disabled"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>Gift cards</label>
+</div>
+</div>
+<div class="stack page page--fit" style="gap: var(--space-2); background: transparent">
+<span class="cl-state">segmented · one selected / focus · 2 × 2 below 768, one row above</span>
+<div class="segmented" role="radiogroup" aria-label="How often do you buy digital goods?">
+<label class="segment"><input type="radio" name="cl-f">Weekly</label>
+<label class="segment is-selected"><input type="radio" name="cl-f" checked="checked"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>Monthly</label>
+<label class="segment is-focus"><input type="radio" name="cl-f">A few times a year</label>
+<label class="segment"><input type="radio" name="cl-f">Rarely</label>
+</div>
+</div>
+</div>
+</section>
+
+<section class="cp">
+<h2>Pills and badges</h2>
+<p>Reward pill on coral-tint, coral pill with the --on-coral label and mono figure, access-wave badge (mono, four rising bars with the reached wave in coral), the ink step badge, and the reward states: Settled is a filled ink badge with a check, Held an outlined badge with a clock, so they differ by icon, fill and word.</p>
+<div class="cp-body row" style="gap: var(--space-4); flex-wrap: wrap">
+<div class="cl-cell"><span class="cl-state">reward pill</span><span class="pill"><svg class="icon" aria-hidden="true"><use href="./icons.svg#arrow-up"></use></svg>Up one access wave</span></div>
+<div class="cl-cell"><span class="cl-state">coral pill</span><span class="pill pill--coral"><span class="t-mono">15%</span> off at launch</span></div>
+<div class="cl-cell"><span class="cl-state">access-wave badge</span><span class="badge-wave"><span class="badge-wave__bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span>Access wave 2</span></div>
+<div class="cl-cell"><span class="cl-state">wave badge · /me</span><span class="badge-wave"><span class="badge-wave__bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span>Wave 2</span></div>
+<div class="cl-cell"><span class="cl-state">wave pending</span><span class="badge-wave badge-wave--pending">Not assigned yet</span></div>
+<div class="cl-cell"><span class="cl-state">step badge</span><span class="row" style="gap: var(--space-1)"><span class="badge-step">1</span><span class="badge-step">2</span><span class="badge-step" style="background: var(--ink-600)">3</span></span></div>
+<div class="cl-cell"><span class="cl-state">settled</span><span class="badge-state badge-state--settled"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>Settled</span></div>
+<div class="cl-cell"><span class="cl-state">held</span><span class="badge-state badge-state--held"><svg class="icon" aria-hidden="true"><use href="./icons.svg#clock"></use></svg>Held</span></div>
+<div class="cl-cell"><span class="cl-state">optional</span><span class="pill--optional">Optional</span></div>
+</div>
+</section>
+
+<section class="cp">
+<h2>Notices</h2>
+<p>Error notices carry a 1.5px --error rule and the alert-circle; info is a quiet wash; success carries a check-circle. The archived-revision notice is a full-width coral-tint band above the document band: unmistakable, never an alarm.</p>
+<div class="cp-body stack" style="gap: var(--space-2)">
+<div class="notice notice--error" role="alert"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#alert-circle"></use></svg><p>We couldn't reach the waitlist just now — check your connection and try again.</p></div>
+<div class="notice notice--info"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#info"></use></svg><p>JavaScript is required to complete the security check and join the waitlist.</p></div>
+<div class="notice notice--success" role="status"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#check-circle"></use></svg><p>Your marketing email preference is updated.</p></div>
+<div class="notice"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#clock"></use></svg><p>Too many attempts. Please try again in 15 minutes.</p></div>
+<div class="archived" style="border-radius: var(--radius-control); padding: var(--space-2)"><div class="archived__inner"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#history"></use></svg><p>This is an earlier version of our giveaway rules. It has been replaced and is kept here unchanged as a record. Some details in it are no longer accurate. The rules in force are at <a class="link" href="/giveaway/rules">valstara.com/giveaway/rules</a>.</p></div></div>
+</div>
+</section>
+
+<section class="cp">
+<h2>Data graphics</h2>
+<p>All figures in JetBrains Mono with tabular figures. Wave track: each bar starts later; the coral dot marks when the wave opens. Meter: one segment per referral needed, filled segments in ink. Leaderboard row: rank tile, anonymous handle, exact count.</p>
+<div class="cp-body" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4)">
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">wave track</span>
+<div class="well"><ol class="waves" aria-label="Access waves"><li style="display: contents"><span class="waves__label">Wave 1</span><span class="waves__track" aria-hidden="true"><span class="waves__bar" style="left: 0"></span></span></li><li style="display: contents"><span class="waves__label">Wave 2</span><span class="waves__track" aria-hidden="true"><span class="waves__bar" style="left: 25%"></span></span></li><li style="display: contents"><span class="waves__label">Wave 3</span><span class="waves__track" aria-hidden="true"><span class="waves__bar" style="left: 50%"></span></span></li><li style="display: contents"><span class="waves__label">Wave 4</span><span class="waves__track" aria-hidden="true"><span class="waves__bar" style="left: 75%"></span></span></li><li class="waves__grid" aria-hidden="true"><i></i><i></i><i></i><i></i></li></ol><div class="waves__axis" aria-hidden="true"><span></span><span class="waves__axis-line"><span>earlier</span><span>later</span></span></div></div></div>
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">referral equation · one tier</span>
+<div class="well"><div class="equation"><p class="vh">3 confirmed referrals → move up an access wave and 15% off at launch</p><span aria-hidden="true"></span><div class="equation__count" aria-hidden="true"><span class="t-figure">3</span><span class="equation__meta"><span class="equation__people"><svg class="icon"><use href="./icons.svg#person"></use></svg><svg class="icon"><use href="./icons.svg#person"></use></svg><svg class="icon"><use href="./icons.svg#person"></use></svg></span><span class="t-label c-600">confirmed referrals</span></span></div><span class="equation__op" aria-hidden="true"><svg class="icon icon--20"><use href="./icons.svg#arrow-right"></use></svg></span><span class="pill" aria-hidden="true"><svg class="icon"><use href="./icons.svg#arrow-up"></use></svg>Up one access wave</span><span class="equation__op" aria-hidden="true">+</span><span class="pill pill--coral" aria-hidden="true"><span class="t-mono">15%</span> off at launch</span></div></div></div>
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">prize line</span>
+<div class="well"><p class="prize"><span class="t-figure">5</span><span class="prize__word">prizes, approximately</span><span class="prize__nowrap"><span class="t-figure">€300</span> <span class="prize__word">each</span></span></p></div></div>
+<div class="stack" style="gap: var(--space-2)"><span class="cl-state">progress meter · 0 of 3 / 2 of 3</span>
+<div class="meter"><div class="meter__top"><span class="label-sm">Progress</span><span class="meter__value">0 of 3 to Tier 1</span></div><div class="meter__track" aria-hidden="true"><i class="meter__seg"></i><i class="meter__seg"></i><i class="meter__seg"></i></div></div>
+<div class="meter"><div class="meter__top"><span class="label-sm">Progress</span><span class="meter__value">2 of 3 to Tier 1</span></div><div class="meter__track" aria-hidden="true"><i class="meter__seg on"></i><i class="meter__seg on"></i><i class="meter__seg"></i></div></div>
+</div>
+<div class="stack page page--fit" style="gap: var(--space-1); grid-column: 1 / -1; background: transparent"><span class="cl-state">leaderboard row · rank / handle / exact count (singular and plural)</span>
+<div class="card board"><ol class="board__list"><li><span class="board__rank">1</span><span class="board__handle">Anonymous <b>k7Qx2LmP9aZb</b></span><span class="board__count"><b>12</b>confirmed referrals</span></li><li><span class="board__rank">10</span><span class="board__handle">Anonymous <b>Zp4Rm81QwTxe</b></span><span class="board__count"><b>1</b>confirmed referral</span></li></ol></div></div>
+</div>
+</section>
+
+</div>
+<div class="cl-col">
+
+<section class="cp">
+<h2>Provider banner · three sizes</h2>
+<p>Full-bleed brand colour, two tonal layers derived from it (a shape and a ring, six compositions cycled in catalogue order), the real logo on a raised light chip that stays light in dark mode, the category label in white or ink by contrast, E1 rising to E2 with a 2px lift on hover. Wordmarks that spell the name show alone with the name as alt text; icon marks sit beside the name. CyberGhost's white wordmark takes the dark chip.</p>
+<div class="cp-body stack" style="gap: var(--space-3)">
+<span class="cl-state">catalogue · 227 × 104 at 1440 · black / mid-tone / light / pale / dark chip / wordmark</span>
+<div class="page page--fit" style="background: transparent"><ul class="rail" style="display: grid; grid-template-columns: repeat(3, 227px); gap: var(--space-2); overflow: visible; margin: 0; padding: 0">
+<sc-for list="{{bannerSet}}" as="p" hint-placeholder-count="6">
+<li class="banner banner--{{p.t}} {{p.state}}" style="background: {{p.color}}; color: {{p.fg}}; --tone: {{p.tone}}; --ring: {{p.ring}}; padding: var(--space-1-75)"><i class="banner__shape"></i><i class="banner__ring"></i><span class="banner__chip {{p.chipCls}}"><sc-if value="{{p.word}}" hint-placeholder-val="{{false}}"><img class="banner__logo banner__logo--word" src="{{p.src}}" width="{{p.w}}" height="{{p.h}}" alt="{{p.name}}" style="{{p.lh}}"></sc-if><sc-if value="{{p.icon}}" hint-placeholder-val="{{true}}"><img class="banner__logo" src="{{p.src}}" width="{{p.w}}" height="{{p.h}}" alt="" style="height: 20px"><span class="banner__name">{{p.name}}</span></sc-if></span><span class="banner__cat">{{p.cat}}</span></li>
+</sc-for>
+</ul></div>
+<span class="cl-state">the last banner shows the hover state (E2, −2px)</span>
+<div class="row" style="gap: var(--space-4); align-items: flex-start">
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">hero stack · 340 × 184</span>
+<div class="banner banner--hero banner--t3" style="width: 340px; background: #000000; color: #ffffff; --tone: var(--banner-tone-dark); --ring: var(--banner-ring-dark)"><i class="banner__shape"></i><i class="banner__ring"></i><span class="banner__chip"><img class="banner__logo" src="./logos/chatgpt.svg" width="28" height="28" alt=""><span class="banner__name">ChatGPT</span></span><span class="banner__cat">AI tools</span></div></div>
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">phone strip · 56 tall, names only</span>
+<div class="row" style="gap: var(--space-1); width: 358px"><div class="banner banner--strip banner--t3" style="flex: 1 1 0; background: #000000; color: #ffffff; --tone: var(--banner-tone-dark)"><i class="banner__shape"></i><span class="banner__chip">ChatGPT</span></div><div class="banner banner--strip banner--t2" style="flex: 1 1 0; background: #d81f26; color: #ffffff; --tone: var(--banner-tone-light)"><i class="banner__shape"></i><span class="banner__chip">Netflix</span></div><div class="banner banner--strip banner--t1" style="flex: 1.35 1 0; background: #2d3f80; color: #ffffff; --tone: var(--banner-tone-light)"><i class="banner__shape"></i><span class="banner__chip">Microsoft 365</span></div></div></div>
+</div>
+</div>
+</section>
+
+<section class="cp">
+<h2>Cards and panels</h2>
+<p>Static card E1 (24, roomy 32), interactive whole-card link E1 → E2 with a 2px lift, success panel E2, paused panel, side card and task card. Never a card inside a card: inner groups are wells (paper, radius 8, no shadow).</p>
+<div class="cp-body page page--fit" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); background: transparent">
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">interactive · rest</span><a class="card card--link trust-card" href="#"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#search-check"></use></svg></span><h3 class="t-h3 trust-card__title">Is Valstara legit?<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></h3><p class="t-body">See the evidence before you join.</p></a></div>
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">interactive · hover</span><a class="card card--link trust-card is-hover" href="#"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#search-check"></use></svg></span><h3 class="t-h3 trust-card__title">Is Valstara legit?<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></h3><p class="t-body">See the evidence before you join.</p></a></div>
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">interactive · focus-visible</span><a class="card card--link trust-card is-focus" href="#"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#search-check"></use></svg></span><h3 class="t-h3 trust-card__title">Is Valstara legit?<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></h3><p class="t-body">See the evidence before you join.</p></a></div>
+</div>
+<div class="cp-body page page--fit" style="display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--space-3); background: transparent; align-items: start">
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">success panel · E2</span>
+<div class="panel" role="status"><div class="panel__head"><span class="tile tile--lg"><svg class="icon" aria-hidden="true"><use href="./icons.svg#mail"></use></svg></span><h2 class="t-h2">Check your inbox</h2></div><p class="echo"><svg class="icon" aria-hidden="true"><use href="./icons.svg#mail"></use></svg><span>alexandra.konstantinidou@<wbr>example.com</span></p><p class="panel__body t-body">If an email from Valstara arrives, open it and click the link to confirm your address. Nothing counts until you do.</p><div class="panel__actions"><button class="btn btn--secondary" type="button">Use a different address</button><button class="btn btn--secondary" type="button"><svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#refresh"></use></svg>Send the link again</button></div></div></div>
+<div class="stack" style="gap: var(--space-3)">
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">paused panel</span><div class="panel"><div class="panel__head"><span class="tile tile--lg tile--neutral"><svg class="icon" aria-hidden="true"><use href="./icons.svg#pause"></use></svg></span><h2 class="t-h2">Signups are paused</h2></div><p class="panel__body t-body">We're not taking new signups right now. Check back in a little while — the waitlist will reopen soon.</p></div></div>
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">side card · trust pages</span><aside class="card card--roomy side-card" aria-label="Guarantee summary"><h2 class="side-card__title">The Triple Guarantee</h2><ol class="side-promises"><li><span class="side-promises__n" aria-hidden="true">I</span><span class="side-promises__t">Delivered within 24 hours</span></li><li><span class="side-promises__n" aria-hidden="true">II</span><span class="side-promises__t">Protected, start to finish</span></li><li><span class="side-promises__n" aria-hidden="true">III</span><span class="side-promises__t">Resolved, replaced, or refunded</span></li></ol><div class="side-card__actions"><a class="link link-arrow" href="/guarantee">Read the guarantee<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a><a class="btn btn--primary btn--full" href="/#join">Join the waitlist</a></div></aside></div>
+</div>
+</div>
+<div class="cp-body page page--fit" style="background: transparent">
+<span class="cl-state" style="display: block; margin-bottom: var(--space-1)">task card · pattern for /unsubscribe, /dsr, /giveaway/award, 404 and 500</span>
+<div class="card task-card" style="max-width: 640px"><div class="task-card__head"><span class="tile tile--lg"><svg class="icon" aria-hidden="true"><use href="./icons.svg#shield"></use></svg></span><h1 class="t-h1">Choose what to stop</h1></div><p class="task-card__line t-body">A marketing email link stops marketing. A service email link stops all email. You can also leave the waitlist entirely.</p><div class="task-card__actions"><button class="btn btn--primary" type="button">Unsubscribe from this email</button><button class="btn btn--secondary btn--keep" type="button">Leave the waitlist and stop all email</button></div></div>
+</div>
+</section>
+
+<section class="cp">
+<h2>FAQ item and disclosure</h2>
+<p>Native details, unboxed inside one card, 1px line between items. Summary ≥ 64 with 20 vertical padding; the 32px chevron disc turns 180° over 200ms. Answer 16/24 ink-600 at most 68 characters.</p>
+<div class="cp-body card faq__list" style="box-shadow: var(--inset-line)">
+<details class="qa"><summary>What do you do with my email?<span class="qa__chev" aria-hidden="true"><svg class="icon"><use href="./icons.svg#chevron-down"></use></svg></span></summary><p class="qa__answer t-body">We store it to run your waitlist place and send your verification link and launch updates. Our email providers process it to deliver those messages. Our privacy notice explains how we use and keep it.</p></details>
+<details class="qa"><summary class="is-hover">When does Valstara launch? <span class="cl-state" style="margin-left: auto; margin-right: var(--space-2)">hover</span><span class="qa__chev" aria-hidden="true"><svg class="icon"><use href="./icons.svg#chevron-down"></use></svg></span></summary></details>
+<details class="qa"><summary class="is-focus">Can I leave the waitlist? <span class="cl-state" style="margin-left: auto; margin-right: var(--space-2)">focus</span><span class="qa__chev" aria-hidden="true"><svg class="icon"><use href="./icons.svg#chevron-down"></use></svg></span></summary></details>
+<details class="qa" open="open"><summary>What happens when I sign up? <span class="cl-state" style="margin-left: auto; margin-right: var(--space-2)">expanded</span><span class="qa__chev" aria-hidden="true"><svg class="icon"><use href="./icons.svg#chevron-down"></use></svg></span></summary><p class="qa__answer t-body">We send one verification link. Click it to confirm your place. Nothing counts until you verify.</p></details>
+</div>
+</section>
+
+<section class="cp">
+<h2>Prose and contents list</h2>
+<p>Document pages: H2 24/32 with 48 above, H3 20/28 with 32 above, paragraphs 16 apart at a 68ch measure, coral 6px bullets, mono ordinal numbers, blockquote on a wash, inline code, and tables that wrap their cells (never scroll). Contents list links are 36 tall (44 below 1024).</p>
+<div class="cp-body page page--fit" style="display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: var(--space-5); background: transparent">
+<div class="prose">
+<h2>How to enter — no purchase necessary</h2>
+<p><strong>No purchase or payment is necessary to enter or to win.</strong> Buying something will not improve your chances.</p>
+<ul><li><strong>Join the Valstara waitlist and verify your email address:</strong> 1 entry.</li><li><strong>Each person you refer who joins and verifies their own email address:</strong> 1 more entry for you.</li></ul>
+<h3>If a product isn't available</h3>
+<ol><li><strong>You choose replacement goods</strong> from what we offer.</li><li><strong>If you don't want any replacement,</strong> we pay you the approximate retail value in cash.</li></ol>
+<blockquote>Blockquote style (no blockquote exists in the current content).</blockquote>
+<p>Inline code: <code>valstara-theme</code> and <code>cf.turnstile.u</code>.</p>
+<table><thead><tr><th>Name</th><th>Kind</th><th>Purpose</th></tr></thead><tbody><tr><td><code>valstara-theme</code></td><td>Local storage</td><td>Remembers your light or dark theme choice</td></tr><tr><td><code>cf.turnstile.u</code></td><td>Cloudflare local storage</td><td>Helps secure a form when its Turnstile widget runs</td></tr></tbody></table>
+</div>
+<nav class="card card--roomy" aria-label="Contents" style="align-self: start"><h2 class="side-card__title">On this page</h2><div class="toc"><a href="#">What we use and why</a><a class="is-hover" href="#">Cookie and storage inventory</a><a class="is-focus" href="#">Erasure and retained award records</a></div></nav>
+</div>
+</section>
+
+<section class="cp">
+<h2>Shell: header, footer and sticky bars</h2>
+<p>Header is not sticky: wordmark, nav capsule (E1) with hover and focus, toggle and the 44 × 160 Join. Footer is a midnight band. Two phone-only sticky bars: the landing signup bar and the trust-page join link bar; both clear the 34px safe area.</p>
+<div class="cp-body stack" style="gap: var(--space-3)">
+<div class="cp-ground" style="padding: 0; overflow: hidden"><dc-import name="Header" theme="{{themeName}}" hint-size="100%,80px"></dc-import></div>
+<div class="page page--fit" style="background: transparent; display: flex; align-items: center; min-height: 0"><div class="nav" style="display: inline-flex; flex: 0 0 auto; width: auto; margin: 0"><a class="nav__link" href="#how">How it works</a><a class="nav__link is-hover" href="#rewards">What you get</a><a class="nav__link is-focus" href="#guarantee">Guarantee</a><a class="nav__link is-active" href="#faq">FAQ</a></div><span class="cl-state" style="margin-left: var(--space-2)">default · hover · focus · pressed</span></div>
+<div class="row" style="gap: var(--space-4); align-items: flex-end">
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">landing signup bar · 390</span><div class="page page--fit" style="width: 390px; height: 240px; position: relative; border-radius: 6px; overflow: hidden; background: var(--paper)"><div class="sticky-bar" style="position: absolute; left: 0; right: 0; bottom: 0; top: auto"><label class="field__label" for="cl-bar" style="font-size: var(--step-0); line-height: var(--leading-0)">Email address</label><div class="sticky-bar__row"><input class="input" id="cl-bar" type="email" placeholder="you@example.com"><button class="btn btn--primary" type="button">Join the waitlist</button></div><p class="sticky-bar__micro">Open to people aged 18 and over. No purchase necessary. <a class="link" href="/giveaway/rules">See the giveaway rules</a>.</p></div></div></div>
+<div class="stack" style="gap: var(--space-1)"><span class="cl-state">trust-page join bar · 390 · a link, not a form</span><div class="page page--fit" style="width: 390px; height: 240px; position: relative; border-radius: 6px; overflow: hidden; background: var(--paper)"><div class="join-bar" style="position: absolute; left: 0; right: 0; bottom: 0; top: auto"><a class="btn btn--primary btn--full" href="/#join">Join the waitlist</a></div></div></div>
+</div>
+<div class="cp-ground" style="padding: 0; overflow: hidden"><dc-import name="Footer" theme="{{themeName}}" hint-size="100%,360px"></dc-import></div>
+</div>
+</section>
+
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":2400,"height":5600}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    var states = [['', false], ['is-hover', false], ['is-focus', false], ['is-active', false], ['is-disabled', false], ['is-loading', true]];
+    function row(label, cls, text) { return { label: label, cls: cls, text: text, cells: states.map(function (s) { return { cls: s[0], spin: s[1] }; }) }; }
+    var B = [
+      ['ChatGPT','chatgpt.svg','#000000','i',1,24,'AI tools','t3',''],
+      ['Discord','discord.svg','#5865F2','i',1,24,'Streaming and subscriptions','t1',''],
+      ['Norton','norton.svg','#FBDE2A','w',4.26,20,'Software','t2',''],
+      ['AION2','aion2.webp','#C7DAFF','i',1,24,'In-game currency','t4',''],
+      ['CyberGhost','cyberghost.svg','#FFCC00','w',4.378,20,'Software','t5',''],
+      ['Netflix','netflix.svg','#D81F26','w',3.7,18,'Streaming and subscriptions','t6','is-hover']
+    ];
+    function lum(h) { var n = parseInt(h.slice(1), 16); var c = [n >> 16 & 255, n >> 8 & 255, n & 255].map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+    var bannerSet = B.map(function (x) {
+      var L = lum(x[2]); var white = 1.05 / (L + 0.05) >= (L + 0.05) / 0.055;
+      return { name: x[0], src: './logos/' + x[1], color: x[2], word: x[3] === 'w', icon: x[3] === 'i', w: Math.round(x[4] * x[5]), h: x[5], lh: '--lh: ' + x[5] + 'px', cat: x[6], t: x[7], state: x[8],
+        fg: white ? 'var(--banner-white)' : 'var(--banner-ink)', tone: L < 0.03 ? 'var(--banner-tone-dark)' : (white ? 'var(--banner-tone-light)' : 'var(--banner-tone-ink)'), ring: white ? 'var(--banner-ring-dark)' : 'var(--banner-ring-ink)', chipCls: x[0] === 'CyberGhost' ? 'banner__chip--dark' : '' };
+    });
+    return {
+      themeCls: dark ? 'dark' : '',
+      themeName: dark ? 'dark' : 'light',
+      themeLabel: dark ? 'dark' : 'light',
+      btnRows: [row('primary 48', 'btn--primary', 'Join the waitlist'), row('primary 44', 'btn--primary btn--44', 'Join the waitlist'), row('primary compact', 'btn--primary btn--compact', 'Join the waitlist'), row('secondary 48', 'btn--secondary btn--keep', 'Use a different address'), row('secondary 44 (phone)', 'btn--secondary btn--44', 'Send the link again')],
+      inputs: [
+        { id: 'a', state: 'default', cls: '', value: '', err: false },
+        { id: 'b', state: 'hover', cls: 'is-hover', value: '', err: false },
+        { id: 'c', state: 'focus', cls: 'is-focus', value: 'alexandra.konstantin', err: false },
+        { id: 'd', state: 'filled', cls: '', value: 'alexandra.konstantinidou@example.com', err: false },
+        { id: 'e', state: 'error', cls: 'is-invalid', value: 'alexandra.konstantinidou@example', err: true },
+        { id: 'f', state: 'disabled', cls: 'is-disabled', value: 'alexandra.konstantinidou@example.com', err: false }
+      ],
+      checks: [{ id: 'a', cls: '' }, { id: 'b', cls: 'is-hover' }, { id: 'c', cls: 'is-focus' }, { id: 'd', cls: 'is-checked' }],
+      bannerSet: bannerSet
+    };
+  }
+}
+</script>
+</body>
+</html>

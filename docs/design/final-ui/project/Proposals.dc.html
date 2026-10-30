@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Proposals</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 1800px">
+<h1 class="sheet__title">Proposals</h1>
+<p class="sheet__lede">Section 11.5. Three ideas outside the locked rules, each beside the compliant version. None appears in the main frames.</p>
+<section class="sheet__section"><h2>P1 · One display size for the hero H1</h2>
+<p><strong>Rule it would change:</strong> Section 4.2: six sizes only; H1 is 32/40 on desktop. <strong>Proposal:</strong> Adds 48/56 700 for the landing H1 at 1024+ only (phone and tablet stay 32/40). <strong>What it improves:</strong> The hero gains a clear first read at 1440 without a louder colour or a bigger visual; the scan path starts on the promise instead of the banner stack.</p>
+<div class="frames" style="column-gap: 48px"><div class="frame"><div class="frame__label"><span class="frame__n">A</span><span class="frame__name">Compliant (in the main frames)</span></div><div class="frame__screen"><div class="page page--fit " style="width: 760px; background: var(--paper); padding: 24px"><div style="padding: 48px 0;">
+<p class="hero__eyebrow" style=""><svg class="star star--sm" aria-hidden="true"><use href="./icons.svg#star"></use></svg>Digital goods you know are real.</p>
+<h1 class="t-h1 hero__title" style="">Premium digital goods, for less.</h1>
+<p class="t-body hero__lede" style="">Join the waitlist for earlier access to Valstara, a direct seller of digital goods backed by the Triple Guarantee.</p>
+<div class="signup" style="margin-top: 32px; color: var(--ink)"><label class="field__label">Email address</label><p class="field__hint">We'll email you a link to confirm your address.</p><div class="signup__row"><input class="input" type="email" placeholder="you@example.com" readonly="readonly"><button class="btn btn--primary" type="button">Join the waitlist</button></div></div>
+</div></div></div></div>
+<div class="frame"><div class="frame__label"><span class="frame__n">B</span><span class="frame__name">Proposal (needs the founder’s decision)</span></div><div class="frame__screen"><div class="page page--fit " style="width: 760px; background: var(--paper); padding: 24px"><div style="padding: 48px 0;">
+<p class="hero__eyebrow" style=""><svg class="star star--sm" aria-hidden="true"><use href="./icons.svg#star"></use></svg>Digital goods you know are real.</p>
+<h1 class="t-h1 hero__title" style="font-size: 48px; line-height: 56px">Premium digital goods, for less.</h1>
+<p class="t-body hero__lede" style="">Join the waitlist for earlier access to Valstara, a direct seller of digital goods backed by the Triple Guarantee.</p>
+<div class="signup" style="margin-top: 32px; color: var(--ink)"><label class="field__label">Email address</label><p class="field__hint">We'll email you a link to confirm your address.</p><div class="signup__row"><input class="input" type="email" placeholder="you@example.com" readonly="readonly"><button class="btn btn--primary" type="button">Join the waitlist</button></div></div>
+</div></div></div></div></div></section><section class="sheet__section"><h2>P2 · A midnight hero panel</h2>
+<p><strong>Rule it would change:</strong> Section 4.1: midnight is reserved for the guarantee band and the footer. <strong>Proposal:</strong> The hero text and form sit on a full-width midnight panel at 1024+; the form card stays white. <strong>What it improves:</strong> The page opens with the brand’s deepest colour, and the white form card becomes the brightest object on screen.</p>
+<div class="frames" style="column-gap: 48px"><div class="frame"><div class="frame__label"><span class="frame__n">A</span><span class="frame__name">Compliant (in the main frames)</span></div><div class="frame__screen"><div class="page page--fit " style="width: 760px; background: var(--paper); padding: 24px"><div style="padding: 48px 0;">
+<p class="hero__eyebrow" style=""><svg class="star star--sm" aria-hidden="true"><use href="./icons.svg#star"></use></svg>Digital goods you know are real.</p>
+<h1 class="t-h1 hero__title" style="">Premium digital goods, for less.</h1>
+<p class="t-body hero__lede" style="">Join the waitlist for earlier access to Valstara, a direct seller of digital goods backed by the Triple Guarantee.</p>
+<div class="signup" style="margin-top: 32px; color: var(--ink)"><label class="field__label">Email address</label><p class="field__hint">We'll email you a link to confirm your address.</p><div class="signup__row"><input class="input" type="email" placeholder="you@example.com" readonly="readonly"><button class="btn btn--primary" type="button">Join the waitlist</button></div></div>
+</div></div></div></div>
+<div class="frame"><div class="frame__label"><span class="frame__n">B</span><span class="frame__name">Proposal (needs the founder’s decision)</span></div><div class="frame__screen"><div class="page page--fit " style="width: 760px; background: var(--paper); padding: 24px"><div style="background: var(--midnight); color: var(--on-midnight); border-radius: 12px; padding: 48px;">
+<p class="hero__eyebrow" style="color: var(--on-midnight-600)"><svg class="star star--sm" aria-hidden="true"><use href="./icons.svg#star"></use></svg>Digital goods you know are real.</p>
+<h1 class="t-h1 hero__title" style="">Premium digital goods, for less.</h1>
+<p class="t-body hero__lede" style="color: var(--on-midnight-600)">Join the waitlist for earlier access to Valstara, a direct seller of digital goods backed by the Triple Guarantee.</p>
+<div class="signup" style="margin-top: 32px; color: var(--ink)"><label class="field__label">Email address</label><p class="field__hint">We'll email you a link to confirm your address.</p><div class="signup__row"><input class="input" type="email" placeholder="you@example.com" readonly="readonly"><button class="btn btn--primary" type="button">Join the waitlist</button></div></div>
+</div></div></div></div></div></section><section class="sheet__section"><h2>P3 · A CSS-only sticky header on long documents</h2>
+<p><strong>Rule it would change:</strong> Section 5.2: the header is not sticky. <strong>Proposal:</strong> position: sticky on the header for trust, legal and rules pages at 1024+, with a surface background and E1 once it touches the top (no script, no shrinking). <strong>What it improves:</strong> Navigation and "Join the waitlist" stay in reach on 3,000–8,000px documents where the phone join bar does not exist.</p>
+<div class="frames" style="column-gap: 48px"><div class="frame"><div class="frame__label"><span class="frame__n">A</span><span class="frame__name">Compliant (in the main frames)</span></div><div class="frame__screen"><div class="page page--fit" style="width: 760px; height: 480px; overflow: hidden; position: relative; background: var(--paper)">
+<div class="prose" style="padding: 32px 48px 0; max-width: none"><h2>Checking us for yourself</h2><p>Every limited company in Hong Kong is entered on the public register kept by the Hong Kong Companies Registry. You can search that register for 3NITY DIGITAL LIMITED and compare what it shows with the details above.</p><p>The same company details appear in section 1 of the official rules for our launch giveaway, published at valstara.com/giveaway/rules. Every version of those rules stays online at its own permanent address, so no change to them can happen quietly.</p><h2>How to reach us</h2><p>Write to support@valstara.com with any question about Valstara, the waitlist or the giveaway.</p></div>
+<p class="t-label" style="position: absolute; right: 16px; bottom: 12px; color: var(--ink-600)">crop of /legit, 1,400px down</p></div></div></div>
+<div class="frame"><div class="frame__label"><span class="frame__n">B</span><span class="frame__name">Proposal (needs the founder’s decision)</span></div><div class="frame__screen"><div class="page page--fit" style="width: 760px; height: 480px; overflow: hidden; position: relative; background: var(--paper)"><div style="position: absolute; left: 0; right: 0; top: 0; z-index: 3; background: var(--surface); box-shadow: var(--shadow-1)"><dc-import name="Header" context="trust" hint-size="100%,80px"></dc-import></div>
+<div class="prose" style="padding: 104px 48px 0; max-width: none"><h2>Checking us for yourself</h2><p>Every limited company in Hong Kong is entered on the public register kept by the Hong Kong Companies Registry. You can search that register for 3NITY DIGITAL LIMITED and compare what it shows with the details above.</p><p>The same company details appear in section 1 of the official rules for our launch giveaway, published at valstara.com/giveaway/rules. Every version of those rules stays online at its own permanent address, so no change to them can happen quietly.</p><h2>How to reach us</h2><p>Write to support@valstara.com with any question about Valstara, the waitlist or the giveaway.</p></div>
+<p class="t-label" style="position: absolute; right: 16px; bottom: 12px; color: var(--ink-600)">crop of /legit, 1,400px down</p></div></div></div></div></section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":1800,"height":2600}}'>
+class Component extends DCLogic {
+  renderVals() { return { themeCls: this.props.theme === 'dark' ? 'dark' : '' }; }
+}
+</script>
+</body>
+</html>

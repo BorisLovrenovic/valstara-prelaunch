@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>/unsubscribe and /dsr · every state · 390</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 3584px">
+<h1 class="sheet__title">/unsubscribe and /dsr · every state · 390</h1>
+<p class="sheet__lede">One task-card pattern for every state: a left-aligned card in cols 1–7, a state tile beside the H1, one line, any form, then at most one primary and one secondary. Outcome notices carry an icon; error notices a 1.5px error rule. Turnstile renders compact. The header Join is secondary here.</p>
+<section class="sheet__section">
+<h2>390 wide</h2>
+<div class="frames" style="column-gap: 48px">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">01</span><span class="frame__name">Unsubscribe · confirm</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">One primary and one plain secondary; nothing pre-selected.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="unsub-confirm" uid="tas390unsubconfirm" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">02</span><span class="frame__name">Unsubscribe · complete</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Success tile, one line, no further action.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="unsub-complete" uid="tas390unsubcomplete" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">03</span><span class="frame__name">Unsubscribe · invalid link</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Neutral, not an error: the link has expired.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="unsub-invalid" uid="tas390unsubinvalid" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">04</span><span class="frame__name">Unsubscribe · failed</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Error tile and "Try again".</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="unsub-failed" uid="tas390unsubfailed" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">05</span><span class="frame__name">Unsubscribe · rate limited</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Clock tile; the wait is honest.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="unsub-rate" uid="tas390unsubrate" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">06</span><span class="frame__name">Data · request</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Email field, the one primary, the privacy link and the compact Turnstile slot.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="dsr-request" uid="tas390dsrrequest" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">07</span><span class="frame__name">Data · accepted</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">The same reply whether or not the address is on the list.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="dsr-accepted" uid="tas390dsraccepted" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">08</span><span class="frame__name">Data · confirm export</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">From the emailed link.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="dsr-export" uid="tas390dsrexport" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">09</span><span class="frame__name">Data · confirm erasure</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">The retained-records caveat is in the line, with the privacy link under the button.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="dsr-erase" uid="tas390dsrerase" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">10</span><span class="frame__name">Data · erasure pending</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">After confirmation.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="dsr-pending" uid="tas390dsrpending" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">11</span><span class="frame__name">Data · already used</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Export links work once; the form returns.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="dsr-used" uid="tas390dsrused" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">12</span><span class="frame__name">Data · invalid link</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Info notice above the request form.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="dsr-invalid" uid="tas390dsrinvalid" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">13</span><span class="frame__name">Data · unavailable</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Error notice with a 1.5px error rule; the typed address is kept.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="dsr-unavailable" uid="tas390dsrunavailable" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">14</span><span class="frame__name">Data · rate limited</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">15-minute wait.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="dsr-rate" uid="tas390dsrrate" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">15</span><span class="frame__name">Data · check failed</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Security check did not go through.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="dsr-failed" uid="tas390dsrfailed" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">16</span><span class="frame__name">Data · no JavaScript</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">The button stays disabled and the notice says why.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Task" theme="{{themeName}}" annotations="{{ann}}" state="dsr-nojs" uid="tas390dsrnojs" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":3584,"height":3000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    return { themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light', ann: !!this.props.annotations };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Task pages</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="page {{themeCls}} {{annCls}}">
+<dc-import name="Header" theme="{{themeName}}" annotations="{{ann}}" context="site" hint-size="100%,80px"></dc-import>
+<main id="main" class="page-main rel">
+<div class="ann ann-grid" aria-hidden="true"><div class="wrap"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+<div class="wrap">
+<div class="task-stack">
+<sc-for list="{{cards}}" as="c" hint-placeholder-count="1">
+<sc-if value="{{c.label}}" hint-placeholder-val="{{false}}"><p class="strip__label">{{c.label}}</p></sc-if>
+<div class="task">
+<section class="card task-card rel" aria-labelledby="t-{{c.id}}">
+<div class="task-card__head"><span class="tile tile--lg {{c.tileCls}}"><svg class="icon" aria-hidden="true"><use href="./icons.svg#{{c.icon}}"></use></svg></span><h1 class="t-h1" id="t-{{c.id}}">{{c.h1}}</h1></div>
+<sc-if value="{{c.line}}" hint-placeholder-val="{{true}}"><p class="task-card__line t-body">{{c.line}}</p></sc-if>
+<sc-if value="{{c.notice}}" hint-placeholder-val="{{false}}"><div class="notice {{c.noticeCls}} task-card__notice" role="{{c.noticeRole}}"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#{{c.noticeIcon}}"></use></svg><p>{{c.notice}}</p></div></sc-if>
+
+<sc-if value="{{c.emailForm}}" hint-placeholder-val="{{false}}">
+<form class="task-card__form" action="#">
+<div class="field"><label class="field__label" for="te-{{c.id}}">Email address</label><input class="input field__control" id="te-{{c.id}}" type="email" autocomplete="email" placeholder="you@example.com" value="{{c.email}}" readonly="readonly"></div>
+<sc-if value="{{c.turnstile}}" hint-placeholder-val="{{false}}"><div class="rel"><div class="turnstile turnstile--compact"><span class="turnstile__box" aria-hidden="true"></span><span>Cloudflare Turnstile · compact 150 × 140</span></div><span class="ann" style="left: 166px; top: 8px"><span class="ann__chip">compact on task pages · only when the check needs interaction</span></span></div></sc-if>
+</form>
+</sc-if>
+
+<sc-if value="{{c.awardForm}}" hint-placeholder-val="{{false}}">
+<form class="task-card__form" action="#">
+<h2 class="card-title">Confirm your eligibility</h2>
+<div class="field"><label class="field__label" for="tc-{{c.id}}">Country of residence (two-letter country code)</label><div class="select-wrap field__control" style="max-width: 16rem"><select class="input" id="tc-{{c.id}}"><option>{{c.country}}</option></select><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#chevron-down"></use></svg></div></div>
+<label class="check {{c.ageCls}}" for="ta-{{c.id}}"><input class="check__input" id="ta-{{c.id}}" type="checkbox"><span class="check__box"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg></span><span class="check__text c-ink w-500">I confirm that I am 18 or older.</span></label>
+<div class="field"><label class="field__label" for="ts-{{c.id}}">If you live in Canada: what is (8 × 7) − 6?</label><input class="input input--short field__control {{c.skillCls}}" id="ts-{{c.id}}" type="text" inputmode="numeric" value="{{c.skill}}" readonly="readonly"><sc-if value="{{c.awardErr}}" hint-placeholder-val="{{false}}"><p class="field__error"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#alert-circle"></use></svg>Please check your response and try again.</p></sc-if></div>
+<label class="check" for="tp-{{c.id}}"><input class="check__input" id="tp-{{c.id}}" type="checkbox"><span class="check__box"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg></span><span class="check__text"><span class="pill--optional">Optional</span>I separately permit use of a photograph or testimonial I provide.</span></label>
+</form>
+</sc-if>
+
+<sc-if value="{{c.subst}}" hint-placeholder-val="{{false}}">
+<div class="task-card__form">
+<h2 class="card-title">Choose a replacement</h2>
+<p class="t-body c-600" style="margin-top: calc(-1 * var(--space-1-5))">A product in your bundle is unavailable. Choose replacement goods so your bundle keeps at least its stated retail value, or decline replacements to receive the unavailable product’s retail value in cash.</p>
+<div class="options rel" role="group" aria-label="Replacement goods">
+<sc-for list="{{c.options}}" as="o" hint-placeholder-count="3"><label class="option {{o.cls}}"><span class="check__box" aria-hidden="true"><svg class="icon"><use href="./icons.svg#check"></use></svg></span><span class="option__name">{{o.name}}</span><span class="option__value">{{o.value}}</span></label></sc-for>
+<span class="ann" style="right: 8px; top: -11px"><span class="ann__chip">{dyn} from the award catalogue · "{Product name} — €{0.00}" · mono values</span></span>
+</div>
+<p class="deadline rel"><svg class="icon" aria-hidden="true"><use href="./icons.svg#clock"></use></svg><span>Choose by <span class="t-mono">2026-11-11T23:59:00.000Z</span>. If you do not choose, the cash option applies.</span><span class="ann" style="right: 0; top: -22px"><span class="ann__chip">{dyn} date (ISO, as the copy layer prints it)</span></span></p>
+</div>
+</sc-if>
+
+<sc-if value="{{c.hasActions}}" hint-placeholder-val="{{true}}">
+<div class="task-card__actions">
+<sc-for list="{{c.actions}}" as="a" hint-placeholder-count="2"><a class="btn {{a.cls}}" href="#"><sc-if value="{{a.icon}}" hint-placeholder-val="{{false}}"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#{{a.icon}}"></use></svg></sc-if>{{a.text}}</a></sc-for>
+</div>
+</sc-if>
+<sc-if value="{{c.link}}" hint-placeholder-val="{{false}}"><a class="link link-arrow task-card__link" href="/privacy">{{c.link}}<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a></sc-if>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">{{c.ann}}</span></span>
+</section>
+</div>
+</sc-for>
+</div>
+</div>
+</main>
+<div class="footer-slot"><dc-import name="Footer" theme="{{themeName}}" annotations="{{ann}}" hint-size="100%,360px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["unsub-confirm","unsub-complete","unsub-invalid","unsub-failed","unsub-rate","dsr-request","dsr-accepted","dsr-export","dsr-erase","dsr-pending","dsr-used","dsr-invalid","dsr-unavailable","dsr-rate","dsr-failed","dsr-nojs","award-eligibility","award-errors","award-substitution","award-confirmed","award-recorded","award-closed","award-blocked","e404","e500"],"default":"unsub-confirm"},"uid":{"editor":"string","default":"t"},"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    var s = this.props.state || 'unsub-confirm';
+    var uid = this.props.uid || 't';
+    var P = function (t, i) { return { cls: 'btn--primary', text: t, icon: i || '' }; };
+    var S = function (t, i) { return { cls: 'btn--secondary', text: t, icon: i || '' }; };
+    var SW = function (t) { return { cls: 'btn--secondary btn--keep btn--wrap', text: t, icon: '' }; };
+    var N = function (cls, icon, text) { return { noticeCls: cls, noticeIcon: icon, notice: text, noticeRole: cls === 'notice--error' ? 'alert' : 'status' }; };
+    var ok = function (t) { return N('notice--success', 'check-circle', t); };
+    var info = function (t) { return N('notice--info', 'info', t); };
+    var err = function (t) { return N('notice--error', 'alert-circle', t); };
+    var wait = function (t) { return N('', 'clock', t); };
+    var dsr = { h1: 'Your data', icon: 'shield', line: 'Request a copy of your data or erase your waitlist record.', emailForm: true, actions: [P('Email me a confirmation link')], link: 'Read the privacy notice' };
+    var award = { h1: 'Your giveaway award', icon: 'gift', line: '' };
+    var o = function (h1, icon, tile, line, extra) { return Object.assign({ h1: h1, icon: icon, tileCls: tile || '', line: line || '' }, extra || {}); };
+    var A = function (x) { return Object.assign({}, award, x); };
+    var opts = [{ name: 'ChatGPT Plus, 3 months', value: '€66.00', cls: 'is-selected' }, { name: 'Microsoft 365 Personal, 12 months', value: '€99.00', cls: 'is-selected' }, { name: 'Steam gift card', value: '€50.00', cls: '' }];
+    var T = {
+      'unsub-confirm': [o('Choose what to stop', 'mail', '', 'A marketing email link stops marketing. A service email link stops all email. You can also leave the waitlist entirely.', { actions: [P('Unsubscribe from this email'), S('Leave the waitlist and stop all email')] })],
+      'unsub-complete': [o('Your choice is saved', 'check-circle', 'tile--success', 'Your email preference has been updated.')],
+      'unsub-invalid': [o('This link is not available', 'link', 'tile--neutral', 'This email preference link has expired or is invalid.')],
+      'unsub-failed': [o('That did not work', 'alert-circle', 'tile--error', 'Your choice was not saved. Please try again.', { actions: [P('Try again', 'refresh')] })],
+      'unsub-rate': [o('Please wait a moment', 'clock', 'tile--neutral', 'Too many attempts. Please try again in a few minutes.')],
+      'dsr-request': [Object.assign({}, dsr, { turnstile: true })],
+      'dsr-accepted': [Object.assign({}, dsr, ok('If this address has a waitlist record, we will email a confirmation link.'), { email: 'alexandra.konstantinidou@example.com', actions: [], link: 'Read the privacy notice', emailForm: false })],
+      'dsr-export': [o('Download your data', 'download', '', 'Confirm to download the data held about your waitlist record.', { actions: [P('Download my data', 'download')] })],
+      'dsr-erase': [o('Erase your data', 'erase', '', 'Confirm to stop processing your waitlist record and request erasure. The privacy notice explains the retained award records, backups and delivery logs.', { actions: [P('Request erasure')], link: 'Read the privacy notice' })],
+      'dsr-pending': [o('Erase your data', 'clock', 'tile--neutral', '', ok('If your erasure request was confirmed, processing has stopped and deletion is in progress.'))],
+      'dsr-used': [Object.assign({}, dsr, info('This link has already been used. Request another link if you need a new copy.'))],
+      'dsr-invalid': [Object.assign({}, dsr, info('This link is not available. Request another link using your email address.'))],
+      'dsr-unavailable': [Object.assign({}, dsr, err('We cannot complete this request right now. Please try again shortly.'), { email: 'alexandra.konstantinidou@example.com' })],
+      'dsr-rate': [Object.assign({}, dsr, wait('Too many attempts. Please try again in 15 minutes.'), { email: 'alexandra.konstantinidou@example.com' })],
+      'dsr-failed': [Object.assign({}, dsr, err('That did not go through. Please try again.'), { email: 'alexandra.konstantinidou@example.com' })],
+      'dsr-nojs': [Object.assign({}, dsr, info('Enable JavaScript to request a confirmation link.'), { actions: [{ cls: 'btn--primary is-disabled', text: 'Email me a confirmation link', icon: '' }] })],
+      'award-eligibility': [A({ awardForm: true, country: 'SE', actions: [P('Send my response')] })],
+      'award-errors': [A({ awardForm: true, country: 'CA', skill: '56', skillCls: 'is-invalid', awardErr: true, ageCls: 'is-checked', actions: [P('Send my response')] })],
+      'award-substitution': [A({ subst: true, options: opts, actions: [P('Choose these replacement goods'), SW('I do not want replacement goods; pay the unavailable product’s retail value in cash.')] })],
+      'award-confirmed': [A(Object.assign({ icon: 'check-circle', tileCls: 'tile--success' }, ok('Your award is confirmed.')))],
+      'award-recorded': [
+        A(Object.assign({ label: 'Response recorded', icon: 'check-circle', tileCls: 'tile--success' }, ok('Your response has been recorded.'))),
+        A(Object.assign({ label: 'Replacement recorded', icon: 'check-circle', tileCls: 'tile--success' }, ok('Your replacement choice has been recorded.'))),
+        A(Object.assign({ label: 'Cash substitution recorded', icon: 'check-circle', tileCls: 'tile--success' }, ok('The cash substitution has been recorded for this award.')))
+      ],
+      'award-closed': [
+        A(Object.assign({ label: 'No reserve remains', tileCls: 'tile--neutral' }, info('No reserve remains for this prize.'))),
+        A(Object.assign({ label: 'Not eligible', tileCls: 'tile--neutral' }, info('You are not eligible for this prize under the published rules.'))),
+        A(Object.assign({ label: 'Link not available', icon: 'link', tileCls: 'tile--neutral' }, info('This award link is not available. Please check the link in your email.'))),
+        A(Object.assign({ label: 'Responses paused', icon: 'pause', tileCls: 'tile--neutral' }, info('Award responses are unavailable right now. Please try again later.')))
+      ],
+      'award-blocked': [
+        A(Object.assign({ label: 'Security check failed', awardForm: true, country: 'SE', ageCls: 'is-checked', actions: [P('Send my response')] }, err('That security check did not go through. Please try again.'))),
+        A(Object.assign({ label: 'Rate limited', tileCls: 'tile--neutral' }, wait('Too many attempts — try again in a few minutes.'))),
+        A(Object.assign({ label: 'No JavaScript', awardForm: true, country: 'SE', actions: [{ cls: 'btn--primary is-disabled', text: 'Send my response', icon: '' }] }, info('JavaScript is required to complete the security check.')))
+      ],
+      'e404': [o('We could not find that page', 'search-check', 'tile--neutral', 'The link may be mistyped, or the page may have moved.', { actions: [P('Go to the home page'), S('Is Valstara legit?')] })],
+      'e500': [o('Something went wrong on our side', 'alert', 'tile--neutral', 'Please try again in a few minutes.', { actions: [P('Go to the home page'), S('Is Valstara legit?')] })]
+    };
+    var cards = (T[s] || T['unsub-confirm']).map(function (c, i) {
+      var a = c.actions || [];
+      return Object.assign({ id: uid + i, label: '', tileCls: '', line: '', notice: '', noticeCls: '', noticeIcon: 'info', noticeRole: 'status', emailForm: false, email: '', turnstile: false, awardForm: false, country: 'SE', ageCls: '', skill: '', skillCls: '', awardErr: false, subst: false, options: [], link: '' }, c, {
+        hasActions: a.length > 0, actions: a,
+        ann: 'task card E1 · cols 1–7 · pad 40 (24 small) · tile 48 + t-h1 · one primary at most + one secondary · actions stack full width below 768'
+      });
+    });
+    return { themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light', ann: !!this.props.annotations, annCls: this.props.annotations ? 'show-ann' : '', cards: cards };
+  }
+}
+</script>
+</body>
+</html>

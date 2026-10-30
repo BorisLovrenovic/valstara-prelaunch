@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mobile sticky signup bar · seven frames</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}} {{annCls}}" style="width: 3184px">
+<h1 class="sheet__title">Mobile sticky signup bar</h1>
+<p class="sheet__lede">Phone widths only (below 768). Docked to the bottom on surface with the upward sticky shadow, clearing the home indicator with max(12px, env(safe-area-inset-bottom)). Email, Join and the microline; no checkbox. It slides in over 200ms once the hero form leaves the viewport (no motion under reduced motion), never appears when signups are paused and is never a modal. The page gains bottom padding equal to the bar, and scroll-padding-bottom keeps focus 16px clear of it.</p>
+<div class="frames">
+<sc-for list="{{frames}}" as="f" hint-placeholder-count="7">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">{{f.n}}</span><span class="frame__name">{{f.name}}</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 60px">{{f.note}}</p>
+<div class="frame__screen" style="width: 390px; height: 844px">
+<div style="position: absolute; left: 0; right: 0; top: {{f.top}}">
+<dc-import name="Main" theme="{{themeName}}" focus-demo="{{f.focus}}" uid="{{f.uid}}" hint-size="100%,6600px"></dc-import>
+</div>
+<sc-if value="{{f.bar}}" hint-placeholder-val="{{true}}">
+<div class="page page--fit {{themeCls}}" style="position: absolute; left: 0; right: 0; bottom: 0; min-height: 0; background: transparent">
+<div class="sticky-bar" role="region" aria-label="Join the waitlist" style="position: relative">
+<sc-if value="{{f.form}}" hint-placeholder-val="{{true}}">
+<label class="field__label" for="sb-{{f.uid}}" style="font-size: var(--step-0); line-height: var(--leading-0)">Email address</label>
+<div class="sticky-bar__row {{f.rowCls}}"><input class="input {{f.inputCls}}" id="sb-{{f.uid}}" type="email" autocomplete="email" placeholder="you@example.com" value="{{f.value}}" readonly="readonly" aria-invalid="{{f.invalid}}" aria-describedby="sb-{{f.uid}}-e"><button class="btn btn--primary {{f.btnCls}}" type="submit"><sc-if value="{{f.spin}}" hint-placeholder-val="{{false}}"><span class="spinner" aria-hidden="true"></span></sc-if>{{f.btnLabel}}</button></div>
+<sc-if value="{{f.err}}" hint-placeholder-val="{{false}}"><p class="field__error" id="sb-{{f.uid}}-e"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#alert-circle"></use></svg>Enter a valid email address.</p></sc-if>
+<p class="sticky-bar__micro">Open to people aged 18 and over. No purchase necessary. <a class="link link--tap" href="/giveaway/rules">See the giveaway rules</a>.</p>
+</sc-if>
+<sc-if value="{{f.done}}" hint-placeholder-val="{{false}}">
+<div class="sticky-bar__done" role="status"><p><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#check-circle"></use></svg>Check your inbox.</p><button class="btn btn--secondary" type="button">Close</button></div>
+</sc-if>
+<span class="ann" style="right: 8px; top: -24px"><span class="ann__chip">{{f.chip}}</span></span>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{f.focus}}" hint-placeholder-val="{{false}}"><div class="ann fold-line" style="top: 670px; border-top-style: dotted"><span>16px clear of the bar</span></div></sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":3184,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    var email = 'alexandra.konstantinidou@example.com';
+    var base = { rowCls: '', bar: true, form: true, done: false, focus: false, inputCls: '', value: '', invalid: 'false', btnCls: '', spin: false, btnLabel: 'Join the waitlist', err: false, chip: '' };
+    var F = [
+      { n: '1', name: 'Hero in view', note: 'The hero form is on screen, so the bar stays hidden. It never covers the hero.', top: '0px', bar: false },
+      { n: '2', name: 'Scrolled past the hero', note: 'The bar slides in over the catalogue. The page gains matching bottom padding.', top: '-900px', chip: 'surface · E2 upward · safe area 34' },
+      { n: '3', name: 'Focus while tabbing', note: 'The focused FAQ item lands 16px above the bar (scroll-padding-bottom).', top: '-4955px', focus: true, chip: 'focus never hidden (2.4.11)' },
+      { n: '4', name: 'Inline error', note: 'The bar grows upward; the error is linked to its field.', top: '-2045px', inputCls: 'is-invalid', invalid: 'true', value: 'alexandra.konstantinidou@example', err: true, chip: 'grows upward' },
+      { n: '5', name: 'Submitting', note: 'Disabled button with spinner and the in-flight label.', top: '-1300px', value: email, btnCls: 'is-loading', spin: true, btnLabel: 'Adding you to the waitlist…', rowCls: 'is-busy', chip: 'in flight · button takes its own row' },
+      { n: '6', name: 'Success', note: 'Collapses to one row: check icon, "Check your inbox." and Close.', top: '-3442px', form: false, done: true, chip: 'one row · no count or rank' },
+      { n: '7', name: 'Footer in view', note: 'The bar hides so footer links and legal lines are never covered.', top: '-5698px', bar: false }
+    ];
+    return {
+      themeCls: dark ? 'dark' : '',
+      themeName: dark ? 'dark' : 'light',
+      annCls: this.props.annotations ? 'show-ann' : '',
+      frames: F.map(function (x) { return Object.assign({}, base, x, { uid: 'sk' + x.n }); })
+    };
+  }
+}
+</script>
+</body>
+</html>

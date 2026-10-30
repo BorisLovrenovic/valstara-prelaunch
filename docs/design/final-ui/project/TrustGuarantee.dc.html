@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>/guarantee · The Triple Guarantee</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 2822px">
+<h1 class="sheet__title">/guarantee · The Triple Guarantee</h1>
+<p class="sheet__lede">The one document band on midnight: this page is the guarantee. Promises I, II and III are styled from outside the article at 32/40 with a 2px ink rule, and their first line at 20/28, so they carry the landing band’s weight without touching the text. No "Read the guarantee" link on this page.</p>
+<section class="sheet__section" style="margin-top: var(--space-5)">
+<div class="frames" style="column-gap: 48px">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">1440</span><span class="frame__name">1440</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px"></p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Doc" theme="{{themeName}}" annotations="{{ann}}" page="guarantee" uid="trus1440guarantee" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">768</span><span class="frame__name">768</span></div>
+<p class="frame__note" style="max-width: 768px; min-height: 40px"></p>
+<div class="frame__screen" style="width: 768px">
+<dc-import name="Doc" theme="{{themeName}}" annotations="{{ann}}" page="guarantee" uid="trus768guarantee" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">390</span><span class="frame__name">390 · join bar visible</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px"></p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Doc" theme="{{themeName}}" annotations="{{ann}}" page="guarantee" uid="trus390guarantee" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":2822,"height":5000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    return { themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light', ann: !!this.props.annotations };
+  }
+}
+</script>
+</body>
+</html>

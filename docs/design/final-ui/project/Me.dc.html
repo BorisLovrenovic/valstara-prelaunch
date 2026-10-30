@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>/me page</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="page {{themeCls}} {{annCls}}">
+<dc-import name="Header" theme="{{themeName}}" annotations="{{ann}}" context="site" hint-size="100%,80px"></dc-import>
+<main id="main" class="page-main rel">
+<div class="ann ann-grid" aria-hidden="true"><div class="wrap"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+<div class="wrap">
+
+<sc-if value="{{isTask}}" hint-placeholder-val="{{false}}">
+<div class="task">
+<section class="card task-card rel" aria-labelledby="m-h1-{{uid}}">
+<div class="task-card__head"><span class="tile tile--lg tile--neutral"><svg class="icon" aria-hidden="true"><use href="./icons.svg#{{tileIcon}}"></use></svg></span><h1 class="t-h1" id="m-h1-{{uid}}">{{h1}}</h1></div>
+<p class="task-card__line t-body">{{line}}</p>
+<sc-if value="{{recoveryForm}}" hint-placeholder-val="{{false}}"><div class="task-card__actions"><button class="btn btn--primary" type="submit">Email me a new link</button></div></sc-if>
+<sc-if value="{{recoverySent}}" hint-placeholder-val="{{false}}"><div class="notice notice--success task-card__notice" role="status"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#check-circle"></use></svg><p>If this link can be renewed, a new one will arrive by email.</p></div></sc-if>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">task card E1 · cols 1–7 · pad 40 (24 small) · tile 48 neutral + t-h1</span></span>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{isStrip}}" hint-placeholder-val="{{false}}">
+<div class="strip">
+<sc-for list="{{strip}}" as="x" hint-placeholder-count="3">
+<p class="strip__label">{{x.label}}</p>
+<sc-if value="{{x.pref}}" hint-placeholder-val="{{true}}">
+<section class="card card--roomy" aria-label="Preferences">
+<h2 class="card-title">Preferences</h2>
+<div class="pref-block" style="margin-top: var(--space-2)">
+<h3 class="t-small w-600">Marketing email</h3>
+<div class="pref-switch"><p>Yes, email me weekly updates and product news from Valstara. I can switch this off at any time.</p><div class="switch-row"><button class="switch is-on" type="button" role="switch" aria-checked="true" aria-label="Turn off marketing email"><span class="switch__knob"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg></span></button><span class="switch-state">On</span></div></div>
+<div class="notice notice--error" role="alert" style="margin-top: var(--space-2)"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#alert-circle"></use></svg><p>{{x.text}}</p></div>
+</div>
+</section>
+</sc-if>
+<sc-if value="{{x.ref}}" hint-placeholder-val="{{false}}">
+<section class="card card--roomy" aria-label="Your referral link">
+<div class="card-head"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#people"></use></svg></span><h2 class="card-title">Your referral link</h2></div>
+<div class="ref-row"><p class="linkbox {{x.linkCls}}" aria-label="Referral link">https://valstara.com/<wbr>?ref=<span class="linkbox__code">K7QX2MPR9AZB</span></p><button class="btn btn--primary" type="button"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#{{x.icon}}"></use></svg>Copy referral link</button></div>
+<p class="ref-status {{x.statusCls}}" role="status"><svg class="icon" aria-hidden="true"><use href="./icons.svg#{{x.statusIcon}}"></use></svg>{{x.text}}</p>
+</section>
+</sc-if>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isDash}}" hint-placeholder-val="{{true}}">
+<div class="vgrid">
+
+<section class="card card--roomy rel" aria-labelledby="m-h1-{{uid}}">
+<div class="me-head"><h1 class="t-h1" id="m-h1-{{uid}}">Your waitlist status</h1><p class="t-body">This private page shows the waitlist details attached to this link.</p></div>
+<dl class="facts {{factsCls}}">
+<div class="fact"><dt>Status</dt><dd><svg class="icon" aria-hidden="true"><use href="./icons.svg#check-circle"></use></svg>Verified</dd></div>
+<div class="fact rel"><dt>Access wave</dt><dd class="{{waveDd}}"><sc-if value="{{wave}}" hint-placeholder-val="{{true}}"><span class="badge-wave"><span class="badge-wave__bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span>Wave 2</span></sc-if><sc-if value="{{noWave}}" hint-placeholder-val="{{false}}">Not assigned yet</sc-if></dd><span class="ann" style="right: 6px; top: -11px"><span class="ann__chip">{dyn}</span></span></div>
+<div class="fact rel"><dt>Your rank</dt><dd class="{{rankDd}}">{{rank}}</dd><span class="ann" style="right: 6px; top: -11px"><span class="ann__chip">{dyn}</span></span></div>
+<div class="fact rel"><dt>Confirmed referrals</dt><dd class="is-mono">{{refs}}</dd><span class="ann" style="right: 6px; top: -11px"><span class="ann__chip">{dyn}</span></span></div>
+<div class="fact rel"><dt>Referral tier</dt><dd class="is-mono">{{tier}}</dd><span class="ann" style="right: 6px; top: -11px"><span class="ann__chip">{dyn}</span></span></div>
+<sc-if value="{{entries}}" hint-placeholder-val="{{true}}"><div class="fact rel"><dt>Giveaway entries</dt><dd class="is-mono">{{entryCount}}</dd><span class="ann" style="right: 6px; top: -11px"><span class="ann__chip">{dyn} · only when ≥ 1</span></span></div></sc-if>
+</dl>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">cols 1–12 · E1 · pad 32 · facts: 2 / 3 / 5–6 cols · wells paper · figures mono t-h3</span></span>
+</section>
+
+<section class="card card--roomy g-main rel" aria-labelledby="m-ref-{{uid}}">
+<div class="card-head"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#people"></use></svg></span><h2 class="card-title" id="m-ref-{{uid}}">Your referral link</h2></div>
+<div class="ref-row"><p class="linkbox" aria-label="Referral link">https://valstara.com/<wbr>?ref=<span class="linkbox__code">K7QX2MPR9AZB</span></p><button class="btn btn--primary" type="button"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#copy"></use></svg>Copy referral link</button></div>
+<div class="share-phone"><button class="btn btn--secondary btn--keep" type="button" style="width: 100%"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#upload-share"></use></svg>Share link</button></div>
+<div class="well progress-well rel">
+<div class="meter"><div class="meter__top"><span class="label-sm">Progress</span><span class="meter__value">{{progress}}</span></div><div class="meter__track" aria-hidden="true"><sc-for list="{{segs}}" as="g" hint-placeholder-count="6"><i class="meter__seg {{g.cls}}"></i></sc-for></div></div>
+<span class="ann" style="right: 8px; top: -11px"><span class="ann__chip">{dyn} count, threshold, next tier</span></span>
+</div>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">cols 1–7 · E1 · Copy referral link is the page's one primary</span></span>
+</section>
+
+<section class="card card--roomy g-side rel" aria-labelledby="m-rw-{{uid}}">
+<div class="card-head"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#gift"></use></svg></span><h2 class="card-title" id="m-rw-{{uid}}">Referral rewards</h2></div>
+<sc-if value="{{rewards}}" hint-placeholder-val="{{true}}">
+<ul class="reward-rows" style="margin-top: var(--space-1)">
+<li><span class="reward-rows__kind">Access-wave upgrade</span><span class="badge-state badge-state--settled"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>Settled</span><span class="reward-rows__tier">Tier 1</span><p class="reward-rows__why">Settled rewards are already earned.</p></li>
+<li><span class="reward-rows__kind">Launch discount</span><span class="badge-state badge-state--held"><svg class="icon" aria-hidden="true"><use href="./icons.svg#clock"></use></svg>Held</span><span class="reward-rows__tier">Tier 1</span><p class="reward-rows__why">Held discounts require the referred person’s first order within 90 days after store launch.</p></li>
+</ul>
+</sc-if>
+<sc-if value="{{noRewards}}" hint-placeholder-val="{{false}}"><div class="well" style="margin-top: var(--space-2)"><p class="t-small c-600">No referral rewards yet.</p></div></sc-if>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">cols 8–12 · rows: kind 600 · tier mono 13 · state by icon, fill and word · {dyn} rows</span></span>
+</section>
+
+<section class="card card--roomy g-main rel" aria-labelledby="m-pf-{{uid}}">
+<h2 class="card-title" id="m-pf-{{uid}}">Preferences</h2>
+<div class="pref-block" style="margin-top: var(--space-2)">
+<h3 class="t-small w-600">Marketing email</h3>
+<div class="pref-switch"><p>Yes, email me weekly updates and product news from Valstara. I can switch this off at any time.</p><div class="switch-row"><button class="switch {{swCls}}" type="button" role="switch" aria-checked="{{swOn}}" aria-label="{{swLabel}}"><span class="switch__knob"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg></span></button><span class="switch-state">{{swText}}</span></div></div>
+<sc-if value="{{saved}}" hint-placeholder-val="{{false}}"><div class="notice notice--success" role="status" style="margin-top: var(--space-2)"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#check-circle"></use></svg><p>Your marketing email preference is updated.</p></div></sc-if>
+</div>
+<div class="pref-block">
+<details class="disclosure" open="{{discOpen}}"><summary>Update your launch preferences<span class="qa__chev" aria-hidden="true"><svg class="icon"><use href="./icons.svg#chevron-down"></use></svg></span></summary>
+<div class="survey">
+<fieldset class="survey__q" style="margin-top: var(--space-1)"><legend>What digital goods interest you?</legend><div class="chips">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="7"><label class="chip-option {{c.cls}}"><input type="checkbox"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>{{c.label}}</label></sc-for>
+</div></fieldset>
+<fieldset class="survey__q"><legend>How often do you buy digital goods?</legend><div class="segmented" role="radiogroup">
+<sc-for list="{{freqs}}" as="f" hint-placeholder-count="4"><label class="segment {{f.cls}}"><input type="radio" name="mfreq-{{uid}}"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>{{f.label}}</label></sc-for>
+</div></fieldset>
+<div class="survey__actions" style="display: flex"><button class="btn btn--secondary btn--keep" type="submit">Save updated preferences</button></div>
+</div>
+</details>
+</div>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">cols 1–7 · switch 44 × 24, 44 target · state in knob, glyph and word</span></span>
+</section>
+
+<section class="card card--roomy g-side rel" aria-labelledby="m-dt-{{uid}}">
+<h2 class="card-title" id="m-dt-{{uid}}">Your data</h2>
+<div class="data-links">
+<a href="/dsr"><span class="tile"><svg class="icon" aria-hidden="true"><use href="./icons.svg#download"></use></svg></span><span>Download your data</span><svg class="icon" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a>
+<a href="/dsr"><span class="tile"><svg class="icon" aria-hidden="true"><use href="./icons.svg#erase"></use></svg></span><span>Erase your data</span><svg class="icon" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a>
+</div>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">cols 8–12 · link rows 56 · both go to /dsr</span></span>
+</section>
+
+<section class="leave-wrap rel" aria-labelledby="m-lv-{{uid}}">
+<div class="leave">
+<div><h2 class="t-h3" id="m-lv-{{uid}}">Leave the waitlist</h2><p class="t-small">This stops all Valstara email to this address.</p></div>
+<button class="btn btn--secondary btn--keep" type="submit">Leave the waitlist and stop all email</button>
+</div>
+<span class="ann" style="right: 0; top: -30px"><span class="ann__chip">set apart: 48 / 64 above, 1px rule · plain secondary · no confirm step, no plea</span></span>
+</section>
+
+</div>
+</sc-if>
+</div>
+</main>
+<sc-if value="{{footer}}" hint-placeholder-val="{{true}}"><div class="footer-slot"><dc-import name="Footer" theme="{{themeName}}" annotations="{{ann}}" hint-size="100%,360px"></dc-import></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["dashboard","zero","prefs-saved","marketing-errors","copy-states","recovery","recovery-sent","left","unavailable"],"default":"dashboard"},"uid":{"editor":"string","default":"m"},"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    var s = this.props.state || 'dashboard';
+    var task = { recovery: ['refresh', 'Request a new status link', 'Request a new private link by email.'], 'recovery-sent': ['refresh', 'Request a new status link', 'Request a new private link by email.'], left: ['x', 'You have left the waitlist', 'We will not send email to this address.'], unavailable: ['alert', 'Member page unavailable', 'The member page is unavailable right now. Your waitlist place is unchanged.'] }[s];
+    var isStrip = s === 'marketing-errors' || s === 'copy-states';
+    var zero = s === 'zero';
+    var refs = zero ? 0 : 4, need = zero ? 3 : 6;
+    var segs = []; for (var i = 0; i < need; i++) segs.push({ cls: i < refs ? 'on' : '' });
+    var saved = s === 'prefs-saved';
+    var strip = s === 'marketing-errors' ? [
+      { label: 'Security check failed', pref: true, ref: false, text: 'That security check did not go through. Please try again.' },
+      { label: 'Rate limited', pref: true, ref: false, text: 'Too many attempts — try again in a few minutes.' },
+      { label: 'Unavailable', pref: true, ref: false, text: 'We could not save that preference right now. Please try again later.' }
+    ] : [
+      { label: 'Copied (button shows the check for 2s)', pref: false, ref: true, icon: 'check', linkCls: '', statusCls: 'ref-status--ok', statusIcon: 'check-circle', text: 'Referral link copied.' },
+      { label: 'Copy failed (link box selected for manual copy)', pref: false, ref: true, icon: 'copy', linkCls: 'is-selected', statusCls: 'ref-status--info', statusIcon: 'info', text: 'Copy failed. Select and copy the link instead.' }
+    ];
+    var sel = { 'AI tools': 1, 'Software': 1, 'Game keys': 1 };
+    return {
+      themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light',
+      ann: !!this.props.annotations, annCls: this.props.annotations ? 'show-ann' : '',
+      uid: this.props.uid || 'm',
+      isTask: !!task, isStrip: isStrip, isDash: !task && !isStrip, footer: !isStrip,
+      tileIcon: task ? task[0] : 'x', h1: task ? task[1] : '', line: task ? task[2] : '',
+      recoveryForm: s === 'recovery', recoverySent: s === 'recovery-sent',
+      strip: strip,
+      factsCls: 'facts--6', entries: true, entryCount: zero ? '1' : '5',
+      wave: !zero, noWave: zero, waveDd: zero ? 'is-muted' : '',
+      rank: zero ? 'Not currently ranked' : '14', rankDd: zero ? 'is-muted' : 'is-mono',
+      refs: String(refs), tier: zero ? '0' : '1',
+      progress: zero ? '0 of 3 to Tier 1' : '4 of 6 to Tier 2', segs: segs,
+      rewards: !zero, noRewards: zero,
+      swCls: saved ? '' : 'is-on', swOn: saved ? 'false' : 'true', swLabel: saved ? 'Turn on marketing email' : 'Turn off marketing email', swText: saved ? 'Off' : 'On',
+      saved: saved, discOpen: saved ? 'open' : null,
+      cats: ['AI tools', 'Streaming and subscriptions', 'Software', 'Gift cards', 'Game keys', 'Game top-ups', 'In-game currency'].map(function (l) { return { label: l, cls: sel[l] ? 'is-selected' : '' }; }),
+      freqs: ['Weekly', 'Monthly', 'A few times a year', 'Rarely'].map(function (l) { return { label: l, cls: l === 'Monthly' ? 'is-selected' : '' }; })
+    };
+  }
+}
+</script>
+</body>
+</html>
