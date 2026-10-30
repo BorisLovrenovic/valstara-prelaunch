@@ -5,6 +5,7 @@ import {
   checkPageLayout,
   designThemes,
   designWidths,
+  settlePage,
 } from './layout-checks.mjs';
 
 function option(name) {
@@ -95,6 +96,9 @@ export async function captureContactSheet({
                 `${entry.state} returned ${response?.status() ?? 'no response'}`,
               );
             await runContactSheetActions(page, entry.actions);
+            // The screenshot and the checks take the same loaded, settled
+            // state, including after an action that loads a new document.
+            await settlePage(page);
             const filename = `${label}-${width}-${theme}.png`;
             await page.screenshot({
               path: join(directory, filename),

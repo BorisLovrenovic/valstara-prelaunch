@@ -13,6 +13,7 @@ import {
   designThemes,
   designWidths,
   enforcedPages,
+  settlePage,
 } from '../scripts/design/layout-checks.mjs';
 import { runContactSheetActions } from '../scripts/design/contact-sheet.mjs';
 import { publishedPort } from './helpers/listen-port.mjs';
@@ -228,6 +229,41 @@ test('the layout checks measure the page at rest, after running transitions end'
       (await checkPageLayout(page)).some((issue) =>
         issue.includes('overflowing text'),
       ),
+    );
+  } finally {
+    await page.close();
+  }
+});
+
+// A contact-sheet state reached by posting a form is a new document. Its
+// content can show while a subresource is still loading, so the screenshot
+// and the checks wait for its load event, not just for the content.
+test('a state reached by an action that loads a new document settles once that document has loaded', async () => {
+  const page = await browser.newPage({ viewport: { width: 320, height: 600 } });
+  try {
+    await page.route('http://sheet.test/**', async (route) => {
+      const { pathname } = new URL(route.request().url());
+      if (pathname === '/slow.png') {
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 1_500));
+        return route.fulfill({ contentType: 'image/png', body: '' });
+      }
+      return route.fulfill({
+        contentType: 'text/html; charset=utf-8',
+        body:
+          pathname === '/done'
+            ? '<!doctype html><main class="done"><p>Done</p><img src="/slow.png" width="1" height="1" alt=""></main>'
+            : '<!doctype html><form method="post" action="/done"><button>Confirm</button></form>',
+      });
+    });
+    await page.goto('http://sheet.test/');
+    await runContactSheetActions(page, [
+      { action: 'click', selector: 'button' },
+      { action: 'waitFor', selector: '.done' },
+    ]);
+    await settlePage(page);
+    assert.equal(
+      await page.evaluate(() => globalThis.document.readyState),
+      'complete',
     );
   } finally {
     await page.close();

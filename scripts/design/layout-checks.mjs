@@ -101,12 +101,16 @@ export async function checkRegionLayout(page, regions) {
   return checkLayout(page, regions);
 }
 
-// The checks measure the state a page comes to rest in. A frame of a running
-// transition is not a layout: a disclosure chevron turning 180° is wider than
-// its box mid-turn. So every running animation with an end is let finish
-// first. Infinite ones (spinners) and paused ones (a test holding a frame)
-// have no end to wait for and are measured as they stand.
-async function settleAnimations(page) {
+// The checks, and the contact sheet's screenshots, take the state a page
+// comes to rest in. A state reached by an action can be a new document (a
+// form posted to a server-rendered page) whose content shows before it has
+// loaded, so the load event comes first. A frame of a running transition is
+// not a layout either: a disclosure chevron turning 180° is wider than its
+// box mid-turn. So every running animation with an end is then let finish.
+// Infinite ones (spinners) and paused ones (a test holding a frame) have no
+// end to wait for and are measured as they stand.
+export async function settlePage(page) {
+  await page.waitForLoadState('load');
   await page.evaluate(async () => {
     const finite = () =>
       document
@@ -128,7 +132,7 @@ async function settleAnimations(page) {
 }
 
 async function checkLayout(page, regions) {
-  await settleAnimations(page);
+  await settlePage(page);
   return page.evaluate((scopes) => {
     const issues = [];
     const viewportWidth = document.documentElement.clientWidth;
