@@ -109,6 +109,28 @@ The portable file also carries `--shadow-1` through `--shadow-3` (with paired da
 
 E11.5-04 moved the provider showcase's presentation values into the portable file. `--space-0: 0` remains. E11.5-11d (founder-authorised 2026-10-28) removed the other four, `--provider-layer-decor`, `--provider-banner-tone`, `--provider-depth-brightness` and `--provider-rail-peek`, because the wireframe banner replaced the gradient tone, the depth circle and the peeking rail column, and nothing referenced them.
 
+### Motion tokens (E11.5-11i)
+
+Founder-authorised 2026-10-30, with design rule 12 as amended. The motion tokens sit on bare `:root` only and have no dark redefinition, because motion does not change with the theme. They are starting values: the founder reviews them in motion at E11.5-12, and a change is a token edit. How they are used is in the [page-design motion section](page-design.md#motion-e115-11i).
+
+| Token | Value | Use |
+|---|---|---|
+| `--duration-fast` | `150ms` | State transitions: buttons, links, inputs, chips, the sticky bar's slide (unchanged) |
+| `--duration-base` | `200ms` | State transitions: cards, the switch, the disclosure chevron (unchanged) |
+| `--ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` | Every state transition (unchanged) |
+| `--duration-enter` | `400ms` | One element's entrance or reveal |
+| `--stagger` | `60ms` | The step between items that enter together (at most four, so 400 + 3 × 60 = 580ms) |
+| `--duration-page` | `200ms` | The page and theme cross-fade |
+| `--ease-enter` | `cubic-bezier(0.22, 1, 0.36, 1)` | Entrances and reveals. No overshoot: neither control point's y-value is above 1 |
+| `--reveal-distance` | `1.5rem` | How far revealed content rises |
+| `--enter-distance` | `0.75rem` | How far an entrance rises |
+| `--lift` | `-0.125rem` | The 2px interactive-card lift |
+| `--press-shift` | `0.0625rem` | The 1px button press |
+| `--reveal-range` | `entry 0% cover 20%` | The stretch of a revealed element's view timeline over which it reveals |
+| `--reveal-step` | `4%` | The start offset between indexed siblings in a revealed row |
+
+The CI literal scan rejects a literal duration, delay, easing curve, animation range or movement distance in any component or global stylesheet, so each of these values is used through its token.
+
 The [page-design engineering reference](page-design.md) defines how pages use the grid, elevations and layout checks.
 
 **`--ink-600` carries a dark override (`#A0A0A8`) beyond the four brand-defined swaps** (founder-authorised 2026-09-05). At its base `#55555E` it renders secondary text at 2.58:1 on the dark `--paper` and 2.36:1 on `--surface`, below AA; `#A0A0A8` — the LOCKED light `--ink-300` value, reused rather than a new colour — clears 7.33:1 and 6.70:1, mirroring its 7.07:1 in light so the muted hierarchy reads identically in both themes. E2-01's contrast test covers the muted pairings in dark so this cannot regress.
@@ -153,6 +175,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 **E11.5-11d port change:** the file adds the six `--banner-shape-t4/t5/t6-*` offsets and `--shadow-chip-dark`, which has a dark value in both dark blocks. It drops `--provider-layer-decor`, `--provider-banner-tone`, `--provider-depth-brightness` and `--provider-rail-peek`. A storefront that copied an earlier version must remove those four. Re-run the dark-name-set and no-new-hue tests after the port.
 
 **E11.5-11f port addition:** the file adds `--ring-numeral` (founder-authorised 2026-10-29), declared once on `:root`; its colour follows `--coral` in both themes.
+
+**E11.5-11i port addition:** the file adds the motion tokens above, declared once on bare `:root` with no dark redefinition. They port with `tokens.css`. `src/styles/motion.css` (the entrance and reveal utilities, page transitions and smooth anchor scrolling) is waitlist presentation, not part of the portable file: the storefront adopts or drops it at port time. If adopted, it keeps every rule inside `prefers-reduced-motion: no-preference`.
 
 E11-07 source-to-target reconciliation (targets are the storefront routes to build and verify before the DNS swap):
 

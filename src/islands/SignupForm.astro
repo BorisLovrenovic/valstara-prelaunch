@@ -351,9 +351,40 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       this.#dockInput = this.querySelector('#signup-dock-email');
       document.querySelectorAll('[data-focus-signup]').forEach((link) => {
         link.addEventListener('click', () => {
-          requestAnimationFrame(() => {
+          // With smooth anchor scrolling (motion.css), focus moves once the
+          // scroll ends, so it lands on a field already in view. Without a
+          // scroll, or without scrollend support, it moves as before.
+          const focusEmail = (): void => {
             this.querySelector<HTMLInputElement>('#signup-email')?.focus({
               preventScroll: true,
+            });
+          };
+          if (
+            !('onscrollend' in window) ||
+            getComputedStyle(document.documentElement).scrollBehavior !==
+              'smooth'
+          ) {
+            requestAnimationFrame(focusEmail);
+            return;
+          }
+          // Scroll events still queued from an earlier scroll are dispatched
+          // before the next frame's callbacks, so listening starts there.
+          requestAnimationFrame(() => {
+            let scrolled = false;
+            const markScrolled = (): void => {
+              scrolled = true;
+            };
+            const finish = (): void => {
+              removeEventListener('scroll', markScrolled);
+              removeEventListener('scrollend', finish);
+              focusEmail();
+            };
+            addEventListener('scroll', markScrolled, { passive: true });
+            addEventListener('scrollend', finish);
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                if (!scrolled) finish();
+              });
             });
           });
         });

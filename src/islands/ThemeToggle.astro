@@ -33,6 +33,9 @@ import { themeToggleCopy } from '../copy/theme-toggle.ts';
 
   class ValstaraThemeToggle extends HTMLElement {
     readonly #mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    readonly #reducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    );
     readonly #systemThemeChanged = (): void => {
       if (readThemePreference() === null) {
         this.#render(resolveTheme(null, this.#mediaQuery.matches));
@@ -65,7 +68,20 @@ import { themeToggleCopy } from '../copy/theme-toggle.ts';
         this.#mediaQuery.matches,
       );
       const nextTheme: Theme = currentTheme === 'dark' ? 'light' : 'dark';
-      document.documentElement.dataset.theme = nextTheme;
+      const switchTheme = (): void => {
+        document.documentElement.dataset.theme = nextTheme;
+      };
+      // The theme cross-fades (motion.css sets the root transition) where
+      // view transitions exist and reduced motion is not requested;
+      // otherwise it switches at once.
+      if (
+        typeof document.startViewTransition === 'function' &&
+        !this.#reducedMotion.matches
+      ) {
+        document.startViewTransition(switchTheme);
+      } else {
+        switchTheme();
+      }
       writeThemePreference(nextTheme);
       this.#render(nextTheme, true);
     };

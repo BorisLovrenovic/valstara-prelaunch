@@ -743,10 +743,11 @@ test('bar reports a field error and cross-entry double submit sends one request'
       const form = globalThis.document.querySelector(
         'valstara-signup-form form',
       );
-      globalThis.scrollTo(
-        0,
-        form.getBoundingClientRect().bottom + globalThis.scrollY + 20,
-      );
+      // E11.5-11i named rewrite: a setup scroll is instant.
+      globalThis.scrollTo({
+        top: form.getBoundingClientRect().bottom + globalThis.scrollY + 20,
+        behavior: 'instant',
+      });
     });
     await page.waitForFunction(
       () => !globalThis.document.querySelector('[data-dock]').hidden,

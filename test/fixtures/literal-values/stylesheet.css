@@ -1,0 +1,4 @@
+/* A planted global stylesheet: a literal delay outside tokens.css. */
+[data-planted] {
+  animation-delay: 120ms;
+}

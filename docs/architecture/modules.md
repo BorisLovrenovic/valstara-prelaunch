@@ -73,6 +73,7 @@ valstara-prelaunch/
     content/                       trust + legal prose as Markdown (ADR-017)
     styles/
       tokens.css                   ★ the portable token file — no framework coupling
+      motion.css                   the motion utilities, page transitions and smooth scrolling (E11.5-11i); waitlist presentation, not ported verbatim
   infra/
     compose/                       docker-compose, local + production, hard memory limits
     deploy/                        deploy.sh, rollback.sh, migration audit

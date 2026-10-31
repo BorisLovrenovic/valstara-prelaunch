@@ -131,7 +131,30 @@ export async function settlePage(page) {
   });
 }
 
-async function checkLayout(page, regions) {
+// E11.5-11i: by design rule 12 the reduced-motion layout is the at-rest
+// layout, so every check measures with reduced motion requested: nothing
+// is entering, revealing or mid-scroll. The page's own preference is put
+// back afterwards, so a test can go on to exercise its motion.
+export async function atRest(page, measure) {
+  const reduced = await page.evaluate(
+    () => globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  if (!reduced) await page.emulateMedia({ reducedMotion: 'reduce' });
+  try {
+    return await measure();
+  } finally {
+    if (!reduced) await page.emulateMedia({ reducedMotion: 'no-preference' });
+  }
+}
+
+// Contexts the harness opens itself are reduced-motion contexts throughout.
+export const atRestContext = Object.freeze({ reducedMotion: 'reduce' });
+
+function checkLayout(page, regions) {
+  return atRest(page, () => measureLayout(page, regions));
+}
+
+async function measureLayout(page, regions) {
   await settlePage(page);
   return page.evaluate((scopes) => {
     const issues = [];
@@ -286,6 +309,7 @@ export async function assertEnforcedPages(browser, origin) {
     for (const width of designWidths) {
       for (const theme of designThemes) {
         const context = await browser.newContext({
+          ...atRestContext,
           viewport: { width, height: 900 },
           colorScheme: theme,
         });
@@ -310,6 +334,7 @@ export async function assertShellLayout(browser, origin, routes) {
     for (const width of designWidths) {
       for (const theme of designThemes) {
         const context = await browser.newContext({
+          ...atRestContext,
           viewport: { width, height: 900 },
           colorScheme: theme,
         });

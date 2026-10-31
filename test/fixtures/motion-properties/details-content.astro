@@ -1,0 +1,22 @@
+<details class="sound"><summary></summary></details>
+
+<style>
+  .sound::details-content {
+    transition-property: block-size, content-visibility;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .sound {
+    transition-property: box-shadow, transform;
+    transition-duration: var(--duration-base);
+  }
+
+  @keyframes sound-draw {
+    from {
+      opacity: 0;
+      stroke-dashoffset: var(--reveal-distance);
+      translate: 0 var(--enter-distance);
+    }
+  }
+</style>

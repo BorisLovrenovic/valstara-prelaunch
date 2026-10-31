@@ -2,7 +2,12 @@ import { parse, teardown } from '@astrojs/compiler';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { lstat, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { scanAstroLiteralValues } from './literal-values.mjs';
+import {
+  scanAstroLiteralValues,
+  scannedStylesheet,
+  scanStylesheetLiteralValues,
+} from './literal-values.mjs';
+import { scanMotionProperties as scanMotionSource } from './motion-properties.mjs';
 
 const projectRoot = resolve(new URL('../..', import.meta.url).pathname);
 const codeExtensions = new Set([
@@ -705,11 +710,29 @@ async function scanInlineProse(files) {
 function scanLiteralValues(files) {
   return files
     .filter(
-      (file) => file.path.startsWith('src/') && file.path.endsWith('.astro'),
+      (file) =>
+        (file.path.startsWith('src/') && file.path.endsWith('.astro')) ||
+        scannedStylesheet(file.path),
     )
     .flatMap((file) =>
-      scanAstroLiteralValues(file.content).map((message) =>
-        issue('literal-values', file.path, message),
+      (file.path.endsWith('.astro')
+        ? scanAstroLiteralValues(file.content)
+        : scanStylesheetLiteralValues(file.content)
+      ).map((message) => issue('literal-values', file.path, message)),
+    );
+}
+
+// E11.5-11i: keyframes animate only opacity, transforms and stroke drawing,
+// and no transition names a layout property.
+function scanMotionProperties(files) {
+  return files
+    .filter(
+      (file) =>
+        file.path.startsWith('src/') && /\.(?:astro|css)$/u.test(file.path),
+    )
+    .flatMap((file) =>
+      scanMotionSource(file.path, file.content).map((message) =>
+        issue('motion-properties', file.path, message),
       ),
     );
 }
@@ -728,6 +751,7 @@ export async function runSecurityGates(
     scanForbiddenCopy(files),
     scanInlineProse(files),
     scanLiteralValues(files),
+    scanMotionProperties(files),
   ]);
   return scans.flat();
 }

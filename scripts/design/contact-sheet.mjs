@@ -2,6 +2,7 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { chromium } from 'playwright';
 import {
+  atRestContext,
   checkPageLayout,
   designThemes,
   designWidths,
@@ -80,7 +81,10 @@ export async function captureContactSheet({
       labels.add(label);
       for (const width of designWidths) {
         for (const theme of designThemes) {
+          // Screenshots are taken at rest, in a reduced-motion context
+          // (E11.5-11i): nothing entering, revealing or cross-fading.
           const context = await browser.newContext({
+            ...atRestContext,
             viewport: { width, height: 900 },
             colorScheme: theme,
           });

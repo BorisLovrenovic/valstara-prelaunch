@@ -532,6 +532,132 @@ test('every animation is disabled under prefers-reduced-motion', async () => {
   }
 });
 
+// E11.5-11i, design rule 12: with reduced motion requested nothing moves. This
+// extends the assertion above, which stays as it is. That assertion cannot see
+// a scroll-driven animation, whose duration computes to `auto` and reads as
+// zero, so three more things must hold on every rendered route: no element
+// carries a scroll-driven animation, no animation exists once the page has
+// loaded, and a same-origin navigation starts no view transition.
+async function motionUnderReducedMotion(page) {
+  return page.evaluate(async () => {
+    const { document, getComputedStyle } = globalThis;
+    // Anything started by the load (a style change, a hydrated island) has
+    // begun within two frames.
+    await new Promise((resolve) =>
+      globalThis.requestAnimationFrame(() =>
+        globalThis.requestAnimationFrame(resolve),
+      ),
+    );
+    const describe = (element) =>
+      `${element.tagName.toLowerCase()}.${element.className || '(no class)'}`;
+    const issues = [];
+    for (const element of document.querySelectorAll('*')) {
+      if (
+        getComputedStyle(element)
+          .animationTimeline.split(',')
+          .some((timeline) => timeline.trim() !== 'auto')
+      ) {
+        issues.push(`scroll-driven animation on ${describe(element)}`);
+      }
+    }
+    for (const animation of document.getAnimations()) {
+      const target = animation.effect?.target;
+      issues.push(
+        `${animation.constructor.name} ${animation.animationName ?? animation.transitionProperty ?? ''} on ${target ? describe(target) : 'the document'}`,
+      );
+    }
+    return issues;
+  });
+}
+
+test('under reduced motion no route has a scroll-driven animation, a live animation or a view transition', async () => {
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
+  // The outgoing page reports whether its navigation runs a view transition;
+  // the report survives the navigation in the test browser's session storage.
+  await context.addInitScript(() => {
+    globalThis.addEventListener('pageswap', (event) => {
+      globalThis.sessionStorage.setItem(
+        'motion-test-view-transition',
+        String(event.viewTransition !== null),
+      );
+    });
+    globalThis.addEventListener('pagereveal', (event) => {
+      globalThis.__viewTransition = event.viewTransition !== null;
+    });
+  });
+  for (const route of [
+    ...(await renderedRoutes()),
+    '/giveaway/rules/VAL-GW-LAUNCH-20260925-r1',
+  ]) {
+    const page = await context.newPage();
+    try {
+      if (route === '/me') {
+        await page.goto(
+          `${browserOrigin}/me?t=${encodeURIComponent(authenticatedStatusToken)}`,
+          { waitUntil: 'load' },
+        );
+      } else {
+        await openRoute(page, route, browserOrigin);
+        await page.waitForLoadState('load');
+      }
+      assert.deepEqual(
+        await motionUnderReducedMotion(page),
+        [],
+        `motion under reduced motion on ${route}`,
+      );
+      // A same-origin navigation away from the route, and into the next page.
+      const destination = route === '/legit' ? '/guarantee' : '/legit';
+      await page.evaluate(
+        (href) => globalThis.location.assign(href),
+        destination,
+      );
+      await page.waitForURL(`${browserOrigin}${destination}`);
+      // pagereveal fires at the first rendering opportunity, which can come
+      // after the load event.
+      await page.waitForFunction(
+        () => globalThis.__viewTransition !== undefined,
+      );
+      assert.deepEqual(
+        await page.evaluate(() => ({
+          leaving: globalThis.sessionStorage.getItem(
+            'motion-test-view-transition',
+          ),
+          arriving: globalThis.__viewTransition,
+        })),
+        { leaving: 'false', arriving: false },
+        `view transition leaving ${route}`,
+      );
+    } finally {
+      await page.close();
+    }
+  }
+  await context.close();
+});
+
+test('the extended reduced-motion check fails on a planted unguarded scroll-driven animation', async () => {
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
+  const page = await context.newPage();
+  await page.setContent(
+    '<!doctype html><html lang="en"><head><title>Planted</title><style>' +
+      '@keyframes planted-reveal { from { opacity: 0; } }' +
+      '.planted { animation-name: planted-reveal; animation-duration: auto;' +
+      ' animation-fill-mode: backwards; animation-timeline: view(); }' +
+      '</style></head><body><main><div style="height: 2000px"></div>' +
+      '<p class="planted">Planted</p></main></body></html>',
+    { waitUntil: 'load' },
+  );
+  const issues = await motionUnderReducedMotion(page);
+  assert.ok(
+    issues.includes('scroll-driven animation on p.planted'),
+    JSON.stringify(issues),
+  );
+  assert.ok(
+    issues.some((issue) => issue.startsWith('CSSAnimation planted-reveal')),
+    JSON.stringify(issues),
+  );
+  await context.close();
+});
+
 test('tab order follows the visual reading order with no focus trap', async () => {
   const context = await browser.newContext({ colorScheme: 'light' });
   const page = await context.newPage();

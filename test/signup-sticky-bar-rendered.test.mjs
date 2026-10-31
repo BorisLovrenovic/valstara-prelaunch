@@ -14,6 +14,7 @@ import { signupCopy, signupFormCopy } from '../src/copy/signup.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { renderLanding } from './helpers/landing-render.mjs';
 import { checkPageLayout } from '../scripts/design/layout-checks.mjs';
+import { focusMotionIssues, scrollSettled } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 // E11.5-11h: the mobile sticky signup bar of Sticky.dc.html (seven frames)
@@ -664,7 +665,8 @@ test('frame 3, focus while tabbing: the scroll padding is the bar height plus 16
         .locator('#faq summary')
         .first()
         .evaluate((summary) => {
-          summary.scrollIntoView({ block: 'center' });
+          // E11.5-11i named rewrite: a setup scroll is instant.
+          summary.scrollIntoView({ block: 'center', behavior: 'instant' });
           summary.focus({ preventScroll: true });
         });
       await page.waitForFunction(barShown);
@@ -686,6 +688,9 @@ test('frame 3, focus while tabbing: the scroll padding is the bar height plus 16
               ),
             ),
         );
+        // E11.5-11i named rewrite: focus scrolls smoothly, so the read waits
+        // for the scroll to end.
+        await scrollSettled(page);
         const gap = await page.evaluate(() => {
           const bar = globalThis.document.querySelector('[data-dock]');
           if (bar.hidden) return null;
@@ -1034,7 +1039,8 @@ test('the visibility matrix: small widths only, never over the hero form or with
         const states = [];
         const end = document.documentElement.scrollHeight;
         for (let y = 0; y <= end; y += 200) {
-          globalThis.scrollTo(0, y);
+          // E11.5-11i named rewrite: a setup scroll is instant.
+          globalThis.scrollTo({ top: y, behavior: 'instant' });
           await frame();
           const rendered = bar.getClientRects().length > 0;
           states.push({
@@ -1149,6 +1155,12 @@ test('the focus walk: tabbing through the whole page, every focused element sits
               ),
             ),
         );
+        // E11.5-11i (founder decisions 2026-10-31): focus is never
+        // mid-motion, checked as focus lands; then, because focus scrolls
+        // smoothly with motion allowed, the position is read once the
+        // scroll has ended.
+        const moving = await focusMotionIssues(page);
+        await scrollSettled(page);
         const state = await page.evaluate(() => {
           const { document } = globalThis;
           const active = document.activeElement;
@@ -1170,6 +1182,11 @@ test('the focus walk: tabbing through the whole page, every focused element sits
         });
         if (state.done) break;
         last = state;
+        assert.deepEqual(
+          moving,
+          [],
+          `${width}px: "${state.name}" is focused mid-motion`,
+        );
         if (state.barShown && !state.inBar && state.size > 0) {
           barSeen += 1;
           assert.ok(
