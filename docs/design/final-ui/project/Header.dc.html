@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Site header</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="page page--fit {{themeCls}} {{annCls}}" style="background: transparent">
+<header class="site-header">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="wrap">
+<div class="header-bar">
+<a class="wordmark" href="/">Valstara</a>
+<nav class="nav" aria-label="Page sections">
+<a class="nav__link" href="{{base}}#how">How it works</a>
+<a class="nav__link" href="{{base}}#rewards">What you get</a>
+<a class="nav__link" href="{{base}}#guarantee">Guarantee</a>
+<a class="nav__link" href="{{base}}#faq">FAQ</a>
+</nav>
+<div class="header-actions">
+<sc-if value="{{showToggle}}" hint-placeholder-val="{{true}}">
+<button class="icon-button" type="button" aria-label="{{toggleLabel}}"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#{{toggleIcon}}"></use></svg></button>
+</sc-if>
+<a class="btn {{joinCls}} btn--44 header-join" href="{{base}}#join">Join the waitlist</a>
+</div>
+</div>
+<span class="ann" style="left: var(--gutter); bottom: -6px"><span class="ann__chip">header · not sticky · 72 small / 80 md+ · t-h3 wordmark</span></span>
+<span class="ann" style="right: var(--gutter); bottom: -6px"><span class="ann__chip">nav capsule E1 · toggle 44 · Join 44 × 160 (130 below 360) · secondary off the landing page</span></span>
+</div>
+</header>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"context":{"editor":"enum","options":["landing","site","trust"],"default":"landing"},"$preview":{"width":1440,"height":80}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    var ctx = this.props.context || 'landing';
+    return {
+      themeCls: dark ? 'dark' : '',
+      annCls: this.props.annotations ? 'show-ann' : '',
+      base: ctx === 'landing' ? '' : '/',
+      joinCls: ctx === 'landing' ? 'btn--primary' : 'btn--secondary',
+      showToggle: ctx !== 'trust',
+      toggleLabel: dark ? 'Use light theme' : 'Use dark theme',
+      toggleIcon: dark ? 'sun' : 'moon'
+    };
+  }
+}
+</script>
+</body>
+</html>

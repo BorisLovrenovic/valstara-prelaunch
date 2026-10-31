@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>/terms and /privacy/storage</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 3932px">
+<h1 class="sheet__title">/terms and /privacy/storage</h1>
+<p class="sheet__lede">Same document layout and eyebrow. Neither page has an H2, so neither renders a contents list.</p>
+<section class="sheet__section" style="margin-top: var(--space-5)">
+<div class="frames" style="column-gap: 48px">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">1440</span><span class="frame__name">Waitlist terms</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">No H2s, so no contents list: the prose sits alone at 68ch.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Doc" theme="{{themeName}}" annotations="{{ann}}" page="terms" uid="lega1440terms" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">390</span><span class="frame__name">Waitlist terms</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px"></p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Doc" theme="{{themeName}}" annotations="{{ann}}" page="terms" uid="lega390terms" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">1440</span><span class="frame__name">Cookie and storage inventory</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">No H2s, so no contents list.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Doc" theme="{{themeName}}" annotations="{{ann}}" page="storage" uid="lega1440storage" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">390</span><span class="frame__name">Cookie and storage inventory</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">The 3-column inventory restacks per row on phone.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Doc" theme="{{themeName}}" annotations="{{ann}}" page="storage" uid="lega390storage" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":3932,"height":2000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    return { themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light', ann: !!this.props.annotations };
+  }
+}
+</script>
+</body>
+</html>

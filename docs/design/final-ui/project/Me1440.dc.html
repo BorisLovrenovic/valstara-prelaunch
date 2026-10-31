@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>/me · every state · 1440</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 7520px">
+<h1 class="sheet__title">/me · every state · 1440</h1>
+<p class="sheet__lede">Reached only from a signed link in our emails; no login. A dashboard of cards in a fixed order: status and facts, referral link, rewards, preferences, your data, then "Leave the waitlist" set apart below. All figures are mono and {dyn}. Held and Settled differ by icon, fill and word, never colour alone.</p>
+<section class="sheet__section">
+<h2>1440 wide</h2>
+<div class="frames" style="column-gap: 48px">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">01</span><span class="frame__name">Dashboard</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">A member with 4 confirmed referrals at Tier 1: one settled and one held reward, five giveaway entries, marketing on.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Me" theme="{{themeName}}" annotations="{{ann}}" state="dashboard" uid="me11440dashboard" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">02</span><span class="frame__name">Zero state</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">No referrals or rewards yet; wave not assigned and not ranked. Every card still has a purpose.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Me" theme="{{themeName}}" annotations="{{ann}}" state="zero" uid="me11440zero" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">03</span><span class="frame__name">Marketing off · saved, survey open</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">The switch reads Off by knob, glyph and word; the disclosure is open for re-answering.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Me" theme="{{themeName}}" annotations="{{ann}}" state="prefs-saved" uid="me11440prefssaved" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">04</span><span class="frame__name">Marketing email errors</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">The three server replies, each in the same notice slot under the switch.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Me" theme="{{themeName}}" annotations="{{ann}}" state="marketing-errors" uid="me11440marketingerrors" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">05</span><span class="frame__name">Referral copy states</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">Copied and copy-failed. The failed state selects the link box for manual copy.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Me" theme="{{themeName}}" annotations="{{ann}}" state="copy-states" uid="me11440copystates" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">06</span><span class="frame__name">Recovery</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">Expired or tampered link. No email field: the token itself is renewed.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Me" theme="{{themeName}}" annotations="{{ann}}" state="recovery" uid="me11440recovery" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">07</span><span class="frame__name">Recovery · sent</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">Neutral reply; it never confirms whether the link was valid.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Me" theme="{{themeName}}" annotations="{{ann}}" state="recovery-sent" uid="me11440recoverysent" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">08</span><span class="frame__name">Left</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">After "Leave the waitlist and stop all email".</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Me" theme="{{themeName}}" annotations="{{ann}}" state="left" uid="me11440left" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">09</span><span class="frame__name">Unavailable</span></div>
+<p class="frame__note" style="max-width: 1440px; min-height: 40px">The member page switch is off. The place is unchanged.</p>
+<div class="frame__screen" style="width: 1440px">
+<dc-import name="Me" theme="{{themeName}}" annotations="{{ann}}" state="unavailable" uid="me11440unavailable" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":7520,"height":4000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    return { themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light', ann: !!this.props.annotations };
+  }
+}
+</script>
+</body>
+</html>

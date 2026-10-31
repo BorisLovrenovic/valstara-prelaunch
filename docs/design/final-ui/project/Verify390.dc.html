@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>/verify · every state · 390</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 4898px">
+<h1 class="sheet__title">/verify · every state · 390</h1>
+<p class="sheet__lede">Reached from the verification email. Success is the funnel's highest-attention moment, so it reads like a product's "you're in" screen: one verified card, then the referral card and the survey, with the status link beside the verified card from 1024. Copy link is the page's only primary; the header Join drops to secondary off the landing page. {dyn}: wave, referral code, count, threshold, tier and discount.</p>
+<section class="sheet__section">
+<h2>390 wide</h2>
+<div class="frames" style="column-gap: 48px">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">01</span><span class="frame__name">Confirm</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">From the email link. One card, one primary; nothing counts until the click.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Verify" theme="{{themeName}}" annotations="{{ann}}" state="confirm" uid="ver390confirm" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">02</span><span class="frame__name">Success · everything on</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">The "you're in" moment: verified, wave badge, referral card, survey, status link.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Verify" theme="{{themeName}}" annotations="{{ann}}" state="success" uid="ver390success" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">03</span><span class="frame__name">Success · referral off</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">No referral card or meter; the line drops its second sentence; survey takes cols 1–7.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Verify" theme="{{themeName}}" annotations="{{ann}}" state="referral-off" uid="ver390referraloff" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">04</span><span class="frame__name">Success · survey off</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">No survey; the referral card stays in cols 1–7.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Verify" theme="{{themeName}}" annotations="{{ann}}" state="survey-off" uid="ver390surveyoff" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">05</span><span class="frame__name">Success · both off</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Verified card and status link only. Calm, not empty.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Verify" theme="{{themeName}}" annotations="{{ann}}" state="both-off" uid="ver390bothoff" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">06</span><span class="frame__name">Copied · preferences saved</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Copy button shows the check for 2s; "Link copied." is announced. The survey collapses to its saved line.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Verify" theme="{{themeName}}" annotations="{{ann}}" state="copied-saved" uid="ver390copiedsaved" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">07</span><span class="frame__name">Copy failed · skipped</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Clipboard refused: the link box is selected for manual copy. Skip collapses the survey for good.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Verify" theme="{{themeName}}" annotations="{{ann}}" state="failed-skipped" uid="ver390failedskipped" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">08</span><span class="frame__name">Survey errors</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Server error notice above the actions; the invalid-option message sits under its question.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Verify" theme="{{themeName}}" annotations="{{ann}}" state="survey-errors" uid="ver390surveyerrors" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">09</span><span class="frame__name">Invalid or expired link</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Notice, then "Request a new link". The compact Turnstile shows only when the check needs interaction.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Verify" theme="{{themeName}}" annotations="{{ann}}" state="invalid" uid="ver390invalid" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">10</span><span class="frame__name">Invalid · request accepted</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">Same reply whether or not the address has a pending signup.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Verify" theme="{{themeName}}" annotations="{{ann}}" state="invalid-sent" uid="ver390invalidsent" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+<div class="frame">
+<div class="frame__label"><span class="frame__n">11</span><span class="frame__name">Invalid · no JavaScript</span></div>
+<p class="frame__note" style="max-width: 390px; min-height: 40px">The button stays disabled and the notice says why.</p>
+<div class="frame__screen" style="width: 390px">
+<dc-import name="Verify" theme="{{themeName}}" annotations="{{ann}}" state="invalid-nojs" uid="ver390invalidnojs" hint-size="100%,1400px"></dc-import>
+</div>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":4898,"height":3200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    return { themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light', ann: !!this.props.annotations };
+  }
+}
+</script>
+</body>
+</html>

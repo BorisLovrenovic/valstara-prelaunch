@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Document page</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="page {{themeCls}} {{annCls}} {{pageCls}}">
+<dc-import name="Header" theme="{{themeName}}" annotations="{{ann}}" context="{{headerCtx}}" hint-size="100%,80px"></dc-import>
+<main id="main" class="rel" style="flex: 1 0 auto">
+<div class="ann ann-grid" aria-hidden="true"><div class="wrap"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+<sc-if value="{{archived}}" hint-placeholder-val="{{false}}">
+<aside class="archived rel" aria-label="Archived revision"><div class="wrap"><div class="archived__inner"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#history"></use></svg><p>This is an earlier version of our giveaway rules. It has been replaced and is kept here unchanged as a record. Some details in it are no longer accurate. The rules in force are at <a class="link" href="/giveaway/rules">valstara.com/giveaway/rules</a>.</p></div></div><span class="ann" style="right: 16px; bottom: -11px"><span class="ann__chip">full-bleed coral-tint · above the band · calm, not an alarm · t-small 500</span></span></aside>
+</sc-if>
+<section class="doc-band {{bandCls}} rel">
+<div class="wrap">
+<div class="doc-band__inner {{innerCls}}">
+<div class="doc-band__text">
+<p class="eyebrow">{{eyebrow}}</p>
+<h1 class="t-h1">{{h1}}</h1>
+<p class="doc-band__summary">{{summary}}</p>
+</div>
+<sc-if value="{{isAbout}}" hint-placeholder-val="{{false}}">
+<div class="doc-band__media"><div class="ph ph--founder" role="img" aria-label="Boris Lovrenovic, founder of Valstara"><span class="ph__id">IMG-01</span><span class="ph__ratio"><span class="only-md">4:5</span><span class="only-sm">1:1</span></span></div></div>
+</sc-if>
+</div>
+</div>
+<span class="ann" style="left: 16px; bottom: -11px"><span class="ann__chip">{{bandAnn}}</span></span>
+</section>
+<div class="doc-body"><div class="wrap"><div class="doc-layout">
+<sc-if value="{{is_legit}}" hint-placeholder-val="{{false}}">
+<article class="prose ">
+<p>Valstara was founded by Boris Lovrenovic and is a trading brand of 3NITY Digital Limited, a company registered in Hong Kong. Valstara is the name you see on this site and in the emails we send you. 3NITY Digital Limited is the company behind it. It runs this waitlist and the launch giveaway, it is responsible for the personal data you give us, and it will be the seller when the store opens.</p>
+<p>This page sets out the company's details, how to reach us, and the records you can check without relying on anything we say about ourselves.</p>
+<h2 id="company-details">Company details</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Registered name</td>
+<td>3NITY DIGITAL LIMITED</td>
+</tr>
+<tr>
+<td>Business Registration No.</td>
+<td>79886556</td>
+</tr>
+<tr>
+<td>Registered address</td>
+<td>Unit B, 12/F, Hang Seng Causeway Bay Building, 28 Yee Wo Street, Causeway Bay, Hong Kong</td>
+</tr>
+<tr>
+<td>Place of registration</td>
+<td>Hong Kong</td>
+</tr>
+</tbody>
+</table>
+<h2 id="checking-us-for-yourself">Checking us for yourself</h2>
+<p>Every limited company in Hong Kong is entered on the public register kept by the Hong Kong Companies Registry. You can search that register for 3NITY DIGITAL LIMITED and compare what it shows with the details above. The company's Business Registration No. is 79886556, the number shown on the Business Registration Certificate that the Hong Kong Inland Revenue Department issues to every business operating in Hong Kong. If anything differs, please tell us, and treat the difference as a reason for caution until we have explained it.</p>
+<p>The same company details appear in section 1 of the official rules for our launch giveaway, published at valstara.com/giveaway/rules. Every version of those rules stays online at its own permanent address, so no change to them can happen quietly.</p>
+<h2 id="how-to-reach-us">How to reach us</h2>
+<p>Write to support@valstara.com with any question about Valstara, the waitlist or the giveaway. The same address handles legal matters, payment enquiries and requests to review a decision we have made about you.</p>
+<p>The emails we send you about the waitlist also come from addresses on valstara.com.</p>
+<h2 id="what-this-site-does-with-your-visit">What this site does with your visit</h2>
+<p>This site sets no tracking cookies and runs no advertising trackers, which is why you will not see a cookie banner. There is nothing to ask your consent for. The only thing it stores on your device is your choice of light or dark theme.</p>
+<h2 id="reviews">Reviews</h2>
+<p>We do not show a Trustpilot star rating on this site yet. A score built on a handful of reviews tells you very little, so we will display ours once enough customers have reviewed us for the number to mean something. We will never buy reviews.</p>
+<p>You can read and leave reviews on <a href="https://www.trustpilot.com/review/valstara.com" rel="noopener">our Trustpilot page</a>.</p>
+</article>
+</sc-if>
+<sc-if value="{{is_guarantee}}" hint-placeholder-val="{{false}}">
+<article class="prose prose--guarantee">
+<p>Every Valstara order is covered by three promises. They answer the three questions a careful buyer asks before paying for anything online, in the order people ask them. Will I actually get it? Are my money and my data safe? What happens if it stops working?</p>
+<p>The store is not open yet. We are publishing the guarantee in full before we take a single order, so you can read exactly what we are committing to before you decide whether to trust us with one.</p>
+<h2 id="i-delivered-within-24-hours">I. Delivered within 24 hours.</h2>
+<p>Every order is fulfilled by hand, Monday to Friday, within 24 hours of purchase.</p>
+<p>We state the real number because a timeframe we keep every weekday is worth more to you than a faster one you have reason to doubt.</p>
+<h2 id="ii-protected-start-to-finish">II. Protected, start to finish.</h2>
+<p>256-bit encryption throughout. PCI-compliant payment handling. Your data is never sold.</p>
+<p>We chose those words with care. To send you email at all, we have to pass your address to the companies that deliver it for us, and we would rather tell you so than claim otherwise.</p>
+<h2 id="iii-resolved-replaced-or-refunded">III. Resolved, replaced, or refunded.</h2>
+<p>If anything goes wrong at any point during your subscription period, we resolve it. If it cannot be resolved, we replace it. If it cannot be replaced, we refund you. In that order, without argument.</p>
+<p>The order is the promise. Plenty of sellers offer a replacement or a refund and then make you fight for it. We set out the sequence now so that you never have to argue for it later.</p>
+<h2 id="the-price-you-see-is-the-price-you-pay">The price you see is the price you pay</h2>
+<p>This is not one of the three promises, but we hold ourselves to it in the same way. There are no currency conversion tricks and no fees introduced at checkout. There are no mandatory service charges and no bait listings.</p>
+<h2 id="cover-for-each-kind-of-product">Cover for each kind of product</h2>
+<p>Each category in the store will state its warranty cover in plain language, and we will publish those terms when the store opens. No category goes on sale until we can state its delivery time and a warranty we are able to honour.</p>
+<h2 id="why-we-can-promise-this">Why we can promise this</h2>
+<p>Valstara is the seller, not a marketplace. Every order is sold under our name at our prices, and we carry full responsibility for fulfilment and support. When something goes wrong there is no third party to point at, so honouring the guarantee falls to us, and we set its terms at a level we can keep even when supply is under strain.</p>
+<p>You can find out who we are and how to reach us at valstara.com/legit.</p>
+</article>
+</sc-if>
+<sc-if value="{{is_about}}" hint-placeholder-val="{{false}}">
+<article class="prose ">
+<p>Valstara sells digital goods with a guarantee. We sell subscriptions, software licences, gift cards, game keys and in-game currency at prices well below list, and every order is covered by the Triple Guarantee.</p>
+<h2 id="why-we-exist">Why we exist</h2>
+<p>Most people who buy digital goods below list price do it through marketplaces. A marketplace connects buyers with sellers and disclaims everything in between, so when something goes wrong the buyer is left chasing a stranger. People who shop in this category have learned to expect the worst, and the category has given them reasons to.</p>
+<p>Valstara works differently. We are the seller, not a listing board. The goods we sell are sourced from verified suppliers or acquired directly, then sold under our own name at our own prices, and we carry full responsibility for fulfilment and support. When something goes wrong, we put it right, because there is nobody else to point at.</p>
+<h2 id="what-we-are-and-what-we-are-not">What we are, and what we are not</h2>
+<p>We will not always have the lowest price on the internet. On marketplaces where sellers undercut each other down to nothing, someone will sometimes beat us. What we offer is a price well below list from a seller that states its terms and keeps them.</p>
+<p>We sell every product under its provider's own name, so you always know exactly what you are buying. We start with subscriptions for entertainment and for AI tools, and we will add further categories over time. A category goes on sale only when we can state its delivery time and a warranty we are able to honour.</p>
+<p>We will not rush you. You will not find countdown timers on this site, or invented scarcity, or figures inflated to look bigger than they are. When we tell you where you stand on the waitlist, it is the real figure from our records.</p>
+<h2 id="the-name">The name</h2>
+<p>Val comes from the Latin valere, to be worth. It is the root of value, and everything we do is about worth, meaning real goods well below list price and the assurance that what you bought is what you get.</p>
+<p>The star sits inside the name, VAL·STAR·A. It is the symbol people already look for when deciding whether to trust a shop, and it is what travellers once steered by when nothing else could be relied on. Valstara is meant to be that fixed point, the mark you steer by to find real value.</p>
+<h2 id="who-is-behind-valstara">Who is behind Valstara</h2>
+<p>Valstara was founded by Boris Lovrenovic and is run by 3NITY Digital Limited, a company registered in Hong Kong.</p>
+<p>The company's registration details, how to reach us, and how to check us for yourself are at valstara.com/legit.</p>
+<h2 id="when-we-open">When we open</h2>
+<p>The store is not open yet. Join the waitlist and we will email you when it is. We will not name a launch date until we are sure we can keep it.</p>
+<p>Premium for less.</p>
+</article>
+</sc-if>
+<sc-if value="{{is_privacy}}" hint-placeholder-val="{{false}}">
+<article class="prose ">
+<p><strong>Draft notice.</strong> This is temporary text approved for publication by the founder. Final reviewed privacy wording has not been supplied.</p>
+<p>3NITY DIGITAL LIMITED, a company registered in Hong Kong, controls the personal data used for the Valstara pre-launch waitlist and giveaway. You can contact us at support@valstara.com.</p>
+<h2 id="what-we-use-and-why">What we use and why</h2>
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Purpose</th>
+<th>Basis</th>
+<th>Retention</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Email address, including its normalised form and domain</td>
+<td>Verify and operate your waitlist place, send status, referral, milestone, giveaway and launch-access messages</td>
+<td>Contract</td>
+<td>Until handoff, erasure or leaving the waitlist</td>
+</tr>
+<tr>
+<td>Verification and status link records, stored as token hashes</td>
+<td>Confirm control of your email address and let you manage your place</td>
+<td>Contract</td>
+<td>Purged 30 days after expiry</td>
+</tr>
+<tr>
+<td>Waitlist status, signup and verification dates, access window, and source-business provenance</td>
+<td>Record the state and origin of your place and deliver launch access</td>
+<td>Contract</td>
+<td>Until handoff, erasure or leaving the waitlist</td>
+</tr>
+<tr>
+<td>Optional marketing choice and its record</td>
+<td>Send weekly updates, product news and storefront marketing where you opted in; record and honour your choice</td>
+<td>Consent for marketing; legal obligation for the consent record</td>
+<td>Until withdrawal; the evidence remains for the applicable evidential period</td>
+</tr>
+<tr>
+<td>Optional category preference and survey answers</td>
+<td>Understand what you are interested in and plan the launch</td>
+<td>Consent</td>
+<td>Until handoff or withdrawal</td>
+</tr>
+<tr>
+<td>Referral code, referral relationship and rewards</td>
+<td>Attribute verified referrals and calculate rewards and access windows</td>
+<td>Contract</td>
+<td>Until handoff or erasure; referral edges are anonymised on erasure</td>
+</tr>
+<tr>
+<td>Giveaway entries, rules version, draw and award records</td>
+<td>Run and document the draw and deliver prizes</td>
+<td>Contract</td>
+<td>Draw and award records are kept for six years under Valstara policy</td>
+</tr>
+<tr>
+<td>A provisional winner's country of residence, age confirmation, award checks, substitution choice and optional publicity permission</td>
+<td>Check eligibility, sanctions and product availability; ask the Canadian skill question where applicable; deliver a substitute if needed and publish only with permission</td>
+<td>Contract for award; legal obligation for sanctions screening; consent for optional publicity</td>
+<td>Collected only at award time; kept with the award record for six years, including after erasure under the exception below</td>
+</tr>
+<tr>
+<td>Acquisition source, UTM values and whether the signup had a referral link</td>
+<td>Understand how people found the waitlist</td>
+<td>Legitimate interest</td>
+<td>12 months</td>
+</tr>
+<tr>
+<td>Truncated, hashed IP prefix and abuse flags</td>
+<td>Limit abuse and investigate suspected fraud</td>
+<td>Legitimate interest</td>
+<td>IP prefix hashes are purged after 90 days; rate-limit buckets after seven days</td>
+</tr>
+<tr>
+<td>Fraud review decisions and related timestamps</td>
+<td>Review suspected abuse and document any human decision about disqualification</td>
+<td>Legitimate interest</td>
+<td>Until handoff, erasure or the applicable award-record retention</td>
+</tr>
+<tr>
+<td>Email delivery events and suppression state</td>
+<td>Deliver requested messages and stop mail when required</td>
+<td>Legitimate interest or legal obligation</td>
+<td>Campaign plus applicable statutory period</td>
+</tr>
+<tr>
+<td>Data-subject requests and opaque erasure evidence</td>
+<td>Fulfil your rights, stop processing and prevent erased data returning after a restore</td>
+<td>Legal obligation</td>
+<td>Identity removed on completion; only opaque erasure and audit evidence remains</td>
+</tr>
+</tbody>
+</table>
+<p>Joining the waitlist and entering the giveaway use the contract basis. Marketing uses a separate, optional, unticked choice. Withdrawing marketing consent never removes your waitlist place or giveaway entries. You can change that choice from your status page or the link in a marketing email. Leaving the waitlist entirely is a separate choice.</p>
+<p>We collect no country or other location at signup. We request only a provisional winner's country of residence at award time. We do not collect a postal address for the giveaway; prizes are delivered electronically.</p>
+<p>Our email providers process message data to deliver mail. Cloudflare processes connection information for site security and the verification challenge. The waitlist database is separate from the storefront database. This draft will be replaced with reviewed details of recipients, transfers and your rights.</p>
+<h2 id="cookie-and-storage-inventory">Cookie and storage inventory</h2>
+<p>This site has two browser-storage entries and sets no cookies:</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Kind</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>valstara-theme</code></td>
+<td>Local storage</td>
+<td>Remembers your light or dark theme choice</td>
+</tr>
+<tr>
+<td><code>cf.turnstile.u</code></td>
+<td>Cloudflare local storage</td>
+<td>Helps secure a form when its Turnstile widget runs</td>
+</tr>
+</tbody>
+</table>
+<p>The theme choice is functional and does not identify you. Cloudflare Turnstile reads and writes <code>cf.turnstile.u</code> only when a protected form's widget runs; it is used to protect the form you submit from abuse. We rely on the Article 5(3) strictly-necessary exemption for that form-security use. The site sets no tracking cookie and uses no advertising tracker. This is why the site has no cookie banner.</p>
+<p>The <a href="/privacy/storage">full cookie and storage inventory</a> explains the no-banner basis and the checks that keep it true.</p>
+<h2 id="erasure-and-retained-award-records">Erasure and retained award records</h2>
+<p>Once you confirm an erasure request, we stop processing your waitlist record at once. Erasure normally completes immediately and always within one month. We keep the original subscriber record only while completing the deletion of your Brevo contact, then remove your email address and other personal fields from live data, including if you are a winner, apart from the retained award records described here. If you reached the award stage, we keep the award and candidate records unchanged for six years. These include country of residence, age confirmation, check outcomes, substitution choices, values and timestamps. They contain only an opaque subscriber ID as your reference, never your email address. We remove the information that links that ID back to you in live data outside these records.</p>
+<p>We retain those award records for sanctions-check obligations under GDPR Article 17(3)(b) and for legal claims under Article 17(3)(e). This exception does not allow us to keep your email address.</p>
+<p>Existing encrypted backups are kept beyond use and expire within 30 days. We do not modify individual backups. Before a restored database returns to service, we re-apply erasures from our newest available erasure ledger. That ledger contains only an opaque subscriber ID and the erasure date.</p>
+<p>We delete your Brevo contact, rather than just removing it from a mailing list. Erasure is complete only after Brevo confirms deletion or confirms that the contact is absent and we complete local erasure. While the request is pending, we stop email, contact sync, member-page access and leaderboard and giveaway participation. Resend and Brevo keep delivery logs for a limited period under their processor retention. We do not make a separate deletion call to Resend. These delivery logs and the encrypted backups are the only additional retention exceptions.</p>
+<p>Erasure also removes the suppression record for your address. If you sign up again, you must confirm your email address again.</p>
+<p>Erasure preserves anonymised referral counts. Before the draw snapshot is committed, your entries are voided and excluded. After commitment, we record the erasure separately so the original draw can still be checked. If you are a provisional winner, the prize moves to the next available reserve. A confirmed or delivered award is not reassigned.</p>
+<p>You can <a href="/dsr?operation=export">request a copy of your data</a> or <a href="/dsr?operation=delete">request erasure</a>. We email a confirmation link to prove control of your address. For a question about your data, write to support@valstara.com.</p>
+</article>
+</sc-if>
+<sc-if value="{{is_terms}}" hint-placeholder-val="{{false}}">
+<article class="prose ">
+<p><strong>Draft notice.</strong> These terms are temporary text approved for publication by the founder. Final reviewed terms have not been supplied.</p>
+<p>Valstara is a trading brand of 3NITY DIGITAL LIMITED, registered in Hong Kong. This page concerns the pre-launch waitlist. The store will have separate terms when it opens.</p>
+<p>You can join the waitlist by submitting an email address and verifying it through the link we send. A place on the waitlist does not reserve a product or guarantee access on a particular date. Referral status and access windows are determined by the campaign rules shown on the site.</p>
+<p>The launch giveaway has <a href="/giveaway/rules">separate rules</a>. Joining the waitlist and entering the giveaway do not require marketing consent or a purchase. You may withdraw optional marketing consent without losing your waitlist place or giveaway entries. Leaving the waitlist is a separate action.</p>
+<p>For questions about the waitlist or these draft terms, write to support@valstara.com.</p>
+</article>
+</sc-if>
+<sc-if value="{{is_storage}}" hint-placeholder-val="{{false}}">
+<article class="prose ">
+<p>This site has two browser-storage entries. It sets no cookies.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Kind</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>valstara-theme</code></td>
+<td>Local storage</td>
+<td>Remembers your light or dark theme choice</td>
+</tr>
+<tr>
+<td><code>cf.turnstile.u</code></td>
+<td>Cloudflare local storage</td>
+<td>Helps secure a form when its Turnstile widget runs</td>
+</tr>
+</tbody>
+</table>
+<p>The theme preference is functional and does not identify you. Cloudflare Turnstile reads and writes <code>cf.turnstile.u</code> only when a protected form's widget runs. We rely on the Article 5(3) strictly-necessary exemption for security of the form you submit. The site does not use browser storage for analytics, advertising or referrals. Referral information is handled on the server. The site runs no device-fingerprinting API.</p>
+<p>No non-essential information is stored on or accessed from your device, so there is no cookie banner. Three automated checks guard this: one rejects unapproved site-code cookie and storage use, one rejects site-run fingerprinting APIs, and one rejects unapproved third-party requests from pages. Rendered-page checks inspect every page's storage access, the completed Turnstile token on protected forms, and cookies.</p>
+<p>Read the <a href="/privacy">privacy notice</a> for how we use personal data.</p>
+</article>
+</sc-if>
+<sc-if value="{{is_rules}}" hint-placeholder-val="{{false}}">
+<article class="prose ">
+<p class="doc-version"><strong>Rules version:</strong> VAL-GW-LAUNCH-20261009-r1 · Earlier versions stay available at their own permanent addresses.</p>
+<h2 id="1-who-runs-this-giveaway">1. Who runs this giveaway</h2>
+<p>The giveaway is run by <strong>3NITY DIGITAL LIMITED</strong> ("we", "us"), a company registered in Hong Kong under Business Registration No. 79886556, at Unit B, 12/F, Hang Seng Causeway Bay Building, 28 Yee Wo Street, Causeway Bay, Hong Kong.</p>
+<ul>
+<li>Questions about the giveaway, legal and payment enquiries, and requests to review a decision: <strong>support@valstara.com</strong></li>
+</ul>
+<h2 id="2-who-can-enter">2. Who can enter</h2>
+<p>You can enter if you are <strong>18 or older</strong> when you enter. You can enter from any country, subject to section 9.</p>
+<p>You can't enter if you are an employee or contractor of ours, or of anyone involved in running this giveaway, or a member of their immediate family or household.</p>
+<p><strong>One registration per person.</strong> Creating or controlling more than one registration, including with different email addresses, is not allowed (see section 11).</p>
+<h2 id="3-how-to-enter--no-purchase-necessary">3. How to enter — no purchase necessary</h2>
+<p><strong>No purchase or payment is necessary to enter or to win.</strong> Buying something will not improve your chances.</p>
+<ul>
+<li><strong>Join the Valstara waitlist and verify your email address:</strong> 1 entry.</li>
+<li><strong>Each person you refer who joins and verifies their own email address:</strong> 1 more entry for you.</li>
+</ul>
+<p>You don't need to refer anyone, and you don't need to agree to marketing emails, to enter. A person who joins directly receives exactly the same entry as anyone else, and every entry counts the same in the draw.</p>
+<p>Only verified entries count. Referral entries count only for real, separate people who verify their own address, not for addresses you control.</p>
+<h2 id="4-entry-period">4. Entry period</h2>
+<p>Entries open at <strong>00:00 UTC on 1 October 2026</strong>, or when the Valstara waitlist goes live if that is later. They close at <strong>23:59:59 UTC on 1 March 2027</strong>.</p>
+<p>To count, your email verification, and the verification of anyone you referred, must be completed before entries close.</p>
+<p>We will only change these dates if something outside our control makes it unavoidable, and never in a way that disadvantages people who have already entered.</p>
+<h2 id="5-prizes">5. Prizes</h2>
+<p>There are <strong>5 prizes</strong>. Each prize is <strong>a Valstara bundle of digital goods with an approximate retail value of €300</strong>, making <strong>€1,500</strong> in total. Values are stated in euros.</p>
+<p>The goods in the bundle will be listed on this page before the draw. No person can win more than one prize.</p>
+<p>Prizes are delivered electronically, at no cost to you.</p>
+<h2 id="6-if-a-product-isnt-available">6. If a product isn't available</h2>
+<p>The goods we carry change over time, so a product in the bundle may no longer be available when prizes are awarded, or may not be available in your region. If that happens:</p>
+<ol>
+<li><strong>You choose replacement goods</strong> from what we offer, so that your bundle keeps an approximate retail value of <strong>at least €300</strong>.</li>
+<li><strong>If you don't want any replacement,</strong> we pay you the approximate retail value of the product that couldn't be supplied, <strong>in cash</strong>, as a last resort.</li>
+</ol>
+<p>We never replace a product just to reduce what the prize costs us.</p>
+<h2 id="7-your-chances-of-winning">7. Your chances of winning</h2>
+<p>Your chances depend on how many eligible entries there are when entries close, so the exact odds can't be known in advance.</p>
+<p><strong>Every eligible entry counts equally.</strong> Your chance of being drawn is the number of eligible entries you hold divided by the total number of eligible entries. For example, if you hold 3 entries and there are 30,000 eligible entries in total, your chance of being drawn first is 3 in 30,000 (1 in 10,000).</p>
+<p>Once a person is drawn, their remaining entries are taken out of the draw, because no one can win more than one prize.</p>
+<h2 id="8-how-winners-are-chosen">8. How winners are chosen</h2>
+<p>Winners are drawn on <strong>1 April 2027</strong> by a computer process that selects entries at random, in proportion to the number of eligible entries each person holds.</p>
+<ul>
+<li>After entries close, we record a complete copy of the eligible entries and a cryptographic fingerprint of it. <strong>The random seed is generated only after that fingerprint is recorded</strong>, so the entry list can't be changed to suit a particular result.</li>
+<li>The same process selects the <strong>5 winners</strong> and an ordered list of <strong>reserves</strong>, all at once.</li>
+<li>The draw can be re-run from these records and produces the same result. We don't announce any result that fails that check.</li>
+<li>Before any prize is awarded, a person manually reviews the entrants with the most entries for breaches of these rules.</li>
+</ul>
+<h2 id="9-winner-checks">9. Winner checks</h2>
+<p>We email each provisional winner at their verified address <strong>within 7 days of the draw</strong>. To receive the prize, you must reply <strong>within 14 days</strong> of our email and:</p>
+<ul>
+<li>confirm you are 18 or older;</li>
+<li>tell us your country of residence (we don't need your postal address; prizes are delivered electronically);</li>
+<li>if you live in Canada, correctly answer a short mathematical skill-testing question.</li>
+</ul>
+<p>We can't award a prize where doing so would break sanctions laws that apply to us, our payment provider or our delivery partners.</p>
+<p>If a provisional winner doesn't reply in time, doesn't meet these rules, or can't receive a prize for the reason above, the prize goes to the next reserve from the same draw. We never hold a new draw.</p>
+<h2 id="10-taxes">10. Taxes</h2>
+<p>Winners are responsible for any taxes, duties or charges due on the prize in their country.</p>
+<h2 id="11-disqualification">11. Disqualification</h2>
+<p>We may remove entries, or disqualify an entrant, for:</p>
+<ul>
+<li>creating or controlling more than one registration;</li>
+<li>referring yourself, or referring addresses that aren't real, separate people;</li>
+<li>using automated or scripted signups;</li>
+<li>giving false information, including about your age;</li>
+<li>interfering with the giveaway or the draw.</li>
+</ul>
+<p>Our systems may flag unusual activity, but <strong>a person reviews every case before anyone is disqualified.</strong> If you are disqualified, you can't win a prize and the entries you earned from referrals are removed. The entries of people you referred are not affected.</p>
+<p>If you think we got it wrong, email <strong>support@valstara.com within 14 days</strong> of our decision and a person will review it again.</p>
+<h2 id="12-winner-publicity">12. Winner publicity</h2>
+<p>We may publish the number of prizes awarded and each winner's first name and surname initial, to show the prizes were genuinely awarded. You can ask us not to publish your name.</p>
+<p>We'll only use a winner's photo, testimonial or likeness with separate permission, and giving it is never a condition of receiving a prize.</p>
+<h2 id="13-your-data">13. Your data</h2>
+<p>We use your email address and entries to run the waitlist and this giveaway, as described in our <a href="/privacy">Privacy Notice</a>. Entering does not sign you up for marketing emails. That is a separate, optional choice you can change at any time from your status page.</p>
+<h2 id="14-changes-to-these-rules">14. Changes to these rules</h2>
+<p>We will only change these rules to correct or clarify them, or when something outside our control makes it necessary, and never in a way that disadvantages people who have already entered.</p>
+<p>Every change is published as a new version of this page, and your entries stay under the version that applied when you earned them.</p>
+<h2 id="15-governing-law">15. Governing law</h2>
+<p>These rules are governed by the laws of Hong Kong. This doesn't affect any rights you have under the mandatory consumer-protection laws of the country where you live.</p>
+</article>
+</sc-if>
+<sc-if value="{{is_rules_archived}}" hint-placeholder-val="{{false}}">
+<article class="prose ">
+<p class="doc-version"><strong>Rules version:</strong> VAL-GW-LAUNCH-20261001-r1 · Earlier versions stay available at their own permanent addresses.</p>
+<h2 id="1-who-runs-this-giveaway">1. Who runs this giveaway</h2>
+<p>The giveaway is run by <strong>3NITY DIGITAL LIMITED</strong> ("we", "us"), a company registered in Hong Kong under Business Registration No. 79886556, at Unit B, 12/F, Hang Seng Causeway Bay Building, 28 Yee Wo Street, Causeway Bay, Hong Kong.</p>
+<ul>
+<li>Questions about the giveaway, legal and payment enquiries, and requests to review a decision: <strong>support@valstara.com</strong></li>
+</ul>
+<p>Our EU and UK data-protection representatives are listed in our <a href="/privacy">Privacy Notice</a>. They are not the organisers of this giveaway.</p>
+<h2 id="2-who-can-enter">2. Who can enter</h2>
+<p>You can enter if you are <strong>18 or older</strong> when you enter. You can enter from any country, subject to section 9.</p>
+<p>You can't enter if you are an employee or contractor of ours, or of anyone involved in running this giveaway, or a member of their immediate family or household.</p>
+<p><strong>One registration per person.</strong> Creating or controlling more than one registration, including with different email addresses, is not allowed (see section 11).</p>
+<h2 id="3-how-to-enter--no-purchase-necessary">3. How to enter — no purchase necessary</h2>
+<p><strong>No purchase or payment is necessary to enter or to win.</strong> Buying something will not improve your chances.</p>
+<ul>
+<li><strong>Join the Valstara waitlist and verify your email address:</strong> 1 entry.</li>
+<li><strong>Each person you refer who joins and verifies their own email address:</strong> 1 more entry for you.</li>
+</ul>
+<p>You don't need to refer anyone, and you don't need to agree to marketing emails, to enter. A person who joins directly receives exactly the same entry as anyone else, and every entry counts the same in the draw.</p>
+<p>Only verified entries count. Referral entries count only for real, separate people who verify their own address, not for addresses you control.</p>
+<h2 id="4-entry-period">4. Entry period</h2>
+<p>Entries open at <strong>00:00 UTC on 1 October 2026</strong>, or when the Valstara waitlist goes live if that is later. They close at <strong>23:59:59 UTC on 1 March 2027</strong>.</p>
+<p>To count, your email verification, and the verification of anyone you referred, must be completed before entries close.</p>
+<p>We will only change these dates if something outside our control makes it unavoidable, and never in a way that disadvantages people who have already entered.</p>
+<h2 id="5-prizes">5. Prizes</h2>
+<p>There are <strong>5 prizes</strong>. Each prize is <strong>a Valstara bundle of digital goods with an approximate retail value of €300</strong>, making <strong>€1,500</strong> in total. Values are stated in euros.</p>
+<p>The goods in the bundle will be listed on this page before the draw. No person can win more than one prize.</p>
+<p>Prizes are delivered electronically, at no cost to you.</p>
+<h2 id="6-if-a-product-isnt-available">6. If a product isn't available</h2>
+<p>The goods we carry change over time, so a product in the bundle may no longer be available when prizes are awarded, or may not be available in your region. If that happens:</p>
+<ol>
+<li><strong>You choose replacement goods</strong> from what we offer, so that your bundle keeps an approximate retail value of <strong>at least €300</strong>.</li>
+<li><strong>If you don't want any replacement,</strong> we pay you the approximate retail value of the product that couldn't be supplied, <strong>in cash</strong>, as a last resort.</li>
+</ol>
+<p>We never replace a product just to reduce what the prize costs us.</p>
+<h2 id="7-your-chances-of-winning">7. Your chances of winning</h2>
+<p>Your chances depend on how many eligible entries there are when entries close, so the exact odds can't be known in advance.</p>
+<p><strong>Every eligible entry counts equally.</strong> Your chance of being drawn is the number of eligible entries you hold divided by the total number of eligible entries. For example, if you hold 3 entries and there are 30,000 eligible entries in total, your chance of being drawn first is 3 in 30,000 (1 in 10,000).</p>
+<p>Once a person is drawn, their remaining entries are taken out of the draw, because no one can win more than one prize.</p>
+<h2 id="8-how-winners-are-chosen">8. How winners are chosen</h2>
+<p>Winners are drawn on <strong>1 April 2027</strong> by a computer process that selects entries at random, in proportion to the number of eligible entries each person holds.</p>
+<ul>
+<li>After entries close, we record a complete copy of the eligible entries and a cryptographic fingerprint of it. <strong>The random seed is generated only after that fingerprint is recorded</strong>, so the entry list can't be changed to suit a particular result.</li>
+<li>The same process selects the <strong>5 winners</strong> and an ordered list of <strong>reserves</strong>, all at once.</li>
+<li>The draw can be re-run from these records and produces the same result. We don't announce any result that fails that check.</li>
+<li>Before any prize is awarded, a person manually reviews the entrants with the most entries for breaches of these rules.</li>
+</ul>
+<h2 id="9-winner-checks">9. Winner checks</h2>
+<p>We email each provisional winner at their verified address <strong>within 7 days of the draw</strong>. To receive the prize, you must reply <strong>within 14 days</strong> of our email and:</p>
+<ul>
+<li>confirm you are 18 or older;</li>
+<li>tell us your country of residence (we don't need your postal address; prizes are delivered electronically);</li>
+<li>if you live in Canada, correctly answer a short mathematical skill-testing question.</li>
+</ul>
+<p>We can't award a prize where doing so would break sanctions laws that apply to us, our payment provider or our delivery partners.</p>
+<p>If a provisional winner doesn't reply in time, doesn't meet these rules, or can't receive a prize for the reason above, the prize goes to the next reserve from the same draw. We never hold a new draw.</p>
+<h2 id="10-taxes">10. Taxes</h2>
+<p>Winners are responsible for any taxes, duties or charges due on the prize in their country.</p>
+<h2 id="11-disqualification">11. Disqualification</h2>
+<p>We may remove entries, or disqualify an entrant, for:</p>
+<ul>
+<li>creating or controlling more than one registration;</li>
+<li>referring yourself, or referring addresses that aren't real, separate people;</li>
+<li>using automated or scripted signups;</li>
+<li>giving false information, including about your age;</li>
+<li>interfering with the giveaway or the draw.</li>
+</ul>
+<p>Our systems may flag unusual activity, but <strong>a person reviews every case before anyone is disqualified.</strong> If you are disqualified, you can't win a prize and the entries you earned from referrals are removed. The entries of people you referred are not affected.</p>
+<p>If you think we got it wrong, email <strong>support@valstara.com within 14 days</strong> of our decision and a person will review it again.</p>
+<h2 id="12-winner-publicity">12. Winner publicity</h2>
+<p>We may publish the number of prizes awarded and each winner's first name and surname initial, to show the prizes were genuinely awarded. You can ask us not to publish your name.</p>
+<p>We'll only use a winner's photo, testimonial or likeness with separate permission, and giving it is never a condition of receiving a prize.</p>
+<h2 id="13-your-data">13. Your data</h2>
+<p>We use your email address and entries to run the waitlist and this giveaway, as described in our <a href="/privacy">Privacy Notice</a>. Entering does not sign you up for marketing emails. That is a separate, optional choice you can change at any time from your status page.</p>
+<h2 id="14-changes-to-these-rules">14. Changes to these rules</h2>
+<p>We will only change these rules to correct or clarify them, or when something outside our control makes it necessary, and never in a way that disadvantages people who have already entered.</p>
+<p>Every change is published as a new version of this page, and your entries stay under the version that applied when you earned them.</p>
+<h2 id="15-governing-law">15. Governing law</h2>
+<p>These rules are governed by the laws of Hong Kong. This doesn't affect any rights you have under the mandatory consumer-protection laws of the country where you live.</p>
+</article>
+</sc-if>
+<sc-if value="{{hasAside}}" hint-placeholder-val="{{true}}">
+<div class="doc-aside">
+<sc-if value="{{isTrust}}" hint-placeholder-val="{{true}}">
+<aside class="card card--roomy side-card rel" aria-label="Guarantee summary"><h2 class="side-card__title">The Triple Guarantee</h2><ol class="side-promises"><li><span class="side-promises__n" aria-hidden="true">I</span><span class="side-promises__t">Delivered within 24 hours</span></li><li><span class="side-promises__n" aria-hidden="true">II</span><span class="side-promises__t">Protected, start to finish</span></li><li><span class="side-promises__n" aria-hidden="true">III</span><span class="side-promises__t">Resolved, replaced, or refunded</span></li></ol><div class="side-card__actions"><sc-if value="{{readLink}}" hint-placeholder-val="{{true}}"><a class="link link-arrow" href="/guarantee">Read the guarantee<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a></sc-if><a class="btn btn--primary btn--full" href="/#join">Join the waitlist</a></div><span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">side card E1 · sticky top 24 from 1024 · follows the prose below 1024</span></span></aside>
+</sc-if>
+<sc-if value="{{is_privacy}}" hint-placeholder-val="{{false}}"><nav class="card card--roomy rel" aria-label="Contents"><h2 class="side-card__title">On this page</h2><ol class="toc"><li><a href="#what-we-use-and-why">What we use and why</a></li><li><a href="#cookie-and-storage-inventory">Cookie and storage inventory</a></li><li><a href="#erasure-and-retained-award-records">Erasure and retained award records</a></li></ol><span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">contents · existing H2 anchors only · links 36 (44 below 1024) · sticky from 1024</span></span></nav></sc-if>
+<sc-if value="{{is_rules}}" hint-placeholder-val="{{false}}"><nav class="card card--roomy rel" aria-label="Contents"><h2 class="side-card__title">On this page</h2><ol class="toc"><li><a href="#1-who-runs-this-giveaway">1. Who runs this giveaway</a></li><li><a href="#2-who-can-enter">2. Who can enter</a></li><li><a href="#3-how-to-enter--no-purchase-necessary">3. How to enter — no purchase necessary</a></li><li><a href="#4-entry-period">4. Entry period</a></li><li><a href="#5-prizes">5. Prizes</a></li><li><a href="#6-if-a-product-isnt-available">6. If a product isn't available</a></li><li><a href="#7-your-chances-of-winning">7. Your chances of winning</a></li><li><a href="#8-how-winners-are-chosen">8. How winners are chosen</a></li><li><a href="#9-winner-checks">9. Winner checks</a></li><li><a href="#10-taxes">10. Taxes</a></li><li><a href="#11-disqualification">11. Disqualification</a></li><li><a href="#12-winner-publicity">12. Winner publicity</a></li><li><a href="#13-your-data">13. Your data</a></li><li><a href="#14-changes-to-these-rules">14. Changes to these rules</a></li><li><a href="#15-governing-law">15. Governing law</a></li></ol><span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">contents · existing H2 anchors only · links 36 (44 below 1024) · sticky from 1024</span></span></nav></sc-if>
+<sc-if value="{{is_rules_archived}}" hint-placeholder-val="{{false}}"><nav class="card card--roomy rel" aria-label="Contents"><h2 class="side-card__title">On this page</h2><ol class="toc"><li><a href="#1-who-runs-this-giveaway">1. Who runs this giveaway</a></li><li><a href="#2-who-can-enter">2. Who can enter</a></li><li><a href="#3-how-to-enter--no-purchase-necessary">3. How to enter — no purchase necessary</a></li><li><a href="#4-entry-period">4. Entry period</a></li><li><a href="#5-prizes">5. Prizes</a></li><li><a href="#6-if-a-product-isnt-available">6. If a product isn't available</a></li><li><a href="#7-your-chances-of-winning">7. Your chances of winning</a></li><li><a href="#8-how-winners-are-chosen">8. How winners are chosen</a></li><li><a href="#9-winner-checks">9. Winner checks</a></li><li><a href="#10-taxes">10. Taxes</a></li><li><a href="#11-disqualification">11. Disqualification</a></li><li><a href="#12-winner-publicity">12. Winner publicity</a></li><li><a href="#13-your-data">13. Your data</a></li><li><a href="#14-changes-to-these-rules">14. Changes to these rules</a></li><li><a href="#15-governing-law">15. Governing law</a></li></ol><span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">contents · existing H2 anchors only · links 36 (44 below 1024) · sticky from 1024</span></span></nav></sc-if>
+</div>
+</sc-if>
+</div></div></div>
+<span class="ann" style="right: 16px; top: 8px"><span class="ann__chip">{{layoutAnn}}</span></span>
+</main>
+<div class="footer-slot"><dc-import name="Footer" theme="{{themeName}}" annotations="{{ann}}" hint-size="100%,360px"></dc-import></div>
+<sc-if value="{{joinBar}}" hint-placeholder-val="{{false}}">
+<div class="join-bar join-bar--demo"><a class="btn btn--primary btn--full" href="/#join">Join the waitlist</a><span class="ann" style="right: 8px; top: -24px"><span class="ann__chip">fixed to the viewport bottom · a link, not a form · clears the 34 safe area</span></span></div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"page":{"editor":"enum","options":["legit","guarantee","about","privacy","terms","storage","rules","rules-archived"],"default":"legit"},"joinbar":{"editor":"boolean","default":true},"uid":{"editor":"string","default":"d"},"$preview":{"width":1440,"height":2600}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var META = {"legit": {"kind": "trust", "h1": "Who runs Valstara", "summary": "Valstara is a trading brand of 3NITY Digital Limited, registered in Hong Kong. Our company details, how to reach us, and how to check us for yourself.", "toc": true}, "guarantee": {"kind": "trust", "h1": "The Triple Guarantee", "summary": "Every Valstara order is covered by three promises. Delivered within 24 hours, protected start to finish, and resolved, replaced or refunded.", "toc": true}, "about": {"kind": "trust", "h1": "About Valstara", "summary": "Valstara sells digital goods well below list price, with a guarantee on every order. Why we exist, how we work and who is behind us.", "toc": true}, "privacy": {"kind": "legal", "h1": "Privacy notice", "summary": "Draft privacy notice for the Valstara pre-launch waitlist.", "toc": true}, "terms": {"kind": "legal", "h1": "Waitlist terms", "summary": "Draft terms for the Valstara pre-launch waitlist.", "toc": false}, "storage": {"kind": "legal", "h1": "Cookie and storage inventory", "summary": "The browser storage used by the Valstara waitlist site.", "toc": false}, "rules": {"kind": "rules", "h1": "Valstara Launch Giveaway — Official Rules", "summary": "Official rules for the Valstara launch giveaway.", "toc": true}, "rules-archived": {"kind": "rules", "h1": "Valstara Launch Giveaway — Official Rules", "summary": "Official rules for the Valstara launch giveaway.", "toc": true}};
+    var dark = this.props.theme === 'dark';
+    var p = this.props.page || 'legit';
+    var m = META[p];
+    var trust = m.kind === 'trust';
+    var v = {
+      themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light',
+      ann: !!this.props.annotations, annCls: this.props.annotations ? 'show-ann' : '',
+      pageCls: trust ? 'page--joinbar' : '',
+      headerCtx: trust ? 'trust' : 'site',
+      archived: p === 'rules-archived',
+      bandCls: p === 'guarantee' ? 'doc-band--midnight' : '',
+      innerCls: p === 'about' ? 'doc-band__inner--media' : '',
+      isAbout: p === 'about', phRatio: '4:5 · 1:1 on phone',
+      eyebrow: trust ? 'Trust' : (m.kind === 'legal' ? 'Legal' : 'Giveaway rules'),
+      h1: m.h1, summary: m.summary,
+      isTrust: trust, hasAside: trust || m.toc, readLink: p !== 'guarantee',
+      joinBar: trust && this.props.joinbar !== false,
+      bandAnn: (p === 'guarantee' ? 'midnight band (the guarantee earns it) · ' : 'surface band · ') + 'eyebrow t-small 600 · the article’s own H1 drawn into the band · summary t-body ink-600 · pad 64/48 (40 small)',
+      layoutAnn: 'from 1024: prose 68ch (cols 1–7) · gap 80 · aside min 320 · body 16/24, paragraphs 16 apart, H2 48 above, H3 32 above'
+    };
+    Object.keys(META).forEach(function (k) { v['is_' + k.replace('-', '_')] = k === p; });
+    return v;
+  }
+}
+</script>
+</body>
+</html>

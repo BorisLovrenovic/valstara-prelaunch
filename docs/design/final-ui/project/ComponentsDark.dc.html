@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Component library · dark</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<dc-import name="Components" theme="{{theme}}" annotations="{{ann}}" hint-size="2400px,5620px"></dc-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"dark"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":2400,"height":5620}}'>
+class Component extends DCLogic {
+  renderVals() { return { theme: this.props.theme || 'dark', ann: !!this.props.annotations }; }
+}
+</script>
+</body>
+</html>

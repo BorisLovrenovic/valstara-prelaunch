@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Signup form states · desktop</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}} {{annCls}}" style="width: {{sheetW}}">
+<h1 class="sheet__title">Signup form states · {{label}}</h1>
+<p class="sheet__lede">All 17 states on the real hero at {{size}}. Field errors sit directly under the field with an icon, text and a 2px border. Form-level errors are a notice inside the form card. The success panel is identical for new and existing addresses, never says an email was sent and never shows a position, count or rank. Disabled buttons keep their width so the row never jumps.</p>
+<div class="frames">
+<sc-for list="{{states}}" as="s" hint-placeholder-count="6">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">{{s.n}}</span><span class="frame__name">{{s.name}}</span></div>
+<p class="frame__note" style="max-width: {{frameW}}">{{s.note}}</p>
+<div class="frame__screen" style="width: {{frameW}}; height: {{frameH}}">
+<div class="page page--fit {{themeCls}}">
+<dc-import name="Header" theme="{{themeName}}" hint-size="100%,80px"></dc-import>
+<dc-import name="Hero" theme="{{themeName}}" annotations="{{ann}}" state="{{s.id}}" uid="{{s.uid}}" hint-size="100%,780px"></dc-import>
+</div>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"device":{"editor":"enum","options":["desktop","phone"],"default":"desktop"},"$preview":{"width":4544,"height":6400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    var phone = this.props.device === 'phone';
+    var S = [
+      ['01', 'idle', 'Idle', 'The default form. Label always visible; the placeholder is only an example.'],
+      ['02', 'focus', 'Focused', 'Coral ring: 2px surface gap, then 2px coral. Border turns coral.'],
+      ['03', 'empty', 'Error · empty', 'Submitted with nothing typed. Focus returns to the field.'],
+      ['04', 'invalid', 'Error · invalid', 'Format check failed. Message linked with aria-describedby.'],
+      ['05', 'blocked', 'Blocked domain', 'Disposable or blocked domain returned by the server.'],
+      ['06', 'checking', 'Security check in progress', 'Invisible check running: disabled button, 16px spinner, label says why.'],
+      ['07', 'submitting', 'Submitting', 'Request in flight. Same disabled treatment, in-flight label.'],
+      ['08', 'check-visible', 'Security check visible', 'State 06 plus the Turnstile widget in its slot, 12px under the microline.'],
+      ['09', 'check-failed', 'Check failed', 'Form notice with a 1.5px error rule and alert icon; focus moves to it.'],
+      ['10', 'network', 'Network error', 'Form notice. The typed address is kept.'],
+      ['11', 'unavailable', 'Unavailable', 'Form notice. The typed address is kept.'],
+      ['12', 'rate-limited', 'Rate limited', 'Honest wait time from the server; {5} is dynamic.'],
+      ['13', 'success', 'Success · first 60 seconds', 'The panel replaces the form. Only "Use a different address".'],
+      ['14', 'success-60', 'Success · after 60 seconds', '"Send the link again" appears beside it, equal weight.'],
+      ['15', 'resent', 'Success · re-sent', 'Neutral check line; it reveals nothing about whether the address is on the list.'],
+      ['16', 'no-js', 'JavaScript disabled', 'Neutral notice above the form; the form stays visible.'],
+      ['17', 'paused', 'Signups paused', 'Calm panel replaces the form. Header Join and final CTA scroll here.']
+    ];
+    return {
+      themeCls: dark ? 'dark' : '',
+      themeName: dark ? 'dark' : 'light',
+      ann: !!this.props.annotations,
+      annCls: this.props.annotations ? 'show-ann' : '',
+      label: phone ? 'phone' : 'desktop',
+      size: phone ? '390 × 844' : '1440 × 900',
+      sheetW: phone ? '2708px' : '4544px',
+      frameW: phone ? '390px' : '1440px',
+      frameH: phone ? '844px' : '900px',
+      states: S.map(function (x) { return { n: x[0], id: x[1], name: x[2], note: x[3], uid: (phone ? 'p' : 'd') + x[0] }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

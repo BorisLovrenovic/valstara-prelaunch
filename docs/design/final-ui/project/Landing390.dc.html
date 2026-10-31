@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Valstara · Landing 390 · sticky bar shown mid-page</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<dc-import name="Main" theme="{{theme}}" annotations="{{annotations}}" sticky="{{sticky}}" sticky-top="1720px" fold-top="844px" fold-label="390 × 844" uid="l390" hint-size="100%,5000px"></dc-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":390,"height":6542}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme || 'light', annotations: !!this.props.annotations, sticky: true };
+  }
+}
+</script>
+</body>
+</html>

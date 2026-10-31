@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Token sheet</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tk-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-2);margin-top:var(--space-3)}
+.tk-sw{color:var(--ink);background:var(--surface);border-radius:var(--radius-card);box-shadow:var(--shadow-1),var(--edge);overflow:hidden}
+.tk-sw__chip{height:5.5rem;display:flex;align-items:flex-end;padding:var(--space-1-5);font-family:var(--font-mono);font-size:var(--step-0);line-height:var(--leading-0);font-weight:600}
+.tk-sw__meta{padding:var(--space-1-5) var(--space-2);display:flex;flex-direction:column;gap:2px}
+.tk-sw__name{font-family:var(--font-mono);font-size:var(--step-1);line-height:var(--leading-1);font-weight:600}
+.tk-sw__use{font-size:var(--step-0);line-height:var(--leading-0);color:var(--ink-600)}
+.tk-row{display:grid;grid-template-columns:14rem minmax(0,1fr) 16rem;gap:var(--space-3);align-items:baseline;padding:var(--space-2) 0;border-top:1px solid var(--line)}
+.tk-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6)}
+.tk-space{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-0-75) 0}
+.tk-space i{display:block;height:1rem;background:var(--coral);border-radius:2px}
+.tk-elev{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4);padding:var(--space-5);border-radius:var(--radius-card);background:var(--paper)}
+.tk-elev > div{color:var(--ink);height:8rem;border-radius:var(--radius-card);background:var(--surface);padding:var(--space-2);display:flex;flex-direction:column;justify-content:flex-end;font-family:var(--font-mono);font-size:var(--step-0);line-height:var(--leading-0)}
+.tk-gridbox{position:relative;background:var(--paper);border-radius:6px;box-shadow:var(--shadow-1),var(--edge);overflow:hidden;height:16rem}
+.tk-gridbox .cols{position:absolute;top:0;bottom:0;display:grid}
+.tk-gridbox .cols i{display:block;background:rgba(232,101,74,.12);box-shadow:inset 1px 0 0 rgba(232,101,74,.35),inset -1px 0 0 rgba(232,101,74,.35)}
+.tk-gridbox .cap{position:absolute;left:8px;bottom:8px;font-family:var(--font-mono);font-size:var(--step-0);line-height:var(--leading-0);color:var(--ink-600)}
+</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 2400px">
+<h1 class="sheet__title">Token sheet</h1>
+<p class="sheet__lede">Every value an engineer measures resolves to one of these custom properties in valstara.css (section 4 names exactly as given). Tokens marked delta are new and are listed with their reason on the Change log board. Ratios are WCAG contrast against the surface named.</p>
+
+<section class="sheet__section">
+<h2>Colour · light (default)</h2>
+<p>The frame is neutral; provider colours appear only inside their own banner. Coral marks the one action, numerals, link underlines, coral pills and the focus ring, never body text.</p>
+<div class="tk-grid">
+<sc-for list="{{light}}" as="c" hint-placeholder-count="16">
+<div class="tk-sw"><div class="tk-sw__chip" style="background: {{c.v}}; color: {{c.fg}}">{{c.hex}}</div><div class="tk-sw__meta"><span class="tk-sw__name">{{c.n}}</span><span class="tk-sw__use">{{c.use}}</span></div></div>
+</sc-for>
+</div>
+</section>
+
+<section class="sheet__section">
+<h2>Colour · dark (user toggle, never the default)</h2>
+<p>Only the section 4.1 dark values change; everything else inherits. Dark is re-composed, not inverted: surfaces step up (paper → surface → midnight-deep wells inside cards), elevated surfaces gain the 1px edge, and the guarantee band keeps its weight through the band shadow and midnight-deep panels.</p>
+<div class="tk-grid dark" style="padding: var(--space-3); border-radius: var(--radius-card); background: var(--paper)">
+<sc-for list="{{dark}}" as="c" hint-placeholder-count="10">
+<div class="tk-sw"><div class="tk-sw__chip" style="background: {{c.v}}; color: {{c.fg}}">{{c.hex}}</div><div class="tk-sw__meta"><span class="tk-sw__name">{{c.n}}</span><span class="tk-sw__use">{{c.use}}</span></div></div>
+</sc-for>
+</div>
+</section>
+
+<section class="sheet__section">
+<h2>Alpha variants and roles in use</h2>
+<p>Alphas of existing colours only; no new hue. Banner tones come from the build (composeBanner) and are unchanged.</p>
+<table class="spec-table" style="margin-top: var(--space-3); background: var(--surface); border-radius: var(--radius-card); overflow: hidden">
+<thead><tr><th>Token</th><th>Light</th><th>Dark</th><th>Used for</th><th>Status</th></tr></thead>
+<tbody>
+<sc-for list="{{alphas}}" as="a" hint-placeholder-count="12">
+<tr><td><code>{{a.n}}</code></td><td><code>{{a.l}}</code></td><td><code>{{a.d}}</code></td><td>{{a.use}}</td><td>{{a.s}}</td></tr>
+</sc-for>
+</tbody>
+</table>
+</section>
+
+<section class="sheet__section">
+<h2>Contrast checks (WCAG 2.2 AA)</h2>
+<p>Body text needs 4.5:1, large text and UI boundaries 3:1. Every provider banner label picks white or ink by the higher ratio; the lowest of all 34 is Discord, white on #5865F2, at 4.61:1.</p>
+<table class="spec-table" style="margin-top: var(--space-3); background: var(--surface); border-radius: var(--radius-card); overflow: hidden">
+<thead><tr><th>Pairing</th><th>Light</th><th>Dark</th><th>Rule</th></tr></thead>
+<tbody>
+<tr><td>ink on paper / surface</td><td>18.19 / 18.98</td><td>16.68 / 15.25</td><td>body</td></tr>
+<tr><td>ink-600 on paper / surface</td><td>7.07 / 7.38</td><td>7.33 / 6.70</td><td>body (placeholder, hints, secondary)</td></tr>
+<tr><td>ink-300 on surface</td><td>2.60</td><td>—</td><td>never text; disabled glyphs and connectors only</td></tr>
+<tr><td>on-coral on coral (primary label)</td><td>5.78</td><td>8.21</td><td>body</td></tr>
+<tr><td>coral on paper</td><td>3.15</td><td>8.23</td><td>large figures, underlines, focus ring (3:1) only</td></tr>
+<tr><td>ink on coral-tint (pills)</td><td>16.80</td><td>11.70</td><td>body</td></tr>
+<tr><td>on-midnight on midnight</td><td>16.67</td><td>15.25</td><td>body</td></tr>
+<tr><td>on-midnight-600 on midnight / midnight-deep</td><td>9.52 / 10.14</td><td>≥ 8.9</td><td>body</td></tr>
+<tr><td>coral on midnight (numerals) · coral-lift on midnight</td><td>5.30 · 7.52</td><td>7.52</td><td>large text, focus ring</td></tr>
+<tr><td>error on surface</td><td>5.44</td><td>3.20 → error text uses ink; red stays on icon and border</td><td>body</td></tr>
+<tr><td>field border (ink-600) on surface</td><td>7.38</td><td>6.70</td><td>UI boundary 3:1</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="sheet__section">
+<h2>Type · Instrument Sans and JetBrains Mono</h2>
+<p>Six sizes only. Headings tighten to −0.01em and balance their lines; paragraphs use text-wrap: pretty. Weight, position and space carry the hierarchy the 32px H1 cannot.</p>
+<div class="spec-card" style="margin-top: var(--space-3)">
+<div class="tk-row" style="border-top: 0"><span class="t-label c-600 t-mono">H1 · 32/40 · 700 · −0.01em</span><span class="t-h1">Premium digital goods, for less.</span><span class="t-label c-600 t-mono">--step-5 / --leading-5</span></div>
+<div class="tk-row"><span class="t-label c-600 t-mono">H2 · 24/32 · 600 · −0.01em</span><span class="t-h2">The Triple Guarantee</span><span class="t-label c-600 t-mono">--step-4 / --leading-4</span></div>
+<div class="tk-row"><span class="t-label c-600 t-mono">H3 · 20/28 · 600 · −0.01em</span><span class="t-h3">Resolved, replaced, or refunded.</span><span class="t-label c-600 t-mono">--step-3 / --leading-3</span></div>
+<div class="tk-row"><span class="t-label c-600 t-mono">Body · 16/24 · 400 / 500 / 600</span><span class="t-body">Join the waitlist for earlier access to Valstara, a direct seller of digital goods backed by the Triple Guarantee.</span><span class="t-label c-600 t-mono">--step-2 / --leading-2</span></div>
+<div class="tk-row"><span class="t-label c-600 t-mono">Small · 14/20 · 400 / 500 / 600</span><span class="t-small">Open to people aged 18 and over. No purchase necessary.</span><span class="t-label c-600 t-mono">--step-1 / --leading-1</span></div>
+<div class="tk-row"><span class="t-label c-600 t-mono">Label · 13/18 · 500 / 600</span><span class="t-label w-600">Optional · confirmed referrals · Streaming and subscriptions</span><span class="t-label c-600 t-mono">--step-0 / --leading-0</span></div>
+<div class="tk-row"><span class="t-label c-600 t-mono">Mono figure · 32/40 · 600 · tabular</span><span class="t-figure">3 · 15% · €300 · 0123456789</span><span class="t-label c-600 t-mono">.t-figure</span></div>
+<div class="tk-row"><span class="t-label c-600 t-mono">Mono · 14/20 and 13/18 · tabular</span><span class="t-mono t-small">https://valstara.com/?ref=K7QX2MPR9AZB · Wave 2 · Anonymous k7Qx2LmP9aZb</span><span class="t-label c-600 t-mono">.t-mono</span></div>
+<div class="tk-row"><span class="t-label c-600 t-mono">Weights</span><span class="t-h3" style="display: flex; gap: var(--space-4)"><span class="w-500" style="font-weight: 400">Regular 400</span><span class="w-500">Medium 500</span><span class="w-600">Semibold 600</span><span class="w-700">Bold 700</span></span><span class="t-label c-600 t-mono">--weight-*</span></div>
+</div>
+</section>
+
+<div class="tk-cols sheet__section">
+<section>
+<h2 class="t-h2">Spacing · 8px scale with half-steps</h2>
+<p class="c-600" style="margin-top: var(--space-0-5)">Sections: 80 large, 64 medium and small. Card padding 24 (32 roomy, 20 on phone where drawn).</p>
+<div class="spec-card" style="margin-top: var(--space-3)">
+<sc-for list="{{space}}" as="s" hint-placeholder-count="15">
+<div class="tk-space"><span class="t-mono t-label" style="width: 9rem">{{s.n}}</span><span class="t-mono t-label c-600" style="width: 3rem">{{s.px}}</span><i style="width: {{s.px}}"></i></div>
+</sc-for>
+</div>
+</section>
+<section>
+<h2 class="t-h2">Radii, lines and focus</h2>
+<div class="spec-card" style="margin-top: var(--space-3); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3)">
+<div class="stack" style="gap: var(--space-1)"><div style="height: 5rem; border-radius: var(--radius-card); background: var(--paper); box-shadow: var(--inset-strong)"></div><span class="t-mono t-label">--radius-card 12 · cards, banners</span></div>
+<div class="stack" style="gap: var(--space-1)"><div style="height: 5rem; border-radius: var(--radius-control); background: var(--paper); box-shadow: var(--inset-strong)"></div><span class="t-mono t-label">--radius-control 8 · buttons, inputs, tiles</span></div>
+<div class="stack" style="gap: var(--space-1)"><div style="height: 2.5rem; margin-top: 1.25rem; border-radius: var(--radius-pill); background: var(--paper); box-shadow: var(--inset-strong)"></div><span class="t-mono t-label" style="margin-top: 1.25rem">--radius-pill 999 · pills, badges, chips</span></div>
+<div class="stack" style="gap: var(--space-1)"><div style="width: 2.5rem; height: 2.5rem; border-radius: var(--radius-check); background: var(--paper); box-shadow: var(--inset-strong)"></div><span class="t-mono t-label">--radius-check 4 · checkbox</span></div>
+</div>
+<div class="spec-card" style="margin-top: var(--space-3); display: flex; gap: var(--space-5); align-items: center; flex-wrap: wrap">
+<button class="btn btn--primary is-focus" type="button">Focus ring</button>
+<input class="input is-focus" style="width: 14rem" value="Input focus ring" readonly="readonly" aria-label="Input focus ring sample">
+<a class="link" href="#">Text link · 2px coral, offset 3</a>
+<span class="t-mono t-label c-600">outline 2px coral, offset 2 · inputs: 0 0 0 2px surface, 0 0 0 4px coral</span>
+</div>
+</section>
+</div>
+
+<section class="sheet__section">
+<h2>Elevation · consistent top light source</h2>
+<p>E1 cards at rest · E2 raised (hero stack, hovered interactive cards, success panel, sticky bar) · E3 overlays (reserved; no modal exists). Dark adds the 1px edge to every elevated surface.</p>
+<div class="tk-cols" style="margin-top: var(--space-3)">
+<div class="tk-elev"><div style="box-shadow: var(--shadow-1), var(--edge)">--shadow-1 · E1</div><div style="box-shadow: var(--shadow-2), var(--edge)">--shadow-2 · E2</div><div style="box-shadow: var(--shadow-3), var(--edge)">--shadow-3 · E3</div></div>
+<div class="tk-elev dark"><div style="box-shadow: var(--shadow-1), var(--edge)">dark --shadow-1 + --edge</div><div style="box-shadow: var(--shadow-2), var(--edge)">dark --shadow-2 + --edge</div><div style="box-shadow: var(--shadow-3), var(--edge)">dark --shadow-3 + --edge</div></div>
+</div>
+</section>
+
+<section class="sheet__section">
+<h2>Motion · state changes only</h2>
+<p>No entrance, scroll-triggered or auto-advancing motion, no animated counters, no bounce. Under prefers-reduced-motion every transition and the spinner stop.</p>
+<table class="spec-table" style="margin-top: var(--space-3); background: var(--surface); border-radius: var(--radius-card); overflow: hidden">
+<thead><tr><th>Component</th><th>Property</th><th>Duration</th><th>Easing</th></tr></thead>
+<tbody>
+<tr><td>Buttons (all)</td><td>box-shadow, background-color, color; translateY(1px) on press</td><td><code>--duration-fast</code> 150ms</td><td><code>--ease-out</code> cubic-bezier(0.16, 1, 0.3, 1)</td></tr>
+<tr><td>Nav links, contents links, footer links</td><td>color, background-color, underline colour</td><td>150ms</td><td>--ease-out</td></tr>
+<tr><td>Interactive cards, provider banners</td><td>box-shadow E1 → E2, translateY(−2px)</td><td><code>--duration-base</code> 200ms</td><td>--ease-out</td></tr>
+<tr><td>Trust card arrow, link arrows</td><td>transform translateX(2–3px)</td><td>150ms</td><td>--ease-out</td></tr>
+<tr><td>Input, checkbox, chips, segments</td><td>border-color, box-shadow, background-color</td><td>150ms</td><td>--ease-out</td></tr>
+<tr><td>Switch</td><td>knob transform, track background</td><td>200ms</td><td>--ease-out</td></tr>
+<tr><td>FAQ and disclosure chevron</td><td>transform rotate(180deg)</td><td>200ms</td><td>--ease-out</td></tr>
+<tr><td>Sticky bars</td><td>transform translateY(100% → 0) on reveal</td><td>200ms</td><td>--ease-out</td></tr>
+<tr><td>Spinner (loading states)</td><td>rotate, linear, 0.8s per turn</td><td>800ms</td><td>linear · stops under reduced motion</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="sheet__section">
+<h2>Grid</h2>
+<p>Container max 1200px. Gutters 16 below 768, 32 from 768. 4 columns with 16px gaps below 768; 12 columns with 24px gaps from 768. Breakpoints 22.5rem · 48rem · 64rem · 80rem.</p>
+<div style="display: grid; grid-template-columns: 390px 768px 1fr; gap: var(--space-4); margin-top: var(--space-3); align-items: start">
+<div class="tk-gridbox" style="width: 390px"><div class="cols" style="left: 16px; right: 16px; grid-template-columns: repeat(4, 1fr); column-gap: 16px"><i></i><i></i><i></i><i></i></div><span class="cap">390 · 4 col · gap 16 · gutter 16</span></div>
+<div class="tk-gridbox" style="width: 768px"><div class="cols" style="left: 32px; right: 32px; grid-template-columns: repeat(12, 1fr); column-gap: 24px"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="cap">768 · 12 col · gap 24 · gutter 32</span></div>
+<div class="tk-gridbox"><div class="cols" style="left: 11.1%; right: 11.1%; grid-template-columns: repeat(12, 1fr); column-gap: 1.67%"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="cap">1440 (scaled) · container 1200 · 12 col · gap 24 · margins 120</span></div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":2400,"height":5200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var light = [
+      ['--paper','#FAFAFA','Page background · cool neutral','#101014'],['--surface','#FFFFFF','Cards, panels, inputs','#101014'],['--ink','#101014','Primary text','#FAFAFA'],['--ink-600','#55555E','Secondary text · --field border','#FAFAFA'],
+      ['--ink-300','#A0A0A8','Disabled, connectors · never text','#101014'],['--line','#E5E5E5','Dividers inside components','#101014'],['--coral','#E8654A','The one action, numerals, underlines, focus','#101014'],['--coral-lift','#FF8A66','Accents and focus on midnight','#101014'],
+      ['--coral-tint','#FDEEE9','Reward pills, warm icon tiles','#101014'],['--midnight','#171733','Guarantee band, footer','#FAFAFA'],['--midnight-deep','#0D0D1F','Depth inside midnight','#FAFAFA'],['--on-midnight','#FAFAFA','Text and icons on midnight','#101014'],
+      ['--on-coral','#101014','Primary button label · 5.78:1','#FAFAFA'],['--error','#C0392B','Errors · always with icon and text','#FFFFFF'],['--warning','#B7791F','UI state only','#101014'],['--success','#2E7D57','UI state only · settled, sent','#FFFFFF']
+    ].map(function (x) { return { n: x[0], hex: x[1], v: x[1], use: x[2], fg: x[3] }; });
+    var dark = [
+      ['--paper','#0F0F1A','Page background','#F0F0EE'],['--surface','#171733','Cards, panels, inputs','#F0F0EE'],['--ink','#F0F0EE','Primary text','#101014'],['--ink-600','#A0A0A8','Secondary text, --field','#101014'],
+      ['--coral','#FF8A66','Primary, numerals, focus','#101014'],['--on-midnight','#F0F0EE','Text on midnight','#101014'],['--line','rgba(240,240,238,.14)','Dividers','#F0F0EE'],['--coral-tint','rgba(255,138,102,.16)','Pills, tiles','#F0F0EE'],
+      ['--error-text','= --ink','Error text; red stays on icon and border','#101014'],['--edge','0 0 0 1px rgba(240,240,238,.1)','On every elevated surface','#F0F0EE']
+    ].map(function (x) { var v = x[1].indexOf('rgba') === 0 ? x[1] : (x[1].charAt(0) === '#' ? x[1] : '#171733'); return { n: x[0], hex: x[1], v: v, use: x[2], fg: x[3] }; });
+    var alphas = [
+      ['--on-midnight-600','rgba(250,250,250,.74)','rgba(240,240,238,.74)','Secondary text on midnight (intro, promise lines, footer links)','delta'],
+      ['--on-midnight-line','rgba(250,250,250,.12)','same','Inner edge of guarantee panels, footer legal rule','delta'],
+      ['--on-midnight-border / -hover / -active','.45 / .08 / .14','same','On-midnight button (existing build tokens)','existing'],
+      ['--wash','rgba(16,16,20,.05)','rgba(240,240,238,.06)','Nav hover, segmented track, info notice, chevron disc','delta'],
+      ['--wash-strong','rgba(16,16,20,.09)','rgba(240,240,238,.10)','Wave and meter tracks, pressed nav, code','delta'],
+      ['--success-tint','rgba(46,125,87,.12)','rgba(46,125,87,.28)','Success icon tiles','delta'],
+      ['--error-tint','rgba(192,57,43,.10)','rgba(192,57,43,.24)','Error icon tiles','delta'],
+      ['--banner-tone-dark / -light / -ink','white .13 / white .16 / ink .10','same','Banner tonal shape (build)','existing'],
+      ['--banner-ring-dark / -ink','white .20 / ink .14','same','Banner ring, second tonal layer','delta'],
+      ['--banner-sheen','rgba(255,255,255,.14)','same','Hero stack light from top-left (one hue)','delta'],
+      ['--overlay-hover / -active','ink .08 / .16 inset','ink .10 / .16','Primary hover and press (build)','existing'],
+      ['--placeholder-block / -text','#000 / #FFF','#FFF / #000','Numbered image placeholders (section 9)','delta']
+    ].map(function (x) { return { n: x[0], l: x[1], d: x[2], use: x[3], s: x[4] }; });
+    var space = [['--space-0-5','4px'],['--space-0-75','6px'],['--space-1','8px'],['--space-1-5','12px'],['--space-1-75','14px'],['--space-2','16px'],['--space-2-5','20px'],['--space-3','24px'],['--space-4','32px'],['--space-5','40px'],['--space-6','48px'],['--space-7','56px'],['--space-8','64px'],['--space-9','72px'],['--space-10','80px']].map(function (x) { return { n: x[0], px: x[1] }; });
+    return { light: light, dark: dark, alphas: alphas, space: space, themeCls: this.props.theme === 'dark' ? 'dark' : '' };
+  }
+}
+</script>
+</body>
+</html>

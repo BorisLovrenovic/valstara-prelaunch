@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Icon sheet</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.ic-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--space-2);margin-top:var(--space-5)}
+.ic{background:var(--surface);color:var(--ink);border-radius:var(--radius-card);box-shadow:var(--shadow-1),var(--edge);padding:var(--space-2-5,20px) var(--space-2);display:flex;flex-direction:column;gap:var(--space-2);position:relative}
+.ic__sizes{display:flex;align-items:flex-end;gap:var(--space-2);height:56px;padding:var(--space-1) var(--space-1-5);background:var(--paper);border-radius:var(--radius-control)}
+.ic__sizes span{display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--font-mono);font-size:11px;line-height:14px;color:var(--ink-600)}
+.ic__grid24{position:relative;width:24px;height:24px;background-image:linear-gradient(var(--coral-tint) 1px,transparent 1px),linear-gradient(90deg,var(--coral-tint) 1px,transparent 1px);background-size:2px 2px}
+.ic__tile{margin-left:auto;align-self:center}
+.ic__name{font-family:var(--font-mono);font-size:var(--step-0);line-height:var(--leading-0);font-weight:600}
+.ic__use{font-size:var(--step-0);line-height:var(--leading-0);color:var(--ink-600);text-wrap:pretty}
+.ic__new{position:absolute;top:var(--space-1-5);right:var(--space-1-5)}
+.ic-rules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-3);margin-top:var(--space-5)}
+.ic-rules .spec-card h2{font-size:var(--step-2);line-height:var(--leading-2);font-weight:600}
+.ic-rules .spec-card p{margin-top:var(--space-1);font-size:var(--step-1);line-height:var(--leading-1);color:var(--ink-600);text-wrap:pretty}
+.star-demo{display:flex;gap:var(--space-3);margin-top:var(--space-2);align-items:center}
+.star-demo > div{display:flex;align-items:center;gap:var(--space-1);padding:var(--space-1-5) var(--space-2);border-radius:var(--radius-control)}
+</style>
+</helmet>
+<div class="sheet {{themeCls}}" style="width: 2400px">
+<h1 class="sheet__title">Icon sheet</h1>
+<p class="sheet__lede">One stroke family: 24-unit grid, 1.75 stroke, round caps and joins, drawn at 16, 20 and 24 (never scaled between). Icons inherit currentColor; inside a coral-tint tile they stay --ink. Every icon is decorative (aria-hidden) and always sits beside a visible word, except the theme toggle, which has an aria-label. Seven additions over the wireframes are tagged.</p>
+<div class="ic-rules">
+<div class="spec-card"><h2>Sizes</h2><p>16 inline with 14/20 and 13/18 text and in pills. 20 in buttons, notices, field errors and form fields. 24 in tiles (40 tile; 48 tile at /verify, /me, task pages).</p></div>
+<div class="spec-card"><h2>Colour</h2><p>currentColor everywhere. Tiles: --coral-tint ground, --ink glyph; success tiles --success-tint with --success. Success check-circle uses --success in light and --ink in dark. Field error alert-circle uses --error.</p></div>
+<div class="spec-card"><h2>Delivery</h2><p>One inline SVG sprite (icons.svg, under 6 KB) referenced with &lt;use&gt;. No icon font, no third-party set, no runtime load.</p></div>
+<div class="spec-card"><h2>Star accent</h2><p>Not an icon: a four-point brand star. Coral 12 × 18 before the positioning line; coral-lift 16 × 24 in the guarantee band. Nowhere else.</p>
+<div class="star-demo"><div style="background: var(--paper)"><svg width="12" height="18" viewBox="0 0 16 24" aria-hidden="true" style="color: var(--coral)"><use href="./icons.svg#star"></use></svg><span class="t-small">12 × 18 coral</span></div><div style="background: var(--midnight); color: var(--on-midnight)"><svg width="16" height="24" viewBox="0 0 16 24" aria-hidden="true" style="color: var(--coral-lift)"><use href="./icons.svg#star"></use></svg><span class="t-small">16 × 24 coral-lift</span></div></div></div>
+</div>
+<div class="ic-grid">
+<sc-for list="{{icons}}" as="i" hint-placeholder-count="31">
+<div class="ic">
+<div class="ic__sizes">
+<span><svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#{{i.id}}"></use></svg>16</span>
+<span><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#{{i.id}}"></use></svg>20</span>
+<span><span class="ic__grid24"><svg class="icon" aria-hidden="true" style="width: 24px; height: 24px; position: absolute; inset: 0"><use href="./icons.svg#{{i.id}}"></use></svg></span>24</span>
+<span class="tile ic__tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#{{i.id}}"></use></svg></span>
+</div>
+<div><p class="ic__name">{{i.id}}</p><p class="ic__use">{{i.use}}</p></div>
+<sc-if value="{{i.added}}" hint-placeholder-val="{{false}}"><span class="pill pill--coral ic__new" style="font-size: 11px; line-height: 14px; padding: 2px 8px">New</span></sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":2400,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    var I = [
+      ['check', 'Hero fact "Free to join", checkbox, chips, segments, switch knob, settled badge.'],
+      ['link', 'Hero fact "One-click unsubscribe".'],
+      ['shield', 'Hero fact "Your data is never sold", /unsubscribe task tile.'],
+      ['shield-check', 'Guarantee promise II, /legit evidence.'],
+      ['mail', 'Success panel tile and the echoed address, /verify confirm tile, contact card.'],
+      ['check-circle', 'Success notices, sticky bar success, /verify success tile.'],
+      ['upload-share', '"Share link" on /verify and /me (Web Share where available).'],
+      ['building', '/about company facts.'],
+      ['office', '/legit "Who runs it" evidence.'],
+      ['people', 'Referral rewards card tile, contact card.'],
+      ['person', 'Referral equation people marks.'],
+      ['gift', 'Giveaway card tile, /giveaway/award tile.'],
+      ['clock', 'Held badge, rate-limited notices, award deadline.'],
+      ['arrow-right', 'Standalone link arrows, trust cards, equation operator.'],
+      ['arrow-up', '"Up one access wave" pill.'],
+      ['chevron-down', 'FAQ disc, select fields.'],
+      ['search-check', '"Is Valstara legit?" trust card.'],
+      ['moon', 'Theme toggle in light ("Use dark theme").'],
+      ['sun', 'Theme toggle in dark ("Use light theme").'],
+      ['info', 'Neutral notices: no JavaScript, copy failed, already-used links.'],
+      ['alert-circle', 'Field errors and form-level error notices.'],
+      ['refresh', '"Send the link again", "Try again".'],
+      ['pause', 'Signups paused, leaderboard paused, award paused.'],
+      ['alert', '500 page tile, unavailable states.'],
+      ['copy', 'Copy buttons for the referral link.', 1],
+      ['download', '/dsr "Download my data".', 1],
+      ['erase', '/dsr "Erase your data", /me leave.', 1],
+      ['history', 'Archived giveaway rules notice.', 1],
+      ['list', 'Leaderboard "What counts" panel, contents list label.', 1],
+      ['x', '/unsubscribe and /me "left" outcome tiles.', 1],
+      ['star', 'Brand star accent (two placements only). Not used as an icon.', 1]
+    ];
+    return {
+      themeCls: dark ? 'dark' : '',
+      icons: I.map(function (x) { return { id: x[0], use: x[1], added: !!x[2] }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

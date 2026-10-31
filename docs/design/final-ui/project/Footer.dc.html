@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Site footer</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="page page--fit {{themeCls}} {{annCls}}" style="background: transparent">
+<footer class="site-footer site-footer--flush">
+<div class="wrap">
+<div class="footer-grid">
+<a class="wordmark" href="/">Valstara</a>
+<nav class="footer-col" aria-label="Company">
+<h2>Company</h2>
+<ul>
+<li><a href="/about">About</a></li>
+<li><a href="/legit">Legit</a></li>
+<li><a href="/guarantee">Guarantee</a></li>
+</ul>
+</nav>
+<nav class="footer-col" aria-label="Legal">
+<h2>Legal</h2>
+<ul>
+<li><a href="/terms">Terms</a></li>
+<li><a href="/privacy">Privacy</a></li>
+<li><a href="/privacy/storage">Storage inventory</a></li>
+<li><a href="/giveaway/rules">Giveaway rules</a></li>
+</ul>
+</nav>
+<div class="footer-col footer-col--contact">
+<h2>Contact</h2>
+<ul><li><a href="mailto:support@valstara.com">support@valstara.com</a></li></ul>
+</div>
+</div>
+<div class="footer-legal">
+<p>Product names and logos are trademarks of their respective owners. Valstara is an independent seller, not affiliated with or endorsed by them.</p>
+<p>Valstara is a trading brand of 3NITY Digital Limited, registered in Hong Kong.</p>
+</div>
+<span class="ann" style="right: var(--gutter); top: -40px"><span class="ann__chip">midnight band · pad 64 / 48 · cols 1–4 · 5–6 · 7–8 · 9–12 · links 44 tall below 64rem</span></span>
+</div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":360}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      themeCls: this.props.theme === 'dark' ? 'dark' : '',
+      annCls: this.props.annotations ? 'show-ann' : ''
+    };
+  }
+}
+</script>
+</body>
+</html>

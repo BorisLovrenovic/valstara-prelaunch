@@ -48,6 +48,7 @@ docs/
     tokens.md                      the portable token contract (ADR-015)
     page-design.md                 E11.5 grid, elevation, breakpoints and layout evidence
     copy-rules.md                  enforceable copy rules — CI-scanned
+  design/final-ui/                 snapshot of the final UI design canvas (pinned version) that E11.5-11i to E11.5-11t build from
   engineering/
     standards.md                   coding standards
     git-workflow.md                branches, commits, PRs, releases

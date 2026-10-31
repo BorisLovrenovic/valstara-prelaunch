@@ -1,0 +1,496 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Award1440.dc.html": {
+      "h": 2703,
+      "title": "24a · /giveaway/award · every state · 1440",
+      "w": 8000,
+      "x": 9248,
+      "y": 45102
+    },
+    "Award390.dc.html": {
+      "h": 2987,
+      "title": "24b · /giveaway/award · every state · 390",
+      "w": 3146,
+      "x": 9248,
+      "y": 48165
+    },
+    "ChangeLog.dc.html": {
+      "h": 3382,
+      "title": "27 · Change log · token delta · copy proposals",
+      "w": 2000,
+      "x": 1840,
+      "y": 54199
+    },
+    "Components.dc.html": {
+      "h": 5616,
+      "title": "2 · Component library · light",
+      "w": 2400,
+      "x": 2640,
+      "y": 0
+    },
+    "ComponentsDark.dc.html": {
+      "h": 5616,
+      "title": "3 · Component library · dark",
+      "w": 2400,
+      "x": 5280,
+      "y": 0
+    },
+    "Doc.dc.html": {
+      "h": 2248,
+      "title": "Document page (page tweak)",
+      "w": 1440,
+      "x": 11760,
+      "y": 58841
+    },
+    "Errors.dc.html": {
+      "h": 2662,
+      "title": "25 · 404 and 500 · 1440 · 390",
+      "w": 3056,
+      "x": 19984,
+      "y": 45102
+    },
+    "Fold.dc.html": {
+      "h": 2404,
+      "title": "12 · Above-the-fold crops · fold line in the annotation layer",
+      "w": 2640,
+      "x": 7452,
+      "y": 7172
+    },
+    "Footer.dc.html": {
+      "h": 409,
+      "title": "Footer",
+      "w": 1440,
+      "x": 5040,
+      "y": 58841
+    },
+    "Header.dc.html": {
+      "h": 80,
+      "title": "Header",
+      "w": 1440,
+      "x": 0,
+      "y": 58841
+    },
+    "Hero.dc.html": {
+      "h": 513,
+      "title": "Hero and signup form (17 states via the state tweak)",
+      "w": 1440,
+      "x": 1680,
+      "y": 58841
+    },
+    "Icons.dc.html": {
+      "h": 1568,
+      "title": "4 · Icon sheet",
+      "w": 2400,
+      "x": 7920,
+      "y": 0
+    },
+    "Landing1024.dc.html": {
+      "h": 5211,
+      "title": "6 · Landing 1024 · light",
+      "w": 1024,
+      "x": 1680,
+      "y": 7172
+    },
+    "Landing320.dc.html": {
+      "h": 6846,
+      "title": "9 · Landing 320 · light",
+      "w": 320,
+      "x": 4582,
+      "y": 7172
+    },
+    "Landing390.dc.html": {
+      "h": 6542,
+      "title": "8 · Landing 390 · light · sticky bar visible mid-page · annotations",
+      "w": 390,
+      "x": 3952,
+      "y": 7172
+    },
+    "Landing768.dc.html": {
+      "h": 5228,
+      "title": "7 · Landing 768 · light",
+      "w": 768,
+      "x": 2944,
+      "y": 7172
+    },
+    "LandingDark1440.dc.html": {
+      "h": 5092,
+      "title": "10 · Landing 1440 · dark",
+      "w": 1440,
+      "x": 5142,
+      "y": 7172
+    },
+    "LandingDark390.dc.html": {
+      "h": 6542,
+      "title": "11 · Landing 390 · dark",
+      "w": 390,
+      "x": 6822,
+      "y": 7172
+    },
+    "Leaderboard.dc.html": {
+      "h": 1482,
+      "title": "/leaderboard page (state tweak)",
+      "w": 1440,
+      "x": 10080,
+      "y": 58841
+    },
+    "Leaderboard1440.dc.html": {
+      "h": 1918,
+      "title": "19a · /leaderboard · every state · 1440",
+      "w": 8000,
+      "x": 17056,
+      "y": 22962
+    },
+    "Leaderboard390.dc.html": {
+      "h": 2771,
+      "title": "19b · /leaderboard · every state · 390",
+      "w": 2708,
+      "x": 17056,
+      "y": 25240
+    },
+    "LegalPrivacy.dc.html": {
+      "h": 6812,
+      "title": "21a · /privacy · 1440 · 390",
+      "w": 2006,
+      "x": 9186,
+      "y": 35569
+    },
+    "LegalTermsStorage.dc.html": {
+      "h": 2205,
+      "title": "21b · /terms and /privacy/storage · 1440 · 390",
+      "w": 3932,
+      "x": 11432,
+      "y": 35569
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 5092,
+      "title": "5 · Landing 1440 · light · everything on · annotations",
+      "w": 1440,
+      "x": 0,
+      "y": 7172
+    },
+    "Manifest.dc.html": {
+      "h": 888,
+      "title": "26 · Image manifest",
+      "w": 1600,
+      "x": 0,
+      "y": 54199
+    },
+    "Me.dc.html": {
+      "h": 1694,
+      "title": "/me page (state tweak)",
+      "w": 1440,
+      "x": 8400,
+      "y": 58841
+    },
+    "Me1440.dc.html": {
+      "h": 3567,
+      "title": "18a · /me · every state · 1440 · annotations",
+      "w": 7520,
+      "x": 9296,
+      "y": 22962
+    },
+    "Me390.dc.html": {
+      "h": 3792,
+      "title": "18c · /me · every state · 390",
+      "w": 4022,
+      "x": 9296,
+      "y": 30517
+    },
+    "Me768.dc.html": {
+      "h": 3268,
+      "title": "18b · /me · every state · 768",
+      "w": 7424,
+      "x": 9296,
+      "y": 26889
+    },
+    "Proposals.dc.html": {
+      "h": 2428,
+      "title": "28 · Proposals",
+      "w": 1800,
+      "x": 4080,
+      "y": 54199
+    },
+    "Rewards.dc.html": {
+      "h": 567,
+      "title": "What you get (switches via tweaks)",
+      "w": 1440,
+      "x": 3360,
+      "y": 58841
+    },
+    "Rules.dc.html": {
+      "h": 8000,
+      "title": "22a · /giveaway/rules · current · 1440 · 390",
+      "w": 2006,
+      "x": 15604,
+      "y": 35569
+    },
+    "RulesArchived.dc.html": {
+      "h": 8000,
+      "title": "22b · /giveaway/rules · archived · 1440 · 390",
+      "w": 2006,
+      "x": 17850,
+      "y": 35569
+    },
+    "StatesDesktop.dc.html": {
+      "h": 6424,
+      "title": "13 · Signup form states · desktop · all 17 · annotations",
+      "w": 2400,
+      "x": 0,
+      "y": 15278
+    },
+    "StatesPhone.dc.html": {
+      "h": 3208,
+      "title": "14 · Signup form states · phone · all 17",
+      "w": 2400,
+      "x": 2640,
+      "y": 15278
+    },
+    "Sticky.dc.html": {
+      "h": 1252,
+      "title": "15 · Mobile sticky bar · seven frames",
+      "w": 3184,
+      "x": 5280,
+      "y": 15278
+    },
+    "Switches.dc.html": {
+      "h": 6012,
+      "title": "16 · Feature-switch variants A–G · 1440 and 390",
+      "w": 3964,
+      "x": 8704,
+      "y": 15278
+    },
+    "Task.dc.html": {
+      "h": 905,
+      "title": "Task, award and error pages (state tweak)",
+      "w": 1440,
+      "x": 13440,
+      "y": 58841
+    },
+    "TaskUnsubDsr1440.dc.html": {
+      "h": 4187,
+      "title": "23a · /unsubscribe and /dsr · every state · 1440",
+      "w": 8000,
+      "x": 0,
+      "y": 45102
+    },
+    "TaskUnsubDsr390.dc.html": {
+      "h": 3290,
+      "title": "23b · /unsubscribe and /dsr · every state · 390",
+      "w": 3584,
+      "x": 0,
+      "y": 49649
+    },
+    "Tokens.dc.html": {
+      "h": 5912,
+      "title": "1 · Token sheet",
+      "w": 2400,
+      "x": 0,
+      "y": 0
+    },
+    "TrustAbout.dc.html": {
+      "h": 4045,
+      "title": "20c · /about · 1440 · 768 · 390 with join bar",
+      "w": 2822,
+      "x": 6124,
+      "y": 35569
+    },
+    "TrustGuarantee.dc.html": {
+      "h": 4135,
+      "title": "20b · /guarantee · 1440 · 768 · 390 with join bar",
+      "w": 2822,
+      "x": 3062,
+      "y": 35569
+    },
+    "TrustLegit.dc.html": {
+      "h": 3964,
+      "title": "20a · /legit · 1440 · 768 · 390 with join bar",
+      "w": 2822,
+      "x": 0,
+      "y": 35569
+    },
+    "Verify.dc.html": {
+      "h": 1374,
+      "title": "/verify page (state tweak)",
+      "w": 1440,
+      "x": 6720,
+      "y": 58841
+    },
+    "Verify1440.dc.html": {
+      "h": 3488,
+      "title": "17a · /verify · every state · 1440 · annotations",
+      "w": 8000,
+      "x": 0,
+      "y": 22962
+    },
+    "Verify390.dc.html": {
+      "h": 3096,
+      "title": "17c · /verify · every state · 390",
+      "w": 4898,
+      "x": 0,
+      "y": 29676
+    },
+    "Verify768.dc.html": {
+      "h": 2506,
+      "title": "17b · /verify · every state · 768",
+      "w": 8000,
+      "x": 0,
+      "y": 26810
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-28T08:40:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "noteOrder": [
+    "t1",
+    "t2",
+    "t3",
+    "t4",
+    "t5",
+    "t6",
+    "t7",
+    "t8",
+    "readme",
+    "decisions"
+  ],
+  "notes": {
+    "decisions": {
+      "size": 24,
+      "text": "Decisions where the brief was silent\n\n· Header Join is secondary off the landing page (one primary per page).\n· Referral link: a wrapping read-only text box, so the full code shows on phones.\n· Share link drawn below 1024 only.\n· /guarantee has the one midnight document band.\n· Tables of 3+ columns restack per row on phone (CSS only).\n· Sample {dyn}: wave 2, rank 14, 4 referrals, Tier 1, next tier at 6.\n· Full list on the Specs row and in the hand-off message.",
+      "w": 980,
+      "x": -1100,
+      "y": 1500
+    },
+    "readme": {
+      "fill": "gray",
+      "size": 24,
+      "text": "Valstara website · final UI design\n\nEvery board has two tweaks: theme (light by default) and annotations (off by default). Blue #1F5EDB is the annotation layer only, never part of the design. Boards 5, 8, 13, 17a and 18a are the annotated set: grid and column spans, spacing, elevation, type tokens, {dyn} values, the fold line and the scan path (1–4 in 3 seconds, 5–10 in 20 seconds).\n\nAll pages are real HTML and CSS on one shared stylesheet (valstara.css) with the section 4 tokens under their exact names. Layout responds by container queries, so every frame renders its true breakpoint.\n\nRows follow section 11.1. Boards 3, 10 and 11 are separate dark frames; every other board switches with the theme tweak.\n\nCopy is verbatim from the repo's copy layer and content files. The wireframe canvas is untouched.",
+      "w": 980,
+      "x": -1100,
+      "y": 0
+    },
+    "t1": {
+      "kind": "title1",
+      "maxW": 4000,
+      "text": "Row 1 · Foundations",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "t2": {
+      "kind": "title1",
+      "maxW": 4000,
+      "text": "Row 2 · The landing page",
+      "w": 240,
+      "x": 0,
+      "y": 6872
+    },
+    "t3": {
+      "kind": "title1",
+      "maxW": 4000,
+      "text": "Row 3 · Landing states",
+      "w": 240,
+      "x": 0,
+      "y": 14978
+    },
+    "t4": {
+      "kind": "title1",
+      "maxW": 4000,
+      "text": "Row 4 · Funnel pages",
+      "w": 240,
+      "x": 0,
+      "y": 22662
+    },
+    "t5": {
+      "kind": "title1",
+      "maxW": 4000,
+      "text": "Row 5 · Content pages",
+      "w": 240,
+      "x": 0,
+      "y": 35269
+    },
+    "t6": {
+      "kind": "title1",
+      "maxW": 4000,
+      "text": "Row 6 · Task and error pages",
+      "w": 240,
+      "x": 0,
+      "y": 44802
+    },
+    "t7": {
+      "kind": "title1",
+      "maxW": 4000,
+      "text": "Row 7 · Specs",
+      "w": 240,
+      "x": 0,
+      "y": 53899
+    },
+    "t8": {
+      "kind": "title1",
+      "maxW": 4000,
+      "text": "Building blocks · imported by the boards above (edit here, every frame follows)",
+      "w": 240,
+      "x": 0,
+      "y": 58541
+    }
+  },
+  "order": [
+    "Tokens.dc.html",
+    "Components.dc.html",
+    "ComponentsDark.dc.html",
+    "Icons.dc.html",
+    "Main.dc.html",
+    "Landing1024.dc.html",
+    "Landing768.dc.html",
+    "Landing390.dc.html",
+    "Landing320.dc.html",
+    "LandingDark1440.dc.html",
+    "LandingDark390.dc.html",
+    "Fold.dc.html",
+    "StatesDesktop.dc.html",
+    "StatesPhone.dc.html",
+    "Sticky.dc.html",
+    "Switches.dc.html",
+    "Verify1440.dc.html",
+    "Verify768.dc.html",
+    "Verify390.dc.html",
+    "Me1440.dc.html",
+    "Me768.dc.html",
+    "Me390.dc.html",
+    "Leaderboard1440.dc.html",
+    "Leaderboard390.dc.html",
+    "TrustLegit.dc.html",
+    "TrustGuarantee.dc.html",
+    "TrustAbout.dc.html",
+    "LegalPrivacy.dc.html",
+    "LegalTermsStorage.dc.html",
+    "Rules.dc.html",
+    "RulesArchived.dc.html",
+    "TaskUnsubDsr1440.dc.html",
+    "TaskUnsubDsr390.dc.html",
+    "Award1440.dc.html",
+    "Award390.dc.html",
+    "Errors.dc.html",
+    "Manifest.dc.html",
+    "ChangeLog.dc.html",
+    "Proposals.dc.html",
+    "Header.dc.html",
+    "Hero.dc.html",
+    "Rewards.dc.html",
+    "Footer.dc.html",
+    "Verify.dc.html",
+    "Me.dc.html",
+    "Leaderboard.dc.html",
+    "Doc.dc.html",
+    "Task.dc.html"
+  ],
+  "pages": [],
+  "title": "Valstara website: final UI design"
+}

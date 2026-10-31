@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>/leaderboard page</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="page {{themeCls}} {{annCls}}">
+<dc-import name="Header" theme="{{themeName}}" annotations="{{ann}}" context="site" hint-size="100%,80px"></dc-import>
+<main id="main" class="page-main rel">
+<div class="ann ann-grid" aria-hidden="true"><div class="wrap"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+<div class="wrap">
+<div class="page-intro rel" style="margin-bottom: var(--space-4)"><h1 class="t-h1">Referral leaderboard</h1><p class="t-body">Ranked by confirmed referrals, up to the top 10.</p><span class="ann" style="left: 0; top: -30px"><span class="ann__chip">t-h1 · t-body ink-600 · max 640</span></span></div>
+<div class="vgrid">
+<section class="card board g-wide rel" aria-label="Leaderboard">
+<sc-if value="{{rows}}" hint-placeholder-val="{{true}}">
+<div class="board__head" aria-hidden="true"><span>Rank</span><span>Handle</span><span>Confirmed referrals</span></div>
+<ol class="board__list">
+<sc-for list="{{list}}" as="r" hint-placeholder-count="10">
+<li><span class="board__rank"><span class="vh">Rank </span>{{r.rank}}</span><span class="board__handle">Anonymous <b>{{r.handle}}</b></span><span class="board__count"><b>{{r.count}}</b>{{r.label}}</span></li>
+</sc-for>
+</ol>
+<p class="board__meta rel"><svg class="icon" aria-hidden="true"><use href="./icons.svg#clock"></use></svg><span class="board__meta-text"><span>Snapshot taken at <span class="t-mono" style="white-space: nowrap">Oct 28, 2026, 06:40 AM UTC</span></span><span>Snapshot age: <span class="t-mono">3</span> minutes.</span></span><span class="ann" style="right: 8px; top: -11px"><span class="ann__chip">{dyn} time and age · server-rendered</span></span></p>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">{{boardAnn}}</span></span>
+</sc-if>
+<sc-if value="{{loading}}" hint-placeholder-val="{{false}}">
+<div class="board__head" aria-hidden="true"><span>Rank</span><span>Handle</span><span>Confirmed referrals</span></div>
+<p class="vh" role="status">Loading the latest leaderboard snapshot.</p>
+<ol class="board__list" aria-hidden="true">
+<sc-for list="{{skel}}" as="k" hint-placeholder-count="5"><li class="is-skel"><span class="board__rank"></span><span class="skeleton" style="width: {{k.w}}"></span><span class="skeleton" style="width: 6rem"></span></li></sc-for>
+</ol>
+<p class="board__meta"><span class="spinner" aria-hidden="true"></span>Loading the latest leaderboard snapshot.</p>
+</sc-if>
+<sc-if value="{{stateMsg}}" hint-placeholder-val="{{false}}">
+<div class="board__state" role="status"><span class="tile tile--lg tile--neutral"><svg class="icon" aria-hidden="true"><use href="./icons.svg#{{stateIcon}}"></use></svg></span><p class="t-body">{{stateText}}</p></div>
+</sc-if>
+</section>
+<aside class="lb-side g-narrow rel" aria-label="About the leaderboard">
+<section class="card card--roomy"><div class="card-head"><span class="tile tile--neutral"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#list"></use></svg></span><h2 class="card-title">What counts</h2></div>
+<ul class="lb-lines"><li><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>Only referrals who verified their email address count.</li><li><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>Counts are exact, and every person is shown as an anonymous handle.</li></ul></section>
+<section class="card card--roomy lb-cta"><h2 class="card-title">Get your own referral link</h2><a class="btn btn--primary" href="/#join">Join the waitlist</a><p>Already joined? Open your status page from the link in our emails.</p></section>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">cols 9–12 · below the list on phone · side by side at 768</span></span>
+</aside>
+</div>
+</div>
+</main>
+<div class="footer-slot"><dc-import name="Footer" theme="{{themeName}}" annotations="{{ann}}" hint-size="100%,360px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["full","short","empty","loading","paused","unavailable"],"default":"full"},"uid":{"editor":"string","default":"lb"},"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    var s = this.props.state || 'full';
+    var H = ['k7Qx2LmP9aZb', 'Rt4mW8qLzN2c', 'p9VbX3kQe7Ls', 'Hn2Zc8RtY5wd', 'u6JqP4mXa9Ke', 'D3sLw7NbQ2vy', 'mF8xT2pRk6Ga', 'Yq5Ve9LcH3nb', 'b2KwR7sZm4Pt', 'Zp4Rm81QwTxe'];
+    var C = [12, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+    var n = s === 'short' ? 3 : 10;
+    var list = []; for (var i = 0; i < n; i++) list.push({ rank: String(i + 1), handle: H[i], count: String(C[i]), label: C[i] === 1 ? 'confirmed referral' : 'confirmed referrals' });
+    if (s === 'short') { list[0].count = '3'; list[1].count = '2'; list[2].count = '1'; list[2].label = 'confirmed referral'; }
+    var msg = { empty: ['people', 'No verified referrals appear in this snapshot yet.'], paused: ['pause', 'The leaderboard is paused right now.'], unavailable: ['alert', 'The leaderboard is unavailable right now. Please check back shortly.'] }[s];
+    return {
+      themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light',
+      ann: !!this.props.annotations, annCls: this.props.annotations ? 'show-ann' : '',
+      rows: s === 'full' || s === 'short', loading: s === 'loading', stateMsg: !!msg,
+      stateIcon: msg ? msg[0] : 'pause', stateText: msg ? msg[1] : '',
+      list: list,
+      skel: [{ w: '10rem' }, { w: '8rem' }, { w: '11rem' }, { w: '9rem' }, { w: '7rem' }],
+      boardAnn: 'cols 1–8 · E1 · rows 64 · rank tile 40 mono · handle {dyn} 12 chars · count {dyn} mono 16 · no medals, no avatars' + (s === 'short' ? ' · never padded' : '')
+    };
+  }
+}
+</script>
+</body>
+</html>

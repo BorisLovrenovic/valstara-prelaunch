@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Landing hero and signup states</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="page page--fit {{themeCls}} {{annCls}}" style="background: transparent">
+<section class="hero" id="join" aria-labelledby="hero-title-{{uid}}">
+<div class="wrap">
+<div class="hero__grid">
+<div class="hero__text rel">
+<p class="hero__eyebrow rel"><svg class="star star--sm" aria-hidden="true"><use href="./icons.svg#star"></use></svg>Digital goods you know are real.<span class="ann" style="left: -40px; top: -2px"><span class="ann ann__num" style="position: static">2</span></span></p>
+<h1 class="hero__title t-h1" id="hero-title-{{uid}}">Premium digital goods, for less.</h1>
+<p class="hero__lede t-body">Join the waitlist for earlier access to Valstara, a direct seller of digital goods backed by the Triple Guarantee.</p>
+<span class="ann" style="left: 0; top: -30px"><span class="ann__chip">cols 1–7 · eyebrow t-small/t-body 500 · H1 t-h1 32/40 700 · lede t-body ink-600</span></span>
+
+<div class="hero__form rel">
+<sc-if value="{{s.jsoff}}" hint-placeholder-val="{{false}}">
+<div class="notice notice--info signup__notice" role="status"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#info"></use></svg><p>JavaScript is required to complete the security check and join the waitlist.</p></div>
+</sc-if>
+
+<sc-if value="{{s.form}}" hint-placeholder-val="{{true}}">
+<form class="signup rel" action="/api/signup" method="post" novalidate="novalidate">
+<sc-if value="{{s.notice}}" hint-placeholder-val="{{false}}">
+<div class="notice notice--error signup__notice rel" role="alert"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#alert-circle"></use></svg><p>{{s.noticeMsg}}</p>
+<sc-if value="{{s.dyn}}" hint-placeholder-val="{{false}}"><span class="ann" style="right: 8px; top: -11px"><span class="ann__chip">{dyn} minutes</span></span></sc-if>
+</div>
+</sc-if>
+<div class="field">
+<label class="field__label" for="email-{{uid}}">Email address</label>
+<p class="field__hint" id="email-{{uid}}-hint">We'll email you a link to confirm your address.</p>
+<div class="signup__row rel">
+<div class="signup__field">
+<input class="input {{s.inputCls}}" id="email-{{uid}}" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" value="{{s.value}}" readonly="readonly" aria-invalid="{{s.invalid}}" aria-describedby="email-{{uid}}-hint email-{{uid}}-error">
+<sc-if value="{{s.showErr}}" hint-placeholder-val="{{false}}">
+<p class="field__error" id="email-{{uid}}-error"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#alert-circle"></use></svg>{{s.errMsg}}</p>
+</sc-if>
+</div>
+<button class="btn btn--primary {{s.btnCls}}" type="submit"><sc-if value="{{s.spin}}" hint-placeholder-val="{{false}}"><span class="spinner" aria-hidden="true"></span></sc-if>{{s.btnLabel}}</button>
+<span class="ann" style="left: -40px; top: 10px"><span class="ann ann__num" style="position: static">3</span></span>
+</div>
+</div>
+<p class="signup__micro rel">Open to people aged 18 and over.<sc-if value="{{giveaway}}" hint-placeholder-val="{{true}}"> No purchase necessary. <a class="link link--tap" href="/giveaway/rules">See the giveaway rules</a>.</sc-if><span class="ann" style="right: -8px; top: -22px"><span class="ann__chip">{dyn} giveaway.open · t-small</span></span></p>
+<sc-if value="{{s.cf}}" hint-placeholder-val="{{false}}">
+<div class="signup__turnstile"><div class="turnstile"><span class="turnstile__box" aria-hidden="true"></span><span>Cloudflare Turnstile widget · about 300 × 65</span></div></div>
+</sc-if>
+<hr class="divider signup__divider">
+<ul class="signup__facts rel" aria-label="About joining">
+<li><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>Free to join</li>
+<li><svg class="icon" aria-hidden="true"><use href="./icons.svg#link"></use></svg>One-click unsubscribe</li>
+<li><svg class="icon" aria-hidden="true"><use href="./icons.svg#shield"></use></svg>Your data is never sold</li>
+<span class="ann" style="left: -64px; top: -4px"><span class="ann ann__num" style="position: static">4</span></span>
+</ul>
+<label class="check signup__consent" for="consent-{{uid}}">
+<input class="check__input" id="consent-{{uid}}" name="marketing" type="checkbox">
+<span class="check__box"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg></span>
+<span class="check__text"><span class="pill--optional">Optional</span>Yes, email me weekly updates and product news from Valstara. I can switch this off at any time.</span>
+</label>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">form card E1 · pad 24 (20 small) · max 600</span></span>
+</form>
+</sc-if>
+
+<sc-if value="{{s.success}}" hint-placeholder-val="{{false}}">
+<div class="panel rel" role="status" aria-live="polite">
+<div class="panel__head"><span class="tile tile--lg"><svg class="icon" aria-hidden="true"><use href="./icons.svg#mail"></use></svg></span><h2 class="t-h2">Check your inbox</h2></div>
+<p class="echo"><svg class="icon" aria-hidden="true"><use href="./icons.svg#mail"></use></svg><span>alexandra.konstantinidou@<wbr>example.com</span></p>
+<p class="panel__body t-body">If an email from Valstara arrives, open it and click the link to confirm your address. Nothing counts until you do.</p>
+<sc-if value="{{s.resent}}" hint-placeholder-val="{{false}}">
+<p class="panel__sent"><svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#check-circle"></use></svg>If there's a pending signup for that email, we'll send a new confirmation link shortly.</p>
+</sc-if>
+<div class="panel__actions">
+<button class="btn btn--secondary" type="button">Use a different address</button>
+<sc-if value="{{s.resend}}" hint-placeholder-val="{{false}}"><button class="btn btn--secondary" type="button"><svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#refresh"></use></svg>Send the link again</button></sc-if>
+</div>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">success panel E2 · pad 32 (24 small) · same for new and existing</span></span>
+</div>
+</sc-if>
+
+<sc-if value="{{s.paused}}" hint-placeholder-val="{{false}}">
+<div class="panel" role="status">
+<div class="panel__head"><span class="tile tile--lg tile--neutral"><svg class="icon" aria-hidden="true"><use href="./icons.svg#pause"></use></svg></span><h2 class="t-h2">Signups are paused</h2></div>
+<p class="panel__body t-body">We're not taking new signups right now. Check back in a little while — the waitlist will reopen soon.</p>
+</div>
+</sc-if>
+</div>
+
+<div class="hero-strip" aria-hidden="true">
+<div class="banner banner--strip banner--t3" style="background: #000000; color: #ffffff; --tone: var(--banner-tone-dark); --ring: var(--banner-ring-dark)"><i class="banner__shape"></i><span class="banner__chip">ChatGPT</span></div>
+<div class="banner banner--strip banner--t2" style="background: #d81f26; color: #ffffff; --tone: var(--banner-tone-light); --ring: var(--banner-ring-dark)"><i class="banner__shape"></i><span class="banner__chip">Netflix</span></div>
+<div class="banner banner--strip banner--t1" style="background: #2d3f80; color: #ffffff; --tone: var(--banner-tone-light); --ring: var(--banner-ring-dark)"><i class="banner__shape"></i><span class="banner__chip">Microsoft 365</span></div>
+</div>
+</div>
+
+<div class="hero__visual rel" aria-hidden="true">
+<div class="hero-stack">
+<div class="banner banner--hero banner--t3" style="background: #000000; color: #ffffff; --tone: var(--banner-tone-dark); --ring: var(--banner-ring-dark)"><i class="banner__shape"></i><i class="banner__ring"></i><span class="banner__chip"><img class="banner__logo" src="./logos/chatgpt.svg" width="28" height="28" alt=""><span class="banner__name">ChatGPT</span></span><span class="banner__cat">AI tools</span></div>
+<div class="banner banner--hero banner--t1" style="background: #2d3f80; color: #ffffff; --tone: var(--banner-tone-light); --ring: var(--banner-ring-dark)"><i class="banner__shape"></i><i class="banner__ring"></i><span class="banner__chip"><img class="banner__logo" src="./logos/microsoft-365.svg" width="25" height="28" alt=""><span class="banner__name">Microsoft 365</span></span><span class="banner__cat">Software</span></div>
+<div class="banner banner--hero banner--t2" style="background: #d81f26; color: #ffffff; --tone: var(--banner-tone-light); --ring: var(--banner-ring-dark)"><i class="banner__shape"></i><i class="banner__ring"></i><span class="banner__chip"><img class="banner__logo banner__logo--word" src="./logos/netflix.svg" width="81" height="22" alt="Netflix"></span><span class="banner__cat">Streaming and subscriptions</span></div>
+</div>
+<span class="ann" style="right: 0; top: -30px"><span class="ann__chip">cols 8–12 · stack E2 · decorative, aria-hidden</span></span>
+<span class="ann" style="left: -8px; top: 40px"><span class="ann ann__num ann__num--20" style="position: static">5</span></span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["idle","focus","empty","invalid","blocked","checking","submitting","check-visible","check-failed","network","unavailable","rate-limited","success","success-60","resent","no-js","paused"],"default":"idle"},"giveaway":{"editor":"boolean","default":true},"uid":{"editor":null,"default":"h"},"$preview":{"width":1440,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var email = 'alexandra.konstantinidou@example.com';
+    var base = { jsoff: false, form: true, notice: false, noticeMsg: '', dyn: false, inputCls: '', value: '', invalid: 'false', btnCls: '', spin: false, btnLabel: 'Join the waitlist', showErr: false, errMsg: '', cf: false, success: false, resend: false, resent: false, paused: false };
+    var S = {
+      'idle': {},
+      'focus': { inputCls: 'is-focus', value: 'alexandra.konstantin' },
+      'empty': { inputCls: 'is-invalid', invalid: 'true', showErr: true, errMsg: 'Enter your email address.' },
+      'invalid': { inputCls: 'is-invalid', invalid: 'true', value: 'alexandra.konstantinidou@example', showErr: true, errMsg: 'Enter a valid email address.' },
+      'blocked': { inputCls: 'is-invalid', invalid: 'true', value: 'alexandra@throwaway.example', showErr: true, errMsg: 'Use a permanent email address to join the waitlist.' },
+      'checking': { value: email, btnCls: 'is-loading', spin: true, btnLabel: 'Completing the security check…' },
+      'submitting': { value: email, btnCls: 'is-loading', spin: true, btnLabel: 'Adding you to the waitlist…' },
+      'check-visible': { value: email, btnCls: 'is-loading', spin: true, btnLabel: 'Completing the security check…', cf: true },
+      'check-failed': { value: email, notice: true, noticeMsg: 'We couldn’t confirm that request. Please try again.' },
+      'network': { value: email, notice: true, noticeMsg: 'We couldn’t reach the waitlist just now — check your connection and try again.' },
+      'unavailable': { value: email, notice: true, noticeMsg: 'We can’t take signups right now — try again in a few minutes.' },
+      'rate-limited': { value: email, notice: true, dyn: true, noticeMsg: 'Too many attempts — try again in 5 minutes.' },
+      'success': { form: false, success: true },
+      'success-60': { form: false, success: true, resend: true },
+      'resent': { form: false, success: true, resend: true, resent: true },
+      'no-js': { jsoff: true },
+      'paused': { form: false, paused: true }
+    };
+    var s = Object.assign({}, base, S[this.props.state || 'idle'] || {});
+    return {
+      s: s,
+      giveaway: this.props.giveaway !== false,
+      uid: this.props.uid || 'h',
+      themeCls: this.props.theme === 'dark' ? 'dark' : '',
+      annCls: this.props.annotations ? 'show-ann' : ''
+    };
+  }
+}
+</script>
+</body>
+</html>

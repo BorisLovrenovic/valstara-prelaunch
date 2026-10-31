@@ -76,7 +76,7 @@ The Codex roster on 2026-09-28 was GPT-5.6 Luna, Terra and Sol, and GPT-6 Luna, 
 | **GPT-6 Luna** | Small, low-stakes tickets with no terminal work, no audit and no new factual claim, where an existing gate catches the dangerous failure | 14–16 points below Sol on the Coding Agent Index (41 vs 57). It is cheaper, not faster: it writes more tokens per task |
 | GPT-5.6 Sol, Terra, Luna | Not used | GPT-6 Sol matches or beats GPT-5.6 Sol and Terra at every level for less; GPT-6 Luna matches or beats GPT-5.6 Luna from Light to High |
 
-**E11.5 (founder-authorised 2026-10-19) follows the same binding:** its nineteen code tickets, including the eight wireframe tickets added 2026-10-26, go to GPT-6 Sol and its design-QA and re-audit ticket, E11.5-12, to GPT-6 Astra.
+**E11.5 (founder-authorised 2026-10-19) follows the same binding:** its thirty-one code tickets, including the eight wireframe tickets added 2026-10-26 and the twelve final-design tickets added 2026-10-30, go to GPT-6 Sol and its design-QA and re-audit ticket, E11.5-12, to GPT-6 Astra.
 
 **Two tickets are exceptions to "code goes to Sol":** E9-05, because its erasure design spans every table and conflicts with the append-only audit log and six-year award retention, and E11-06, because it is the campaign's unrecoverable output and includes the scratch-database rehearsals. Both go to Astra.
 
@@ -1962,11 +1962,13 @@ Founder-authorised 2026-10-20: E11.5-04 and E11.5-05 wait for P8; E11.5-06 to E1
 
 Founder-authorised 2026-10-26: the eight wireframe tickets E11.5-11a to E11.5-11h run after E11.5-11, in order, and before E11.5-12, which stays last.
 
-**Goal:** every page a visitor can reach looks finished, reads in seconds and works as well on a phone as on a desktop — without changing what the system does, what it collects or what it claims. *20 tickets* (12, plus the 8 wireframe tickets added 2026-10-26).
+Founder-authorised 2026-10-30: the twelve final-design tickets E11.5-11i to E11.5-11t run after E11.5-11h, in order, and before E11.5-12, which stays last.
+
+**Goal:** every page a visitor can reach looks finished, reads in seconds and works as well on a phone as on a desktop — without changing what the system does, what it collects or what it claims. *32 tickets* (12, plus the 8 wireframe tickets added 2026-10-26 and the 12 final-design tickets added 2026-10-30).
 
 **Why this epic exists.** E2 built a correct, accessible and portable design system, and E3–E9 built every page on it, but no ticket owned the visual design. The site passes its gates and still reads as a wireframe, which `docs/brand/identity-guidelines.md` §7.3 names as an anti-pattern. A visitor sees the design, not the backend. For a brand whose whole proposition is trust, a page that looks unfinished is the conversion failure.
 
-**Exit criteria:** every public page and state passes the layout checks at every test width in both themes; the landing page answers "is this legit, what is it, what do I get" within the scan budget; the mobile sticky signup bar works through the one signup island; the emails share the new layout; the accessibility, claims and privacy audits re-pass on the new surfaces; and the founder has signed off the visual contact sheet.
+**Exit criteria:** every public page and state passes the layout checks at every test width in both themes; the landing page answers "is this legit, what is it, what do I get" within the scan budget; the site follows the final design with the motion system of design rule 12, all of it stopping under reduced motion; the mobile sticky signup bar works through the one signup island; the emails share the new layout; the accessibility, claims and privacy audits re-pass on the new surfaces; and the founder has signed off the visual contact sheet.
 
 **Founder decisions recorded with this epic (2026-10-19):** brand rules in §4–§7 apply to the waitlist, which may deviate where the storefront elements do not exist yet · **text wordmark only** — no mark, no vector assets · the mobile sticky signup bar carries an email field and the submit button only, with no marketing checkbox · the landing page shows **real provider logos** in composed banners (P8) · the survey taxonomy changes to digital-goods categories · the emails are restyled in this epic.
 
@@ -1987,7 +1989,13 @@ Not restated per ticket. **Violating one fails review.**
 9. **Evidence in every PR.** A PR that renders a page attaches the contact sheet (E11.5-01's script) for the pages it touched at small, medium and large widths in both themes.
 10. **Tokens only, everywhere.** After E11.5-01 the literal-value scan covers every `.astro` file under `src/`, and the email layout's colours and fonts trace to `tokens.css`.
 11. **No new island, no new third-party request, no new storage.** ADR-001's three islands stand. The sticky signup bar is part of the `SignupForm` island. Provider logos and illustrations are same-origin files. Every PR that reaches the browser states what it loads (AGENTS.md rule 1).
-12. **Motion** is 150–200 ms ease-out on state changes only. No parallax, no auto-advancing carousel, no scroll-triggered entrance animation other than the sticky bar's own reveal. All motion stops under `prefers-reduced-motion`.
+12. **Motion (amended 2026-10-30, founder-authorised; the rule was "150–200 ms ease-out on state changes only").** Motion makes the site feel alive. It never carries meaning on its own, never delays an action, and never moves text while someone is reading it. Motion is CSS only and built from E11.5-11i's tokens and utilities. It comes in four kinds, and **nothing else moves**:
+    - **State transitions:** hover, press, focus, expand, select and the sticky bar's reveal. 150–200 ms ease-out, as before.
+    - **First-paint entrances:** once per page load, at most 600 ms including the stagger. The H1 and every form control are at full opacity and usable from first paint; they may only translate.
+    - **Scroll reveals:** below-the-fold content rises and fades in as it enters the viewport, using CSS scroll-driven animations inside `@supports`. A browser without support shows the content at rest. **Nothing is ever hidden unless the animation that reveals it is running.** Revealed content is at rest well before the middle of the viewport, and focused content is always at rest.
+    - **Page transitions:** a short cross-fade between same-origin pages through cross-document view transitions, and the theme toggle's cross-fade.
+    - **Never:** parallax; bounce or overshoot; looping or ambient animation (the in-flight spinner excepted); auto-advancing carousels or marquees; animated counters or figures; typewriter text; cursor-following effects; scroll-jacking; or a script or library for motion. Motion animates `opacity`, `transform` and the stroke drawing of decorative SVG. It never animates a property that moves layout, except a disclosure the visitor opens.
+    - **Under `prefers-reduced-motion: reduce`, all of it stops:** content renders at rest, nothing enters, pages swap instantly and anchors jump. Layout checks and geometry tests measure at rest.
 
 ### E11.5-01 — Design foundations: tokens, breakpoints, icons, layout checks and the extended literal-value scan
 **Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
@@ -2592,15 +2600,482 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 **Tests:** One test per frame · the visibility matrix (widths, hero, footer, paused) · the focus walk with the 16px clearance · the safe-area padding · the existing E11.5-06 contract suite · reduced motion · axe with the bar visible in both themes.
 **Docs:** `Sticky.dc.html` · `Phone.dc.html` · E11.5-06 · `docs/architecture/adr/001-astro-node-adapter.md`
 
+### The final-design tickets (E11.5-11i to E11.5-11t)
+
+**Founder-authorised 2026-10-30.** The founder had the whole site designed at high fidelity from the wireframes: every page, section, component and state, at phone, tablet and desktop widths, in both themes. These twelve tickets build that design. They run after E11.5-11h and before E11.5-12, in order i → t. **Where the final design and the built wireframe layout differ, the final design wins. The behaviour those tickets built is unchanged.**
+
+**The source.** The canvas "Valstara website: final UI design" at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, **pinned to version `1793367843-fe69`** (recorded 2026-10-30).
+- **A local snapshot of that version is committed at `docs/design/final-ui/`.** It holds the 48 board files and the building blocks they import under `project/`, the shared `valstara.css`, `icons.svg`, the logos, and `canvas.json` with the canvas notes. `renders/` holds a 1× PNG of every board in its default state (light theme, annotations off). `SHA256SUMS` lists every file's hash. Agents read the boards' HTML and CSS for values and look at `renders/` for composition. They open the canvas link for the dark theme and the annotation layer of boards other than 3, 10 and 11.
+- Each ticket's Source line names its board files. Every ticket also reads `ChangeLog.dc.html`, which holds the change log against the wireframes, the token delta and the copy proposals, together with the `readme` and `decisions` notes in `canvas.json`.
+- Its PR lists every board file it read.
+- If the live canvas has moved past the pin, the snapshot still governs. A later version binds only once the founder re-pins it here.
+
+**The canvas sets the direction. It is not the finished design.** It is static, and the founder has not decided every detail in it. The founder's direction (2026-10-30) is that the site must read as a modern, finished product that feels alive. It must stay clean and simple to use, never busy. It must not look like a static page assembled over a weekend. So each ticket builds what the canvas draws for its surfaces, **plus** the "Motion and finish" in its Build, which a static canvas cannot show. Both are required.
+
+### Final-design rules for every E11.5-11i to E11.5-11t ticket
+
+These are not restated per ticket. They add to the E11.5 design rules above, and **violating one fails review.**
+
+1. **Read the canvas first.** Before writing code, the agent reads every artboard its ticket names, in both themes. It also reads the change-log rows and token-delta entries for its surfaces. The PR opens with a short analysis that goes row by row: what the canvas changes compared with what is built, and what this ticket adds on top. Code written before that analysis is a review finding.
+2. **Precedence.** From highest to lowest:
+   - (a) the standing rules, the E11.5 design rules as amended, and the LOCKED brand values;
+   - (b) the ticket's Build, including its "Motion and finish" and its exclusions;
+   - (c) the canvas, for composition, visual treatment, geometry and states;
+   - (d) E11.5-11a to E11.5-11h and the earlier E11.5 tickets, for behaviour and for anything the canvas does not draw.
+3. **Not built from the canvas:**
+   - the blue annotation layer;
+   - anything on the Proposals board, because each item needs a founder decision first: P1 (a 48/56 display size for the hero H1), P2 (a midnight hero panel) and P3 (a sticky header on long documents);
+   - the copy-proposals table in `ChangeLog.dc.html`;
+   - every numbered image placeholder, and any slot, box or reserved space for one. Today that is `IMG-01`, the founder photo on `/about`; without it, the band text spans the full width, as the image manifest specifies. The `--placeholder-block` and `--placeholder-text` tokens are not built either. Images are founder assets, and later tickets authorised separately will add them;
+   - the hero's right-hand visual (rule 4), including the change-log rows "Hero · banner stack size", "Hero · banner finish" and "Hero · phone strip".
+4. **The hero visual is out of scope (founder decision 2026-10-30).** The founder will supply a designed image for the hero's right-hand side. No ticket here builds the composition the canvas draws there. None restyles, animates or replaces the E11.5-11c banner stack or its small-width logo strip, and none adds an image slot. The stack and strip stay exactly as built, and their tests stay unchanged.
+5. **Copy does not change.** The copy layer is the source. A canvas string that differs from the copy layer is not adopted, and the PR lists it. Values marked `{dyn}` come from their source computation.
+6. **Tokens only.** Every value the canvas introduces goes through `tokens.css`, never into a component as a literal. E11.5-11j lands the canvas's token delta. A later ticket adds only the tokens its own surfaces need, names each one in its PR, and extends the authorised set in `test/tokens.test.mjs` additively. **There is no new hue and no new type size.** A delta entry that would add either is not built, and the PR lists it.
+7. **Geometry is asserted.** Measurements are taken at 1440, 1024, 768, 390 and 320 px wherever the canvas draws that width. They use a 1px tolerance, cover both themes, and are taken at rest (design rule 12, E11.5-11i). **Named test rewrites (founder-authorised 2026-10-30):**
+   - an exact geometry, colour or shadow assertion written by E11.5-11a to E11.5-11h may be rewritten to the canvas's exact value for the same element;
+   - each rewrite is listed in the PR as old value → new value, with the artboard the new value comes from;
+   - none is removed, loosened, or widened in tolerance;
+   - any other test rewrite must still be named in its own ticket.
+8. **Standing rules still win.** If a frame would add a request, a storage write, an island, a script, a collected field, a figure or a claim the rules page does not support, the agent stops with `BLOCKED:` and does not build it. Fonts stay self-hosted. Logos come from `src/content/provider-showcase.json`.
+9. **The canvas's motion table is a floor, not a ceiling.** The "Motion · state changes only" table on `Tokens.dc.html` binds every state transition it lists: the property, duration and easing for buttons, links, cards, banners, arrows, inputs, chips, segments, the switch, the FAQ chevron, the sticky bars and the spinner. Its "no entrance, scroll-triggered … motion" line is superseded by design rule 12 as amended on 2026-10-30, so the entrances and reveals in each ticket are built as well.
+10. **Motion is specified, not improvised.** Each ticket builds exactly the motion its "Motion and finish" lists, using the E11.5-11i system, and nothing else moves. An effect the ticket does not name is a review finding, however tasteful. The aim is a page that feels responsive and alive, not one that performs.
+11. **Evidence.** Design rule 9's contact sheet is still captured at rest. A PR that adds motion also attaches two short screen recordings of the surfaces it touched: one at 390 px and one at 1440 px, both with motion on. They are made with Playwright's local video capture, are not committed, and load nothing.
+
+### E11.5-11i — The motion system: tokens, utilities, guards and at-rest measurement
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Why this model:** the ticket amends a binding design rule into code, owns the accessibility property that every later ticket relies on (all motion stops under reduced motion, and nothing is ever hidden without its reveal), and changes the harness that every geometry test runs through.
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Tokens.dc.html`, `Components.dc.html` and `ComponentsDark.dc.html`, plus every `transition` in `valstara.css`. Also read `ChangeLog.dc.html`. Read the token sheet's motion entries and every transition the component library specifies before starting (final-design rule 1). The canvas is static and allows only state transitions, so the motion system below is built **on top of** it, by founder direction.
+
+**Build:**
+1. **Motion tokens**, on bare `:root` only, because motion does not change with the theme. Keep `--duration-fast` (150ms), `--duration-base` (200ms) and `--ease-out`. Add the following. They are starting values, which the founder reviews in motion at E11.5-12; a change is a token edit. If a guard in item 4 fails with these values, this ticket or the one that finds the failure tunes the token, keeps the guard as written, and records the change in its PR.
+   - `--duration-enter: 400ms`: one element's entrance or reveal.
+   - `--stagger: 60ms`: the step between items that enter together.
+   - `--duration-page: 200ms`: the page and theme cross-fade.
+   - `--ease-enter: cubic-bezier(0.22, 1, 0.36, 1)`: no overshoot, so neither control point's y-value is above 1.
+   - `--reveal-distance: 1.5rem`, `--enter-distance: 0.75rem`, `--lift: -0.125rem` (the canvas's 2px card lift) and `--press-shift: 0.0625rem` (the canvas's 1px button press).
+   - `--reveal-range: entry 0% cover 20%` and `--reveal-step: 4%`.
+2. **Utilities** go in a new global stylesheet, `src/styles/motion.css`, loaded by `BaseLayout`.
+   - **`data-reveal`:** a scroll-driven entrance (`animation-timeline: view()`, over `--reveal-range`). The element rises by `--reveal-distance` and fades in. Siblings that carry `style="--reveal-index: n"` start `n × --reveal-step` later in the range, so a row reveals in reading order.
+   - **`data-enter`:** a time-based first-paint entrance over `--duration-enter`, delayed by `--enter-index × --stagger`, with at most four indices. That keeps an entrance at or under 600ms (400ms plus three 60ms steps = 580ms). `data-enter="shift"` translates only and never changes opacity. It is for elements that must be usable and visible from first paint.
+   - Both utilities are declared only inside `@media (prefers-reduced-motion: no-preference)`, and `data-reveal` also only inside `@supports (animation-timeline: view())`. **Each start state exists only as the first keyframe**, and each end keyframe is the element's resting style (opacity 1, no transform). So a browser without support, or with reduced motion requested, shows the content at rest. Nothing is ever hidden without the animation that reveals it.
+   - `:focus-within` on a revealed element puts it at rest at once.
+   - **Page transitions:** `@view-transition { navigation: auto; }`, with a root cross-fade over `--duration-page`, under `no-preference` only.
+   - **Smooth anchor scrolling:** `scroll-behavior: smooth` on the root, under `no-preference` only. The header Join link and the final call to action must still end on the form, with focus in the email field, exactly as the E11.5-11f focus test asserts. If the island's existing focus move fights the smooth scroll, the island focuses with `preventScroll` once the scroll ends. That is its only change, and the E11.5-11f test passes unchanged.
+   - **Theme cross-fade:** `ThemeToggle` wraps its existing theme switch in `document.startViewTransition()` wherever that API exists and reduced motion is not requested. The storage key, the no-flash script and the labels do not change, and the E2-03 suite passes unchanged.
+3. **The utilities are proven on a test fixture page** (as E11.5-01 proved its layout harness). No production page applies `data-reveal` or `data-enter` until the ticket that redesigns it does. Page transitions, smooth scrolling and the theme cross-fade apply site-wide from this ticket.
+4. **Guards** ship with the system (standing rule 19):
+   - **Literal-value scan.** Extend `scripts/ci/literal-values.mjs` to cover:
+     - the `transition` and `animation` shorthands;
+     - `*-delay`, `*-timing-function` and `animation-range*`;
+     - the `translate`, `scale` and `rotate` properties, and lengths inside `transform`;
+     - every declaration inside an `@keyframes` block.
+
+     It covers every `.astro` file under `src/` and every stylesheet under `src/styles/` except `tokens.css`, which defines the values. Planted fixtures must each fail: `transition: opacity 300ms`, a literal `cubic-bezier(` in a component, and `translateY(20px)` inside a keyframe. `main` must pass.
+   - **Motion-property scan.** A keyframe in `src/` may animate only `opacity`, `transform`, `translate`, `scale`, `rotate` and `stroke-dashoffset`. A `transition-property` that names a layout property (`width`, `height`, `inset`, `top`, `right`, `bottom`, `left`, `margin*`, `padding*`) fails, except on `::details-content`. Planted keyframe and transition fixtures must each fail.
+   - **Reduced motion, extended** (additive, in `test/accessibility.test.mjs`). The existing assertion stays exactly as it is. Under reduced motion, three things must also hold on every rendered route:
+     - no element carries a scroll-driven animation (`animation-timeline` other than `auto`);
+     - `document.getAnimations()` is empty once the page has loaded;
+     - a same-origin navigation starts no view transition.
+
+     A planted fixture with an unguarded scroll-driven animation must fail. (The existing assertion cannot catch one: a scroll-driven animation's duration computes to `auto`, which it reads as zero.)
+   - **No support, no hiding.** On the fixture page, with animations disabled by an injected `animation: none !important` style, every `data-reveal` and `data-enter` element computes opacity 1 and no transform.
+   - **At rest in view.** At every test width, every `data-reveal` element is at rest once scrolled so that its top sits at 70% of the viewport height, and every one is at rest when the page is scrolled to its end.
+   - **Focus is never mid-motion.** The E11.5-11h focus walk is extended additively: every element that receives focus has computed opacity 1 and no transform.
+5. **At-rest measurement** (a named harness change, founder-authorised 2026-10-30). `scripts/design/layout-checks.mjs` and `scripts/design/contact-sheet.mjs` take their measurements and screenshots in a `reducedMotion: 'reduce'` context. By rule 12 that context is the at-rest layout. A new test proves it: with motion on, each revealed element on the fixture page, once at rest, has the same box as it does under reduced motion, within 1px. Existing geometry tests are unchanged. New geometry tests in E11.5-11j to E11.5-11t measure at rest the same way.
+6. **Docs:**
+   - `docs/brand/page-design.md` gets a Motion section: the kinds of motion, the tokens, the utilities, the guards, at-rest measurement and the recording rule. It also records the waitlist's deviation from identity-guidelines §7 "Motion", which is DIRECTIONAL: the waitlist adds the hero entrance, scroll reveals and page transitions, and keeps no bounce, no parallax and no auto-advancing carousel.
+   - `docs/brand/tokens.md` lists the motion tokens.
+   - `docs/architecture/modules.md` adds `motion.css` to the layout.
+   - The port checklist records that the motion tokens port with `tokens.css`, and that `motion.css` is waitlist presentation, which the storefront adopts or drops at port time.
+
+**Acceptance criteria:**
+- Every motion token has its stated value on bare `:root`. **No new hue and no new type size** — the token tests extended
+- **With reduced motion requested, nothing moves on any rendered route:** no transition, keyframe animation, scroll-driven animation or view transition — the extended test, with its planted fixture
+- **No support means no hiding:** with animations disabled, every reveal and entrance element is fully visible at rest
+- Every revealed element is at rest by 70% of the viewport height and at the page end, at every test width
+- No focused element is ever mid-motion
+- The literal-value and motion-property scans each fail on their planted fixtures and pass on `main`
+- The layout checks and contact sheet measure at rest, and the box-equality test passes
+- Page transitions and the theme cross-fade run only where supported and allowed. The E2-03 and E11.5-11f suites pass unchanged
+- **No script, no dependency and no request is added for motion.** The privacy gates pass. The PR states what it loads
+
+**Tests:** Motion-token presence and values · the extended reduced-motion assertion and its planted fixture · the no-support visibility test · the at-rest-in-view test at every width · the extended focus walk · the literal-value and motion-property scan fixtures · the at-rest box-equality test · view-transition and theme cross-fade gating · the E2-03 and E11.5-11f suites · privacy gates.
+**Named test rewrites (founder-authorised 2026-10-30):** `test/accessibility.test.mjs` and the E11.5-11h focus walk in `test/signup-sticky-bar-rendered.test.mjs` are extended additively, with no existing assertion changed. `test/layout-checks.test.mjs`: the harness runs in the reduced-motion context. Every planted fixture (overflow, 30px target, obscured focus, clipped text, missing image dimensions, misaligned grid item and visibly overflowing text) must still fail, and the existing at-rest and no-infinite-wait tests still pass. A test that reads a scroll position after an anchor jump waits for `scrollend` first.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: token sheet, component library) · `docs/brand/page-design.md` · `docs/brand/tokens.md` · `docs/brand/identity-guidelines.md` §7 · `docs/architecture/adr/001-astro-node-adapter.md` · `docs/architecture/adr/015-portable-design-tokens.md` · E11.5-01 · E11.5-11h
+
+### E11.5-11j — Final-design foundations: the token delta, icons and primitives
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Why this model:** `tokens.css` is inherited verbatim by the storefront (ADR-015), and every later final-design ticket builds on these primitives.
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Tokens.dc.html`, `Components.dc.html`, `ComponentsDark.dc.html`, `Icons.dc.html`, and the token delta in `ChangeLog.dc.html`. On the canvas, that covers the token sheet, the component library in light and dark, the icon sheet and the token delta. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws within the rules above, **plus** the motion and finish below, which it does not show.
+
+**Build:**
+1. **The token delta.** Add or change every entry in the token delta in `ChangeLog.dc.html`, under its proposed name, on bare `:root` and in both dark blocks with an identical name set. Three entries are not built: an entry that adds a hue or a type size (rule 6); `--placeholder-block` and `--placeholder-text` (rule 3); and the frames-only 6px radius. `--ease-out` already holds the canvas's curve. A delta entry that an existing token already covers under another name (for example `--shadow-chip`, `--shadow-button` and the overlays) reuses that token and is listed in the PR. Record each token in `docs/brand/tokens.md` with its use.
+2. **Icons.** Add every icon the canvas's icon sheet adds to the existing registry, in its style (24-unit stroke, 1.75 stroke width, round caps and joins), at 16, 20 and 24px.
+3. **Primitives.** Restyle every existing primitive to the component library, in every state it draws and in both themes:
+   - buttons: primary, secondary and on-midnight; the 48, 44 and `xs` sizes; full width; default, hover, focus-visible, active, disabled and loading;
+   - text links, on light and on midnight, with and without an arrow;
+   - the input with its label, hint and error, and the checkbox with its Optional pill;
+   - pills and badges;
+   - cards: static, interactive, reward, side, success panel and paused panel;
+   - notices: error, neutral, info and success;
+   - the FAQ item, the theme toggle and the spinner.
+
+   **Controls that exist inside only one page are restyled by that page's ticket, not here:** the survey chips and segmented options, the referral link field and copy control (E11.5-11q), the marketing switch (E11.5-11r), the task card (E11.5-11t) and the archived-revision notice (E11.5-11s). This ticket builds no component that no page uses yet.
+4. **Motion and finish**, on the E11.5-11i tokens. These are state transitions only:
+   - **The canvas's motion table, exactly** (final-design rule 9): buttons transition `box-shadow`, `background-color` and `color`, and move down by `--press-shift` when pressed, over `--duration-fast`. Interactive cards and banners rise by `--lift` and move from `--shadow-1` to `--shadow-2` over `--duration-base`. Arrows move 2–3px over `--duration-fast`. Inputs, checkboxes, chips and segments transition their border, ring and fill over `--duration-fast`. The switch moves its knob and fills its track over `--duration-base`. The FAQ and disclosure chevron turns 180° over `--duration-base`.
+   - **On top of the table:** a field error fades in and rises from 4px below (a token) over `--duration-fast` when it appears. Where `interpolate-size` and `::details-content` are supported, the FAQ answer opens and closes smoothly over `--duration-base`. Elsewhere it opens instantly, and either way it stays a native `<details>`.
+   - Nothing else moves. No primitive draws a glyph in, and no icon spins or bounces. The three page moments that draw a line are named in their own tickets: the "How it works" connectors (E11.5-11n), the guarantee numeral rings (E11.5-11p) and the `/verify` success check (E11.5-11q).
+5. Update `docs/brand/page-design.md` (the final-design source, these rules and the primitive table) and the port checklist.
+
+**Acceptance criteria:**
+- Every token-delta entry that is built has its stated light and dark values, and both dark blocks declare identical name sets. **No new hue and no new type size.** The PR lists every delta entry that was not built, with its reason
+- Every primitive matches the component library's stated dimensions, colours and shadows in every drawn state, in both themes — geometry and computed-style tests at rest
+- Every text pairing on the component library clears its WCAG threshold — the contrast matrix extended
+- Each primitive moves exactly as specified, animates no layout property except the opened FAQ answer, and stops under reduced motion
+- The E2-03, E2-04 and E11.5-11a primitive suites pass, with only rule-7 rewrites
+- `tokens.css` can still be copied verbatim — the port-checklist test passes
+
+**Tests:** Token presence, values and dark-set identity · the no-new-hue and no-new-size assertions · icon registry, rendering and accessibility hiding · primitive state geometry and computed styles in both themes · the extended contrast matrix · primitive motion and its reduced-motion stop · the E2-03, E2-04 and E11.5-11a suites · the port-checklist reconciliation · axe in both themes.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: token sheet, component library light and dark, icon sheet, token delta) · `docs/brand/tokens.md` · `docs/brand/page-design.md` · `docs/brand/identity-guidelines.md` §4–§7 · `docs/architecture/adr/015-portable-design-tokens.md` · E11.5-11a
+
+### E11.5-11k — Final-design shell: header and footer
+**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Header.dc.html` and `Footer.dc.html`, as placed on `Main.dc.html`, `Landing1024.dc.html`, `Landing768.dc.html`, `Landing390.dc.html`, `Landing320.dc.html`, `LandingDark1440.dc.html` and `LandingDark390.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers the header and footer as drawn on the landing frames at 1440, 1024, 768, 390 and 320, the dark landing frames, and every other page's frames. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
+
+**Build:** Rebuild the header and footer from the canvas on every page that uses the shell. The E11.5-11b structure and behaviour stand:
+- the skip link is first;
+- the header is not sticky, and has no menu and no script;
+- the section anchors (`/#…` on other pages);
+- the theme toggle and then the Join button;
+- the `xs` Join button below 22.5rem;
+- no theme toggle on `/legit`, `/guarantee` and `/about`;
+- the footer's link set, permanent routes, `mailto:` contact, trademark line and §3.4 legal line;
+- no payment logos, social links or cookie notice.
+
+Adopt every change-log row for the header and footer that these rules allow.
+
+**Motion and finish:**
+- **Section links:** the canvas's capsule states (`--wash` on hover, `--wash-strong` when pressed). The fill and the text colour transition over `--duration-fast`. No underline is added.
+- **Footer links:** the canvas's colour change from `--on-midnight-600` to `--on-midnight`, over `--duration-fast`.
+- **The theme toggle and the secondary Join button** use the E11.5-11j button transitions. Off the landing page the header Join is secondary, per the change log.
+- The header and footer take **no** entrance or scroll reveal. The footer stays static, so the sticky bar's footer detection is unaffected.
+
+**Acceptance criteria:**
+- Header and footer geometry matches the canvas at 1440, 1024, 768, 390, 360 and 320 px in both themes, at rest
+- At 320 px the header fits with no horizontal overflow
+- **The skip link is the first focusable element.** Every header and footer link reaches a real route. Footer link targets are at least 44px tall at small widths
+- The small-width header adds no script and no menu
+- The link transitions run as specified and stop under reduced motion
+- The shell check (`assertShellLayout`) passes on every rendered page. The E11.5-11b and E11.5-11h suites pass, with only rule-7 rewrites
+
+**Tests:** Header and footer geometry per breakpoint, including the 22.5rem step · link targets and route resolution · skip-link order · the no-script assertion · link transitions and their reduced-motion stop · the shell check · the E11.5-11h footer-hide test · axe in both themes.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames, dark frames, component library) · E11.5-03 · E11.5-11b · `docs/brand/identity-guidelines.md` §4.5, §5.2
+
+### E11.5-11l — Final-design hero: the text column, the entrance and the fold
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · `giveaway.open` (read only) · **Area:** frontend
+**Why this model:** the hero is the page that converts. Its entrance must not cost the fold, the largest contentful paint or the form's readiness.
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Hero.dc.html` as placed on the landing boards (`Main.dc.html`, `Landing1024.dc.html`, `Landing768.dc.html`, `Landing390.dc.html`, `Landing320.dc.html`, `LandingDark1440.dc.html` and `LandingDark390.dc.html`), plus `Fold.dc.html` and `Switches.dc.html` (giveaway off; G). Also read `ChangeLog.dc.html`. On the canvas, that covers the hero on the landing frames at 1440, 1024, 768, 390 and 320 in both themes, the above-the-fold crops, and the feature-switch variants for the hero (giveaway off; G, signups off). Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws for the hero's text column, **plus** the motion and finish below.
+
+**Build:**
+- **The text column and the hero section's own surface:** the star and positioning line, the H1, the supporting line, the form as a composed object (the form's states are E11.5-11m), the microline, the Turnstile slot, the trust facts and the checkbox row. Also the hero section's background treatment, where the canvas draws one. Build its composition, spacing and finish from the canvas, and adopt every change-log row for the text column. The copy is unchanged.
+- **Out of scope (final-design rule 4):** the right-hand visual and the small-width logo strip stay exactly as E11.5-11c built them. This ticket does not move, restyle or animate them, and it adds no image slot. The change-log rows "Hero · banner stack size", "Hero · banner finish" and "Hero · phone strip" are not adopted. The text column keeps its column span, so the right-hand area is left as it is.
+- **Adopted from the change log:** the hero's top padding (48 / 40 / 16), the form card (surface, E1, radius 12, 24px padding, 20px on phone, at most 600px wide), and the positioning line at 14/20 below 1024px.
+- The giveaway-off microline and the signups-off paused panel follow the canvas's variants. The paused panel's own styling is E11.5-11m's.
+
+**Motion and finish:**
+- **The first-paint entrance**, once per page load, on `data-enter`:
+  - index 0: the star, which also turns from −45° to 0° and scales from 0.6 to 1 (both tokens);
+  - index 1: the positioning line;
+  - index 2: the H1 and the supporting line;
+  - index 3: the form, then the microline, the trust facts and the checkbox row.
+- **The H1 and the form, with its email field and submit button, use `data-enter="shift"`.** They are at full opacity and accept input from first paint. They only rise into place by `--enter-distance`. The star, the positioning line, the supporting line, the microline, the trust facts and the checkbox row fade in as they rise.
+- The hero takes no scroll reveal. Nothing in it loops.
+
+**Acceptance criteria:**
+- Hero geometry matches the canvas at 1440, 1024, 768, 390 and 320 px in both themes, at rest
+- **Above the fold, per the canvas's crops and at least the E11.5-11c thresholds:** at 1440 × 900, everything from the positioning line to the checkbox, plus the top of the "What you'll find" heading; at 390 × 844, the field and button end above 500px and the rest of the form fits above 844px; at 320 px there is no horizontal overflow
+- **The entrance finishes within 600ms. The H1, field and button have computed opacity 1 at first paint. Typing into the field during the entrance works.** Layout shift stays 0 (the landing-themes CLS test)
+- With reduced motion the hero renders at rest with no entrance
+- **The E11.5-11c stack and strip are unchanged** — their existing tests pass unchanged
+- The giveaway-off and signups-off variants render as drawn
+- The landing page still ships exactly the theme toggle and signup form islands, and its cache headers are unchanged — existing tests
+
+**Tests:** Hero text-column geometry per breakpoint · the fold assertions at the three viewports · entrance timing, first-paint opacity and typing during the entrance · CLS 0 · the reduced-motion render · the E11.5-11c stack and strip suites unchanged · the microline and paused variants · island count and cache headers · axe in both themes.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames, above-the-fold crops, feature-switch variants) · E11.5-05 · E11.5-11c · `docs/brand/page-design.md`
+
+### E11.5-11m — Final-design signup form states and the mobile sticky bar
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
+**Why this model:** this restyles every state of the only public write path, where the membership-oracle and privacy properties live, and its second entry point.
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `StatesDesktop.dc.html`, `StatesPhone.dc.html`, `Sticky.dc.html`, the state tweak in `Hero.dc.html`, and `Switches.dc.html` (G). Also read `ChangeLog.dc.html`. On the canvas, that covers the signup form states on desktop and phone (all 17), the sticky bar's seven frames, and the signups-off variant. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
+
+**Build:** Restyle the 17 states of E11.5-11g and the seven sticky-bar frames of E11.5-11h to the canvas, in the `SignupForm` island. **The behaviour does not change:**
+- the error mapping, the copy, and the focus targets;
+- the 60-second resend delay;
+- the success panel, identical for every address, echoing only the visitor's own input, and never showing a position or count;
+- one island, one Turnstile widget and one submission path;
+- only the hero input carries `name="email"`;
+- no checkbox in the bar;
+- the bar's visibility rules, the safe-area padding and the 16px focus clearance.
+
+**Motion and finish:**
+- **Form to success:** the form fades out over `--duration-fast`. The success panel then enters over `--duration-base`: it fades in, rises by `--enter-distance`, and its mail tile scales from 0.9 to 1 (a token). "Use a different address" reverses the sequence. Focus behaviour is unchanged.
+- **The resend control,** when its delay ends, fades in over `--duration-base`. The re-sent line enters the same way.
+- **Notices and field errors** enter as the E11.5-11j field error does. Nothing shakes.
+- **The in-flight button** cross-fades its label as it changes. The spinner is unchanged.
+- **The sticky bar** slides in over `--duration-base` (`translateY(100%)` to 0, the canvas's 200ms, replacing E11.5-11h's 150ms under rule 7). Its growth for an error and its collapse to the success row run over `--duration-base` without animating a layout property: the bar's content cross-fades, and its height snaps.
+
+**Acceptance criteria:**
+- **All 17 states and all seven bar frames render as drawn** at 1440 × 900 and 390 × 844 in both themes, at rest — one test per state and per frame
+- Every message string comes from the copy layer, unchanged
+- **The success panel is identical for unknown, pending and verified addresses**, echoes only client input, and shows no position or count — the existing tests
+- One island, one Turnstile widget, one submission path, and a bar body identical to a hero body — the E11.5-06 and E11.5-11h contract suites pass unchanged
+- Each transition runs as specified, announces nothing extra, and stops under reduced motion. Focus lands where E11.5-11g says, after the transition as well as before it
+- No focused element is obscured by the bar, and each sits at least 16px above it — the extended focus walk
+
+**Tests:** One test per state and per frame at two viewports · copy match · focus targets after each transition · success-state equivalence · the E11.5-06, E11.5-11g and E11.5-11h contract suites · transition timing and the reduced-motion stop · the focus walk · axe on states 03, 09, 13 and 16 and with the bar visible, in both themes.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: signup form states desktop and phone, sticky bar, feature-switch G) · `docs/features/signup.md` · E3-05 · E3-09 · E11.5-06 · E11.5-11g · E11.5-11h · `docs/architecture/adr/001-astro-node-adapter.md`
+
+### E11.5-11n — Final-design catalogue and "How it works"
+**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `#catalogue` and `#how` on `Main.dc.html`, `Landing1024.dc.html`, `Landing768.dc.html`, `Landing390.dc.html`, `Landing320.dc.html`, `LandingDark1440.dc.html` and `LandingDark390.dc.html`, plus the provider banner on `Components.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers `#catalogue` and `#how` on the landing frames at every width in both themes, and the provider banner in all its cases on the component library. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
+
+**Build:**
+- **The section frame** for every landing section (heading block, rhythm and the section gap), the catalogue groups, the large-width grid and the medium- and small-width rails, from the canvas.
+- **The catalogue banner** (`provider-banner.astro`, `size="catalogue"`) restyled to the canvas's tonal system, so that the nine black and near-black brands each read as distinct. Its data rules stand:
+  - logos, brand colours, `chipTone` and order come from the showcase file;
+  - label colours are computed at build time;
+  - there is no price, discount, count or date;
+  - the chip never truncates.
+- **The hero sizes `stack` and `strip` are not changed (final-design rule 4).** A change to shared banner code must leave them pixel-identical, which the E11.5-11c suites prove.
+- **"How it works"** as the canvas draws it, including step 3's optional style and its connectors per breakpoint.
+
+**Motion and finish:**
+- **Catalogue:**
+  - each group's label and its banners reveal on scroll (`data-reveal`), with the banners of a large-width row indexed left to right;
+  - rails do not reveal per banner, only as a whole;
+  - a banner rises by `--lift` and moves from `--shadow-1` to `--shadow-2` on hover and on focus-visible, and its tonal layer shifts by 4% of its size (a token) over `--duration-base`;
+  - rails keep native scroll-snap with no script, and their scrolling is never animated.
+- **"How it works":**
+  - the three steps reveal in order (`--reveal-index` 0 to 2);
+  - each connector draws from its start to its arrowhead (`stroke-dashoffset`, on the same view timeline, after its step), and the dashed 2 → 3 connector draws dash by dash;
+  - at small widths the vertical connectors draw downward.
+
+**Acceptance criteria:**
+- Catalogue and step geometry matches the canvas at 1440, 1024, 768, 390 and 320 px in both themes, at rest
+- Every banner uses its real logo, its data-file colour and its computed label colour. **No chip text overflows or truncates** at any test width. **No price, discount, count or date** — the existing assertions
+- **The hero stack and strip are pixel-identical** — the E11.5-11c suites unchanged
+- Rails scroll by keyboard and touch with no script, and each is labelled
+- Reveals, the banner lift and the connector drawing run as specified, are at rest by 70% of the viewport height, and stop under reduced motion
+- The section reaches the at-rest layout with animations unsupported
+
+**Tests:** Banner anatomy and computed colours over the full data file · grid and rail geometry per breakpoint · chip overflow at every width · rail keyboard scrolling and labels · step layout and connectors per breakpoint · the E11.5-11c stack and strip suites · reveal order, lift and connector drawing · the reduced-motion and no-support renders · axe in both themes.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames, component library provider banner) · E11.5-04 · E11.5-11d · `docs/architecture/adr/032-provider-marks-in-the-prelaunch-showcase.md`
+
+### E11.5-11o — Final-design "What you get" and its feature-switch variants
+**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `referral.enabled` · `giveaway.open` · `leaderboard.public` (read only) · **Area:** frontend
+**Why this model:** every figure on these cards is a claim read from configuration or the published rules, across a seven-variant flag matrix, and motion must never show a figure that is not the real one.
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Rewards.dc.html` as placed on the landing boards, plus `Switches.dc.html` (A–F). Also read `ChangeLog.dc.html`. On the canvas, that covers `#rewards` on the landing frames at every width in both themes, and feature-switch variants A to F. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
+
+**Build:** Restyle the access, referral and giveaway cards and the footer row as the canvas's data graphics: the wave track, the referral equation and the prize line. The E11.5-11e behaviour stands:
+- N, X, the person-icon count, the prize count and the prize value come from the ladder and `currentRules()`;
+- the hidden tier sentence and the hidden-from-assistive-technology equation;
+- "approximately";
+- variants A to F, with no empty grid cell.
+
+**Motion and finish:**
+- **The cards reveal** in reading order.
+- **The wave track:** each wave's fill grows from its start point to the right end (`transform: scaleX` with its origin at the start point) on the card's view timeline, with the waves indexed 1 to 4. The resting fill positions are exactly the E11.5-11e values.
+- **The referral equation:** the person icons appear one after another, then the arrow draws, then the two reward pills rise in. The figures N and X are **never animated**. They render as their final values from the first frame: no counting up, no typing, no scramble.
+- **The prize line** reveals as one unit. Its figures are static values, as above.
+- The footer row reveals after the cards.
+
+**Acceptance criteria:**
+- Card geometry matches the canvas at 1440, 1024, 768, 390 and 320 px in both themes, at rest
+- **Every figure comes from its source:** a test changes the ladder or rules fixture, and the rendered N, X, person-icon count, prize count and prize value all change. None is literal in copy
+- **No figure is ever shown at a value other than its real one.** Each figure's text equals its source in every captured frame of the reveal — sampled at the start, middle and end
+- Each of variants A to F renders as drawn at 1440 and 390, with no grid holes, at rest and after the reveals
+- The hidden tier sentence is read by assistive technology, and the equation is hidden from it
+- The E11-04 claim-to-rules reconciliation covers the giveaway card
+- The motion runs as specified, is at rest by 70% of the viewport height, and stops under reduced motion
+
+**Tests:** Card anatomy and geometry per breakpoint · configuration- and rules-derived figures · figure constancy across reveal frames · the six-variant flag matrix at two widths · the grid-hole check · the assistive-technology tree for the tier row · claims reconciliation · wave, equation and reveal motion · the reduced-motion and no-support renders · axe in both themes.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames, feature-switch variants A–F) · E11.5-11e · `docs/architecture/adr/024-no-dark-patterns.md` · `docs/architecture/adr/025-campaign-configuration.md` · `docs/features/giveaway.md`
+
+### E11.5-11p — Final-design guarantee band, trust cards, FAQ and final call to action
+**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `#guarantee`, the trust row, `#faq` and the final call to action on `Main.dc.html`, `Landing1024.dc.html`, `Landing768.dc.html`, `Landing390.dc.html`, `Landing320.dc.html`, `LandingDark1440.dc.html` and `LandingDark390.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers `#guarantee`, "Get to know Valstara", `#faq` and the final call to action on the landing frames at every width in both themes. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
+
+**Build:** Restyle the four closing sections to the canvas, including the guarantee band's depth in dark mode, the promise panels, the 768 row layouts, and the final call to action's three logo-only banners. Those banners use `provider-banner.astro` with providers from the showcase file, in columns 8–12, 22rem wide at 768, and hidden on phone. They are not the hero visual, so rule 4 does not exclude them. The E11.5-11f behaviour stands:
+- the verbatim guarantee text, with numerals hidden from assistive technology and the visually hidden "I. ", "II. " and "III. " prefixes;
+- each trust card is a single link, and the contact card uses `mailto:`;
+- the first FAQ item is open on load;
+- the final call to action focuses the email field, or scrolls to the paused panel with signups off;
+- primary coral appears four times at small widths and three at medium and large.
+
+**Motion and finish:**
+- **The guarantee band** is the page's moment of weight:
+  - the band's content reveals as the band enters;
+  - each numeral ring draws its circle (`stroke-dashoffset`, from the top, clockwise), then its numeral fades in, in order I, II, III, with the column titles and lines following their ring;
+  - the decorative star at large widths turns from −45° to 0° once, on the band's view timeline;
+  - the band itself does not move, and no ring or star loops.
+- **Trust cards** reveal in order. They use the E11.5-11j interactive-card lift (2px) and the arrow's 3px move, which the change log specifies.
+- **FAQ:** the heading and card reveal. Items open with the E11.5-11j smooth disclosure.
+- **Final call to action:** the card reveals, and its three banners rise in order after the text. The banners take the catalogue hover lift. The button has the primary press state. There is no ambient motion.
+
+**Acceptance criteria:**
+- Geometry of all four sections matches the canvas at 1440, 1024, 768, 390 and 320 px in both themes, at rest
+- The numerals stay hidden from assistive technology, and each H3 is announced with its prefix. The rings' drawing elements are hidden from assistive technology
+- **The rings at rest match the E11.5-11f ring exactly (1.5px coral)**, so the drawn stroke ends in the resting ring
+- Each trust card is a single link with a visible focus state. The first FAQ item is open on load. Each answer is at most 68ch
+- Primary coral counts per breakpoint are unchanged
+- The motion runs as specified, is at rest by 70% of the viewport height and at the page end, and stops under reduced motion. The sticky bar's footer detection is unaffected
+
+**Tests:** Section geometry per breakpoint · numeral and prefix accessibility · the ring at rest · trust-card link and focus · FAQ default state and measure · the primary-button count per breakpoint · copy match · ring, star and reveal motion · page-end at-rest · the reduced-motion and no-support renders · axe in both themes.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames) · E11.5-11f · `docs/brand/identity-guidelines.md` §2, §5.2
+
+### E11.5-11q — Final-design verification and the success page
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `survey.enabled` · `referral.enabled` · **Area:** frontend
+**Why this model:** this is the funnel's highest-attention moment, and every figure on it is the visitor's own status.
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Verify.dc.html`, `Verify1440.dc.html`, `Verify768.dc.html` and `Verify390.dc.html`, plus `Components.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers `/verify` in every state at 390, 768 and 1440 in both themes, and the component library's referral link field, copy control, progress meter, chips and segmented options. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
+
+**Build:** Restyle `/verify` to the canvas: the confirm card, the success page (the confirmed heading, the access-wave badge, the referral card, the progress meter, what the tier unlocks with the held line, the survey, and the status link) and the invalid-or-expired card. Restyle the page-local controls here: the wrapping read-only link field, Copy link and its copied and failed states, Share link, the survey chips and segmented options, and the survey results. **The canvas draws Share link only below 1024px, but the E11.5-07 rule stands:** Share link renders wherever `navigator.share` exists, at any width. The E11.5-07 behaviour stands:
+- GET is inert, and a replay renders the same success page;
+- every figure comes from `ReferralService.status` and the ladder;
+- the share button appears only where `navigator.share` exists;
+- the survey is answerable without a page load, and skip is not demoted;
+- the flag-off matrix.
+
+**Motion and finish:**
+- **The success entrance** (`data-enter`):
+  - index 0: the success icon, whose check draws in;
+  - index 1: the heading and its line;
+  - index 2: the wave badge;
+  - index 3: the referral card.
+
+  The survey and status link below take scroll reveals.
+- **The progress meter** fills from 0 to its exact value on the entrance. Its text always shows the exact figure, from the first frame.
+- **Copy link** cross-fades its label to "Link copied." over `--duration-fast`, and back after the existing delay.
+- **Chips and segmented options** use the canvas's state transitions from E11.5-11j.
+- **Saving or skipping the survey** cross-fades the survey card into its result.
+
+**Acceptance criteria:**
+- Every state renders as drawn at 390, 768 and 1440 in both themes, at rest. `/verify` stays in the enforced layout-check set and passes axe
+- **Every figure comes from `ReferralService.status` or the ladder**, and the meter's text is exact in every captured frame
+- The share button renders only where supported, and nothing is requested off-origin
+- **Skip is not visually demoted**, at rest and during its transitions — computed styles
+- Referral off means no referral card or meter. Survey off means no survey
+- The E3-07, E6-03, S-01 and E11.5-07 suites pass, with only rule-7 rewrites
+- The motion runs as specified and stops under reduced motion. Focus is never mid-motion
+
+**Tests:** State rendering per width · figure derivation and meter-text constancy · share feature detection · the flag-off matrix · skip parity · chip and segmented states · the existing suites · entrance and reveal motion · the reduced-motion and no-support renders · layout checks · axe in both themes.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: `/verify`, component library) · E11.5-07 · `docs/features/double-opt-in.md` · `docs/features/survey.md` · `docs/architecture/adr/012-reward-gating.md`
+
+### E11.5-11r — Final-design member page and leaderboard
+**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `member.dashboard` · `leaderboard.public` · **Area:** frontend
+**Why this model:** `/me` renders only the bearer's data across many states, and the leaderboard is the third island.
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Me.dc.html`, `Me1440.dc.html`, `Me768.dc.html`, `Me390.dc.html`, `Leaderboard.dc.html`, `Leaderboard1440.dc.html` and `Leaderboard390.dc.html`, plus `Components.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers
+- `/me` in every state (dashboard, zero state, recovery, left and unavailable) at 390, 768 and 1440 in both themes;
+- `/leaderboard` in every state (full, short, empty, loading, paused and unavailable) at 390 and 1440;
+- the component library's switch and the Held and Settled badges.
+
+Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
+
+**Build:** Restyle both pages and every state to the canvas, including the page-local marketing switch, which is still the Turnstile form posting the existing route. The E11.5-08 behaviour stands:
+- only the bearer's data;
+- held and settled are distinguishable without colour;
+- leaving is one action with no plea;
+- the leaderboard is never padded, shows exact counts and its age, is still the third island, and its flag drill is unchanged.
+
+**Motion and finish:**
+- **`/me`:** the status card enters (`data-enter`, indices 0 to 2: heading, facts, wave badge). The cards below reveal in order. The progress meter fills as on `/verify`, with exact text. The switch's knob slides and its "On" or "Off" label cross-fades over `--duration-fast` while the form submits as before. Copy link behaves as on `/verify`. "Leave the waitlist" gets no motion beyond the button states.
+- **`/leaderboard`:** rows enter in rank order, each offset by `--stagger`, the first time the island renders a snapshot. Every count is shown at its exact value from the first frame. A snapshot refresh does not animate the rows. The loading state is the canvas's static skeleton (`--wash-strong` bars), with no shimmer or pulse.
+
+**Acceptance criteria:**
+- Every state of both pages renders as drawn in both themes, at rest. Both stay in the enforced layout-check set and pass axe
+- **`/me` renders only the bearer's data**, every field from the shared status computation — the existing suites unchanged
+- **Held and settled are distinguishable without colour**
+- The marketing switch is still a Turnstile-protected form on the existing route, and leaving is still one action
+- **The leaderboard is never padded, shows exact counts in every frame, and is still the third island.** Its flag drill is unchanged
+- The motion runs as specified and stops under reduced motion. Focus is never mid-motion
+
+**Tests:** The existing E6, S-01, E9-05 and E11.5-08 suites, with only rule-7 rewrites · state rendering per width · colour independence of reward states · the switch's form contract · leaderboard island count and count constancy across the entrance · entrance, reveal and switch motion · the reduced-motion and no-support renders · layout checks · axe in both themes.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: `/me`, `/leaderboard`, component library) · E11.5-08 · `docs/features/member-status.md` · `docs/features/leaderboard.md` · `docs/architecture/adr/024-no-dark-patterns.md` · `docs/architecture/adr/027-entry-separate-from-marketing-consent.md`
+
+### E11.5-11s — Final-design trust, legal and giveaway rules pages
+**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Doc.dc.html`, `TrustLegit.dc.html`, `TrustGuarantee.dc.html`, `TrustAbout.dc.html`, `LegalPrivacy.dc.html`, `LegalTermsStorage.dc.html`, `Rules.dc.html`, `RulesArchived.dc.html` and `Manifest.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers `/legit`, `/guarantee` and `/about` at 390, 768 and 1440 (with the 390 join bar); `/privacy`, `/terms` and `/privacy/storage` at 390 and 1440; and `/giveaway/rules` current and archived at 390 and 1440, in both themes. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
+
+**Build:** Restyle the document layout to the canvas: the header band, the side card and contents list, the prose styles (including the wrapped tables at small widths), the small-width join bar on the trust pages and the archived-revision notice. The E11.5-09 behaviour and its founder decisions (2026-10-23 and 2026-10-24) stand:
+- **no content file changes, and every recorded rules SHA-256 still matches the served article**;
+- one H1, and nothing in the content is hidden;
+- these pages ship no client JavaScript beyond the page-view emitter and the theme toggle;
+- the join bar is a link;
+- no table causes page-level horizontal overflow.
+
+**`IMG-01`, the founder photo the canvas draws in the `/about` band, is not built** (final-design rule 3). The band follows the image manifest's fallback: its text spans the full width. `/guarantee` keeps the canvas's single midnight document band. Tables of three or more columns restack per row on phone, CSS only.
+
+**Motion and finish:**
+- The header band and the side card enter at first paint (`data-enter`, indices 0 to 2: eyebrow, title, summary; then the side card).
+- **The article itself never animates**, so reading is never disturbed. Motion applies only from outside it, by CSS, so the hashed markup stays byte-identical.
+- Contents-list links take the E11.5-11k underline motion. Heading anchors scroll smoothly (the E11.5-11i rule).
+- The trust pages' join bar slides in on load as the sticky bar does, at rest under reduced motion.
+
+**Acceptance criteria:**
+- **No content file changes, and every rules SHA-256 matches** — the E7-02 and E11-04 suites
+- Every page renders as drawn at its stated widths in both themes, at rest, and stays in the enforced layout-check set and passes axe
+- Zero client JavaScript beyond the existing emitter and toggle. The join bar is a link
+- No table overflows the page at 320 px
+- No element inside the article carries an animation or transition at any time
+- The E9-02, E9-03, E9-04, E9-06 and E11.5-09 suites pass, with only rule-7 rewrites. The motion stops under reduced motion
+
+**Tests:** Content-unchanged assertion · the rules hash suite · zero-JS · the no-motion-inside-the-article assertion · contents anchors · table overflow at 320 · entrance motion and the reduced-motion render · layout checks · axe in both themes.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: trust, legal and rules pages) · E11.5-09 · `docs/features/trust-pages.md` · `docs/features/legal-and-dsr.md` · `docs/architecture/adr/017-content-files.md` · E7-02 · E11-04
+
+### E11.5-11t — Final-design task pages, and the 404 and 500 pages
+**Model:** GPT-6 Sol — Medium · **Priority:** Medium · **Flag:** — · **Area:** frontend
+
+**Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Task.dc.html`, `TaskUnsubDsr1440.dc.html`, `TaskUnsubDsr390.dc.html`, `Award1440.dc.html`, `Award390.dc.html` and `Errors.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers `/unsubscribe` and `/dsr` in every state, `/giveaway/award` in every state, and 404 and 500, at 390 and 1440 in both themes, together with the component library's task card. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
+
+**Build:** Restyle the task-card pattern (`src/layouts/task-card.astro`) and every state on it to the canvas, including the award page's eligibility form and substitution list. Restyle the 404 and 500 pages to the canvas. The E11.5-10 behaviour stands:
+- token consumption, Turnstile and identical responses are unchanged;
+- the award page remains the only place a country is collected;
+- 404 and 500 keep their status codes, `noindex`, sitemap exclusion and no-leak property.
+
+**Motion and finish:**
+- The task card enters at first paint (`data-enter`, indices 0 to 2: state icon and H1, line, then the form or actions).
+- An outcome replacing a form cross-fades over `--duration-base`.
+- 404 and 500 use the same entrance and nothing else. There are no illustrations and no playful motion.
+
+**Acceptance criteria:**
+- Every state renders as drawn at 390 and 1440 in both themes, at rest. The existing suites pass, with only rule-7 rewrites
+- **An unknown route returns 404 with the branded page. An induced render error returns 500 with the branded page and leaks no stack trace or internal detail**
+- Both stay `noindex`, outside the sitemap, and in the E11-05 page inventory and rendered privacy probe
+- The motion runs as specified and stops under reduced motion. Focus is never mid-motion
+- Every page stays in the enforced layout-check set and passes axe in both themes
+
+**Tests:** State rendering per width · the existing unsubscribe, DSR, giveaway-award and E11.5-10 suites · 404 and 500 status, content and no-leak · entrance and outcome motion · the reduced-motion render · layout checks · axe in both themes.
+**Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: task pages, award page, 404 and 500, component library) · E11.5-10 · `docs/features/legal-and-dsr.md` · `docs/features/giveaway.md` · E11-05
+
 ### E11.5-12 — Design QA, the re-audits and founder sign-off
 **Model:** GPT-6 Astra — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 **Why this model:** a reasoning-led audit across every page (§3), and E11's audits ran against the old surfaces.
 
 **Build:**
-1. **The full contact sheet:** every public page and state — the landing page per flag state, every signup state with and without the sticky bar, every `/verify` and `/me` state, the leaderboard, trust and legal pages, current and archived rules, the task pages, 404 and 500 — at every test width in both themes, plus every email preview. Generated by E11.5-01's script, not committed; its index is recorded in `docs/testing/e11-5-design-qa.md`.
-2. **Re-run E11's audits on the new surfaces:** the E11-03 accessibility scope (keyboard-only journey including the sticky bar, a screen-reader pass, contrast at real sizes on `midnight` bands and banners); the E11-04 claims audit over all new copy, every showcase entry against its P8 confirmation, and every reward and prize figure; the E11-05 page inventory and rendered privacy probe, including 404, 500 and the logos; and the E11-07 port checklist for `tokens.css`.
+1. **The full contact sheet:** every public page and state — the landing page per flag state, every signup state with and without the sticky bar, every `/verify` and `/me` state, the leaderboard, trust and legal pages, current and archived rules, the task pages, 404 and 500 — at every test width in both themes, plus every email preview. Generated by E11.5-01's script, at rest (E11.5-11i), not committed; its index is recorded in `docs/testing/e11-5-design-qa.md`.
+2. **Re-run E11's audits on the new surfaces:** the E11-03 accessibility scope (keyboard-only journey including the sticky bar, a screen-reader pass, the reduced-motion journey, contrast at real sizes on `midnight` bands and banners); the E11-04 claims audit over all new copy, every showcase entry against its P8 confirmation, and every reward and prize figure; the E11-05 page inventory and rendered privacy probe, including 404, 500 and the logos; and the E11-07 port checklist for `tokens.css`.
 3. **Performance** on the landing page at 390px with 4× CPU throttling in the local harness: layout shift 0, largest contentful paint at most 2.5 s, first-party JavaScript recorded before and after E11.5, and total logo bytes recorded.
-4. **Founder visual review** of the contact sheet, landing-page frames side by side with their wireframe artboards (pinned version `1792974724-d356`). Every finding is fixed in this ticket or recorded as a founder-accepted deviation; the sign-off is recorded with its date.
+4. **Founder visual review** of the contact sheet: every page side by side with its frames in the final-design canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, at the version pinned for E11.5-11i to E11.5-11t), and the landing page also beside its wireframe artboards (pinned version `1792974724-d356`). The review also covers a **motion review**: local screen recordings of every page at 390 and 1440 px, with motion on and with reduced motion. The founder tunes the E11.5-11i starting values by token edits only. Every finding is fixed in this ticket or recorded as a founder-accepted deviation; the sign-off is recorded with its date.
 5. Update the rows of `docs/ops/e11-08-launch-readiness.md` that the re-audits touch.
 
 **Acceptance criteria:**
@@ -2766,15 +3241,15 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 | E9 Content, trust, legal, SEO | 8 | Content pipeline, trust pages, legal pages, inventory, DSR, SEO, OG, llms.txt |
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
-| E11.5 Frontend design | 20 | Foundations, survey v2, shell, **provider showcase**, landing, **mobile sticky signup bar**, verify, `/me` and leaderboard, content pages, task and error pages, email layout, **the eight wireframe tickets**, design QA and re-audits |
+| E11.5 Frontend design | 32 | Foundations, survey v2, shell, **provider showcase**, landing, **mobile sticky signup bar**, verify, `/me` and leaderboard, content pages, task and error pages, email layout, **the eight wireframe tickets**, **the twelve final-design tickets and the motion system**, design QA and re-audits |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
-| **Total** | **117** | |
+| **Total** | **129** | |
 
 **Model distribution (2026-09-28, the 34 tickets not yet merged):** GPT-6 Astra 16 (Extra High 1 · High 8 · Medium 6 · Light 1) · GPT-6 Sol 16 (High 10 · Medium 6) · GPT-6 Luna 2 (High 2). **Astra carries the operations and audit work of E11 and E12**, plus E9-05 and E10-01; **Sol carries the code of E8–E10**; Luna carries two small tickets whose dangerous failures an existing gate already catches (§3).
 
 E8-03a was added after that model distribution was recorded, with an explicit founder assignment of Tier B — Medium (2026-09-28).
 
-**E11.5 (founder-authorised 2026-10-19; wireframe tickets added 2026-10-26), 20 tickets:** GPT-6 Sol 19 (High 11 · Medium 8) · GPT-6 Astra 1 (Medium 1).
+**E11.5 (founder-authorised 2026-10-19; wireframe tickets added 2026-10-26; final-design tickets added 2026-10-30), 32 tickets:** GPT-6 Sol 31 (High 18 · Medium 13) · GPT-6 Astra 1 (Medium 1).
 
 **Tier distribution before 2026-09-28** (all 96 tickets as first planned; the merged ones keep these tiers): Tier B Extra High 4 · Tier B High 15 · Tier B Medium 30 · Tier A High 16 · Tier A Medium 31. *(2026-09-25: S-01 added at Tier B High; E7-01 moved from Tier B High to Tier A Medium once jurisdiction gating was removed; E7-06 moved from Tier A Medium to Tier B Medium because it now collects provisional winners' countries of residence and runs the sanctions check. 2026-09-27: E8-08 removed from Tier B High by ADR-028.)*
 
@@ -2786,7 +3261,7 @@ Under the tier policy, **Tier B carried the personal data, the privacy propertie
 
 ## Effort reconciliation
 
-The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each, plus E11.5's 20 design tickets (founder-authorised 2026-10-19 and 2026-10-26), which are heavier per ticket and are not in the stack-decisions estimate. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
+The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each, plus E11.5's 32 design tickets (founder-authorised 2026-10-19, 2026-10-26 and 2026-10-30), which are heavier per ticket and are not in the stack-decisions estimate. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
 
 | Cut | Removes | Saves |
 |---|---|---|

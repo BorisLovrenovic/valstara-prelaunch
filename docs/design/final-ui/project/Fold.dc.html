@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Above-the-fold crops</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="sheet {{themeCls}} {{annCls}}" style="width: 2640px">
+<h1 class="sheet__title">Above the fold</h1>
+<p class="sheet__lede">Each crop is the real landing page at that viewport, cut at the fold. At 1440 × 900 the positioning line, H1, form, microline, trust facts, checkbox and the top of "What you'll find" are visible. At 390 × 844 the field and button end above 500 and the microline, trust facts, checkbox and logo strip end above 844. At 320 nothing overflows sideways.</p>
+<div class="frames">
+<sc-for list="{{crops}}" as="c" hint-placeholder-count="5">
+<div class="frame">
+<div class="frame__label"><span class="frame__n">{{c.n}}</span><span class="frame__name">{{c.name}}</span></div>
+<p class="frame__note" style="max-width: {{c.w}}">{{c.note}}</p>
+<div class="frame__screen" style="width: {{c.w}}; height: {{c.h}}">
+<dc-import name="Main" theme="{{themeName}}" uid="{{c.uid}}" hint-size="100%,1200px"></dc-import>
+<div class="ann fold-line" style="top: calc({{c.h}} - 2px)"><span>fold · {{c.name}}</span></div>
+<sc-if value="{{c.mark}}" hint-placeholder-val="{{false}}"><div class="ann fold-line" style="top: 500px; border-top-style: dotted"><span>500 · field and button end above</span></div></sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"$preview":{"width":2640,"height":2380}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    return {
+      themeCls: dark ? 'dark' : '',
+      themeName: dark ? 'dark' : 'light',
+      annCls: this.props.annotations ? 'show-ann' : '',
+      crops: [
+        { n: 'A', name: '1440 × 900', w: '1440px', h: '900px', uid: 'f1', mark: false, note: 'Desktop. Everything in the hero plus the catalogue heading and supporting line.' },
+        { n: 'B', name: '1024 × 768', w: '1024px', h: '768px', uid: 'f2', mark: false, note: 'Landscape tablet. Positioning line, H1, form, microline, trust facts and checkbox fit.' },
+        { n: 'C', name: '768 × 1024', w: '768px', h: '1024px', uid: 'f3', mark: false, note: 'Portrait tablet. Hero and the medium banner stack, catalogue heading below.' },
+        { n: 'D', name: '390 × 844', w: '390px', h: '844px', uid: 'f4', mark: true, note: 'Phone. Button ends near 467. Logo strip ends near 772.' },
+        { n: 'E', name: '320 × 568', w: '320px', h: '568px', uid: 'f5', mark: false, note: 'Smallest. Compact header Join; no sideways overflow.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

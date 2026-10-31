@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>What you get · reward cards</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="page page--fit {{themeCls}} {{annCls}}" style="background: transparent">
+<section class="section" id="rewards" aria-labelledby="rewards-title-{{uid}}" style="padding-top: {{padTop}}">
+<div class="wrap">
+<div class="section-head rel"><h2 class="t-h2" id="rewards-title-{{uid}}">What you get</h2>
+<span class="ann" style="left: -40px; top: 2px"><span class="ann ann__num ann__num--20" style="position: static">8</span></span>
+</div>
+<div class="rewards {{gridCls}} rel">
+<span class="ann" style="right: 0; top: -30px"><span class="ann__chip">{{annGrid}}</span></span>
+
+<article class="card card--roomy reward reward--access reward--wide-capable">
+<div class="reward__intro">
+<div class="reward__head"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#building"></use></svg></span><h3 class="t-h3">Earlier access</h3></div>
+<p class="reward__body t-body">Earlier confirmed signups get earlier access.</p>
+</div>
+<div class="reward__visual">
+<div class="well">
+<ol class="waves" aria-label="Access waves">
+<li style="display: contents"><span class="waves__label">Wave 1</span><span class="waves__track" aria-hidden="true"><span class="waves__bar" style="left: 0"></span></span></li>
+<li style="display: contents"><span class="waves__label">Wave 2</span><span class="waves__track" aria-hidden="true"><span class="waves__bar" style="left: 25%"></span></span></li>
+<li style="display: contents"><span class="waves__label">Wave 3</span><span class="waves__track" aria-hidden="true"><span class="waves__bar" style="left: 50%"></span></span></li>
+<li style="display: contents"><span class="waves__label">Wave 4</span><span class="waves__track" aria-hidden="true"><span class="waves__bar" style="left: 75%"></span></span></li>
+<li class="waves__grid" aria-hidden="true"><i></i><i></i><i></i><i></i></li>
+</ol>
+<div class="waves__axis" aria-hidden="true"><span></span><span class="waves__axis-line"><span>earlier</span><span>later</span></span></div>
+</div>
+</div>
+</article>
+
+<sc-if value="{{referral}}" hint-placeholder-val="{{true}}">
+<article class="card card--roomy reward rel">
+<div class="reward__head"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#people"></use></svg></span><h3 class="t-h3">Referral rewards</h3></div>
+<div class="reward__visual">
+<div class="well">
+<div class="equation">
+<p class="vh">3 confirmed referrals → move up an access wave and 15% off at launch</p>
+<span aria-hidden="true"></span>
+<div class="equation__count" aria-hidden="true"><span class="t-figure">3</span><span class="equation__meta"><span class="equation__people"><svg class="icon" aria-hidden="true"><use href="./icons.svg#person"></use></svg><svg class="icon" aria-hidden="true"><use href="./icons.svg#person"></use></svg><svg class="icon" aria-hidden="true"><use href="./icons.svg#person"></use></svg></span><span class="t-label c-600">confirmed referrals</span></span></div>
+<span class="equation__op" aria-hidden="true"><svg class="icon icon--20"><use href="./icons.svg#arrow-right"></use></svg></span>
+<span class="pill" aria-hidden="true"><svg class="icon" aria-hidden="true"><use href="./icons.svg#arrow-up"></use></svg>Up one access wave</span>
+<span class="equation__op equation__op--plus" aria-hidden="true">+</span>
+<span class="pill pill--coral" aria-hidden="true"><span class="t-mono">15%</span> off at launch</span>
+</div>
+<sc-if value="{{tier2}}" hint-placeholder-val="{{false}}">
+<div class="equation">
+<p class="vh">5 confirmed referrals → move up an access wave and 25% off at launch</p>
+<span aria-hidden="true"></span>
+<div class="equation__count" aria-hidden="true"><span class="t-figure">5</span><span class="equation__meta"><span class="equation__people"><svg class="icon" aria-hidden="true"><use href="./icons.svg#person"></use></svg><svg class="icon" aria-hidden="true"><use href="./icons.svg#person"></use></svg><svg class="icon" aria-hidden="true"><use href="./icons.svg#person"></use></svg><svg class="icon" aria-hidden="true"><use href="./icons.svg#person"></use></svg><svg class="icon" aria-hidden="true"><use href="./icons.svg#person"></use></svg></span><span class="t-label c-600">confirmed referrals</span></span></div>
+<span class="equation__op" aria-hidden="true"><svg class="icon icon--20"><use href="./icons.svg#arrow-right"></use></svg></span>
+<span class="pill" aria-hidden="true"><svg class="icon" aria-hidden="true"><use href="./icons.svg#arrow-up"></use></svg>Up one access wave</span>
+<span class="equation__op equation__op--plus" aria-hidden="true">+</span>
+<span class="pill pill--coral" aria-hidden="true"><span class="t-mono">25%</span> off at launch</span>
+</div>
+</sc-if>
+</div>
+<p class="reward__held"><svg class="icon" aria-hidden="true"><use href="./icons.svg#clock"></use></svg>Discount unlocks when a referred person places a first order within 90 days after launch.</p>
+</div>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">{dyn} tiers from milestoneTiers · t-figure mono 32/40</span></span>
+</article>
+</sc-if>
+
+<sc-if value="{{giveaway}}" hint-placeholder-val="{{true}}">
+<article class="card card--roomy reward rel">
+<div class="reward__head"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#gift"></use></svg></span><h3 class="t-h3">The giveaway</h3></div>
+<div class="reward__visual">
+<div class="well">
+<p class="prize"><span class="t-figure">5</span><span class="prize__word">prizes, approximately</span><span class="prize__nowrap"><span class="t-figure">€300</span> <span class="prize__word">each</span></span></p>
+<div class="prize__gifts" aria-hidden="true" style="margin-top: var(--space-1-5)"><svg class="icon"><use href="./icons.svg#gift"></use></svg><svg class="icon"><use href="./icons.svg#gift"></use></svg><svg class="icon"><use href="./icons.svg#gift"></use></svg><svg class="icon"><use href="./icons.svg#gift"></use></svg><svg class="icon"><use href="./icons.svg#gift"></use></svg></div>
+</div>
+<p class="t-small c-600">No purchase necessary · 18 and over</p>
+<p><a class="link link-arrow link--tap t-small" href="/giveaway/rules">Read the giveaway rules<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a></p>
+</div>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">{dyn} count and value from currentRules()</span></span>
+</article>
+</sc-if>
+</div>
+
+<sc-if value="{{footLine}}" hint-placeholder-val="{{true}}">
+<div class="rewards-foot">
+<p class="rewards-foot__fact"><svg class="icon" aria-hidden="true"><use href="./icons.svg#shield-check"></use></svg>Only confirmed, verified referrals count.</p>
+<sc-if value="{{leaderboard}}" hint-placeholder-val="{{true}}"><a class="link link-arrow link--tap t-small" href="/leaderboard">See the leaderboard<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a></sc-if>
+</div>
+</sc-if>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"referral":{"editor":"boolean","default":true},"giveaway":{"editor":"boolean","default":true},"leaderboard":{"editor":"boolean","default":true},"tier2":{"editor":"boolean","default":false},"flush":{"editor":"boolean","default":false},"uid":{"editor":null,"default":"r"},"$preview":{"width":1440,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var referral = this.props.referral !== false;
+    var giveaway = this.props.giveaway !== false;
+    var n = 1 + (referral ? 1 : 0) + (giveaway ? 1 : 0);
+    var spans = { 3: 'lg: cols 1–4 · 5–8 · 9–12 · md: access full, others 1–6 · 7–12', 2: 'lg: cols 1–6 · 7–12 · md and small: stacked full width', 1: 'access as a wide two-column panel · cols 1–12' };
+    return {
+      referral: referral,
+      giveaway: giveaway,
+      tier2: !!this.props.tier2 && referral,
+      leaderboard: this.props.leaderboard !== false,
+      footLine: referral || giveaway,
+      gridCls: 'rewards--' + n,
+      annGrid: 'cards E1 · pad 32 (24 small) · ' + spans[n],
+      padTop: this.props.flush ? '0px' : '',
+      uid: this.props.uid || 'r',
+      themeCls: this.props.theme === 'dark' ? 'dark' : '',
+      annCls: this.props.annotations ? 'show-ann' : ''
+    };
+  }
+}
+</script>
+</body>
+</html>

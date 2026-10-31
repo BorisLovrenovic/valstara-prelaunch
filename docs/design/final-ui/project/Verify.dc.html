@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>/verify page</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./valstara.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="page {{themeCls}} {{annCls}}">
+<dc-import name="Header" theme="{{themeName}}" annotations="{{ann}}" context="site" hint-size="100%,80px"></dc-import>
+<main id="main" class="page-main rel">
+<div class="ann ann-grid" aria-hidden="true"><div class="wrap"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+<div class="wrap">
+
+<sc-if value="{{isTask}}" hint-placeholder-val="{{false}}">
+<div class="task">
+<section class="card task-card rel" aria-labelledby="v-h1-{{uid}}">
+<sc-if value="{{invalid}}" hint-placeholder-val="{{false}}">
+<div class="notice notice--info" style="margin-bottom: var(--space-3)"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#info"></use></svg><p>This verification link is not available.</p></div>
+</sc-if>
+<div class="task-card__head"><span class="tile tile--lg {{tileCls}}"><svg class="icon" aria-hidden="true"><use href="./icons.svg#{{tileIcon}}"></use></svg></span><h1 class="t-h1" id="v-h1-{{uid}}">{{h1}}</h1></div>
+<sc-if value="{{confirm}}" hint-placeholder-val="{{true}}">
+<p class="task-card__line t-body">Next, we will show your place and referral link.</p>
+<div class="task-card__actions"><button class="btn btn--primary" type="submit">Confirm email address</button></div>
+</sc-if>
+<sc-if value="{{invalid}}" hint-placeholder-val="{{false}}">
+<sc-if value="{{noJs}}" hint-placeholder-val="{{false}}"><div class="notice notice--info task-card__notice"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#info"></use></svg><p>JavaScript is required to complete the security check and request a new link.</p></div></sc-if>
+<sc-if value="{{sent}}" hint-placeholder-val="{{false}}"><div class="notice notice--success task-card__notice" role="status"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#check-circle"></use></svg><p>If there's a pending signup for that email, we'll send a new confirmation link shortly.</p></div></sc-if>
+<form class="task-card__form" action="#">
+<div class="field"><label class="field__label" for="v-email-{{uid}}">Email address</label><input class="input field__control" id="v-email-{{uid}}" type="email" autocomplete="email" placeholder="you@example.com" value="{{email}}" readonly="readonly"></div>
+<div class="task-card__actions" style="margin-top: 0"><sc-if value="{{noJs}}" hint-placeholder-val="{{false}}"><button class="btn btn--primary is-disabled" type="submit" disabled="disabled">Request a new link</button></sc-if><sc-if value="{{withJs}}" hint-placeholder-val="{{true}}"><button class="btn btn--primary" type="submit">Request a new link</button></sc-if></div>
+<sc-if value="{{turnstile}}" hint-placeholder-val="{{false}}"><div class="rel"><div class="turnstile turnstile--compact"><span class="turnstile__box" aria-hidden="true"></span><span>Cloudflare Turnstile · compact 150 × 140</span></div><span class="ann" style="left: 166px; top: 8px"><span class="ann__chip">reserved slot · shown only when the check needs interaction</span></span></div></sc-if>
+</form>
+</sc-if>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">task card E1 · cols 1–7 · pad 40 (24 small) · tile 48 + t-h1</span></span>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{isSuccess}}" hint-placeholder-val="{{true}}">
+<div class="vgrid">
+
+<section class="card card--roomy v-hero g-main rel" aria-labelledby="v-h1-{{uid}}">
+<div class="success-head">
+<span class="tile tile--success tile--xl"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check-circle"></use></svg></span>
+<h1 class="t-h1" id="v-h1-{{uid}}">Your email address is verified.</h1>
+<p class="t-body">{{line}}</p>
+</div>
+<div class="v-hero__meta"><span class="label-sm">Your access wave</span><span class="badge-wave rel"><span class="badge-wave__bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span>Access wave 2<span class="ann" style="right: -4px; top: -26px"><span class="ann__chip">{dyn} wave</span></span></span></div>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">cols 1–7 · card E1 · pad 32 (24 small) · tile 56 success · t-h1 + t-body ink-600</span></span>
+<span class="ann" style="left: 32px; bottom: -11px"><span class="ann__chip">gap 24 · row gap 24 (16 small)</span></span>
+</section>
+
+
+
+<sc-if value="{{referral}}" hint-placeholder-val="{{true}}">
+<section class="card card--roomy {{refCls}} rel" aria-labelledby="v-ref-{{uid}}">
+<div class="card-head"><span class="tile"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#people"></use></svg></span><h2 class="card-title" id="v-ref-{{uid}}">Your referral link</h2></div>
+<div class="ref-row">
+<p class="linkbox {{linkCls}} rel" aria-label="Referral link">https://valstara.com/<wbr>?ref=<span class="linkbox__code">K7QX2MPR9AZB</span><span class="ann" style="right: 8px; top: -11px"><span class="ann__chip">{dyn} 12-char code · mono 14 · wraps, never truncates</span></span></p>
+<button class="btn btn--primary" type="button"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#{{copyIcon}}"></use></svg>Copy link</button>
+</div>
+<sc-if value="{{copied}}" hint-placeholder-val="{{false}}"><p class="ref-status ref-status--ok" role="status"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check-circle"></use></svg>Link copied.</p></sc-if>
+<sc-if value="{{copyFailed}}" hint-placeholder-val="{{false}}"><p class="ref-status ref-status--info" role="status"><svg class="icon" aria-hidden="true"><use href="./icons.svg#info"></use></svg>Select and copy the link instead.</p></sc-if>
+<div class="share-phone rel"><button class="btn btn--secondary btn--keep" type="button" style="width: 100%"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#upload-share"></use></svg>Share link</button><span class="ann" style="right: 8px; top: -11px"><span class="ann__chip">only where navigator.share exists · absent on most desktops</span></span></div>
+<div class="well progress-well rel">
+<div class="meter"><div class="meter__top"><span class="label-sm">Progress</span><span class="meter__value">0 of 3 to Tier 1</span></div><div class="meter__track" aria-hidden="true"><i class="meter__seg"></i><i class="meter__seg"></i><i class="meter__seg"></i></div></div>
+<div class="unlocks"><p class="label-sm">Tier 1 unlocks</p><ul class="unlocks__list"><li class="pill"><svg class="icon" aria-hidden="true"><use href="./icons.svg#arrow-up"></use></svg>Earlier access wave</li><li class="pill pill--coral"><span class="t-mono">15%</span> launch discount</li></ul></div>
+<span class="ann" style="right: 8px; top: -11px"><span class="ann__chip">well · {dyn} count, threshold, tier, discount · one segment per referral</span></span>
+</div>
+<p class="held-line"><svg class="icon" aria-hidden="true"><use href="./icons.svg#clock"></use></svg>The discount is held until a confirmed referral places a first order within 90 days after launch.</p>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">{{refAnn}} · E1 · the page's one primary: Copy link</span></span>
+</section>
+</sc-if>
+
+<sc-if value="{{survey}}" hint-placeholder-val="{{true}}">
+<section class="card card--roomy survey {{surveyCls}} rel" aria-labelledby="v-sv-{{uid}}">
+<h2 class="card-title" id="v-sv-{{uid}}">Help us prepare for launch</h2>
+<sc-if value="{{surveyForm}}" hint-placeholder-val="{{true}}">
+<fieldset class="survey__q"><legend>What digital goods interest you?</legend>
+<div class="chips">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="7"><label class="chip-option {{c.cls}}"><input type="checkbox"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>{{c.label}}</label></sc-for>
+</div>
+</fieldset>
+<fieldset class="survey__q"><legend>How often do you buy digital goods?</legend>
+<div class="segmented" role="radiogroup">
+<sc-for list="{{freqs}}" as="f" hint-placeholder-count="4"><label class="segment {{f.cls}}"><input type="radio" name="freq-{{uid}}"><svg class="icon" aria-hidden="true"><use href="./icons.svg#check"></use></svg>{{f.label}}</label></sc-for>
+</div>
+<sc-if value="{{invalidQ}}" hint-placeholder-val="{{false}}"><p class="field__error"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#alert-circle"></use></svg>Choose a listed option or leave the question unanswered.</p></sc-if>
+</fieldset>
+<sc-if value="{{surveyErr}}" hint-placeholder-val="{{false}}"><div class="notice notice--error survey__notice" role="alert"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#alert-circle"></use></svg><p>We cannot save preferences right now — try again shortly.</p></div></sc-if>
+<div class="survey__actions"><button class="btn btn--secondary btn--keep" type="submit">Save preferences</button><button class="btn btn--secondary btn--keep" type="submit">Skip</button></div>
+</sc-if>
+<sc-if value="{{surveySaved}}" hint-placeholder-val="{{false}}"><div class="notice notice--success survey__notice" role="status"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#check-circle"></use></svg><p>Your preferences are saved.</p></div></sc-if>
+<sc-if value="{{surveySkipped}}" hint-placeholder-val="{{false}}"><div class="notice notice--info survey__notice" role="status"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#check"></use></svg><p>Skipped. We won't ask again.</p></div></sc-if>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">{{surveyAnn}} · E1 · chips 44 · segments 44 (36 md+) · Save and Skip equal weight</span></span>
+</section>
+</sc-if>
+
+<aside class="card card--roomy status-card g-side g-side--top rel" aria-labelledby="v-st-{{uid}}">
+<div class="card-head"><span class="tile tile--neutral"><svg class="icon icon--20" aria-hidden="true"><use href="./icons.svg#person"></use></svg></span><h2 class="card-title" id="v-st-{{uid}}">Your waitlist status</h2></div>
+<a class="btn btn--secondary btn--keep" href="/me">View your status<svg class="icon icon--16" aria-hidden="true"><use href="./icons.svg#arrow-right"></use></svg></a>
+<span class="ann" style="right: 12px; top: -11px"><span class="ann__chip">cols 8–12 · E1 · last on phone and tablet</span></span>
+</aside>
+
+</div>
+</sc-if>
+</div>
+</main>
+<div class="footer-slot"><dc-import name="Footer" theme="{{themeName}}" annotations="{{ann}}" hint-size="100%,360px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"annotations":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["confirm","success","referral-off","survey-off","both-off","copied-saved","failed-skipped","survey-errors","invalid","invalid-sent","invalid-nojs"],"default":"success"},"uid":{"editor":"string","default":"v"},"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = this.props.theme === 'dark';
+    var s = this.props.state || 'success';
+    var isTask = s === 'confirm' || s.indexOf('invalid') === 0;
+    var invalid = s.indexOf('invalid') === 0;
+    var referral = isTask ? false : !(s === 'referral-off' || s === 'both-off');
+    var survey = isTask ? false : !(s === 'survey-off' || s === 'both-off');
+    var saved = s === 'copied-saved', skipped = s === 'failed-skipped', errs = s === 'survey-errors';
+    var both = referral && survey;
+    var selCats = { 'AI tools': 1, 'Software': 1, 'Game keys': 1 };
+    var cats = ['AI tools', 'Streaming and subscriptions', 'Software', 'Gift cards', 'Game keys', 'Game top-ups', 'In-game currency'].map(function (l) { return { label: l, cls: (s === 'survey-errors' && selCats[l]) ? 'is-selected' : '' }; });
+    var freqs = ['Weekly', 'Monthly', 'A few times a year', 'Rarely'].map(function (l) { return { label: l, cls: (s === 'survey-errors' && l === 'Monthly') ? 'is-selected' : '' }; });
+    return {
+      themeCls: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light',
+      ann: !!this.props.annotations, annCls: this.props.annotations ? 'show-ann' : '',
+      uid: this.props.uid || 'v',
+      isTask: isTask, isSuccess: !isTask, confirm: s === 'confirm', invalid: invalid,
+      noJs: s === 'invalid-nojs', sent: s === 'invalid-sent', turnstile: s === 'invalid',
+      withJs: s !== 'invalid-nojs',
+      email: s === 'invalid-sent' ? 'alexandra.konstantinidou@example.com' : '',
+      h1: s === 'confirm' ? 'Confirm your email address' : 'Request a new link',
+      tileIcon: s === 'confirm' ? 'mail' : 'refresh', tileCls: s === 'confirm' ? '' : 'tile--neutral',
+      line: referral ? 'Your place is confirmed. Share your link to move toward your next tier.' : 'Your place is confirmed.',
+      referral: referral, survey: survey,
+      refCls: both ? 'g-main g-start' : 'g-main', surveyCls: both ? 'g-side g-start' : 'g-main',
+      refAnn: 'cols 1–7', surveyAnn: both ? 'cols 8–12' : 'cols 1–7',
+      copied: saved, copyFailed: skipped, copyIcon: saved ? 'check' : 'copy', linkCls: skipped ? 'is-selected' : '',
+      surveyForm: !(saved || skipped), surveySaved: saved, surveySkipped: skipped,
+      surveyErr: errs, invalidQ: errs,
+      cats: cats, freqs: freqs
+    };
+  }
+}
+</script>
+</body>
+</html>
