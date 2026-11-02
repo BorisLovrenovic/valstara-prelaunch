@@ -108,6 +108,10 @@ test('a planted literal in a global stylesheet fails, and tokens.css is the one 
   ]);
   assert.equal(scannedStylesheet('src/styles/motion.css'), true);
   assert.equal(scannedStylesheet('src/styles/planted.css'), true);
+  assert.equal(scannedStylesheet('src/styles/sub/planted.css'), true);
+  assert.equal(scannedStylesheet('src/styles/sub/deeper/planted.css'), true);
+  assert.equal(scannedStylesheet('src/styles/sub/tokens.css'), true);
+  assert.equal(scannedStylesheet('src/components/planted.css'), false);
   assert.equal(scannedStylesheet('src/styles/tokens.css'), false);
   // tokens.css defines the values, so it would fail a scan it is exempt from.
   assert.ok(

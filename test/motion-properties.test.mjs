@@ -115,6 +115,63 @@ test('every layout property fails, in the longhand and the shorthand, in a compo
   );
 });
 
+test('the disclosure exemption covers only the selectors that are ::details-content', () => {
+  for (const selector of [
+    'a, b::details-content',
+    'b::details-content, a',
+    ':is(a, b)::details-content, c',
+    'b::details-content a',
+    'a:has(b::details-content)',
+  ]) {
+    assert.deepEqual(
+      scanMotionCss(
+        `${selector} { transition: height var(--duration-base) var(--ease-out); }`,
+      ),
+      ['transition on layout property height'],
+      selector,
+    );
+  }
+  for (const css of [
+    'details::details-content { transition: height var(--duration-base) var(--ease-out); }',
+    'a::details-content, b[open]::details-content { transition-property: height; }',
+    ':is(a, b)::details-content { transition-property: block-size; }',
+    'details { &::details-content { transition-property: height; } }',
+    '@media (prefers-reduced-motion: no-preference) { details::details-content { transition-property: height; } }',
+  ]) {
+    assert.deepEqual(scanMotionCss(css), [], css);
+  }
+});
+
+test('a transition shorthand that names no property is an implicit all and fails', () => {
+  for (const value of [
+    'var(--duration-fast)',
+    'var(--duration-fast) var(--ease-out)',
+    'var(--duration-fast), opacity var(--duration-fast)',
+    'opacity var(--duration-fast), var(--duration-base)',
+    '0s',
+    'calc(2 * var(--duration-fast))',
+    'allow-discrete var(--duration-fast)',
+  ]) {
+    assert.deepEqual(
+      scanMotionCss(`a { transition: ${value}; }`),
+      ['transition on layout property all'],
+      value,
+    );
+  }
+  for (const value of [
+    'none',
+    'inherit',
+    'initial',
+    'unset',
+    'revert',
+    'revert-layer',
+    'opacity var(--duration-fast)',
+    'var(--duration-fast) opacity',
+  ]) {
+    assert.deepEqual(scanMotionCss(`a { transition: ${value}; }`), [], value);
+  }
+});
+
 test('every shipping component and stylesheet passes the motion-property scan', async () => {
   assert.deepEqual(
     await scanMotionTree(fileURLToPath(new URL('..', import.meta.url))),

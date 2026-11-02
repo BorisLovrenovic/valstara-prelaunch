@@ -23,11 +23,13 @@ const keyframeControls = new Set(['animation-timing-function']);
 // `all` includes every layout property, so it fails with them.
 const layoutProperty =
   /^(?:all|(?:min-|max-)?(?:width|height|inline-size|block-size)|inset(?:-[\w-]+)?|top|right|bottom|left|(?:margin|padding)(?:-[\w-]+)?)$/u;
+const noTransition = /^(?:none|initial|inherit|unset|revert|revert-layer)$/u;
 const notAPropertyName =
-  /^(?:none|initial|inherit|unset|revert|normal|allow-discrete|linear|ease|ease-in|ease-out|ease-in-out|step-start|step-end)$/u;
+  /^(?:normal|allow-discrete|linear|ease|ease-in|ease-out|ease-in-out|step-start|step-end)$/u;
 
 // The property each comma-separated item of a transition names: its first
-// identifier that is not a duration, an easing or a keyword.
+// identifier that is not a duration, an easing or a keyword. An item of the
+// shorthand that names none transitions `all`, the property's initial value.
 function transitionedProperties(property, value) {
   const items = value
     .replace(/var\(\s*--[\w-]+\s*\)/gu, ' ')
@@ -36,16 +38,35 @@ function transitionedProperties(property, value) {
   if (property === 'transition-property')
     return items.map((item) => item.trim().toLowerCase()).filter(Boolean);
   return items.flatMap((item) => {
-    const name = item
-      .trim()
-      .toLowerCase()
+    const text = item.trim().toLowerCase();
+    if (noTransition.test(text)) return [];
+    const name = text
       .split(/\s+/u)
       .find(
         (word) =>
           /^-?[a-z][a-z-]*$/u.test(word) && !notAPropertyName.test(word),
       );
-    return name === undefined ? [] : [name];
+    return [name ?? 'all'];
   });
+}
+
+// The disclosure exemption: the rule's own selector list (the innermost
+// prelude that is not an at-rule), every selector of which ends on
+// `::details-content`, so a sibling selector in the list is still checked.
+function onDetailsContent(preludes) {
+  const selectors = preludes.findLast((prelude) => !prelude.startsWith('@'));
+  if (selectors === undefined) return false;
+  let depth = 0;
+  const list = [''];
+  for (const char of selectors) {
+    if (char === '(') depth += 1;
+    if (char === ')') depth -= 1;
+    if (char === ',' && depth === 0) list.push('');
+    else list[list.length - 1] += char;
+  }
+  return list.every((selector) =>
+    /::details-content(?::[\w-]+(?:\([^()]*\))?)*$/u.test(selector.trim()),
+  );
 }
 
 export function scanMotionCss(css) {
@@ -59,8 +80,7 @@ export function scanMotionCss(css) {
     }
     if (property !== 'transition' && property !== 'transition-property')
       continue;
-    if (preludes.some((prelude) => prelude.includes('::details-content')))
-      continue;
+    if (onDetailsContent(preludes)) continue;
     for (const name of transitionedProperties(property, value)) {
       if (layoutProperty.test(name))
         issues.push(`transition on layout property ${name}`);

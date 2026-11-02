@@ -35,7 +35,7 @@ const [tokensCss, motionCss] = await Promise.all([
 // a row indexed in reading order, a tall card and a focusable link, and a
 // footer that does not reveal. The fixture's own layout values are test
 // scaffolding; every motion value comes from the shipping files.
-function fixturePage(motion = motionCss) {
+function fixturePage(motion = motionCss, { rowCards = 3 } = {}) {
   const card = (index) =>
     `<li data-reveal style="--reveal-index: ${index}"><h3>Card ${index + 1}</h3><p>Fixture text for a card in a revealed row, long enough to wrap at small widths.</p></li>`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Motion fixture</title><style>${tokensCss}
@@ -58,7 +58,7 @@ footer { min-height: 60vh; padding: var(--space-4) var(--gutter); background: va
 <p data-enter style="--enter-index: 6">An index past the cap starts with index 3.</p>
 </div>
 <section class="card" data-reveal><h2>A revealed section</h2><p>Below the fold, this rises and fades in as it enters the viewport.</p></section>
-<ul class="row">${[0, 1, 2].map(card).join('')}</ul>
+<ul class="row">${[...Array(rowCards).keys()].map(card).join('')}</ul>
 <section class="card tall" data-reveal><h2>A tall card</h2><p>Taller than the others at every width.</p></section>
 <section class="card" data-reveal><h2>A card with a link</h2><p><a id="revealed-link" href="#revealed-link">A link inside revealed content</a></p></section>
 </main><footer><p>A footer that does not reveal.</p></footer></body></html>`;
@@ -358,6 +358,129 @@ test('every revealed element is at rest by 70% of the viewport height and at the
         (await motionStates(page)).filter((state) => !state.rest),
         [],
         `${width}px: at the page end`,
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('a long row stays in the range: past the last index every card moves with it and is at rest by 70%', async () => {
+  for (const width of designWidths) {
+    const { context, page } = await openFixture({
+      width,
+      html: fixturePage(motionCss, { rowCards: 10 }),
+    });
+    try {
+      await finishEntrances(page);
+      const tops = await restingTops(page);
+      assert.equal(tops.length, 13, 'thirteen revealed elements');
+      const reveals = async () =>
+        (await motionStates(page)).filter((state) => state.kind === 'reveal');
+      const heights = await page.evaluate(() =>
+        [...globalThis.document.querySelectorAll('[data-reveal]')].map(
+          (element) => element.getBoundingClientRect().height,
+        ),
+      );
+      // The row is reveals 1 to 10; cards 5 to 10 carry indices 4 to 9.
+      for (const index of [5, 6, 8, 10]) {
+        // 90% of the way through the range, which ends about at the smaller of
+        // the card's height and 20% of the viewport: inside the last index's
+        // stretch. A card whose start has passed the end is still fully
+        // hidden here and jumps to rest later.
+        await scrollToY(
+          page,
+          tops[index] -
+            viewportHeight +
+            0.9 * Math.min(heights[index], 0.2 * viewportHeight),
+        );
+        const { opacity } = (await reveals())[index];
+        assert.ok(
+          opacity > 0 && opacity < 1,
+          `${width}px: card ${index} is partway through its reveal (opacity ${opacity})`,
+        );
+      }
+      for (const [index, top] of tops.entries()) {
+        await scrollToY(page, top - 0.7 * viewportHeight);
+        const state = (await reveals())[index];
+        assert.ok(
+          state.rest,
+          `${width}px: reveal ${index + 1} (${state.name}) is at rest with its top at 70% (opacity ${state.opacity})`,
+        );
+      }
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+// A short element with nothing after it: the scroll ends before it has
+// covered its reveal range, at any width. Fixture values are scaffolding.
+function endOfPageFixture(reveals, { lead = '100vh' } = {}) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>End of page</title><style>${tokensCss}
+${motionCss}
+html, body, p { margin: 0; }
+.lead { min-height: ${lead}; }
+[data-reveal] { block-size: 20px; }
+</style></head><body><div class="lead"></div>${reveals}</body></html>`;
+}
+
+test('a short reveal at the very end of a page reaches rest', async () => {
+  for (const [label, reveals] of [
+    ['one short element', '<p data-reveal>Last line</p>'],
+    [
+      'an indexed row',
+      [0, 1, 4]
+        .map(
+          (index) =>
+            `<p data-reveal style="--reveal-index: ${index}">Line ${index}</p>`,
+        )
+        .join(''),
+    ],
+  ]) {
+    for (const width of designWidths) {
+      const { context, page } = await openFixture({
+        width,
+        html: endOfPageFixture(reveals),
+      });
+      try {
+        // Not vacuous: above the end, the element is still mid-reveal.
+        await scrollToY(page, 10);
+        const [waiting] = await motionStates(page);
+        assert.equal(waiting.rest, false, `${label} ${width}px: still waiting`);
+        await scrollToY(page, 100_000);
+        assert.deepEqual(
+          (await motionStates(page)).filter((state) => !state.rest),
+          [],
+          `${label} at ${width}px, at the page end`,
+        );
+      } finally {
+        await context.close();
+      }
+    }
+  }
+});
+
+test('a reveal on a page too short to scroll is at rest', async () => {
+  for (const lead of ['calc(100vh - 60px)', 'calc(100vh - 20px)']) {
+    const { context, page } = await openFixture({
+      html: endOfPageFixture('<p data-reveal>Last line</p>', { lead }),
+    });
+    try {
+      await frames(page);
+      assert.equal(
+        await page.evaluate(
+          () =>
+            globalThis.document.documentElement.scrollHeight -
+            globalThis.innerHeight,
+        ),
+        0,
+        `${lead}: the page does not scroll`,
+      );
+      assert.deepEqual(
+        (await motionStates(page)).filter((state) => !state.rest),
+        [],
+        lead,
       );
     } finally {
       await context.close();
@@ -792,5 +915,56 @@ test('the theme toggle cross-fades only where view transitions exist and motion 
     } finally {
       await context.close();
     }
+  }
+});
+
+test('rapid theme toggling raises no page error, and the last toggle wins', async () => {
+  const context = await browser.newContext({
+    colorScheme: 'light',
+    reducedMotion: 'no-preference',
+  });
+  await context.addInitScript(() => {
+    globalThis.__transitions = [];
+    const original = globalThis.Document.prototype.startViewTransition;
+    globalThis.Document.prototype.startViewTransition = function (update) {
+      const transition = original.call(this, update);
+      globalThis.__transitions.push(transition);
+      return transition;
+    };
+  });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  try {
+    await page.goto(browserOrigin, { waitUntil: 'load' });
+    await page.waitForSelector('valstara-theme-toggle button:not([disabled])');
+    // Three clicks in one task: each new transition skips the one before it.
+    const count = await page.evaluate(async () => {
+      const button = globalThis.document.querySelector(
+        'valstara-theme-toggle button',
+      );
+      button.click();
+      button.click();
+      button.click();
+      await Promise.allSettled(
+        globalThis.__transitions.map((transition) => transition.finished),
+      );
+      return globalThis.__transitions.length;
+    });
+    assert.equal(count, 3, 'three transitions started');
+    await frames(page);
+    assert.deepEqual(
+      await page.evaluate(() => ({
+        theme: globalThis.document.documentElement.dataset.theme,
+        stored: globalThis.localStorage.getItem('valstara-theme'),
+        pressed: globalThis.document
+          .querySelector('valstara-theme-toggle button')
+          .getAttribute('aria-pressed'),
+      })),
+      { theme: 'dark', stored: 'dark', pressed: 'true' },
+    );
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
   }
 });

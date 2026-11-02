@@ -246,7 +246,7 @@ export function scanStylesheetLiteralValues(source) {
 }
 
 export const scannedStylesheet = (path) =>
-  /^src\/styles\/[^/]+\.css$/u.test(path) && path !== 'src/styles/tokens.css';
+  /^src\/styles\/.+\.css$/u.test(path) && path !== 'src/styles/tokens.css';
 
 // Every .astro file under src/ and every scanned stylesheet.
 export async function scanAstroTree(root) {

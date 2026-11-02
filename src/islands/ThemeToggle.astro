@@ -78,7 +78,9 @@ import { themeToggleCopy } from '../copy/theme-toggle.ts';
         typeof document.startViewTransition === 'function' &&
         !this.#reducedMotion.matches
       ) {
-        document.startViewTransition(switchTheme);
+        // A second toggle skips this cross-fade and rejects `ready`. The
+        // update still runs, so the theme stays right.
+        document.startViewTransition(switchTheme).ready.catch(() => {});
       } else {
         switchTheme();
       }

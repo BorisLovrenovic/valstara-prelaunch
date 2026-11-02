@@ -200,8 +200,8 @@ const motionTokens = {
   '--enter-distance': '0.75rem',
   '--lift': '-0.125rem',
   '--press-shift': '0.0625rem',
-  '--reveal-range': 'entry 0% cover 20%',
-  '--reveal-step': '4%',
+  '--reveal-range': 'entry 0% entry min(100% - 1px, 20vh)',
+  '--reveal-step': 'min(20%, 4vh)',
 };
 
 // Compares CSS values as written: whitespace, a leading zero and trailing
@@ -656,14 +656,14 @@ function colourLiterals(value) {
     'bottom',
     'calc',
     'color-mix',
-    // E11.5-11i: the named timeline ranges in --reveal-range.
-    'cover',
     'cubic-bezier',
     'currentcolor',
+    // E11.5-11i: the named timeline range and the function in the reveal tokens.
     'entry',
     'in',
     'inset',
     'linear-gradient',
+    'min',
     'monospace',
     'right',
     'sans-serif',
@@ -697,9 +697,9 @@ test('no new hue: every colour token is a locked palette value, an alpha variant
   assert.throws(() => colourLiterals('red'), /unsupported colour/u);
   // E11.5-11i: the range keywords are allowed words, but a hue named beside
   // them still fails.
-  assert.deepEqual(colourLiterals('entry 0% cover 20%'), []);
+  assert.deepEqual(colourLiterals('entry 0% entry min(100% - 1px, 20vh)'), []);
   assert.throws(
-    () => colourLiterals('entry 0% cover 20% red'),
+    () => colourLiterals('entry 0% entry min(100% - 1px, 20vh) red'),
     /unsupported colour/u,
   );
   const [source, guidelines] = await Promise.all([

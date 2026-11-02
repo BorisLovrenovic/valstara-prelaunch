@@ -126,8 +126,8 @@ Founder-authorised 2026-10-30, with design rule 12 as amended. The motion tokens
 | `--enter-distance` | `0.75rem` | How far an entrance rises |
 | `--lift` | `-0.125rem` | The 2px interactive-card lift |
 | `--press-shift` | `0.0625rem` | The 1px button press |
-| `--reveal-range` | `entry 0% cover 20%` | The stretch of a revealed element's view timeline over which it reveals |
-| `--reveal-step` | `4%` | The start offset between indexed siblings in a revealed row |
+| `--reveal-range` | `entry 0% entry min(100% - 1px, 20vh)` | The stretch of a revealed element's view timeline over which it reveals. It ends a pixel before the element is fully in view, or once it is 20% of the viewport in, whichever comes first, so it is at rest at the end of any page and by 70% of the viewport at any height |
+| `--reveal-step` | `min(20%, 4vh)` | The start offset between indexed siblings in a revealed row: a fifth of the range, so `motion.css` caps `--reveal-index` at 4 |
 
 The CI literal scan rejects a literal duration, delay, easing curve, animation range or movement distance in any component or global stylesheet, so each of these values is used through its token.
 

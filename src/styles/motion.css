@@ -68,7 +68,9 @@
   }
 
   /* data-reveal: below-the-fold content rises and fades in as it enters the
-     viewport, over --reveal-range of its view timeline. Without scroll-driven
+     viewport, over --reveal-range of its view timeline. The range ends a pixel
+     before the element is fully in view, so it is past its animation at the
+     end of any page, however little follows it. Without scroll-driven
      animations the element simply stays at rest. */
   @supports (animation-timeline: view()) {
     :where([data-reveal]) {
@@ -85,11 +87,13 @@
     }
 
     /* A row reveals in reading order: an item with --reveal-index n starts
-       n × --reveal-step later in the cover range, which the range's end is
-       measured in, and every item comes to rest at the same end. */
+       n × --reveal-step later in the range, and every item comes to rest at
+       the same end. The index is capped at 4, because each step is a fifth
+       of the range: a later start would pass the end, leaving the item
+       hidden and then jumping to rest. */
     [data-reveal][style*='--reveal-index'] {
-      animation-range-start: cover
-        calc(var(--reveal-index) * var(--reveal-step));
+      animation-range-start: entry
+        calc(min(var(--reveal-index), 4) * var(--reveal-step));
     }
 
     [data-reveal]:focus-within {

@@ -225,8 +225,8 @@
   --enter-distance: 0.75rem;
   --lift: -0.125rem;
   --press-shift: 0.0625rem;
-  --reveal-range: entry 0% cover 20%;
-  --reveal-step: 4%;
+  --reveal-range: entry 0% entry min(100% - 1px, 20vh);
+  --reveal-step: min(20%, 4vh);
 }
 
 .tabular-figure {
