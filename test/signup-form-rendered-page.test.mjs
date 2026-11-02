@@ -9,6 +9,7 @@ import { chromium } from 'playwright';
 import axe from 'axe-core';
 import { signupFormCopy } from '../src/copy/signup.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import { scrollSettled } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -932,6 +933,10 @@ test('visible dock does not cover focus while tabbing at small widths and passes
         await page.evaluate(
           () => new Promise(globalThis.requestAnimationFrame),
         );
+        // E11.5-11i named rewrite (founder decision 2026-11-02): focus scrolls
+        // smoothly, passing under the dock on its way, so the read waits for
+        // the scroll to end, bounded at 10s.
+        await scrollSettled(page);
         const obscured = await page.evaluate(() => {
           const active = globalThis.document.activeElement;
           const dock = globalThis.document.querySelector('[data-dock]');

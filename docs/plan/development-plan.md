@@ -2713,6 +2713,8 @@ These are not restated per ticket. They add to the E11.5 design rules above, and
 - `test/signup-sticky-bar-rendered.test.mjs`, the focus walk: the read after each Tab waits for the scroll to end, bounded at 10s.
 - `test/signup-form-rendered-page.test.mjs`, "bar reports a field error and cross-entry double submit sends one request": the setup `scrollTo` uses `behavior: 'instant'`.
 - `test/landing-closing-rendered.test.mjs` (E11.5-11f), the no-JavaScript branch: after the anchor jump, the read polls the scroll position from outside the page, bounded at 10s, because a page with JavaScript disabled cannot hear `scrollend`.
+**Named test rewrite (founder-authorised 2026-11-02):** no assertion value changes.
+- `test/signup-form-rendered-page.test.mjs`, "visible dock does not cover focus while tabbing at small widths and passes axe": the read after each Tab waits for the scroll to end, bounded at 10s.
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: token sheet, component library) · `docs/brand/page-design.md` · `docs/brand/tokens.md` · `docs/brand/identity-guidelines.md` §7 · `docs/architecture/adr/001-astro-node-adapter.md` · `docs/architecture/adr/015-portable-design-tokens.md` · E11.5-01 · E11.5-11h
 
 ### E11.5-11j — Final-design foundations: the token delta, icons and primitives
