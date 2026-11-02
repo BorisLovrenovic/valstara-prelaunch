@@ -141,13 +141,18 @@ export const inKeyframes = (declaration) =>
 
 // E11.5-11i: the motion values. A duration, delay, easing curve, animation
 // range or movement distance comes from a token, like every other value.
+// The translate, scale and rotate properties take no literal at all, beyond
+// their identity values and a unitless multiplier in a translate's calc().
 // Unitless numbers, angles and percentages inside a transform stay allowed
 // (a 180° chevron turn, a bar sliding in from 100%); `linear` is the one
 // keyword easing, for the in-flight spinner's constant turn.
 const motionTime = /(?<![\w.-])(-?(?:\d*\.)?\d+)m?s\b/giu;
 const motionLength =
-  /(?<![\w.-])(-?(?:\d*\.)?\d+)(?:px|rem|em|ch|ex|vw|vh|vmin|vmax|cqw|cqh)\b/giu;
+  /(?<![\w.-])(-?(?:\d*\.)?\d+)(?:px|r?em|r?lh|ch|ex|cap|ic|cm|mm|in|pt|pc|q|[dsl]?v(?:w|h|i|b|min|max)|cq(?:w|h|i|b|min|max))\b/giu;
 const motionPercentage = /(?<![\w.-])-?(?:\d*\.)?\d+%/u;
+const motionPercent = /(?<![\w.-])(-?(?:\d*\.)?\d+)%/gu;
+const motionAngle = /(?<![\w.-])(-?(?:\d*\.)?\d+)(?:deg|grad|rad|turn)\b/giu;
+const scaleFactor = /(?<![\w.-])(-?(?:\d*\.)?\d+)(%?)/gu;
 const easingFunction = /\b(?:cubic-bezier|steps|linear)\s*\(/iu;
 const easingKeyword =
   /^(?:ease|ease-in|ease-out|ease-in-out|step-start|step-end)$/iu;
@@ -167,8 +172,14 @@ function motionLiteral({ property, value, ...declaration }) {
   if (/-timing-function$/u.test(property)) return literalEasing(bare);
   if (/^animation-range/u.test(property))
     return nonZero(motionLength, bare) || motionPercentage.test(bare);
-  if (/^(?:transform|translate|scale|rotate)$/u.test(property))
-    return nonZero(motionLength, bare);
+  if (property === 'transform') return nonZero(motionLength, bare);
+  if (property === 'translate')
+    return nonZero(motionLength, bare) || nonZero(motionPercent, bare);
+  if (property === 'rotate') return nonZero(motionAngle, bare);
+  if (property === 'scale')
+    return [...bare.matchAll(scaleFactor)].some(
+      ([, factor, percent]) => Number(factor) !== (percent ? 100 : 1),
+    );
   if (inKeyframes({ property, value, ...declaration }))
     return (
       nonZero(motionLength, bare) ||

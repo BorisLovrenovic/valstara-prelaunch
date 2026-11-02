@@ -132,8 +132,16 @@ test('every motion literal the scan covers fails, and the tokenised forms pass',
     'animation-range: entry 10% cover 30%',
     'animation-range-start: entry 2rem',
     'translate: 0 8px',
-    'scale: calc(1 + 4px)',
-    'rotate: x 4px',
+    'translate: 50%',
+    'translate: 0 2dvh',
+    'translate: 0 calc(var(--lift) - 1lh)',
+    'scale: 1.05',
+    'scale: 1 1.2',
+    'scale: 105%',
+    'rotate: 45deg',
+    'rotate: x 0.5turn',
+    'rotate: 1 0 0 90deg',
+    'transform: translateY(2svh)',
     'transform: translateX(3px)',
     'transform: translate3d(0, -2px, 0) rotate(45deg)',
   ]) {
@@ -145,6 +153,9 @@ test('every motion literal the scan covers fails, and the tokenised forms pass',
   }
   for (const keyframe of [
     'from { translate: 0 1.5rem; }',
+    'from { translate: 0 50%; }',
+    'from { scale: 1.3; }',
+    'from { rotate: 10deg; }',
     'from { margin-top: 12px; }',
     'from { animation-timing-function: cubic-bezier(0, 0, 1, 1); }',
     '0% { opacity: 0; } 50% { transform: scale(0.9) translateY(4px); }',
@@ -170,6 +181,14 @@ test('every motion literal the scan covers fails, and the tokenised forms pass',
           animation-range: var(--reveal-range);
           animation-range-start: cover calc(var(--reveal-index) * var(--reveal-step));
           translate: 0 var(--lift);
+          translate: 0 calc(var(--lift) * -1);
+          translate: 0 0;
+          translate: none;
+          scale: 1;
+          scale: var(--press-scale);
+          rotate: none;
+          rotate: 0deg;
+          rotate: var(--turn);
           transform: translateY(calc(-100% - var(--space-2))) rotate(180deg);
         }
         @keyframes planted {
