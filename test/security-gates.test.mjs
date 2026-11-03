@@ -124,6 +124,68 @@ test('the wired literal gate rejects planted page, island and media fixtures', a
   }
 });
 
+// E11.5-11i: the motion literals, a literal in a global stylesheet, and the
+// motion-property scan each fail the wired gate.
+test('the wired gate rejects planted motion literals and motion properties', async () => {
+  for (const [name, fixture, path, scan] of [
+    [
+      'transition',
+      'literal-values/transition.astro',
+      'src/components/ci-motion-transition.astro',
+      'literal-values',
+    ],
+    [
+      'easing',
+      'literal-values/easing.astro',
+      'src/components/ci-motion-easing.astro',
+      'literal-values',
+    ],
+    [
+      'keyframe',
+      'literal-values/keyframe.astro',
+      'src/islands/CiMotionKeyframe.astro',
+      'literal-values',
+    ],
+    [
+      'stylesheet',
+      'literal-values/stylesheet.css',
+      'src/styles/ci-planted.css',
+      'literal-values',
+    ],
+    [
+      'motion-keyframe',
+      'motion-properties/keyframe.astro',
+      'src/components/ci-motion-grow.astro',
+      'motion-properties',
+    ],
+    [
+      'motion-transition',
+      'motion-properties/transition.astro',
+      'src/pages/ci-motion-margin.astro',
+      'motion-properties',
+    ],
+  ]) {
+    const content = await readFile(
+      new URL(`fixtures/${fixture}`, import.meta.url),
+      'utf8',
+    );
+    const { repository, temporaryRoot } = await createFixtureRepository(
+      `motion-${name}`,
+      { path, content },
+    );
+    try {
+      const result = runSecurityGate(repository);
+      assert.notEqual(result.status, 0, `${name} fixture unexpectedly passed`);
+      assert.match(
+        `${result.stdout}\n${result.stderr}`,
+        new RegExp(`\\[${scan}\\] ${path.replaceAll('.', '\\.')}`, 'u'),
+      );
+    } finally {
+      await rm(temporaryRoot, { force: true, recursive: true });
+    }
+  }
+});
+
 test('Astro remote-image caching uses only the expected policy methods', async () => {
   const astroRoot = join(projectRoot, 'node_modules/astro');
   const astroPackage = JSON.parse(

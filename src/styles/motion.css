@@ -1,0 +1,110 @@
+/* The motion system (E11.5-11i, design rule 12). Waitlist presentation, not
+   part of the portable token file: the storefront adopts or drops it at port
+   time, while the tokens it uses port with tokens.css.
+
+   Everything is declared only under prefers-reduced-motion: no-preference,
+   so with reduced motion requested nothing enters, reveals, cross-fades or
+   scrolls smoothly. Each start state exists only as the first keyframe, and
+   no keyframe names an end, so an animation always ends on the element's own
+   resting style. A browser that runs none of it shows the content at rest:
+   nothing is hidden unless the animation that reveals it is running. */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Anchors scroll smoothly. */
+  :root {
+    scroll-behavior: smooth;
+  }
+
+  /* A cross-fade between same-origin pages. The theme toggle's cross-fade
+     uses the same root transition. */
+  @view-transition {
+    navigation: auto;
+  }
+
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: var(--duration-page);
+    animation-timing-function: var(--ease-out);
+  }
+
+  /* data-enter: the first-paint entrance, once per page load. Each
+     --enter-index starts one --stagger later, capped at index 3, so an
+     entrance ends within --duration-enter plus three steps (580ms).
+     data-enter="shift" only rises into place: the element is at full
+     opacity and usable from first paint. */
+  :where([data-enter]) {
+    --enter-index: 0;
+  }
+
+  [data-enter] {
+    animation-name: motion-enter;
+    animation-duration: var(--duration-enter);
+    animation-timing-function: var(--ease-enter);
+    animation-delay: calc(min(var(--enter-index), 3) * var(--stagger));
+    animation-fill-mode: backwards;
+  }
+
+  [data-enter='shift'] {
+    animation-name: motion-enter-shift;
+  }
+
+  /* Focused content is always at rest. */
+  [data-enter]:focus-within {
+    animation-name: none;
+  }
+
+  @keyframes motion-enter {
+    from {
+      opacity: 0;
+      translate: 0 var(--enter-distance);
+    }
+  }
+
+  @keyframes motion-enter-shift {
+    from {
+      translate: 0 var(--enter-distance);
+    }
+  }
+
+  /* data-reveal: below-the-fold content rises and fades in as it enters the
+     viewport, over --reveal-range of its view timeline. The range ends a pixel
+     before the element is fully in view, so it is past its animation at the
+     end of any page, however little follows it. Without scroll-driven
+     animations the element simply stays at rest. */
+  @supports (animation-timeline: view()) {
+    :where([data-reveal]) {
+      --reveal-index: 0;
+    }
+
+    [data-reveal] {
+      animation-name: motion-reveal;
+      animation-duration: auto;
+      animation-timing-function: var(--ease-enter);
+      animation-fill-mode: backwards;
+      animation-timeline: view();
+      animation-range: var(--reveal-range);
+    }
+
+    /* A row reveals in reading order: an item with --reveal-index n starts
+       n × --reveal-step later in the range, and every item comes to rest at
+       the same end. The index is capped at 4, because each step is a fifth
+       of the range: a later start would pass the end, leaving the item
+       hidden and then jumping to rest. */
+    [data-reveal][style*='--reveal-index'] {
+      animation-range-start: entry
+        calc(min(var(--reveal-index), 4) * var(--reveal-step));
+    }
+
+    [data-reveal]:focus-within {
+      animation-name: none;
+    }
+
+    @keyframes motion-reveal {
+      from {
+        opacity: 0;
+        translate: 0 var(--reveal-distance);
+      }
+    }
+  }
+}

@@ -275,6 +275,14 @@ test('the first toggle overrides a dark system preference with light', async () 
 
   const lightToggle = page.getByRole('button', { name: 'Use light theme' });
   await lightToggle.press('Enter');
+  // E11.5-11i named rewrite (founder decision 2026-10-31): with motion
+  // allowed the switch cross-fades, so the attribute is set in the view
+  // transition's update a frame later; the read waits for it, bounded.
+  await page.waitForFunction(
+    () => globalThis.document.documentElement.dataset.theme === 'light',
+    undefined,
+    { timeout: 2_000 },
+  );
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
   assert.equal(
     await page.evaluate(
@@ -285,6 +293,56 @@ test('the first toggle overrides a dark system preference with light', async () 
   );
 
   await context.close();
+});
+
+// E11.5-11i (founder decision 2026-10-31): with reduced motion requested, or
+// without startViewTransition, the theme switches synchronously, as before
+// the cross-fade; with motion allowed it switches in the view transition's
+// update instead. Read in the same task as the click.
+test('the theme switches synchronously under reduced motion or without view transitions', async () => {
+  for (const [label, reducedMotion, supported, synchronous] of [
+    ['reduced motion', 'reduce', true, true],
+    ['no view transitions', 'no-preference', false, true],
+    ['motion allowed', 'no-preference', true, false],
+  ]) {
+    const context = await browser.newContext({
+      colorScheme: 'light',
+      reducedMotion,
+    });
+    if (!supported)
+      await context.addInitScript(() => {
+        delete globalThis.Document.prototype.startViewTransition;
+      });
+    const page = await context.newPage();
+    try {
+      await page.goto(browserOrigin);
+      await page.waitForSelector(
+        'valstara-theme-toggle button:not([disabled])',
+      );
+      const sameTask = await page.evaluate(() => {
+        globalThis.document
+          .querySelector('valstara-theme-toggle button')
+          .click();
+        return globalThis.document.documentElement.getAttribute('data-theme');
+      });
+      assert.equal(sameTask, synchronous ? 'dark' : null, label);
+      await page.waitForFunction(
+        () => globalThis.document.documentElement.dataset.theme === 'dark',
+        undefined,
+        { timeout: 2_000 },
+      );
+      assert.equal(
+        await page.evaluate(
+          (key) => globalThis.localStorage.getItem(key),
+          storageKey,
+        ),
+        'dark',
+        label,
+      );
+    } finally {
+      await context.close();
+    }
+  }
 });
 
 test('JavaScript-disabled rendering follows the system theme', async () => {

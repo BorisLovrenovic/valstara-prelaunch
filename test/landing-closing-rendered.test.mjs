@@ -10,6 +10,7 @@ import axe from 'axe-core';
 
 import { landingCopy } from '../src/copy/landing.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import { scrollSettled } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 // E11.5-11f: the guarantee band, "Get to know Valstara", the FAQ and the
@@ -1004,6 +1005,9 @@ test('the final call to action scrolls to #join and focuses the email field, and
     javaScriptEnabled: false,
   });
   await page.locator('.landing-final__action').click();
+  // E11.5-11i named rewrite: anchors scroll smoothly, so the read waits for
+  // the scroll to end (polled from outside: JavaScript is disabled here).
+  await scrollSettled(page);
   assert.equal(new URL(page.url()).hash, '#join');
   const top = await page.evaluate(() =>
     Math.round(

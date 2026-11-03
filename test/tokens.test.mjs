@@ -189,6 +189,21 @@ const wireframeTokens = {
   '--tile-size': '2.5rem',
 };
 
+// E11.5-11i (founder-authorised 2026-10-30): the motion system's starting
+// values, on bare :root only, because motion does not change with the theme.
+const motionTokens = {
+  '--duration-enter': '400ms',
+  '--stagger': '60ms',
+  '--duration-page': '200ms',
+  '--ease-enter': 'cubic-bezier(0.22, 1, 0.36, 1)',
+  '--reveal-distance': '1.5rem',
+  '--enter-distance': '0.75rem',
+  '--lift': '-0.125rem',
+  '--press-shift': '0.0625rem',
+  '--reveal-range': 'entry 0% entry min(100% - 1px, 20vh)',
+  '--reveal-step': 'min(20%, 4vh)',
+};
+
 // Compares CSS values as written: whitespace, a leading zero and trailing
 // zeros on a number are formatting, not value.
 function cssValue(value) {
@@ -258,6 +273,7 @@ test('tokens exactly transcribe the locked colour and typography sources', async
   for (const [name, value] of Object.entries({
     ...foundationTokens,
     ...wireframeTokens,
+    ...motionTokens,
   })) {
     assert.ok(root.has(name), `${name} is declared on bare :root`);
     assert.equal(cssValue(root.get(name)), cssValue(value), name);
@@ -356,6 +372,7 @@ test('every colour value reuses the locked §5 palette and the type scale has no
       ...Object.keys(expectedRootTokens),
       ...Object.keys(foundationTokens),
       ...Object.keys(wireframeTokens),
+      ...Object.keys(motionTokens),
       '--space-0',
       ...Array.from({ length: 10 }, (_, index) => `--space-${index + 1}`),
     ].sort(),
@@ -415,6 +432,42 @@ test('every colour value reuses the locked §5 palette and the type scale has no
       .filter((name) => /^--(?:step|leading)-/u.test(name))
       .sort(),
   );
+});
+
+test('the motion tokens are theme-independent, never overshoot and keep an entrance within 600ms', async () => {
+  const source = await readFile(tokenPath, 'utf8');
+  const root = declarations(
+    source.match(/:root\s*\{(?<block>[\s\S]*?)\}/u).groups.block,
+  );
+  const dark = declarations(
+    source.match(/:root\[data-theme=['"]dark['"]\]\s*\{(?<block>[\s\S]*?)\}/u)
+      .groups.block,
+  );
+  for (const name of [
+    '--duration-fast',
+    '--duration-base',
+    '--ease-out',
+    ...Object.keys(motionTokens),
+  ]) {
+    assert.ok(root.has(name), `${name} is on bare :root`);
+    assert.equal(dark.has(name), false, `${name} has no dark redefinition`);
+  }
+  // No bounce or overshoot: neither control point's y-value is above 1, or
+  // below 0.
+  for (const name of ['--ease-out', '--ease-enter']) {
+    const [, y1, , y2] = root
+      .get(name)
+      .match(/^cubic-bezier\((?<points>[^)]*)\)$/u)
+      .groups.points.split(',')
+      .map(Number);
+    for (const y of [y1, y2]) {
+      assert.ok(y >= 0 && y <= 1, `${name} y-value ${y} stays within 0..1`);
+    }
+  }
+  // At most four entrance indices (0 to 3): the last ends within 600ms.
+  const ms = (name) => Number.parseFloat(root.get(name));
+  assert.ok(ms('--duration-enter') + 3 * ms('--stagger') <= 600);
+  assert.ok(ms('--duration-page') <= 200);
 });
 
 test('the port checklist names the storefront target for the verbatim token file', async () => {
@@ -605,9 +658,12 @@ function colourLiterals(value) {
     'color-mix',
     'cubic-bezier',
     'currentcolor',
+    // E11.5-11i: the named timeline range and the function in the reveal tokens.
+    'entry',
     'in',
     'inset',
     'linear-gradient',
+    'min',
     'monospace',
     'right',
     'sans-serif',
@@ -639,6 +695,13 @@ test('no new hue: every colour token is a locked palette value, an alpha variant
   assert.deepEqual(colourLiterals('#ff000088'), [[255, 0, 0, 136 / 255]]);
   assert.throws(() => colourLiterals('hsl(0 100% 50%)'), /unsupported colour/u);
   assert.throws(() => colourLiterals('red'), /unsupported colour/u);
+  // E11.5-11i: the range keywords are allowed words, but a hue named beside
+  // them still fails.
+  assert.deepEqual(colourLiterals('entry 0% entry min(100% - 1px, 20vh)'), []);
+  assert.throws(
+    () => colourLiterals('entry 0% entry min(100% - 1px, 20vh) red'),
+    /unsupported colour/u,
+  );
   const [source, guidelines] = await Promise.all([
     readFile(tokenPath, 'utf8'),
     readFile(brandGuidelinesPath, 'utf8'),

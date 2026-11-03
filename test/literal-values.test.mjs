@@ -6,6 +6,8 @@ import {
   designBreakpoints,
   scanAstroLiteralValues,
   scanAstroTree,
+  scannedStylesheet,
+  scanStylesheetLiteralValues,
 } from '../scripts/ci/literal-values.mjs';
 
 for (const [fixture, expected] of [
@@ -72,6 +74,132 @@ test('the closed media set and tokenised compound values pass', () => {
 test('every shipping Astro source passes the extended scan', async () => {
   assert.deepEqual(
     await scanAstroTree(fileURLToPath(new URL('..', import.meta.url))),
+    [],
+  );
+});
+
+// E11.5-11i: motion values come from tokens too. Each planted motion literal
+// fails, in a component and in a global stylesheet.
+for (const [fixture, expected] of [
+  ['transition', 'literal transition: opacity 300ms'],
+  ['easing', 'literal transition-timing-function: cubic-bezier('],
+  ['keyframe', 'literal keyframe transform: translateY(20px)'],
+]) {
+  test(`planted ${fixture} motion literal fails the CI scanner`, async () => {
+    const source = await readFile(
+      new URL(`fixtures/literal-values/${fixture}.astro`, import.meta.url),
+      'utf8',
+    );
+    const issues = scanAstroLiteralValues(source);
+    assert.ok(
+      issues.some((issue) => issue.includes(expected)),
+      JSON.stringify(issues),
+    );
+  });
+}
+
+test('a planted literal in a global stylesheet fails, and tokens.css is the one stylesheet not scanned', async () => {
+  const source = await readFile(
+    new URL('fixtures/literal-values/stylesheet.css', import.meta.url),
+    'utf8',
+  );
+  assert.deepEqual(scanStylesheetLiteralValues(source), [
+    'literal animation-delay: 120ms',
+  ]);
+  assert.equal(scannedStylesheet('src/styles/motion.css'), true);
+  assert.equal(scannedStylesheet('src/styles/planted.css'), true);
+  assert.equal(scannedStylesheet('src/styles/sub/planted.css'), true);
+  assert.equal(scannedStylesheet('src/styles/sub/deeper/planted.css'), true);
+  assert.equal(scannedStylesheet('src/styles/sub/tokens.css'), true);
+  assert.equal(scannedStylesheet('src/components/planted.css'), false);
+  assert.equal(scannedStylesheet('src/styles/tokens.css'), false);
+  // tokens.css defines the values, so it would fail a scan it is exempt from.
+  assert.ok(
+    scanStylesheetLiteralValues(
+      await readFile(
+        new URL('../src/styles/tokens.css', import.meta.url),
+        'utf8',
+      ),
+    ).length > 0,
+  );
+});
+
+test('every motion literal the scan covers fails, and the tokenised forms pass', () => {
+  for (const declaration of [
+    'transition: transform 0.3s var(--ease-out)',
+    'transition: opacity var(--duration-fast) ease-in-out',
+    'animation: planted var(--duration-enter) steps(4)',
+    'transition-delay: 50ms',
+    'animation-delay: calc(2 * 60ms)',
+    'animation-timing-function: ease',
+    'animation-timing-function: linear(0, 1)',
+    'animation-range: entry 10% cover 30%',
+    'animation-range-start: entry 2rem',
+    'translate: 0 8px',
+    'translate: 50%',
+    'translate: 0 2dvh',
+    'translate: 0 calc(var(--lift) - 1lh)',
+    'scale: 1.05',
+    'scale: 1 1.2',
+    'scale: 105%',
+    'rotate: 45deg',
+    'rotate: x 0.5turn',
+    'rotate: 1 0 0 90deg',
+    'transform: translateY(2svh)',
+    'transform: translateX(3px)',
+    'transform: translate3d(0, -2px, 0) rotate(45deg)',
+  ]) {
+    assert.ok(
+      scanAstroLiteralValues(`<style>main { ${declaration}; }</style>`).length >
+        0,
+      declaration,
+    );
+  }
+  for (const keyframe of [
+    'from { translate: 0 1.5rem; }',
+    'from { translate: 0 50%; }',
+    'from { scale: 1.3; }',
+    'from { rotate: 10deg; }',
+    'from { margin-top: 12px; }',
+    'from { animation-timing-function: cubic-bezier(0, 0, 1, 1); }',
+    '0% { opacity: 0; } 50% { transform: scale(0.9) translateY(4px); }',
+  ]) {
+    assert.ok(
+      scanAstroLiteralValues(
+        `<style>@media (prefers-reduced-motion: no-preference) { @keyframes planted { ${keyframe} } }</style>`,
+      ).some((issue) => issue.startsWith('literal keyframe ')),
+      keyframe,
+    );
+  }
+  assert.deepEqual(
+    scanAstroLiteralValues(
+      `<style>
+        main {
+          transition: box-shadow var(--duration-fast) var(--ease-out), transform var(--duration-base) var(--ease-out);
+          transition-delay: 0s;
+          animation: none !important;
+          animation-name: planted;
+          animation-duration: auto;
+          animation-delay: calc(min(var(--enter-index), 3) * var(--stagger));
+          animation-timing-function: linear;
+          animation-range: var(--reveal-range);
+          animation-range-start: cover calc(var(--reveal-index) * var(--reveal-step));
+          translate: 0 var(--lift);
+          translate: 0 calc(var(--lift) * -1);
+          translate: 0 0;
+          translate: none;
+          scale: 1;
+          scale: var(--press-scale);
+          rotate: none;
+          rotate: 0deg;
+          rotate: var(--turn);
+          transform: translateY(calc(-100% - var(--space-2))) rotate(180deg);
+        }
+        @keyframes planted {
+          from { opacity: 0; translate: 0 var(--reveal-distance); transform: rotate(1turn) translateY(100%); }
+        }
+      </style>`,
+    ),
     [],
   );
 });

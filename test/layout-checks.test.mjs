@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import test, { after, before } from 'node:test';
 import { chromium } from 'playwright';
 
 import {
+  atRestContext,
   checkPageLayout,
   checkShellLayout,
   shellRegions,
@@ -15,8 +20,11 @@ import {
   enforcedPages,
   settlePage,
 } from '../scripts/design/layout-checks.mjs';
-import { runContactSheetActions } from '../scripts/design/contact-sheet.mjs';
-import { publishedPort } from './helpers/listen-port.mjs';
+import {
+  captureContactSheet,
+  runContactSheetActions,
+} from '../scripts/design/contact-sheet.mjs';
+import { publishedPort, reserveListenPort } from './helpers/listen-port.mjs';
 
 const execFileAsync = promisify(execFile);
 const container = `valstara-design-layout-${process.pid}`;
@@ -25,6 +33,7 @@ const image =
 const projectRoot = fileURLToPath(new URL('..', import.meta.url));
 let server;
 let browser;
+let browserEndpoint;
 
 before(async () => {
   server = spawn(
@@ -34,6 +43,9 @@ before(async () => {
       '--rm',
       '--name',
       container,
+      // E11.5-11i: the contact-sheet test serves its fixture from the host.
+      '--add-host',
+      'host.docker.internal:host-gateway',
       '--publish',
       '127.0.0.1::3000',
       '--volume',
@@ -67,9 +79,8 @@ before(async () => {
     await new Promise((resolve) => globalThis.setTimeout(resolve, 250));
   }
   assert.match(output, /Listening on/u);
-  browser = await chromium.connect(
-    `ws://127.0.0.1:${await publishedPort(container, 3000)}/`,
-  );
+  browserEndpoint = `ws://127.0.0.1:${await publishedPort(container, 3000)}/`;
+  browser = await chromium.connect(browserEndpoint);
 });
 
 after(async () => {
@@ -402,5 +413,110 @@ test('planted shell defects fail the shell check in the header and in the footer
     ]);
   } finally {
     await page.close();
+  }
+});
+
+// E11.5-11i: by design rule 12 the reduced-motion layout is the at-rest
+// layout. A page whose motion would overflow while it moves passes, because
+// the checks measure it at rest, and the page keeps its own preference.
+const movingWhileAnimated = good.replace(
+  '</main>',
+  '<style>@media (prefers-reduced-motion: no-preference) { .moving { translate: 400px 0; } }</style><p class="moving">Moving text</p></main>',
+);
+
+test('the layout checks measure in the reduced-motion context, and put the page preference back', async () => {
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    const page = await browser.newPage({
+      viewport: { width: 320, height: 600 },
+      reducedMotion,
+    });
+    try {
+      await page.setContent(movingWhileAnimated);
+      const overflows = () =>
+        page.evaluate(
+          () =>
+            globalThis.document.documentElement.scrollWidth >
+            globalThis.document.documentElement.clientWidth,
+        );
+      assert.equal(await overflows(), reducedMotion === 'no-preference');
+      assert.deepEqual(await checkPageLayout(page), [], reducedMotion);
+      assert.deepEqual(await checkShellLayout(page), [
+        'missing region: body > header',
+        'missing region: body > footer',
+      ]);
+      assert.equal(
+        await page.evaluate(
+          () =>
+            globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches,
+        ),
+        reducedMotion === 'reduce',
+        `${reducedMotion} is restored`,
+      );
+      assert.equal(await overflows(), reducedMotion === 'no-preference');
+    } finally {
+      await page.close();
+    }
+  }
+  // A defect that is there at rest still fails.
+  const page = await browser.newPage({ viewport: { width: 320, height: 600 } });
+  try {
+    await page.setContent(
+      movingWhileAnimated.replace(
+        'no-preference) { .moving',
+        'reduce) { .moving',
+      ),
+    );
+    assert.ok((await checkPageLayout(page)).includes('horizontal overflow'));
+  } finally {
+    await page.close();
+  }
+});
+
+test('the contact sheet screenshots every width and theme at rest, in a reduced-motion context', async () => {
+  assert.deepEqual(atRestContext, { reducedMotion: 'reduce' });
+  const fixture = createServer((request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    response.end(movingWhileAnimated);
+  });
+  // On 0.0.0.0 below the ephemeral range, as the app server listens, so the
+  // browser container can reach it through host.docker.internal.
+  fixture.listen(await reserveListenPort(), '0.0.0.0');
+  await once(fixture, 'listening');
+  const origin = `http://host.docker.internal:${fixture.address().port}`;
+  // On a WSL host a new listener is reachable from the container only once
+  // the host's port forwarding has picked it up, so wait for it, bounded.
+  const probe = await browser.newPage();
+  try {
+    for (let attempt = 0; ; attempt += 1) {
+      const reached = await probe
+        .goto(origin)
+        .then((response) => response?.ok())
+        .catch(() => false);
+      if (reached) break;
+      assert.ok(attempt < 120, 'the fixture server is reachable');
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 250));
+    }
+  } finally {
+    await probe.close();
+  }
+  const output = await mkdtemp(join(tmpdir(), 'valstara-contact-sheet-'));
+  try {
+    const captures = await captureContactSheet({
+      origin,
+      entries: [{ route: '/', state: 'motion-at-rest' }],
+      output,
+      browserEndpoint,
+    });
+    assert.equal(captures.length, designWidths.length * designThemes.length);
+    for (const capture of captures) {
+      assert.deepEqual(capture.layoutIssues, [], capture.filename);
+      // A full-page screenshot is as wide as the page's scrollable area, so
+      // a frame taken while the text is moved 400px right would be wider.
+      const png = await readFile(join(output, capture.filename));
+      assert.equal(png.readUInt32BE(16), capture.width, capture.filename);
+    }
+  } finally {
+    fixture.close();
+    await rm(output, { force: true, recursive: true });
   }
 });
