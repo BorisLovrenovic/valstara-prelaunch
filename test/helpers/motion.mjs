@@ -35,6 +35,12 @@ export async function scrollSettled(page, { samples = 3, interval = 50 } = {}) {
 export function focusMotionIssues(page) {
   return page.evaluate(async () => {
     const { document, getComputedStyle } = globalThis;
+    const frame = () =>
+      new Promise((resolve) => globalThis.requestAnimationFrame(resolve));
+    // A scroll-driven animation's timeline resolves after layout and takes
+    // effect a frame later. Read before that and a reveal looks at rest.
+    await frame();
+    await frame();
     const active = document.activeElement;
     if (active === null || active === document.body) return [];
     const issues = [];
@@ -87,8 +93,6 @@ export function focusMotionIssues(page) {
     ).then(() => {
       settled = true;
     });
-    const frame = () =>
-      new Promise((resolve) => globalThis.requestAnimationFrame(resolve));
     await Promise.race([
       Promise.allSettled(transitions.map((transition) => transition.finished)),
       new Promise((resolve) => globalThis.setTimeout(resolve, limit)),
