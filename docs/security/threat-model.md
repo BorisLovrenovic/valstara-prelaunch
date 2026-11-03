@@ -94,6 +94,8 @@ Each has a planted red-path fixture; **a gate that cannot be shown to fail is no
 
 The dependency allowlist is empty. The `http-cache-semantics` advisory GHSA-ch52-4w7c-c8xp was excepted until 2026-10-18. That day the founder authorised a lockfile-only update of the transitive package from 4.2.0 to the patched 4.3.0, and E11-08 removed the expired exception. Astro uses the package only to calculate remote-image cache lifetime, and this site has no remote-image pipeline. A test still checks that the installed Astro calls only the package's `storable` and `timeToLive` methods. The test pins the Astro version, so any Astro upgrade must re-run that check.
 
+`package.json` overrides two development-only transitive packages, because no parent release allows the patched versions yet: `minimatch` to 11.0.4 (advisory GHSA-g3hv-75wg-m249, fixed in 11.0.1) and `glob` to 14.0.3 (GHSA-3g3m-2fjr-6pw4, fixed in 14.0.2). ESLint, `@eslint/config-array`, `typescript-estree` and `test-exclude` all declare `minimatch` `^10`, and `test-exclude` declares `glob` `^13`. Neither package reaches the production image, which prunes development dependencies. Remove each override once those parents' own ranges include the patched line.
+
 ## Secret handling
 
 Never committed. Documented in `infra/ENV.md` by name and purpose. **A leaked secret means rotate, then purge** — committing over it is not remediation, and it is flagged to the founder immediately. The pgBackRest passphrase and the IP-prefix pepper have named procedures (`docs/engineering/ci-cd.md#secrets`).
