@@ -72,6 +72,17 @@
   --field: var(--ink-600);
   --on-coral: #101014;
   --error-text: var(--error);
+  /* E11.5-11j: a success icon on a card or notice. Dark ink, because #2E7D57 on
+     #171733 is below 3:1. */
+  --success-icon: var(--success);
+
+  /* alpha variants of locked colours (E11.5-11j, the canvas's token delta) */
+  --on-midnight-600: rgba(250, 250, 250, 0.74);
+  --on-midnight-line: rgba(250, 250, 250, 0.12);
+  --wash: rgba(16, 16, 20, 0.05);
+  --wash-strong: rgba(16, 16, 20, 0.09);
+  --success-tint: rgba(46, 125, 87, 0.12);
+  --error-tint: rgba(192, 57, 43, 0.1);
 
   /* type */
   --font-sans:
@@ -134,6 +145,7 @@
   --radius-control: 8px;
   --radius-pill: 999px;
   --radius-check: 4px;
+  --radius-link: 2px;
 
   /* lines and focus */
   --border-thin: 1px;
@@ -144,8 +156,12 @@
   --underline-thickness: 2px;
   --underline-offset: 3px;
   --ring-focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--coral);
+  --ring-focus-error: 0 0 0 2px var(--surface), 0 0 0 4px var(--error);
   --inset-line: inset 0 0 0 1px var(--line);
   --inset-strong: inset 0 0 0 1px var(--ink-300);
+  /* E11.5-11j: an error notice's rule. An inset, because Chromium snaps a 1.5px
+     border to whole pixels. */
+  --inset-error: inset 0 0 0 1.5px var(--error);
   /* E11.5-11f (founder-authorised 2026-10-29): the guarantee numeral ring.
      No dark override: dark redefines --coral. */
   --ring-numeral: inset 0 0 0 1.5px var(--coral);
@@ -165,7 +181,7 @@
   --on-midnight-hover: rgba(250, 250, 250, 0.08);
   --on-midnight-active: rgba(250, 250, 250, 0.14);
   --on-midnight-disabled: rgba(250, 250, 250, 0.45);
-  --on-midnight-disabled-border: rgba(250, 250, 250, 0.2);
+  --on-midnight-disabled-border: var(--on-midnight-line);
   --inset-on-midnight: inset 0 0 0 1px var(--on-midnight-border);
   --inset-on-midnight-disabled: inset 0 0 0 1px
     var(--on-midnight-disabled-border);
@@ -175,6 +191,9 @@
   --banner-tone-dark: rgba(255, 255, 255, 0.13);
   --banner-tone-light: rgba(255, 255, 255, 0.16);
   --banner-tone-ink: rgba(16, 16, 20, 0.1);
+  --banner-ring-dark: rgba(255, 255, 255, 0.2);
+  --banner-ring-ink: rgba(16, 16, 20, 0.14);
+  --banner-sheen: rgba(255, 255, 255, 0.14);
   --banner-shape-t1-top: -80%;
   --banner-shape-t1-right: -12%;
   --banner-shape-t2-right: -20%;
@@ -194,12 +213,15 @@
   --banner-edge-hover: 0 0 0 0 transparent;
   --shadow-sticky:
     0 -2px 6px rgba(16, 16, 20, 0.06), 0 -16px 40px rgba(16, 16, 20, 0.14);
-  --shadow-band: 0 0 0 0 transparent;
+  --shadow-band: none;
   --tap-min: 2.75rem;
   --icon-sm: 1rem;
   --icon-md: 1.5rem;
   --icon-lg: 2.5rem;
   --icon-base: 1.25rem;
+  /* The heavier stroke of a glyph drawn inside a control, such as the checkbox
+     mark. A number, not a length: it is in the icon's 24-unit grid. */
+  --stroke-heavy: 2.25;
   --star-sm: 0.75rem;
   --star-md: 1rem;
   --control-height: 3rem;
@@ -225,6 +247,11 @@
   --enter-distance: 0.75rem;
   --lift: -0.125rem;
   --press-shift: 0.0625rem;
+  --arrow-shift: 0.125rem;
+  --arrow-shift-card: 0.1875rem;
+  --error-rise: 0.25rem;
+  --spinner-opacity: 0.8;
+  --duration-spin: 800ms;
   --reveal-range: entry 0% entry min(100% - 1px, 20vh);
   --reveal-step: min(20%, 4vh);
 }
@@ -245,6 +272,13 @@
     --line: rgba(240, 240, 238, 0.14);
     --coral-tint: rgba(255, 138, 102, 0.16);
     --error-text: var(--ink);
+    --success-icon: var(--ink);
+    --on-midnight-600: rgba(240, 240, 238, 0.74);
+    --wash: rgba(240, 240, 238, 0.06);
+    --wash-strong: rgba(240, 240, 238, 0.1);
+    --success-tint: rgba(46, 125, 87, 0.28);
+    --error-tint: rgba(192, 57, 43, 0.24);
+    --overlay-hover: inset 0 0 0 100px rgba(16, 16, 20, 0.1);
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.35);
     --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.45), 0 20px 48px rgba(0, 0, 0, 0.55);
     /* prettier-ignore */
@@ -255,6 +289,8 @@
     --banner-edge-hover: inset 0 0 0 1px rgba(240, 240, 238, 0.14);
     --shadow-chip-dark:
       0 0 0 1px rgba(240, 240, 238, 0.18), 0 6px 14px rgba(0, 0, 0, 0.3);
+    --shadow-sticky:
+      0 -1px 0 rgba(240, 240, 238, 0.1), 0 -16px 40px rgba(0, 0, 0, 0.5);
     --shadow-band:
       0 0 0 1px rgba(240, 240, 238, 0.1), 0 24px 64px rgba(0, 0, 0, 0.6);
   }
@@ -270,6 +306,13 @@
   --line: rgba(240, 240, 238, 0.14);
   --coral-tint: rgba(255, 138, 102, 0.16);
   --error-text: var(--ink);
+  --success-icon: var(--ink);
+  --on-midnight-600: rgba(240, 240, 238, 0.74);
+  --wash: rgba(240, 240, 238, 0.06);
+  --wash-strong: rgba(240, 240, 238, 0.1);
+  --success-tint: rgba(46, 125, 87, 0.28);
+  --error-tint: rgba(192, 57, 43, 0.24);
+  --overlay-hover: inset 0 0 0 100px rgba(16, 16, 20, 0.1);
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.35);
   --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.45), 0 20px 48px rgba(0, 0, 0, 0.55);
   /* prettier-ignore */
@@ -280,6 +323,8 @@
   --banner-edge-hover: inset 0 0 0 1px rgba(240, 240, 238, 0.14);
   --shadow-chip-dark:
     0 0 0 1px rgba(240, 240, 238, 0.18), 0 6px 14px rgba(0, 0, 0, 0.3);
+  --shadow-sticky:
+    0 -1px 0 rgba(240, 240, 238, 0.1), 0 -16px 40px rgba(0, 0, 0, 0.5);
   --shadow-band:
     0 0 0 1px rgba(240, 240, 238, 0.1), 0 24px 64px rgba(0, 0, 0, 0.6);
 }

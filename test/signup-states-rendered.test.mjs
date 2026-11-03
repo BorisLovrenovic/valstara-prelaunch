@@ -913,7 +913,7 @@ function resolveTokens(page) {
     const tokens = {
       ink: colour('ink'),
       ink600: colour('ink-600'),
-      ink300: colour('ink-300'),
+      wash: colour('wash'),
       line: colour('line'),
       paper: colour('paper'),
       surface: colour('surface'),
@@ -921,9 +921,11 @@ function resolveTokens(page) {
       coralTint: colour('coral-tint'),
       error: colour('error'),
       errorText: colour('error-text'),
-      panel: shadow('var(--shadow-1), var(--edge)'),
+      // E11.5-11j, rule-7 rewrite: the library's panels are E2, not E1.
+      panel: shadow('var(--shadow-2), var(--edge)'),
       ring: shadow('var(--ring-focus)'),
       insetLine: shadow('var(--inset-line)'),
+      insetError: shadow('var(--inset-error)'),
     };
     probe.remove();
     return tokens;
@@ -989,8 +991,11 @@ async function assertDrawn(page, number, state, where, width) {
   if (error) {
     assert.deepEqual(await text(page, selectors.note), [state.message], where);
     assert.equal(css.note.role, 'alert', where);
-    assert.deepEqual(css.note.borderWidths, Array(4).fill('2px'), where);
-    assert.deepEqual(css.note.borders, Array(4).fill(tokens.error), where);
+    // E11.5-11j, rule-7 rewrite: the library's 1.5px inset rule, not a 2px
+    // border (ChangeLog "Notices · error rule").
+    assert.deepEqual(css.note.borderWidths, Array(4).fill('0px'), where);
+    assert.equal(css.note.shadow, tokens.insetError, where);
+    assert.equal(css.note.padding, '16px', where);
     assert.equal(css.note.radius, '8px', where);
     assert.equal(css.note.background, tokens.surface, where);
     assert.equal(css.note.font, '14px/20px 500', where);
@@ -1003,13 +1008,16 @@ async function assertDrawn(page, number, state, where, width) {
       [signupFormCopy.javaScriptRequired],
       where,
     );
-    assert.deepEqual(css.note.borderWidths, Array(4).fill('1px'), where);
-    assert.deepEqual(css.note.borders, Array(4).fill(tokens.line), where);
+    // E11.5-11j, rule-7 rewrite: the library's info notice, a quiet wash with
+    // no edge and an ink-600 icon (Components.dc.html, Hero.dc.html).
+    assert.deepEqual(css.note.borderWidths, Array(4).fill('0px'), where);
+    assert.equal(css.note.shadow, 'none', where);
+    assert.equal(css.note.padding, '16px', where);
     assert.equal(css.note.radius, '8px', where);
-    assert.equal(css.note.background, tokens.surface, where);
+    assert.equal(css.note.background, tokens.wash, where);
     assert.equal(css.note.font, '14px/20px 500', where);
     assert.equal(css.note.color, tokens.ink, where);
-    assert.equal(css.noteIcon.color, tokens.ink, where);
+    assert.equal(css.noteIcon.color, tokens.ink600, where);
     assert.equal(
       await page.locator('noscript > .signup-notice .icon--info').count(),
       1,
@@ -1043,9 +1051,11 @@ async function assertDrawn(page, number, state, where, width) {
     assert.equal(css.button.shadow, 'none', where);
   }
   if (state.spinner) {
+    // E11.5-11j, rule-7 rewrite: the library's spinner is a ring in the label's
+    // colour with a clear segment, not ink-300 with an ink top.
     assert.deepEqual(
       css.spinner.borders,
-      [tokens.ink, tokens.ink300, tokens.ink300, tokens.ink300],
+      [tokens.ink600, 'rgba(0, 0, 0, 0)', tokens.ink600, tokens.ink600],
       where,
     );
     assert.deepEqual(css.spinner.borderWidths, Array(4).fill('2px'), where);
@@ -1068,7 +1078,12 @@ async function assertDrawn(page, number, state, where, width) {
     assert.equal(css.panel.background, tokens.surface, where);
     assert.equal(css.panel.shadow, tokens.panel, where);
     assert.equal(css.panel.radius, '12px', where);
-    assert.equal(css.tile.background, tokens.coralTint, where);
+    // E11.5-11j, rule-7 rewrite: the paused tile is the library's neutral tile.
+    assert.equal(
+      css.tile.background,
+      state.paused ? tokens.wash : tokens.coralTint,
+      where,
+    );
     assert.equal(css.tile.radius, '8px', where);
     assert.equal(css.tileIcon.color, tokens.ink, where);
     assert.equal(css.heading.font, '24px/32px 600', where);
@@ -1225,7 +1240,7 @@ test('the spinner turns only without reduced motion, and the label explains the 
       if (reducedMotion === 'reduce') {
         assert.deepEqual(spinner, { animation: 'none', running: 0 });
       } else {
-        assert.deepEqual(spinner, { animation: 'signup-spin', running: 1 });
+        assert.deepEqual(spinner, { animation: 'button-spin', running: 1 });
       }
       assert.ok(await page.locator('[data-spinner]').isVisible());
       assert.equal(

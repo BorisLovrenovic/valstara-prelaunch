@@ -172,22 +172,49 @@ const { class: className, heading, icon, state, ...attributes } = Astro.props;
   }
 
   /* An outcome notice carries its icon and text, so it never relies on
-     colour alone. */
+     colour alone. The neutral and success notices have a 1px line, and the
+     error notice a 1.5px --error rule. The edges are box shadows, as drawn, so
+     forced-colours mode draws an outline in their place. */
   .task-card :global(.task-card__notice) {
+    box-sizing: border-box;
     display: flex;
-    gap: var(--space-1);
+    gap: var(--space-1-5);
     align-items: flex-start;
-    padding-inline-start: var(--space-1);
+    padding: var(--space-2);
     color: var(--ink);
-    border-inline-start: medium solid var(--line);
+    background-color: var(--surface);
+    border-radius: var(--radius-control);
+    box-shadow: var(--inset-line), var(--edge);
+  }
+
+  @media (forced-colors: active) {
+    .task-card :global(.task-card__notice) {
+      outline: var(--border-thin) solid currentColor;
+      outline-offset: calc(var(--border-thin) * -1);
+    }
+  }
+
+  .task-card :global(.task-card__notice .icon) {
+    color: var(--ink-600);
   }
 
   .task-card :global(.task-card__notice[data-tone='error']) {
-    border-inline-start-color: var(--error);
+    box-shadow: var(--inset-error);
+  }
+
+  .task-card :global(.task-card__notice[data-tone='error'] .icon) {
+    color: var(--error);
+  }
+
+  .task-card :global(.task-card__notice[data-tone='success'] .icon) {
+    color: var(--success-icon);
   }
 
   .task-card :global(.task-card__notice p) {
     color: var(--ink);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
   }
 
   .task-card :global(.task-card__link) {

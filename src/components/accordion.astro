@@ -12,7 +12,9 @@ const { class: className, summary, ...attributes } = Astro.props;
 <details {...attributes} class:list={['accordion', className]}>
   <summary class="accordion__summary">
     <span class="accordion__question">{summary}</span>
-    <Icon name="chevron-down" size="base" class="accordion__chevron" />
+    <span class="accordion__disc" aria-hidden="true">
+      <Icon name="chevron-down" size="base" class="accordion__chevron" />
+    </span>
   </summary>
   <div class="accordion__content">
     <slot />
@@ -45,7 +47,7 @@ const { class: className, summary, ...attributes } = Astro.props;
     line-height: var(--leading-2);
     list-style: none;
     cursor: pointer;
-    border-radius: var(--radius-control);
+    border-radius: var(--radius-check);
   }
 
   .accordion__summary::-webkit-details-marker {
@@ -57,8 +59,32 @@ const { class: className, summary, ...attributes } = Astro.props;
     outline-offset: var(--focus-offset);
   }
 
-  .accordion :global(.accordion__chevron) {
+  /* The 20px chevron on its 32px disc. */
+  .accordion__disc {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--space-4);
+    block-size: var(--space-4);
     color: var(--ink-600);
+    background-color: var(--wash);
+    border-radius: var(--radius-pill);
+    transition-property: background-color, color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .accordion__summary:hover .accordion__disc {
+    color: var(--ink);
+    background-color: var(--wash-strong);
+  }
+
+  .accordion[open] .accordion__disc {
+    color: var(--ink);
+  }
+
+  .accordion :global(.accordion__chevron) {
     transition-property: transform;
     transition-duration: var(--duration-base);
     transition-timing-function: var(--ease-out);
@@ -69,14 +95,46 @@ const { class: className, summary, ...attributes } = Astro.props;
   }
 
   .accordion__content {
+    box-sizing: border-box;
     max-inline-size: var(--measure);
     padding-block-end: var(--space-3);
     color: var(--ink-600);
     font-size: var(--step-2);
     line-height: var(--leading-2);
+    text-wrap: pretty;
+  }
+
+  @media (min-width: 48rem) {
+    .accordion__content {
+      padding-inline-end: var(--space-6);
+    }
+  }
+
+  /* The answer opens and closes smoothly where the browser can animate to its
+     natural height. Elsewhere, and with reduced motion, it opens instantly. */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (interpolate-size: allow-keywords) and selector(::details-content) {
+      .accordion {
+        interpolate-size: allow-keywords;
+      }
+
+      .accordion::details-content {
+        block-size: 0;
+        overflow-y: clip;
+        transition-property: block-size, content-visibility;
+        transition-behavior: allow-discrete;
+        transition-duration: var(--duration-base);
+        transition-timing-function: var(--ease-out);
+      }
+
+      .accordion[open]::details-content {
+        block-size: auto;
+      }
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .accordion__disc,
     .accordion :global(.accordion__chevron) {
       transition-property: none;
     }

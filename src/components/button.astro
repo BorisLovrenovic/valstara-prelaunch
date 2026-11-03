@@ -81,7 +81,7 @@ const classes = [
     border-radius: var(--radius-control);
     box-shadow: var(--shadow-button);
     cursor: pointer;
-    transition-property: background-color, box-shadow, color;
+    transition-property: background-color, box-shadow, color, transform;
     transition-duration: var(--duration-fast);
     transition-timing-function: var(--ease-out);
   }
@@ -119,11 +119,11 @@ const classes = [
     line-height: var(--leading-1);
     color: var(--ink);
     background-color: var(--surface);
-    box-shadow: var(--inset-line), var(--shadow-1);
+    box-shadow: var(--inset-line), var(--shadow-1), var(--edge);
   }
 
   .button--secondary:hover {
-    box-shadow: var(--inset-strong), var(--shadow-2);
+    box-shadow: var(--inset-strong), var(--shadow-2), var(--edge);
   }
 
   .button--secondary:active {
@@ -178,6 +178,35 @@ const classes = [
     cursor: not-allowed;
   }
 
+  /* Loading is the disabled button with a turning spinner before its label,
+     in the label's colour. The owner shows it with the hidden attribute. */
+  .button :global(.button__spinner) {
+    box-sizing: border-box;
+    flex: none;
+    inline-size: var(--icon-sm);
+    block-size: var(--icon-sm);
+    border: var(--border-strong) solid currentColor;
+    border-inline-end-color: transparent;
+    border-radius: var(--radius-pill);
+    opacity: var(--spinner-opacity);
+    animation-name: button-spin;
+    animation-duration: var(--duration-spin);
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+
+  /* A loading secondary keeps its readable label; only a plainly disabled one
+     drops to ink-300. */
+  :global(.button--secondary:disabled:has(.button__spinner:not([hidden]))) {
+    color: var(--ink-600);
+  }
+
+  @keyframes button-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
   @media (min-width: 48rem) {
     .button--secondary {
       min-block-size: var(--control-height);
@@ -185,11 +214,26 @@ const classes = [
       font-size: var(--step-2);
       line-height: var(--leading-2);
     }
+
+    .button--secondary.button--h44 {
+      min-block-size: var(--tap-min);
+    }
+  }
+
+  /* The press moves the button down, only where motion is allowed. */
+  @media (prefers-reduced-motion: no-preference) {
+    .button:active:not(:disabled) {
+      transform: translateY(var(--press-shift));
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .button {
       transition-property: none;
+    }
+
+    .button :global(.button__spinner) {
+      animation-name: none;
     }
   }
 </style>

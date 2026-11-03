@@ -288,7 +288,7 @@ const onGuarantee = Astro.url.pathname.replace(/\/+$/u, '') === '/guarantee';
     padding: var(--space-3);
     background-color: var(--surface);
     border-radius: var(--radius-card);
-    box-shadow: var(--shadow-1);
+    box-shadow: var(--shadow-1), var(--edge);
   }
 
   .document__card-heading {
@@ -297,6 +297,7 @@ const onGuarantee = Astro.url.pathname.replace(/\/+$/u, '') === '/guarantee';
     font-size: var(--step-3);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-3);
+    letter-spacing: var(--tracking-tight);
   }
 
   .document__promises,
@@ -419,6 +420,12 @@ const onGuarantee = Astro.url.pathname.replace(/\/+$/u, '') === '/guarantee';
 
     body:has(.document-join-bar) {
       padding-block-end: 0;
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .document__card {
+      padding: var(--space-4);
     }
   }
 

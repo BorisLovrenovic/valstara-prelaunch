@@ -49,6 +49,8 @@ const classes = [
   }
 
   .card--link {
+    display: flex;
+    flex-direction: column;
     text-decoration: none;
   }
 
@@ -58,18 +60,46 @@ const classes = [
   }
 
   .card--interactive {
-    transition-property: box-shadow;
+    transition-property: box-shadow, transform;
     transition-duration: var(--duration-base);
     transition-timing-function: var(--ease-out);
   }
 
-  .card--interactive:hover,
-  .card--interactive:focus-within {
+  .card--interactive:hover {
     box-shadow: var(--shadow-2), var(--edge);
   }
 
+  .card--interactive:active {
+    box-shadow: var(--shadow-1), var(--edge);
+  }
+
+  /* The trailing arrow of a whole-card link. */
+  .card--interactive :global(.card__arrow) {
+    color: var(--ink-600);
+    transition-property: color, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .card--interactive:hover :global(.card__arrow) {
+    color: var(--ink);
+  }
+
+  /* The card rises, and its arrow moves, only where motion is allowed. A
+     pressed card sets back down. */
+  @media (prefers-reduced-motion: no-preference) {
+    .card--interactive:hover:not(:active) {
+      transform: translateY(var(--lift));
+    }
+
+    .card--interactive:hover :global(.card__arrow) {
+      transform: translateX(var(--arrow-shift-card));
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .card--interactive {
+    .card--interactive,
+    .card--interactive :global(.card__arrow) {
       transition-property: none;
     }
   }
