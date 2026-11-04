@@ -2751,8 +2751,9 @@ These are not restated per ticket. They add to the E11.5 design rules above, and
 - `tokens.css` can still be copied verbatim — the port-checklist test passes
 
 **Tests:** Token presence, values and dark-set identity · the no-new-hue and no-new-size assertions · icon registry, rendering and accessibility hiding · primitive state geometry and computed styles in both themes · the extended contrast matrix · primitive motion and its reduced-motion stop · the E2-03, E2-04 and E11.5-11a suites · the port-checklist reconciliation · axe in both themes.
-**Named test rewrite (founder-authorised 2026-11-04):** no assertion value changes.
-- `test/member-leaderboard-redesign.test.mjs`, "the member page and the leaderboard render every state from their sources, accessibly": after the survey summary is clicked, the layout check waits for the disclosure's animations to end, bounded at 2s, because the answer now opens smoothly.
+**Named test rewrites (founder-authorised 2026-11-04):**
+- `test/member-leaderboard-redesign.test.mjs`, "the member page and the leaderboard render every state from their sources, accessibly": after the survey summary is clicked, the layout check waits for the disclosure's animations to end, bounded at 2s, because the answer now opens smoothly. No assertion value changes.
+- `test/signup-states-rendered.test.mjs`, "the spinner turns only without reduced motion, and the label explains the wait either way": the expected animation name changes from `signup-spin` to `button-spin`, because the spinner is now the Button's. The rest of the assertion is unchanged.
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: token sheet, component library light and dark, icon sheet, token delta) · `docs/brand/tokens.md` · `docs/brand/page-design.md` · `docs/brand/identity-guidelines.md` §4–§7 · `docs/architecture/adr/015-portable-design-tokens.md` · E11.5-11a
 
 ### E11.5-11k — Final-design shell: header and footer
