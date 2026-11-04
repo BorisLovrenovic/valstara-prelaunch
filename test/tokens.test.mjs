@@ -974,7 +974,7 @@ test('every text pairing on the component sheet clears its WCAG threshold in bot
       ['--success-icon', '--paper', null, 3],
       ['--success-icon', '--success-tint', '--surface', 3],
       ['--error-text', '--error-tint', '--surface', 3],
-      // The disabled on-midnight edge and the invalid focus ring's --error.
+      // The invalid focus ring's --error.
       ['--error', '--surface', null, 3],
     ];
     for (const [foreground, background, ground, minimum] of pairs) {

@@ -737,6 +737,7 @@ async function openPage({
   colorScheme = 'light',
   reducedMotion = 'no-preference',
   javaScriptEnabled = true,
+  forcedColors = 'none',
   turnstile = 'success',
   resendSoon = false,
   island = html !== signupsPausedPage,
@@ -746,6 +747,7 @@ async function openPage({
     colorScheme,
     reducedMotion,
     javaScriptEnabled,
+    forcedColors,
   });
   await context.route('https://challenges.cloudflare.com/**', (route) =>
     route.fulfill({ contentType: 'text/javascript', body: '' }),
@@ -1217,6 +1219,44 @@ for (const [number, state] of Object.entries(states)) {
     }
   });
 }
+
+// E11.5-11j: the notices' edges are box shadows, which forced-colours mode
+// removes, so an outline is the only edge they have there.
+test('a signup notice keeps a visible edge in forced-colours mode', async () => {
+  const viewport = viewports[390];
+  const notices = [
+    ['[data-form-error]', giveawayOpenPage, true],
+    [
+      '[data-noscript] .signup-notice',
+      await noScriptSnapshot(viewport, 'light'),
+      false,
+    ],
+  ];
+  for (const [selector, html, island] of notices) {
+    const { context, page } = await openPage({
+      html,
+      viewport,
+      island,
+      forcedColors: 'active',
+    });
+    try {
+      if (island) await reach(page, states['09']);
+      assert.deepEqual(
+        await page.locator(selector).evaluate((element) => {
+          const style = globalThis.getComputedStyle(element);
+          return {
+            outlineStyle: style.outlineStyle,
+            outlineWidth: style.outlineWidth,
+          };
+        }),
+        { outlineStyle: 'solid', outlineWidth: '1px' },
+        selector,
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
 
 test('the spinner turns only without reduced motion, and the label explains the wait either way', async () => {
   for (const reducedMotion of ['no-preference', 'reduce']) {

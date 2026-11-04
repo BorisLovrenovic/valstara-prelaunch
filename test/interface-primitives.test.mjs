@@ -2738,7 +2738,7 @@ test('each primitive transitions exactly the canvas motion table, and a press mo
       ],
       ['valstara-theme-toggle button', fast('box-shadow, transform')],
       ['#text-link', fast('text-decoration-color')],
-      ['#sheet-email', fast('border-color, box-shadow')],
+      ['#sheet-email', fast('background-color, border-color, box-shadow')],
       [
         '.checkbox:has(#sheet-check) .checkbox__box',
         fast('background-color, border-color, box-shadow'),

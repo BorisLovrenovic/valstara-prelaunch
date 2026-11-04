@@ -536,10 +536,15 @@ test('the side card matches the component library at each width in both themes',
             const shadow = globalThis.getComputedStyle(probe).boxShadow;
             probe.remove();
             const style = globalThis.getComputedStyle(element);
-            const heading = globalThis.getComputedStyle(
-              element.querySelector('.document__card-heading'),
+            const headingElement = element.querySelector(
+              '.document__card-heading',
             );
+            const heading = globalThis.getComputedStyle(headingElement);
+            const box = element.getBoundingClientRect();
+            const headingBox = headingElement.getBoundingClientRect();
             return {
+              insetTop: headingBox.top - box.top,
+              insetLeft: headingBox.left - box.left,
               padding: style.padding,
               radius: style.borderTopLeftRadius,
               onDrawnShadow: style.boxShadow === shadow,
@@ -547,8 +552,15 @@ test('the side card matches the component library at each width in both themes',
               headingTracking: heading.letterSpacing,
             };
           });
+        const { insetTop, insetLeft, ...drawn } = card;
+        // The heading's own box sits on the padding, within 1px (rule 7).
+        for (const inset of [insetTop, insetLeft])
+          assert.ok(
+            Math.abs(inset - Number.parseFloat(padding)) <= 1,
+            `${width} ${colorScheme} heading inset ${inset}`,
+          );
         assert.deepEqual(
-          card,
+          drawn,
           {
             padding,
             radius: '12px',
