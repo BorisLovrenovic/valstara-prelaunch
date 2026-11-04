@@ -1664,6 +1664,8 @@ test('the checkbox is 20px, never pre-ticked, ticks to ink with a paper check, a
       );
       assert.deepEqual(
         await computed(page, optional, [
+          'display',
+          'verticalAlign',
           'paddingLeft',
           'paddingRight',
           'marginRight',
@@ -1674,6 +1676,9 @@ test('the checkbox is 20px, never pre-ticked, ticks to ink with a paper check, a
           'fontWeight',
         ]),
         {
+          display: 'inline-flex',
+          // E11.5-11j: 1px up on the checkbox's text line.
+          verticalAlign: '1px',
           paddingLeft: '8px',
           paddingRight: '8px',
           marginRight: '6px',
@@ -2576,6 +2581,62 @@ test('a notice keeps a visible edge in forced-colours mode, where box shadows ar
     }
   } finally {
     await context.close();
+  }
+});
+
+test('the theme toggle hovers on the strong line and E2, presses flat, and rests on the line while disabled before hydration', async () => {
+  const button = 'valstara-theme-toggle button';
+  for (const colorScheme of themes) {
+    const { context, page } = await finalPage({ colorScheme, path: '/sheet' });
+    try {
+      await page.waitForFunction(
+        () =>
+          globalThis.document.querySelector('valstara-theme-toggle button')
+            ?.disabled === false,
+      );
+      await page.locator(button).hover();
+      assert.equal(
+        (await computed(page, button, ['boxShadow'])).boxShadow,
+        await resolvedValue(
+          page,
+          'boxShadow',
+          'var(--inset-strong), var(--shadow-2), var(--edge)',
+        ),
+        `${colorScheme} hover`,
+      );
+      await page.mouse.down();
+      assert.equal(
+        (await computed(page, button, ['boxShadow'])).boxShadow,
+        await resolvedToken(page, 'boxShadow', '--inset-strong'),
+        `${colorScheme} pressed`,
+      );
+      await page.mouse.move(0, 0);
+      await page.mouse.up();
+    } finally {
+      await context.close();
+    }
+    // Without JavaScript the toggle stays as served: disabled.
+    const { context: served, page: servedPage } = await finalPage({
+      colorScheme,
+      path: '/sheet',
+      javaScriptEnabled: false,
+    });
+    try {
+      assert.deepEqual(
+        await computed(servedPage, button, ['boxShadow', 'color']),
+        {
+          boxShadow: await resolvedToken(
+            servedPage,
+            'boxShadow',
+            '--inset-line',
+          ),
+          color: await resolvedToken(servedPage, 'color', '--ink-600'),
+        },
+        `${colorScheme} disabled`,
+      );
+    } finally {
+      await served.close();
+    }
   }
 });
 

@@ -778,7 +778,8 @@ test('card anatomy and geometry match Main, Tablet and Phone at 1440, 768 and 39
         assert.equal(card.style.background, m.tokens.surface);
         assert.equal(card.style.shadow, m.tokens.shadowCard, `${label} E1`);
       }
-      assert.equal(m.tileStyle.background, m.tokens.paper);
+      // E11.5-11j, rule-7 rewrite: the library's tile is coral-tint.
+      assert.equal(m.tileStyle.background, m.tokens.coralTint);
       assert.equal(m.tileStyle.radius, '8px');
       assert.equal(m.h3Style.font, '20px/28px 600', `${label} H3 type`);
       assert.equal(m.h3Style.letterSpacing, '-0.2px');
