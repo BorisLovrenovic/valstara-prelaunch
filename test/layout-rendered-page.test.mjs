@@ -175,9 +175,8 @@ test('the shell exposes one main landmark and a skip link as the first focusable
   assert.equal(await skipLink.getAttribute('href'), '#main');
 
   // Hidden off-screen by default, it becomes visible within the viewport once
-  // focused, so a keyboard visitor can see and use it. The reveal is a timed
-  // transition, so wait for it to settle before sampling the box — otherwise
-  // the position is read mid-animation and the assertion races the transition.
+  // focused, so a keyboard visitor can see and use it. The reveal is instant
+  // (E11.5-11k); wait for the focused position before sampling the box.
   await page.waitForFunction(() => {
     const link = globalThis.document.querySelector('a.skip-link');
     return link !== null && link.getBoundingClientRect().top >= 0;
@@ -1356,7 +1355,7 @@ test('footer links change colour on hover, and the transition stops under reduce
       const link = page.locator(selector).first();
       await link.scrollIntoViewIfNeeded();
       const rest = await link.evaluate(shellLinkState);
-      assert.equal(rest.property, 'color', selector);
+      assert.equal(rest.property, 'color, text-decoration-color', selector);
       assert.equal(rest.duration, '0.15s', selector);
       assert.equal(rest.easing, tokens.animationTimingFunction, selector);
       assert.equal(rest.color, tokens.color, selector);
@@ -1365,8 +1364,8 @@ test('footer links change colour on hover, and the transition stops under reduce
       await link.hover();
       assert.deepEqual(
         await link.evaluate(runningTransitions),
-        ['color'],
-        `${colorScheme} ${selector}: the colour runs on hover`,
+        ['color', 'text-decoration-color'],
+        `${colorScheme} ${selector}: the colour and underline colour run on hover`,
       );
       await link.evaluate(finishTransitions);
       const hovered = await link.evaluate(shellLinkState);
@@ -1395,6 +1394,38 @@ test('footer links change colour on hover, and the transition stops under reduce
       );
     }
     await reduced.context.close();
+  }
+});
+
+test('footer links take the coral-lift focus outline and the on-midnight text', async () => {
+  for (const colorScheme of ['light', 'dark']) {
+    const { context, page } = await openSettled(1440, colorScheme);
+    const tokens = await tokenStyles(page, {
+      color: 'var(--on-midnight)',
+      outlineColor: 'var(--coral-lift)',
+    });
+    // Backwards from the end of the page: the contact link, then the last
+    // link in the Legal column.
+    for (const link of [
+      page.locator('.site-footer__contact'),
+      page.locator('.footer-links a').last(),
+    ]) {
+      await page.keyboard.press('Shift+Tab');
+      const focused = await link.evaluate((element) => {
+        const style = globalThis.getComputedStyle(element);
+        return {
+          color: style.color,
+          matches: element.matches(':focus-visible'),
+          outlineColor: style.outlineColor,
+          outlineWidth: style.outlineWidth,
+        };
+      });
+      assert.equal(focused.matches, true, colorScheme);
+      assert.equal(focused.color, tokens.color, colorScheme);
+      assert.equal(focused.outlineColor, tokens.outlineColor, colorScheme);
+      assert.equal(focused.outlineWidth, '2px', colorScheme);
+    }
+    await context.close();
   }
 });
 
