@@ -526,11 +526,12 @@ test('the page never scrolls horizontally from 320px upward', async () => {
   await context.close();
 });
 
-// E11.5-11b: the header and footer geometry from Main.dc.html (1440),
-// Tablet.dc.html (768) and Phone.dc.html (390), plus 360 and 320 for the
-// 22.5rem Join step, in both themes. Every value is a frame value, measured
-// with a 1px tolerance.
-const wireframeWidths = [1440, 768, 390, 360, 320];
+// E11.5-11k: the header and footer geometry from the final-design canvas
+// (Header.dc.html and Footer.dc.html as placed on Main, Landing1024, Landing768,
+// Landing390 and Landing320), plus 360 for the 22.5rem Join step, in both
+// themes. Every value is a canvas value, measured with a 1px tolerance, at
+// rest: each context reduces motion, as the shell check does (design rule 12).
+const canvasWidths = [1440, 1024, 768, 390, 360, 320];
 
 function near(actual, expected, message) {
   assert.ok(
@@ -539,9 +540,15 @@ function near(actual, expected, message) {
   );
 }
 
-async function openSettled(width, colorScheme, path = '/') {
+async function openSettled(
+  width,
+  colorScheme,
+  path = '/',
+  reducedMotion = 'reduce',
+) {
   const context = await browser.newContext({
     colorScheme,
+    reducedMotion,
     viewport: { width, height: 900 },
   });
   const page = await context.newPage();
@@ -559,8 +566,8 @@ function containerEdges(width) {
   return { left, right: left + content, width: content };
 }
 
-test('the header matches the wireframe geometry at every frame width in both themes', async () => {
-  for (const width of wireframeWidths) {
+test('the header matches the canvas geometry at every frame width in both themes', async () => {
+  for (const width of canvasWidths) {
     for (const colorScheme of ['light', 'dark']) {
       const { context, page } = await openSettled(width, colorScheme);
       const label = `${width}px ${colorScheme}`;
@@ -580,11 +587,16 @@ test('the header matches the wireframe geometry at every frame width in both the
         const wordmark = element.querySelector('.site-name');
         const toggle = element.querySelector('valstara-theme-toggle button');
         const join = element.querySelector('.site-header__join');
+        const capsule = element.querySelector('.site-nav__links');
         const links = [...element.querySelectorAll('.site-nav__links a')];
         const probe = globalThis.document.createElement('span');
         probe.style.color = 'var(--ink-600)';
+        probe.style.backgroundColor = 'var(--surface)';
+        probe.style.boxShadow = 'var(--shadow-1), var(--edge)';
         element.append(probe);
         const ink600 = style(probe).color;
+        const surface = style(probe).backgroundColor;
+        const capsuleShadow = style(probe).boxShadow;
         probe.remove();
         // Widen the label, as a font swap can, and measure Join again.
         join.style.letterSpacing = '0.1em';
@@ -596,6 +608,14 @@ test('the header matches the wireframe geometry at every frame width in both the
           clientWidth: element.clientWidth,
           position: style(element).position,
           ink600,
+          surface,
+          capsuleShadow,
+          capsule: {
+            ...box(capsule),
+            background: style(capsule).backgroundColor,
+            boxShadow: style(capsule).boxShadow,
+            radius: style(capsule).borderRadius,
+          },
           wordmark: {
             ...box(wordmark),
             fontSize: style(wordmark).fontSize,
@@ -626,7 +646,6 @@ test('the header matches the wireframe geometry at every frame width in both the
       });
       const edges = containerEdges(width);
       const large = width >= 1024;
-      const medium = width >= 768 && !large;
       const height = width >= 768 ? 80 : 72;
 
       assert.equal(header.position, 'static', `${label}: not sticky`);
@@ -668,8 +687,8 @@ test('the header matches the wireframe geometry at every frame width in both the
         `${label}: toggle to join gap`,
       );
       const xs = width < 360;
-      // The frames' widths: the label plus 20px padding (12px for xs).
-      near(header.join.width, xs ? 130 : 159, `${label}: join width`);
+      // The canvas's widths: 10rem, and 8.125rem below 22.5rem.
+      near(header.join.width, xs ? 130 : 160, `${label}: join width`);
       // The width is fixed, not the label's, so the right-aligned actions
       // do not move when the font swaps (E2-02).
       assert.equal(
@@ -687,23 +706,49 @@ test('the header matches the wireframe geometry at every frame width in both the
         assert.equal(header.navDisplay, 'none', label);
       } else {
         assert.equal(header.links.length, 4, label);
+        // The capsule: surface, E1 and the edge, radius 12, padding 4.
         near(
-          header.links[0].left - header.wordmark.right,
+          header.capsule.left - header.wordmark.right,
           large ? 40 : 24,
-          `${label}: wordmark to nav gap`,
+          `${label}: wordmark to capsule gap`,
+        );
+        near(header.capsule.height, 44, `${label}: capsule height`);
+        near(
+          header.capsule.top + header.capsule.height / 2,
+          header.box.top + height / 2,
+          `${label}: capsule centred`,
+        );
+        // 40px at large. At 768 the row stays on the grid (design rule 8): the
+        // canvas's 24px becomes 18.6, the only gap that gives. From about 774
+        // it is 24 or more.
+        const actionsGap = header.toggle.left - header.capsule.right;
+        if (width === 768) near(actionsGap, 18.6, `${label}: actions gap`);
+        else assert.ok(actionsGap >= 40, `${label}: actions gap ${actionsGap}`);
+        assert.equal(header.capsule.background, header.surface, label);
+        assert.equal(header.capsule.boxShadow, header.capsuleShadow, label);
+        assert.equal(header.capsule.radius, '12px', label);
+        near(
+          header.links[0].left - header.capsule.left,
+          4,
+          `${label}: capsule padding`,
+        );
+        near(
+          header.capsule.right - header.links.at(-1).right,
+          4,
+          `${label}: capsule padding`,
         );
         header.links.forEach((link, index) => {
           assert.equal(link.fontSize, '14px', label);
           assert.equal(link.lineHeight, '20px', label);
           assert.equal(link.fontWeight, '500', label);
           assert.equal(link.color, header.ink600, `${label}: ink-600 link`);
-          assert.equal(link.paddingTop, '12px', label);
-          assert.equal(link.paddingLeft, medium ? '10px' : '12px', label);
-          near(link.height, 44, `${label}: nav link height`);
+          assert.equal(link.paddingTop, '0px', label);
+          assert.equal(link.paddingLeft, '12px', label);
+          near(link.height, 36, `${label}: nav link height`);
           if (index > 0) {
             near(
               link.left - header.links[index - 1].right,
-              large ? 4 : 0,
+              large ? 2 : 0,
               `${label}: nav link gap`,
             );
           }
@@ -741,8 +786,8 @@ test('the header Join button steps from xs to h44 at 22.5rem', async () => {
   }
 });
 
-test('the footer matches the wireframe grid at every frame width in both themes', async () => {
-  for (const width of wireframeWidths) {
+test('the footer matches the canvas grid at every frame width in both themes', async () => {
+  for (const width of canvasWidths) {
     for (const colorScheme of ['light', 'dark']) {
       const { context, page } = await openSettled(width, colorScheme);
       const label = `${width}px ${colorScheme}`;
@@ -762,9 +807,13 @@ test('the footer matches the wireframe grid at every frame width in both themes'
         const probe = globalThis.document.createElement('span');
         probe.style.color = 'var(--on-midnight)';
         probe.style.backgroundColor = 'var(--midnight)';
+        probe.style.borderTopColor = 'var(--on-midnight-600)';
+        probe.style.outlineColor = 'var(--on-midnight-line)';
         element.append(probe);
         const onMidnight = style(probe).color;
         const midnight = style(probe).backgroundColor;
+        const onMidnight600 = style(probe).borderTopColor;
+        const onMidnightLine = style(probe).outlineColor;
         probe.remove();
         const columns = [...element.querySelectorAll('.site-footer__column')];
         const lines = element.querySelector('.site-footer__lines');
@@ -778,6 +827,8 @@ test('the footer matches the wireframe grid at every frame width in both themes'
           paddingBottom: style(element).paddingBottom,
           midnight,
           onMidnight,
+          onMidnight600,
+          onMidnightLine,
           wordmark: box(element.querySelector('.site-name--footer')),
           grid: box(element.querySelector('.site-footer__grid')),
           columns: columns.map((column) => {
@@ -804,8 +855,13 @@ test('the footer matches the wireframe grid at every frame width in both themes'
             ...box(lines),
             maxWidth: style(lines).maxWidth,
             opacity: style(lines).opacity,
+            paddingTop: style(lines).paddingTop,
+            borderTopWidth: style(lines).borderTopWidth,
+            borderTopStyle: style(lines).borderTopStyle,
+            borderTopColor: style(lines).borderTopColor,
             paragraphs: [...lines.querySelectorAll('p')].map((paragraph) => ({
               ...box(paragraph),
+              color: style(paragraph).color,
               fontSize: style(paragraph).fontSize,
               lineHeight: style(paragraph).lineHeight,
             })),
@@ -846,14 +902,16 @@ test('the footer matches the wireframe grid at every frame width in both themes'
         );
         await shell.context.close();
       }
-      // The dark frames edge the band with the 1px `--edge` line.
+      // `--shadow-band`: none in light; in dark, the 1px edge and the cast
+      // shadow that lift midnight off a near-black page.
       if (colorScheme === 'dark') {
         assert.match(
           footer.boxShadow,
           /rgba\(240, 240, 238, 0\.1\) 0px 0px 0px 1px/u,
         );
+        assert.match(footer.boxShadow, /rgba\(0, 0, 0, 0\.6\) 0px 24px 64px/u);
       } else {
-        assert.match(footer.boxShadow, /rgba\(0, 0, 0, 0\) 0px 0px 0px 0px/u);
+        assert.equal(footer.boxShadow, 'none', label);
       }
 
       // The wordmark's text sits on the padding; its 44px target extends 8px
@@ -878,8 +936,9 @@ test('the footer matches the wireframe grid at every frame width in both themes'
           near(column.top, wordmarkText, `${label}: column top`);
         }
       } else {
-        // The wordmark on its own row, the columns 32px below its text.
-        const columnsTop = wordmarkText + 28 + 32;
+        // The wordmark on its own row, its target's lower 8px plus the row
+        // gap below its text: 32px at medium and 24px at small.
+        const columnsTop = wordmarkText + 28 + 8 + (medium ? 32 : 24);
         near(company.top, columnsTop, `${label}: columns top`);
         near(legal.top, columnsTop, `${label}: columns top`);
         near(company.left, edges.left, `${label}: Company column`);
@@ -913,7 +972,7 @@ test('the footer matches the wireframe grid at every frame width in both themes'
           `${label}: heading to links`,
         );
         for (const link of column.links) {
-          assert.equal(link.color, footer.onMidnight, label);
+          assert.equal(link.color, footer.onMidnight600, label);
           assert.equal(link.fontSize, '14px', label);
           assert.equal(link.lineHeight, '20px', label);
           assert.equal(link.paddingTop, large ? '6px' : '12px', label);
@@ -921,19 +980,30 @@ test('the footer matches the wireframe grid at every frame width in both themes'
         }
       }
 
-      // The trademark and legal lines: 48 / 40 / 32px below the columns,
-      // 14/20, 8px apart, at most 760px wide, at 85% opacity.
+      // The trademark and legal lines: a hairline rule 48px below the columns
+      // (32px small), then 24px of padding. 14/20, 8px apart, at most 760px
+      // wide, in `--on-midnight-600` with no opacity.
       near(
         footer.lines.top - footer.grid.bottom,
-        large ? 48 : medium ? 40 : 32,
-        `${label}: lines below the columns`,
+        width >= 768 ? 48 : 32,
+        `${label}: rule below the columns`,
       );
+      assert.equal(footer.lines.borderTopWidth, '1px', label);
+      assert.equal(footer.lines.borderTopStyle, 'solid', label);
+      assert.equal(footer.lines.borderTopColor, footer.onMidnightLine, label);
+      assert.equal(footer.lines.paddingTop, '24px', label);
       assert.equal(footer.lines.maxWidth, '760px', label);
-      assert.equal(footer.lines.opacity, '0.85', label);
+      assert.equal(footer.lines.opacity, '1', label);
       assert.ok(footer.lines.width <= 760, label);
       const [trademark, legalLine] = footer.lines.paragraphs;
+      near(
+        trademark.top - footer.lines.top,
+        25,
+        `${label}: rule to first line`,
+      );
       near(legalLine.top - trademark.bottom, 8, `${label}: lines gap`);
       for (const paragraph of footer.lines.paragraphs) {
+        assert.equal(paragraph.color, footer.onMidnight600, label);
         assert.equal(paragraph.fontSize, '14px', label);
         assert.equal(paragraph.lineHeight, '20px', label);
       }
@@ -1018,5 +1088,386 @@ test('every header and footer link reaches a real route, and footer targets are 
       }
       await context.close();
     }
+  }
+});
+
+// E11.5-11k: off the landing page the header Join is secondary, 44 × 160 (130
+// below 22.5rem), with the secondary's 14/20 label below 48rem and 16/24 from
+// 48rem. Every page with a toggle lays out as the landing page does.
+test('the header Join is primary only on the landing page, and secondary at the canvas size elsewhere', async () => {
+  for (const [path, primary] of [
+    ['/', true],
+    ['/verify', false],
+    ['/terms', false],
+    ['/legit', false],
+    ['/guarantee', false],
+    ['/about', false],
+  ]) {
+    for (const colorScheme of ['light', 'dark']) {
+      for (const width of canvasWidths) {
+        const { context, page } = await openSettled(width, colorScheme, path);
+        const label = `${path} ${width}px ${colorScheme}`;
+        const join = await page
+          .locator('.site-header__join')
+          .evaluate((element) => {
+            const style = globalThis.getComputedStyle(element);
+            const rect = element.getBoundingClientRect();
+            return {
+              classes: [...element.classList],
+              fontSize: style.fontSize,
+              height: rect.height,
+              lineHeight: style.lineHeight,
+              paddingLeft: style.paddingLeft,
+              width: rect.width,
+            };
+          });
+        assert.equal(join.classes.includes('button--primary'), primary, label);
+        assert.equal(
+          join.classes.includes('button--secondary'),
+          !primary,
+          label,
+        );
+        const xs = width < 360;
+        near(join.height, 44, `${label}: height`);
+        near(join.width, xs ? 130 : 160, `${label}: width`);
+        const small = !primary && width < 768;
+        assert.equal(join.fontSize, xs || small ? '14px' : '16px', label);
+        assert.equal(join.lineHeight, xs || small ? '20px' : '24px', label);
+        assert.equal(
+          join.paddingLeft,
+          xs ? '12px' : small ? '16px' : '20px',
+          label,
+        );
+        assert.equal(
+          await page.evaluate(
+            () =>
+              globalThis.document.documentElement.scrollWidth <=
+              globalThis.document.documentElement.clientWidth,
+          ),
+          true,
+          `${label}: no horizontal overflow`,
+        );
+        await context.close();
+      }
+    }
+  }
+});
+
+test('the skip link is above the viewport at rest, and a raised surface with a coral outline on focus', async () => {
+  for (const colorScheme of ['light', 'dark']) {
+    const { context, page } = await openSettled(390, colorScheme);
+    const skipLink = page.locator('a.skip-link');
+    const rest = await skipLink.boundingBox();
+    assert.ok(rest.y + rest.height <= 0, `${colorScheme}: above the viewport`);
+    await page.keyboard.press('Tab');
+    const focused = await skipLink.evaluate((element) => {
+      const style = globalThis.getComputedStyle(element);
+      const probe = globalThis.document.createElement('span');
+      probe.style.color = 'var(--ink)';
+      probe.style.backgroundColor = 'var(--surface)';
+      probe.style.outlineColor = 'var(--coral)';
+      probe.style.boxShadow = 'var(--shadow-2), var(--edge)';
+      globalThis.document.body.append(probe);
+      const expected = globalThis.getComputedStyle(probe);
+      const tokens = {
+        background: expected.backgroundColor,
+        boxShadow: expected.boxShadow,
+        color: expected.color,
+        outlineColor: expected.outlineColor,
+      };
+      probe.remove();
+      return {
+        background: style.backgroundColor,
+        boxShadow: style.boxShadow,
+        color: style.color,
+        left: element.getBoundingClientRect().left,
+        outlineColor: style.outlineColor,
+        outlineWidth: style.outlineWidth,
+        padding: `${style.paddingTop} ${style.paddingLeft}`,
+        tokens,
+        top: element.getBoundingClientRect().top,
+        transition: style.transitionProperty,
+      };
+    });
+    assert.equal(focused.top, 8, colorScheme);
+    assert.equal(focused.left, 16, colorScheme);
+    assert.equal(focused.padding, '12px 16px', colorScheme);
+    assert.equal(focused.background, focused.tokens.background, colorScheme);
+    assert.equal(focused.color, focused.tokens.color, colorScheme);
+    assert.equal(focused.boxShadow, focused.tokens.boxShadow, colorScheme);
+    assert.equal(
+      focused.outlineColor,
+      focused.tokens.outlineColor,
+      colorScheme,
+    );
+    assert.equal(focused.outlineWidth, '2px', colorScheme);
+    await context.close();
+  }
+});
+
+// What transitions run on an element right after a state change, by property.
+const runningTransitions = (element) =>
+  element
+    .getAnimations()
+    .filter((animation) => 'transitionProperty' in animation)
+    .map((animation) => animation.transitionProperty)
+    .sort();
+
+const finishTransitions = (element) =>
+  Promise.all(element.getAnimations().map((animation) => animation.finished));
+
+const tokenStyles = (page, styles) =>
+  page.evaluate((declared) => {
+    const probe = globalThis.document.createElement('span');
+    Object.assign(probe.style, declared);
+    globalThis.document.body.append(probe);
+    const computed = globalThis.getComputedStyle(probe);
+    const resolved = Object.fromEntries(
+      Object.keys(declared).map((key) => [key, computed[key]]),
+    );
+    probe.remove();
+    return resolved;
+  }, styles);
+
+const shellLinkState = (element) => {
+  const style = globalThis.getComputedStyle(element);
+  return {
+    background: style.backgroundColor,
+    color: style.color,
+    decoration: style.textDecorationLine,
+    decorationColor: style.textDecorationColor,
+    delay: style.transitionDelay,
+    duration: style.transitionDuration,
+    easing: style.transitionTimingFunction,
+    property: style.transitionProperty,
+    transform: style.transform,
+  };
+};
+
+test('section links fill on hover and press with no underline, and the transition stops under reduced motion', async () => {
+  for (const colorScheme of ['light', 'dark']) {
+    const { context, page } = await openSettled(
+      1440,
+      colorScheme,
+      '/',
+      'no-preference',
+    );
+    const tokens = await tokenStyles(page, {
+      animationTimingFunction: 'var(--ease-out)',
+      backgroundColor: 'var(--wash)',
+      color: 'var(--ink)',
+      outlineColor: 'var(--wash-strong)',
+    });
+    const link = page.locator('.site-nav__links a').first();
+    const rest = await link.evaluate(shellLinkState);
+    assert.equal(rest.property, 'background-color, color', colorScheme);
+    assert.equal(rest.duration, '0.15s', colorScheme);
+    assert.equal(rest.delay, '0s', colorScheme);
+    assert.equal(rest.easing, tokens.animationTimingFunction, colorScheme);
+    assert.equal(rest.background, 'rgba(0, 0, 0, 0)', colorScheme);
+    assert.equal(rest.decoration, 'none', colorScheme);
+
+    await link.hover();
+    assert.deepEqual(
+      await link.evaluate(runningTransitions),
+      ['background-color', 'color'],
+      `${colorScheme}: the fill and the text colour both run on hover`,
+    );
+    await link.evaluate(finishTransitions);
+    const hovered = await link.evaluate(shellLinkState);
+    assert.equal(hovered.background, tokens.backgroundColor, colorScheme);
+    assert.equal(hovered.color, tokens.color, colorScheme);
+    assert.equal(hovered.decoration, 'none', `${colorScheme}: no underline`);
+
+    await page.mouse.down();
+    assert.deepEqual(
+      await link.evaluate(runningTransitions),
+      ['background-color'],
+      `${colorScheme}: the fill runs on press`,
+    );
+    await link.evaluate(finishTransitions);
+    const pressed = await link.evaluate(shellLinkState);
+    assert.equal(pressed.background, tokens.outlineColor, colorScheme);
+    assert.equal(pressed.color, tokens.color, colorScheme);
+    assert.equal(pressed.transform, 'none', `${colorScheme}: nothing moves`);
+    await page.mouse.move(0, 0);
+    await page.mouse.up();
+    await context.close();
+
+    // Reduced motion: the states still apply, at once.
+    const reduced = await openSettled(1440, colorScheme);
+    const still = reduced.page.locator('.site-nav__links a').first();
+    assert.equal((await still.evaluate(shellLinkState)).property, 'none');
+    await still.hover();
+    assert.deepEqual(await still.evaluate(runningTransitions), []);
+    assert.equal(
+      (await still.evaluate(shellLinkState)).background,
+      tokens.backgroundColor,
+      `${colorScheme}: the fill applies instantly`,
+    );
+    await reduced.context.close();
+  }
+});
+
+test('section links take the coral focus outline and the ink text', async () => {
+  for (const colorScheme of ['light', 'dark']) {
+    const { context, page } = await openSettled(1440, colorScheme);
+    const tokens = await tokenStyles(page, {
+      color: 'var(--ink)',
+      outlineColor: 'var(--coral)',
+    });
+    const link = page.locator('.site-nav__links a').first();
+    // The skip link, the wordmark, then the first section link.
+    for (let press = 0; press < 3; press += 1) {
+      await page.keyboard.press('Tab');
+    }
+    const focused = await link.evaluate((element) => {
+      const style = globalThis.getComputedStyle(element);
+      return {
+        color: style.color,
+        matches: element.matches(':focus-visible'),
+        outlineColor: style.outlineColor,
+        outlineWidth: style.outlineWidth,
+      };
+    });
+    assert.equal(focused.matches, true, colorScheme);
+    assert.equal(focused.color, tokens.color, colorScheme);
+    assert.equal(focused.outlineColor, tokens.outlineColor, colorScheme);
+    assert.equal(focused.outlineWidth, '2px', colorScheme);
+    await context.close();
+  }
+});
+
+test('footer links change colour on hover, and the transition stops under reduced motion', async () => {
+  for (const colorScheme of ['light', 'dark']) {
+    const { context, page } = await openSettled(
+      1440,
+      colorScheme,
+      '/',
+      'no-preference',
+    );
+    const tokens = await tokenStyles(page, {
+      animationTimingFunction: 'var(--ease-out)',
+      color: 'var(--on-midnight-600)',
+      outlineColor: 'var(--on-midnight)',
+      textDecorationColor: 'var(--coral-lift)',
+    });
+    for (const selector of ['.footer-links a', '.site-footer__contact']) {
+      const link = page.locator(selector).first();
+      await link.scrollIntoViewIfNeeded();
+      const rest = await link.evaluate(shellLinkState);
+      assert.equal(rest.property, 'color', selector);
+      assert.equal(rest.duration, '0.15s', selector);
+      assert.equal(rest.easing, tokens.animationTimingFunction, selector);
+      assert.equal(rest.color, tokens.color, selector);
+      assert.equal(rest.decoration, 'none', selector);
+
+      await link.hover();
+      assert.deepEqual(
+        await link.evaluate(runningTransitions),
+        ['color'],
+        `${colorScheme} ${selector}: the colour runs on hover`,
+      );
+      await link.evaluate(finishTransitions);
+      const hovered = await link.evaluate(shellLinkState);
+      assert.equal(hovered.color, tokens.outlineColor, selector);
+      assert.equal(hovered.decoration, 'underline', selector);
+      assert.equal(
+        hovered.decorationColor,
+        tokens.textDecorationColor,
+        selector,
+      );
+      await page.mouse.move(0, 0);
+    }
+    await context.close();
+
+    const reduced = await openSettled(1440, colorScheme);
+    for (const selector of ['.footer-links a', '.site-footer__contact']) {
+      const still = reduced.page.locator(selector).first();
+      await still.scrollIntoViewIfNeeded();
+      assert.equal((await still.evaluate(shellLinkState)).property, 'none');
+      await still.hover();
+      assert.deepEqual(await still.evaluate(runningTransitions), []);
+      assert.equal(
+        (await still.evaluate(shellLinkState)).color,
+        tokens.outlineColor,
+        `${colorScheme} ${selector}: the colour applies instantly`,
+      );
+    }
+    await reduced.context.close();
+  }
+});
+
+test('the theme toggle and the secondary Join take the button transitions', async () => {
+  for (const [path, selector] of [
+    ['/', 'valstara-theme-toggle button'],
+    ['/verify', '.site-header__join'],
+  ]) {
+    const { context, page } = await openSettled(
+      1440,
+      'light',
+      path,
+      'no-preference',
+    );
+    const tokens = await tokenStyles(page, {
+      boxShadow: 'var(--inset-strong), var(--shadow-2), var(--edge)',
+    });
+    const control = page.locator(selector);
+    await page.waitForFunction(
+      () =>
+        globalThis.document.querySelector('valstara-theme-toggle button')
+          ?.disabled === false,
+    );
+    const rest = await control.evaluate(shellLinkState);
+    assert.match(rest.property, /box-shadow/u, selector);
+    assert.match(rest.property, /transform/u, selector);
+    assert.equal(rest.duration, '0.15s', selector);
+    await control.hover();
+    await control.evaluate(finishTransitions);
+    assert.equal(
+      await control.evaluate(
+        (element) => globalThis.getComputedStyle(element).boxShadow,
+      ),
+      tokens.boxShadow,
+      `${selector}: the hover shadow`,
+    );
+    await page.mouse.down();
+    await control.evaluate(finishTransitions);
+    const pressed = await control.evaluate(shellLinkState);
+    assert.equal(pressed.transform, 'matrix(1, 0, 0, 1, 0, 1)', selector);
+    await page.mouse.move(0, 0);
+    await page.mouse.up();
+    await context.close();
+  }
+});
+
+test('the header and footer take no entrance and no scroll reveal', async () => {
+  for (const path of ['/', '/terms']) {
+    const { context, page } = await openSettled(
+      390,
+      'light',
+      path,
+      'no-preference',
+    );
+    const moving = await page.evaluate(() =>
+      [
+        ...globalThis.document.querySelectorAll(
+          'body > header, body > header *, body > footer, body > footer *',
+        ),
+      ]
+        .filter((element) => {
+          const style = globalThis.getComputedStyle(element);
+          return (
+            element.hasAttribute('data-enter') ||
+            element.hasAttribute('data-reveal') ||
+            style.animationName !== 'none' ||
+            style.opacity !== '1' ||
+            element.getAnimations().length > 0
+          );
+        })
+        .map((element) => element.outerHTML.slice(0, 80)),
+    );
+    assert.deepEqual(moving, [], path);
+    await context.close();
   }
 });
