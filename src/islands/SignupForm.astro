@@ -35,7 +35,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     */
     }
     <noscript>
-      <p class="signup-notice">
+      <p class="signup-notice signup-notice--info">
         <Icon name="info" size="base" /><span
           >{signupFormCopy.javaScriptRequired}</span
         >
@@ -86,7 +86,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     */
     }
     <Button type="submit" data-submit
-      ><span class="signup-spinner" data-spinner aria-hidden="true" hidden
+      ><span class="button__spinner" data-spinner aria-hidden="true" hidden
       ></span><span data-submit-label>{landingCopy.form.submit}</span></Button
     >
     <p class="signup-age">
@@ -218,7 +218,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         />
         <Button type="button" data-dock-submit
           ><span
-            class="signup-spinner"
+            class="button__spinner"
             data-dock-spinner
             aria-hidden="true"
             hidden></span><span data-dock-submit-label
@@ -1065,32 +1065,46 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   }
 
   /*
-    The notices (E11.5-11g): 16px padding, radius 8, surface, a 12px gap
-    between the 20px icon and the 14/20 500 ink text. The neutral notice has
-    a 1px line edge and the info icon; the error notice a 2px --error edge and
-    the alert-circle icon in --error. The drawn inset edge is a real border
-    here, with the padding reduced by its width, so the boxes match and the
-    edge survives forced-colours mode.
+    The notices (E11.5-11j): 16px padding, radius 8, a 12px gap between the
+    20px icon and the 14/20 500 ink text. The info notice is a quiet wash with
+    the info icon; the error notice is on surface with a 1.5px --error rule
+    and the alert-circle icon in --error. The edges are box shadows, as drawn,
+    so forced-colours mode draws an outline in their place.
   */
   valstara-signup-form .signup-notice {
     display: flex;
     gap: var(--space-1-5);
     align-items: flex-start;
     margin: var(--space-0);
-    padding: var(--control-inset-strong);
+    padding: var(--space-2);
     color: var(--ink);
     font-family: var(--font-sans);
     font-size: var(--step-1);
     font-weight: var(--weight-medium);
     line-height: var(--leading-1);
     background-color: var(--surface);
-    border: var(--border-thin) solid var(--line);
     border-radius: var(--radius-control);
+    box-shadow: var(--inset-line), var(--edge);
+  }
+
+  @media (forced-colors: active) {
+    valstara-signup-form .signup-notice {
+      outline: var(--border-thin) solid currentColor;
+      outline-offset: calc(var(--border-thin) * -1);
+    }
+  }
+
+  valstara-signup-form .signup-notice .icon {
+    color: var(--ink-600);
+  }
+
+  valstara-signup-form .signup-notice--info {
+    background-color: var(--wash);
+    box-shadow: none;
   }
 
   valstara-signup-form .signup-notice--error {
-    padding: calc(var(--space-2) - var(--border-strong));
-    border: var(--border-strong) solid var(--error);
+    box-shadow: var(--inset-error);
   }
 
   valstara-signup-form .signup-notice--error .icon {
@@ -1195,34 +1209,10 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     margin-block-start: var(--space-1-5);
   }
 
-  /*
-    The spinner (E11.5-11g): 16px, a 2px ink-300 ring with an ink top
-    segment, 8px before the label. It turns only without reduced motion; the
-    label explains the wait either way. While the Turnstile widget is open
-    the visitor must act, so the spinner steps aside (state 08).
-  */
-  valstara-signup-form .signup-spinner {
-    box-sizing: border-box;
-    flex: none;
-    inline-size: var(--icon-sm);
-    block-size: var(--icon-sm);
-    border: var(--border-strong) solid var(--ink-300);
-    border-block-start-color: var(--ink);
-    border-radius: var(--radius-pill);
-    animation-name: signup-spin;
-    animation-duration: calc(var(--duration-base) * 4);
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-  }
-
-  valstara-signup-form:has(.signup-turnstile[data-open]) .signup-spinner {
+  /* While the Turnstile widget is open the visitor must act, so the Button's
+     spinner steps aside (state 08). */
+  valstara-signup-form:has(.signup-turnstile[data-open]) .button__spinner {
     display: none;
-  }
-
-  @keyframes signup-spin {
-    to {
-      transform: rotate(1turn);
-    }
   }
 
   valstara-signup-form .signup-facts {
@@ -1305,7 +1295,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   /*
     The success panel (E11.5-11g) replaces the form, so it takes the form's
     place 24px under the supporting line (32px from 48rem). A surface card,
-    radius 12, --shadow-1 plus the dark-only edge, 24px padding (32px from
+    radius 12, --shadow-2 plus the dark-only edge, 24px padding (32px from
     48rem), a column with 12px gaps: the 48px coral-tint tile with the 24px
     mail icon, the 24/32 600 heading, the echoed address (mono 14/20 on
     paper, inset 1px line, padded 8px 12px), the 16/24 ink-600 body, the
@@ -1326,7 +1316,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     line-height: var(--leading-2);
     background-color: var(--surface);
     border-radius: var(--radius-card);
-    box-shadow: var(--shadow-1), var(--edge);
+    box-shadow: var(--shadow-2), var(--edge);
   }
 
   valstara-signup-form .signup-success h2,
@@ -1539,10 +1529,6 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
   @media (prefers-reduced-motion: reduce) {
     valstara-signup-form .signup-dock:not([hidden]) {
-      animation-name: none;
-    }
-
-    valstara-signup-form .signup-spinner {
       animation-name: none;
     }
   }

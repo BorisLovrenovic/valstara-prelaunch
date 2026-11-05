@@ -733,9 +733,12 @@ test('buttons show distinct hover, active, focus-visible and disabled states at 
         '--overlay-active',
       );
       assert.equal(restShadow, 'rgba(16, 16, 20, 0.14) 0px 1px 2px 0px');
+      // E11.5-11j, rule-7 rewrite: the token delta's dark hover overlay is .10.
       assert.match(
         hoverShadow,
-        /^rgba\(16, 16, 20, 0\.08\) 0px 0px 0px 100px inset, /u,
+        colorScheme === 'dark'
+          ? /^rgba\(16, 16, 20, 0\.1\) 0px 0px 0px 100px inset, /u
+          : /^rgba\(16, 16, 20, 0\.08\) 0px 0px 0px 100px inset, /u,
       );
       assert.equal(
         activeShadow,
@@ -1253,7 +1256,8 @@ test('the secondary button matches the sheet in every state, and is 44px with 14
           await resolvedValue(
             page,
             'boxShadow',
-            'var(--inset-line), var(--shadow-1)',
+            // E11.5-11j, rule-7 rewrite: the library adds --edge.
+            'var(--inset-line), var(--shadow-1), var(--edge)',
           ),
         );
         assert.match(rest.boxShadow, /0px 0px 0px 1px inset/u);
@@ -1264,7 +1268,7 @@ test('the secondary button matches the sheet in every state, and is 44px with 14
           await resolvedValue(
             page,
             'boxShadow',
-            'var(--inset-strong), var(--shadow-2)',
+            'var(--inset-strong), var(--shadow-2), var(--edge)',
           ),
         );
         await page.mouse.down();
@@ -1367,7 +1371,8 @@ test('the on-midnight button and the text links match the sheet, on paper and on
           ]),
           {
             color: 'rgba(250, 250, 250, 0.45)',
-            boxShadow: 'rgba(250, 250, 250, 0.2) 0px 0px 0px 1px inset',
+            // E11.5-11j, rule-7 rewrite: --on-midnight-line, not .2.
+            boxShadow: 'rgba(250, 250, 250, 0.12) 0px 0px 0px 1px inset',
           },
         );
 
@@ -1659,6 +1664,8 @@ test('the checkbox is 20px, never pre-ticked, ticks to ink with a paper check, a
       );
       assert.deepEqual(
         await computed(page, optional, [
+          'display',
+          'verticalAlign',
           'paddingLeft',
           'paddingRight',
           'marginRight',
@@ -1669,6 +1676,9 @@ test('the checkbox is 20px, never pre-ticked, ticks to ink with a paper check, a
           'fontWeight',
         ]),
         {
+          display: 'inline-flex',
+          // E11.5-11j: 1px up on the checkbox's text line.
+          verticalAlign: '1px',
           paddingLeft: '8px',
           paddingRight: '8px',
           marginRight: '6px',
@@ -1701,16 +1711,20 @@ test('the checkbox is 20px, never pre-ticked, ticks to ink with a paper check, a
       assert.ok(contrastRatio(ticked.color, ink) >= 3, 'check mark');
       await page.mouse.move(0, 0);
       await keyboardFocus(page, '#sheet-check');
+      // E11.5-11j, rule-7 rewrite: the library's ring and coral border, not
+      // the wireframes' outline. The transparent outline serves forced colours.
       assert.deepEqual(
         await computed(page, drawn, [
           'outlineWidth',
-          'outlineOffset',
           'outlineColor',
+          'boxShadow',
+          'borderTopColor',
         ]),
         {
           outlineWidth: '2px',
-          outlineOffset: '2px',
-          outlineColor: await resolvedToken(page, 'color', '--coral'),
+          outlineColor: 'rgba(0, 0, 0, 0)',
+          boxShadow: await resolvedToken(page, 'boxShadow', '--ring-focus'),
+          borderTopColor: await resolvedToken(page, 'color', '--coral'),
         },
       );
       await page.keyboard.press('Space');
@@ -1856,10 +1870,11 @@ test('the pills, step badge, card and icon tile match the sheet in both themes',
           'borderTopLeftRadius',
         ]),
         {
+          // E11.5-11j, rule-7 rewrite: the library's tile is coral-tint.
           backgroundColor: await resolvedToken(
             page,
             'backgroundColor',
-            '--paper',
+            '--coral-tint',
           ),
           borderTopLeftRadius: '8px',
         },
@@ -1875,12 +1890,14 @@ test('the pills, step badge, card and icon tile match the sheet in both themes',
   }
 });
 
-test('the FAQ item is an unboxed native disclosure with dividers, a 64px summary and a turning 20px chevron', async () => {
+// E11.5-11j, rule-7 rewrite: the library's 32px disc in a summary with 20px
+// padding makes the summary 72px, at least its 64px minimum.
+test('the FAQ item is an unboxed native disclosure with dividers, a 72px summary and a turning 20px chevron', async () => {
   for (const colorScheme of themes) {
     const { context, page } = await sheetPage({ colorScheme });
     try {
       const summary = '#faq-closed summary';
-      near((await box(page, summary)).height, 64, 'summary height');
+      near((await box(page, summary)).height, 72, 'summary height');
       assert.deepEqual(
         await computed(page, summary, [
           'paddingTop',
@@ -1979,7 +1996,7 @@ test('the FAQ item is an unboxed native disclosure with dividers, a 64px summary
   }
 });
 
-test('the theme toggle is a 44px bordered icon button offering the other theme, and the stars render at 12 × 18 and 16 × 24', async () => {
+test('the theme toggle is a 44px inset-line icon button offering the other theme, and the stars render at 12 × 18 and 16 × 24', async () => {
   for (const colorScheme of themes) {
     const { context, page } = await sheetPage({ colorScheme });
     try {
@@ -1992,16 +2009,22 @@ test('the theme toggle is a 44px bordered icon button offering the other theme, 
       const toggle = await box(page, button);
       near(toggle.width, 44, 'toggle width');
       near(toggle.height, 44, 'toggle height');
+      // E11.5-11j, rule-7 rewrite: the library's inset line plus E1, not the
+      // wireframes' 1px border.
       assert.deepEqual(
         await computed(page, button, [
           'borderTopWidth',
-          'borderTopColor',
+          'boxShadow',
           'borderTopLeftRadius',
           'backgroundColor',
         ]),
         {
-          borderTopWidth: '1px',
-          borderTopColor: await resolvedToken(page, 'color', '--line'),
+          borderTopWidth: '0px',
+          boxShadow: await resolvedValue(
+            page,
+            'boxShadow',
+            'var(--inset-line), var(--shadow-1), var(--edge)',
+          ),
           borderTopLeftRadius: '8px',
           backgroundColor: await resolvedToken(
             page,
@@ -2075,6 +2098,1038 @@ test('the theme toggle is a 44px bordered icon button offering the other theme, 
       }
     } finally {
       await context.close();
+    }
+  }
+});
+
+// E11.5-11j: the final design's component library. Reads the real components
+// in the states it draws, in both themes, at rest under reduced motion unless
+// a test is about the motion itself.
+async function finalPage({ path = '/final', ...options } = {}) {
+  const context = await browser.newContext({
+    reducedMotion: 'reduce',
+    viewport: { width: 1440, height: 2400 },
+    ...options,
+  });
+  const page = await context.newPage();
+  await page.goto(`${browserOrigin}${path}`);
+  return { context, page };
+}
+
+// With motion allowed, a read waits for the state transitions to end.
+function settled(page) {
+  return page.waitForFunction(
+    () =>
+      globalThis.document
+        .getAnimations()
+        .filter((animation) => animation.effect.getTiming().iterations === 1)
+        .length === 0,
+  );
+}
+
+const transitionOf = (page, selector) =>
+  computed(page, selector, [
+    'transitionProperty',
+    'transitionDuration',
+    'transitionTimingFunction',
+  ]);
+
+const easeOut = 'cubic-bezier(0.16, 1, 0.3, 1)';
+
+test('the registry adds the icon sheet additions as drawn, at 16, 20 and 24px, hidden from assistive technology', async () => {
+  const sprite = await readFile(
+    join(projectRoot, 'docs/design/final-ui/project/icons.svg'),
+    'utf8',
+  );
+  const drawn = (id) => {
+    const body = new RegExp(
+      `<symbol id="${id}" [^>]*>(.*?)</symbol>`,
+      'su',
+    ).exec(sprite);
+    assert.ok(body, `${id} is on the icon sheet`);
+    return [...body[1].matchAll(/<(path|rect|circle) ([^>]*?)\/>/gu)].map(
+      ([, tag, attributes]) => ({
+        tag,
+        ...Object.fromEntries(
+          [...attributes.matchAll(/([\w-]+)="([^"]*)"/gu)].map((match) => [
+            match[1],
+            match[2],
+          ]),
+        ),
+      }),
+    );
+  };
+  const { context, page } = await finalPage();
+  try {
+    for (const [size, pixels] of [
+      ['sm', 16],
+      ['base', 20],
+      ['md', 24],
+    ]) {
+      for (const name of [
+        'copy',
+        'download',
+        'erase',
+        'history',
+        'list',
+        'x',
+      ]) {
+        const selector = `[data-icon="${name}"][data-size="${size}"] svg`;
+        const icon = await page.locator(selector).evaluate((element) => ({
+          hidden: element.getAttribute('aria-hidden'),
+          role: element.getAttribute('role'),
+          viewBox: element.getAttribute('viewBox'),
+          width: element.getBoundingClientRect().width,
+          height: element.getBoundingClientRect().height,
+          shapes: [...element.children].map((shape) => ({
+            tag: shape.tagName,
+            ...Object.fromEntries(
+              [...shape.attributes].map(({ name: key, value }) => [key, value]),
+            ),
+          })),
+        }));
+        assert.equal(icon.hidden, 'true', `${selector} is decorative`);
+        assert.equal(icon.role, null, selector);
+        assert.equal(icon.viewBox, '0 0 24 24', selector);
+        near(icon.width, pixels, `${selector} width`);
+        near(icon.height, pixels, `${selector} height`);
+        const expected = drawn(name);
+        assert.equal(icon.shapes.length, expected.length, selector);
+        icon.shapes.forEach((shape, index) => {
+          for (const [key, value] of Object.entries(expected[index])) {
+            assert.equal(
+              shape[key],
+              value,
+              `${selector} shape ${index} ${key}`,
+            );
+          }
+          assert.equal(shape.fill, 'none', selector);
+          assert.equal(shape.stroke, 'currentColor', selector);
+          assert.equal(shape['stroke-width'], '1.75', selector);
+          assert.equal(shape['stroke-linecap'], 'round', selector);
+          assert.equal(shape['stroke-linejoin'], 'round', selector);
+        });
+      }
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test('the loading state is the disabled button with a 16px spinner, in every variant and both themes', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await finalPage({ colorScheme });
+    try {
+      const properties = ['backgroundColor', 'color', 'boxShadow', 'transform'];
+      assert.deepEqual(await computed(page, '#primary-loading', properties), {
+        backgroundColor: await resolvedToken(
+          page,
+          'backgroundColor',
+          '--coral-tint',
+        ),
+        color: await resolvedToken(page, 'color', '--ink-600'),
+        boxShadow: 'none',
+        transform: 'none',
+      });
+      const secondary = await computed(page, '#secondary-loading', properties);
+      assert.equal(
+        secondary.color,
+        await resolvedToken(page, 'color', '--ink-600'),
+      );
+      assert.equal(
+        secondary.boxShadow,
+        await resolvedToken(page, 'boxShadow', '--inset-line'),
+      );
+      assert.deepEqual(
+        await computed(page, '#midnight-loading', ['color', 'boxShadow']),
+        {
+          color: 'rgba(250, 250, 250, 0.45)',
+          boxShadow: 'rgba(250, 250, 250, 0.12) 0px 0px 0px 1px inset',
+        },
+      );
+      for (const button of [
+        '#primary-loading',
+        '#secondary-loading',
+        '#midnight-loading',
+      ]) {
+        const selector = `${button} .button__spinner`;
+        const spinner = await box(page, selector);
+        near(spinner.width, 16, `${selector} width`);
+        near(spinner.height, 16, `${selector} height`);
+        const label = (await computed(page, button, ['color'])).color;
+        const style = await computed(page, selector, [
+          'borderTopWidth',
+          'borderTopColor',
+          'borderRightColor',
+          'borderTopLeftRadius',
+          'opacity',
+          'animationName',
+        ]);
+        assert.deepEqual(style, {
+          borderTopWidth: '2px',
+          borderTopColor: label,
+          borderRightColor: 'rgba(0, 0, 0, 0)',
+          borderTopLeftRadius: '999px',
+          opacity: '0.8',
+          animationName: 'none',
+        });
+      }
+      // The owner shows the spinner with the hidden attribute.
+      assert.equal(
+        await page.locator('#spinner-hidden .button__spinner').isVisible(),
+        false,
+      );
+    } finally {
+      await context.close();
+    }
+    const { context: moving, page: movingPage } = await finalPage({
+      colorScheme,
+      reducedMotion: 'no-preference',
+    });
+    try {
+      const turning = await computed(
+        movingPage,
+        '#primary-loading .button__spinner',
+        [
+          'animationName',
+          'animationDuration',
+          'animationTimingFunction',
+          'animationIterationCount',
+        ],
+      );
+      assert.deepEqual(turning, {
+        animationName: 'button-spin',
+        animationDuration: '0.8s',
+        animationTimingFunction: 'linear',
+        animationIterationCount: 'infinite',
+      });
+    } finally {
+      await moving.close();
+    }
+  }
+});
+
+test('the 44 secondary stays 44 from 48rem, and takes the small type below it', async () => {
+  for (const [width, padding, font] of [
+    [1440, '20px', ['16px', '24px']],
+    [390, '16px', ['14px', '20px']],
+  ]) {
+    const { context, page } = await finalPage({
+      viewport: { width, height: 900 },
+    });
+    try {
+      near((await box(page, '#secondary-h44')).height, 44, `at ${width}`);
+      const style = await computed(page, '#secondary-h44', [
+        'paddingLeft',
+        'fontSize',
+        'lineHeight',
+      ]);
+      assert.equal(style.paddingLeft, padding, `at ${width}`);
+      assert.deepEqual([style.fontSize, style.lineHeight], font, `at ${width}`);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('text links underline in the text colour on hover, and an arrow link is a 6px row', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await finalPage({ colorScheme });
+    try {
+      for (const [selector, rest, hover] of [
+        ['#arrow-link', '--coral', '--ink'],
+        ['#arrow-link-midnight', '--coral-lift', '--on-midnight'],
+      ]) {
+        const style = await computed(page, selector, [
+          'display',
+          'columnGap',
+          'textDecorationColor',
+          'borderTopLeftRadius',
+        ]);
+        assert.deepEqual(style, {
+          display: 'inline-flex',
+          columnGap: '6px',
+          textDecorationColor: await resolvedToken(page, 'color', rest),
+          borderTopLeftRadius: '2px',
+        });
+        assert.equal(
+          (await box(page, `${selector} svg`)).width,
+          16,
+          `${selector} arrow`,
+        );
+        assert.equal(
+          await page.locator(`${selector} svg`).getAttribute('aria-hidden'),
+          'true',
+        );
+        await page.locator(selector).hover();
+        assert.equal(
+          (await computed(page, selector, ['textDecorationColor']))
+            .textDecorationColor,
+          await resolvedToken(page, 'color', hover),
+        );
+        await page.mouse.move(0, 0);
+      }
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('the invalid input keeps its error colour when focused, and the checkbox mark is the 14px heavy glyph', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await sheetPage({ colorScheme });
+    try {
+      await keyboardFocus(page, '#sheet-error');
+      assert.deepEqual(
+        await computed(page, '#sheet-error', ['borderTopColor', 'boxShadow']),
+        {
+          borderTopColor: await resolvedToken(page, 'color', '--error'),
+          boxShadow: await resolvedToken(
+            page,
+            'boxShadow',
+            '--ring-focus-error',
+          ),
+        },
+      );
+      const mark = '.checkbox:has(#sheet-check) .checkbox__mark';
+      near((await box(page, mark)).width, 14, 'mark width');
+      near((await box(page, mark)).height, 14, 'mark height');
+      assert.equal(
+        (await computed(page, `${mark} path`, ['strokeWidth'])).strokeWidth,
+        '2.25px',
+      );
+      // Hovering the label, not only the input's target, draws the box.
+      await page.locator('.checkbox:has(#sheet-check) .checkbox__text').hover();
+      assert.equal(
+        (
+          await computed(page, '.checkbox:has(#sheet-check) .checkbox__box', [
+            'borderTopColor',
+          ])
+        ).borderTopColor,
+        await resolvedToken(page, 'color', '--ink'),
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('an interactive card rises on hover, its arrow moves 3px, and focus adds only the outline', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await finalPage({
+      colorScheme,
+      reducedMotion: 'no-preference',
+    });
+    try {
+      const shadow1 = await resolvedValue(
+        page,
+        'boxShadow',
+        'var(--shadow-1), var(--edge)',
+      );
+      const shadow2 = await resolvedValue(
+        page,
+        'boxShadow',
+        'var(--shadow-2), var(--edge)',
+      );
+      const arrow = '#link-card .card__arrow';
+      assert.deepEqual(
+        await computed(page, '#link-card', [
+          'display',
+          'flexDirection',
+          'boxShadow',
+          'transform',
+        ]),
+        {
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: shadow1,
+          transform: 'none',
+        },
+      );
+      await page.locator('#link-card').hover();
+      await settled(page);
+      assert.deepEqual(
+        await computed(page, '#link-card', ['boxShadow', 'transform']),
+        { boxShadow: shadow2, transform: 'matrix(1, 0, 0, 1, 0, -2)' },
+      );
+      assert.deepEqual(await computed(page, arrow, ['color', 'transform']), {
+        color: await resolvedToken(page, 'color', '--ink'),
+        transform: 'matrix(1, 0, 0, 1, 3, 0)',
+      });
+      await page.mouse.down();
+      await settled(page);
+      assert.deepEqual(
+        await computed(page, '#link-card', ['boxShadow', 'transform']),
+        { boxShadow: shadow1, transform: 'none' },
+      );
+      await page.mouse.move(0, 0);
+      await page.mouse.up();
+      await settled(page);
+      assert.equal(
+        (await computed(page, arrow, ['transform'])).transform,
+        'none',
+      );
+
+      await keyboardFocus(page, '#link-card');
+      await settled(page);
+      assert.deepEqual(
+        await computed(page, '#link-card', [
+          'outlineWidth',
+          'outlineOffset',
+          'outlineColor',
+          'boxShadow',
+          'transform',
+        ]),
+        {
+          outlineWidth: '2px',
+          outlineOffset: '2px',
+          outlineColor: await resolvedToken(page, 'color', '--coral'),
+          boxShadow: shadow1,
+          transform: 'none',
+        },
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('notices match the library: neutral on a line, error on a 1.5px rule, success with its own icon colour', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await finalPage({ colorScheme });
+    try {
+      const surface = await resolvedToken(page, 'backgroundColor', '--surface');
+      const ink = await resolvedToken(page, 'color', '--ink');
+      const shared = {
+        backgroundColor: surface,
+        color: ink,
+        borderTopLeftRadius: '8px',
+        columnGap: '12px',
+        paddingTop: '16px',
+        paddingLeft: '16px',
+        borderTopWidth: '0px',
+      };
+      const properties = [...Object.keys(shared), 'boxShadow'];
+      const lined = await resolvedValue(
+        page,
+        'boxShadow',
+        'var(--inset-line), var(--edge)',
+      );
+      for (const selector of ['#notice-neutral', '#notice-success']) {
+        assert.deepEqual(await computed(page, selector, properties), {
+          ...shared,
+          boxShadow: lined,
+        });
+      }
+      const error = await computed(page, '#notice-error', properties);
+      assert.deepEqual(error, {
+        ...shared,
+        boxShadow: await resolvedToken(page, 'boxShadow', '--inset-error'),
+      });
+      // The rule is 1.5px wide, in the error colour.
+      assert.match(error.boxShadow, /0px 0px 0px 1\.5px inset$/u);
+      assert.ok(
+        error.boxShadow.startsWith(
+          await resolvedToken(page, 'color', '--error'),
+        ),
+      );
+      for (const [selector, token] of [
+        ['#notice-neutral', '--ink-600'],
+        ['#notice-error', '--error'],
+        ['#notice-success', '--success-icon'],
+      ]) {
+        assert.equal(
+          (await computed(page, `${selector} svg`, ['color'])).color,
+          await resolvedToken(page, 'color', token),
+          selector,
+        );
+        near(
+          (await box(page, `${selector} svg`)).width,
+          20,
+          `${selector} icon`,
+        );
+        assert.deepEqual(
+          await computed(page, `${selector} p`, [
+            'color',
+            'fontSize',
+            'lineHeight',
+            'fontWeight',
+          ]),
+          {
+            color: ink,
+            fontSize: '14px',
+            lineHeight: '20px',
+            fontWeight: '500',
+          },
+        );
+      }
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('a notice keeps a visible edge in forced-colours mode, where box shadows are removed', async () => {
+  const { context, page } = await finalPage({ forcedColors: 'active' });
+  try {
+    for (const selector of ['#notice-neutral', '#notice-error']) {
+      const style = await computed(page, selector, [
+        'outlineStyle',
+        'outlineWidth',
+      ]);
+      assert.deepEqual(style, { outlineStyle: 'solid', outlineWidth: '1px' });
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test('the theme toggle hovers on the strong line and E2, presses flat, and rests on the line while disabled before hydration', async () => {
+  const button = 'valstara-theme-toggle button';
+  for (const colorScheme of themes) {
+    const { context, page } = await finalPage({ colorScheme, path: '/sheet' });
+    try {
+      await page.waitForFunction(
+        () =>
+          globalThis.document.querySelector('valstara-theme-toggle button')
+            ?.disabled === false,
+      );
+      await page.locator(button).hover();
+      assert.equal(
+        (await computed(page, button, ['boxShadow'])).boxShadow,
+        await resolvedValue(
+          page,
+          'boxShadow',
+          'var(--inset-strong), var(--shadow-2), var(--edge)',
+        ),
+        `${colorScheme} hover`,
+      );
+      await page.mouse.down();
+      assert.equal(
+        (await computed(page, button, ['boxShadow'])).boxShadow,
+        await resolvedToken(page, 'boxShadow', '--inset-strong'),
+        `${colorScheme} pressed`,
+      );
+      await page.mouse.move(0, 0);
+      await page.mouse.up();
+    } finally {
+      await context.close();
+    }
+    // Without JavaScript the toggle stays as served: disabled.
+    const { context: served, page: servedPage } = await finalPage({
+      colorScheme,
+      path: '/sheet',
+      javaScriptEnabled: false,
+    });
+    try {
+      assert.deepEqual(
+        await computed(servedPage, button, ['boxShadow', 'color']),
+        {
+          boxShadow: await resolvedToken(
+            servedPage,
+            'boxShadow',
+            '--inset-line',
+          ),
+          color: await resolvedToken(servedPage, 'color', '--ink-600'),
+        },
+        `${colorScheme} disabled`,
+      );
+    } finally {
+      await served.close();
+    }
+  }
+});
+
+test('the FAQ chevron sits on its 32px disc, and the answer keeps its right gutter from 48rem', async () => {
+  for (const colorScheme of themes) {
+    for (const [width, gutter] of [
+      [1440, '48px'],
+      [390, '0px'],
+    ]) {
+      const { context, page } = await sheetPage({
+        colorScheme,
+        viewport: { width, height: 2400 },
+      });
+      try {
+        const disc = '#faq-closed .accordion__disc';
+        const size = await box(page, disc);
+        near(size.width, 32, 'disc width');
+        near(size.height, 32, 'disc height');
+        assert.deepEqual(
+          await computed(page, disc, [
+            'backgroundColor',
+            'color',
+            'borderTopLeftRadius',
+          ]),
+          {
+            backgroundColor: await resolvedToken(
+              page,
+              'backgroundColor',
+              '--wash',
+            ),
+            color: await resolvedToken(page, 'color', '--ink-600'),
+            borderTopLeftRadius: '999px',
+          },
+        );
+        assert.equal(
+          await page.locator(disc).getAttribute('aria-hidden'),
+          'true',
+        );
+        assert.equal(
+          (await computed(page, '#faq-open .accordion__disc', ['color'])).color,
+          await resolvedToken(page, 'color', '--ink'),
+        );
+        await page.locator('#faq-closed summary').hover();
+        assert.deepEqual(
+          await computed(page, disc, ['backgroundColor', 'color']),
+          {
+            backgroundColor: await resolvedToken(
+              page,
+              'backgroundColor',
+              '--wash-strong',
+            ),
+            color: await resolvedToken(page, 'color', '--ink'),
+          },
+        );
+        assert.equal(
+          (await computed(page, '#faq-closed summary', ['borderTopLeftRadius']))
+            .borderTopLeftRadius,
+          '4px',
+        );
+        assert.equal(
+          (
+            await computed(page, '#faq-open .accordion__content', [
+              'paddingRight',
+            ])
+          ).paddingRight,
+          gutter,
+        );
+      } finally {
+        await context.close();
+      }
+    }
+  }
+});
+
+test('each primitive transitions exactly the canvas motion table, and a press moves a button down 1px', async () => {
+  const { context, page } = await finalPage({
+    path: '/sheet',
+    reducedMotion: 'no-preference',
+  });
+  try {
+    await page.waitForFunction(
+      () =>
+        globalThis.document.querySelector('valstara-theme-toggle button')
+          ?.disabled === false,
+    );
+    const table = (duration) => (properties) => ({
+      transitionProperty: properties,
+      transitionDuration: duration,
+      transitionTimingFunction: easeOut,
+    });
+    const fast = table('0.15s');
+    const base = table('0.2s');
+    for (const [selector, expected] of [
+      ['#primary', fast('background-color, box-shadow, color, transform')],
+      ['#secondary', fast('background-color, box-shadow, color, transform')],
+      [
+        '#sheet-on-midnight',
+        fast('background-color, box-shadow, color, transform'),
+      ],
+      ['valstara-theme-toggle button', fast('box-shadow, transform')],
+      ['#text-link', fast('text-decoration-color')],
+      ['#sheet-email', fast('background-color, border-color, box-shadow')],
+      [
+        '.checkbox:has(#sheet-check) .checkbox__box',
+        fast('background-color, border-color, box-shadow'),
+      ],
+      ['#sheet-card-link', base('box-shadow, transform')],
+      ['#faq-closed .accordion__disc', fast('background-color, color')],
+      ['#faq-closed svg', base('transform')],
+    ]) {
+      assert.deepEqual(await transitionOf(page, selector), expected, selector);
+    }
+
+    for (const selector of [
+      '#primary',
+      '#secondary',
+      '#sheet-on-midnight',
+      'valstara-theme-toggle button',
+    ]) {
+      await page.locator(selector).hover();
+      await page.mouse.down();
+      await settled(page);
+      assert.equal(
+        (await computed(page, selector, ['transform'])).transform,
+        'matrix(1, 0, 0, 1, 0, 1)',
+        `${selector} presses down`,
+      );
+      await page.mouse.move(0, 0);
+      await page.mouse.up();
+      await settled(page);
+      assert.equal(
+        (await computed(page, selector, ['transform'])).transform,
+        'none',
+        `${selector} returns`,
+      );
+    }
+    // A disabled button does not move.
+    await page.locator('#primary-disabled').hover({ force: true });
+    await page.mouse.down();
+    await settled(page);
+    assert.equal(
+      (await computed(page, '#primary-disabled', ['transform'])).transform,
+      'none',
+    );
+    await page.mouse.up();
+    await page.mouse.move(0, 0);
+
+    await page.goto(`${browserOrigin}/final`);
+    await page.locator('#arrow-link').hover();
+    await settled(page);
+    assert.equal(
+      (await computed(page, '#arrow-link svg', ['transform'])).transform,
+      'matrix(1, 0, 0, 1, 2, 0)',
+    );
+    assert.deepEqual(
+      await transitionOf(page, '#arrow-link svg'),
+      fast('transform'),
+    );
+    assert.deepEqual(
+      await transitionOf(page, '#link-card .card__arrow'),
+      fast('color, transform'),
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test('a field error fades in and rises 4px as it appears, over the fast duration', async () => {
+  const { context, page } = await finalPage({
+    path: '/sheet',
+    reducedMotion: 'no-preference',
+  });
+  try {
+    const row = '#field-error .field__error-row';
+    const appearance = await page.locator(row).evaluate((element) => {
+      // Reappear, so the animation is read from its start with a paused clock.
+      element.style.display = 'none';
+      element.getBoundingClientRect();
+      element.style.display = '';
+      const [animation] = element.getAnimations();
+      animation.pause();
+      animation.currentTime = 0;
+      const style = globalThis.getComputedStyle(element);
+      const atStart = { opacity: style.opacity, translate: style.translate };
+      const timing = animation.effect.getTiming();
+      const description = {
+        name: animation.animationName,
+        duration: timing.duration,
+        easing: timing.easing,
+        atStart,
+        keyframes: animation.effect
+          .getKeyframes()
+          .flatMap((frame) => Object.keys(frame))
+          .filter(
+            (key) =>
+              !['offset', 'computedOffset', 'easing', 'composite'].includes(
+                key,
+              ),
+          ),
+      };
+      animation.finish();
+      return {
+        ...description,
+        atEnd: {
+          opacity: globalThis.getComputedStyle(element).opacity,
+          translate: globalThis.getComputedStyle(element).translate,
+        },
+      };
+    });
+    assert.equal(appearance.name, 'field-error-enter');
+    assert.equal(appearance.duration, 150);
+    assert.deepEqual(appearance.atStart, {
+      opacity: '0',
+      translate: '0px 4px',
+    });
+    assert.deepEqual(appearance.atEnd, { opacity: '1', translate: 'none' });
+    assert.deepEqual(
+      [...new Set(appearance.keyframes)].sort(),
+      ['opacity', 'translate'],
+      'only opacity and translate animate',
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test('the FAQ answer opens and closes smoothly on the native details, where the browser supports it', async () => {
+  const { context, page } = await finalPage({
+    path: '/sheet',
+    reducedMotion: 'no-preference',
+  });
+  try {
+    assert.ok(
+      await page.evaluate(
+        () =>
+          globalThis.CSS.supports('interpolate-size', 'allow-keywords') &&
+          globalThis.CSS.supports('selector(::details-content)'),
+      ),
+      'the test browser supports the smooth disclosure',
+    );
+    const details = page.locator('#faq-closed');
+    assert.equal(
+      await details.evaluate((element) => element.tagName),
+      'DETAILS',
+    );
+    const contentTransition = () =>
+      details.evaluate((element) => {
+        const style = globalThis.getComputedStyle(element, '::details-content');
+        return {
+          property: style.transitionProperty,
+          duration: style.transitionDuration,
+          easing: style.transitionTimingFunction,
+          behaviour: style.transitionBehavior,
+        };
+      });
+    assert.deepEqual(await contentTransition(), {
+      property: 'block-size, content-visibility',
+      duration: '0.2s',
+      easing: easeOut,
+      behaviour: 'allow-discrete',
+    });
+    // The details element's height, frame by frame, as it toggles natively.
+    const heightsWhileToggling = () =>
+      details.evaluate(
+        (element) =>
+          new Promise((resolve) => {
+            const heights = [element.getBoundingClientRect().height];
+            element.toggleAttribute('open');
+            const start = globalThis.performance.now();
+            const sample = () => {
+              heights.push(element.getBoundingClientRect().height);
+              if (globalThis.performance.now() - start < 500) {
+                globalThis.requestAnimationFrame(sample);
+              } else {
+                resolve(heights);
+              }
+            };
+            globalThis.requestAnimationFrame(sample);
+          }),
+      );
+    const opening = await heightsWhileToggling();
+    assert.equal(await details.getAttribute('open'), '');
+    const [closedHeight, openHeight] = [opening[0], opening.at(-1)];
+    assert.ok(openHeight > closedHeight, 'the answer takes its natural height');
+    assert.ok(
+      opening.some((height) => height > closedHeight && height < openHeight),
+      `opening passes through intermediate heights: ${opening}`,
+    );
+    const closing = await heightsWhileToggling();
+    assert.equal(await details.getAttribute('open'), null);
+    near(closing.at(-1), closedHeight, 'the answer closes fully');
+    assert.ok(
+      closing.some((height) => height > closedHeight && height < openHeight),
+      `closing passes through intermediate heights: ${closing}`,
+    );
+    // Clicking the summary still drives it: it stays a native disclosure.
+    await page.locator('#faq-closed summary').click();
+    await settled(page);
+    assert.equal(await details.getAttribute('open'), '');
+    assert.ok(
+      (await box(page, '#faq-closed .accordion__content')).height > 0,
+      'the answer is open at its natural height',
+    );
+    await page.locator('#faq-closed summary').click();
+    await settled(page);
+    assert.equal(await details.getAttribute('open'), null);
+    assert.equal(
+      await page.locator('#faq-closed .accordion__content').isVisible(),
+      false,
+      'the answer closes',
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test('under reduced motion every primitive is at rest: no transition, no animation, and no state moves', async () => {
+  const { context, page } = await finalPage({ path: '/sheet' });
+  try {
+    await page.waitForFunction(
+      () =>
+        globalThis.document.querySelector('valstara-theme-toggle button')
+          ?.disabled === false,
+    );
+    for (const selector of [
+      '#primary',
+      '#secondary',
+      '#sheet-on-midnight',
+      'valstara-theme-toggle button',
+      '#text-link',
+      '#sheet-email',
+      '.checkbox:has(#sheet-check) .checkbox__box',
+      '#sheet-card-link',
+      '#faq-closed .accordion__disc',
+      '#faq-closed svg',
+    ]) {
+      assert.equal(
+        (await transitionOf(page, selector)).transitionProperty,
+        'none',
+        selector,
+      );
+    }
+    // Pressing and hovering change colour and shadow only.
+    for (const selector of ['#primary', 'valstara-theme-toggle button']) {
+      await page.locator(selector).hover();
+      await page.mouse.down();
+      assert.equal(
+        (await computed(page, selector, ['transform'])).transform,
+        'none',
+        selector,
+      );
+      await page.mouse.move(0, 0);
+      await page.mouse.up();
+    }
+    await page.locator('#sheet-card-link').hover();
+    assert.equal(
+      (await computed(page, '#sheet-card-link', ['transform'])).transform,
+      'none',
+    );
+    assert.equal(
+      (
+        await computed(page, '#field-error .field__error-row', [
+          'animationName',
+        ])
+      ).animationName,
+      'none',
+    );
+    // The disclosure has no transition, and opens at once.
+    assert.equal(
+      await page
+        .locator('#faq-closed')
+        .evaluate(
+          (element) =>
+            globalThis.getComputedStyle(element, '::details-content')
+              .transitionProperty,
+        ),
+      'all',
+    );
+    assert.equal(
+      await page
+        .locator('#faq-closed')
+        .evaluate(
+          (element) =>
+            globalThis.getComputedStyle(element, '::details-content')
+              .transitionDuration,
+        ),
+      '0s',
+    );
+    await page.locator('#faq-closed summary').click();
+    assert.equal(
+      await page
+        .locator('#faq-closed')
+        .evaluate((element) => element.getAnimations({ subtree: true }).length),
+      0,
+    );
+    assert.ok((await box(page, '#faq-closed .accordion__content')).height > 0);
+    assert.deepEqual(
+      await page.evaluate(() =>
+        globalThis.document
+          .getAnimations()
+          .map((animation) => animation.constructor.name),
+      ),
+      [],
+    );
+
+    await page.goto(`${browserOrigin}/final`);
+    assert.equal(
+      (
+        await computed(page, '#primary-loading .button__spinner', [
+          'animationName',
+        ])
+      ).animationName,
+      'none',
+    );
+    await page.locator('#arrow-link').hover();
+    assert.equal(
+      (await computed(page, '#arrow-link svg', ['transform'])).transform,
+      'none',
+    );
+    await page.locator('#link-card').hover();
+    assert.equal(
+      (await computed(page, '#link-card .card__arrow', ['transform']))
+        .transform,
+      'none',
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test('no primitive animates a layout property, except the opened FAQ answer', async () => {
+  const layout =
+    /(?:^|, )(?:width|height|inline-size|block-size|min-|max-|inset|top|right|bottom|left|margin|padding|all)/u;
+  for (const path of ['/sheet', '/final']) {
+    const { context, page } = await finalPage({
+      path,
+      reducedMotion: 'no-preference',
+    });
+    try {
+      const offenders = await page.evaluate((source) => {
+        const pattern = new RegExp(source, 'u');
+        return [...globalThis.document.querySelectorAll('main *')]
+          .filter((element) => {
+            const style = globalThis.getComputedStyle(element);
+            // A browser's initial `all 0s` transitions nothing.
+            return (
+              style.transitionDuration !== '0s' &&
+              pattern.test(style.transitionProperty)
+            );
+          })
+          .map((element) => element.tagName + '.' + element.className);
+      }, layout.source);
+      assert.deepEqual(offenders, [], path);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('the primitive sheets pass axe in both themes', async () => {
+  const axeSource = await readFile(
+    join(projectRoot, 'node_modules/axe-core/axe.min.js'),
+    'utf8',
+  );
+  for (const colorScheme of themes) {
+    for (const path of ['/sheet', '/final']) {
+      const { context, page } = await finalPage({ colorScheme, path });
+      try {
+        await page.addScriptTag({ content: axeSource });
+        const violations = await page.evaluate(async () =>
+          (
+            await globalThis.axe.run(globalThis.document, {
+              resultTypes: ['violations'],
+              runOnly: {
+                type: 'tag',
+                values: [
+                  'wcag2a',
+                  'wcag2aa',
+                  'wcag21a',
+                  'wcag21aa',
+                  'wcag22aa',
+                ],
+              },
+            })
+          ).violations.map((violation) => ({
+            id: violation.id,
+            nodes: violation.nodes.map((node) => node.target.join(' ')),
+          })),
+        );
+        assert.deepEqual(violations, [], `${path} in ${colorScheme}`);
+      } finally {
+        await context.close();
+      }
     }
   }
 });

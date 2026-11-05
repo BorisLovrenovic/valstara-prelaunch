@@ -176,6 +176,8 @@ async function openForm({
           },
           render(_element, options) {
             globalThis.testTurnstileOptions = options;
+            // A null delay leaves the test to resolve the challenge itself.
+            if (delay === null) return 'test-widget';
             globalThis.setTimeout(() => {
               if (mode === 'error') {
                 options['error-callback']();
@@ -188,6 +190,7 @@ async function openForm({
             return 'test-widget';
           },
           reset() {
+            if (delay === null) return;
             globalThis.setTimeout(() => {
               if (mode === 'error')
                 globalThis.testTurnstileOptions?.['error-callback']();
@@ -253,7 +256,7 @@ test('the no-JS form explains the requirement and the real route rejects its emp
 });
 
 test('submission waits for delayed Turnstile resolution and posts the resolved token', async () => {
-  const { context, page } = await openForm({ turnstileDelay: 250 });
+  const { context, page } = await openForm({ turnstileDelay: null });
   let submittedBody;
   let requestSeen = false;
   await page.route('**/api/signup', async (route) => {
@@ -268,6 +271,14 @@ test('submission waits for delayed Turnstile resolution and posts the resolved t
 
   await page.fill('#signup-email', 'delayed@example.com');
   await page.click('[data-submit]');
+  await page.waitForFunction(
+    (label) =>
+      globalThis.document.querySelector('[data-submit]')?.textContent === label,
+    signupFormCopy.challengePending,
+    { timeout: 5000 },
+  );
+  // Nothing resolves the challenge until this test does, so this is not a race:
+  // it only gives a request sent too early the time to be seen.
   await page.waitForTimeout(100);
   assert.equal(await page.locator('[data-submit]').isDisabled(), true);
   assert.equal(
@@ -279,7 +290,11 @@ test('submission waits for delayed Turnstile resolution and posts the resolved t
     false,
     'no request is sent before Turnstile resolves',
   );
-  await page.waitForResponse('**/api/signup');
+  const response = page.waitForResponse('**/api/signup');
+  await page.evaluate(() =>
+    globalThis.testTurnstileOptions.callback('rendered-page-turnstile-token'),
+  );
+  await response;
 
   const body = submittedBody?.toString('utf8') ?? '';
   assert.match(

@@ -1,13 +1,21 @@
 ---
 import type { HTMLAttributes } from 'astro/types';
+import Icon from './icon.astro';
 
 type Props = HTMLAttributes<'a'> & {
   href: string;
+  // A standalone link ends in the decorative arrow, which moves on hover.
+  arrow?: boolean;
   // On a midnight band the text is on-midnight with a coral-lift underline.
   variant?: 'default' | 'on-midnight';
 };
 
-const { class: className, variant = 'default', ...attributes } = Astro.props;
+const {
+  arrow = false,
+  class: className,
+  variant = 'default',
+  ...attributes
+} = Astro.props;
 ---
 
 <a
@@ -15,8 +23,12 @@ const { class: className, variant = 'default', ...attributes } = Astro.props;
   class:list={[
     'text-link',
     variant === 'on-midnight' && 'text-link--on-midnight',
+    arrow && 'text-link--arrow',
     className,
-  ]}><slot /></a
+  ]}
+  ><slot />{
+    arrow && <Icon name="arrow-right" size="sm" class="text-link__arrow" />
+  }</a
 >
 
 <style>
@@ -30,12 +42,35 @@ const { class: className, variant = 'default', ...attributes } = Astro.props;
     text-decoration-color: var(--coral);
     text-decoration-thickness: var(--underline-thickness);
     text-underline-offset: var(--underline-offset);
-    border-radius: var(--radius-check);
+    border-radius: var(--radius-link);
+    transition-property: text-decoration-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .text-link:hover {
+    text-decoration-color: var(--ink);
   }
 
   .text-link--on-midnight {
     color: var(--on-midnight);
     text-decoration-color: var(--coral-lift);
+  }
+
+  .text-link--on-midnight:hover {
+    text-decoration-color: var(--on-midnight);
+  }
+
+  .text-link--arrow {
+    display: inline-flex;
+    gap: var(--space-0-75);
+    align-items: center;
+  }
+
+  .text-link--arrow :global(.text-link__arrow) {
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
   }
 
   .text-link:focus-visible {
@@ -51,6 +86,19 @@ const { class: className, variant = 'default', ...attributes } = Astro.props;
   @media (min-width: 48rem) {
     .text-link {
       padding-block: var(--space-0);
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .text-link--arrow:hover :global(.text-link__arrow) {
+      transform: translateX(var(--arrow-shift));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .text-link,
+    .text-link--arrow :global(.text-link__arrow) {
+      transition-property: none;
     }
   }
 </style>

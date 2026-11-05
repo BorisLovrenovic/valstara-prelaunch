@@ -1,0 +1,130 @@
+---
+// E11.5-11j: the component library's states the sheet does not carry, so the
+// tests read the real components, and the icon sheet's additions at each size.
+import Button from '../../../../../src/components/button.astro';
+import Card from '../../../../../src/components/card.astro';
+import Icon from '../../../../../src/components/icon.astro';
+import Section from '../../../../../src/components/section.astro';
+import TextLink from '../../../../../src/components/text-link.astro';
+import TaskCard from '../../../../../src/layouts/task-card.astro';
+import '../../../../../src/styles/tokens.css';
+
+const added = ['copy', 'download', 'erase', 'history', 'list', 'x'] as const;
+const sizes = ['sm', 'base', 'md'] as const;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Final-design primitive fixture</title>
+  </head>
+  <body>
+    <main>
+      <div class="sheet">
+        <div class="row">
+          <Button id="primary-loading" disabled
+            ><span class="button__spinner" aria-hidden="true"></span>Adding you
+            to the waitlist</Button
+          >
+          <Button id="secondary-loading" variant="secondary" disabled
+            ><span class="button__spinner" aria-hidden="true"></span>Send the
+            link again</Button
+          >
+          <Button id="spinner-hidden" disabled
+            ><span class="button__spinner" aria-hidden="true" hidden></span>Join
+            the waitlist</Button
+          >
+          <Button id="secondary-h44" variant="secondary" size="h44"
+            >Send the link again</Button
+          >
+        </div>
+        <p class="body">
+          <TextLink id="arrow-link" href="#target" arrow
+            >See the leaderboard</TextLink
+          >
+        </p>
+        <div class="row" data-icons>
+          {
+            added.map((name) =>
+              sizes.map((size) => (
+                <span data-icon={name} data-size={size}>
+                  <Icon {name} {size} />
+                </span>
+              )),
+            )
+          }
+        </div>
+        <Card id="link-card" href="#target" interactive>
+          <span
+            >Is Valstara legit?<Icon
+              name="arrow-right"
+              size="sm"
+              class="card__arrow"
+            /></span
+          >
+        </Card>
+        <p id="target">Target</p>
+      </div>
+      <Section id="final-midnight" variant="midnight">
+        <div class="row">
+          <Button id="midnight-loading" variant="on-midnight" disabled
+            ><span class="button__spinner" aria-hidden="true"></span>Read the
+            guarantee</Button
+          >
+        </div>
+        <p class="body">
+          <TextLink
+            id="arrow-link-midnight"
+            href="#target"
+            variant="on-midnight"
+            arrow>Read the guarantee</TextLink
+          >
+        </p>
+      </Section>
+      <TaskCard heading="Notices" icon="shield" state="fixture">
+        <div class="task-card__notice" id="notice-neutral">
+          <Icon name="clock" size="base" />
+          <p>Choose by the deadline.</p>
+        </div>
+        <div class="task-card__notice" id="notice-error" data-tone="error">
+          <Icon name="alert" size="base" />
+          <p role="alert">That did not work.</p>
+        </div>
+        <div class="task-card__notice" id="notice-success" data-tone="success">
+          <Icon name="check" size="base" />
+          <p role="status">Saved.</p>
+        </div>
+      </TaskCard>
+    </main>
+  </body>
+</html>
+
+<style>
+  html,
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    background-color: var(--paper);
+  }
+
+  .sheet {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .body {
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+</style>

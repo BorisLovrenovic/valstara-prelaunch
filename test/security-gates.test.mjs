@@ -40,6 +40,7 @@ async function createFixtureRepository(name, fixture) {
   const repository = join(temporaryRoot, 'repository');
   const excluded = new Set([
     '.astro',
+    '.design-contact-sheets',
     '.git',
     'coverage',
     'dist',

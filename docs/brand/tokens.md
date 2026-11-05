@@ -98,7 +98,7 @@ The portable file also carries `--shadow-1` through `--shadow-3` (with paired da
 | Banner constants (E11.5-11c, founder-authorised 2026-10-27) | `--banner-white` (the logo chip, and white text on a brand colour) · `--banner-ink` (the chip's name, and ink text on a light brand colour) | `#ffffff` (LOCKED `surface`) · `#101014` (LOCKED `ink`) | unchanged: the chip stays light and banner text keeps its contrast on the brand colour in both themes |
 | Banner shapes (E11.5-11c, founder-authorised 2026-10-27; t4 to t6 E11.5-11d, 2026-10-28) | `--banner-shape-t1-top`, `-t1-right`, `-t2-right`, `-t2-bottom`, `-t3-top`, `-t3-left`, `-t4-top`, `-t4-right`, `-t5-top`, `-t5-right`, `-t6-top`, `-t6-left`: the wireframe's `.t1` to `.t6` tonal-shape offsets, one token per side each shape sets, in percentages of the banner | `-80%` · `-12%` · `-20%` · `-75%` · `-140%` · `-34%` · `-90%` · `16%` · `-64%` · `6%` · `38%` · `52%` | unchanged |
 | Dark chip shadow (E11.5-11d, founder-authorised 2026-10-28) | `--shadow-chip-dark`: the shadow of the dark chip a white-only logo takes | the `--shadow-chip` value | `0 0 0 1px rgba(240,240,238,.18), 0 6px 14px rgba(0,0,0,.3)`, a light ring so the dark chip holds its edge on a dark page |
-| Dark-only values | `--banner-edge`, `--banner-edge-hero`, `--banner-edge-hover`, `--shadow-band` | `0 0 0 0 transparent` (light base) | the 1px light edges at .1, .12 and .14, and the guarantee-band shadow |
+| Dark-only values | `--banner-edge`, `--banner-edge-hero`, `--banner-edge-hover`, `--shadow-band` | `0 0 0 0 transparent` (light base; `--shadow-band` is `none` from E11.5-11j) | the 1px light edges at .1, .12 and .14, and the guarantee-band shadow |
 | Composites | `--ring-focus`, `--inset-line`, `--inset-strong`, `--ring-numeral` (E11.5-11f), `--inset-on-midnight`, `--inset-on-midnight-disabled` | a token colour with a fixed width | follow their colours |
 | Layout | `--grid-columns` 4 / `--grid-columns-wide` 12, `--grid-gap` 16px / `--grid-gap-wide` 24px, `--header-height` 72px / `--header-height-wide` 80px | — | — |
 | Lines and focus | `--radius-check` 4px, `--border-thin` 1px, `--border-check` 1.5px, `--border-strong` 2px, `--focus-width` 2px, `--focus-offset` 2px, `--underline-thickness` 2px, `--underline-offset` 3px | — | — |
@@ -108,6 +108,43 @@ The portable file also carries `--shadow-1` through `--shadow-3` (with paired da
 **The closed breakpoint set is `22.5rem`, `48rem`, `64rem` and `80rem`** (E11.5-11a amends E11.5 design rule 7). Small is below 48rem, medium is 48rem to below 64rem, large is 64rem and up, and wide is 80rem and up. `22.5rem` is used by the header's Join button and, as the 320 frame draws it, by the landing hero's tight logo strip (E11.5-11c, founder-authorised 2026-10-27). `40rem` is no longer in the set, because no query uses it. These are the only literal lengths permitted in an `@media` condition, because CSS custom properties cannot be used there.
 
 E11.5-04 moved the provider showcase's presentation values into the portable file. `--space-0: 0` remains. E11.5-11d (founder-authorised 2026-10-28) removed the other four, `--provider-layer-decor`, `--provider-banner-tone`, `--provider-depth-brightness` and `--provider-rail-peek`, because the wireframe banner replaced the gradient tone, the depth circle and the peeking rail column, and nothing referenced them.
+
+### Final-design tokens (E11.5-11j)
+
+The token delta from the final design's change log, `docs/design/final-ui/project/ChangeLog.dc.html`. Each is an alpha of a LOCKED colour or a black-based shadow: **no hue and no type size is added**, and tests assert it. A dark value of "same" means the token has no dark redefinition and inherits its light value.
+
+| Token | Light | Dark (both blocks) | Use |
+|---|---|---|---|
+| `--on-midnight-600` | `rgba(250,250,250,.74)` | `rgba(240,240,238,.74)` | Secondary text on midnight: band line, promise text, footer legal (9.52:1) |
+| `--on-midnight-line` | `rgba(250,250,250,.12)` | same | Promise panel edges, the footer rule, and the disabled on-midnight button's edge |
+| `--wash` | `rgba(16,16,20,.05)` | `rgba(240,240,238,.06)` | Nav hover, the FAQ disc, segmented track, neutral tiles, the info notice |
+| `--wash-strong` | `rgba(16,16,20,.09)` | `rgba(240,240,238,.10)` | Pressed states, the FAQ disc on hover, empty meter segments, skeletons, inline code |
+| `--success-tint` | `rgba(46,125,87,.12)` | `rgba(46,125,87,.28)` | Success tiles on `/verify`, `/unsubscribe`, `/giveaway/award` |
+| `--error-tint` | `rgba(192,57,43,.10)` | `rgba(192,57,43,.24)` | The error tile (unsubscribe failed) |
+| `--banner-ring-dark`, `--banner-ring-ink` | `rgba(255,255,255,.20)`, `rgba(16,16,20,.14)` | same | The ring layer inside provider banners (E11.5-11n) |
+| `--banner-sheen` | `rgba(255,255,255,.14)` | same | The canvas's top-left light on hero stack banners. **No consumer yet:** final-design rule 4 leaves the hero stack as built |
+| `--shadow-sticky` | unchanged | `0 -1px 0 rgba(240,240,238,.1), 0 -16px 40px rgba(0,0,0,.5)` | Both phone sticky bars |
+| `--shadow-band` | `none` | unchanged | The guarantee band and the footer in dark |
+| `--overlay-hover` | unchanged | `inset 0 0 0 100px rgba(16,16,20,.10)` | Primary button hover |
+
+The delta's other entries were already built under the same name and value, and are reused: `--on-midnight-border`, `--on-midnight-hover`, `--on-midnight-active`, `--on-midnight-disabled`, `--shadow-chip`, `--shadow-chip-dark`, `--shadow-button`, `--overlay-active`, the dark `--shadow-3` and `--ease-out`. **Not built:** `--placeholder-block` and `--placeholder-text` (final-design rule 3, the `IMG-01` slot is not built) and the frames-only 6px radius, which is not part of the product. No delta entry adds a hue or a type size.
+
+`--on-midnight-disabled-border` is now `var(--on-midnight-line)`, the canvas's disabled edge, where the wireframes had `.2`.
+
+The primitives need these values beyond the delta, under final-design rule 6:
+
+| Token | Value | Use |
+|---|---|---|
+| `--success-icon` | `var(--success)`, dark `var(--ink)` | A success icon on a card or notice. `#2E7D57` on the dark surface is below 3:1 |
+| `--ring-focus-error` | `0 0 0 2px var(--surface), 0 0 0 4px var(--error)` | The focus ring of an invalid input |
+| `--inset-error` | `inset 0 0 0 1.5px var(--error)` | An error notice's rule |
+| `--radius-link` | `2px` | A text link's focus outline |
+| `--stroke-heavy` | `2.25` | The heavier stroke of a glyph inside a control, such as the checkbox mark, in the icon's 24-unit grid |
+| `--arrow-shift`, `--arrow-shift-card` | `0.125rem`, `0.1875rem` | The 2px link arrow move and the 3px interactive-card arrow move |
+| `--error-rise` | `0.25rem` | How far a field error rises as it appears |
+| `--spinner-opacity`, `--duration-spin` | `0.8`, `800ms` | The in-flight spinner's opacity and its turn |
+
+The arrow, error and spinner values sit with the motion tokens on bare `:root`, with no dark redefinition.
 
 ### Motion tokens (E11.5-11i)
 
@@ -175,6 +212,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 **E11.5-11d port change:** the file adds the six `--banner-shape-t4/t5/t6-*` offsets and `--shadow-chip-dark`, which has a dark value in both dark blocks. It drops `--provider-layer-decor`, `--provider-banner-tone`, `--provider-depth-brightness` and `--provider-rail-peek`. A storefront that copied an earlier version must remove those four. Re-run the dark-name-set and no-new-hue tests after the port.
 
 **E11.5-11f port addition:** the file adds `--ring-numeral` (founder-authorised 2026-10-29), declared once on `:root`; its colour follows `--coral` in both themes.
+
+**E11.5-11j port change:** the file adds the final-design tokens above. `--shadow-band` changes from `0 0 0 0 transparent` to `none` in light, so a storefront rule must use it alone, never in a shadow list. `--on-midnight-disabled-border` now resolves to `--on-midnight-line`. The dark blocks gain `--on-midnight-600`, `--wash`, `--wash-strong`, `--success-tint`, `--error-tint`, `--success-icon`, `--overlay-hover` and `--shadow-sticky`. Re-run the no-new-hue, contrast-matrix and dark-name-set tests after the port. The file is still copied verbatim.
 
 **E11.5-11i port addition:** the file adds the motion tokens above, declared once on bare `:root` with no dark redefinition. They port with `tokens.css`. `src/styles/motion.css` (the entrance and reveal utilities, page transitions and smooth anchor scrolling) is waitlist presentation, not part of the portable file: the storefront adopts or drops it at port time. If adopted, it keeps every rule inside `prefers-reduced-motion: no-preference`.
 

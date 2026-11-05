@@ -155,21 +155,21 @@ import { themeToggleCopy } from '../copy/theme-toggle.ts';
     color: var(--ink);
     font: inherit;
     background-color: var(--surface);
-    border: var(--border-thin) solid var(--line);
+    border: none;
     border-radius: var(--radius-control);
+    box-shadow: var(--inset-line), var(--shadow-1), var(--edge);
     cursor: pointer;
-    transition-property: border-color, box-shadow;
+    transition-property: box-shadow, transform;
     transition-duration: var(--duration-fast);
     transition-timing-function: var(--ease-out);
   }
 
   button:hover {
-    border-color: var(--coral);
-    box-shadow: var(--shadow-1);
+    box-shadow: var(--inset-strong), var(--shadow-2), var(--edge);
   }
 
   button:active {
-    box-shadow: none;
+    box-shadow: var(--inset-strong);
   }
 
   button:focus-visible {
@@ -180,7 +180,7 @@ import { themeToggleCopy } from '../copy/theme-toggle.ts';
   button:disabled {
     color: var(--ink-600);
     cursor: not-allowed;
-    box-shadow: none;
+    box-shadow: var(--inset-line);
   }
 
   button :global(.theme-toggle__icon--sun),
@@ -207,6 +207,12 @@ import { themeToggleCopy } from '../copy/theme-toggle.ts';
   [data-theme-toggle-status] {
     font-size: var(--step-1);
     line-height: var(--leading-1);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    button:active:not(:disabled) {
+      transform: translateY(var(--press-shift));
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {

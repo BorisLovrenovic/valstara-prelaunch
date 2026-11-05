@@ -120,7 +120,7 @@ const challengeActive =
     {
       notice ? (
         <div class="task-card__notice" data-tone={notice.tone}>
-          <Icon name={notice.icon} size="md" />
+          <Icon name={notice.icon} size="base" />
           <p role="status">{notice.message}</p>
         </div>
       ) : null
@@ -184,7 +184,7 @@ const challengeActive =
           <p>{copy.substitution.body}</p>
           {ownAward.substitutionDeadline ? (
             <div class="task-card__notice">
-              <Icon name="clock" size="md" />
+              <Icon name="clock" size="base" />
               <p>{copy.substitution.deadline(ownAward.substitutionDeadline)}</p>
             </div>
           ) : null}

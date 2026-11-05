@@ -62,6 +62,16 @@ const expectedDarkTokens = {
   '--line': 'rgba(240,240,238,.14)',
   '--coral-tint': 'rgba(255,138,102,.16)',
   '--error-text': 'var(--ink)',
+  // E11.5-11j: the token delta's dark values, and the dark success icon.
+  '--success-icon': 'var(--ink)',
+  '--on-midnight-600': 'rgba(240,240,238,.74)',
+  '--wash': 'rgba(240,240,238,.06)',
+  '--wash-strong': 'rgba(240,240,238,.10)',
+  '--success-tint': 'rgba(46,125,87,.28)',
+  '--error-tint': 'rgba(192,57,43,.24)',
+  '--overlay-hover': 'inset 0 0 0 100px rgba(16,16,20,.10)',
+  '--shadow-sticky':
+    '0 -1px 0 rgba(240,240,238,.1), 0 -16px 40px rgba(0,0,0,.5)',
   '--shadow-1': '0 1px 2px rgba(0,0,0,.4), 0 8px 20px rgba(0,0,0,.35)',
   '--shadow-2': '0 2px 6px rgba(0,0,0,.45), 0 20px 48px rgba(0,0,0,.55)',
   '--shadow-3': '0 4px 8px rgb(0 0 0 / 0.40), 0 16px 40px rgb(0 0 0 / 0.50)',
@@ -119,7 +129,9 @@ const wireframeTokens = {
   '--on-midnight-hover': 'rgba(250,250,250,.08)',
   '--on-midnight-active': 'rgba(250,250,250,.14)',
   '--on-midnight-disabled': 'rgba(250,250,250,.45)',
-  '--on-midnight-disabled-border': 'rgba(250,250,250,.2)',
+  // E11.5-11j, rule-7 rewrite: the canvas draws the disabled edge in
+  // --on-midnight-line (.12), where the wireframes had .2.
+  '--on-midnight-disabled-border': 'var(--on-midnight-line)',
   '--inset-on-midnight': 'inset 0 0 0 1px var(--on-midnight-border)',
   '--inset-on-midnight-disabled':
     'inset 0 0 0 1px var(--on-midnight-disabled-border)',
@@ -153,7 +165,8 @@ const wireframeTokens = {
   '--banner-edge-hover': '0 0 0 0 transparent',
   '--shadow-sticky':
     '0 -2px 6px rgba(16,16,20,.06), 0 -16px 40px rgba(16,16,20,.14)',
-  '--shadow-band': '0 0 0 0 transparent',
+  // E11.5-11j, rule-7 rewrite: the token delta's light value.
+  '--shadow-band': 'none',
   '--grid-columns': '4',
   '--grid-columns-wide': '12',
   '--grid-gap': 'var(--space-2)',
@@ -202,6 +215,32 @@ const motionTokens = {
   '--press-shift': '0.0625rem',
   '--reveal-range': 'entry 0% entry min(100% - 1px, 20vh)',
   '--reveal-step': 'min(20%, 4vh)',
+  // E11.5-11j: the primitives' state motion. The canvas's arrow moves of 2px
+  // and 3px, the field error's rise, and the spinner's look and turn.
+  '--arrow-shift': '0.125rem',
+  '--arrow-shift-card': '0.1875rem',
+  '--error-rise': '0.25rem',
+  '--spinner-opacity': '0.8',
+  '--duration-spin': '800ms',
+};
+
+// E11.5-11j: the token delta in ChangeLog.dc.html, light values on bare :root
+// as it states them, and the three values its primitives need beyond it.
+const finalDesignTokens = {
+  '--on-midnight-600': 'rgba(250,250,250,.74)',
+  '--on-midnight-line': 'rgba(250,250,250,.12)',
+  '--wash': 'rgba(16,16,20,.05)',
+  '--wash-strong': 'rgba(16,16,20,.09)',
+  '--success-tint': 'rgba(46,125,87,.12)',
+  '--error-tint': 'rgba(192,57,43,.10)',
+  '--banner-ring-dark': 'rgba(255,255,255,.20)',
+  '--banner-ring-ink': 'rgba(16,16,20,.14)',
+  '--banner-sheen': 'rgba(255,255,255,.14)',
+  '--success-icon': 'var(--success)',
+  '--ring-focus-error': '0 0 0 2px var(--surface), 0 0 0 4px var(--error)',
+  '--inset-error': 'inset 0 0 0 1.5px var(--error)',
+  '--radius-link': '2px',
+  '--stroke-heavy': '2.25',
 };
 
 // Compares CSS values as written: whitespace, a leading zero and trailing
@@ -274,6 +313,7 @@ test('tokens exactly transcribe the locked colour and typography sources', async
     ...foundationTokens,
     ...wireframeTokens,
     ...motionTokens,
+    ...finalDesignTokens,
   })) {
     assert.ok(root.has(name), `${name} is declared on bare :root`);
     assert.equal(cssValue(root.get(name)), cssValue(value), name);
@@ -373,6 +413,7 @@ test('every colour value reuses the locked §5 palette and the type scale has no
       ...Object.keys(foundationTokens),
       ...Object.keys(wireframeTokens),
       ...Object.keys(motionTokens),
+      ...Object.keys(finalDesignTokens),
       '--space-0',
       ...Array.from({ length: 10 }, (_, index) => `--space-${index + 1}`),
     ].sort(),
@@ -468,6 +509,80 @@ test('the motion tokens are theme-independent, never overshoot and keep an entra
   const ms = (name) => Number.parseFloat(root.get(name));
   assert.ok(ms('--duration-enter') + 3 * ms('--stagger') <= 600);
   assert.ok(ms('--duration-page') <= 200);
+});
+
+test('the token delta is built as stated, and what is not built stays out', async () => {
+  const source = await readFile(tokenPath, 'utf8');
+  const root = declarations(
+    source.match(/:root\s*\{(?<block>[\s\S]*?)\}/u).groups.block,
+  );
+  const dark = declarations(
+    source.match(/:root\[data-theme=['"]dark['"]\]\s*\{(?<block>[\s\S]*?)\}/u)
+      .groups.block,
+  );
+  // [token, light, dark]. A null dark value is the delta's "same": the token
+  // inherits its light value and has no dark redefinition.
+  const delta = [
+    ['--on-midnight-600', 'rgba(250,250,250,.74)', 'rgba(240,240,238,.74)'],
+    ['--on-midnight-line', 'rgba(250,250,250,.12)', null],
+    ['--on-midnight-border', 'rgba(250,250,250,.45)', null],
+    ['--on-midnight-hover', 'rgba(250,250,250,.08)', null],
+    ['--on-midnight-active', 'rgba(250,250,250,.14)', null],
+    ['--on-midnight-disabled', 'rgba(250,250,250,.45)', null],
+    ['--wash', 'rgba(16,16,20,.05)', 'rgba(240,240,238,.06)'],
+    ['--wash-strong', 'rgba(16,16,20,.09)', 'rgba(240,240,238,.10)'],
+    ['--success-tint', 'rgba(46,125,87,.12)', 'rgba(46,125,87,.28)'],
+    ['--error-tint', 'rgba(192,57,43,.10)', 'rgba(192,57,43,.24)'],
+    ['--banner-ring-dark', 'rgba(255,255,255,.20)', null],
+    ['--banner-ring-ink', 'rgba(16,16,20,.14)', null],
+    ['--banner-sheen', 'rgba(255,255,255,.14)', null],
+    [
+      '--shadow-sticky',
+      '0 -2px 6px rgba(16,16,20,.06), 0 -16px 40px rgba(16,16,20,.14)',
+      '0 -1px 0 rgba(240,240,238,.1), 0 -16px 40px rgba(0,0,0,.5)',
+    ],
+    [
+      '--shadow-band',
+      'none',
+      '0 0 0 1px rgba(240,240,238,.1), 0 24px 64px rgba(0,0,0,.6)',
+    ],
+    [
+      '--shadow-chip',
+      '0 1px 2px rgba(0,0,0,.2), 0 6px 14px rgba(0,0,0,.16)',
+      null,
+    ],
+    [
+      '--shadow-chip-dark',
+      '0 1px 2px rgba(0,0,0,.2), 0 6px 14px rgba(0,0,0,.16)',
+      '0 0 0 1px rgba(240,240,238,.18), 0 6px 14px rgba(0,0,0,.3)',
+    ],
+    ['--shadow-button', '0 1px 2px rgba(16,16,20,.14)', null],
+    [
+      '--overlay-hover',
+      'inset 0 0 0 100px rgba(16,16,20,.08)',
+      'inset 0 0 0 100px rgba(16,16,20,.10)',
+    ],
+    ['--overlay-active', 'inset 0 0 0 100px rgba(16,16,20,.16)', null],
+    ['--ease-out', 'cubic-bezier(.16,1,.3,1)', null],
+  ];
+  for (const [name, light, darkValue] of delta) {
+    assert.equal(cssValue(root.get(name)), cssValue(light), `${name} light`);
+    if (darkValue === null) {
+      assert.equal(dark.has(name), false, `${name} has no dark redefinition`);
+    } else {
+      assert.equal(cssValue(dark.get(name)), cssValue(darkValue), `${name}`);
+    }
+  }
+  // The delta's reserved dark overlay, which section 4 gives no value for.
+  assert.equal(
+    cssValue(dark.get('--shadow-3')),
+    cssValue('0 4px 8px rgb(0 0 0 / 0.40), 0 16px 40px rgb(0 0 0 / 0.50)'),
+  );
+  // Not built: the image placeholder (rule 3) and the frames-only 6px radius.
+  assert.doesNotMatch(source, /--placeholder-(?:block|text)/u);
+  for (const [name, value] of root) {
+    if (name.startsWith('--radius')) assert.notEqual(value, '6px', name);
+  }
 });
 
 test('the port checklist names the storefront target for the verbatim token file', async () => {
@@ -665,6 +780,8 @@ function colourLiterals(value) {
     'linear-gradient',
     'min',
     'monospace',
+    // E11.5-11j: the token delta's light --shadow-band.
+    'none',
     'right',
     'sans-serif',
     'srgb',
@@ -702,6 +819,8 @@ test('no new hue: every colour token is a locked palette value, an alpha variant
     () => colourLiterals('entry 0% entry min(100% - 1px, 20vh) red'),
     /unsupported colour/u,
   );
+  assert.deepEqual(colourLiterals('none'), []);
+  assert.throws(() => colourLiterals('none red'), /unsupported colour/u);
   const [source, guidelines] = await Promise.all([
     readFile(tokenPath, 'utf8'),
     readFile(brandGuidelinesPath, 'utf8'),
@@ -842,6 +961,21 @@ test('every text pairing on the component sheet clears its WCAG threshold in bot
       ['--coral', '--paper', null, 3],
       ['--coral', '--surface', null, 3],
       ['--coral-lift', '--midnight', null, 3],
+      // E11.5-11j, the component library's added pairings. The info notice,
+      // the chevron disc and the neutral tile, on their wash over each ground.
+      ['--ink', '--wash', '--paper', 4.5],
+      ['--ink', '--wash', '--surface', 4.5],
+      ['--ink-600', '--wash', '--paper', 4.5],
+      ['--ink-600', '--wash', '--surface', 4.5],
+      ['--ink', '--wash-strong', '--paper', 4.5],
+      ['--ink', '--wash-strong', '--surface', 4.5],
+      // Success and error icons (3:1), and tile glyphs on their tints.
+      ['--success-icon', '--surface', null, 3],
+      ['--success-icon', '--paper', null, 3],
+      ['--success-icon', '--success-tint', '--surface', 3],
+      ['--error-text', '--error-tint', '--surface', 3],
+      // The invalid focus ring's --error.
+      ['--error', '--surface', null, 3],
     ];
     for (const [foreground, background, ground, minimum] of pairs) {
       const ratio = contrastRatio(
@@ -851,6 +985,18 @@ test('every text pairing on the component sheet clears its WCAG threshold in bot
       assert.ok(
         ratio >= minimum,
         `${themeName} ${foreground} on ${background}: ${ratio.toFixed(2)}`,
+      );
+    }
+    // A translucent text colour, composited over the ground it sits on: the
+    // secondary text on midnight (body text, so 4.5:1).
+    for (const ground of ['--midnight', '--midnight-deep']) {
+      const ratio = contrastRatio(
+        opaque('--on-midnight-600', ground),
+        opaque(ground),
+      );
+      assert.ok(
+        ratio >= 4.5,
+        `${themeName} --on-midnight-600 on ${ground}: ${ratio.toFixed(2)}`,
       );
     }
     // The primary label is #101014 on coral in both themes.

@@ -510,6 +510,73 @@ test('the join bar shows below 48rem only', async () => {
   }
 });
 
+// E11.5-11j: the library's side card. Padded 24px, 32px from 48rem, on E1 and
+// the edge, with a tight heading.
+test('the side card matches the component library at each width in both themes', async () => {
+  for (const [width, padding] of [
+    [1440, '32px'],
+    [768, '32px'],
+    [390, '24px'],
+  ]) {
+    for (const colorScheme of designThemes) {
+      const context = await browser.newContext({
+        colorScheme,
+        reducedMotion: 'reduce',
+        viewport: { width, height: 900 },
+      });
+      try {
+        const page = await context.newPage();
+        await page.goto(origin + '/legit');
+        const card = await page
+          .locator('[data-document-card="guarantee"]')
+          .evaluate((element) => {
+            const probe = globalThis.document.createElement('div');
+            probe.style.boxShadow = 'var(--shadow-1), var(--edge)';
+            element.append(probe);
+            const shadow = globalThis.getComputedStyle(probe).boxShadow;
+            probe.remove();
+            const style = globalThis.getComputedStyle(element);
+            const headingElement = element.querySelector(
+              '.document__card-heading',
+            );
+            const heading = globalThis.getComputedStyle(headingElement);
+            const box = element.getBoundingClientRect();
+            const headingBox = headingElement.getBoundingClientRect();
+            return {
+              insetTop: headingBox.top - box.top,
+              insetLeft: headingBox.left - box.left,
+              padding: style.padding,
+              radius: style.borderTopLeftRadius,
+              onDrawnShadow: style.boxShadow === shadow,
+              headingFont: `${heading.fontSize}/${heading.lineHeight} ${heading.fontWeight}`,
+              headingTracking: heading.letterSpacing,
+            };
+          });
+        const { insetTop, insetLeft, ...drawn } = card;
+        // The heading's own box sits on the padding, within 1px (rule 7).
+        for (const inset of [insetTop, insetLeft])
+          assert.ok(
+            Math.abs(inset - Number.parseFloat(padding)) <= 1,
+            `${width} ${colorScheme} heading inset ${inset}`,
+          );
+        assert.deepEqual(
+          drawn,
+          {
+            padding,
+            radius: '12px',
+            onDrawnShadow: true,
+            headingFont: '20px/28px 600',
+            headingTracking: '-0.2px',
+          },
+          `${width} ${colorScheme}`,
+        );
+      } finally {
+        await context.close();
+      }
+    }
+  }
+});
+
 test('every page is in the enforced layout-check set and passes it at every width in both themes', async () => {
   for (const route of routes) assert.ok(enforcedPages.includes(route), route);
   for (const route of routes) {

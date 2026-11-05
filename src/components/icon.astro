@@ -113,6 +113,37 @@ const strokeIcons = {
     { tag: 'rect', x: 6.5, y: 5, width: 3.5, height: 14, rx: 1 },
     { tag: 'rect', x: 14, y: 5, width: 3.5, height: 14, rx: 1 },
   ],
+  // The final design's additions (E11.5-11j), from its icon sheet.
+  copy: [
+    { tag: 'rect', x: 8.5, y: 8.5, width: 12, height: 12, rx: 2 },
+    {
+      tag: 'path',
+      d: 'M15.5 8.5V5.5a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3',
+    },
+  ],
+  download: [
+    { tag: 'path', d: 'M12 4v11M7.5 10.5L12 15l4.5-4.5' },
+    { tag: 'path', d: 'M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3' },
+  ],
+  erase: [
+    { tag: 'path', d: 'M4 7h16' },
+    { tag: 'path', d: 'M9.5 7V4.5h5V7' },
+    {
+      tag: 'path',
+      d: 'M6.5 7l.9 12.1A1.5 1.5 0 0 0 8.9 20.5h6.2a1.5 1.5 0 0 0 1.5-1.4L17.5 7',
+    },
+    { tag: 'path', d: 'M10 11v5.5M14 11v5.5' },
+  ],
+  history: [
+    { tag: 'path', d: 'M3.5 12a8.5 8.5 0 1 0 2.5-6' },
+    { tag: 'path', d: 'M3.5 4.5V9H8' },
+    { tag: 'path', d: 'M12 8v4.5l3 2' },
+  ],
+  list: [
+    { tag: 'path', d: 'M9 6.5h11M9 12h11M9 17.5h11' },
+    { tag: 'path', d: 'M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01' },
+  ],
+  x: [{ tag: 'path', d: 'M6.5 6.5l11 11M17.5 6.5l-11 11' }],
 } as const satisfies Record<string, readonly Shape[]>;
 
 export type IconName = keyof typeof strokeIcons | 'star' | 'alert';

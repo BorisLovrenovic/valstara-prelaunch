@@ -692,6 +692,16 @@ test('the member page and the leaderboard render every state from their sources,
                 await statePage
                   .locator('details.member-survey summary')
                   .click();
+                // E11.5-11j named rewrite: the answer opens smoothly, so the
+                // check waits for the disclosure's animations to end.
+                await statePage.waitForFunction(
+                  () =>
+                    globalThis.document
+                      .querySelector('details.member-survey')
+                      .getAnimations({ subtree: true }).length === 0,
+                  undefined,
+                  { timeout: 2000 },
+                );
                 assert.deepEqual(
                   await checkPageLayout(statePage),
                   [],
