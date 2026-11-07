@@ -75,6 +75,9 @@
   /* E11.5-11j: a success icon on a card or notice. Dark ink, because #2E7D57 on
      #171733 is below 3:1. */
   --success-icon: var(--success);
+  /* E11.5-11m: a recessed fill inside a card, such as the echoed address.
+     Paper in light, midnight-deep in dark, as the canvas draws it. */
+  --well: var(--paper);
 
   /* alpha variants of locked colours (E11.5-11j, the canvas's token delta) */
   --on-midnight-600: rgba(250, 250, 250, 0.74);
@@ -254,6 +257,7 @@
   --duration-spin: 800ms;
   --star-turn: -45deg;
   --star-scale: 0.6;
+  --enter-scale: 0.9;
   --reveal-range: entry 0% entry min(100% - 1px, 20vh);
   --reveal-step: min(20%, 4vh);
 }
@@ -275,6 +279,7 @@
     --coral-tint: rgba(255, 138, 102, 0.16);
     --error-text: var(--ink);
     --success-icon: var(--ink);
+    --well: var(--midnight-deep);
     --on-midnight-600: rgba(240, 240, 238, 0.74);
     --wash: rgba(240, 240, 238, 0.06);
     --wash-strong: rgba(240, 240, 238, 0.1);
@@ -309,6 +314,7 @@
   --coral-tint: rgba(255, 138, 102, 0.16);
   --error-text: var(--ink);
   --success-icon: var(--ink);
+  --well: var(--midnight-deep);
   --on-midnight-600: rgba(240, 240, 238, 0.74);
   --wash: rgba(240, 240, 238, 0.06);
   --wash-strong: rgba(240, 240, 238, 0.1);

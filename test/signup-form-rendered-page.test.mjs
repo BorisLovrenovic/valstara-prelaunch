@@ -386,6 +386,9 @@ test('a pending response hides the form and shows the same privacy-safe success 
   );
   assert.equal(await page.locator('form').isHidden(), true);
   await page.click('[data-different-address]');
+  // E11.5-11m named rewrite (founder-authorised 2026-11-07): the panel leaves
+  // before the form returns, so the read waits for the form, bounded at 2s.
+  await page.locator('form').waitFor({ state: 'visible', timeout: 2_000 });
   assert.equal(await page.locator('form').isVisible(), true);
   assert.equal(await page.locator('#signup-email').inputValue(), '');
   await context.close();
@@ -662,6 +665,16 @@ test('success is identical for unknown, pending and verified responses and echoe
       await page.fill('#signup-email', 'typed@example.com');
       await page.click('[data-submit]');
       await page.waitForSelector('[data-success]:not([hidden])');
+      // E11.5-11m named rewrite (founder-authorised 2026-11-07): the panel
+      // enters, so its boxes are read once its transitions end, bounded at 2s.
+      await page.waitForFunction(
+        () =>
+          globalThis.document
+            .querySelector('[data-success]')
+            .getAnimations({ subtree: true }).length === 0,
+        undefined,
+        { timeout: 2_000 },
+      );
       // E11.5-11g: the drawn panel is identical too, element for element and
       // box for box, and carries no digit (no position or count).
       results.push(

@@ -176,10 +176,12 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
   {
     /*
-    The success panel replaces the form. It is identical for every address:
-    the echoed address is the visitor's own input, and it never says an email
-    was sent or shows a position or count. The check icon marks only the
-    resend route's acknowledgement.
+    The success panel replaces the form (Hero.dc.html, E11.5-11m). It is
+    identical for every address: the echoed address is the visitor's own
+    input, and it never says an email was sent or shows a position or count.
+    The tile and the heading share a row; the echo carries its own mail icon;
+    the re-sent line sits above the actions, and its check-circle marks only
+    the resend route's acknowledgement.
   */
   }
   <section
@@ -190,10 +192,23 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     tabindex="-1"
     hidden
   >
-    <span class="signup-success__tile"><Icon name="mail" size="md" /></span>
-    <h2>{signupFormCopy.successHeading}</h2>
-    <p class="signup-success__address" data-success-address></p>
+    <div class="signup-success__head">
+      <span class="signup-success__tile"><Icon name="mail" size="md" /></span>
+      <h2>{signupFormCopy.successHeading}</h2>
+    </div>
+    <p class="signup-success__address" data-success-address>
+      <Icon name="mail" size="sm" /><span data-address></span>
+    </p>
     <p class="signup-success__step">{signupFormCopy.successStep}</p>
+    <p
+      class="signup-success__resent"
+      data-resend-status
+      role="status"
+      aria-live="polite"
+      hidden
+    >
+      <Icon name="check-circle" size="sm" /><span data-message></span>
+    </p>
     <div class="signup-success__actions">
       <Button type="button" data-different-address variant="secondary">
         {signupFormCopy.differentAddress}
@@ -202,21 +217,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         <Icon name="refresh" size="sm" />{signupFormCopy.resendLink}
       </Button>
     </div>
-    <p
-      class="signup-success__resent"
-      data-resend-status
-      role="status"
-      aria-live="polite"
-      hidden
-    >
-      <Icon name="check" size="sm" /><span data-message></span>
-    </p>
   </section>
 
   {
     /*
-    The mobile sticky bar from Sticky.dc.html (E11.5-11h): the label, the
-    field and Join in one row, the field error under the row, and the 18+
+    The mobile sticky bar from Sticky.dc.html (E11.5-11h, E11.5-11m): the
+    label, the field and Join in one row (each on its own row while a
+    submission is in flight), the field error under the row, and the 18+
     microline. A bar submission is the hero form's submission; only the hero
     input is named `email`. Success collapses the bar to one status row.
   */
@@ -232,7 +239,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       <label class="signup-dock__label" for="signup-dock-email"
         >{signupFormCopy.barEmailLabel}</label
       >
-      <div class="signup-dock__row">
+      <div class="signup-dock__row" data-dock-row>
         <Input
           id="signup-dock-email"
           type="email"
@@ -282,7 +289,9 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       aria-live="polite"
       hidden
     >
-      <p><Icon name="mail" size="base" />{signupFormCopy.barConfirmation}</p>
+      <p>
+        <Icon name="check-circle" size="base" />{signupFormCopy.barConfirmation}
+      </p>
       <Button type="button" data-dock-close variant="secondary"
         >{signupFormCopy.barClose}</Button
       >
@@ -356,6 +365,8 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     #dockConfirming = false;
     #resendTimer: number | undefined;
     #idleLabel = '';
+    // True while the form and the success panel swap places (E11.5-11m).
+    #swapping = false;
 
     connectedCallback(): void {
       const form = this.querySelector('form');
@@ -801,19 +812,24 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     ): void {
       this.#inFlight = inFlight;
       if (this.#submit !== null) this.#submit.disabled = inFlight;
-      if (this.#submitLabel !== null)
-        this.#submitLabel.textContent = inFlight ? message : this.#idleLabel;
+      const label = inFlight ? message : this.#idleLabel;
+      this.#submitLabel = this.#setLabel(this.#submitLabel, label);
       // The spinner shows the wait; CSS hides it while the Turnstile widget
       // is open, because then the visitor is the one who must act.
       if (this.#spinner !== null) this.#spinner.hidden = !inFlight;
       const dockSubmit =
         this.querySelector<HTMLButtonElement>('[data-dock-submit]');
       if (dockSubmit !== null) dockSubmit.disabled = inFlight;
-      const dockLabel = this.querySelector<HTMLElement>(
-        '[data-dock-submit-label]',
+      this.#setLabel(
+        this.querySelector<HTMLElement>('[data-dock-submit-label]'),
+        label,
       );
-      if (dockLabel !== null)
-        dockLabel.textContent = inFlight ? message : this.#idleLabel;
+      // While in flight the bar's field and button each take a full row, so
+      // the long in-flight label fits (ChangeLog "Sticky bar · submitting").
+      this.querySelector('[data-dock-row]')?.toggleAttribute(
+        'data-busy',
+        inFlight,
+      );
       const dockSpinner = this.querySelector<HTMLElement>(
         '[data-dock-spinner]',
       );
@@ -823,6 +839,49 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         status.textContent = inFlight ? message : '';
         status.hidden = !inFlight;
       }
+    }
+
+    // Runs `then` once the CSS transitions now running on the element (and,
+    // with `subtree`, inside it) have ended. With reduced motion none run, so
+    // it runs at once, in the same task, exactly as before the motion.
+    #whenSettled(element: Element, then: () => void, subtree = false): void {
+      const running = element
+        .getAnimations({ subtree })
+        .filter((animation) => animation instanceof CSSTransition);
+      if (running.length === 0) {
+        then();
+        return;
+      }
+      void Promise.allSettled(
+        running.map((animation) => animation.finished),
+      ).then(then);
+    }
+
+    // The in-flight label cross-fades as it changes (E11.5-11m): a fresh label
+    // element fades in (CSS @starting-style), while the old text fades out as
+    // the button's ::after, whose generated text is hidden from assistive
+    // technology. So the button's text and accessible name are only ever the
+    // current label. Returns the element now holding the label.
+    #setLabel(label: HTMLElement | null, text: string): HTMLElement | null {
+      if (label === null || label.textContent === text) return label;
+      const button = label.closest('button');
+      const fresh = label.cloneNode(false) as HTMLElement;
+      fresh.textContent = text;
+      fresh.toggleAttribute('data-label-entering', true);
+      if (button !== null) {
+        // Dropping the attribute and reading layout ends any earlier fade, so
+        // the ::after starts again from the old label.
+        button.removeAttribute('data-previous-label');
+        void button.offsetWidth;
+        button.setAttribute('data-previous-label', label.textContent ?? '');
+      }
+      label.replaceWith(fresh);
+      this.#whenSettled(fresh, () => {
+        fresh.removeAttribute('data-label-entering');
+        if (button?.querySelector('[data-label-entering]') === null)
+          button.removeAttribute('data-previous-label');
+      });
+      return fresh;
     }
 
     #failChallenge(): void {
@@ -923,26 +982,31 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       this.#dockInput?.removeAttribute('aria-invalid');
     }
 
+    // Form to success (E11.5-11m): the form fades out over --duration-fast,
+    // then the panel enters over --duration-base. The bar's confirmation and
+    // focus are as before: focus moves to the panel the moment it appears, or
+    // to the bar's Close. The submission stays in flight until the swap ends,
+    // so nothing can be submitted again from the fading form.
     #showSuccess(): void {
-      this.#setInFlight(false);
       const success = this.querySelector<HTMLElement>('[data-success]');
-      if (success !== null) {
-        success.hidden = false;
+      const address = this.querySelector<HTMLElement>('[data-address]');
+      if (address !== null) {
+        // A line break is preferred after the @, as the canvas draws it.
+        const at = this.#signedUpEmail.lastIndexOf('@');
+        address.replaceChildren(
+          ...(at > 0
+            ? [
+                this.#signedUpEmail.slice(0, at + 1),
+                document.createElement('wbr'),
+                this.#signedUpEmail.slice(at + 1),
+              ]
+            : [this.#signedUpEmail]),
+        );
       }
-      const address = this.querySelector<HTMLElement>('[data-success-address]');
-      if (address !== null) address.textContent = this.#signedUpEmail;
       const showConfirmation =
         this.#entryPoint === 'dock' && this.#dock?.hidden === false;
       this.#succeeded = true;
       this.#dockConfirming = showConfirmation;
-      if (this.#form !== null) {
-        this.#form.hidden = true;
-        // The hero entrance runs once per page load: a form shown again by
-        // "Use a different address" must not replay it.
-        for (const element of this.querySelectorAll('[data-enter]')) {
-          element.removeAttribute('data-enter');
-        }
-      }
       if (this.#dock !== null) {
         this.#dock.hidden = !showConfirmation;
         const entry = this.querySelector<HTMLElement>('[data-dock-entry]');
@@ -953,48 +1017,88 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         if (confirmation !== null) confirmation.hidden = !showConfirmation;
         this.#reserveDock(showConfirmation);
       }
-      window.clearTimeout(this.#resendTimer);
-      this.#resendTimer = window.setTimeout(() => {
-        const resend = this.querySelector<HTMLButtonElement>('[data-resend]');
-        if (resend !== null) resend.hidden = false;
-      }, resendDelayMs);
-      if (showConfirmation) {
+      if (showConfirmation)
         this.querySelector<HTMLElement>('[data-dock-close]')?.focus();
-      } else {
-        success?.focus();
-      }
+
+      const form = this.#form;
+      if (form === null || success === null) return;
+      this.#swapping = true;
+      form.toggleAttribute('data-leaving', true);
+      this.#whenSettled(form, () => {
+        form.removeAttribute('data-leaving');
+        form.hidden = true;
+        // The hero entrance runs once per page load: a form shown again by
+        // "Use a different address" must not replay it.
+        for (const element of this.querySelectorAll('[data-enter]')) {
+          element.removeAttribute('data-enter');
+        }
+        // The 60 seconds count from the moment the panel appears.
+        window.clearTimeout(this.#resendTimer);
+        this.#resendTimer = window.setTimeout(() => {
+          const resend = this.querySelector<HTMLButtonElement>('[data-resend]');
+          if (resend !== null) resend.hidden = false;
+        }, resendDelayMs);
+        success.hidden = false;
+        this.#setInFlight(false);
+        this.#swapping = false;
+        if (!showConfirmation) success.focus();
+        this.#updateDock();
+      });
     }
 
+    // "Use a different address" reverses the sequence: the panel leaves over
+    // --duration-base, then the form fades back in over --duration-fast with
+    // focus in its email field, as before.
     readonly #differentAddress = (): void => {
-      window.clearTimeout(this.#resendTimer);
-      this.#signedUpEmail = '';
-      this.#succeeded = false;
-      this.#dockConfirming = false;
-      this.#resetChallenge();
       const success = this.querySelector<HTMLElement>('[data-success]');
-      if (success !== null) success.hidden = true;
-      if (this.#form !== null) this.#form.hidden = false;
-      const resend = this.querySelector<HTMLElement>('[data-resend]');
-      if (resend !== null) resend.hidden = true;
-      const status = this.querySelector<HTMLElement>('[data-resend-status]');
-      if (status !== null) {
-        status.hidden = true;
-        this.#setMessage(status, '');
-      }
-      const email = this.querySelector<HTMLInputElement>('#signup-email');
-      if (email !== null) {
-        email.value = '';
-        email.focus();
-      }
-      if (this.#dockInput !== null) this.#dockInput.value = '';
-      const entry = this.querySelector<HTMLElement>('[data-dock-entry]');
-      const confirmation = this.querySelector<HTMLElement>(
-        '[data-dock-confirmation]',
+      if (this.#swapping || success === null) return;
+      this.#swapping = true;
+      window.clearTimeout(this.#resendTimer);
+      success.toggleAttribute('data-leaving', true);
+      this.#whenSettled(
+        success,
+        () => {
+          success.removeAttribute('data-leaving');
+          this.#signedUpEmail = '';
+          this.#succeeded = false;
+          this.#dockConfirming = false;
+          this.#resetChallenge();
+          success.hidden = true;
+          const resend = this.querySelector<HTMLElement>('[data-resend]');
+          if (resend !== null) resend.hidden = true;
+          const status = this.querySelector<HTMLElement>(
+            '[data-resend-status]',
+          );
+          if (status !== null) {
+            status.hidden = true;
+            this.#setMessage(status, '');
+          }
+          const form = this.#form;
+          if (form !== null) {
+            form.toggleAttribute('data-returning', true);
+            form.hidden = false;
+            this.#whenSettled(form, () =>
+              form.removeAttribute('data-returning'),
+            );
+          }
+          const email = this.querySelector<HTMLInputElement>('#signup-email');
+          if (email !== null) {
+            email.value = '';
+            email.focus();
+          }
+          if (this.#dockInput !== null) this.#dockInput.value = '';
+          const entry = this.querySelector<HTMLElement>('[data-dock-entry]');
+          const confirmation = this.querySelector<HTMLElement>(
+            '[data-dock-confirmation]',
+          );
+          if (entry !== null) entry.hidden = false;
+          if (confirmation !== null) confirmation.hidden = true;
+          this.#setInFlight(false);
+          this.#swapping = false;
+          this.#updateDock();
+        },
+        true,
       );
-      if (entry !== null) entry.hidden = false;
-      if (confirmation !== null) confirmation.hidden = true;
-      this.#setInFlight(false);
-      this.#updateDock();
     };
 
     readonly #resend = async (): Promise<void> => {
@@ -1260,12 +1364,6 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     margin-block-start: var(--space-1-5);
   }
 
-  /* While the Turnstile widget is open the visitor must act, so the Button's
-     spinner steps aside (state 08). */
-  valstara-signup-form:has(.signup-turnstile[data-open]) .button__spinner {
-    display: none;
-  }
-
   valstara-signup-form .signup-facts {
     grid-area: facts;
     margin-block-start: var(--space-2-5);
@@ -1330,24 +1428,25 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   }
 
   /*
-    The success panel (E11.5-11g) replaces the form, so it takes the form's
-    place 24px under the supporting line (32px from 48rem). A surface card,
-    radius 12, --shadow-2 plus the dark-only edge, 24px padding (32px from
-    48rem), a column with 12px gaps: the 48px coral-tint tile with the 24px
-    mail icon, the 24/32 600 heading, the echoed address (mono 14/20 on
-    paper, inset 1px line, padded 8px 12px), the 16/24 ink-600 body, the
-    actions and the resent line. The actions are the E11.5-11a secondary
-    primitive at its own sizes (founder-authorised 2026-10-29: the component
-    sheet sets a primitive's size, the states artboards its placement).
+    The success panel (Hero.dc.html, E11.5-11m) replaces the form card in the
+    600px hero form column. A surface card, radius 12, --shadow-2 plus the
+    dark-only edge, 24px padding (32px from 48rem), a column:
+    - the head: the 48px coral-tint tile with the 24px mail icon and the
+      24/32 600 heading, 16px apart and centred on each other;
+    - the echoed address 24px below: mono 14/20 ink on the well, inset 1px
+      line, radius 8, padded 8px 12px, with a 16px ink-600 mail icon 8px
+      before it;
+    - the 16/24 ink-600 body 12px below, at most 32rem wide;
+    - the re-sent line 16px below the body, when it shows;
+    - the actions 24px below, over a 1px line with 24px above the buttons:
+      a wrapping row 8px apart, or from below 48rem a stretched column.
+    The actions are the secondary primitive at its own sizes
+    (founder-authorised 2026-10-29).
   */
-  /* At most 560px, as E11.5-11g built it, inside the 600px hero form
-     column (E11.5-11l): the panel is restyled by E11.5-11m. */
   valstara-signup-form .signup-success:not([hidden]) {
     box-sizing: border-box;
-    max-inline-size: calc(var(--space-10) * 7);
     display: flex;
     flex-direction: column;
-    gap: var(--space-1-5);
     align-items: flex-start;
     padding: var(--space-3);
     color: var(--ink);
@@ -1364,15 +1463,23 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     margin: var(--space-0);
   }
 
+  valstara-signup-form .signup-success__head {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
   valstara-signup-form .signup-success h2 {
     font-size: var(--step-4);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-4);
     letter-spacing: var(--tracking-tight);
+    text-wrap: balance;
   }
 
   valstara-signup-form .signup-success__tile {
     display: flex;
+    flex: none;
     align-items: center;
     justify-content: center;
     inline-size: var(--space-6);
@@ -1382,49 +1489,74 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     border-radius: var(--radius-control);
   }
 
-  /* The address wraps anywhere at small widths, as drawn; from 48rem it
-     breaks only if it would otherwise overflow the panel. */
-  valstara-signup-form .signup-success__address {
+  /* The address breaks after its @ when it must wrap, as drawn, and
+     anywhere only if a part alone is wider than the panel. */
+  /* :not([hidden]) lifts these over the landing page's paragraph reset. */
+  valstara-signup-form .signup-success .signup-success__address:not([hidden]) {
+    box-sizing: border-box;
+    display: inline-flex;
+    gap: var(--space-1);
+    align-items: center;
     max-inline-size: 100%;
+    margin-block-start: var(--space-3);
     padding: var(--space-1) var(--space-1-5);
+    color: var(--ink);
     font-family: var(--font-mono);
     font-size: var(--step-1);
     line-height: var(--leading-1);
-    word-break: break-all;
-    background-color: var(--paper);
+    background-color: var(--well);
     border-radius: var(--radius-control);
     box-shadow: var(--inset-line);
   }
 
-  valstara-signup-form .signup-success__step {
+  valstara-signup-form .signup-success__address .icon {
+    flex: none;
     color: var(--ink-600);
   }
 
-  /* Small: a stretched column, 8px apart and 4px below the body. */
-  valstara-signup-form .signup-success__actions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    align-self: stretch;
-    margin-block-start: var(--space-0-5);
+  valstara-signup-form .signup-success__address [data-address] {
+    min-inline-size: var(--space-0);
+    overflow-wrap: anywhere;
   }
 
-  valstara-signup-form .signup-success__resent {
+  valstara-signup-form .signup-success .signup-success__step:not([hidden]) {
+    max-inline-size: calc(var(--space-8) * 8);
+    margin-block-start: var(--space-1-5);
+    color: var(--ink-600);
+    text-wrap: pretty;
+  }
+
+  valstara-signup-form .signup-success .signup-success__resent:not([hidden]) {
     display: flex;
     gap: var(--space-1);
     align-items: flex-start;
+    margin-block-start: var(--space-2);
     color: var(--ink-600);
     font-size: var(--step-1);
     line-height: var(--leading-1);
   }
 
-  /* The 16px check sits centred on the first 20px line. */
+  /* The 16px check-circle sits 2px down, on the first 20px line. */
   valstara-signup-form .signup-success__resent .icon {
+    flex: none;
     margin-block-start: calc((var(--leading-1) - var(--icon-sm)) / 2);
+    color: var(--success-icon);
   }
 
   valstara-signup-form .signup-success__resent:not([data-acknowledged]) .icon {
     display: none;
+  }
+
+  /* Small: a stretched column of full-width buttons, 8px apart. */
+  valstara-signup-form .signup-success__actions {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    align-self: stretch;
+    margin-block-start: var(--space-3);
+    padding-block-start: var(--space-3);
+    border-block-start: var(--border-thin) solid var(--line);
   }
 
   @media (min-width: 48rem) {
@@ -1432,18 +1564,10 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       padding: var(--space-4);
     }
 
-    valstara-signup-form .signup-success__address {
-      word-break: normal;
-      overflow-wrap: anywhere;
-    }
-
-    /* A wrapping row, 12px apart and 8px below the body. */
+    /* A wrapping row, 8px apart. */
     valstara-signup-form .signup-success__actions {
       flex-direction: row;
       flex-wrap: wrap;
-      gap: var(--space-1-5);
-      align-self: flex-start;
-      margin-block-start: var(--space-1);
     }
   }
 
@@ -1469,7 +1593,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     background-color: var(--surface);
     box-shadow: var(--shadow-sticky), var(--edge);
     animation-name: signup-dock-in;
-    animation-duration: var(--duration-fast);
+    animation-duration: var(--duration-base);
     animation-timing-function: var(--ease-out);
   }
 
@@ -1509,6 +1633,18 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     padding-inline: var(--space-2);
   }
 
+  /* In flight, the field and the button each take a full row, 8px apart, so
+     the in-flight label fits on one line (ChangeLog "Sticky bar ·
+     submitting"). The bar's height snaps; its reserved space follows. */
+  valstara-signup-form .signup-dock__row[data-busy] {
+    flex-wrap: wrap;
+  }
+
+  valstara-signup-form .signup-dock__row[data-busy] .input,
+  valstara-signup-form .signup-dock__row[data-busy] .button {
+    flex: 1 0 100%;
+  }
+
   /* :not([hidden]) and the bar's class lift these over the landing page's
      paragraph reset. */
   valstara-signup-form .signup-dock .signup-dock__error:not([hidden]) {
@@ -1541,8 +1677,8 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     padding-block-end: var(--space-1-5);
   }
 
-  /* Success: one status row, the mail icon and 16/24 600 line on the left
-     and the secondary Close on the right, 12px apart. */
+  /* Success: one status row, the 20px check-circle and the 16/24 600 line
+     on the left and the secondary Close on the right, 12px apart. */
   valstara-signup-form .signup-dock__done:not([hidden]) {
     display: flex;
     gap: var(--space-1-5);
@@ -1561,6 +1697,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     white-space: nowrap;
   }
 
+  valstara-signup-form .signup-dock__done p .icon {
+    flex: none;
+    color: var(--success-icon);
+  }
+
   @media (min-width: 48rem) {
     valstara-signup-form .signup-dock {
       display: none !important;
@@ -1570,6 +1711,172 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   @media (prefers-reduced-motion: reduce) {
     valstara-signup-form .signup-dock:not([hidden]) {
       animation-name: none;
+    }
+  }
+
+  /*
+    The state motion (E11.5-11m), only where motion is allowed. Every
+    entrance is a CSS transition from an @starting-style, so it runs when its
+    element is shown and each start state exists only there: without the
+    transition, the element is simply at rest. None lasts longer than
+    --duration-base. With reduced motion none of it exists, and the island
+    swaps states at once.
+  */
+  @media (prefers-reduced-motion: no-preference) {
+    /* Form to success: the form fades out over --duration-fast... */
+    valstara-signup-form form[data-leaving] {
+      opacity: 0;
+      transition-property: opacity;
+      transition-duration: var(--duration-fast);
+      transition-timing-function: var(--ease-out);
+    }
+
+    /* ...then the panel fades in and rises by --enter-distance over
+       --duration-base, while its tile scales up from --enter-scale. "Use a
+       different address" plays it back: the panel fades out, sinks and its
+       tile shrinks, then the form fades in over --duration-fast. */
+    valstara-signup-form .signup-success:not([hidden]),
+    valstara-signup-form .signup-success__tile {
+      transition-property: opacity, translate, scale;
+      transition-duration: var(--duration-base);
+      transition-timing-function: var(--ease-out);
+    }
+
+    valstara-signup-form .signup-success[data-leaving] {
+      opacity: 0;
+      translate: 0 var(--enter-distance);
+    }
+
+    valstara-signup-form .signup-success[data-leaving] .signup-success__tile {
+      scale: var(--enter-scale);
+    }
+
+    @starting-style {
+      valstara-signup-form .signup-success:not([hidden]) {
+        opacity: 0;
+        translate: 0 var(--enter-distance);
+      }
+
+      valstara-signup-form .signup-success__tile {
+        scale: var(--enter-scale);
+      }
+    }
+
+    valstara-signup-form form[data-returning]:not([hidden]) {
+      transition-property: opacity;
+      transition-duration: var(--duration-fast);
+      transition-timing-function: var(--ease-out);
+    }
+
+    @starting-style {
+      valstara-signup-form form[data-returning]:not([hidden]) {
+        opacity: 0;
+      }
+    }
+
+    /* The resend control fades in over --duration-base when its delay ends,
+       keeping the Button's own state transitions. The re-sent line enters the
+       same way. */
+    valstara-signup-form [data-resend]:not([hidden]) {
+      transition-property:
+        opacity, background-color, box-shadow, color, transform;
+      transition-duration:
+        var(--duration-base), var(--duration-fast), var(--duration-fast),
+        var(--duration-fast), var(--duration-fast);
+      transition-timing-function: var(--ease-out);
+    }
+
+    valstara-signup-form .signup-success__resent:not([hidden]) {
+      transition-property: opacity;
+      transition-duration: var(--duration-base);
+      transition-timing-function: var(--ease-out);
+    }
+
+    @starting-style {
+      valstara-signup-form [data-resend]:not([hidden]),
+      valstara-signup-form .signup-success__resent:not([hidden]) {
+        opacity: 0;
+      }
+    }
+
+    /* Notices and field errors enter as the E11.5-11j field error does:
+       they fade in and rise from --error-rise below over --duration-fast.
+       Nothing shakes. */
+    valstara-signup-form .signup-notice--error:not([hidden]),
+    valstara-signup-form .signup-field-error:not([hidden]) {
+      transition-property: opacity, translate;
+      transition-duration: var(--duration-fast);
+      transition-timing-function: var(--ease-out);
+    }
+
+    @starting-style {
+      valstara-signup-form .signup-notice--error:not([hidden]),
+      valstara-signup-form .signup-field-error:not([hidden]) {
+        opacity: 0;
+        translate: 0 var(--error-rise);
+      }
+    }
+
+    /* The in-flight button cross-fades its label: the new label fades in
+       while the old one, drawn by the button's ::after with its generated
+       text hidden from assistive technology, fades out over it. The spinner
+       is unchanged. */
+    valstara-signup-form [data-submit],
+    valstara-signup-form [data-dock-submit] {
+      position: relative;
+    }
+
+    valstara-signup-form [data-label-entering] {
+      transition-property: opacity;
+      transition-duration: var(--duration-fast);
+      transition-timing-function: var(--ease-out);
+    }
+
+    @starting-style {
+      valstara-signup-form [data-label-entering] {
+        opacity: 0;
+      }
+    }
+
+    valstara-signup-form [data-previous-label]::after {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      white-space: nowrap;
+      content: attr(data-previous-label) / '';
+      opacity: 0;
+      transition-property: opacity;
+      transition-duration: var(--duration-fast);
+      transition-timing-function: var(--ease-out);
+    }
+
+    @starting-style {
+      valstara-signup-form [data-previous-label]::after {
+        opacity: 1;
+      }
+    }
+
+    /* The bar's growth for an error and its collapse to the success row:
+       its height snaps and the new content fades in over --duration-base,
+       so no layout property is animated. The error also rises, as every
+       field error does. */
+    valstara-signup-form .signup-dock .signup-dock__error:not([hidden]),
+    valstara-signup-form .signup-dock__done:not([hidden]) {
+      transition-duration: var(--duration-base);
+    }
+
+    valstara-signup-form .signup-dock__done:not([hidden]) {
+      transition-property: opacity;
+      transition-timing-function: var(--ease-out);
+    }
+
+    @starting-style {
+      valstara-signup-form .signup-dock__done:not([hidden]) {
+        opacity: 0;
+      }
     }
   }
 </style>

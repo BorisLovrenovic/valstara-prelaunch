@@ -144,8 +144,10 @@ The primitives need these values beyond the delta, under final-design rule 6:
 | `--error-rise` | `0.25rem` | How far a field error rises as it appears |
 | `--spinner-opacity`, `--duration-spin` | `0.8`, `800ms` | The in-flight spinner's opacity and its turn |
 | `--star-turn`, `--star-scale` | `-45deg`, `0.6` | Where the hero's coral star starts its first-paint entrance: it turns to 0° and scales to 1 as it fades in (E11.5-11l) |
+| `--enter-scale` | `0.9` | Where the success panel's mail tile starts as the panel enters, scaling to 1 (E11.5-11m) |
+| `--well` | `var(--paper)`, dark `var(--midnight-deep)` | A recessed fill inside a card, such as the echoed address in the success panel (E11.5-11m). No new hue: it names two locked colours |
 
-The arrow, error, spinner and star values sit with the motion tokens on bare `:root`, with no dark redefinition.
+The arrow, error, spinner, star and enter-scale values sit with the motion tokens on bare `:root`, with no dark redefinition.
 
 ### Motion tokens (E11.5-11i)
 
@@ -219,6 +221,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 **E11.5-11i port addition:** the file adds the motion tokens above, declared once on bare `:root` with no dark redefinition. They port with `tokens.css`. `src/styles/motion.css` (the entrance and reveal utilities, page transitions and smooth anchor scrolling) is waitlist presentation, not part of the portable file: the storefront adopts or drops it at port time. If adopted, it keeps every rule inside `prefers-reduced-motion: no-preference`.
 
 **E11.5-11l port addition:** the file adds `--star-turn` and `--star-scale`, declared once on bare `:root` with no dark redefinition, beside the other motion tokens. They port with `tokens.css`; the star entrance that uses them is waitlist presentation in the landing page.
+
+**E11.5-11m port addition:** the file adds `--enter-scale`, declared once on bare `:root` beside the other motion tokens, and the role token `--well`, `var(--paper)` on `:root` and `var(--midnight-deep)` in both dark blocks, so the dark name sets stay identical. Both port with `tokens.css`; the success-panel motion that uses `--enter-scale` is waitlist presentation in the signup island.
 
 E11-07 source-to-target reconciliation (targets are the storefront routes to build and verify before the DNS swap):
 

@@ -13,7 +13,14 @@ import { landingCopy } from '../src/copy/landing.ts';
 import { resendVerificationCopy } from '../src/copy/resend-verification.ts';
 import { signupCopy, signupFormCopy } from '../src/copy/signup.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
-import { entranceEnded } from './helpers/motion.mjs';
+import {
+  entranceEnded,
+  focusMotionIssues,
+  readStateMotion,
+  recordStateMotion,
+  resumeStateMotion,
+  transitionsEnded,
+} from './helpers/motion.mjs';
 import { renderLanding } from './helpers/landing-render.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
@@ -29,11 +36,14 @@ import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 // the self-hosted fonts with the annotation layer off: the card's 24px (20px
 // phone) padding, the 552px content width at 1440, the divider above the
 // trust facts, the 16px checkbox gap, the 16px notice gap, the field error
-// under the field only, and the no-JavaScript notice above the card. Two
-// values keep E11.5-11g's styling, which E11.5-11m restyles: at 1440, state
-// 08 has no spinner while the widget is open, so its field is 24px wider than
-// the canvas draws; and state 17's paused panel is 600px wide, with its tile
-// above its heading as built. States 13-15 are unchanged.
+// under the field only, and the no-JavaScript notice above the card.
+//
+// E11.5-11m (rule-7 rewrites): state 08 keeps the spinner while the widget
+// is open, as the canvas draws it, so at 1440 its field is the canvas's
+// 226px; and states 13-15 and 17 are the canvas's panels, rendered the same
+// way, filling the 600px form column: the tile beside the heading, the echo
+// with its mail icon, the re-sent line above the actions, and the actions
+// over a 1px line.
 
 const execFileAsync = promisify(execFile);
 const browserContainer = `valstara-signup-states-playwright-${process.pid}`;
@@ -70,7 +80,9 @@ const selectors = {
   tileIcon: '.signup-success__tile .icon, .landing-paused__tile .icon',
   heading: '[data-success] h2, .landing-paused h2',
   address: '[data-success-address]',
+  addressIcon: '[data-success-address] .icon',
   body: '.signup-success__step, .landing-paused p',
+  actionsRow: '.signup-success__actions',
   actions: '.signup-success__actions .button',
   actionIcon: '.signup-success__actions .button .icon',
   resent: '[data-resend-status]',
@@ -79,12 +91,11 @@ const selectors = {
 
 // [x, y, width, height] relative to the H1's top-left, per state. One
 // founder decision overrides the frame (2026-10-29): the success panel's
-// buttons are the E11.5-11a secondary primitive as Components.dc.html draws
-// it, 48px with 20px padding and 16/24 text from 48rem (the states artboard
-// draws them at 44px). So at 1440 the actions, the icon in the second, the
-// resent line and the panel's height are read from the page with that
-// primitive, in the frame's placement: the row 8px under the body, 12px
-// apart. Below 48rem the primitive is the drawn 44px, so 390 is the frame's.
+// buttons are the secondary primitive as the component sheet draws it, 48px
+// with 20px padding and 16/24 text from 48rem (the canvas page's bare .btn
+// pads 24px). So at 1440 the actions and the icon in the second are read
+// from the canvas rendered with that primitive, in the canvas's placement.
+// Below 48rem the primitive is the drawn 44px, so 390 is the canvas's.
 const frames = {
   1440: {
     '01': {
@@ -161,8 +172,9 @@ const frames = {
     '08': {
       label: [[24, 160, 552, 20]],
       hint: [[24, 184, 552, 20]],
-      input: [[24, 212, 250, 48]],
-      button: [[282, 212, 294, 48]],
+      input: [[24, 212, 226, 48]],
+      button: [[258, 212, 318, 48]],
+      spinner: [[282, 228, 16, 16]],
       micro: [[24, 272, 552, 20]],
       check: [[24, 304, 300, 65]],
       facts: [[24, 406, 552, 20]],
@@ -217,41 +229,47 @@ const frames = {
       consent: [[24, 433, 552, 40]],
     },
     13: {
-      panel: [[0, 136, 560, 332]],
+      panel: [[0, 136, 600, 329]],
       tile: [[32, 168, 48, 48]],
       tileIcon: [[44, 180, 24, 24]],
-      heading: [[32, 228, 193.17, 32]],
-      body: [[32, 320, 496, 48]],
-      address: [[32, 272, 208, 36]],
-      actions: [[32, 388, 213, 48]],
+      heading: [[96, 176, 193.17, 32]],
+      address: [[32, 240, 232, 36]],
+      addressIcon: [[44, 250, 16, 16]],
+      body: [[32, 288, 512, 48]],
+      actionsRow: [[32, 360, 536, 73]],
+      actions: [[32, 385, 213, 48]],
     },
     14: {
-      panel: [[0, 136, 560, 332]],
+      panel: [[0, 136, 600, 329]],
       tile: [[32, 168, 48, 48]],
       tileIcon: [[44, 180, 24, 24]],
-      heading: [[32, 228, 193.17, 32]],
-      body: [[32, 320, 496, 48]],
-      address: [[32, 272, 208, 36]],
+      heading: [[96, 176, 193.17, 32]],
+      address: [[32, 240, 232, 36]],
+      addressIcon: [[44, 250, 16, 16]],
+      body: [[32, 288, 512, 48]],
+      actionsRow: [[32, 360, 536, 73]],
       actions: [
-        [32, 388, 213, 48],
-        [257, 388, 207, 48],
+        [32, 385, 213, 48],
+        [253, 385, 207, 48],
       ],
-      actionIcon: [[277, 404, 16, 16]],
+      actionIcon: [[273, 401, 16, 16]],
     },
     15: {
-      panel: [[0, 136, 560, 384]],
+      panel: [[0, 136, 600, 385]],
       tile: [[32, 168, 48, 48]],
       tileIcon: [[44, 180, 24, 24]],
-      heading: [[32, 228, 193.17, 32]],
-      body: [[32, 320, 496, 48]],
-      address: [[32, 272, 208, 36]],
+      heading: [[96, 176, 193.17, 32]],
+      address: [[32, 240, 232, 36]],
+      addressIcon: [[44, 250, 16, 16]],
+      body: [[32, 288, 512, 48]],
+      resent: [[32, 352, 536, 40]],
+      resentIcon: [[32, 354, 16, 16]],
+      actionsRow: [[32, 416, 536, 73]],
       actions: [
-        [32, 388, 213, 48],
-        [257, 388, 207, 48],
+        [32, 441, 213, 48],
+        [253, 441, 207, 48],
       ],
-      actionIcon: [[277, 404, 16, 16]],
-      resent: [[32, 448, 496, 40]],
-      resentIcon: [[32, 450, 16, 16]],
+      actionIcon: [[273, 457, 16, 16]],
     },
     16: {
       note: [[0, 136, 600, 52]],
@@ -266,11 +284,11 @@ const frames = {
       consent: [[24, 433, 552, 40]],
     },
     17: {
-      panel: [[0, 136, 600, 216]],
+      panel: [[0, 136, 600, 172]],
       tile: [[32, 168, 48, 48]],
       tileIcon: [[44, 180, 24, 24]],
-      heading: [[32, 228, 218.69, 32]],
-      body: [[32, 272, 536, 48]],
+      heading: [[96, 176, 218.69, 32]],
+      body: [[32, 228, 512, 48]],
     },
   },
   390: {
@@ -350,6 +368,7 @@ const frames = {
       hint: [[20, 232, 318, 20]],
       input: [[20, 260, 318, 48]],
       button: [[20, 320, 318, 48]],
+      spinner: [[44, 336, 16, 16]],
       micro: [[20, 380, 318, null]],
       check: [[20, 432, 300, 65]],
       facts: [[20, 534, 318, 48]],
@@ -404,41 +423,47 @@ const frames = {
       consent: [[20, 609, 318, 60]],
     },
     13: {
-      panel: [[0, 188, 358, 332]],
+      panel: [[0, 188, 358, 333]],
       tile: [[24, 212, 48, 48]],
       tileIcon: [[36, 224, 24, 24]],
-      heading: [[24, 272, 193.17, 32]],
-      body: [[24, 364, 310, 72]],
-      address: [[24, 316, 208, 36]],
-      actions: [[24, 452, 310, 44]],
+      heading: [[88, 220, 193.17, 32]],
+      address: [[24, 284, 232, 36]],
+      addressIcon: [[36, 294, 16, 16]],
+      body: [[24, 332, 310, 72]],
+      actionsRow: [[24, 428, 310, 69]],
+      actions: [[24, 453, 310, 44]],
     },
     14: {
-      panel: [[0, 188, 358, 384]],
+      panel: [[0, 188, 358, 385]],
       tile: [[24, 212, 48, 48]],
       tileIcon: [[36, 224, 24, 24]],
-      heading: [[24, 272, 193.17, 32]],
-      body: [[24, 364, 310, 72]],
-      address: [[24, 316, 208, 36]],
+      heading: [[88, 220, 193.17, 32]],
+      address: [[24, 284, 232, 36]],
+      addressIcon: [[36, 294, 16, 16]],
+      body: [[24, 332, 310, 72]],
+      actionsRow: [[24, 428, 310, 121]],
       actions: [
-        [24, 452, 310, 44],
-        [24, 504, 310, 44],
+        [24, 453, 310, 44],
+        [24, 505, 310, 44],
       ],
-      actionIcon: [[102, 518, 16, 16]],
+      actionIcon: [[102, 519, 16, 16]],
     },
     15: {
-      panel: [[0, 188, 358, 436]],
+      panel: [[0, 188, 358, 441]],
       tile: [[24, 212, 48, 48]],
       tileIcon: [[36, 224, 24, 24]],
-      heading: [[24, 272, 193.17, 32]],
-      body: [[24, 364, 310, 72]],
-      address: [[24, 316, 208, 36]],
+      heading: [[88, 220, 193.17, 32]],
+      address: [[24, 284, 232, 36]],
+      addressIcon: [[36, 294, 16, 16]],
+      body: [[24, 332, 310, 72]],
+      resent: [[24, 420, 310, 40]],
+      resentIcon: [[24, 422, 16, 16]],
+      actionsRow: [[24, 484, 310, 121]],
       actions: [
-        [24, 452, 310, 44],
-        [24, 504, 310, 44],
+        [24, 509, 310, 44],
+        [24, 561, 310, 44],
       ],
-      actionIcon: [[102, 518, 16, 16]],
-      resent: [[24, 560, 310, 40]],
-      resentIcon: [[24, 562, 16, 16]],
+      actionIcon: [[102, 575, 16, 16]],
     },
     16: {
       note: [[0, 188, 358, 72]],
@@ -453,11 +478,11 @@ const frames = {
       consent: [[20, 609, 318, 60]],
     },
     17: {
-      panel: [[0, 188, 358, 224]],
+      panel: [[0, 188, 358, 180]],
       tile: [[24, 212, 48, 48]],
       tileIcon: [[36, 224, 24, 24]],
-      heading: [[24, 272, 218.69, 32]],
-      body: [[24, 316, 310, 72]],
+      heading: [[88, 220, 218.69, 32]],
+      body: [[24, 272, 310, 72]],
     },
   },
 };
@@ -858,15 +883,21 @@ async function reach(page, state) {
 // Lets every state-change transition finish, so colours read at rest, and
 // holds the spinner at its first frame, so its box is the drawn 16px square
 // rather than the bounds of a turned one.
+// E11.5-11m setup change (founder-authorised 2026-11-07), no assertion
+// value changed: a transition the pointer cancels (state 15's re-sent line
+// now moves the actions out from under it, as the canvas draws) is replaced
+// by a new one, so the wait runs until none is left, bounded at ten rounds,
+// rather than failing on the cancelled one.
 function settle(page) {
   return page.evaluate(async () => {
-    const animations = globalThis.document.getAnimations();
-    await Promise.all(
-      animations
-        .filter((animation) => animation instanceof globalThis.CSSTransition)
-        .map((animation) => animation.finished),
-    );
-    for (const animation of animations) {
+    for (let round = 0; round < 10; round += 1) {
+      const running = globalThis.document
+        .getAnimations()
+        .filter((animation) => animation instanceof globalThis.CSSTransition);
+      if (running.length === 0) break;
+      await Promise.allSettled(running.map((animation) => animation.finished));
+    }
+    for (const animation of globalThis.document.getAnimations()) {
       if (animation instanceof globalThis.CSSAnimation) {
         animation.pause();
         animation.currentTime = 0;
@@ -928,6 +959,8 @@ function resolveTokens(page) {
       wash: colour('wash'),
       line: colour('line'),
       paper: colour('paper'),
+      well: colour('well'),
+      successIcon: colour('success-icon'),
       surface: colour('surface'),
       coral: colour('coral'),
       coralTint: colour('coral-tint'),
@@ -1150,7 +1183,18 @@ async function assertDrawn(page, number, state, where, width) {
     );
     assert.equal(css.address.font, '14px/20px 400', where);
     assert.match(css.address.family, /^"JetBrains Mono"/u, where);
-    assert.equal(css.address.background, tokens.paper, where);
+    // E11.5-11m, rule-7 rewrite: the echo is on the well (paper in light,
+    // midnight-deep in dark, Hero.dc.html), with an ink-600 mail icon.
+    assert.equal(css.address.background, tokens.well, where);
+    assert.equal(css.address.color, tokens.ink, where);
+    assert.equal(css.addressIcon.color, tokens.ink600, where);
+    assert.equal(
+      await page.locator('[data-success-address] .icon--mail').count(),
+      1,
+      where,
+    );
+    // The actions sit over a 1px line.
+    assert.equal(css.actionsRow.border, `1px solid ${tokens.line}`, where);
     assert.equal(css.address.shadow, tokens.insetLine, where);
     assert.equal(css.address.radius, '8px', where);
     // The secondary primitive: 16/24 and 20px padding from 48rem, 14/20
@@ -1176,11 +1220,14 @@ async function assertDrawn(page, number, state, where, width) {
       );
       assert.equal(css.resent.font, '14px/20px 400', where);
       assert.equal(css.resent.color, tokens.ink600, where);
+      // E11.5-11m named rewrite (founder-authorised 2026-11-07): the canvas's
+      // check-circle, not check (Hero.dc.html), in --success-icon.
       assert.equal(
-        await page.locator('[data-resend-status] .icon--check').count(),
+        await page.locator('[data-resend-status] .icon--check-circle').count(),
         1,
         where,
       );
+      assert.equal(css.resentIcon.color, tokens.successIcon, where);
     }
   }
 }
@@ -1266,6 +1313,341 @@ test('after a signup, "Use a different address" shows the form at rest, with no 
         form,
         { entering: 0, own: false, animations: 0, translate: 'none' },
         `${width}px`,
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+// E11.5-11m: the state motion. Each entrance or exit is a CSS transition of
+// exactly its stated property, duration and start value, focus lands where
+// E11.5-11g says both as the transition starts and once it has ended, and
+// nothing focused is ever left mid-motion. The durations are the tokens.
+const fast = 150;
+const base = 200;
+
+// The transitions a note shows on one target, as [property, duration, from,
+// to], sorted.
+function on(note, target) {
+  return note.transitions
+    .filter((entry) => entry.target === target)
+    .map((entry) => [entry.property, entry.duration, entry.from, entry.to])
+    .sort();
+}
+
+function note(notes, event, target) {
+  const found = notes.find(
+    (entry) => entry.event === event && entry.target === target,
+  );
+  assert.ok(found, `a ${event} change on ${target}`);
+  return found;
+}
+
+// The page at rest: nothing transitions and the element is opaque, unmoved.
+async function atRest(page, selector) {
+  return page.locator(selector).evaluate((element) => {
+    const style = globalThis.getComputedStyle(element);
+    return {
+      opacity: style.opacity,
+      translate: style.translate,
+      scale: style.scale,
+    };
+  });
+}
+
+const rest = { opacity: '1', translate: 'none', scale: 'none' };
+
+test('form to success and back: the form fades out, the panel enters, and focus lands as E11.5-11g says', async () => {
+  for (const width of [1440, 390]) {
+    const where = `${width}px`;
+    const { context, page } = await openPage({
+      html: giveawayOpenPage,
+      viewport: viewports[width],
+    });
+    try {
+      await recordStateMotion(page);
+      const announcers = await page
+        .locator(
+          'valstara-signup-form [role="status"], valstara-signup-form [role="alert"], valstara-signup-form [aria-live]',
+        )
+        .count();
+      await reach(page, states[13]);
+      // Focus is on the panel as it enters, and the E11.5-11i guard accepts
+      // the entering panel: its transitions end within --duration-base.
+      assert.deepEqual(await focusMotionIssues(page), [], where);
+      await transitionsEnded(page);
+      let notes = await readStateMotion(page);
+      const leaving = note(notes, 'leaving', 'form');
+      assert.deepEqual(
+        on(leaving, 'form'),
+        [['opacity', fast, '1', '0']],
+        `${where}: the form fades out over --duration-fast`,
+      );
+      const shown = note(notes, 'shown', '[data-success]');
+      assert.ok(
+        shown.t - leaving.t >= fast - 20,
+        `${where}: the panel enters after the form has faded (${shown.t - leaving.t}ms)`,
+      );
+      assert.deepEqual(
+        on(shown, '[data-success]'),
+        [
+          ['opacity', base, '0', '1'],
+          ['translate', base, '0px 12px', 'none'],
+        ],
+        `${where}: the panel fades in and rises by --enter-distance`,
+      );
+      assert.deepEqual(
+        on(shown, 'span.signup-success__tile'),
+        [['scale', base, '0.9', 'none']],
+        `${where}: the tile scales up from --enter-scale`,
+      );
+      assert.equal(shown.focus, '[data-success]', `${where}: focus on entry`);
+      assert.equal(
+        await page.evaluate(() =>
+          globalThis.document.activeElement?.hasAttribute('data-success'),
+        ),
+        true,
+        `${where}: focus after the transition`,
+      );
+      assert.deepEqual(await atRest(page, '[data-success]'), rest, where);
+      assert.deepEqual(
+        await atRest(page, '.signup-success__tile'),
+        rest,
+        where,
+      );
+      // It announces nothing extra: the island's live regions are the same.
+      assert.equal(
+        await page
+          .locator(
+            'valstara-signup-form [role="status"], valstara-signup-form [role="alert"], valstara-signup-form [aria-live]',
+          )
+          .count(),
+        announcers,
+        `${where}: no live region added`,
+      );
+
+      // "Use a different address" reverses the sequence.
+      await page.evaluate(() => {
+        globalThis.stateMotion.length = 0;
+      });
+      await page.locator('[data-different-address]').click();
+      await page.locator('form').waitFor({ state: 'visible', timeout: 2_000 });
+      assert.deepEqual(await focusMotionIssues(page), [], where);
+      await transitionsEnded(page);
+      notes = await readStateMotion(page);
+      const exit = note(notes, 'leaving', '[data-success]');
+      assert.deepEqual(
+        on(exit, '[data-success]'),
+        [
+          ['opacity', base, '1', '0'],
+          ['translate', base, 'none', '0px 12px'],
+        ],
+        `${where}: the panel fades out and sinks`,
+      );
+      assert.deepEqual(
+        on(exit, 'span.signup-success__tile'),
+        [['scale', base, 'none', '0.9']],
+        `${where}: the tile shrinks back`,
+      );
+      const back = note(notes, 'returning', 'form');
+      assert.ok(
+        back.t - exit.t >= base - 20,
+        `${where}: the form returns after the panel has left (${back.t - exit.t}ms)`,
+      );
+      assert.deepEqual(
+        on(back, 'form'),
+        [['opacity', fast, '0', '1']],
+        `${where}: the form fades back in over --duration-fast`,
+      );
+      assert.equal(back.focus, '#signup-email', `${where}: focus on return`);
+      assert.equal(
+        await page.evaluate(() => globalThis.document.activeElement?.id),
+        'signup-email',
+        `${where}: focus after the transition`,
+      );
+      assert.deepEqual(await atRest(page, 'valstara-signup-form form'), rest);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('notices and field errors enter as the E11.5-11j field error does, with focus where E11.5-11g says', async () => {
+  for (const [number, target, focus] of [
+    ['03', '#signup-email-error', '#signup-email'],
+    ['05', '#signup-email-error', '#signup-email'],
+    ['09', '[data-form-error]', '[data-form-error]'],
+    [12, '[data-form-error]', '[data-form-error]'],
+  ]) {
+    const where = `state ${number}`;
+    const { context, page } = await openPage({
+      html: giveawayOpenPage,
+      viewport: viewports[1440],
+    });
+    try {
+      await recordStateMotion(page);
+      await reach(page, states[number]);
+      assert.deepEqual(await focusMotionIssues(page), [], where);
+      await transitionsEnded(page);
+      const shown = note(await readStateMotion(page), 'shown', target);
+      assert.deepEqual(
+        on(shown, target),
+        [
+          ['opacity', fast, '0', '1'],
+          ['translate', fast, '0px 4px', 'none'],
+        ],
+        `${where}: fades in and rises from --error-rise, nothing shakes`,
+      );
+      assert.equal(shown.focus, focus, `${where}: focus as it enters`);
+      assert.equal(
+        await page.evaluate(
+          (selector) =>
+            globalThis.document.activeElement ===
+            globalThis.document.querySelector(selector),
+          focus,
+        ),
+        true,
+        `${where}: focus after the transition`,
+      );
+      assert.deepEqual(await atRest(page, target), rest, where);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('the resend control and the re-sent line fade in over --duration-base', async () => {
+  const { context, page } = await openPage({
+    html: giveawayOpenPage,
+    viewport: viewports[390],
+    resendSoon: true,
+  });
+  try {
+    await recordStateMotion(page);
+    await reach(page, states[15]);
+    await transitionsEnded(page);
+    const notes = await readStateMotion(page);
+    assert.deepEqual(
+      on(note(notes, 'shown', '[data-resend]'), '[data-resend]').filter(
+        ([property]) => property === 'opacity',
+      ),
+      [['opacity', base, '0', '1']],
+    );
+    assert.deepEqual(
+      on(note(notes, 'shown', '[data-resend-status]'), '[data-resend-status]'),
+      [['opacity', base, '0', '1']],
+    );
+    assert.deepEqual(await atRest(page, '[data-resend]'), rest);
+    assert.deepEqual(await atRest(page, '[data-resend-status]'), rest);
+  } finally {
+    await context.close();
+  }
+});
+
+test('the in-flight button cross-fades its label and its name is only ever the current label', async () => {
+  const { context, page } = await openPage({
+    html: giveawayOpenPage,
+    viewport: viewports[1440],
+    turnstile: 'pending',
+  });
+  try {
+    await recordStateMotion(page, { pauseOn: 'label' });
+    await page.locator('#signup-email').fill(typed);
+    await page.locator('[data-submit]').click();
+    await page.waitForFunction(() =>
+      globalThis.stateMotion.some((entry) => entry.event === 'label'),
+    );
+    const change = note(await readStateMotion(page), 'label', '[data-submit]');
+    assert.deepEqual(
+      on(change, '[data-submit]::after'),
+      [['opacity', fast, '1', '0']],
+      'the old label fades out',
+    );
+    assert.deepEqual(
+      on(change, 'label'),
+      [['opacity', fast, '0', '1']],
+      'the new label fades in',
+    );
+    // Paused mid-fade: the old label is drawn, but neither the button's text
+    // nor its accessible name carries it.
+    const button = page.locator('[data-submit]');
+    assert.equal(
+      await button.evaluate(
+        (element) => globalThis.getComputedStyle(element, '::after').content,
+      ),
+      `"${landingCopy.form.submit}" / ""`,
+    );
+    assert.equal(await button.textContent(), signupFormCopy.challengePending);
+    assert.equal(
+      await page
+        .getByRole('button', {
+          name: signupFormCopy.challengePending,
+          exact: true,
+        })
+        .count(),
+      1,
+    );
+    await resumeStateMotion(page);
+    await transitionsEnded(page);
+    await page.waitForFunction(
+      () =>
+        !globalThis.document
+          .querySelector('[data-submit]')
+          .hasAttribute('data-previous-label'),
+    );
+    assert.equal(
+      await button.evaluate(
+        (element) => globalThis.getComputedStyle(element, '::after').content,
+      ),
+      'none',
+      'the old label is gone once the fade ends',
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test('with reduced motion the states swap at once: no transition runs and focus lands as before', async () => {
+  for (const width of [1440, 390]) {
+    const where = `${width}px`;
+    const { context, page } = await openPage({
+      html: giveawayOpenPage,
+      viewport: viewports[width],
+      reducedMotion: 'reduce',
+      resendSoon: true,
+    });
+    try {
+      await recordStateMotion(page);
+      await reach(page, states['09']);
+      await reach(page, states[15]);
+      const notes = await readStateMotion(page);
+      assert.ok(notes.length > 0, where);
+      for (const entry of notes)
+        assert.deepEqual(
+          entry.transitions,
+          [],
+          `${where}: ${entry.event} ${entry.target}`,
+        );
+      // The form leaves and the panel shows in the same task.
+      const leaving = note(notes, 'leaving', 'form');
+      const shown = note(notes, 'shown', '[data-success]');
+      assert.equal(shown.t, leaving.t, `${where}: no wait before the panel`);
+      assert.equal(shown.focus, '[data-success]', where);
+      // "Use a different address" brings the form back in the same task.
+      assert.deepEqual(
+        await page.evaluate(() => {
+          const { document } = globalThis;
+          document.querySelector('[data-different-address]').click();
+          return {
+            form: !document.querySelector('valstara-signup-form form').hidden,
+            panel: document.querySelector('[data-success]').hidden,
+            focus: document.activeElement?.id,
+            running: document.getAnimations().length,
+          };
+        }),
+        { form: true, panel: true, focus: 'signup-email', running: 0 },
+        where,
       );
     } finally {
       await context.close();

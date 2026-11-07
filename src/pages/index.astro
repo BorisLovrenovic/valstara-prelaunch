@@ -130,10 +130,12 @@ Astro.response.headers.set(
                 </SignupForm>
               ) : (
                 <div class="landing-paused" role="status">
-                  <span class="landing-paused__tile">
-                    <Icon name="pause" size="md" />
-                  </span>
-                  <h2>{landingCopy.paused.heading}</h2>
+                  <div class="landing-paused__head">
+                    <span class="landing-paused__tile">
+                      <Icon name="pause" size="md" />
+                    </span>
+                    <h2>{landingCopy.paused.heading}</h2>
+                  </div>
                   <p>{landingCopy.paused.body}</p>
                 </div>
               )
@@ -575,25 +577,31 @@ Astro.response.headers.set(
     display: none;
   }
   /*
-    The paused panel (E11.5-11g, state 17) is the signup form's success
-    panel with the pause icon: a surface card, radius 12, --shadow-2 plus
-    the dark-only edge, 24px padding (32px from 48rem), a column with 12px
-    gaps holding the 48px neutral tile, the 24/32 600 heading and the 16/24
-    ink-600 body.
+    The paused panel (state 17, Hero.dc.html, E11.5-11m) is the signup
+    form's success panel with the pause icon: a surface card, radius 12,
+    --shadow-2 plus the dark-only edge, 24px padding (32px from 48rem), a
+    column holding the head (the 48px neutral tile and the 24/32 600
+    heading, 16px apart and centred on each other) and, 12px below, the
+    16/24 ink-600 body, at most 32rem wide.
   */
   .landing-paused {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: var(--space-1-5);
     align-items: flex-start;
     padding: var(--space-3);
     background-color: var(--surface);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-2), var(--edge);
   }
+  .landing-paused__head {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+  }
   .landing-paused__tile {
     display: flex;
+    flex: none;
     align-items: center;
     justify-content: center;
     inline-size: var(--space-6);
@@ -604,14 +612,17 @@ Astro.response.headers.set(
   }
   .landing-paused h2 {
     margin: var(--space-0);
+    text-wrap: balance;
     font-size: var(--step-4);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-4);
     letter-spacing: var(--tracking-tight);
   }
   .landing-hero .landing-paused p {
-    margin: var(--space-0);
+    max-inline-size: calc(var(--space-8) * 8);
+    margin: var(--space-1-5) var(--space-0) var(--space-0);
     color: var(--ink-600);
+    text-wrap: pretty;
     font-size: var(--step-2);
     line-height: var(--leading-2);
   }
