@@ -618,7 +618,9 @@ test('focused content is never mid-motion: focus puts an entering or revealed el
 
 // E11.5-11l: data-enter="fade" only fades, so content inside a rising
 // container travels exactly the container's distance. Focus ends an entrance
-// rather than removing it, so it never starts again when focus leaves.
+// rather than removing it, so once it has run it never starts again when
+// focus leaves. (Mid-entrance, the CSS end lasts only while focus stays; the
+// signup island makes it stick, tested in landing-hero-rendered.)
 const nestedEntrancePage = () =>
   `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Nested entrance</title><style>${tokensCss}
 ${motionCss}

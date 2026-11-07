@@ -325,6 +325,7 @@ function measureHero(page) {
       body: pick('.landing-hero__body'),
       bodyStyle: style('.landing-hero__body'),
       form: pick('valstara-signup-form'),
+      card: pick('valstara-signup-form form'),
       label: pick('.field__label'),
       hint: pick('.field__description'),
       input: pick('#signup-email'),
@@ -415,7 +416,7 @@ test('above the fold matches Fold.dc.html at 1440 × 900, 390 × 844 and 320, in
         `${key} ends above 500 in ${colorScheme}, ${variant}: ${small[key].bottom}`,
       );
     }
-    for (const key of ['micro', 'factsList', 'consent', 'strip']) {
+    for (const key of ['micro', 'factsList', 'consent', 'card', 'strip']) {
       assert.ok(
         small[key].bottom <= 844,
         `${key} fits above 844 in ${colorScheme}, ${variant}: ${small[key].bottom}`,
@@ -1419,6 +1420,26 @@ test('typing into the field during the entrance works, and focus leaves nothing 
         [0, 0],
         `${name} at rest while focused, ${width}px`,
       );
+    // Focus leaves while the entrance would still be running: the card and
+    // its field and button stay at rest, and nothing that focus entered
+    // starts again.
+    await page.locator('#landing-title').click();
+    const left = await heroEntrance(page, 300);
+    for (const name of ['form', 'input', 'button'])
+      assert.deepEqual(
+        [left.state[name].travel, left.state[name].animations],
+        [0, 0],
+        `${name} still at rest after focus leaves mid-entrance, ${width}px`,
+      );
+    assert.equal(
+      await page.evaluate(
+        () =>
+          globalThis.document.querySelector('.signup-entry').getAnimations()
+            .length,
+      ),
+      0,
+      `the card's entrance does not resume, ${width}px`,
+    );
     await context.close();
 
     // On a fresh page whose entrance has run, focus in and out of the card

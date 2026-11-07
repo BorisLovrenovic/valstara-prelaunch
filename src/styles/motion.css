@@ -59,8 +59,10 @@
 
   /* Focused content is always at rest. The entrance ends at once rather
      than being removed: removing its name would start it again from the
-     first keyframe when focus leaves (E11.5-11l), while an ended entrance
-     stays ended. */
+     first keyframe when focus leaves (E11.5-11l). The end lasts only while
+     focus stays, so if focus leaves before the entrance would have ended,
+     the entrance resumes; the signup island removes data-enter from each
+     element focus enters, which makes the end stick. */
   [data-enter]:focus-within {
     animation-duration: calc(var(--duration-enter) * 0);
     animation-delay: calc(var(--stagger) * 0);
