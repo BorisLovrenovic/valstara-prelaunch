@@ -28,7 +28,8 @@ interface Props {
 
 const { title, description, themeToggle = true } = Astro.props;
 // Header anchors target the landing sections; elsewhere they lead back to them.
-const sectionPrefix = Astro.url.pathname === '/' ? '' : '/';
+const isLanding = Astro.url.pathname === '/';
+const sectionPrefix = isLanding ? '' : '/';
 const footerGroups = layoutCopy.footerGroups.map((group) => ({
   ...group,
   links: layoutCopy.footerLinks.filter((link) => link.group === group.id),
@@ -102,6 +103,7 @@ const fallbackImage = socialFallbackImageUrl(
           {themeToggle && <ThemeToggle />}
           <Button
             class="site-header__join"
+            variant={isLanding ? 'primary' : 'secondary'}
             size="h44"
             href={`${sectionPrefix}${layoutCopy.joinAnchor}`}
           >
@@ -167,30 +169,29 @@ const fallbackImage = socialFallbackImageUrl(
     background-color: var(--paper);
   }
 
-  /* Visually hidden until focused, then revealed at the gutter (E11.5-11b). */
+  /* Above the viewport until focused, then shown at the gutter on a raised
+     surface (E11.5-11k). The reveal is instant: no transition is drawn. */
   .skip-link {
     position: absolute;
-    inset-block-start: var(--space-1);
+    inset-block-start: calc(var(--space-6) * -2);
     inset-inline-start: var(--gutter);
     z-index: var(--layer-skip);
-    padding: var(--space-1) var(--space-2);
-    color: var(--midnight);
+    padding: var(--space-1-5) var(--space-2);
+    color: var(--ink);
     font-family: var(--font-sans);
-    font-size: var(--step-1);
+    font-size: var(--step-2);
     font-weight: var(--weight-semibold);
-    line-height: var(--leading-1);
-    background-color: var(--coral);
+    line-height: var(--leading-2);
+    text-decoration: none;
+    background-color: var(--surface);
     border-radius: var(--radius-control);
-    transform: translateY(calc(-100% - var(--space-2)));
-    transition-property: transform;
-    transition-duration: var(--duration-fast);
-    transition-timing-function: var(--ease-out);
+    box-shadow: var(--shadow-2), var(--edge);
   }
 
   .skip-link:focus-visible {
-    transform: translateY(0);
-    outline: medium solid var(--midnight);
-    outline-offset: var(--space-1);
+    inset-block-start: var(--space-1);
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
   }
 
   /* The header is not sticky, so it never obscures focus. Small: 72px tall
@@ -218,6 +219,7 @@ const fallbackImage = socialFallbackImageUrl(
     line-height: var(--leading-3);
     letter-spacing: var(--tracking-tight);
     text-decoration: none;
+    border-radius: var(--radius-check);
   }
 
   .site-name:focus-visible,
@@ -232,20 +234,29 @@ const fallbackImage = socialFallbackImageUrl(
     display: none;
   }
 
+  /* The surface capsule that anchors the links on plain paper (E11.5-11k). */
   .site-nav__links {
     display: flex;
-    gap: var(--space-0);
+    align-items: center;
     margin: 0;
-    padding: 0;
+    padding: var(--space-0-5);
     list-style: none;
+    background-color: var(--surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1), var(--edge);
   }
 
+  .site-nav__links li {
+    display: flex;
+  }
+
+  /* 36px tall (20px + 16px), padded 12px. Hover and press fill the link;
+     the fill and the text colour are all that transition. */
   .site-nav__links a {
     display: inline-flex;
     align-items: center;
-    padding-block: var(--space-1-5);
-    /* 10px: half the 20px step. */
-    padding-inline: calc(var(--space-2-5) / 2);
+    block-size: calc(var(--space-2) + var(--space-2-5));
+    padding-inline: var(--space-1-5);
     color: var(--ink-600);
     font-size: var(--step-1);
     font-weight: var(--weight-medium);
@@ -253,11 +264,23 @@ const fallbackImage = socialFallbackImageUrl(
     white-space: nowrap;
     text-decoration: none;
     border-radius: var(--radius-control);
+    transition-property: background-color, color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
   }
 
   .site-nav__links a:hover {
     color: var(--ink);
-    text-decoration: underline;
+    background-color: var(--wash);
+  }
+
+  .site-nav__links a:active {
+    color: var(--ink);
+    background-color: var(--wash-strong);
+  }
+
+  .site-nav__links a:focus-visible {
+    color: var(--ink);
   }
 
   .site-header__actions {
@@ -271,7 +294,7 @@ const fallbackImage = socialFallbackImageUrl(
   /* A fixed, token-derived width: the label's width differs slightly between
      the metric-matched fallback and the loaded face, and the right-aligned
      actions must not move when the font swaps (zero CLS, E2-02). 160px is the
-     frames' h44 Join, a 119px label padded 20px each side, within 1px. */
+     canvas's Join in either variant (E11.5-11k). */
   .site-header :global(.site-header__join) {
     inline-size: calc(var(--space-10) * 2);
     white-space: nowrap;
@@ -303,7 +326,7 @@ const fallbackImage = socialFallbackImageUrl(
     padding-block: var(--space-8) var(--space-6);
     color: var(--on-midnight);
     background-color: var(--midnight);
-    box-shadow: var(--edge);
+    box-shadow: var(--shadow-band);
   }
 
   .site-footer__grid {
@@ -359,58 +382,72 @@ const fallbackImage = socialFallbackImageUrl(
     display: inline-block;
     min-inline-size: var(--tap-min);
     padding-block: var(--space-1-5);
-    color: var(--on-midnight);
+    color: var(--on-midnight-600);
     font-family: var(--font-sans);
     font-size: var(--step-1);
     line-height: var(--leading-1);
     text-decoration: none;
+    border-radius: var(--radius-link);
+    transition-property: color, text-decoration-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
   }
 
   .footer-links a:hover,
   .site-footer__contact:hover {
-    color: var(--coral-lift);
-    text-decoration: underline;
+    color: var(--on-midnight);
+    text-decoration-line: underline;
+    text-decoration-color: var(--coral-lift);
+    text-decoration-thickness: var(--underline-thickness);
+    text-underline-offset: var(--underline-offset);
   }
 
   .footer-links a:focus-visible,
-  .site-footer__contact:focus-visible,
-  .site-name--footer:focus-visible {
+  .site-footer__contact:focus-visible {
+    color: var(--on-midnight);
     outline: var(--focus-width) solid var(--coral-lift);
     outline-offset: var(--focus-offset);
   }
 
+  /* The two lines sit under a hairline rule, in secondary text on midnight. */
   .site-footer__lines {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
-    /* The frames' 760px measure and 85% opacity for the two lines. */
+    /* The canvas's 760px measure. */
     max-inline-size: calc(var(--space-10) * 9.5);
     margin-block-start: var(--space-4);
-    opacity: 0.85;
+    padding-block-start: var(--space-3);
+    border-block-start: var(--border-thin) solid var(--on-midnight-line);
   }
 
   .site-footer__trademark,
   .site-footer__legal {
     margin: 0;
-    color: var(--on-midnight);
+    color: var(--on-midnight-600);
     font-size: var(--step-1);
     line-height: var(--leading-1);
+    text-wrap: pretty;
   }
 
-  /* Medium: 80px tall, 24px gaps, links padded 12px 10px. The footer
-     wordmark takes its own row over three equal columns. */
+  /* Medium: 80px tall, no gap between the section links. The
+     footer wordmark takes its own row over three equal columns. */
   @media (min-width: 48rem) {
     .skip-link {
       inset-inline-start: var(--gutter-wide);
     }
 
+    /* The canvas's 24px gaps need 5.4px more than the 704px track at 768, and
+       the row must stay on the grid (design rule 8). So the 24px is kept after
+       the wordmark only, and the actions' auto margin takes what is left. */
     .site-header__inner {
-      gap: var(--space-3);
+      gap: var(--space-0);
       block-size: var(--header-height-wide);
     }
 
     .site-nav {
       display: block;
+      margin-inline-start: var(--space-3);
     }
 
     .site-header__actions {
@@ -420,6 +457,7 @@ const fallbackImage = socialFallbackImageUrl(
     .site-footer__grid {
       grid-template-columns: repeat(var(--grid-columns-wide), minmax(0, 1fr));
       column-gap: var(--grid-gap-wide);
+      row-gap: var(--space-4);
     }
 
     .site-footer__nav {
@@ -432,31 +470,27 @@ const fallbackImage = socialFallbackImageUrl(
     }
 
     .site-footer__lines {
-      margin-block-start: var(--space-5);
+      margin-block-start: var(--space-6);
     }
   }
 
-  /* Large: 40px gaps, links padded 12px with 4px between. The footer
+  /* Large: 40px gaps, section links 2px apart. The footer
      columns sit on the 12-column grid: 1–4, 5–6, 7–8 and 9–12. */
   @media (min-width: 64rem) {
     .site-header__inner {
       gap: var(--space-5);
     }
 
-    .site-nav__links {
-      gap: var(--space-0-5);
+    .site-nav {
+      margin-inline-start: var(--space-0);
     }
 
-    .site-nav__links a {
-      padding-inline: var(--space-1-5);
+    .site-nav__links {
+      gap: calc(var(--space-0-5) / 2);
     }
 
     .site-footer {
       margin-block-start: var(--section-gap-wide);
-    }
-
-    .site-footer__grid {
-      row-gap: var(--space-4);
     }
 
     .site-name--footer {
@@ -479,14 +513,12 @@ const fallbackImage = socialFallbackImageUrl(
     .site-footer__contact {
       padding-block: var(--space-0-75);
     }
-
-    .site-footer__lines {
-      margin-block-start: var(--space-6);
-    }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .skip-link {
+    .site-nav__links a,
+    .footer-links a,
+    .site-footer__contact {
       transition-property: none;
     }
   }
