@@ -90,11 +90,29 @@ Astro.response.headers.set(
       <Container>
         <div class="landing-hero__grid">
           <div class="landing-hero__copy">
+            {
+              /*
+              The first-paint entrance (E11.5-11l): the star (0), the
+              positioning line (1), the H1 and the supporting line (2), then
+              the form card (3). The H1 and the form only rise, so they are
+              visible and usable from first paint.
+            */
+            }
             <p class="landing-eyebrow">
-              <Icon name="star" size="sm" />{landingCopy.hero.eyebrow}
+              <span
+                class="landing-eyebrow__star"
+                data-enter
+                style="--enter-index: 0"><Icon name="star" size="sm" /></span
+              ><span data-enter style="--enter-index: 1"
+                >{landingCopy.hero.eyebrow}</span
+              >
             </p>
-            <h1 id="landing-title">{landingCopy.hero.heading}</h1>
-            <p class="landing-hero__body">{landingCopy.hero.body}</p>
+            <h1 id="landing-title" data-enter="shift" style="--enter-index: 2">
+              {landingCopy.hero.heading}
+            </h1>
+            <p class="landing-hero__body" data-enter style="--enter-index: 2">
+              {landingCopy.hero.body}
+            </p>
             {
               signupEnabled ? (
                 <SignupForm
@@ -449,14 +467,16 @@ Astro.response.headers.set(
     line-height: var(--leading-3);
   }
   /*
-    The #join hero from the wireframes (E11.5-11c). Small: one column, 24px
-    top padding, the logo strip 24px below the form. Medium (48rem): 40px top
-    padding, the text in columns 1-7 and the banner stack in 8-12, rows
-    centred. Large (64rem): 48px top padding and the large stack. The section
-    gap above the catalogue is the only space below the hero.
+    The #join hero from the final design (Hero.dc.html, E11.5-11l), on the
+    E11.5-11c layout. Small: one column, 16px top padding (the phone fold),
+    the logo strip 24px below the form. Medium (48rem): 40px top padding, the
+    text in columns 1-7 and the banner stack in 8-12, rows centred. Large
+    (64rem): 48px top padding and the large stack. The section gap above the
+    catalogue is the only space below the hero. The stack and the strip are
+    E11.5-11c's, unchanged (final-design rule 4).
   */
   .landing-hero {
-    padding-block-start: var(--space-3);
+    padding-block-start: var(--space-2);
   }
   .landing-hero__copy {
     min-width: 0;
@@ -473,12 +493,16 @@ Astro.response.headers.set(
   .landing-eyebrow :global(.icon) {
     color: var(--coral);
   }
+  .landing-eyebrow__star {
+    display: flex;
+  }
   .landing-hero h1,
   .landing-hero :global(p) {
     margin-block-end: var(--space-0);
   }
   .landing-hero h1 {
     margin-block-start: var(--space-1-5);
+    text-wrap: balance;
   }
   /* Under .landing-hero so it outranks the page's paragraph reset. */
   .landing-hero .landing-hero__body {
@@ -487,11 +511,33 @@ Astro.response.headers.set(
     color: var(--ink-600);
     font-size: var(--step-2);
     line-height: var(--leading-2);
+    text-wrap: pretty;
   }
+  /* The form card, or the paused panel in its place, at most 600px wide. */
   .landing-hero :global(valstara-signup-form),
   .landing-paused {
-    max-inline-size: calc(var(--space-10) * 7);
+    max-inline-size: calc(var(--space-10) * 7.5);
     margin-block-start: var(--space-3);
+  }
+  /*
+    The star's entrance (E11.5-11l): the data-enter fade and rise, plus a
+    turn from --star-turn and a scale from --star-scale, both to rest. Only
+    without reduced motion, like every motion.css utility; the keyframe
+    names no end, so the star finishes on its resting style.
+  */
+  @media (prefers-reduced-motion: no-preference) {
+    .landing-eyebrow__star[data-enter] {
+      animation-name: landing-star-enter;
+    }
+
+    @keyframes landing-star-enter {
+      from {
+        opacity: 0;
+        translate: 0 var(--enter-distance);
+        rotate: var(--star-turn);
+        scale: var(--star-scale);
+      }
+    }
   }
   .landing-facts {
     display: flex;

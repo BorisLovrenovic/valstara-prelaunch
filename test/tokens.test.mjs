@@ -222,6 +222,9 @@ const motionTokens = {
   '--error-rise': '0.25rem',
   '--spinner-opacity': '0.8',
   '--duration-spin': '800ms',
+  // E11.5-11l: the hero star's entrance turns from -45deg and scales from 0.6.
+  '--star-turn': '-45deg',
+  '--star-scale': '0.6',
 };
 
 // E11.5-11j: the token delta in ChangeLog.dc.html, light values on bare :root

@@ -7,6 +7,7 @@ import test, { after, before } from 'node:test';
 
 import { chromium } from 'playwright';
 import axe from 'axe-core';
+import { entranceEnded } from './helpers/motion.mjs';
 
 import { landingCopy } from '../src/copy/landing.ts';
 import {
@@ -328,6 +329,9 @@ test('the landing joins layout enforcement and passes WCAG axe in both themes', 
         `landing layout ${colorScheme} at ${width}px`,
       );
     }
+    // axe reads text at rest, after the hero entrance (E11.5-11l): text
+    // that is still fading in has no settled contrast to measure.
+    await entranceEnded(page);
     await page.addScriptTag({ content: axe.source });
     const violations = await page.evaluate(async () => {
       const result = await globalThis.axe.run(globalThis.document, {

@@ -541,7 +541,7 @@ test('dock is server-hidden, appears only after hero leaves, and carries one for
     assert.equal(await page.locator('[data-turnstile-container]').count(), 1);
     assert.equal(await page.locator('[name="email"]').count(), 1);
     await page.fill('#signup-email', 'mirrored@example.com');
-    await page.evaluate(() => globalThis.scrollTo(0, 700));
+    await page.evaluate(() => globalThis.scrollTo(0, 800));
     await page.waitForFunction(
       () => !globalThis.document.querySelector('[data-dock]').hidden,
     );
@@ -575,7 +575,7 @@ test('dock is server-hidden, appears only after hero leaves, and carries one for
       () => globalThis.document.querySelector('[data-dock]').hidden,
     );
     await page.setViewportSize({ width: 768, height: 600 });
-    await page.evaluate(() => globalThis.scrollTo(0, 700));
+    await page.evaluate(() => globalThis.scrollTo(0, 800));
     assert.equal(await page.locator('[data-dock]').isVisible(), false);
   } finally {
     await context.close();
@@ -614,7 +614,7 @@ test('dock and hero submit the same form body, including signed capture and opt-
         });
       });
       if (entry === 'dock') {
-        await page.evaluate(() => globalThis.scrollTo(0, 700));
+        await page.evaluate(() => globalThis.scrollTo(0, 800));
         await page.waitForFunction(
           () => !globalThis.document.querySelector('[data-dock]').hidden,
         );

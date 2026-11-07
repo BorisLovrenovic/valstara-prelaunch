@@ -14,7 +14,11 @@ import { signupCopy, signupFormCopy } from '../src/copy/signup.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { renderLanding } from './helpers/landing-render.mjs';
 import { checkPageLayout } from '../scripts/design/layout-checks.mjs';
-import { focusMotionIssues, scrollSettled } from './helpers/motion.mjs';
+import {
+  entranceEnded,
+  focusMotionIssues,
+  scrollSettled,
+} from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 // E11.5-11h: the mobile sticky signup bar of Sticky.dc.html (seven frames)
@@ -1023,6 +1027,9 @@ test('the visibility matrix: small widths only, never over the hero form or with
       safeArea: 0,
     });
     try {
+      // The sweep reads the page at rest, after the hero entrance
+      // (E11.5-11l), so the form the island measures is where it stays.
+      await entranceEnded(page);
       // A sweep from top to bottom in 200px steps: wherever the bar shows,
       // the hero form is wholly above the viewport and the footer below it.
       const rows = await page.evaluate(async () => {

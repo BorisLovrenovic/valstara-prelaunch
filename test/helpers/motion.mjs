@@ -19,6 +19,28 @@ export async function scrollSettled(page, { samples = 3, interval = 50 } = {}) {
   }
 }
 
+// E11.5-11l (founder-authorised 2026-11-07): the hero's first-paint entrance
+// runs once per page load and ends within 580ms. A test that reads geometry
+// with motion allowed waits for it, bounded at 2 seconds, so it measures the
+// page at rest. A finished entrance leaves document.getAnimations(), because
+// its fill is backwards only. It works with JavaScript disabled, because the
+// check runs from outside the page.
+export async function entranceEnded(page) {
+  const entering = () =>
+    page.evaluate(
+      () =>
+        globalThis.document
+          .getAnimations()
+          .filter((animation) =>
+            animation.effect?.target?.matches?.('[data-enter]'),
+          ).length,
+    );
+  for (let attempt = 0; (await entering()) > 0; attempt += 1) {
+    assert.ok(attempt < 40, 'the entrance ends within 2 seconds');
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 50));
+  }
+}
+
 // E11.5-11i: focus is never mid-motion (founder decisions 2026-10-31). For
 // the focused element and every ancestor:
 // - no entrance (`data-enter`), scroll reveal (`data-reveal`) or any other

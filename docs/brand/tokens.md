@@ -143,8 +143,9 @@ The primitives need these values beyond the delta, under final-design rule 6:
 | `--arrow-shift`, `--arrow-shift-card` | `0.125rem`, `0.1875rem` | The 2px link arrow move and the 3px interactive-card arrow move |
 | `--error-rise` | `0.25rem` | How far a field error rises as it appears |
 | `--spinner-opacity`, `--duration-spin` | `0.8`, `800ms` | The in-flight spinner's opacity and its turn |
+| `--star-turn`, `--star-scale` | `-45deg`, `0.6` | Where the hero's coral star starts its first-paint entrance: it turns to 0° and scales to 1 as it fades in (E11.5-11l) |
 
-The arrow, error and spinner values sit with the motion tokens on bare `:root`, with no dark redefinition.
+The arrow, error, spinner and star values sit with the motion tokens on bare `:root`, with no dark redefinition.
 
 ### Motion tokens (E11.5-11i)
 
@@ -216,6 +217,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 **E11.5-11j port change:** the file adds the final-design tokens above. `--shadow-band` changes from `0 0 0 0 transparent` to `none` in light, so a storefront rule must use it alone, never in a shadow list. `--on-midnight-disabled-border` now resolves to `--on-midnight-line`. The dark blocks gain `--on-midnight-600`, `--wash`, `--wash-strong`, `--success-tint`, `--error-tint`, `--success-icon`, `--overlay-hover` and `--shadow-sticky`. Re-run the no-new-hue, contrast-matrix and dark-name-set tests after the port. The file is still copied verbatim.
 
 **E11.5-11i port addition:** the file adds the motion tokens above, declared once on bare `:root` with no dark redefinition. They port with `tokens.css`. `src/styles/motion.css` (the entrance and reveal utilities, page transitions and smooth anchor scrolling) is waitlist presentation, not part of the portable file: the storefront adopts or drops it at port time. If adopted, it keeps every rule inside `prefers-reduced-motion: no-preference`.
+
+**E11.5-11l port addition:** the file adds `--star-turn` and `--star-scale`, declared once on bare `:root` with no dark redefinition, beside the other motion tokens. They port with `tokens.css`; the star entrance that uses them is waitlist presentation in the landing page.
 
 E11-07 source-to-target reconciliation (targets are the storefront routes to build and verify before the DNS swap):
 
