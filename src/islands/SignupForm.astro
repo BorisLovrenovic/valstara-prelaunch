@@ -697,6 +697,10 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         return;
       }
 
+      // A notice describes the last attempt only, so every new submission
+      // clears it, as it clears the field and bar errors (founder decision
+      // 2026-11-07).
+      this.#clearFormError();
       const values = {
         email: this.#fieldValue('#signup-email'),
       };
@@ -814,8 +818,8 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       if (this.#submit !== null) this.#submit.disabled = inFlight;
       const label = inFlight ? message : this.#idleLabel;
       this.#submitLabel = this.#setLabel(this.#submitLabel, label);
-      // The spinner shows the wait; CSS hides it while the Turnstile widget
-      // is open, because then the visitor is the one who must act.
+      // The spinner shows the wait, and stays while the Turnstile widget is
+      // open, as the canvas draws state 08 (StatesDesktop, StatesPhone).
       if (this.#spinner !== null) this.#spinner.hidden = !inFlight;
       const dockSubmit =
         this.querySelector<HTMLButtonElement>('[data-dock-submit]');
@@ -956,6 +960,14 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       if (this.#entryPoint === 'dock') this.#showDockError(message);
     }
 
+    #clearFormError(): void {
+      const element = this.querySelector<HTMLElement>('[data-form-error]');
+      if (element !== null) {
+        this.#setMessage(element, '');
+        element.hidden = true;
+      }
+    }
+
     #focusField(field: SignupFieldName): void {
       (this.#entryPoint === 'dock'
         ? this.#dockInput
@@ -1021,12 +1033,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         this.querySelector<HTMLElement>('[data-dock-close]')?.focus();
 
       const form = this.#form;
-      if (form === null || success === null) return;
-      this.#swapping = true;
-      form.toggleAttribute('data-leaving', true);
-      this.#whenSettled(form, () => {
-        form.removeAttribute('data-leaving');
-        form.hidden = true;
+      const reveal = (): void => {
+        if (form !== null) {
+          form.removeAttribute('data-leaving');
+          form.hidden = true;
+        }
         // The hero entrance runs once per page load: a form shown again by
         // "Use a different address" must not replay it.
         for (const element of this.querySelectorAll('[data-enter]')) {
@@ -1038,12 +1049,22 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
           const resend = this.querySelector<HTMLButtonElement>('[data-resend]');
           if (resend !== null) resend.hidden = false;
         }, resendDelayMs);
-        success.hidden = false;
+        if (success !== null) success.hidden = false;
         this.#setInFlight(false);
         this.#swapping = false;
-        if (!showConfirmation) success.focus();
+        if (!showConfirmation) success?.focus();
         this.#updateDock();
-      });
+      };
+      // Without both a form to fade and a panel to enter there is nothing to
+      // sequence, so the swap ends at once and the submission never stays
+      // in flight.
+      if (form === null || success === null) {
+        reveal();
+        return;
+      }
+      this.#swapping = true;
+      form.toggleAttribute('data-leaving', true);
+      this.#whenSettled(form, reveal);
     }
 
     // "Use a different address" reverses the sequence: the panel leaves over

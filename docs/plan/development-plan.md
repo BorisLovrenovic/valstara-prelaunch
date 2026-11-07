@@ -2852,6 +2852,8 @@ Adopt every change-log row for the header and footer that these rules allow.
 
 **Moved to E11.5-11l (founder-authorised 2026-11-07):** three state details are already built at their canvas values by E11.5-11l and are not part of this restyle: the 16px gap between a form notice and the label, the field error under the field only, and the no-JavaScript notice above the form card. This ticket keeps them as built.
 
+**Form notices clear on resubmit (founder-authorised 2026-11-07):** the one behaviour change in this ticket. Since E3-05 a form-level notice stayed visible once shown, through a retry in flight and onto the form "Use a different address" restores. Every new submission, from the hero or the bar, now hides the notice first, as it already hid the field and bar errors. Tested by `test/signup-form-rendered-page.test.mjs`, "a form notice clears when the visitor submits again".
+
 **Motion and finish:**
 - **Form to success:** the form fades out over `--duration-fast`. The success panel then enters over `--duration-base`: it fades in, rises by `--enter-distance`, and its mail tile scales from 0.9 to 1 (a token). "Use a different address" reverses the sequence. Focus behaviour is unchanged.
 - **The resend control,** when its delay ends, fades in over `--duration-base`. The re-sent line enters the same way.
@@ -2863,11 +2865,17 @@ Adopt every change-log row for the header and footer that these rules allow.
 - **All 17 states and all seven bar frames render as drawn** at 1440 × 900 and 390 × 844 in both themes, at rest — one test per state and per frame
 - Every message string comes from the copy layer, unchanged
 - **The success panel is identical for unknown, pending and verified addresses**, echoes only client input, and shows no position or count — the existing tests
-- One island, one Turnstile widget, one submission path, and a bar body identical to a hero body — the E11.5-06 and E11.5-11h contract suites pass unchanged
+- One island, one Turnstile widget, one submission path, and a bar body identical to a hero body — the E11.5-06 and E11.5-11h contract suites pass unchanged, apart from the named test rewrites below and the rule-7 geometry rewrites
 - Each transition runs as specified, announces nothing extra, and stops under reduced motion. Focus lands where E11.5-11g says, after the transition as well as before it
 - No focused element is obscured by the bar, and each sits at least 16px above it — the extended focus walk
 
 **Tests:** One test per state and per frame at two viewports · copy match · focus targets after each transition · success-state equivalence · the E11.5-06, E11.5-11g and E11.5-11h contract suites · transition timing and the reduced-motion stop · the focus walk · axe on states 03, 09, 13 and 16 and with the bar visible, in both themes.
+**Named test rewrites (founder-authorised 2026-11-07):** no tolerance changes and no assertion is removed. The state motion this ticket builds means the form is not visible the moment "Use a different address" is clicked, and the success panel's boxes move until its entrance ends, so these reads wait or follow the canvas.
+- `test/signup-form-rendered-page.test.mjs`, "a pending response hides the form and shows the same privacy-safe success…": after "Use a different address", the test waits, bounded at 2s, for the form to be visible before reading it. No assertion value changes.
+- `test/signup-form-rendered-page.test.mjs`, "success is identical for unknown, pending and verified responses…": each run reads the panel's boxes once its transitions have ended, bounded at 2s. No assertion value changes.
+- `test/signup-states-rendered.test.mjs`, `settle()`: the wait for running transitions repeats in rounds, bounded at ten, and tolerates a cancelled transition (`Promise.allSettled`). A transition the pointer cancels is replaced by a new one, because state 15's re-sent line moves the actions out from under it, as the canvas draws. No assertion value changes.
+- `test/signup-states-rendered.test.mjs`, state 15: the re-sent line's icon is the canvas's check-circle in `--success-icon` (`Hero.dc.html`), not check.
+- `test/signup-sticky-bar-rendered.test.mjs`, frame 6: the success row's icon is the canvas's check-circle in `--success-icon` (`Sticky.dc.html` frame 6), replacing the wireframe's mail icon (founder decision 2026-10-29).
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: signup form states desktop and phone, sticky bar, feature-switch G) · `docs/features/signup.md` · E3-05 · E3-09 · E11.5-06 · E11.5-11g · E11.5-11h · `docs/architecture/adr/001-astro-node-adapter.md`
 
 ### E11.5-11n — Final-design catalogue and "How it works"

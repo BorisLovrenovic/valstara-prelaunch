@@ -7,7 +7,7 @@ import test, { after, before } from 'node:test';
 
 import { chromium } from 'playwright';
 import axe from 'axe-core';
-import { signupFormCopy } from '../src/copy/signup.ts';
+import { signupCopy, signupFormCopy } from '../src/copy/signup.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { scrollSettled } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
@@ -458,6 +458,52 @@ test('each server error code renders its message at the right target', async () 
     assert.equal(await page.locator('[data-submit]').isDisabled(), false);
     await context.close();
   }
+});
+
+// Founder decision 2026-11-07: a form notice describes the last attempt only,
+// so every new submission clears it, as it clears the field error.
+test('a form notice clears when the visitor submits again', async () => {
+  const { context, page } = await openForm();
+  let respond = (route) => route.abort('internetdisconnected');
+  await page.route('**/api/signup', (route) => respond(route));
+  const notice = page.locator('[data-form-error]');
+
+  await page.fill('#signup-email', 'retry@example.com');
+  await page.click('[data-submit]');
+  await notice.waitFor({ state: 'visible' });
+
+  // A retry the client check stops shows only its field error.
+  await page.fill('#signup-email', '');
+  await page.click('[data-submit]');
+  await page.locator('[data-error-for="email"]').waitFor({ state: 'visible' });
+  assert.equal(await notice.isHidden(), true, 'cleared by a client retry');
+  assert.equal(await notice.textContent(), '');
+
+  // A retry in flight shows no notice from the attempt before it.
+  await page.fill('#signup-email', 'retry@example.com');
+  await page.click('[data-submit]');
+  await notice.waitFor({ state: 'visible' });
+  const held = new Promise((resolve) => {
+    respond = resolve;
+  });
+  await page.click('[data-submit]');
+  await page.waitForFunction(
+    () => globalThis.document.querySelector('[data-submit]').disabled,
+  );
+  assert.equal(await notice.isHidden(), true, 'cleared while in flight');
+
+  // The form "Use a different address" restores carries no old notice.
+  const route = await held;
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ status: 'pending', message: signupCopy.pending }),
+  });
+  await page.waitForSelector('[data-success]:not([hidden])');
+  await page.click('[data-different-address]');
+  await page.locator('form').waitFor({ state: 'visible', timeout: 2_000 });
+  assert.equal(await notice.isHidden(), true, 'absent from the restored form');
+  await context.close();
 });
 
 test('the island carries a signed ref hidden field through unchanged', async () => {

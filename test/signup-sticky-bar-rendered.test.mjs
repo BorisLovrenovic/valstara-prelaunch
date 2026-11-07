@@ -1154,12 +1154,37 @@ test('the visibility matrix: small widths only, never over the hero form or with
 });
 
 test('the focus walk: tabbing through the whole page, every focused element sits at least 16px above the bar', async () => {
-  for (const width of [320, 360, 390]) {
+  // E11.5-11m: each width is walked twice, with the bar in its entry state
+  // and with a bar submission in flight, when its busy rows make it taller
+  // (frame 5).
+  for (const [width, busy] of [320, 360, 390].flatMap((size) => [
+    [size, false],
+    [size, true],
+  ])) {
+    const where = `${width}px${busy ? ', in flight' : ''}`;
     const { context, page } = await openPage({
       viewport: { width, height: 844 },
       safeArea: 0,
     });
     try {
+      if (busy) {
+        await revealBar(page);
+        await page.route('**/api/signup', () => undefined);
+        await page.locator(selectors.input).fill('alex@example.com');
+        await page.locator(selectors.button).click();
+        await page.waitForFunction(() =>
+          globalThis.document
+            .querySelector('[data-dock-row]')
+            .hasAttribute('data-busy'),
+        );
+        // The walk starts again from the top of the page.
+        await page.evaluate(() => {
+          const { body } = globalThis.document;
+          body.tabIndex = -1;
+          body.focus({ preventScroll: true });
+          body.removeAttribute('tabindex');
+        });
+      }
       const total = await page.evaluate(
         () =>
           globalThis.document.querySelectorAll(
@@ -1197,6 +1222,9 @@ test('the focus walk: tabbing through the whole page, every focused element sits
             inFooter: active.closest('body > footer') !== null,
             inBar: bar.contains(active),
             barShown: !bar.hidden,
+            barBusy: bar
+              .querySelector('[data-dock-row]')
+              .hasAttribute('data-busy'),
             gap: bar.hidden
               ? null
               : bar.getBoundingClientRect().top - target.bottom,
@@ -1208,22 +1236,23 @@ test('the focus walk: tabbing through the whole page, every focused element sits
         assert.deepEqual(
           moving,
           [],
-          `${width}px: "${state.name}" is focused mid-motion`,
+          `${where}: "${state.name}" is focused mid-motion`,
         );
         if (state.barShown && !state.inBar && state.size > 0) {
           barSeen += 1;
+          assert.equal(
+            state.barBusy,
+            busy,
+            `${where}: "${state.name}" is walked with the bar ${busy ? 'in flight' : 'in its entry state'}`,
+          );
           assert.ok(
             state.gap >= clearance,
-            `${width}px: "${state.name}" sits ${state.gap}px above the bar`,
+            `${where}: "${state.name}" sits ${state.gap}px above the bar`,
           );
         }
       }
-      assert.ok(barSeen > 0, `${width}px: the walk ran with the bar shown`);
-      assert.equal(
-        last?.inFooter,
-        true,
-        `${width}px: the walk reached the end`,
-      );
+      assert.ok(barSeen > 0, `${where}: the walk ran with the bar shown`);
+      assert.equal(last?.inFooter, true, `${where}: the walk reached the end`);
     } finally {
       await context.close();
     }
