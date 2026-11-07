@@ -32,7 +32,7 @@
      --enter-index starts one --stagger later, capped at index 3, so an
      entrance ends within --duration-enter plus three steps (580ms).
      data-enter="shift" only rises into place: the element is at full
-     opacity and usable from first paint. */
+     opacity and usable from first paint. data-enter="fade" only fades. */
   :where([data-enter]) {
     --enter-index: 0;
   }
@@ -49,9 +49,21 @@
     animation-name: motion-enter-shift;
   }
 
-  /* Focused content is always at rest. */
+  /* data-enter="fade" only fades in, for content inside an element that
+     already rises (E11.5-11l: the microline, trust facts and checkbox row
+     inside the shifting form card), so it travels exactly its container's
+     distance and no further. */
+  [data-enter='fade'] {
+    animation-name: motion-enter-fade;
+  }
+
+  /* Focused content is always at rest. The entrance ends at once rather
+     than being removed: removing its name would start it again from the
+     first keyframe when focus leaves (E11.5-11l), while an ended entrance
+     stays ended. */
   [data-enter]:focus-within {
-    animation-name: none;
+    animation-duration: calc(var(--duration-enter) * 0);
+    animation-delay: calc(var(--stagger) * 0);
   }
 
   @keyframes motion-enter {
@@ -64,6 +76,12 @@
   @keyframes motion-enter-shift {
     from {
       translate: 0 var(--enter-distance);
+    }
+  }
+
+  @keyframes motion-enter-fade {
+    from {
+      opacity: 0;
     }
   }
 

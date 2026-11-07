@@ -23,132 +23,146 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 ---
 
 <valstara-signup-form data-sitekey={turnstileSiteKey}>
-  <form action="/api/signup" method="post">
-    {
-      /*
-      The form states from StatesDesktop.dc.html and StatesPhone.dc.html
-      (E11.5-11g). Without JavaScript, the neutral notice sits above the form,
-      which stays visible 16px below it. A form-level message is the error
-      notice above the label, focused when it appears. Each message sits in
-      its own [data-message] span beside a decorative icon, so the element's
-      text is exactly the message.
-    */
-    }
-    <noscript>
-      <p class="signup-notice signup-notice--info">
-        <Icon name="info" size="base" /><span
-          >{signupFormCopy.javaScriptRequired}</span
-        >
-      </p>
-    </noscript>
-    <p
-      class="signup-notice signup-notice--error"
-      data-form-error
-      role="alert"
-      aria-atomic="true"
-      tabindex="-1"
-      hidden
-    >
-      <Icon name="alert-circle" size="base" /><span data-message></span>
-    </p>
-    <Field
-      controlId="signup-email"
-      description={landingCopy.form.hint}
-      descriptionId="signup-email-hint"
-      label={landingCopy.form.label}
-    >
-      <Input
-        id="signup-email"
-        name="email"
-        type="email"
-        autocomplete="email"
-        required
-        placeholder={landingCopy.form.placeholder}
-        aria-describedby="signup-email-hint signup-email-error"
-      />
-    </Field>
-    <p
-      class="signup-field-error"
-      id="signup-email-error"
-      data-error-for="email"
-      role="alert"
-      aria-atomic="true"
-      hidden
-    >
-      <Icon name="alert-circle" size="base" /><span data-message></span>
-    </p>
+  {
+    /*
+    The form states from StatesDesktop.dc.html and StatesPhone.dc.html
+    (E11.5-11g). Without JavaScript, the neutral notice sits above the form
+    card, which stays visible 16px below it (Hero.dc.html, moved here by
+    E11.5-11l). A form-level message is the error notice above the label,
+    16px above it, focused when it appears. Each message sits in its own
+    [data-message] span beside a decorative icon, so the element's text is
+    exactly the message.
 
-    {
-      /*
+    The form is the hero's card (E11.5-11l). The card enters at index 3 and
+    only rises, so its field and button are usable from first paint; the
+    microline, trust facts and checkbox row inside it only fade, so they
+    travel exactly the card's distance. The entrance sits on a wrapper that
+    holds exactly the card, so the form element keeps the bare
+    `<form action="/api/signup" method="post">` the E1-11 contract asserts.
+  */
+  }
+  <noscript>
+    <p class="signup-notice signup-notice--info">
+      <Icon name="info" size="base" /><span
+        >{signupFormCopy.javaScriptRequired}</span
+      >
+    </p>
+  </noscript>
+  <div class="signup-entry" data-enter="shift" style="--enter-index: 3">
+    <form action="/api/signup" method="post">
+      <p
+        class="signup-notice signup-notice--error"
+        data-form-error
+        role="alert"
+        aria-atomic="true"
+        tabindex="-1"
+        hidden
+      >
+        <Icon name="alert-circle" size="base" /><span data-message></span>
+      </p>
+      <Field
+        controlId="signup-email"
+        description={landingCopy.form.hint}
+        descriptionId="signup-email-hint"
+        label={landingCopy.form.label}
+      >
+        <Input
+          id="signup-email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          required
+          placeholder={landingCopy.form.placeholder}
+          aria-describedby="signup-email-hint signup-email-error"
+        />
+      </Field>
+      <p
+        class="signup-field-error"
+        id="signup-email-error"
+        data-error-for="email"
+        role="alert"
+        aria-atomic="true"
+        hidden
+      >
+        <Icon name="alert-circle" size="base" /><span data-message></span>
+      </p>
+
+      {
+        /*
       The wireframe order (E11.5-11c): the field and the button in one row,
       the 18+ microline beside the button, the Turnstile slot under the
       microline, then the trust facts and the optional marketing box.
     */
-    }
-    <Button type="submit" data-submit
-      ><span class="button__spinner" data-spinner aria-hidden="true" hidden
-      ></span><span data-submit-label>{landingCopy.form.submit}</span></Button
-    >
-    <p class="signup-age">
-      {signupFormCopy.ageStatement}{
-        giveawayEnabled && (
-          <>
-            {' '}
-            {signupFormCopy.freeEntryDisclosure}{' '}
-            <TextLink href="/giveaway/rules">
-              {signupFormCopy.giveawayRulesLink}
-            </TextLink>
-            {signupFormCopy.giveawayRulesLinkEnd}
-          </>
-        )
       }
-    </p>
-    <div class="signup-turnstile" data-turnstile-container></div>
+      <Button type="submit" data-submit
+        ><span class="button__spinner" data-spinner aria-hidden="true" hidden
+        ></span><span data-submit-label>{landingCopy.form.submit}</span></Button
+      >
+      <p class="signup-age" data-enter="fade" style="--enter-index: 3">
+        {signupFormCopy.ageStatement}{
+          giveawayEnabled && (
+            <>
+              {' '}
+              {signupFormCopy.freeEntryDisclosure}{' '}
+              <TextLink href="/giveaway/rules">
+                {signupFormCopy.giveawayRulesLink}
+              </TextLink>
+              {signupFormCopy.giveawayRulesLinkEnd}
+            </>
+          )
+        }
+      </p>
+      <div class="signup-turnstile" data-turnstile-container></div>
 
-    {
-      /*
+      {
+        /*
       The in-flight announcement. The button's spinner and label show the
       wait on screen, so this line is read by assistive technology only.
     */
-    }
-    <p
-      class="signup-status"
-      data-form-status
-      role="status"
-      aria-live="polite"
-      hidden
-    >
-    </p>
+      }
+      <p
+        class="signup-status"
+        data-form-status
+        role="status"
+        aria-live="polite"
+        hidden
+      >
+      </p>
 
-    <div class="signup-facts"><slot name="facts" /></div>
-    <Checkbox
-      id="signup-marketing"
-      class="signup-marketing"
-      name="marketing_opt_in"
-      value={signupFormCopy.marketing.version}
-      optional
-    >
-      {signupFormCopy.marketing.wording}
-    </Checkbox>
+      <div class="signup-facts" data-enter="fade" style="--enter-index: 3">
+        <slot name="facts" />
+      </div>
+      <div class="signup-consent" data-enter="fade" style="--enter-index: 3">
+        <Checkbox
+          id="signup-marketing"
+          class="signup-marketing"
+          name="marketing_opt_in"
+          value={signupFormCopy.marketing.version}
+          optional
+        >
+          {signupFormCopy.marketing.wording}
+        </Checkbox>
+      </div>
 
-    {
-      /*
+      {
+        /*
       The signed ref (E4-02) rides through as a hidden field the server renders;
       the island never reads or writes it — it simply posts the whole form, so
       whatever hidden fields exist are carried through unchanged.
     */
-    }
-    {
-      signedReferralCapture !== null && (
-        <input
-          name="referral_capture"
-          type="hidden"
-          value={signedReferralCapture}
-        />
-      )
-    }
-    <input name="turnstile_token" type="hidden" />
-  </form>
+      }
+      {
+        signedReferralCapture !== null && (
+          <input
+            name="referral_capture"
+            type="hidden"
+            value={signedReferralCapture}
+          />
+        )
+      }
+      <input name="turnstile_token" type="hidden" />
+    </form>
+  </div>
 
   {
     /*
@@ -893,6 +907,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       this.#dockConfirming = showConfirmation;
       if (this.#form !== null) {
         this.#form.hidden = true;
+        // The hero entrance runs once per page load: a form shown again by
+        // "Use a different address" must not replay it.
+        for (const element of this.querySelectorAll('[data-enter]')) {
+          element.removeAttribute('data-enter');
+        }
       }
       if (this.#dock !== null) {
         this.#dock.hidden = !showConfirmation;
@@ -1034,21 +1053,27 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     visible. The island hides the form this way once a signup succeeds.
   */
   /*
-    The hero form from the wireframes (E11.5-11c). Small: the field, then a
+    The hero form card from the final design (Hero.dc.html, E11.5-11l), on
+    the E11.5-11c form. A surface card, radius 12, --shadow-1 plus the
+    dark-only edge, 20px padding (24px from 48rem). Small: the field, then a
     full-width button 12px below it. From 48rem the field and the button share
-    one row, 8px apart. The Field's wrapper steps aside (display: contents) so
-    its label and hint span the row above. Under the row: the microline 12px
-    below, the Turnstile slot 12px below that only while Cloudflare shows
-    the widget, the trust facts 20px below (16px small) and the marketing box
-    24px below (20px small). Rows that hold only hidden elements collapse to
-    nothing.
+    one row, 8px apart, and a field error sits under the field only. The
+    Field's wrapper steps aside (display: contents) so its label and hint span
+    the row above. Under the row: the microline 12px below, the Turnstile slot
+    12px below that only while Cloudflare shows the widget, a 1px --line
+    divider 20px below, the trust facts 16px under the divider and the
+    marketing box 16px below them. Rows that hold only hidden elements
+    collapse to nothing.
   */
   valstara-signup-form form:not([hidden]) {
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-2-5);
+    background-color: var(--surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1), var(--edge);
     grid-template-areas:
-      'notice'
       'alert'
       'head'
       'field'
@@ -1058,10 +1083,6 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       'check'
       'facts'
       'consent';
-  }
-
-  valstara-signup-form form > noscript {
-    grid-area: notice;
   }
 
   /*
@@ -1111,13 +1132,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     color: var(--error);
   }
 
-  /* Without JavaScript the form stays visible 16px below the notice.
+  /* Without JavaScript the form card stays visible 16px below the notice.
      :not([hidden]) lifts these over the landing page's paragraph reset. */
-  valstara-signup-form form > noscript > .signup-notice:not([hidden]) {
+  valstara-signup-form > noscript > .signup-notice:not([hidden]) {
     margin-block-end: var(--space-2);
   }
 
-  /* The error notice sits 16px above the label (20px from 48rem). */
+  /* The error notice sits 16px above the label at every width. */
   valstara-signup-form form > [data-form-error]:not([hidden]) {
     grid-area: alert;
     margin-block-end: var(--space-2);
@@ -1217,50 +1238,40 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
   valstara-signup-form .signup-facts {
     grid-area: facts;
-    margin-block-start: var(--space-2);
+    margin-block-start: var(--space-2-5);
+    padding-block-start: var(--space-2);
+    border-block-start: var(--border-thin) solid var(--line);
   }
 
-  valstara-signup-form .signup-facts:empty {
+  valstara-signup-form .signup-facts:not(:has(*)) {
     display: none;
   }
 
-  valstara-signup-form .signup-marketing {
+  valstara-signup-form .signup-consent {
     grid-area: consent;
-    margin-block-start: var(--space-2-5);
+    margin-block-start: var(--space-2);
   }
 
   @media (min-width: 48rem) {
     valstara-signup-form form:not([hidden]) {
       grid-template-columns: minmax(0, 1fr) auto;
       column-gap: var(--space-1);
+      padding: var(--space-3);
       grid-template-areas:
-        'notice notice'
         'alert alert'
         'head head'
         'field submit'
-        'error error'
+        'error .'
         'micro micro'
         'check check'
         'facts facts'
         'consent consent';
     }
 
-    valstara-signup-form form > [data-form-error]:not([hidden]) {
-      margin-block-end: var(--space-2-5);
-    }
-
     valstara-signup-form form > .button[data-submit] {
       inline-size: auto;
       margin-block-start: var(--space-1);
       padding-inline: var(--space-2-5);
-    }
-
-    valstara-signup-form .signup-facts {
-      margin-block-start: var(--space-2-5);
-    }
-
-    valstara-signup-form .signup-marketing {
-      margin-block-start: var(--space-3);
     }
   }
 
@@ -1303,8 +1314,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     primitive at its own sizes (founder-authorised 2026-10-29: the component
     sheet sets a primitive's size, the states artboards its placement).
   */
+  /* At most 560px, as E11.5-11g built it, inside the 600px hero form
+     column (E11.5-11l): the panel is restyled by E11.5-11m. */
   valstara-signup-form .signup-success:not([hidden]) {
     box-sizing: border-box;
+    max-inline-size: calc(var(--space-10) * 7);
     display: flex;
     flex-direction: column;
     gap: var(--space-1-5);

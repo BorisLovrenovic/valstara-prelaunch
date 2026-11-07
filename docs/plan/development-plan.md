@@ -2824,6 +2824,15 @@ Adopt every change-log row for the header and footer that these rules allow.
 - The landing page still ships exactly the theme toggle and signup form islands, and its cache headers are unchanged — existing tests
 
 **Tests:** Hero text-column geometry per breakpoint · the fold assertions at the three viewports · entrance timing, first-paint opacity and typing during the entrance · CLS 0 · the reduced-motion render · the E11.5-11c stack and strip suites unchanged · the microline and paused variants · island count and cache headers · axe in both themes.
+**Founder decisions (2026-11-07):**
+1. **Three state details move here from E11.5-11m**, built at their canvas values, because the form card moves every box of the E11.5-11g states and rule 7 allows only canvas values: the 16px gap between a form notice and the label at every width (`.signup__notice { margin-bottom: var(--space-2) }`); the field error inside `.signup__field`, under the field only, so at medium and large widths it no longer spans the button's column; and the no-JavaScript notice above the form card, not inside it. Nothing else about the states changes here. States 13–15 (the success panel) stay exactly as built until E11.5-11m, including their 560px width.
+2. **The nested entrance.** The form card carries `data-enter="shift"` at index 3. The microline, the trust facts and the checkbox row inside it fade only (opacity, at index 3), so they rise exactly the card's distance and no further. The entrance test asserts that their total travel equals the H1's, and that the hero entrance ends by 580ms. Under reduced motion nothing moves.
+
+**Named test rewrites (founder-authorised 2026-11-07):** no tolerance changes and no assertion is removed.
+- `test/signup-states-rendered.test.mjs`: the frame boxes of states 01–12, 16 and 17 are rewritten to the canvas's exact boxes with the card in place — the card's padding offset, the 552px content width at 1440, the divider above the trust facts, the 16px checkbox gap, the three moved details above, and the paused panel at 600px. States 13–15 are unchanged.
+- The entrance assertion: the hero entrance ends by 580ms, the H1, field and button are at full opacity from first paint, and the microline, trust facts and checkbox row travel exactly as far as the H1.
+- Two state values in `test/signup-states-rendered.test.mjs` keep E11.5-11g's styling until E11.5-11m restyles them: at 1440, state 08's field and button are read without the spinner, which E11.5-11g hides while the widget is open (the field is 24px wider than the canvas draws); and state 17's paused panel is 600px wide with its tile above its heading as built.
+- Setup changes, so geometry and axe are read at rest; no assertion value changes. A shared helper, `entranceEnded` in `test/helpers/motion.mjs`, waits, bounded at 2s, for the hero entrance to end. It runs in `openPage` in `test/signup-states-rendered.test.mjs`, in `openHero` in `test/landing-hero-rendered.test.mjs`, before axe in `test/landing-themes.test.mjs` ("the landing joins layout enforcement and passes WCAG axe in both themes"), and before the sweep in the visibility matrix in `test/signup-sticky-bar-rendered.test.mjs`. In `test/signup-form-rendered-page.test.mjs`, the three setup scrolls past the hero move from `scrollTo(0, 700)` to `scrollTo(0, 800)`, because the form card now ends at about 701px at 390 × 600.
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames, above-the-fold crops, feature-switch variants) · E11.5-05 · E11.5-11c · `docs/brand/page-design.md`
 
 ### E11.5-11m — Final-design signup form states and the mobile sticky bar
@@ -2840,6 +2849,8 @@ Adopt every change-log row for the header and footer that these rules allow.
 - only the hero input carries `name="email"`;
 - no checkbox in the bar;
 - the bar's visibility rules, the safe-area padding and the 16px focus clearance.
+
+**Moved to E11.5-11l (founder-authorised 2026-11-07):** three state details are already built at their canvas values by E11.5-11l and are not part of this restyle: the 16px gap between a form notice and the label, the field error under the field only, and the no-JavaScript notice above the form card. This ticket keeps them as built.
 
 **Motion and finish:**
 - **Form to success:** the form fades out over `--duration-fast`. The success panel then enters over `--duration-base`: it fades in, rises by `--enter-distance`, and its mail tile scales from 0.9 to 1 (a token). "Use a different address" reverses the sequence. Focus behaviour is unchanged.

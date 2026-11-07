@@ -616,6 +616,91 @@ test('focused content is never mid-motion: focus puts an entering or revealed el
   }
 });
 
+// E11.5-11l: data-enter="fade" only fades, so content inside a rising
+// container travels exactly the container's distance. Focus ends an entrance
+// rather than removing it, so it never starts again when focus leaves.
+const nestedEntrancePage = () =>
+  `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Nested entrance</title><style>${tokensCss}
+${motionCss}
+body { margin: 0; font-family: var(--font-sans); }
+</style></head><body><main>
+<h1 data-enter="shift" style="--enter-index: 2">Heading</h1>
+<form data-enter="shift" style="--enter-index: 3"><input id="email" type="email" aria-label="Email"><p data-enter="fade" style="--enter-index: 3">A microline inside the card.</p></form>
+<p><a id="away" href="#away">Away</a></p>
+</main></body></html>`;
+
+test('a fade entrance only fades, so nested content rises exactly as far as its container', async () => {
+  const { context, page } = await openFixture({ html: nestedEntrancePage() });
+  try {
+    const read = await page.evaluate(() => {
+      const { document, getComputedStyle } = globalThis;
+      const line = document.querySelector('p[data-enter]');
+      const heading = document.querySelector('h1');
+      // The resting tops, read with every animation held off.
+      const hold = document.createElement('style');
+      hold.textContent = '* { animation: none !important; }';
+      document.head.append(hold);
+      const atRest = {
+        line: line.getBoundingClientRect().top,
+        heading: heading.getBoundingClientRect().top,
+      };
+      hold.remove();
+      for (const animation of document.getAnimations()) {
+        animation.pause();
+        animation.currentTime = 0;
+      }
+      const [fade] = line.getAnimations();
+      return {
+        properties: [
+          ...new Set(
+            fade.effect
+              .getKeyframes()
+              .flatMap((keyframe) => Object.keys(keyframe))
+              .filter(
+                (key) =>
+                  !['offset', 'easing', 'composite', 'computedOffset'].includes(
+                    key,
+                  ),
+              ),
+          ),
+        ],
+        endTime: fade.effect.getComputedTiming().endTime,
+        opacity: getComputedStyle(line).opacity,
+        lineTravel: line.getBoundingClientRect().top - atRest.line,
+        headingTravel: heading.getBoundingClientRect().top - atRest.heading,
+      };
+    });
+    assert.deepEqual(read.properties, ['opacity']);
+    assert.equal(Math.round(read.endTime), 580);
+    assert.equal(read.opacity, '0');
+    assert.ok(read.headingTravel > 0, 'the heading starts low');
+    assert.ok(
+      Math.abs(read.lineTravel - read.headingTravel) <= 0.5,
+      `the line travels ${read.lineTravel}px, the heading ${read.headingTravel}px`,
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test('an entrance focused and then left does not start again', async () => {
+  const { context, page } = await openFixture({ html: nestedEntrancePage() });
+  try {
+    await finishEntrances(page);
+    await page.locator('#email').focus();
+    await page.locator('#away').focus();
+    await frames(page);
+    const states = await motionStates(page);
+    assert.equal(states.length, 3);
+    for (const state of states) {
+      assert.equal(state.animations, 0, `${state.name} has nothing running`);
+      assert.ok(state.rest, `${state.name} is at rest`);
+    }
+  } finally {
+    await context.close();
+  }
+});
+
 // E11.5-11i (founder decisions 2026-10-31): the focus walk's check, on
 // planted fixtures. Each planted page sets its own motion without the
 // :focus-within rule, so the focused content is genuinely still moving.
