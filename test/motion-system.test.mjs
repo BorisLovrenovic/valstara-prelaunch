@@ -162,6 +162,10 @@ async function openFixture({
   });
   const page = await context.newPage();
   await page.setContent(html, { waitUntil: 'load' });
+  // A reveal's view timeline resolves only in a rendering update, and `load`
+  // can fire before the first one. Until then every reveal reads at rest, so
+  // wait for two frames before any test reads the fixture.
+  await frames(page);
   return { context, page };
 }
 
