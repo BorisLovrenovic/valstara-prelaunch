@@ -20,6 +20,9 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 import { chromium } from 'playwright';
+import { format, resolveConfig } from 'prettier';
+
+import { publishedPort } from '../../helpers/listen-port.mjs';
 
 const execFileAsync = promisify(execFile);
 const root = fileURLToPath(new URL('../../..', import.meta.url));
@@ -181,19 +184,22 @@ async function main() {
   let output = '';
   server.stdout.on('data', (chunk) => (output += chunk));
   server.stderr.on('data', (chunk) => (output += chunk));
-  while (!output.includes('Listening on')) {
-    if (server.exitCode !== null) throw new Error(output);
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 250));
-  }
-  const { stdout } = await execFileAsync('docker', ['port', container, '3000']);
-  const port = stdout.trim().split('\n')[0].split(':').pop();
-  const browser = await chromium.connect(`ws://127.0.0.1:${port}/`);
   const result = {
     source:
       'docs/design/final-ui/project/Main.dc.html (pin 1793367843-fe69) on valstara.css, measured by test/fixtures/final-ui/measure-catalogue-geometry.mjs',
     widths: {},
   };
+  // The container is removed however the run ends, and the browser is only
+  // reached once the published port accepts connections.
+  let browser;
   try {
+    while (!output.includes('Listening on')) {
+      if (server.exitCode !== null) throw new Error(output);
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 250));
+    }
+    browser = await chromium.connect(
+      `ws://127.0.0.1:${await publishedPort(container, 3000)}/`,
+    );
     for (const width of canvasWidths) {
       const themes = {};
       for (const dark of [false, true]) {
@@ -239,13 +245,23 @@ async function main() {
       result.widths[width] = themes.light;
     }
   } finally {
-    await browser.close();
+    await browser?.close();
     await execFileAsync('docker', ['rm', '--force', container]).catch(() => {});
   }
+  // Written in the repository's format, so a re-measure of the same pin
+  // leaves the committed fixture byte-identical.
+  const target = `${root}test/fixtures/final-ui/catalogue-geometry.json`;
   await writeFile(
-    `${root}test/fixtures/final-ui/catalogue-geometry.json`,
-    `${JSON.stringify(result, null, 1)}\n`,
+    target,
+    await format(JSON.stringify(result), {
+      ...(await resolveConfig(target)),
+      filepath: target,
+    }),
   );
 }
 
-await main();
+// The test runner discovers every .mjs under test/, this file included, and
+// starts it with NODE_TEST_CONTEXT set. It is a measuring tool, not a test:
+// under the runner it does nothing, so a test run never starts its browser
+// container or rewrites the fixture.
+if (process.env.NODE_TEST_CONTEXT === undefined) await main();

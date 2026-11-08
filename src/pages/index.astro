@@ -834,10 +834,11 @@ Astro.response.headers.set(
     color: var(--ink-600);
   }
   /*
-    The connector drawing (E11.5-11n): on its source step's view timeline
-    (shared with the list through timeline-scope), after
-    the step's reveal ends, and finished by the time the step's top reaches
-    75% of the viewport height (--draw-range). Only with motion allowed and
+    The connector drawing (E11.5-11n): on a step's view timeline (the step
+    it leaves from 48rem, shared with the list through timeline-scope; the
+    step it sits in below), after that step's reveal ends, and finished by
+    the time the step's top reaches 75% of the viewport height
+    (--draw-range). Only with motion allowed and
     scroll-driven animations supported; otherwise it is drawn at rest.
   */
   @media (prefers-reduced-motion: no-preference) {
@@ -854,6 +855,9 @@ Astro.response.headers.set(
       .landing-step:nth-child(2) {
         view-timeline-name: --landing-step-2;
       }
+      .landing-step:nth-child(3) {
+        view-timeline-name: --landing-step-3;
+      }
       .landing-step__draw {
         animation-name: landing-connector-draw;
         animation-duration: auto;
@@ -861,12 +865,25 @@ Astro.response.headers.set(
         animation-fill-mode: backwards;
         animation-range: var(--draw-range);
       }
-      /* Each connector draws on the view timeline of the step it leaves. */
+      /* Below 48rem the steps stack, so a connector, drawn inside the step
+         it leads into, draws down on that step's own view timeline: once
+         that step has revealed, never while its reveal still hides it
+         (founder decision 2026-11-08). */
       .landing-step:nth-child(2) .landing-step__draw {
-        animation-timeline: --landing-step-1;
+        animation-timeline: --landing-step-2;
       }
       .landing-step:nth-child(3) .landing-step__draw {
-        animation-timeline: --landing-step-2;
+        animation-timeline: --landing-step-3;
+      }
+      /* From 48rem the steps share a row, and each connector draws on the
+         view timeline of the step it leaves. */
+      @media (min-width: 48rem) {
+        .landing-step:nth-child(2) .landing-step__draw {
+          animation-timeline: --landing-step-1;
+        }
+        .landing-step:nth-child(3) .landing-step__draw {
+          animation-timeline: --landing-step-2;
+        }
       }
     }
   }

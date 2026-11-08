@@ -8,6 +8,7 @@ import test, { after, before } from 'node:test';
 
 import { chromium } from 'playwright';
 import axe from 'axe-core';
+import sharp from 'sharp';
 
 import { landingCopy } from '../src/copy/landing.ts';
 import { providerShowcaseCopy } from '../src/copy/provider-showcase.ts';
@@ -1141,6 +1142,159 @@ async function scrollToTop(page, selector, fraction) {
 const atRestState = (element) =>
   element.opacity === 1 && element.translate === 'none';
 
+// What the screen shows of each connector, read from a screenshot rather than
+// from the mask's own stroke (which animates whether or not anything is
+// drawn through it). For the connector leaving steps 1 and 2: whether its
+// line and its arrowhead are painted through the <mask> holding its
+// animated .landing-step__draw; then, sampled pixel by pixel from its start
+// to its end, the share of points showing its stroke (`painted`), how far
+// along the last one is (`reach`, 0 to 1), whether its first 3px show it
+// (`start`), and, across, whether its arrowhead does, sampled off the line
+// so the line cannot stand in for it (`head`).
+async function paintedConnectors(page) {
+  const connectors = await page.evaluate(() => {
+    const { document, getComputedStyle } = globalThis;
+    const maskOf = (element, svg) => {
+      for (
+        let node = element;
+        node !== svg.parentNode;
+        node = node.parentNode
+      ) {
+        const id = /url\("?#([^")]+)"?\)/u.exec(
+          getComputedStyle(node).maskImage,
+        )?.[1];
+        if (id) return document.getElementById(id);
+      }
+      return null;
+    };
+    const panel = document.querySelector('.landing-steps-panel');
+    return [...document.querySelectorAll('#how ol > li')]
+      .slice(1)
+      .map((step) => {
+        const svg = [...step.querySelectorAll('.landing-step__connector')].find(
+          (each) => getComputedStyle(each).display !== 'none',
+        );
+        const draw = svg.querySelector('.landing-step__draw');
+        const mask = svg.querySelector('mask');
+        const line = svg.querySelector('.landing-step__line');
+        const head = svg.querySelector('.landing-step__head polygon');
+        const drawsThrough = (element) =>
+          element !== null &&
+          maskOf(element, svg) === mask &&
+          mask.contains(draw);
+        const box = svg.getBoundingClientRect();
+        return {
+          across: svg.classList.contains('landing-step__connector--across'),
+          masked: {
+            line: drawsThrough(line),
+            head: head === null ? null : drawsThrough(head),
+          },
+          box: {
+            left: box.left,
+            top: box.top,
+            width: box.width,
+            height: box.height,
+          },
+          stroke: getComputedStyle(line).stroke,
+          dashes: getComputedStyle(line).strokeDasharray,
+          background: getComputedStyle(panel).backgroundColor,
+        };
+      });
+  });
+  // The small-width signup dock is fixed over the bottom of the viewport; it
+  // is hidden from the capture so it cannot cover, or stand in for, a line.
+  const shot = await page.screenshot({
+    scale: 'css',
+    style: '.signup-dock { visibility: hidden !important; }',
+  });
+  const { data, info } = await sharp(shot)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const rgb = (value) => value.match(/\d+/gu).slice(0, 3).map(Number);
+  return connectors.map((connector) => {
+    const background = rgb(connector.background);
+    const stroke = rgb(connector.stroke);
+    const full = stroke.reduce(
+      (sum, channel, index) => sum + Math.abs(channel - background[index]),
+      0,
+    );
+    // A point shows the stroke when a pixel at one of the given offsets
+    // from it is at least half-way from the panel's colour to the stroke's.
+    const shows = (x, y, offsets) =>
+      offsets.some(([dx, dy]) => {
+        const px = Math.floor(x) + dx;
+        const py = Math.floor(y) + dy;
+        if (px < 0 || py < 0 || px >= info.width || py >= info.height)
+          return false;
+        const at = (py * info.width + px) * info.channels;
+        const distance = background.reduce(
+          (sum, channel, index) => sum + Math.abs(data[at + index] - channel),
+          0,
+        );
+        return distance >= full / 2;
+      });
+    const { left, top, width, height } = connector.box;
+    const length = connector.across ? width : height;
+    // Along the line, each pixel is read with its neighbours across it only,
+    // so nothing beyond either end (the next tile's border) can count.
+    const across = [-1, 0, 1].map((spread) =>
+      connector.across ? [0, spread] : [spread, 0],
+    );
+    const point = (along) =>
+      connector.across
+        ? [left + along, top + height / 2]
+        : [left + width / 2, top + along];
+    const samples = [];
+    for (let along = 0.5; along < length; along += 1)
+      samples.push(shows(...point(along), across) ? along : null);
+    const shown = samples.filter((along) => along !== null);
+    // The arrowhead, 7 × 12 with its tip at the line's end: two points 5.5px
+    // back from the tip, 4px above and below the line.
+    const near = [-1, 0, 1].flatMap((dy) => [-1, 0, 1].map((dx) => [dx, dy]));
+    const head = connector.across
+      ? shows(left + width - 5.5, top + height / 2 - 4, near) &&
+        shows(left + width - 5.5, top + height / 2 + 4, near)
+      : null;
+    return {
+      across: connector.across,
+      masked: connector.masked,
+      length,
+      // One dash and its gap, in px; 0 for a solid line.
+      period: (connector.dashes.match(/[\d.]+/gu) ?? [])
+        .map(Number)
+        .reduce((sum, value) => sum + value, 0),
+      painted: shown.length / samples.length,
+      reach: shown.length === 0 ? 0 : (Math.max(...shown) + 0.5) / length,
+      start: samples.slice(0, 3).every((along) => along !== null),
+      head,
+    };
+  });
+}
+
+// A whole connector on screen: painted from its start to its end and, across,
+// its arrowhead; the solid one along its full length, the dashed one in
+// dashes (about half its points).
+function assertWhole(shown, dashed, label) {
+  assert.deepEqual(
+    shown.masked,
+    { line: true, head: shown.across ? true : null },
+    `${label} is drawn through its mask`,
+  );
+  assert.ok(shown.start, `${label} is drawn from its start`);
+  assert.ok(
+    shown.reach >= 0.98,
+    `${label} is drawn to its end: ${shown.reach}`,
+  );
+  if (shown.across) assert.equal(shown.head, true, `${label} arrowhead drawn`);
+  if (dashed)
+    assert.ok(
+      shown.painted > 0.4 && shown.painted < 0.8,
+      `${label} is dashed: ${shown.painted}`,
+    );
+  else assert.ok(shown.painted >= 0.98, `${label} is whole: ${shown.painted}`);
+}
+
 test('the catalogue reveals its labels and large-width banners left to right, and its rails whole, at rest by 70% of the viewport height', async () => {
   for (const width of [1440, 1024, 768, 390]) {
     const { context, page } = await openLanding({ width, motion: true });
@@ -1250,14 +1404,24 @@ test('"How it works" reveals its steps in order and draws each connector after i
       const visible = step.connectors.filter((connector) => connector.visible);
       assert.equal(visible.length, 1, `${width} one connector shows`);
       assert.equal(visible[0].name, 'landing-connector-draw');
-      // The view timeline of the step it leaves.
+      // From 48rem, the view timeline of the step it leaves; below, where
+      // the steps stack, that of the step it sits in and leads into
+      // (founder decision 2026-11-08).
       assert.equal(
         visible[0].timeline,
-        `--landing-step-${index + 1}`,
+        `--landing-step-${index + (across ? 1 : 2)}`,
         `${width} same timeline`,
       );
     }
     assert.equal(motion.steps[2].connectors.length, 0, 'step 3 leads nowhere');
+    // The line, and across its arrowhead, are painted only through the
+    // connector's own mask, the one holding its animated stroke.
+    for (const [index, connector] of (await paintedConnectors(page)).entries())
+      assert.deepEqual(
+        [connector.across, connector.masked],
+        [across, { line: true, head: across ? true : null }],
+        `${width} connector ${index + 1} is drawn through its mask`,
+      );
     // While the steps are still revealing, no connector has started.
     await scrollToTop(page, '#how ol > li', 0.98);
     motion = await readMotion(page);
@@ -1273,21 +1437,51 @@ test('"How it works" reveals its steps in order and draws each connector after i
       if (step.opacity < 1)
         assert.equal(connector.offset, 1, `${width} drawn only after its step`);
     }
-    // After its step has revealed, a connector is partway drawn; the dashed
-    // one shows only the dashes its mask has reached.
-    const first = '#how ol > li:nth-child(2)';
-    let partway = null;
-    for (const at of [0.86, 0.84, 0.82, 0.8, 0.78, 0.76]) {
-      await scrollToTop(page, first, at);
-      motion = await readMotion(page);
-      const step = motion.steps[1];
-      const connector = step.connectors.find((each) => each.visible);
-      if (atRestState(step) && connector.offset > 0 && connector.offset < 1) {
-        partway = connector.offset;
-        break;
+    // Scrolling the step it leads into up the viewport: while either step
+    // it joins is still revealing, nothing is drawn; once both are at rest,
+    // the screen shows it partway, from its start and not yet at its end or
+    // its arrowhead, as far as its mask's stroke has reached. The dashed
+    // 2 → 3 connector shows only the dashes that stroke has reached.
+    for (const index of [0, 1]) {
+      const label = `${width} connector ${index + 1}`;
+      const dashed = index === 1;
+      let partway = null;
+      // In 2px scroll steps, so a 28px connector is caught partway.
+      const scrollStep = 2 / motion.viewport;
+      for (let at = 0.98; at >= 0.58 && partway === null; at -= scrollStep) {
+        await scrollToTop(page, `#how ol > li:nth-child(${index + 2})`, at);
+        motion = await readMotion(page);
+        const joined = [motion.steps[index], motion.steps[index + 1]];
+        const { offset } = motion.steps[index].connectors.find(
+          (each) => each.visible,
+        );
+        if (!joined.every(atRestState)) {
+          assert.equal(offset, 1, `${label} waits for both its steps`);
+          continue;
+        }
+        if (offset < 0.25 || offset > 0.75) continue;
+        const shown = (await paintedConnectors(page))[index];
+        const drawn = 1 - offset;
+        assert.equal(shown.period > 0, dashed, `${label} dashed`);
+        // The dashed one is read once its stroke has passed a whole gap.
+        if (dashed && drawn * shown.length < shown.period + 2) continue;
+        partway = offset;
+        assert.ok(shown.start, `${label} is drawn from its start`);
+        assert.ok(
+          shown.reach <= drawn + 2.5 / shown.length &&
+            shown.reach >= drawn - (shown.period + 2.5) / shown.length,
+          `${label} is shown as far as its mask: ${shown.reach} for ${drawn}`,
+        );
+        if (across)
+          assert.equal(shown.head, false, `${label} arrowhead not yet drawn`);
+        if (dashed)
+          assert.ok(
+            shown.painted <= shown.reach * 0.85,
+            `${label} draws dash by dash: ${shown.painted} of ${shown.reach}`,
+          );
       }
+      assert.ok(partway !== null, `${label} draws after its step`);
     }
-    assert.ok(partway !== null, `${width} a connector draws after its step`);
     if (!across) {
       // Downward: the visible part is the top of the line.
       const shown = await page.evaluate(() => {
@@ -1301,18 +1495,35 @@ test('"How it works" reveals its steps in order and draws each connector after i
       });
       assert.deepEqual(shown, ['0', '100%'], `${width} draws downward`);
     }
-    // At rest by 70%: every step and every connector.
+    // At rest by 70%: every step, and every connector, each read with its
+    // own top at 70% of the viewport height; the screen shows the whole
+    // connector and its arrowhead.
     for (const index of [1, 2, 3]) {
       await scrollToTop(page, `#how ol > li:nth-child(${index})`, 0.7);
       motion = await readMotion(page);
       const step = motion.steps[index - 1];
       assert.ok(atRestState(step), `${width} step ${index} at rest at 70%`);
-      for (const connector of step.connectors.filter((each) => each.visible))
-        assert.equal(
-          connector.offset,
-          0,
-          `${width} connector ${index} drawn at 70%: ${connector.offset}`,
-        );
+    }
+    for (const index of [0, 1]) {
+      await scrollToTop(
+        page,
+        `#how ol > li:nth-child(${index + 2}) .landing-step__connector--${across ? 'across' : 'down'}`,
+        0.7,
+      );
+      motion = await readMotion(page);
+      const connector = motion.steps[index].connectors.find(
+        (each) => each.visible,
+      );
+      assert.equal(
+        connector.offset,
+        0,
+        `${width} connector ${index + 1} drawn at 70%: ${connector.offset}`,
+      );
+      assertWhole(
+        (await paintedConnectors(page))[index],
+        index === 1,
+        `${width} connector ${index + 1} at 70%`,
+      );
     }
     await context.close();
   }
@@ -1345,6 +1556,10 @@ test('under reduced motion nothing in the catalogue or "How it works" moves, and
         for (const connector of step.connectors)
           assert.equal(connector.offset, 0, `${width} drawn`);
     }
+    // And the screen shows each one whole.
+    await scrollToTop(page, '#how ol', 0.2);
+    for (const [index, shown] of (await paintedConnectors(page)).entries())
+      assertWhole(shown, index === 1, `${width} connector ${index + 1}`);
     await context.close();
   }
 });
@@ -1369,6 +1584,10 @@ test('with animations unsupported, the catalogue and "How it works" are at rest 
         for (const connector of step.connectors)
           assert.equal(connector.offset, 0, `${width} drawn`);
     }
+    // And the screen shows each one whole.
+    await scrollToTop(page, '#how ol', 0.2);
+    for (const [index, shown] of (await paintedConnectors(page)).entries())
+      assertWhole(shown, index === 1, `${width} connector ${index + 1}`);
     await context.close();
   }
 });
