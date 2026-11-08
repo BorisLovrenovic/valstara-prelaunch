@@ -17,6 +17,7 @@ import {
   openRoute,
 } from '../scripts/design/layout-checks.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import { entranceEnded } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -229,6 +230,12 @@ async function startBrowserServer() {
 // genuinely exercises the machinery the pages depend on. axe-core is injected
 // into the test browser only; it never reaches a shipped page.
 async function axeViolations(page) {
+  // E11.5-11m named rewrite (founder-authorised 2026-11-08): axe reads the
+  // page at rest. The hero's first-paint entrance fades its text in, and a
+  // contrast read mid-fade blends that text with the background, so every
+  // read waits, bounded at 2s, for the entrance to end. Where no entrance
+  // runs, this returns at once.
+  await entranceEnded(page);
   await page.addScriptTag({ content: axe.source });
   return page.evaluate(
     async (tags) =>
