@@ -11,6 +11,10 @@ export interface Provider {
   brandColor: string;
   // The dark name chip, for a logo drawn only in white (E11.5-11d).
   chipTone?: 'dark';
+  // A wordmark that already spells the name, shown alone at this optical
+  // height in pixels; without it, the icon mark sits beside the name
+  // (founder-authorised 2026-11-08, E11.5-11n).
+  wordmarkHeight?: number;
   confirmation: { name: string; date: string };
   source:
     { kind: 'url'; url: string } | { kind: 'founder-supplied'; date: string };
@@ -51,6 +55,14 @@ export async function validateProviderShowcase(
       throw new Error(`Invalid brand colour: ${name}`);
     if (entry.chipTone !== undefined && entry.chipTone !== 'dark')
       throw new Error(`Invalid chip tone: ${name}`);
+    if (
+      entry.wordmarkHeight !== undefined &&
+      !(
+        Number.isInteger(entry.wordmarkHeight) &&
+        (entry.wordmarkHeight as number) > 0
+      )
+    )
+      throw new Error(`Invalid wordmark height: ${name}`);
     const confirmation = entry.confirmation as
       Record<string, unknown> | undefined;
     requiredText(confirmation?.name, 'confirmation.name');

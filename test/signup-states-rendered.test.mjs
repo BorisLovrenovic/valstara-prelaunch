@@ -897,8 +897,13 @@ function settle(page) {
       if (running.length === 0) break;
       await Promise.allSettled(running.map((animation) => animation.finished));
     }
+    // Only time-based animations take a time value; the catalogue's
+    // scroll-driven reveals (E11.5-11n) do not, and none is in the form.
     for (const animation of globalThis.document.getAnimations()) {
-      if (animation instanceof globalThis.CSSAnimation) {
+      if (
+        animation instanceof globalThis.CSSAnimation &&
+        animation.timeline instanceof globalThis.DocumentTimeline
+      ) {
         animation.pause();
         animation.currentTime = 0;
       }

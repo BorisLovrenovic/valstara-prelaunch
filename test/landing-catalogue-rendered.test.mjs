@@ -19,11 +19,14 @@ import {
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { designWidths } from '../scripts/design/layout-checks.mjs';
+import { entranceEnded, transitionsEnded } from './helpers/motion.mjs';
 
-// E11.5-11d: the #catalogue and #how sections from Main.dc.html,
-// Tablet.dc.html, Phone.dc.html and the provider banner on
-// Components.dc.html. Every number below is the frame's, with a 1px
-// tolerance.
+// E11.5-11n: the #catalogue and #how sections from the final-design canvas
+// (Main.dc.html and its 1024, 768, 390 and 320 frames, light and dark, and
+// the provider banner on Components.dc.html), with the motion and finish the
+// ticket adds. Geometry is compared box by box with the canvas, measured from
+// the pinned snapshot by test/fixtures/final-ui/measure-catalogue-geometry.mjs, at
+// rest and with a 1px tolerance (final-design rule 7).
 
 const execFileAsync = promisify(execFile);
 const browserContainer = `valstara-landing-catalogue-playwright-${process.pid}`;
@@ -42,6 +45,13 @@ const showcase = JSON.parse(
 const catalogue = Object.entries(providerShowcaseCopy.categories).flatMap(
   ([token]) => showcase.filter((provider) => provider.category === token),
 );
+const canvas = JSON.parse(
+  await readFile(
+    new URL('./fixtures/final-ui/catalogue-geometry.json', import.meta.url),
+    'utf8',
+  ),
+);
+const canvasWidths = [1440, 1024, 768, 390, 320];
 const groupLabels = Object.entries(providerShowcaseCopy.categories)
   .filter(([token]) => showcase.some((entry) => entry.category === token))
   .map(([, label]) => label);
@@ -143,10 +153,19 @@ after(async () => {
   await app?.stop();
 });
 
-async function openLanding({ width, height = 900, colorScheme = 'light' }) {
+// Geometry is read at rest: in a reduced-motion context, which by design
+// rule 12 is the at-rest layout (E11.5-11i). Motion tests open with motion
+// allowed and wait for the hero's entrance to end.
+async function openLanding({
+  width,
+  height = 900,
+  colorScheme = 'light',
+  motion = false,
+}) {
   const context = await browser.newContext({
     viewport: { width, height },
     colorScheme,
+    reducedMotion: motion ? 'no-preference' : 'reduce',
   });
   await context.route('https://challenges.cloudflare.com/**', (route) =>
     route.abort(),
@@ -160,24 +179,25 @@ async function openLanding({ width, height = 900, colorScheme = 'light' }) {
     for (const image of images) image.loading = 'eager';
     await Promise.all(images.map((image) => image.decode().catch(() => {})));
   });
+  if (motion) await entranceEnded(page);
   return { context, page };
 }
 
-// Every box and style the assertions read, measured once per page.
+// The built page in the canvas fixture's shape: boxes relative to each
+// section's heading block (banner parts relative to their banner), plus the
+// styles the assertions read.
 function measure(page) {
   return page.evaluate(() => {
     const { document, getComputedStyle } = globalThis;
-    const box = (element) => {
+    const relative = (element, from) => {
       if (!element) return null;
       const rect = element.getBoundingClientRect();
-      return {
-        left: rect.left,
-        top: rect.top + globalThis.scrollY,
-        right: rect.right,
-        bottom: rect.bottom + globalThis.scrollY,
-        width: rect.width,
-        height: rect.height,
-      };
+      return [
+        rect.left - from.left,
+        rect.top - from.top,
+        rect.width,
+        rect.height,
+      ];
     };
     const css = (element, pseudo) => {
       const style = getComputedStyle(element, pseudo);
@@ -198,76 +218,96 @@ function measure(page) {
         boxShadow: style.boxShadow,
         display: style.display,
         gap: Number.parseFloat(style.columnGap),
-        rowGap: Number.parseFloat(style.rowGap),
         gridColumns: style.gridTemplateColumns,
-        borderTop: style.borderTopStyle,
-        borderLeft: style.borderLeftStyle,
-        borderLeftWidth: style.borderLeftWidth,
-        borderColor: style.borderLeftColor,
-        content: style.content,
+        borderStyle: style.borderTopStyle,
+        borderWidth: style.borderTopWidth,
+        borderColor: style.borderTopColor,
         scrollSnapType: style.scrollSnapType,
         scrollSnapAlign: style.scrollSnapAlign,
         scrollbarWidth: style.scrollbarWidth,
+        scrollBehavior: style.scrollBehavior,
         overflowX: style.overflowX,
         objectFit: style.objectFit,
+        stroke: style.stroke,
+        fill: style.fill,
+        strokeWidth: style.strokeWidth,
+        strokeDasharray: style.strokeDasharray,
       };
     };
-    const probe = (value) => {
+    const probe = (value, property = 'color') => {
       const element = document.createElement('span');
-      element.style.color = value;
+      element.style[property] = value;
       document.body.append(element);
-      const resolved = getComputedStyle(element).color;
+      const resolved = getComputedStyle(element)[property];
       element.remove();
       return resolved;
     };
-    // Chromium snaps a 1.5px border to whole pixels, so the optional tile's
-    // border is checked against the token as declared and as rendered.
-    const border = document.createElement('span');
-    border.style.borderTop = 'var(--border-check) solid';
-    document.body.append(border);
-    const borderCheck = {
-      declared: getComputedStyle(document.documentElement)
-        .getPropertyValue('--border-check')
-        .trim(),
-      rendered: getComputedStyle(border).borderTopWidth,
-    };
-    border.remove();
     const section = document.querySelector('#catalogue');
     const how = document.querySelector('#how');
+    const catalogueHead = section
+      .querySelector('.section__heading')
+      .getBoundingClientRect();
+    const howHead = how
+      .querySelector('.section__heading')
+      .getBoundingClientRect();
     return {
-      borderCheck,
       viewport: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
-      tokens: Object.fromEntries(
-        [
-          'ink',
-          'ink-600',
-          'ink-300',
-          'paper',
-          'surface',
-          'banner-white',
-          'banner-ink',
-        ].map((name) => [name, probe(`var(--${name})`)]),
-      ),
-      hero: box(document.querySelector('#join')),
+      tokens: {
+        ...Object.fromEntries(
+          [
+            'ink',
+            'ink-600',
+            'ink-300',
+            'paper',
+            'surface',
+            'well',
+            'banner-white',
+            'banner-ink',
+            'banner-tone-dark',
+            'banner-tone-light',
+            'banner-tone-ink',
+            'banner-ring-dark',
+            'banner-ring-ink',
+          ].map((name) => [name, probe(`var(--${name})`)]),
+        ),
+        shadowChip: probe('var(--shadow-chip)', 'boxShadow'),
+        borderCheck: (() => {
+          const element = document.createElement('span');
+          element.style.borderTop = 'var(--border-check) solid';
+          document.body.append(element);
+          const width = getComputedStyle(element).borderTopWidth;
+          element.remove();
+          return width;
+        })(),
+        insetLine: probe('var(--inset-line)', 'boxShadow'),
+        ringBadge: probe('var(--ring-badge)', 'boxShadow'),
+        panelShadow: probe('var(--shadow-1), var(--edge)', 'boxShadow'),
+        restShadow: probe('var(--shadow-1), var(--banner-edge)', 'boxShadow'),
+      },
       catalogue: {
-        box: box(section),
-        content: box(section.querySelector('.container__content')),
-        heading: box(section.querySelector('h2')),
+        sectionEnd: section.getBoundingClientRect().bottom - catalogueHead.top,
+        head: relative(
+          section.querySelector('.section__heading'),
+          catalogueHead,
+        ),
+        heading: relative(section.querySelector('h2'), catalogueHead),
         headingStyle: css(section.querySelector('h2')),
-        line: box(section.querySelector('.section__heading p')),
+        line: relative(
+          section.querySelector('.section__heading p'),
+          catalogueHead,
+        ),
         lineStyle: css(section.querySelector('.section__heading p')),
-        headingBlock: box(section.querySelector('.section__heading')),
         groups: [...section.querySelectorAll('.provider-rail__category')].map(
           (group) => {
             const label = group.querySelector('h3');
             const track = group.querySelector('.provider-rail__track');
             return {
-              box: box(group),
+              box: relative(group, catalogueHead),
               label: label.textContent.trim(),
-              labelBox: box(label),
+              labelBox: relative(label, catalogueHead),
               labelStyle: css(label),
-              track: box(track),
+              rail: relative(track, catalogueHead),
               trackStyle: css(track),
               trackScroll: [track.scrollWidth, track.clientWidth],
               trackAttributes: {
@@ -278,6 +318,7 @@ function measure(page) {
               banners: [
                 ...track.querySelectorAll('[data-provider-banner]'),
               ].map((banner) => {
+                const own = banner.getBoundingClientRect();
                 const chip = banner.querySelector('.provider-banner__logo');
                 const name = banner.querySelector('.provider-banner__name');
                 const image = chip.querySelector('img');
@@ -285,12 +326,13 @@ function measure(page) {
                   '.provider-banner__category',
                 );
                 const tone = banner.querySelector('.provider-banner__tone');
+                const ring = banner.querySelector('.provider-banner__ring');
                 return {
                   name: banner.dataset.providerBanner,
-                  box: box(banner),
+                  box: relative(banner, catalogueHead),
+                  page: [own.left, own.right],
                   style: css(banner),
-                  snap: css(banner).scrollSnapAlign,
-                  chip: box(chip),
+                  chip: relative(chip, own),
                   chipStyle: css(chip),
                   chipScroll: [
                     chip.scrollWidth,
@@ -298,26 +340,36 @@ function measure(page) {
                     chip.scrollHeight,
                     chip.clientHeight,
                   ],
-                  nameBox: box(name),
-                  nameScroll: [name.scrollWidth, name.clientWidth],
-                  nameHidden: name.getAttribute('aria-hidden'),
-                  nameText: name.textContent.trim(),
+                  logo: relative(image, own),
+                  wordmark: image.classList.contains(
+                    'provider-banner__wordmark',
+                  ),
+                  label: relative(name, own),
+                  nameScroll: name && [name.scrollWidth, name.clientWidth],
+                  nameHidden: name?.getAttribute('aria-hidden') ?? null,
+                  nameText: name?.textContent.trim() ?? null,
+                  chipText: chip.textContent.trim(),
                   image: {
-                    box: box(image),
                     src: image.getAttribute('src'),
                     alt: image.getAttribute('alt'),
-                    fit: css(image).objectFit,
+                    fit: getComputedStyle(image).objectFit,
                   },
-                  gap: Number.parseFloat(getComputedStyle(chip).columnGap),
                   category: category.textContent.trim(),
-                  categoryBox: box(category),
+                  categoryBox: relative(category, own),
                   categoryStyle: css(category),
-                  toneHidden: tone
-                    .closest('[aria-hidden="true"]')
-                    ?.contains(tone),
-                  shape: [...tone.classList]
+                  shape: relative(tone, own),
+                  ring: relative(ring, own),
+                  toneBackground: getComputedStyle(tone).backgroundColor,
+                  ringStyle: css(ring),
+                  shapeName: [...tone.classList]
                     .find((name) => /^provider-banner__tone--t\d$/u.test(name))
                     ?.slice(-2),
+                  ringName: [...ring.classList]
+                    .find((name) => /^provider-banner__ring--t\d$/u.test(name))
+                    ?.slice(-2),
+                  layersHidden:
+                    tone.closest('[aria-hidden="true"]')?.contains(ring) ===
+                    true,
                 };
               }),
             };
@@ -325,45 +377,56 @@ function measure(page) {
         ),
       },
       how: {
-        box: box(how),
-        heading: box(how.querySelector('h2')),
-        headingBlock: box(how.querySelector('.section__heading')),
-        list: box(how.querySelector('ol')),
+        head: relative(how.querySelector('.section__heading'), howHead),
+        panel: relative(how.querySelector('.landing-steps-panel'), howHead),
+        panelStyle: css(how.querySelector('.landing-steps-panel')),
+        list: relative(how.querySelector('ol'), howHead),
         listStyle: css(how.querySelector('ol')),
         steps: [...how.querySelectorAll('ol > li')].map((step) => {
           const tile = step.querySelector('.landing-step__tile');
           const badge = step.querySelector('.landing-step__badge');
-          const connector = step.querySelector('.landing-step__connector');
           const title = step.querySelector('.landing-step__title');
+          // A step's connector is drawn inside the step it leads into, so
+          // it never overflows the step it leaves; it is read as the
+          // leaving step's, as the canvas draws it.
+          const next = step.nextElementSibling;
+          const visible = [
+            ...(next?.querySelectorAll('.landing-step__connector') ?? []),
+          ].filter((svg) => getComputedStyle(svg).display !== 'none');
+          const connector = visible[0];
+          const line = connector?.querySelector('.landing-step__line');
+          const head = connector?.querySelector('.landing-step__head polygon');
           return {
-            box: box(step),
+            box: relative(step, howHead),
             style: css(step),
-            tile: box(tile),
+            tile: relative(tile, howHead),
             tileStyle: css(tile),
-            tileBorder: getComputedStyle(tile).borderTopStyle,
-            tileBorderWidth: getComputedStyle(tile).borderTopWidth,
-            tileBorderColor: getComputedStyle(tile).borderTopColor,
-            tileColor: getComputedStyle(tile).color,
             tileHidden: tile.getAttribute('aria-hidden'),
-            icon: box(tile.querySelector('svg')),
-            badge: box(badge),
+            icon: relative(tile.querySelector('svg'), howHead),
+            badge: relative(badge, howHead),
             badgeStyle: css(badge),
             badgeText: badge.textContent.trim(),
-            connector: connector && {
-              box: box(connector),
-              style: css(connector),
-              topStyle: getComputedStyle(connector).borderTopStyle,
-              leftStyle: getComputedStyle(connector).borderLeftStyle,
-              topWidth: getComputedStyle(connector).borderTopWidth,
-              leftWidth: getComputedStyle(connector).borderLeftWidth,
-              arrow: css(connector, '::after'),
-              arrowBorder: getComputedStyle(connector, '::after')
-                .borderLeftWidth,
-              hidden: connector.getAttribute('aria-hidden'),
-            },
-            title: box(title),
+            title: relative(title, howHead),
             titleText: title.textContent.trim(),
             titleStyle: css(title),
+            connectors: visible.length,
+            connector: connector && {
+              kind: connector.classList.contains(
+                'landing-step__connector--across',
+              )
+                ? 'across'
+                : 'down',
+              dashed: connector.classList.contains(
+                'landing-step__connector--dashed',
+              ),
+              box: relative(connector, howHead),
+              hidden: connector.getAttribute('aria-hidden'),
+              line: css(line),
+              head: head && {
+                box: relative(head, howHead),
+                fill: getComputedStyle(head).fill,
+              },
+            },
           };
         }),
       },
@@ -374,7 +437,13 @@ function measure(page) {
 const bannersOf = (catalogueMeasure) =>
   catalogueMeasure.groups.flatMap((group) => group.banners);
 
-test('every banner uses its real logo, its data brand colour, its computed label colour and its chip tone, over the full data file', async () => {
+function nearBox(actual, expected, label) {
+  assert.ok(actual && expected, `${label}: ${actual} against ${expected}`);
+  for (const [index, side] of ['x', 'y', 'width', 'height'].entries())
+    near(actual[index], expected[index], `${label} ${side}`);
+}
+
+test('every banner uses its real logo, its data brand colour, its computed label colour, its chip tone and the canvas tonal system, over the full data file', async () => {
   for (const colorScheme of themes) {
     const { context, page } = await openLanding({ width: 1440, colorScheme });
     const result = await measure(page);
@@ -393,14 +462,30 @@ test('every banner uses its real logo, its data brand colour, its computed label
       assert.equal(banner.style.background, rgb(provider.brandColor), label);
       assert.equal(banner.image.src, provider.logo, label);
       assert.equal(banner.image.alt, provider.name, label);
-      // The logo names the provider; the visible name is not read twice.
-      assert.equal(banner.nameText, provider.name, label);
-      assert.equal(banner.nameHidden, 'true', label);
-      const foreground =
-        bannerForeground(provider.brandColor) === 'white'
-          ? result.tokens['banner-white']
-          : result.tokens['banner-ink'];
-      assert.equal(banner.categoryStyle.color, foreground, label);
+      // Founder decision 2026-11-08: a wordmark shows alone at its data
+      // height; an icon mark sits 20px tall beside the name, which is not
+      // read twice.
+      if (provider.wordmarkHeight === undefined) {
+        assert.equal(banner.wordmark, false, label);
+        assert.equal(banner.nameText, provider.name, label);
+        assert.equal(banner.nameHidden, 'true', label);
+        near(banner.logo[3], 20, `${label} icon height`);
+      } else {
+        assert.equal(banner.wordmark, true, label);
+        assert.equal(banner.nameText, null, `${label} has no visible name`);
+        assert.equal(banner.chipText, '', `${label} shows the logo alone`);
+        near(
+          banner.logo[3],
+          Math.min(provider.wordmarkHeight, 36),
+          `${label} wordmark height`,
+        );
+      }
+      const white = bannerForeground(provider.brandColor) === 'white';
+      assert.equal(
+        banner.categoryStyle.color,
+        white ? result.tokens['banner-white'] : result.tokens['banner-ink'],
+        label,
+      );
       assert.equal(
         banner.category,
         providerShowcaseCopy.categories[provider.category],
@@ -418,11 +503,31 @@ test('every banner uses its real logo, its data brand colour, its computed label
         dark ? result.tokens['banner-white'] : result.tokens['banner-ink'],
         label,
       );
-      // The tonal shape cycles t1 to t6 in catalogue order, hidden from
-      // assistive technology.
-      assert.equal(banner.shape, bannerShapes[index % 6], label);
-      assert.equal(banner.toneHidden, true, label);
+      // Two tonal layers: the shape, in the token its brand colour selects,
+      // and the ring, white under white text and ink under ink, both in the
+      // composition the catalogue cycles t1 to t6 in order (founder decision
+      // 2026-11-08: the canvas cycle, no per-brand override), and hidden
+      // from assistive technology.
+      assert.equal(
+        banner.toneBackground,
+        result.tokens[`banner-tone-${bannerTone(provider.brandColor)}`],
+        label,
+      );
+      assert.equal(
+        banner.ringStyle.borderColor,
+        white
+          ? result.tokens['banner-ring-dark']
+          : result.tokens['banner-ring-ink'],
+        label,
+      );
+      assert.equal(banner.ringStyle.borderStyle, 'solid', label);
+      assert.equal(banner.shapeName, bannerShapes[index % 6], label);
+      assert.equal(banner.ringName, bannerShapes[index % 6], label);
+      assert.equal(banner.layersHidden, true, label);
     }
+    // 18 wordmarks and 16 icon marks, as the data file marks them.
+    assert.equal(banners.filter((banner) => banner.wordmark).length, 18);
+    assert.equal(banners.filter((banner) => !banner.wordmark).length, 16);
     assert.deepEqual(
       banners
         .filter(
@@ -434,8 +539,6 @@ test('every banner uses its real logo, its data brand colour, its computed label
         .filter((provider) => provider.chipTone === 'dark')
         .map((provider) => provider.name),
     );
-    // The tone selection itself is the shared function's (unit-tested), and
-    // all three tones occur in the real data.
     assert.deepEqual(
       new Set(catalogue.map((provider) => bannerTone(provider.brandColor))),
       new Set(['dark', 'light', 'ink']),
@@ -444,203 +547,241 @@ test('every banner uses its real logo, its data brand colour, its computed label
   }
 });
 
-test('banner anatomy matches the component sheet at 1440, in both themes', async () => {
-  for (const colorScheme of themes) {
-    const { context, page } = await openLanding({ width: 1440, colorScheme });
-    const result = await measure(page);
-    for (const banner of bannersOf(result.catalogue)) {
-      const label = `${colorScheme} ${banner.name}`;
-      near(banner.box.width, 227, `${label} width`);
-      near(banner.box.height, 96, `${label} height`);
-      assert.deepEqual(banner.style.padding, [16, 16, 16, 16], label);
-      assert.equal(banner.style.borderRadius, '12px', label);
-      // Shadow 1 at rest, plus the 1px light edge in dark.
-      assert.match(banner.style.boxShadow, /6px 16px|8px 20px/u, label);
-      if (colorScheme === 'dark')
-        assert.match(
-          banner.style.boxShadow,
-          /rgba\(240, 240, 238, 0\.1\) 0px 0px 0px 1px inset/u,
-          label,
-        );
-      near(banner.chip.height, 36, `${label} chip height`);
-      near(banner.chip.top - banner.box.top, 16, `${label} chip top`);
-      near(banner.chip.left - banner.box.left, 16, `${label} chip left`);
-      assert.equal(banner.chipStyle.padding[1], 12, `${label} chip padding`);
-      assert.equal(banner.chipStyle.padding[3], 12, `${label} chip padding`);
-      assert.equal(banner.chipStyle.borderRadius, '8px', label);
-      assert.equal(banner.chipStyle.fontSize, '14px', label);
-      assert.equal(banner.chipStyle.lineHeight, '20px', label);
-      assert.equal(banner.chipStyle.fontWeight, '600', label);
-      assert.equal(banner.gap, 8, label);
-      near(banner.image.box.height, 16, `${label} logo`);
-      assert.equal(banner.categoryStyle.fontSize, '13px', label);
-      assert.equal(banner.categoryStyle.lineHeight, '18px', label);
-      assert.equal(banner.categoryStyle.fontWeight, '500', label);
-      // The category label sits at the bottom, inside the padding.
-      near(banner.box.bottom - banner.categoryBox.bottom, 16, `${label} label`);
-    }
-    // The chip shadow is --shadow-chip in light; the dark chip adds its light
-    // ring in dark (--shadow-chip-dark).
-    const shadowChip = await page.evaluate(() => {
-      const element = globalThis.document.createElement('span');
-      element.style.boxShadow = 'var(--shadow-chip)';
-      globalThis.document.body.append(element);
-      const resolved = globalThis.getComputedStyle(element).boxShadow;
-      element.remove();
-      return resolved;
-    });
-    const darkChips = bannersOf(result.catalogue).filter((banner) =>
-      showcase.some(
-        (provider) =>
-          provider.name === banner.name && provider.chipTone === 'dark',
-      ),
-    );
-    assert.ok(darkChips.length > 0, 'a dark chip is in the catalogue');
-    for (const banner of darkChips) {
-      const label = `${colorScheme} ${banner.name} chip shadow`;
-      if (colorScheme === 'dark')
-        assert.match(
-          banner.chipStyle.boxShadow,
-          /rgba\(240, 240, 238, 0\.18\) 0px 0px 0px 1px/u,
-          label,
-        );
-      else assert.equal(banner.chipStyle.boxShadow, shadowChip, label);
-    }
-    // Shadow 2 on hover, plus the 0.14 light edge in dark.
-    const hovered = page.locator('[data-provider-banner]').first();
-    await hovered.hover();
-    const hoverShadow = await hovered.evaluate(async (banner) => {
-      await Promise.all(
-        banner.getAnimations().map((animation) => animation.finished),
-      );
-      return globalThis.getComputedStyle(banner).boxShadow;
-    });
-    if (colorScheme === 'dark') {
-      assert.match(hoverShadow, /20px 48px/u, 'dark hover shadow');
-      assert.match(
-        hoverShadow,
-        /rgba\(240, 240, 238, 0\.14\) 0px 0px 0px 1px inset/u,
-        'dark hover edge',
-      );
-    } else assert.match(hoverShadow, /18px 44px/u, 'light hover shadow');
-    await context.close();
-  }
-});
-
-test('the section frame and the catalogue grid match Main.dc.html at 1440, in both themes', async () => {
-  for (const colorScheme of themes) {
-    const { context, page } = await openLanding({ width: 1440, colorScheme });
-    const { catalogue: section, how, tokens } = await measure(page);
-    // The H2 at 24/32 600 with -0.01em tracking, and the supporting line 8px
-    // below it at 16/24 ink-600; 32px below the block.
-    assert.equal(section.headingStyle.fontSize, '24px');
-    assert.equal(section.headingStyle.lineHeight, '32px');
-    assert.equal(section.headingStyle.fontWeight, '600');
-    assert.equal(section.headingStyle.letterSpacing, '-0.24px');
-    near(section.line.top - section.heading.bottom, 8, 'supporting line gap');
-    assert.equal(section.lineStyle.fontSize, '16px');
-    assert.equal(section.lineStyle.lineHeight, '24px');
-    assert.equal(section.lineStyle.color, tokens['ink-600']);
-    near(
-      section.groups[0].labelBox.top - section.headingBlock.bottom,
-      32,
-      'block to the first group',
-    );
-    // The section gap of 80px above #how.
-    near(how.box.top - section.box.bottom, 80, 'section gap');
-    // One group per v2 category with providers, labelled 14/20 600 ink-600.
-    assert.deepEqual(
-      section.groups.map((group) => group.label),
-      groupLabels,
-    );
-    for (const [index, group] of section.groups.entries()) {
-      assert.equal(group.labelStyle.fontSize, '14px');
-      assert.equal(group.labelStyle.lineHeight, '20px');
-      assert.equal(group.labelStyle.fontWeight, '600');
-      assert.equal(group.labelStyle.color, tokens['ink-600']);
-      near(group.banners[0].box.top - group.labelBox.bottom, 12, 'label gap');
-      if (index > 0)
-        near(
-          group.box.top - section.groups[index - 1].box.bottom,
-          32,
-          `${group.label} group gap`,
-        );
-      // Five equal columns, 16px apart, inside the 1200px container.
-      assert.equal(group.trackStyle.display, 'grid');
-      assert.equal(group.trackStyle.gap, 16);
-      assert.equal(group.trackStyle.gridColumns.split(' ').length, 5);
-      near(group.track.left, section.content.left, 'grid start');
-      near(group.track.right, section.content.right, 'grid end');
-      for (const [column, banner] of group.banners.slice(0, 5).entries())
-        near(
-          banner.box.left,
-          section.content.left + column * (227 + 16),
-          `${banner.name} column`,
-        );
-    }
-    near(section.content.width, 1200, 'container');
-    await context.close();
-  }
-});
-
-test('the rails match Tablet.dc.html at 768 and Phone.dc.html at 390, in both themes', async () => {
-  for (const [width, frame] of [
-    [768, { gutter: 32, groupGap: 24, block: 32, sectionGap: 64 }],
-    [390, { gutter: 16, groupGap: 20, block: 24, sectionGap: 64 }],
-  ]) {
+test('catalogue and step geometry matches the canvas at 1440, 1024, 768, 390 and 320, in both themes, at rest', async () => {
+  assert.deepEqual(
+    Object.keys(canvas.widths)
+      .map(Number)
+      .sort((a, b) => b - a),
+    canvasWidths,
+  );
+  for (const width of canvasWidths) {
+    const frame = canvas.widths[width];
     for (const colorScheme of themes) {
       const { context, page } = await openLanding({ width, colorScheme });
       const result = await measure(page);
-      const { catalogue: section, how } = result;
       const label = `${width} ${colorScheme}`;
       assert.equal(result.scrollWidth, result.viewport, `${label} overflow`);
+      const built = result.catalogue;
+      nearBox(built.head, frame.catalogue.head, `${label} heading block`);
+      nearBox(built.heading, frame.catalogue.heading, `${label} H2`);
+      nearBox(built.line, frame.catalogue.line, `${label} supporting line`);
       near(
-        section.groups[0].labelBox.top - section.headingBlock.bottom,
-        frame.block,
-        `${label} block`,
+        built.sectionEnd,
+        frame.catalogue.sectionEnd,
+        `${label} section end`,
       );
-      near(how.box.top - section.box.bottom, frame.sectionGap, `${label} gap`);
-      for (const [index, group] of section.groups.entries()) {
+      assert.equal(built.groups.length, frame.catalogue.groups.length);
+      for (const [index, group] of built.groups.entries()) {
+        const drawn = frame.catalogue.groups[index];
         const where = `${label} ${group.label}`;
-        if (index > 0)
-          near(
-            group.box.top - section.groups[index - 1].box.bottom,
-            frame.groupGap,
-            `${where} group gap`,
-          );
-        // The label 8px above the rail, whose 4px top padding sets the first
-        // banner 12px below it.
-        near(group.track.top - group.labelBox.bottom, 8, `${where} label`);
-        near(group.banners[0].box.top - group.labelBox.bottom, 12, where);
-        assert.equal(group.trackStyle.display, 'flex', where);
-        assert.equal(group.trackStyle.gap, 12, where);
-        assert.equal(group.trackStyle.overflowX, 'auto', where);
-        assert.equal(group.trackStyle.scrollSnapType, 'x mandatory', where);
-        assert.equal(group.trackStyle.scrollbarWidth, 'none', where);
-        // The rail starts at the content edge and bleeds to the viewport's
-        // right edge.
-        near(group.track.left, frame.gutter, `${where} rail start`);
-        near(group.track.right, result.viewport, `${where} rail bleed`);
-        for (const banner of group.banners) {
-          near(banner.box.width, 224, `${where} ${banner.name} width`);
-          near(banner.box.height, 96, `${where} ${banner.name} height`);
-          assert.equal(banner.snap, 'start', where);
+        // The group's box, except its width: the build bleeds the whole
+        // catalogue into the right gutter and the canvas bleeds each rail, so
+        // below 64rem the built group is one gutter wider. The rail itself,
+        // the box that bleeds, is compared whole below.
+        nearBox(
+          [group.box[0], group.box[1], drawn.box[2], group.box[3]],
+          drawn.box,
+          `${where} group`,
+        );
+        // The label spans its group, so its width follows the group's.
+        nearBox(
+          [
+            group.labelBox[0],
+            group.labelBox[1],
+            drawn.label[2],
+            group.labelBox[3],
+          ],
+          drawn.label,
+          `${where} label`,
+        );
+        nearBox(group.rail, drawn.rail, `${where} rail`);
+        assert.deepEqual(
+          group.banners.map((banner) => banner.name),
+          drawn.banners.map((banner) => banner.name),
+          where,
+        );
+        for (const [position, banner] of group.banners.entries()) {
+          const target = drawn.banners[position];
+          const at = `${where} ${banner.name}`;
+          nearBox(banner.box, target.box, `${at} banner`);
+          nearBox(banner.chip, target.chip, `${at} chip`);
+          nearBox(banner.logo, target.logo, `${at} logo`);
+          if (target.label === null)
+            assert.equal(banner.label, null, `${at} name`);
+          else nearBox(banner.label, target.label, `${at} name`);
+          nearBox(banner.categoryBox, target.category, `${at} category`);
+          nearBox(banner.shape, target.shape, `${at} tonal shape`);
+          nearBox(banner.ring, target.ring, `${at} ring`);
         }
-        if (group.banners.length > 1)
-          near(
-            group.banners[1].box.left - group.banners[0].box.right,
-            12,
-            `${where} banner gap`,
+      }
+      // "How it works": the panel, the list, each step's tile, badge and
+      // title, and its connector. The canvas draws a connector as a 2px CSS
+      // line with a 7 × 12 arrowhead whose tip is 2px past its end; the build
+      // draws it in SVG, so across it boxes the line and the arrowhead (5px
+      // above the line, 12px tall, to the tip), and down it is the line.
+      const how = result.how;
+      nearBox(how.head, frame.how.head, `${label} how heading block`);
+      nearBox(how.panel, frame.how.panel, `${label} panel`);
+      nearBox(how.list, frame.how.list, `${label} steps`);
+      for (const [index, step] of how.steps.entries()) {
+        const drawn = frame.how.steps[index];
+        const where = `${label} step ${index + 1}`;
+        nearBox(step.box, drawn.box, `${where} box`);
+        nearBox(step.tile, drawn.tile, `${where} tile`);
+        nearBox(step.badge, drawn.badge, `${where} badge`);
+        nearBox(step.title, drawn.title, `${where} title`);
+        if (drawn.connector === null) {
+          assert.equal(step.connectors, 0, `${where} has no connector`);
+          continue;
+        }
+        assert.equal(step.connectors, 1, `${where} one connector`);
+        const [x, y, w, h] = drawn.connector;
+        if (width >= 768) {
+          assert.equal(step.connector.kind, 'across', where);
+          nearBox(step.connector.box, [x, y - 5, w + 2, 12], `${where} line`);
+          nearBox(
+            step.connector.head.box,
+            [x + w - 5, y - 5, 7, 12],
+            `${where} arrowhead`,
           );
-        // Wherever the group outruns the rail, the next banner peeks.
-        const [scrollWidth, clientWidth] = group.trackScroll;
-        if (scrollWidth > clientWidth) {
-          const peeking = group.banners.find(
-            (banner) =>
-              banner.box.left < result.viewport &&
-              banner.box.right > result.viewport,
+        } else {
+          assert.equal(step.connector.kind, 'down', where);
+          assert.equal(step.connector.head, null, `${where} no arrowhead`);
+          nearBox(step.connector.box, [x, y, w, h], `${where} line`);
+        }
+      }
+      await context.close();
+    }
+  }
+});
+
+test('the section frame, banner and step styles match the canvas, in both themes', async () => {
+  for (const width of [1440, 1024, 768, 390]) {
+    for (const colorScheme of themes) {
+      const { context, page } = await openLanding({ width, colorScheme });
+      const { catalogue: section, how, tokens } = await measure(page);
+      const label = `${width} ${colorScheme}`;
+      const small = width < 768;
+      // The H2 at 24/32 600 with -0.01em tracking; the supporting line 16/24
+      // ink-600; the heading block at most 40rem.
+      assert.equal(section.headingStyle.fontSize, '24px', label);
+      assert.equal(section.headingStyle.lineHeight, '32px', label);
+      assert.equal(section.headingStyle.fontWeight, '600', label);
+      assert.equal(section.headingStyle.letterSpacing, '-0.24px', label);
+      assert.equal(section.lineStyle.color, tokens['ink-600'], label);
+      assert.ok(section.head[2] <= 640 + tolerance, `${label} block width`);
+      assert.deepEqual(
+        section.groups.map((group) => group.label),
+        groupLabels,
+      );
+      for (const group of section.groups) {
+        const where = `${label} ${group.label}`;
+        assert.equal(group.labelStyle.fontSize, '14px', where);
+        assert.equal(group.labelStyle.lineHeight, '20px', where);
+        assert.equal(group.labelStyle.fontWeight, '600', where);
+        assert.equal(group.labelStyle.color, tokens['ink-600'], where);
+        if (width >= 1024) {
+          assert.equal(group.trackStyle.display, 'grid', where);
+          assert.equal(group.trackStyle.gap, 16, where);
+          assert.equal(group.trackStyle.gridColumns.split(' ').length, 5);
+        } else {
+          assert.equal(group.trackStyle.display, 'flex', where);
+          assert.equal(group.trackStyle.gap, 12, where);
+          assert.equal(group.trackStyle.overflowX, 'auto', where);
+          assert.equal(group.trackStyle.scrollSnapType, 'x mandatory', where);
+          assert.equal(group.trackStyle.scrollbarWidth, 'none', where);
+          // Native scroll-snap, never animated.
+          assert.equal(group.trackStyle.scrollBehavior, 'auto', where);
+          assert.deepEqual(
+            group.trackStyle.padding.slice(0, 3),
+            [4, small ? 16 : 32, 16],
+            where,
           );
-          assert.ok(peeking, `${where} the next banner peeks`);
+        }
+        for (const banner of group.banners) {
+          const at = `${where} ${banner.name}`;
+          assert.deepEqual(banner.style.padding, [14, 14, 14, 14], at);
+          assert.equal(banner.style.borderRadius, '12px', at);
+          assert.equal(banner.style.boxShadow, tokens.restShadow, at);
+          if (width < 1024)
+            assert.equal(banner.style.scrollSnapAlign, 'start', at);
+          assert.equal(banner.chipStyle.borderRadius, '8px', at);
+          assert.equal(banner.chipStyle.fontWeight, '600', at);
+          const compact = width >= 1024 && width < 1280;
+          assert.equal(
+            banner.chipStyle.fontSize,
+            compact ? '13px' : '14px',
+            at,
+          );
+          assert.deepEqual(
+            banner.chipStyle.padding,
+            compact ? [6, 8, 6, 8] : [0, 12, 0, 12],
+            at,
+          );
+          assert.equal(banner.chipStyle.gap, 6, at);
+          if (banner.chipStyle.background === tokens['banner-white'])
+            assert.equal(banner.chipStyle.boxShadow, tokens.shadowChip, at);
+          assert.equal(banner.categoryStyle.fontSize, '13px', at);
+          assert.equal(banner.categoryStyle.lineHeight, '18px', at);
+          assert.equal(banner.categoryStyle.fontWeight, '500', at);
+          // --border-check, as Chromium renders 1.5px (snapped to whole
+          // pixels), as the canvas's 1.5px ring renders.
+          assert.equal(banner.ringStyle.borderWidth, tokens.borderCheck, at);
+        }
+      }
+      // The steps panel, the well tile and the optional step.
+      assert.equal(how.panelStyle.background, tokens.surface, label);
+      assert.equal(how.panelStyle.boxShadow, tokens.panelShadow, label);
+      assert.equal(how.panelStyle.borderRadius, '12px', label);
+      for (const [index, step] of how.steps.entries()) {
+        const where = `${label} step ${index + 1}`;
+        const optional = index === 2;
+        assert.equal(step.titleText, landingCopy.how.steps[index], where);
+        assert.equal(step.tileHidden, 'true', where);
+        assert.equal(step.tileStyle.borderRadius, '12px', where);
+        near(step.icon[2], 24, `${where} icon`);
+        assert.equal(step.badgeText, String(index + 1), where);
+        assert.equal(step.badgeStyle.fontSize, '13px', where);
+        assert.equal(step.badgeStyle.color, tokens.paper, where);
+        assert.equal(step.badgeStyle.boxShadow, tokens.ringBadge, where);
+        assert.equal(step.titleStyle.fontWeight, '600', where);
+        assert.equal(step.titleStyle.fontSize, small ? '16px' : '20px', where);
+        assert.equal(
+          step.titleStyle.lineHeight,
+          small ? '24px' : '28px',
+          where,
+        );
+        assert.equal(
+          step.titleStyle.letterSpacing,
+          small ? 'normal' : '-0.2px',
+          where,
+        );
+        if (optional) {
+          assert.equal(step.tileStyle.background, 'rgba(0, 0, 0, 0)', where);
+          assert.equal(step.tileStyle.borderStyle, 'dashed', where);
+          assert.equal(step.tileStyle.borderColor, tokens['ink-300'], where);
+          assert.equal(step.tileStyle.boxShadow, 'none', where);
+          assert.equal(step.tileStyle.color, tokens['ink-600'], where);
+          assert.equal(step.badgeStyle.background, tokens['ink-600'], where);
+          assert.equal(step.titleStyle.color, tokens['ink-600'], where);
+        } else {
+          assert.equal(step.tileStyle.background, tokens.well, where);
+          assert.equal(step.tileStyle.boxShadow, tokens.insetLine, where);
+          assert.equal(step.tileStyle.color, tokens.ink, where);
+          assert.equal(step.badgeStyle.background, tokens.ink, where);
+          assert.equal(step.titleStyle.color, tokens.ink, where);
+          const { connector } = step;
+          assert.equal(connector.hidden, 'true', where);
+          assert.equal(connector.dashed, index === 1, where);
+          assert.equal(connector.line.stroke, tokens['ink-300'], where);
+          assert.equal(connector.line.strokeWidth, '2px', where);
+          assert.equal(
+            connector.line.strokeDasharray,
+            index === 1 ? '6px, 6px' : 'none',
+            where,
+          );
+          if (connector.head)
+            assert.equal(connector.head.fill, tokens['ink-300'], where);
         }
       }
       await context.close();
@@ -653,61 +794,57 @@ test('no chip text overflows or truncates at any test width, in both themes', as
     for (const colorScheme of themes) {
       const { context, page } = await openLanding({ width, colorScheme });
       const result = await measure(page);
+      assert.equal(result.scrollWidth, result.viewport, `${width} overflow`);
       for (const banner of bannersOf(result.catalogue)) {
         const label = `${width} ${colorScheme} ${banner.name}`;
         const [scrollWidth, clientWidth, scrollHeight, clientHeight] =
           banner.chipScroll;
         assert.ok(scrollWidth <= clientWidth + 1, `${label} chip width`);
         assert.ok(scrollHeight <= clientHeight + 1, `${label} chip height`);
-        const [nameScroll, nameClient] = banner.nameScroll;
-        assert.ok(nameScroll <= nameClient + 1, `${label} name`);
-        // The chip and the label stay inside the banner's padding.
+        if (banner.nameScroll) {
+          const [nameScroll, nameClient] = banner.nameScroll;
+          assert.ok(nameScroll <= nameClient + 1, `${label} name`);
+          assert.ok(
+            banner.label[0] + banner.label[2] <=
+              banner.chip[0] + banner.chip[2] + 1,
+            `${label} name inside the chip`,
+          );
+        }
+        // The chip, its logo and the label stay inside the banner's padding;
+        // the chip sits above the label.
+        const bannerWidth = banner.box[2];
+        const bannerHeight = banner.box[3];
         assert.ok(
-          banner.chip.right <= banner.box.right - 16 + 1,
+          banner.chip[0] + banner.chip[2] <= bannerWidth - 14 + 1,
           `${label} chip right`,
         );
         assert.ok(
-          banner.nameBox.right <= banner.chip.right + 1,
-          `${label} name right`,
+          banner.logo[0] + banner.logo[2] <=
+            banner.chip[0] + banner.chip[2] + 1,
+          `${label} logo inside the chip`,
         );
         assert.ok(
-          banner.categoryBox.bottom <= banner.box.bottom - 16 + 1,
+          banner.categoryBox[1] + banner.categoryBox[3] <=
+            bannerHeight - 14 + 1,
           `${label} category`,
         );
         assert.ok(
-          banner.chip.bottom <= banner.categoryBox.top + 1,
+          banner.chip[1] + banner.chip[3] <= banner.categoryBox[1] + 1,
           `${label} chip above category`,
         );
-        // The logo is never squeezed out: at least 16px wide, scaled whole.
-        assert.ok(banner.image.box.width >= 16 - 1, `${label} logo`);
-        assert.equal(banner.image.fit, 'contain', label);
-        if (width >= 1280)
-          near(banner.chip.height, 36, `${label} one-line chip`);
+        assert.equal(
+          banner.image.fit,
+          banner.wordmark ? 'contain' : 'fill',
+          `${label} logo scaled whole`,
+        );
       }
       await context.close();
     }
   }
 });
 
-test('between 64rem and 80rem a chip takes the compact two-line style', async () => {
-  const { context, page } = await openLanding({ width: 1024 });
-  const result = await measure(page);
-  for (const banner of bannersOf(result.catalogue)) {
-    assert.equal(banner.chipStyle.fontSize, '13px', banner.name);
-    assert.equal(banner.chipStyle.lineHeight, '18px', banner.name);
-    assert.deepEqual(banner.chipStyle.padding, [6, 10, 6, 10], banner.name);
-    assert.ok(banner.chip.height >= 32 - 1, banner.name);
-  }
-  // A long name wraps inside its chip rather than overflow.
-  const adobe = bannersOf(result.catalogue).find(
-    (banner) => banner.name === 'Adobe Creative Cloud',
-  );
-  assert.ok(adobe.nameBox.height > 18 + 1, 'Adobe Creative Cloud wraps');
-  await context.close();
-});
-
-test('each rail scrolls by keyboard, is labelled with its category, and ships no script of its own', async () => {
-  const { context, page } = await openLanding({ width: 390 });
+test('each rail scrolls by keyboard, is labelled with its category, ships no script and never animates its scroll', async () => {
+  const { context, page } = await openLanding({ width: 390, motion: true });
   const result = await measure(page);
   for (const group of result.catalogue.groups)
     assert.deepEqual(group.trackAttributes, {
@@ -720,6 +857,14 @@ test('each rail scrolls by keyboard, is labelled with its category, and ships no
     assert.ok(tree.includes(`region "${name}"`), `${name} region`);
   const track = page.locator('#catalogue .provider-rail__track').nth(1);
   await track.focus();
+  // Focus puts the rail at rest at once, whatever its reveal.
+  assert.deepEqual(
+    await track.evaluate((element) => [
+      globalThis.getComputedStyle(element).opacity,
+      globalThis.getComputedStyle(element).translate,
+    ]),
+    ['1', 'none'],
+  );
   const before = await track.evaluate((element) => element.scrollLeft);
   await page.keyboard.press('ArrowRight');
   await page.waitForFunction(
@@ -729,9 +874,7 @@ test('each rail scrolls by keyboard, is labelled with its category, and ships no
       )[1].scrollLeft > start,
     before,
   );
-  // No script lives in the catalogue, and nothing advances on its own.
   assert.equal(await page.locator('#catalogue script').count(), 0);
-  // Once the keyboard scroll and its snap settle, it stays put.
   let settled = await track.evaluate((element) => element.scrollLeft);
   for (let read = 0; read < 20; read += 1) {
     await page.waitForTimeout(150);
@@ -742,136 +885,491 @@ test('each rail scrolls by keyboard, is labelled with its category, and ships no
   assert.ok(settled > before, 'the rail moved');
   await page.waitForTimeout(400);
   assert.equal(await track.evaluate((element) => element.scrollLeft), settled);
+  // Touch: a swipe scrolls the rail natively and snaps a banner to its start.
+  const touchContext = await browser.newContext({
+    viewport: { width: 390, height: 900 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const touchPage = await touchContext.newPage();
+  await touchPage.goto(browserOrigin);
+  const rail = touchPage.locator('#catalogue .provider-rail__track').first();
+  await rail.scrollIntoViewIfNeeded();
+  const swipe = await rail.boundingBox();
+  const client = await touchContext.newCDPSession(touchPage);
+  const x = Math.round(swipe.x + swipe.width * 0.8);
+  const y = Math.round(swipe.y + swipe.height / 2);
+  await client.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x, y }],
+  });
+  for (let step = 1; step <= 10; step += 1)
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: x - step * 25, y }],
+    });
+  await client.send('Input.dispatchTouchEvent', {
+    type: 'touchEnd',
+    touchPoints: [],
+  });
+  await touchPage.waitForFunction(
+    () =>
+      globalThis.document.querySelector('#catalogue .provider-rail__track')
+        .scrollLeft > 0,
+  );
+  await touchContext.close();
   await context.close();
 });
 
-test('"How it works" matches the frames at 1440, 768 and 390, in both themes', async () => {
-  for (const width of [1440, 768, 390]) {
-    for (const colorScheme of themes) {
-      const { context, page } = await openLanding({ width, colorScheme });
-      const { how, tokens, borderCheck } = await measure(page);
-      assert.equal(borderCheck.declared, '1.5px');
-      const label = `${width} ${colorScheme}`;
-      const small = width < 768;
-      assert.deepEqual(
-        how.steps.map((step) => step.titleText),
-        landingCopy.how.steps,
-      );
-      assert.equal(how.steps.length, 3);
-      near(
-        how.list.top - how.headingBlock.bottom,
-        small ? 24 : 32,
-        `${label} block`,
-      );
-      if (small) {
-        // 28px apart: each step's bottom padding holds its connector.
-        for (const index of [1, 2])
-          near(
-            how.steps[index].tile.top - how.steps[index - 1].tile.bottom,
-            28,
-            `${label} step gap`,
-          );
-        for (const step of how.steps)
-          near(step.box.left, how.list.left, `${label} one column`);
-      } else {
-        assert.equal(how.listStyle.gridColumns.split(' ').length, 3, label);
-        assert.equal(how.listStyle.gap, 24, label);
-        near(how.steps[1].box.left - how.steps[0].box.right, 24, label);
-        near(how.steps[0].box.width, how.steps[2].box.width, `${label} equal`);
-      }
-      for (const [index, step] of how.steps.entries()) {
-        const where = `${label} step ${index + 1}`;
-        const optional = index === 2;
-        // The 56px tile, radius 12, its 24px icon and the badge at -10/-10.
-        near(step.tile.width, 56, where);
-        near(step.tile.height, 56, where);
-        near(step.tile.left, step.box.left, `${where} tile left`);
-        assert.equal(step.tileStyle.borderRadius, '12px', where);
-        assert.equal(step.tileHidden, 'true', where);
-        near(step.icon.width, 24, `${where} icon`);
-        near(step.badge.width, 24, `${where} badge`);
-        near(step.badge.height, 24, `${where} badge`);
-        near(step.badge.left - step.tile.left, -10, `${where} badge left`);
-        near(step.badge.top - step.tile.top, -10, `${where} badge top`);
-        assert.equal(step.badgeText, String(index + 1), where);
-        assert.equal(step.badgeStyle.fontSize, '13px', where);
-        assert.equal(step.badgeStyle.color, tokens.paper, where);
-        if (optional) {
-          // Drawn as optional: paper tile, 1.5px dashed ink-300, no shadow,
-          // ink-600 icon, badge and title.
-          assert.equal(step.tileStyle.background, tokens.paper, where);
-          assert.equal(step.tileBorder, 'dashed', where);
-          assert.equal(step.tileBorderWidth, borderCheck.rendered, where);
-          assert.equal(step.tileBorderColor, tokens['ink-300'], where);
-          assert.equal(step.tileStyle.boxShadow, 'none', where);
-          assert.equal(step.tileColor, tokens['ink-600'], where);
-          assert.equal(step.badgeStyle.background, tokens['ink-600'], where);
-          assert.equal(step.titleStyle.color, tokens['ink-600'], where);
-          assert.equal(step.connector, null, `${where} has no connector`);
-        } else {
-          assert.equal(step.tileStyle.background, tokens.surface, where);
-          assert.match(step.tileStyle.boxShadow, /6px 16px|8px 20px/u, where);
-          assert.equal(step.tileColor, tokens.ink, where);
-          assert.equal(step.badgeStyle.background, tokens.ink, where);
-          assert.equal(step.titleStyle.color, tokens.ink, where);
-        }
-        assert.equal(step.titleStyle.fontWeight, '600', where);
-        assert.equal(
-          step.titleStyle.letterSpacing,
-          small ? '-0.16px' : '-0.2px',
-          where,
-        );
-        if (small) {
-          assert.equal(step.titleStyle.fontSize, '16px', where);
-          assert.equal(step.titleStyle.lineHeight, '24px', where);
-          // A row: the title centred beside the tile, 16px from it.
-          near(step.title.left - step.tile.right, 16, `${where} title gap`);
-          near(
-            step.title.top + step.title.height / 2,
-            step.tile.top + 28,
-            `${where} title centred`,
-          );
-        } else {
-          assert.equal(step.titleStyle.fontSize, '20px', where);
-          assert.equal(step.titleStyle.lineHeight, '28px', where);
-          near(step.title.top - step.tile.bottom, 16, `${where} title gap`);
-        }
-        if (step.connector === null) continue;
-        const connector = step.connector;
-        const dashed = index === 1;
-        assert.equal(connector.hidden, 'true', where);
-        if (small) {
-          // Vertical, 2 × 24, 27px from the left and 60px from the top, no
-          // arrowhead.
-          near(connector.box.left - step.box.left, 27, `${where} connector x`);
-          near(connector.box.top - step.box.top, 60, `${where} connector y`);
-          near(connector.box.width, 2, `${where} connector width`);
-          near(connector.box.height, 24, `${where} connector height`);
-          assert.equal(connector.arrow.content, 'none', where);
-          assert.equal(connector.leftStyle, dashed ? 'dashed' : 'none', where);
-          if (dashed) assert.equal(connector.leftWidth, '2px', where);
-          else
-            assert.equal(connector.style.background, tokens['ink-300'], where);
-          // It reaches the next step's tile.
-          near(connector.box.bottom, how.steps[index + 1].box.top, where);
-        } else {
-          // Horizontal, 2px, 27px from the top, from 72px right of the tile's
-          // left edge to 8px short of the column's end, with an arrowhead.
-          near(connector.box.top - step.box.top, 27, `${where} connector y`);
-          near(connector.box.left - step.tile.left, 72, `${where} start`);
-          near(step.box.right - connector.box.right, 8, `${where} end`);
-          near(connector.box.height, 2, `${where} connector height`);
-          assert.notEqual(connector.arrow.content, 'none', where);
-          assert.equal(connector.arrowBorder, '7px', where);
-          assert.equal(connector.arrow.borderColor, tokens['ink-300'], where);
-          assert.equal(connector.topStyle, dashed ? 'dashed' : 'none', where);
-          if (dashed) assert.equal(connector.topWidth, '2px', where);
-          else
-            assert.equal(connector.style.background, tokens['ink-300'], where);
-        }
-      }
-      await context.close();
+test('banners stay out of the tab order: the catalogue adds exactly its four rails to the landing tab sequence', async () => {
+  for (const width of [1440, 390]) {
+    const { context, page } = await openLanding({ width });
+    const sequence = [];
+    for (let press = 0; press < 200; press += 1) {
+      await page.keyboard.press('Tab');
+      const stop = await page.evaluate(() => {
+        const element = globalThis.document.activeElement;
+        if (!element || element === globalThis.document.body) return null;
+        return {
+          banner: element.matches('[data-provider-banner]'),
+          inCatalogue: element.closest('#catalogue') !== null,
+          inHow: element.closest('#how') !== null,
+          label: element.getAttribute('aria-label'),
+          footer: element.closest('footer') !== null,
+        };
+      });
+      if (stop === null) break;
+      sequence.push(stop);
+      if (stop.footer) break;
     }
+    assert.ok(
+      sequence.some((stop) => stop.footer),
+      `${width} reaches the footer`,
+    );
+    assert.equal(sequence.filter((stop) => stop.banner).length, 0, `${width}`);
+    assert.equal(sequence.filter((stop) => stop.inHow).length, 0, `${width}`);
+    assert.deepEqual(
+      sequence.filter((stop) => stop.inCatalogue).map((stop) => stop.label),
+      groupLabels,
+      `${width} the rails, in order`,
+    );
+    await context.close();
+  }
+});
+
+test('a banner rises by --lift from shadow 1 to shadow 2 and shifts its tonal layer by 4% on hover and on focus-visible, over --duration-base, and not under reduced motion', async () => {
+  for (const colorScheme of themes) {
+    const { context, page } = await openLanding({
+      width: 1440,
+      colorScheme,
+      motion: true,
+    });
+    const banner = page.locator('[data-provider-banner]').first();
+    await banner.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(100);
+    const read = () =>
+      banner.evaluate((element) => {
+        const style = globalThis.getComputedStyle(element);
+        const tones = element.querySelector('.provider-banner__tones');
+        const toneBox = tones.getBoundingClientRect();
+        const own = element.getBoundingClientRect();
+        return {
+          transform: style.transform,
+          boxShadow: style.boxShadow,
+          translate: globalThis.getComputedStyle(tones).translate,
+          size: [toneBox.width, toneBox.height],
+          shift: [toneBox.left - own.left, toneBox.top - own.top],
+          transitions: [...element.getAnimations(), ...tones.getAnimations()]
+            .filter(
+              (animation) => animation instanceof globalThis.CSSTransition,
+            )
+            .map((animation) => [
+              animation.transitionProperty,
+              animation.effect.getComputedTiming().duration,
+            ]),
+        };
+      });
+    const rest = await read();
+    assert.equal(rest.transform, 'none');
+    assert.equal(rest.translate, 'none');
+    await banner.hover();
+    await page.waitForTimeout(30);
+    const moving = await read();
+    assert.deepEqual(
+      moving.transitions.map(([property]) => property).sort(),
+      ['box-shadow', 'transform', 'translate'],
+      `${colorScheme} the hover transitions`,
+    );
+    for (const [, duration] of moving.transitions)
+      assert.equal(duration, 200, `${colorScheme} --duration-base`);
+    await transitionsEnded(page);
+    const raised = await read();
+    assert.equal(raised.transform, 'matrix(1, 0, 0, 1, 0, -2)');
+    // Shadow 2, keeping the canvas's 1px light edge (0.1) in dark.
+    assert.match(
+      raised.boxShadow,
+      colorScheme === 'dark' ? /20px 48px/u : /18px 44px/u,
+    );
+    if (colorScheme === 'dark')
+      assert.match(
+        raised.boxShadow,
+        /rgba\(240, 240, 238, 0\.1\) 0px 0px 0px 1px inset/u,
+      );
+    // --tone-shift: 4% of the layer's own size, which is the banner's.
+    assert.equal(raised.translate, '4% 4%');
+    near(raised.shift[0], raised.size[0] * 0.04, 'tone shift x');
+    near(raised.shift[1], raised.size[1] * 0.04, 'tone shift y');
+    await page.mouse.move(0, 0);
+    await transitionsEnded(page);
+    assert.equal((await read()).transform, 'none');
+    // Banners are not focusable (founder decision 2026-11-08); the
+    // focus-visible rule is proved on a banner made focusable in place.
+    await banner.evaluate((element) => {
+      element.tabIndex = 0;
+    });
+    // A key press makes the next focus a keyboard focus.
+    await page.keyboard.press('Tab');
+    await banner.focus();
+    assert.equal(
+      await banner.evaluate((element) => element.matches(':focus-visible')),
+      true,
+    );
+    await transitionsEnded(page);
+    const focused = await read();
+    assert.equal(focused.transform, 'matrix(1, 0, 0, 1, 0, -2)');
+    assert.notEqual(focused.translate, 'none');
+    await context.close();
+  }
+  // Reduced motion: the state changes snap, with no transition.
+  const { context, page } = await openLanding({ width: 1440 });
+  const banner = page.locator('[data-provider-banner]').first();
+  await banner.hover();
+  const transitions = await banner.evaluate(
+    (element) =>
+      [
+        ...element.getAnimations(),
+        ...element.querySelector('.provider-banner__tones').getAnimations(),
+      ].filter((animation) => animation instanceof globalThis.CSSTransition)
+        .length,
+  );
+  assert.equal(transitions, 0);
+  assert.equal(
+    await banner.evaluate(
+      (element) => globalThis.getComputedStyle(element).transform,
+    ),
+    'matrix(1, 0, 0, 1, 0, -2)',
+  );
+  await context.close();
+});
+
+// The reveal state of every moving element in #catalogue and #how.
+function readMotion(page) {
+  return page.evaluate(() => {
+    const { document, getComputedStyle } = globalThis;
+    const state = (element) => {
+      const style = getComputedStyle(element);
+      const animation = element
+        .getAnimations()
+        .find((running) => !(running instanceof globalThis.CSSTransition));
+      return {
+        opacity: Number(style.opacity),
+        translate: style.translate,
+        name: style.animationName,
+        timeline: style.animationTimeline,
+        progress: animation?.effect.getComputedTiming().progress ?? null,
+        top: element.getBoundingClientRect().top,
+      };
+    };
+    const drawn = (svg) => {
+      const draw = svg.querySelector('.landing-step__draw');
+      return {
+        visible: getComputedStyle(svg).display !== 'none',
+        offset: Number.parseFloat(getComputedStyle(draw).strokeDashoffset),
+        name: getComputedStyle(draw).animationName,
+        timeline: getComputedStyle(draw).animationTimeline,
+      };
+    };
+    return {
+      labels: [...document.querySelectorAll('#catalogue h3')].map(state),
+      tracks: [
+        ...document.querySelectorAll('#catalogue .provider-rail__track'),
+      ].map(state),
+      banners: [...document.querySelectorAll('[data-provider-banner]')].map(
+        (banner) => ({
+          ...state(banner),
+          index: banner.style.getPropertyValue('--reveal-index').trim(),
+        }),
+      ),
+      steps: [...document.querySelectorAll('#how ol > li')].map((step) => ({
+        ...state(step),
+        index: step.style.getPropertyValue('--reveal-index').trim(),
+        // The connector leaving this step, drawn inside the next one.
+        connectors: [
+          ...(step.nextElementSibling?.querySelectorAll(
+            '.landing-step__connector',
+          ) ?? []),
+        ].map(drawn),
+      })),
+      viewport: globalThis.innerHeight,
+    };
+  });
+}
+
+async function scrollToTop(page, selector, fraction) {
+  await page.evaluate(
+    ([target, at]) => {
+      const element = globalThis.document.querySelector(target);
+      const top = element.getBoundingClientRect().top + globalThis.scrollY;
+      globalThis.scrollTo({
+        top: top - globalThis.innerHeight * at,
+        behavior: 'instant',
+      });
+    },
+    [selector, fraction],
+  );
+  // A scroll-driven animation updates in the next rendering frames.
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        globalThis.requestAnimationFrame(() =>
+          globalThis.requestAnimationFrame(resolve),
+        ),
+      ),
+  );
+}
+
+const atRestState = (element) =>
+  element.opacity === 1 && element.translate === 'none';
+
+test('the catalogue reveals its labels and large-width banners left to right, and its rails whole, at rest by 70% of the viewport height', async () => {
+  for (const width of [1440, 1024, 768, 390]) {
+    const { context, page } = await openLanding({ width, motion: true });
+    const large = width >= 1024;
+    let motion = await readMotion(page);
+    for (const label of motion.labels) {
+      assert.equal(label.name, 'motion-reveal', `${width} label reveals`);
+      assert.equal(label.timeline, 'view(0px)', `${width} label timeline`);
+    }
+    for (const [index, track] of motion.tracks.entries())
+      assert.equal(
+        track.name,
+        large ? 'none' : 'motion-reveal',
+        `${width} rail ${index} reveals ${large ? 'per banner' : 'whole'}`,
+      );
+    for (const banner of motion.banners)
+      assert.equal(
+        banner.name,
+        large ? 'motion-reveal' : 'none',
+        `${width} banner reveal`,
+      );
+    // Each banner's index is its large-width column, 0 to 4.
+    const groups = await page.evaluate(() =>
+      [...globalThis.document.querySelectorAll('.provider-rail__track')].map(
+        (track) =>
+          [...track.querySelectorAll('[data-provider-banner]')].map((banner) =>
+            Number(banner.style.getPropertyValue('--reveal-index')),
+          ),
+      ),
+    );
+    for (const group of groups)
+      assert.deepEqual(
+        group,
+        group.map((_, position) => position % 5),
+      );
+    // Mid-reveal, a row is in reading order: the first row of AI tools, its
+    // top a little above the viewport's bottom edge.
+    await scrollToTop(page, '#catalogue .provider-rail__track', 0.97);
+    motion = await readMotion(page);
+    if (large) {
+      const row = motion.banners.slice(0, 5);
+      assert.ok(row[0].opacity < 1, `${width} the row is revealing`);
+      for (let column = 1; column < 5; column += 1)
+        assert.ok(
+          row[column].opacity <= row[column - 1].opacity,
+          `${width} column ${column} is no further on than column ${column - 1}`,
+        );
+      assert.ok(row[4].opacity < row[0].opacity, `${width} left to right`);
+    } else {
+      assert.ok(motion.tracks[0].opacity < 1, `${width} the rail is revealing`);
+      for (const banner of motion.banners) assert.equal(banner.opacity, 1);
+    }
+    // At rest once each element's top is at 70% of the viewport height.
+    const targets = motion.labels.map(
+      (_, index) =>
+        `#catalogue .provider-rail__category:nth-child(${index + 1}) h3`,
+    );
+    for (const selector of targets) {
+      await scrollToTop(page, selector, 0.7);
+      const element = await page.evaluate((target) => {
+        const node = globalThis.document.querySelector(target);
+        const style = globalThis.getComputedStyle(node);
+        return { opacity: Number(style.opacity), translate: style.translate };
+      }, selector);
+      assert.ok(atRestState(element), `${width} ${selector} at rest at 70%`);
+    }
+    const bannerCount = motion.banners.length;
+    for (let index = 0; index < bannerCount; index += 1) {
+      const selector = `[data-provider-banner="${catalogue[index].name}"]`;
+      await scrollToTop(page, selector, 0.7);
+      const element = await page.evaluate((target) => {
+        const node = globalThis.document.querySelector(target);
+        const track = node.parentElement;
+        const style = globalThis.getComputedStyle(node);
+        const trackStyle = globalThis.getComputedStyle(track);
+        return {
+          opacity: Number(style.opacity) * Number(trackStyle.opacity),
+          translate:
+            style.translate === 'none' && trackStyle.translate === 'none'
+              ? 'none'
+              : `${style.translate} / ${trackStyle.translate}`,
+        };
+      }, selector);
+      assert.ok(
+        atRestState(element),
+        `${width} ${catalogue[index].name} at rest at 70%: ${JSON.stringify(element)}`,
+      );
+    }
+    await context.close();
+  }
+});
+
+test('"How it works" reveals its steps in order and draws each connector after its step, dash by dash, downward at small widths, at rest by 70%', async () => {
+  for (const width of [1440, 768, 390]) {
+    const { context, page } = await openLanding({ width, motion: true });
+    const across = width >= 768;
+    let motion = await readMotion(page);
+    assert.deepEqual(
+      motion.steps.map((step) => [step.index, step.name]),
+      [
+        ['0', 'motion-reveal'],
+        ['1', 'motion-reveal'],
+        ['2', 'motion-reveal'],
+      ],
+    );
+    for (const [index, step] of motion.steps.slice(0, 2).entries()) {
+      const visible = step.connectors.filter((connector) => connector.visible);
+      assert.equal(visible.length, 1, `${width} one connector shows`);
+      assert.equal(visible[0].name, 'landing-connector-draw');
+      // The view timeline of the step it leaves.
+      assert.equal(
+        visible[0].timeline,
+        `--landing-step-${index + 1}`,
+        `${width} same timeline`,
+      );
+    }
+    assert.equal(motion.steps[2].connectors.length, 0, 'step 3 leads nowhere');
+    // While the steps are still revealing, no connector has started.
+    await scrollToTop(page, '#how ol > li', 0.98);
+    motion = await readMotion(page);
+    assert.ok(motion.steps[0].opacity < 1, `${width} step 1 is revealing`);
+    if (across)
+      assert.ok(
+        motion.steps[0].opacity >= motion.steps[1].opacity &&
+          motion.steps[1].opacity >= motion.steps[2].opacity,
+        `${width} the steps reveal in order`,
+      );
+    for (const step of motion.steps.slice(0, 2)) {
+      const connector = step.connectors.find((each) => each.visible);
+      if (step.opacity < 1)
+        assert.equal(connector.offset, 1, `${width} drawn only after its step`);
+    }
+    // After its step has revealed, a connector is partway drawn; the dashed
+    // one shows only the dashes its mask has reached.
+    const first = '#how ol > li:nth-child(2)';
+    let partway = null;
+    for (const at of [0.86, 0.84, 0.82, 0.8, 0.78, 0.76]) {
+      await scrollToTop(page, first, at);
+      motion = await readMotion(page);
+      const step = motion.steps[1];
+      const connector = step.connectors.find((each) => each.visible);
+      if (atRestState(step) && connector.offset > 0 && connector.offset < 1) {
+        partway = connector.offset;
+        break;
+      }
+    }
+    assert.ok(partway !== null, `${width} a connector draws after its step`);
+    if (!across) {
+      // Downward: the visible part is the top of the line.
+      const shown = await page.evaluate(() => {
+        const svg = [
+          ...globalThis.document.querySelectorAll(
+            '#how ol > li:nth-child(3) .landing-step__connector',
+          ),
+        ].find((each) => globalThis.getComputedStyle(each).display !== 'none');
+        const draw = svg.querySelector('.landing-step__draw');
+        return [draw.getAttribute('y1'), draw.getAttribute('y2')];
+      });
+      assert.deepEqual(shown, ['0', '100%'], `${width} draws downward`);
+    }
+    // At rest by 70%: every step and every connector.
+    for (const index of [1, 2, 3]) {
+      await scrollToTop(page, `#how ol > li:nth-child(${index})`, 0.7);
+      motion = await readMotion(page);
+      const step = motion.steps[index - 1];
+      assert.ok(atRestState(step), `${width} step ${index} at rest at 70%`);
+      for (const connector of step.connectors.filter((each) => each.visible))
+        assert.equal(
+          connector.offset,
+          0,
+          `${width} connector ${index} drawn at 70%: ${connector.offset}`,
+        );
+    }
+    await context.close();
+  }
+});
+
+test('under reduced motion nothing in the catalogue or "How it works" moves, and every connector is drawn', async () => {
+  for (const width of [1440, 390]) {
+    const { context, page } = await openLanding({ width });
+    for (const fraction of [0.98, 0.7]) {
+      await scrollToTop(page, '#catalogue .provider-rail__track', fraction);
+      const moving = await page.evaluate(
+        () =>
+          globalThis.document
+            .getAnimations()
+            .filter((animation) =>
+              animation.effect?.target?.closest?.('#catalogue, #how'),
+            ).length,
+      );
+      assert.equal(moving, 0, `${width} nothing animates`);
+      await scrollToTop(page, '#how ol > li', 0.98);
+      const motion = await readMotion(page);
+      for (const element of [
+        ...motion.labels,
+        ...motion.tracks,
+        ...motion.banners,
+        ...motion.steps,
+      ])
+        assert.ok(atRestState(element), `${width} at rest`);
+      for (const step of motion.steps)
+        for (const connector of step.connectors)
+          assert.equal(connector.offset, 0, `${width} drawn`);
+    }
+    await context.close();
+  }
+});
+
+test('with animations unsupported, the catalogue and "How it works" are at rest and every connector is drawn', async () => {
+  for (const width of [1440, 390]) {
+    const { context, page } = await openLanding({ width, motion: true });
+    await page.addStyleTag({
+      content: '*, *::before, *::after { animation: none !important; }',
+    });
+    for (const fraction of [0.98, 0.5]) {
+      await scrollToTop(page, '#how ol > li', fraction);
+      const motion = await readMotion(page);
+      for (const element of [
+        ...motion.labels,
+        ...motion.tracks,
+        ...motion.banners,
+        ...motion.steps,
+      ])
+        assert.ok(atRestState(element), `${width} at rest`);
+      for (const step of motion.steps)
+        for (const connector of step.connectors)
+          assert.equal(connector.offset, 0, `${width} drawn`);
+    }
+    await context.close();
   }
 });
 

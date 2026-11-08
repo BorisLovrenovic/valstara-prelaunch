@@ -260,6 +260,9 @@ E8-04 builds the weekly seed harness and proves it against simulated mailboxes. 
 - **Brand colour:** where you have no hex value, it is derived from the supplied logo by the rule in the provider list.
 - **AION2's logo is a WebP**, because no SVG exists. It is the only non-SVG logo, and the 12 KB limit still applies.
 
+### Amendment (founder-authorised 2026-11-08, E11.5-11n)
+- **Wordmark height:** an entry whose logo is a wordmark that already spells the provider's name carries `wordmarkHeight`, a positive whole number of pixels: the logo's optical height in the catalogue chip, from the final-design canvas. Such a logo shows alone, with the provider's name as its alt text. Entries without it show an icon mark beside the name. The 18 wordmarks are Perplexity 22, Cursor 18, Bolt.new 18, Lovable 16, n8n 30, Spotify 34, YouTube Premium 18, Prime Video 24, Netflix 18, Apple TV 20, LinkedIn 18, MyFitnessPal 15, Canva 24, Dropbox 17, NordVPN 22, Norton 20, Kaspersky 17 and CyberGhost 20. The build fails on any other value.
+
 ### Why this matters
 The landing page shows real provider logos in composed banners, so a visitor sees at a glance what Valstara will sell. Each logo is a claim that the provider's goods will be on sale at launch. Only you can confirm that, and the claims audit (E11-04, re-run in E11.5-12) checks every logo against your confirmation.
 

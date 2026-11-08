@@ -31,6 +31,7 @@
     "name": "Perplexity",
     "category": "ai",
     "logo": "/images/providers/perplexity.svg",
+    "wordmarkHeight": 22,
     "brandColor": "#13343b",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -45,6 +46,7 @@
     "name": "Cursor",
     "category": "ai",
     "logo": "/images/providers/cursor.svg",
+    "wordmarkHeight": 18,
     "brandColor": "#26241e",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -59,6 +61,7 @@
     "name": "Bolt.new",
     "category": "ai",
     "logo": "/images/providers/bolt-new.svg",
+    "wordmarkHeight": 18,
     "brandColor": "#000000",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -73,6 +76,7 @@
     "name": "Lovable",
     "category": "ai",
     "logo": "/images/providers/lovable.svg",
+    "wordmarkHeight": 16,
     "brandColor": "#18181b",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -87,6 +91,7 @@
     "name": "n8n",
     "category": "ai",
     "logo": "/images/providers/n8n.svg",
+    "wordmarkHeight": 30,
     "brandColor": "#ea4b71",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -101,6 +106,7 @@
     "name": "Spotify",
     "category": "subscriptions",
     "logo": "/images/providers/spotify.svg",
+    "wordmarkHeight": 34,
     "brandColor": "#1ed760",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -115,6 +121,7 @@
     "name": "YouTube Premium",
     "category": "subscriptions",
     "logo": "/images/providers/youtube-premium.svg",
+    "wordmarkHeight": 18,
     "brandColor": "#ff0000",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -129,6 +136,7 @@
     "name": "Prime Video",
     "category": "subscriptions",
     "logo": "/images/providers/prime-video.svg",
+    "wordmarkHeight": 24,
     "brandColor": "#00a8e1",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -143,6 +151,7 @@
     "name": "Netflix",
     "category": "subscriptions",
     "logo": "/images/providers/netflix.svg",
+    "wordmarkHeight": 18,
     "brandColor": "#d81f26",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -171,6 +180,7 @@
     "name": "Apple TV",
     "category": "subscriptions",
     "logo": "/images/providers/apple-tv.svg",
+    "wordmarkHeight": 20,
     "brandColor": "#0d0d0d",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -227,6 +237,7 @@
     "name": "LinkedIn",
     "category": "subscriptions",
     "logo": "/images/providers/linkedin.svg",
+    "wordmarkHeight": 18,
     "brandColor": "#0a66c2",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -241,6 +252,7 @@
     "name": "MyFitnessPal",
     "category": "subscriptions",
     "logo": "/images/providers/myfitnesspal.svg",
+    "wordmarkHeight": 15,
     "brandColor": "#0066ee",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -311,6 +323,7 @@
     "name": "Canva",
     "category": "software",
     "logo": "/images/providers/canva.svg",
+    "wordmarkHeight": 24,
     "brandColor": "#00c4cc",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -353,6 +366,7 @@
     "name": "Dropbox",
     "category": "software",
     "logo": "/images/providers/dropbox.svg",
+    "wordmarkHeight": 17,
     "brandColor": "#0061ff",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -367,6 +381,7 @@
     "name": "NordVPN",
     "category": "software",
     "logo": "/images/providers/nordvpn.svg",
+    "wordmarkHeight": 22,
     "brandColor": "#4580ff",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -381,6 +396,7 @@
     "name": "Norton",
     "category": "software",
     "logo": "/images/providers/norton.svg",
+    "wordmarkHeight": 20,
     "brandColor": "#fbde2a",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -395,6 +411,7 @@
     "name": "Kaspersky",
     "category": "software",
     "logo": "/images/providers/kaspersky.svg",
+    "wordmarkHeight": 17,
     "brandColor": "#009982",
     "confirmation": {
       "name": "Boris Lovrenovic",
@@ -437,6 +454,7 @@
     "name": "CyberGhost",
     "category": "software",
     "logo": "/images/providers/cyberghost.svg",
+    "wordmarkHeight": 20,
     "brandColor": "#ffcc00",
     "chipTone": "dark",
     "confirmation": {

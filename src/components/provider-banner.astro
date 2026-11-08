@@ -4,18 +4,22 @@ import { providerShowcaseCopy } from '../copy/provider-showcase.ts';
 
 interface Props {
   banner: ProviderBannerModel;
-  // catalogue: the 96px catalogue banner, chip with logo and category.
+  // catalogue: the 104px catalogue banner, chip with logo and category.
   // stack: the hero stack's 136px (medium) and 184px (large) banner.
   // strip: the small hero strip's 56px banner, a name-only chip.
   size: 'catalogue' | 'stack' | 'strip';
+  // The catalogue's large-width column, 0 to 4: the banner reveals on
+  // scroll in reading order (E11.5-11n). Below 64rem the rail reveals whole.
+  revealIndex?: number;
 }
-const { banner, size } = Astro.props;
+const { banner, size, revealIndex } = Astro.props;
 const { provider } = banner;
 const category =
   providerShowcaseCopy.categories[
     provider.category as keyof typeof providerShowcaseCopy.categories
   ];
 const hero = size !== 'catalogue';
+const wordmark = !hero && banner.wordmarkHeight !== null;
 const logo = {
   src: provider.logo,
   width: banner.logoWidth,
@@ -23,12 +27,24 @@ const logo = {
   loading: 'lazy',
   decoding: 'async',
 } as const;
+// Every value here is data: the brand colour, the wordmark's optical height
+// from the showcase file, and the reveal column.
+const style = [
+  `--provider-colour: ${provider.brandColor}`,
+  wordmark && `--wordmark-height: ${banner.wordmarkHeight}px`,
+  revealIndex !== undefined && `--reveal-index: ${revealIndex}`,
+]
+  .filter(Boolean)
+  .join('; ');
 ---
 
 {
   /*
-  A composed provider banner (E11.5-11d): the full-bleed brand colour, one
-  tonal shape, the name chip and the category label. The tone is clipped by
+  A composed provider banner (E11.5-11d, the catalogue size restyled by
+  E11.5-11n): the full-bleed brand colour, the tonal layer (one shape in the
+  hero; a shape and a ring in the catalogue), the name chip and the category
+  label. In the catalogue a wordmark that spells the name shows alone, with
+  the name as its alt text; an icon mark sits beside the name. The tone is clipped by
   its own box, so the banner never reports clipped text. The hero's stack and
   strip are aria-hidden, so their logos are decorative; in the catalogue the
   logo carries the name and the visible name is hidden from assistive
@@ -44,32 +60,64 @@ const logo = {
     `provider-banner--on-${banner.foreground}`,
     { 'hero-banner': hero },
   ]}
-  style={`--provider-colour: ${provider.brandColor}`}
+  style={style}
   data-provider-banner={hero ? undefined : provider.name}
   data-hero-banner={hero ? provider.name : undefined}
+  data-reveal={revealIndex === undefined ? undefined : ''}
 >
-  <span class="provider-banner__clip" aria-hidden="true">
-    <span
-      class:list={[
-        'provider-banner__tone',
-        `provider-banner__tone--${banner.shape}`,
-      ]}></span>
-  </span>
+  {
+    hero ? (
+      <span class="provider-banner__clip" aria-hidden="true">
+        <span
+          class:list={[
+            'provider-banner__tone',
+            `provider-banner__tone--${banner.shape}`,
+          ]}
+        />
+      </span>
+    ) : (
+      <span class="provider-banner__clip" aria-hidden="true">
+        <span class="provider-banner__tones">
+          <span
+            class:list={[
+              'provider-banner__tone',
+              `provider-banner__tone--${banner.shape}`,
+            ]}
+          />
+          <span
+            class:list={[
+              'provider-banner__ring',
+              `provider-banner__ring--${banner.shape}`,
+            ]}
+          />
+        </span>
+      </span>
+    )
+  }
   <span
     class:list={[
       'provider-banner__logo',
       `provider-banner__logo--${banner.chipTone}`,
       { 'hero-banner__chip': hero },
+      { 'provider-banner__logo--wordmark': wordmark },
     ]}
   >
     {
       size === 'catalogue' ? (
-        <>
-          <img {...logo} alt={provider.name} />
-          <span class="provider-banner__name" aria-hidden="true">
-            {provider.name}
-          </span>
-        </>
+        wordmark ? (
+          <img
+            {...logo}
+            class="provider-banner__wordmark"
+            alt={provider.name}
+          />
+        ) : (
+          <>
+            <img {...logo} alt={provider.name} />
+            <span class="provider-banner__name" aria-hidden="true">
+              {provider.name}
+            </span>
+          </>
+        )
       ) : (
         <>
           {size === 'stack' && <img {...logo} alt="" />}
@@ -114,19 +162,51 @@ const logo = {
   }
 
   /*
-    Catalogue: 96px tall with 16px padding; raised on hover. It may grow
-    where a narrow large-width column wraps its chip or category label, so no
-    text ever overflows.
+    Catalogue (E11.5-11n, Main.dc.html): at least 104px tall with 14px
+    padding and 12px between the chip and the label. It may grow where a
+    narrow large-width column wraps its chip or category label, so no text
+    ever overflows. On hover, and on focus-visible should a banner ever take
+    focus (it is not in the tab order: founder decision 2026-11-08), it rises
+    by --lift from shadow 1 to shadow 2 and its tonal layer shifts by
+    --tone-shift, over --duration-base.
   */
   .provider-banner--catalogue {
-    min-block-size: calc(var(--space-1) * 12);
-    padding: var(--space-2);
+    gap: var(--space-1-5);
+    min-block-size: calc(var(--space-1) * 13);
+    padding: var(--space-1-75);
     box-shadow: var(--shadow-1), var(--banner-edge);
-    transition: box-shadow var(--duration-fast) var(--ease-out);
+    transition:
+      box-shadow var(--duration-base) var(--ease-out),
+      transform var(--duration-base) var(--ease-out);
   }
 
-  .provider-banner--catalogue:hover {
-    box-shadow: var(--shadow-2), var(--banner-edge-hover);
+  .provider-banner--catalogue:hover,
+  .provider-banner--catalogue:focus-visible {
+    box-shadow: var(--shadow-2), var(--banner-edge);
+    transform: translateY(var(--lift));
+  }
+
+  .provider-banner--catalogue:focus-visible {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
+  }
+
+  .provider-banner__tones {
+    position: absolute;
+    inset: var(--space-0);
+    transition: translate var(--duration-base) var(--ease-out);
+  }
+
+  .provider-banner--catalogue:hover .provider-banner__tones,
+  .provider-banner--catalogue:focus-visible .provider-banner__tones {
+    translate: var(--tone-shift) var(--tone-shift);
+  }
+
+  /* Below 64rem the rail reveals as a whole, never banner by banner. */
+  @media (width < 64rem) {
+    .provider-banner--catalogue[data-reveal] {
+      animation-name: none;
+    }
   }
 
   /* Medium: 136px tall with 16px padding. Large: 184px with 24px padding. */
@@ -219,6 +299,60 @@ const logo = {
   }
 
   /*
+    The catalogue's second tonal layer (E11.5-11n): a 1.5px ring, white at 20%
+    under white text and ink at 14% under ink, placed per composition as the
+    canvas's .banner--t1 to .banner--t6 rings.
+  */
+  .provider-banner__ring {
+    position: absolute;
+    box-sizing: border-box;
+    aspect-ratio: 1;
+    border: var(--border-check) solid var(--banner-ring-dark);
+    border-radius: var(--radius-pill);
+    pointer-events: none;
+  }
+
+  .provider-banner--on-ink .provider-banner__ring {
+    border-color: var(--banner-ring-ink);
+  }
+
+  .provider-banner__ring--t1 {
+    right: var(--banner-ring-t1-right);
+    bottom: var(--banner-ring-t1-bottom);
+    width: 46%;
+  }
+
+  .provider-banner__ring--t2 {
+    top: var(--banner-ring-t2-top);
+    right: var(--banner-ring-t2-right);
+    width: 38%;
+  }
+
+  .provider-banner__ring--t3 {
+    right: var(--banner-ring-t3-right);
+    bottom: var(--banner-ring-t3-bottom);
+    width: 56%;
+  }
+
+  .provider-banner__ring--t4 {
+    top: var(--banner-ring-t4-top);
+    right: var(--banner-ring-t4-right);
+    width: 30%;
+  }
+
+  .provider-banner__ring--t5 {
+    top: var(--banner-ring-t5-top);
+    right: var(--banner-ring-t5-right);
+    width: 70%;
+  }
+
+  .provider-banner__ring--t6 {
+    top: var(--banner-ring-t6-top);
+    left: var(--banner-ring-t6-left);
+    width: 34%;
+  }
+
+  /*
     The chip stays light in both themes, with the ink name; a white-only logo
     takes the dark chip. The catalogue chip is 36px with 14/20 text and may
     wrap rather than overflow; the hero chips keep one line.
@@ -243,26 +377,35 @@ const logo = {
   }
 
   /*
-    Many real logos are wordmarks, wider than the frame's 16px square. In a
-    chip too narrow for logo and name, the logo gives way first (scaled to
-    fit, down to 16px wide); only then does the name wrap, at a space where it
-    has one.
+    The catalogue chip (E11.5-11n): 40px tall, 0 12px padding, the 20px icon
+    mark 6px from the name, which wraps (balanced) rather than overflow. A
+    wordmark shows alone at its optical height from the data file, at most
+    152px wide and 36px tall, scaled whole.
   */
   .provider-banner--catalogue .provider-banner__logo {
+    gap: var(--space-0-75);
     max-inline-size: 100%;
+    min-block-size: var(--space-5);
+    padding-inline: var(--space-1-5);
   }
 
   .provider-banner--catalogue .provider-banner__logo img {
-    flex: 0 1 auto;
-    min-inline-size: var(--icon-sm);
+    block-size: var(--icon-base);
+  }
+
+  .provider-banner--catalogue
+    .provider-banner__logo
+    img.provider-banner__wordmark {
+    max-inline-size: calc(var(--space-1) * 19);
+    max-block-size: calc(var(--space-1) * 4.5);
+    block-size: var(--wordmark-height);
     object-fit: contain;
     object-position: left center;
   }
 
   .provider-banner__name {
-    flex: none;
-    max-inline-size: calc(100% - var(--icon-sm) - var(--space-1));
-    overflow-wrap: anywhere;
+    min-inline-size: 0;
+    text-wrap: balance;
   }
 
   .provider-banner__logo--dark {
@@ -304,7 +447,8 @@ const logo = {
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .provider-banner--catalogue {
+    .provider-banner--catalogue,
+    .provider-banner__tones {
       transition: none;
     }
   }
@@ -321,19 +465,24 @@ const logo = {
 
   /*
     Large widths below 80rem narrow the catalogue banner below the 1440
-    frame's 227px, so its chip takes the compact two-line style: 13/18 with
-    6px 10px padding and at least 32px tall.
+    frame's 227px, so its chip takes the compact style (Landing1024.dc.html):
+    13/18 with 6px 8px padding, at least 32px tall, and a wordmark at 80% of
+    its optical height, at most 120px wide.
   */
   @media (min-width: 64rem) and (width < 80rem) {
     .provider-banner--catalogue .provider-banner__logo {
-      /* 10px, from the 8px step. */
-      --chip-indent-compact: calc(var(--space-1) * 1.25);
-
       min-block-size: var(--space-4);
       padding-block: var(--space-0-75);
-      padding-inline: var(--chip-indent-compact);
+      padding-inline: var(--space-1);
       font-size: var(--step-0);
       line-height: var(--leading-0);
+    }
+
+    .provider-banner--catalogue
+      .provider-banner__logo
+      img.provider-banner__wordmark {
+      max-inline-size: calc(var(--space-1) * 15);
+      block-size: calc(var(--wordmark-height) * 0.8);
     }
   }
 

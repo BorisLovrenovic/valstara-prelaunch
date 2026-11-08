@@ -169,42 +169,128 @@ Astro.response.headers.set(
 
     <Section id="how" aria-labelledby="how-title">
       <h2 id="how-title" slot="heading">{landingCopy.how.heading}</h2>
-      <ol class="landing-steps">
-        {
-          landingCopy.how.steps.map((step, index) => {
-            // The last step, sharing your link, is drawn as optional.
-            const optional = index === landingCopy.how.steps.length - 1;
-            return (
-              <li
-                class:list={[
-                  'landing-step',
-                  { 'landing-step--optional': optional },
-                ]}
-              >
-                <span class="landing-step__tile" aria-hidden="true">
-                  <Pill variant="step" class="landing-step__badge">
-                    {index + 1}
-                  </Pill>
-                  <Icon name={stepIcons[index]} size="md" />
-                </span>
-                {!optional && (
-                  <span
-                    class:list={[
-                      'landing-step__connector',
-                      {
-                        'landing-step__connector--dashed':
-                          index === landingCopy.how.steps.length - 2,
-                      },
-                    ]}
-                    aria-hidden="true"
-                  />
-                )}
-                <p class="landing-step__title">{step}</p>
-              </li>
-            );
-          })
-        }
-      </ol>
+      <div class="landing-steps-panel">
+        <ol class="landing-steps">
+          {
+            landingCopy.how.steps.map((step, index) => {
+              // The last step, sharing your link, is drawn as optional.
+              const optional = index === landingCopy.how.steps.length - 1;
+              // The connector into this step, from the one before it. It is
+              // drawn here, to this step's left (or above it, below 48rem),
+              // so it never overflows the step it starts from.
+              const connected = index > 0;
+              const dashed = optional;
+              return (
+                <li
+                  class:list={[
+                    'landing-step',
+                    { 'landing-step--optional': optional },
+                  ]}
+                  data-reveal
+                  style={`--reveal-index: ${index}`}
+                >
+                  <span class="landing-step__tile" aria-hidden="true">
+                    <Pill variant="step" class="landing-step__badge">
+                      {index + 1}
+                    </Pill>
+                    <Icon name={stepIcons[index]} size="md" />
+                  </span>
+                  {connected && (
+                    <>
+                      {/*
+                        The connector from the step before: a 2px line, dashed
+                        into the optional step, drawn through a mask whose
+                        stroke draws from the start (E11.5-11n). Across, from
+                        48rem, it ends in an arrowhead; down, below 48rem, it
+                        has none.
+                      */}
+                      <svg
+                        class:list={[
+                          'landing-step__connector',
+                          'landing-step__connector--across',
+                          { 'landing-step__connector--dashed': dashed },
+                        ]}
+                        aria-hidden="true"
+                        focusable="false"
+                      >
+                        <mask
+                          id={`how-connector-across-${index}`}
+                          maskUnits="userSpaceOnUse"
+                          x="0"
+                          y="0"
+                          width="100%"
+                          height="100%"
+                        >
+                          <line
+                            class="landing-step__draw"
+                            x1="0"
+                            y1="50%"
+                            x2="100%"
+                            y2="50%"
+                            pathLength="1"
+                          />
+                        </mask>
+                        <g mask={`url(#how-connector-across-${index})`}>
+                          <line
+                            class="landing-step__line"
+                            x1="0"
+                            y1="50%"
+                            x2="100%"
+                            y2="50%"
+                          />
+                          <svg
+                            class="landing-step__head"
+                            x="100%"
+                            overflow="visible"
+                          >
+                            <polygon points="-7,0 0,6 -7,12" />
+                          </svg>
+                        </g>
+                      </svg>
+                      <svg
+                        class:list={[
+                          'landing-step__connector',
+                          'landing-step__connector--down',
+                          { 'landing-step__connector--dashed': dashed },
+                        ]}
+                        aria-hidden="true"
+                        focusable="false"
+                      >
+                        <mask
+                          id={`how-connector-down-${index}`}
+                          maskUnits="userSpaceOnUse"
+                          x="0"
+                          y="0"
+                          width="100%"
+                          height="100%"
+                        >
+                          <line
+                            class="landing-step__draw"
+                            x1="50%"
+                            y1="0"
+                            x2="50%"
+                            y2="100%"
+                            pathLength="1"
+                          />
+                        </mask>
+                        <line
+                          class="landing-step__line"
+                          x1="50%"
+                          y1="0"
+                          x2="50%"
+                          y2="100%"
+                          mask={`url(#how-connector-down-${index})`}
+                        />
+                      </svg>
+                    </>
+                  )}
+                  <p class="landing-step__title">{step}</p>
+                </li>
+              );
+            })
+          }
+        </ol>
+      </div>
     </Section>
 
     <Section id="rewards" aria-labelledby="rewards-title">
@@ -632,6 +718,11 @@ Astro.response.headers.set(
     padding: var(--space-0);
     list-style: none;
   }
+  /* The FAQ's heading is the canvas's .faq__head, not .section-head, so it
+     takes no 40rem cap (E11.5-11n). */
+  .landing :global(.landing-faq .section__heading) {
+    max-inline-size: none;
+  }
   /*
     Below 64rem the catalogue rail bleeds into the right gutter. Its content
     cell spans that gutter as padding, so the bleed stays inside a box.
@@ -641,21 +732,28 @@ Astro.response.headers.set(
     padding-inline-end: var(--gutter);
   }
   /*
-    "How it works" (E11.5-11d). Small: one column, 28px apart, each step a row
-    of the 56px tile and its 16/24 title, joined by a 2px by 24px vertical
-    connector 27px from the left and 60px from the top. Medium and large:
-    three columns, 24px apart, each step a column with 16px gaps, the 20/28
-    title, and a horizontal connector 27px from the top, from 72px right of
-    the tile to 8px short of the column's end, with an arrowhead. The
-    connector into the optional third step is dashed.
+    "How it works" (E11.5-11n, Main.dc.html): one surface panel (shadow 1 and
+    the edge; 24px 20px padding, 32px from 48rem, 40px 48px from 64rem).
+    Small: one column, 32px apart, each step a row of the 56px tile and its
+    16/24 title, 16px apart, joined by a 2px by 28px connector 27px from the
+    left and 60px from the top, reaching the next tile. Medium and large:
+    three columns, 24px apart, each step a column with 20px gaps and the 20/28
+    title, and a connector 27px from the top from 72px right of the tile to
+    8px past the column's end, with a 7 × 12 arrowhead whose tip is 2px
+    further. The connector into the optional third step is dashed. The tile
+    is a well with an inset line ("no card inside a card"); the optional one
+    is dashed, with no fill. The badge sits at -10/-10 inside a 3px ring of
+    the panel's surface.
   */
-  /* The 28px between small steps is each step's own bottom padding, so the
-     connector into the next step stays inside its list item. */
+  .landing-steps-panel {
+    padding: var(--space-3) var(--space-2-5);
+    background: var(--surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1), var(--edge);
+  }
   .landing-steps {
     display: grid;
-  }
-  .landing-step:not(:last-child) {
-    padding-block-end: calc(var(--space-1) * 3.5);
+    gap: var(--space-4);
   }
   .landing-step {
     position: relative;
@@ -673,18 +771,19 @@ Astro.response.headers.set(
     inline-size: var(--space-7);
     block-size: var(--space-7);
     color: var(--ink);
-    background: var(--surface);
+    background: var(--well);
     border-radius: var(--radius-card);
-    box-shadow: var(--shadow-1), var(--edge);
+    box-shadow: var(--inset-line);
   }
   .landing-step__tile :global(.landing-step__badge) {
     position: absolute;
     top: calc(var(--space-1) * -1.25);
     left: calc(var(--space-1) * -1.25);
+    box-shadow: var(--ring-badge);
   }
   .landing-step--optional .landing-step__tile {
     color: var(--ink-600);
-    background: var(--paper);
+    background: transparent;
     border: var(--border-check) dashed var(--ink-300);
     box-shadow: none;
   }
@@ -693,26 +792,88 @@ Astro.response.headers.set(
   }
   .landing-step__connector {
     position: absolute;
-    top: calc(var(--space-1) * 7.5);
+    overflow: visible;
+    pointer-events: none;
+  }
+  .landing-step__connector--across {
+    display: none;
+  }
+  /* Down: from 60px below the previous step's top to this step's top. */
+  .landing-step__connector--down {
+    top: calc(var(--space-1) * -3.5);
     left: calc(var(--space-1) * 3.375);
     inline-size: var(--border-strong);
-    block-size: var(--space-3);
-    background: var(--ink-300);
+    block-size: calc(var(--space-1) * 3.5);
   }
-  .landing-step__connector--dashed {
-    inline-size: var(--space-0);
-    background: none;
-    border-inline-start: var(--border-strong) dashed var(--ink-300);
+  .landing-step__line {
+    stroke: var(--ink-300);
+    stroke-width: var(--border-strong);
+  }
+  .landing-step__connector--dashed .landing-step__line {
+    stroke-dasharray: var(--connector-dash);
+  }
+  .landing-step__head {
+    fill: var(--ink-300);
+  }
+  /* The mask's stroke, wider than the connector, draws it. At rest it is
+     whole; only the drawing animation, while it runs, holds it back. */
+  .landing-step__draw {
+    stroke: var(--banner-white);
+    stroke-width: var(--space-2);
+    stroke-dasharray: 1;
   }
   .landing .landing-step__title {
     margin-block: var(--space-0);
+    text-wrap: balance;
     font-size: var(--step-2);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-2);
-    letter-spacing: var(--tracking-tight);
+    letter-spacing: var(--tracking-normal);
   }
   .landing-step--optional .landing-step__title {
     color: var(--ink-600);
+  }
+  /*
+    The connector drawing (E11.5-11n): on its source step's view timeline
+    (shared with the list through timeline-scope), after
+    the step's reveal ends, and finished by the time the step's top reaches
+    75% of the viewport height (--draw-range). Only with motion allowed and
+    scroll-driven animations supported; otherwise it is drawn at rest.
+  */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .landing-steps {
+        timeline-scope: --landing-step-1, --landing-step-2;
+      }
+      .landing-step {
+        view-timeline-inset: 0;
+      }
+      .landing-step:nth-child(1) {
+        view-timeline-name: --landing-step-1;
+      }
+      .landing-step:nth-child(2) {
+        view-timeline-name: --landing-step-2;
+      }
+      .landing-step__draw {
+        animation-name: landing-connector-draw;
+        animation-duration: auto;
+        animation-timing-function: var(--ease-out);
+        animation-fill-mode: backwards;
+        animation-range: var(--draw-range);
+      }
+      /* Each connector draws on the view timeline of the step it leaves. */
+      .landing-step:nth-child(2) .landing-step__draw {
+        animation-timeline: --landing-step-1;
+      }
+      .landing-step:nth-child(3) .landing-step__draw {
+        animation-timeline: --landing-step-2;
+      }
+    }
+  }
+  @keyframes landing-connector-draw {
+    from {
+      stroke-dashoffset: 1;
+    }
   }
   /*
     "What you get" (E11.5-11e). Small: one column, 16px apart. Each card has
@@ -1143,43 +1304,35 @@ Astro.response.headers.set(
       grid-column: 1 / -1;
     }
 
+    .landing-steps-panel {
+      padding: var(--space-4);
+    }
     .landing-steps {
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: var(--space-3);
     }
-    .landing-step:not(:last-child) {
-      padding-block-end: var(--space-0);
-    }
     .landing-step {
       flex-direction: column;
+      gap: var(--space-2-5);
       align-items: flex-start;
     }
-    .landing-step__connector {
-      top: calc(var(--space-1) * 3.375);
-      right: var(--space-1);
-      left: calc(var(--space-1) * 9);
-      inline-size: auto;
-      block-size: var(--border-strong);
+    .landing-step__connector--down {
+      display: none;
     }
-    .landing-step__connector::after {
-      position: absolute;
-      top: calc(var(--space-1) * -0.625);
-      right: calc(var(--space-1) * -0.25);
-      border-block: calc(var(--space-1) * 0.75) solid transparent;
-      border-inline-start: calc(var(--space-1) * 0.875) solid var(--ink-300);
-      content: '';
-    }
-    .landing-step__connector--dashed {
-      block-size: var(--space-0);
-      border-inline-start: none;
-      border-block-start: var(--border-strong) dashed var(--ink-300);
-    }
-    .landing-step__connector--dashed::after {
-      top: calc(var(--space-1) * -0.875);
+    /* Across: from 72px right of the previous tile to 10px past the previous
+       column's end, the arrowhead's tip, 14px short of this step. An SVG is
+       a replaced element, so its width is set. */
+    .landing-step__connector--across {
+      top: calc(var(--space-1) * 2.75);
+      right: calc(100% + var(--space-1-75));
+      display: block;
+      inline-size: calc(100% - var(--space-1) * 7.75);
+      block-size: var(--space-1-5);
     }
     .landing .landing-step__title {
       font-size: var(--step-3);
       line-height: var(--leading-3);
+      letter-spacing: var(--tracking-tight);
     }
     .landing-hero {
       padding-block-start: var(--space-5);
@@ -1240,6 +1393,9 @@ Astro.response.headers.set(
     .landing :global(#catalogue .container__content) {
       grid-column: 2;
       padding-inline-end: var(--space-0);
+    }
+    .landing-steps-panel {
+      padding: var(--space-5) var(--space-6);
     }
     .landing-hero {
       padding-block-start: var(--space-6);

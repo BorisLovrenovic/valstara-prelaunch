@@ -97,6 +97,7 @@ The portable file also carries `--shadow-1` through `--shadow-3` (with paired da
 | Component values | `--shadow-button` · `--overlay-hover`, `--overlay-active` · `--on-midnight-border`, `-hover`, `-active`, `-disabled`, `-disabled-border` · `--shadow-chip` · `--banner-tone-dark`, `-light`, `-ink` · `--shadow-sticky` | the ticket's values | unchanged |
 | Banner constants (E11.5-11c, founder-authorised 2026-10-27) | `--banner-white` (the logo chip, and white text on a brand colour) · `--banner-ink` (the chip's name, and ink text on a light brand colour) | `#ffffff` (LOCKED `surface`) · `#101014` (LOCKED `ink`) | unchanged: the chip stays light and banner text keeps its contrast on the brand colour in both themes |
 | Banner shapes (E11.5-11c, founder-authorised 2026-10-27; t4 to t6 E11.5-11d, 2026-10-28) | `--banner-shape-t1-top`, `-t1-right`, `-t2-right`, `-t2-bottom`, `-t3-top`, `-t3-left`, `-t4-top`, `-t4-right`, `-t5-top`, `-t5-right`, `-t6-top`, `-t6-left`: the wireframe's `.t1` to `.t6` tonal-shape offsets, one token per side each shape sets, in percentages of the banner | `-80%` · `-12%` · `-20%` · `-75%` · `-140%` · `-34%` · `-90%` · `16%` · `-64%` · `6%` · `38%` · `52%` | unchanged |
+| Banner rings (E11.5-11n) | `--banner-ring-t1-right`, `-t1-bottom`, `-t2-right`, `-t2-top`, `-t3-right`, `-t3-bottom`, `-t4-right`, `-t4-top`, `-t5-right`, `-t5-top`, `-t6-left`, `-t6-top`: the final design's ring offsets for the catalogue's six compositions, one token per side, in percentages of the banner | `30%` · `-70%` · `22%` · `-46%` · `-18%` · `-60%` · `-8%` · `-24%` · `-24%` · `-100%` · `34%` · `-40%` | unchanged |
 | Dark chip shadow (E11.5-11d, founder-authorised 2026-10-28) | `--shadow-chip-dark`: the shadow of the dark chip a white-only logo takes | the `--shadow-chip` value | `0 0 0 1px rgba(240,240,238,.18), 0 6px 14px rgba(0,0,0,.3)`, a light ring so the dark chip holds its edge on a dark page |
 | Dark-only values | `--banner-edge`, `--banner-edge-hero`, `--banner-edge-hover`, `--shadow-band` | `0 0 0 0 transparent` (light base; `--shadow-band` is `none` from E11.5-11j) | the 1px light edges at .1, .12 and .14, and the guarantee-band shadow |
 | Composites | `--ring-focus`, `--inset-line`, `--inset-strong`, `--ring-numeral` (E11.5-11f), `--inset-on-midnight`, `--inset-on-midnight-disabled` | a token colour with a fixed width | follow their colours |
@@ -146,8 +147,12 @@ The primitives need these values beyond the delta, under final-design rule 6:
 | `--star-turn`, `--star-scale` | `-45deg`, `0.6` | Where the hero's coral star starts its first-paint entrance: it turns to 0° and scales to 1 as it fades in (E11.5-11l) |
 | `--enter-scale` | `0.9` | Where the success panel's mail tile starts as the panel enters, scaling to 1 (E11.5-11m) |
 | `--well` | `var(--paper)`, dark `var(--midnight-deep)` | A recessed fill inside a card, such as the echoed address in the success panel (E11.5-11m). No new hue: it names two locked colours |
+| `--ring-badge` | `0 0 0 3px var(--surface)` | The "How it works" step badge's ring of the panel's surface (E11.5-11n) |
+| `--connector-dash` | `6px 6px` | The dash of the "How it works" connector into the optional step, as Chromium draws the canvas's 2px dashed border (E11.5-11n) |
+| `--tone-shift` | `4%` | How far a catalogue banner's tonal layer shifts on hover: 4% of its own size (E11.5-11n) |
+| `--draw-range` | `entry min(100% - 1px, 20vh) cover 25vh` | The stretch of a "How it works" step's view timeline over which its connector draws: from the end of the step's reveal until the step's top is at 75% of the viewport (E11.5-11n) |
 
-The arrow, error, spinner, star and enter-scale values sit with the motion tokens on bare `:root`, with no dark redefinition.
+The arrow, error, spinner, star, enter-scale, tone-shift and draw-range values sit with the motion tokens on bare `:root`, with no dark redefinition.
 
 ### Motion tokens (E11.5-11i)
 
@@ -223,6 +228,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 **E11.5-11l port addition:** the file adds `--star-turn` and `--star-scale`, declared once on bare `:root` with no dark redefinition, beside the other motion tokens. They port with `tokens.css`; the star entrance that uses them is waitlist presentation in the landing page.
 
 **E11.5-11m port addition:** the file adds `--enter-scale`, declared once on bare `:root` beside the other motion tokens, and the role token `--well`, `var(--paper)` on `:root` and `var(--midnight-deep)` in both dark blocks, so the dark name sets stay identical. Both port with `tokens.css`; the success-panel motion that uses `--enter-scale` is waitlist presentation in the signup island.
+
+**E11.5-11n port addition:** the file adds the twelve `--banner-ring-t*` offsets and `--ring-badge` and `--connector-dash`, declared once on `:root` (the badge ring follows `--surface` in both themes), and `--tone-shift` and `--draw-range` on bare `:root` beside the other motion tokens. They port with `tokens.css`; the catalogue and step motion that uses them is waitlist presentation in the landing page and the provider banner.
 
 E11-07 source-to-target reconciliation (targets are the storefront routes to build and verify before the DNS swap):
 

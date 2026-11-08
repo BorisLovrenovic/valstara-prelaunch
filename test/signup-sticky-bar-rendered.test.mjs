@@ -375,7 +375,12 @@ async function revealBar(page) {
 // is the drawn 16px square rather than the bounds of a turned one.
 function settle(page) {
   return page.evaluate(async () => {
-    const animations = globalThis.document.getAnimations();
+    // Only time-based animations end. The catalogue's scroll-driven reveals
+    // (E11.5-11n) are on view timelines, which never finish and take no time
+    // value, and none of them is in the bar.
+    const timed = (animation) =>
+      animation.timeline instanceof globalThis.DocumentTimeline;
+    const animations = globalThis.document.getAnimations().filter(timed);
     await Promise.all(
       animations
         .filter(
@@ -385,7 +390,7 @@ function settle(page) {
         )
         .map((animation) => animation.finished),
     );
-    for (const animation of globalThis.document.getAnimations()) {
+    for (const animation of globalThis.document.getAnimations().filter(timed)) {
       if (animation instanceof globalThis.CSSAnimation) {
         animation.pause();
         animation.currentTime = 0;

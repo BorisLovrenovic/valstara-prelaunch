@@ -35,7 +35,8 @@ const { class: className, variant = 'default', ...attributes } = Astro.props;
     The landing section frame (E11.5-11d): the section gap above each section,
     then a header block of the H2 and an optional supporting line 8px below
     it, with 32px below the block (24px at small widths). The midnight band
-    also pads its own ground.
+    also pads its own ground. E11.5-11n: the heading block is at most 40rem
+    wide, as the final design's .section-head.
   */
   .section {
     margin-block-start: var(--section-gap);
@@ -54,6 +55,7 @@ const { class: className, variant = 'default', ...attributes } = Astro.props;
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
+    max-inline-size: calc(var(--space-8) * 10);
     margin-block-end: var(--space-3);
     text-align: start;
   }

@@ -161,6 +161,22 @@ const wireframeTokens = {
   '--banner-shape-t5-right': '6%',
   '--banner-shape-t6-top': '38%',
   '--banner-shape-t6-left': '52%',
+  // E11.5-11n: the catalogue ring offsets, the step badge ring and the
+  // connector dash.
+  '--banner-ring-t1-right': '30%',
+  '--banner-ring-t1-bottom': '-70%',
+  '--banner-ring-t2-right': '22%',
+  '--banner-ring-t2-top': '-46%',
+  '--banner-ring-t3-right': '-18%',
+  '--banner-ring-t3-bottom': '-60%',
+  '--banner-ring-t4-right': '-8%',
+  '--banner-ring-t4-top': '-24%',
+  '--banner-ring-t5-right': '-24%',
+  '--banner-ring-t5-top': '-100%',
+  '--banner-ring-t6-left': '34%',
+  '--banner-ring-t6-top': '-40%',
+  '--ring-badge': '0 0 0 3px var(--surface)',
+  '--connector-dash': '6px 6px',
   '--shadow-chip-dark': '0 1px 2px rgba(0,0,0,.2), 0 6px 14px rgba(0,0,0,.16)',
   '--banner-edge': '0 0 0 0 transparent',
   '--banner-edge-hero': '0 0 0 0 transparent',
@@ -229,6 +245,9 @@ const motionTokens = {
   '--star-scale': '0.6',
   // E11.5-11m: the success panel's mail tile scales from 0.9 as it enters.
   '--enter-scale': '0.9',
+  // E11.5-11n: the banner's tonal shift and the connector drawing range.
+  '--tone-shift': '4%',
+  '--draw-range': 'entry min(100% - 1px, 20vh) cover 25vh',
 };
 
 // E11.5-11j: the token delta in ChangeLog.dc.html, light values on bare :root
@@ -779,6 +798,8 @@ function colourLiterals(value) {
     'bottom',
     'calc',
     'color-mix',
+    // E11.5-11n: the connector's drawing range ends in the cover range.
+    'cover',
     'cubic-bezier',
     'currentcolor',
     // E11.5-11i: the named timeline range and the function in the reveal tokens.

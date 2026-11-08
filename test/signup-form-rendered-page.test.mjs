@@ -11,6 +11,7 @@ import { signupCopy, signupFormCopy } from '../src/copy/signup.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { scrollSettled } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import { atRest } from '../scripts/design/layout-checks.mjs';
 
 const execFileAsync = promisify(execFile);
 // No fixed ports: the app server gets a reserved port below the kernel's
@@ -1004,16 +1005,21 @@ test('visible dock does not cover focus while tabbing at small widths and passes
         () => !globalThis.document.querySelector('[data-dock]').hidden,
       );
       await page.addScriptTag({ content: axe.source });
-      const violations = await page.evaluate(
-        async () =>
-          (
-            await globalThis.axe.run(globalThis.document, {
-              runOnly: {
-                type: 'tag',
-                values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'],
-              },
-            })
-          ).violations,
+      // E11.5-11n: the catalogue's scroll-driven reveals sit in view here,
+      // part-way through their fade, so axe reads the page at rest (design
+      // rule 12), as the layout checks do. The dock's own state is unchanged.
+      const violations = await atRest(page, () =>
+        page.evaluate(
+          async () =>
+            (
+              await globalThis.axe.run(globalThis.document, {
+                runOnly: {
+                  type: 'tag',
+                  values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'],
+                },
+              })
+            ).violations,
+        ),
       );
       assert.deepEqual(
         violations.map((item) => item.id),
