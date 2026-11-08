@@ -7,7 +7,7 @@ import test, { after, before } from 'node:test';
 
 import { chromium } from 'playwright';
 import axe from 'axe-core';
-import { signupFormCopy } from '../src/copy/signup.ts';
+import { signupCopy, signupFormCopy } from '../src/copy/signup.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { scrollSettled } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
@@ -386,6 +386,9 @@ test('a pending response hides the form and shows the same privacy-safe success 
   );
   assert.equal(await page.locator('form').isHidden(), true);
   await page.click('[data-different-address]');
+  // E11.5-11m named rewrite (founder-authorised 2026-11-07): the panel leaves
+  // before the form returns, so the read waits for the form, bounded at 2s.
+  await page.locator('form').waitFor({ state: 'visible', timeout: 2_000 });
   assert.equal(await page.locator('form').isVisible(), true);
   assert.equal(await page.locator('#signup-email').inputValue(), '');
   await context.close();
@@ -455,6 +458,52 @@ test('each server error code renders its message at the right target', async () 
     assert.equal(await page.locator('[data-submit]').isDisabled(), false);
     await context.close();
   }
+});
+
+// Founder decision 2026-11-07: a form notice describes the last attempt only,
+// so every new submission clears it, as it clears the field error.
+test('a form notice clears when the visitor submits again', async () => {
+  const { context, page } = await openForm();
+  let respond = (route) => route.abort('internetdisconnected');
+  await page.route('**/api/signup', (route) => respond(route));
+  const notice = page.locator('[data-form-error]');
+
+  await page.fill('#signup-email', 'retry@example.com');
+  await page.click('[data-submit]');
+  await notice.waitFor({ state: 'visible' });
+
+  // A retry the client check stops shows only its field error.
+  await page.fill('#signup-email', '');
+  await page.click('[data-submit]');
+  await page.locator('[data-error-for="email"]').waitFor({ state: 'visible' });
+  assert.equal(await notice.isHidden(), true, 'cleared by a client retry');
+  assert.equal(await notice.textContent(), '');
+
+  // A retry in flight shows no notice from the attempt before it.
+  await page.fill('#signup-email', 'retry@example.com');
+  await page.click('[data-submit]');
+  await notice.waitFor({ state: 'visible' });
+  const held = new Promise((resolve) => {
+    respond = resolve;
+  });
+  await page.click('[data-submit]');
+  await page.waitForFunction(
+    () => globalThis.document.querySelector('[data-submit]').disabled,
+  );
+  assert.equal(await notice.isHidden(), true, 'cleared while in flight');
+
+  // The form "Use a different address" restores carries no old notice.
+  const route = await held;
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ status: 'pending', message: signupCopy.pending }),
+  });
+  await page.waitForSelector('[data-success]:not([hidden])');
+  await page.click('[data-different-address]');
+  await page.locator('form').waitFor({ state: 'visible', timeout: 2_000 });
+  assert.equal(await notice.isHidden(), true, 'absent from the restored form');
+  await context.close();
 });
 
 test('the island carries a signed ref hidden field through unchanged', async () => {
@@ -662,6 +711,16 @@ test('success is identical for unknown, pending and verified responses and echoe
       await page.fill('#signup-email', 'typed@example.com');
       await page.click('[data-submit]');
       await page.waitForSelector('[data-success]:not([hidden])');
+      // E11.5-11m named rewrite (founder-authorised 2026-11-07): the panel
+      // enters, so its boxes are read once its transitions end, bounded at 2s.
+      await page.waitForFunction(
+        () =>
+          globalThis.document
+            .querySelector('[data-success]')
+            .getAnimations({ subtree: true }).length === 0,
+        undefined,
+        { timeout: 2_000 },
+      );
       // E11.5-11g: the drawn panel is identical too, element for element and
       // box for box, and carries no digit (no position or count).
       results.push(
@@ -768,6 +827,16 @@ test('bar reports a field error and cross-entry double submit sends one request'
     await page.waitForFunction(
       () => !globalThis.document.querySelector('[data-dock]').hidden,
     );
+    // E11.5-11m named rewrite (founder-authorised 2026-11-08): the bar slides
+    // in over --duration-base, and the clicks below land at measured
+    // coordinates, so they wait, bounded at 2s, for the slide to end.
+    await page.waitForFunction(
+      () =>
+        globalThis.document.querySelector('[data-dock]').getAnimations()
+          .length === 0,
+      undefined,
+      { timeout: 2_000 },
+    );
     await page.route('**/api/signup', (route) =>
       route.fulfill({
         status: 400,
@@ -786,6 +855,13 @@ test('bar reports a field error and cross-entry double submit sends one request'
       inputBox.y + inputBox.height / 2,
     );
     await page.keyboard.insertText('bad@example.com');
+    // A missed click leaves the field empty, and the client check would then
+    // stop every submission before a request: fail here, not 30s later.
+    assert.equal(
+      await page.locator('#signup-dock-email').inputValue(),
+      'bad@example.com',
+      'the bar field holds the typed address',
+    );
     const dockButton = page.locator('[data-dock-submit]');
     const firstBox = await dockButton.boundingBox();
     await page.mouse.click(

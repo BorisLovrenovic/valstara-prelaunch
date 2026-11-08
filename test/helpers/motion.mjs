@@ -166,3 +166,125 @@ export function focusMotionIssues(page) {
     return issues;
   });
 }
+
+// E11.5-11m: the signup island's state motion. `recordStateMotion` installs
+// a recorder in the page that notes, as each state change happens, every CSS
+// transition then running and where focus is. A change is an element shown
+// or hidden, a `data-leaving` or `data-returning` mark, or a button's label
+// replaced. `readStateMotion` returns the notes. With `pauseOn` set to an
+// event name, the first such change also pauses every running transition,
+// so a test can read the page mid-transition; `resumeStateMotion` plays
+// them on. Each transition is noted with its target (with its pseudo-element),
+// property, duration, delay and its first and last values.
+export function recordStateMotion(page, { pauseOn = null } = {}) {
+  return page.evaluate((pause) => {
+    const { document, performance } = globalThis;
+    const marks = [
+      'data-success',
+      'data-form-error',
+      'data-resend-status',
+      'data-resend',
+      'data-dock-error',
+      'data-dock-confirmation',
+      'data-dock-submit',
+      'data-dock-close',
+      'data-different-address',
+      'data-submit',
+      'data-dock',
+    ];
+    const describe = (element) => {
+      if (!(element instanceof globalThis.Element)) return null;
+      if (element.id) return `#${element.id}`;
+      const mark = marks.find((name) => element.hasAttribute(name));
+      if (mark !== undefined) return `[${mark}]`;
+      if (element.hasAttribute('data-label-entering')) return 'label';
+      const first = String(element.getAttribute('class') ?? '').split(' ')[0];
+      return `${element.tagName.toLowerCase()}${first ? `.${first}` : ''}`;
+    };
+    const camel = (property) =>
+      property.replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase());
+    const transitions = () =>
+      document
+        .getAnimations()
+        .filter((animation) => animation instanceof globalThis.CSSTransition)
+        .map((animation) => {
+          const timing = animation.effect.getComputedTiming();
+          const frames = animation.effect.getKeyframes();
+          const key = camel(animation.transitionProperty);
+          return {
+            target: `${describe(animation.effect.target)}${animation.effect.pseudoElement ?? ''}`,
+            property: animation.transitionProperty,
+            duration: timing.duration,
+            delay: timing.delay,
+            from: frames[0]?.[key],
+            to: frames.at(-1)?.[key],
+          };
+        });
+    globalThis.stateMotion = [];
+    let paused = false;
+    // Changes made in one task arrive in one batch, so the batch's time is
+    // each change's time, and whether a mark was added is read from its old
+    // value: with reduced motion a mark can be added and removed in one task.
+    const observer = new globalThis.MutationObserver((records) => {
+      const running = transitions();
+      const t = performance.now();
+      for (const record of records) {
+        let event;
+        if (record.type === 'childList') {
+          if (!record.target.matches('button')) continue;
+          event = 'label';
+        } else if (record.attributeName === 'hidden') {
+          if (record.oldValue === null) event = 'hidden';
+          else if (!record.target.hidden) event = 'shown';
+          else continue;
+        } else {
+          if (record.oldValue !== null) continue;
+          event = record.attributeName.replace('data-', '');
+        }
+        globalThis.stateMotion.push({
+          event,
+          target: describe(record.target),
+          t,
+          focus: describe(document.activeElement),
+          transitions: running,
+        });
+        if (!paused && pause === event) {
+          paused = true;
+          for (const animation of document.getAnimations())
+            if (animation instanceof globalThis.CSSTransition)
+              animation.pause();
+        }
+      }
+    });
+    observer.observe(document.querySelector('valstara-signup-form'), {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeOldValue: true,
+      attributeFilter: ['hidden', 'data-leaving', 'data-returning'],
+    });
+  }, pauseOn);
+}
+
+export function readStateMotion(page) {
+  return page.evaluate(() => globalThis.stateMotion);
+}
+
+export function resumeStateMotion(page) {
+  return page.evaluate(() => {
+    for (const animation of globalThis.document.getAnimations())
+      if (animation instanceof globalThis.CSSTransition) animation.play();
+  });
+}
+
+// Waits, bounded at 2 seconds, until no CSS transition runs in the page.
+export async function transitionsEnded(page) {
+  await page.waitForFunction(
+    () =>
+      globalThis.document
+        .getAnimations()
+        .every((animation) => !(animation instanceof globalThis.CSSTransition)),
+    undefined,
+    { timeout: 2_000 },
+  );
+}

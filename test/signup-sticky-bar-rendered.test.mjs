@@ -17,7 +17,10 @@ import { checkPageLayout } from '../scripts/design/layout-checks.mjs';
 import {
   entranceEnded,
   focusMotionIssues,
+  readStateMotion,
+  recordStateMotion,
   scrollSettled,
+  transitionsEnded,
 } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
@@ -33,6 +36,11 @@ import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 // safe-area test checks the 12px minimum without one. A null is left to the
 // page; every other number is asserted with a 1px tolerance. The frames draw
 // the giveaway open.
+//
+// E11.5-11m: the final canvas's frames (docs/design/final-ui, Sticky.dc.html)
+// were rendered the same way, with the label as its 13/18 block (the frame
+// sets it inline on a 24px line). Frames 2, 4 and 6 are unchanged; frame 5
+// takes the busy rows.
 
 const execFileAsync = promisify(execFile);
 const browserContainer = `valstara-sticky-bar-playwright-${process.pid}`;
@@ -81,13 +89,15 @@ const frames = {
     errorIcon: [16, 90, 20, 20],
     micro: [16, 116, 358, 36 + 12],
   },
+  // E11.5-11m, rule-7 rewrite: in flight the field and the button each take
+  // a full row (the final canvas, Sticky.dc.html frame 5, `is-busy`).
   5: {
-    bar: [0, null, 390, 158],
+    bar: [0, null, 390, 214],
     label: [16, 12, null, 18],
-    input: [16, 34, 86, 48],
-    button: [110, 34, 264, 48],
-    spinner: [126, 50, 16, 16],
-    micro: [16, 88, 358, 36 + 12],
+    input: [16, 34, 358, 48],
+    button: [16, 90, 358, 48],
+    spinner: [79, 106, 16, 16],
+    micro: [16, 144, 358, 36 + 12],
   },
   6: {
     bar: [0, null, 390, 90],
@@ -458,6 +468,7 @@ function resolveTokens(page) {
       coral: colour('coral'),
       coralTint: colour('coral-tint'),
       onCoral: colour('on-coral'),
+      successIcon: colour('success-icon'),
       error: colour('error'),
       errorText: colour('error-text'),
       bar: shadow('var(--shadow-sticky), var(--edge)'),
@@ -809,7 +820,9 @@ test('frame 4, inline error: the bar grows upward with the field error linked to
         `${where}: no scroll on the way down`,
       );
       const shrunk = (await measure(page)).bar[0];
-      near(shrunk[3], frames[2].bar[3], `${where}: the bar shrinks back`);
+      // E11.5-11m, rule-7 rewrite: the resubmission is in flight, so the bar
+      // is frame 5's height (the canvas's busy rows), not frame 2's.
+      near(shrunk[3], frames[5].bar[3], `${where}: the bar shrinks back`);
       const space = await page.evaluate(() => {
         const { document, getComputedStyle } = globalThis;
         return {
@@ -896,12 +909,15 @@ test('frame 6, success: the bar collapses to one status row with no position, co
       );
       assert.equal(css.done.font, '16px/24px 600', `${where}: 16/24 600`);
       assert.equal(css.done.color, tokens.ink, `${where}: ink`);
-      // The frame draws the mail icon (founder decision 2026-10-29).
+      // E11.5-11m named rewrite (founder-authorised 2026-11-07): the final
+      // canvas draws the check-circle (Sticky.dc.html frame 6), replacing the
+      // wireframe's mail icon (founder decision 2026-10-29), in --success-icon.
       assert.match(
         await page.locator(selectors.doneIcon).getAttribute('class'),
-        /\bicon--mail\b/u,
-        `${where}: mail icon, as drawn`,
+        /\bicon--check-circle\b/u,
+        `${where}: check-circle icon, as drawn`,
       );
+      assert.equal(css.doneIcon.color, tokens.successIcon, `${where}: icon`);
       assert.equal(
         await page.locator(selectors.close).textContent(),
         signupFormCopy.barClose,
@@ -1138,12 +1154,37 @@ test('the visibility matrix: small widths only, never over the hero form or with
 });
 
 test('the focus walk: tabbing through the whole page, every focused element sits at least 16px above the bar', async () => {
-  for (const width of [320, 360, 390]) {
+  // E11.5-11m: each width is walked twice, with the bar in its entry state
+  // and with a bar submission in flight, when its busy rows make it taller
+  // (frame 5).
+  for (const [width, busy] of [320, 360, 390].flatMap((size) => [
+    [size, false],
+    [size, true],
+  ])) {
+    const where = `${width}px${busy ? ', in flight' : ''}`;
     const { context, page } = await openPage({
       viewport: { width, height: 844 },
       safeArea: 0,
     });
     try {
+      if (busy) {
+        await revealBar(page);
+        await page.route('**/api/signup', () => undefined);
+        await page.locator(selectors.input).fill('alex@example.com');
+        await page.locator(selectors.button).click();
+        await page.waitForFunction(() =>
+          globalThis.document
+            .querySelector('[data-dock-row]')
+            .hasAttribute('data-busy'),
+        );
+        // The walk starts again from the top of the page.
+        await page.evaluate(() => {
+          const { body } = globalThis.document;
+          body.tabIndex = -1;
+          body.focus({ preventScroll: true });
+          body.removeAttribute('tabindex');
+        });
+      }
       const total = await page.evaluate(
         () =>
           globalThis.document.querySelectorAll(
@@ -1181,6 +1222,9 @@ test('the focus walk: tabbing through the whole page, every focused element sits
             inFooter: active.closest('body > footer') !== null,
             inBar: bar.contains(active),
             barShown: !bar.hidden,
+            barBusy: bar
+              .querySelector('[data-dock-row]')
+              .hasAttribute('data-busy'),
             gap: bar.hidden
               ? null
               : bar.getBoundingClientRect().top - target.bottom,
@@ -1192,22 +1236,23 @@ test('the focus walk: tabbing through the whole page, every focused element sits
         assert.deepEqual(
           moving,
           [],
-          `${width}px: "${state.name}" is focused mid-motion`,
+          `${where}: "${state.name}" is focused mid-motion`,
         );
         if (state.barShown && !state.inBar && state.size > 0) {
           barSeen += 1;
+          assert.equal(
+            state.barBusy,
+            busy,
+            `${where}: "${state.name}" is walked with the bar ${busy ? 'in flight' : 'in its entry state'}`,
+          );
           assert.ok(
             state.gap >= clearance,
-            `${width}px: "${state.name}" sits ${state.gap}px above the bar`,
+            `${where}: "${state.name}" sits ${state.gap}px above the bar`,
           );
         }
       }
-      assert.ok(barSeen > 0, `${width}px: the walk ran with the bar shown`);
-      assert.equal(
-        last?.inFooter,
-        true,
-        `${width}px: the walk reached the end`,
-      );
+      assert.ok(barSeen > 0, `${where}: the walk ran with the bar shown`);
+      assert.equal(last?.inFooter, true, `${where}: the walk reached the end`);
     } finally {
       await context.close();
     }
@@ -1289,6 +1334,129 @@ test('reduced motion: the bar appears without sliding', async () => {
         assert.equal(motion.name, 'signup-dock-in');
         assert.equal(motion.running, 1);
       }
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+// E11.5-11m: the bar slides in over --duration-base, from translateY(100%),
+// replacing E11.5-11h's 150ms. Its growth for an error and its collapse to
+// the success row animate no layout property: the height snaps and the new
+// content fades in over --duration-base, with focus where E11.5-11h says.
+test('the bar slides in over --duration-base and its growth and collapse only cross-fade', async () => {
+  const layout =
+    /^(width|height|inline-size|block-size|inset|top|right|bottom|left|margin|padding)/u;
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    const where = reducedMotion;
+    const { context, page } = await openPage({ reducedMotion });
+    try {
+      await scrollPastHero(page);
+      await page.waitForFunction(barShown);
+      const slide = await page.evaluate(() =>
+        globalThis.document
+          .querySelector('[data-dock]')
+          .getAnimations()
+          .map((animation) => ({
+            name: animation.animationName,
+            duration: animation.effect.getComputedTiming().duration,
+            easing: animation.effect.getKeyframes()[0].easing,
+            from: animation.effect.getKeyframes()[0].transform,
+          })),
+      );
+      // --ease-out, the value the token test pins.
+      const easing = 'cubic-bezier(0.16, 1, 0.3, 1)';
+      assert.deepEqual(
+        slide,
+        reducedMotion === 'reduce'
+          ? []
+          : [
+              {
+                name: 'signup-dock-in',
+                duration: 200,
+                easing,
+                from: 'translateY(100%)',
+              },
+            ],
+        `${where}: the slide`,
+      );
+      await settle(page);
+      await recordStateMotion(page);
+      await page.route('**/api/signup', (route) =>
+        json(route, 400, {
+          error: { code: 'invalid_email', message: signupCopy.invalidEmail },
+        }),
+      );
+      await page.locator(selectors.input).fill('alex.morgan@example');
+      await page.locator(selectors.button).click();
+      await page.waitForSelector('[data-dock-error]:visible');
+      await transitionsEnded(page);
+      await page.unroute('**/api/signup');
+      await page.route('**/api/signup', (route) =>
+        json(route, 200, { status: 'pending', message: signupCopy.pending }),
+      );
+      await page.locator(selectors.input).fill('alex@example.com');
+      await page.locator(selectors.button).click();
+      await page.waitForSelector('[data-dock-confirmation]:visible');
+      await transitionsEnded(page);
+      const notes = await readStateMotion(page);
+      for (const entry of notes)
+        assert.deepEqual(
+          entry.transitions.filter((transition) =>
+            layout.test(transition.property),
+          ),
+          [],
+          `${where}: ${entry.event} ${entry.target} animates no layout property`,
+        );
+      const grown = notes.find(
+        (entry) =>
+          entry.event === 'shown' && entry.target === '#signup-dock-error',
+      );
+      const collapsed = notes.find(
+        (entry) =>
+          entry.event === 'shown' &&
+          entry.target === '[data-dock-confirmation]',
+      );
+      assert.ok(grown && collapsed, `${where}: both changes noted`);
+      const fades = (entry, target) =>
+        entry.transitions
+          .filter((transition) => transition.target === target)
+          .map((transition) => [
+            transition.property,
+            transition.duration,
+            transition.from,
+          ])
+          .sort();
+      if (reducedMotion === 'reduce') {
+        for (const entry of notes)
+          assert.deepEqual(entry.transitions, [], `${where}: ${entry.event}`);
+      } else {
+        assert.deepEqual(
+          fades(grown, '#signup-dock-error'),
+          [
+            ['opacity', 200, '0'],
+            ['translate', 200, '0px 4px'],
+          ],
+          `${where}: the error fades in`,
+        );
+        assert.deepEqual(
+          fades(collapsed, '[data-dock-confirmation]'),
+          [['opacity', 200, '0']],
+          `${where}: the success row fades in`,
+        );
+      }
+      // Focus lands where E11.5-11h says: the bar's field for its error, and
+      // Close for its success, after the transition as well as before it.
+      assert.equal(grown.focus, '#signup-dock-email', `${where}: error focus`);
+      assert.equal(collapsed.focus, '[data-dock-close]', `${where}: focus`);
+      assert.equal(
+        await page.evaluate(() =>
+          globalThis.document.activeElement?.hasAttribute('data-dock-close'),
+        ),
+        true,
+        `${where}: focus after the transition`,
+      );
+      assert.deepEqual(await focusMotionIssues(page), [], where);
     } finally {
       await context.close();
     }

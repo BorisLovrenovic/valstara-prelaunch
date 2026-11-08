@@ -64,6 +64,8 @@ const expectedDarkTokens = {
   '--error-text': 'var(--ink)',
   // E11.5-11j: the token delta's dark values, and the dark success icon.
   '--success-icon': 'var(--ink)',
+  // E11.5-11m: the recessed fill for the echoed address.
+  '--well': 'var(--midnight-deep)',
   '--on-midnight-600': 'rgba(240,240,238,.74)',
   '--wash': 'rgba(240,240,238,.06)',
   '--wash-strong': 'rgba(240,240,238,.10)',
@@ -225,6 +227,8 @@ const motionTokens = {
   // E11.5-11l: the hero star's entrance turns from -45deg and scales from 0.6.
   '--star-turn': '-45deg',
   '--star-scale': '0.6',
+  // E11.5-11m: the success panel's mail tile scales from 0.9 as it enters.
+  '--enter-scale': '0.9',
 };
 
 // E11.5-11j: the token delta in ChangeLog.dc.html, light values on bare :root
@@ -240,6 +244,7 @@ const finalDesignTokens = {
   '--banner-ring-ink': 'rgba(16,16,20,.14)',
   '--banner-sheen': 'rgba(255,255,255,.14)',
   '--success-icon': 'var(--success)',
+  '--well': 'var(--paper)',
   '--ring-focus-error': '0 0 0 2px var(--surface), 0 0 0 4px var(--error)',
   '--inset-error': 'inset 0 0 0 1.5px var(--error)',
   '--radius-link': '2px',
