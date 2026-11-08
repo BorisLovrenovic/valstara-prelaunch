@@ -827,6 +827,16 @@ test('bar reports a field error and cross-entry double submit sends one request'
     await page.waitForFunction(
       () => !globalThis.document.querySelector('[data-dock]').hidden,
     );
+    // E11.5-11m named rewrite (founder-authorised 2026-11-08): the bar slides
+    // in over --duration-base, and the clicks below land at measured
+    // coordinates, so they wait, bounded at 2s, for the slide to end.
+    await page.waitForFunction(
+      () =>
+        globalThis.document.querySelector('[data-dock]').getAnimations()
+          .length === 0,
+      undefined,
+      { timeout: 2_000 },
+    );
     await page.route('**/api/signup', (route) =>
       route.fulfill({
         status: 400,
@@ -845,6 +855,13 @@ test('bar reports a field error and cross-entry double submit sends one request'
       inputBox.y + inputBox.height / 2,
     );
     await page.keyboard.insertText('bad@example.com');
+    // A missed click leaves the field empty, and the client check would then
+    // stop every submission before a request: fail here, not 30s later.
+    assert.equal(
+      await page.locator('#signup-dock-email').inputValue(),
+      'bad@example.com',
+      'the bar field holds the typed address',
+    );
     const dockButton = page.locator('[data-dock-submit]');
     const firstBox = await dockButton.boundingBox();
     await page.mouse.click(
