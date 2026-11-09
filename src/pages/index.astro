@@ -12,6 +12,8 @@ import Section from '../components/section.astro';
 import TextLink from '../components/text-link.astro';
 import landingHeroList from '../content/landing-hero.json';
 import { svgIntrinsicSize } from '../components/provider-banner.ts';
+import { resolveLandingFinal } from '../content/landing-final.ts';
+import landingFinalList from '../content/landing-final.json';
 import { resolveLandingHero } from '../content/landing-hero.ts';
 import providerData from '../content/provider-showcase.json';
 import type { Provider } from '../content/provider-showcase.ts';
@@ -50,6 +52,15 @@ const hero = resolveLandingHero(landingHeroList, providers, (logo) => {
   const source = logoSources[`/public${logo}`];
   return source === undefined ? null : svgIntrinsicSize(source);
 });
+// The final call to action's three logo-only banners (E11.5-11p).
+const finalBanners = resolveLandingFinal(
+  landingFinalList,
+  providers,
+  (logo) => {
+    const source = logoSources[`/public${logo}`];
+    return source === undefined ? null : svgIntrinsicSize(source);
+  },
+);
 const enabledTiers = milestoneTiers.filter((tier) => tier.enabled);
 // "What you get" (E11.5-11e): the cards reflow across three, two and one
 // with no grid hole, and the footer row shows only with something to say.
@@ -549,14 +560,32 @@ Astro.response.headers.set(
       variant="midnight"
       aria-labelledby="guarantee-title"
     >
-      <h2 id="guarantee-title" slot="heading">{landingCopy.trust.heading}</h2>
-      <p slot="heading">{landingCopy.trust.intro}</p>
+      <h2 id="guarantee-title" slot="heading" data-reveal>
+        {landingCopy.trust.heading}
+      </h2>
+      <p slot="heading" data-reveal>{landingCopy.trust.intro}</p>
       <ol class="landing-guarantee">
         {
-          landingCopy.trust.promises.map((promise) => (
-            <li class="landing-promise">
+          landingCopy.trust.promises.map((promise, index) => (
+            <li class="landing-promise" style={`--promise-index: ${index}`}>
               <span class="landing-promise__numeral" aria-hidden="true">
-                {promise.numeral}
+                {/* Draws the ring while it enters; at rest it shows nothing
+                    and the numeral's own --ring-numeral is the ring. */}
+                <svg
+                  class="landing-promise__draw"
+                  viewBox="0 0 64 64"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <circle
+                    cx="32"
+                    cy="32"
+                    r="31.25"
+                    pathLength="1"
+                    transform="rotate(-90 32 32)"
+                  />
+                </svg>
+                <span class="landing-promise__digits">{promise.numeral}</span>
               </span>
               <h3 class="landing-promise__title">
                 <span class="landing-promise__prefix landing-hidden">
@@ -574,6 +603,7 @@ Astro.response.headers.set(
         variant="on-midnight"
         class="landing-guarantee__link"
         arrow
+        data-reveal
       >
         {landingCopy.trust.link}
       </TextLink>
@@ -587,8 +617,14 @@ Astro.response.headers.set(
       </h2>
       <div class="landing-trust-links">
         {
-          landingCopy.trustLinks.items.map((item) => (
-            <Card href={item.href} interactive class="landing-trust-card">
+          landingCopy.trustLinks.items.map((item, index) => (
+            <Card
+              href={item.href}
+              interactive
+              class="landing-trust-card"
+              data-reveal
+              style={`--reveal-index: ${index}`}
+            >
               <IconTile name={item.icon} />
               <h3 class="landing-trust-card__title">
                 {item.heading}
@@ -606,8 +642,10 @@ Astro.response.headers.set(
     </Section>
 
     <Section id="faq" class="landing-faq" aria-labelledby="faq-title">
-      <h2 id="faq-title" slot="heading">{landingCopy.faq.heading}</h2>
-      <Card class="landing-faq__card">
+      <h2 id="faq-title" slot="heading" data-reveal>
+        {landingCopy.faq.heading}
+      </h2>
+      <Card class="landing-faq__card" data-reveal>
         {
           landingCopy.faq.items.map((item, index) => (
             <Accordion summary={item.question} open={index === 0}>
@@ -619,13 +657,30 @@ Astro.response.headers.set(
     </Section>
 
     <Section class="landing-final" aria-labelledby="final-title">
-      <Card class="landing-final__card">
-        <h2 id="final-title" class="landing-final__title">
-          {landingCopy.final.heading}
-        </h2>
-        <Button href="#join" class="landing-final__action" data-focus-signup>
-          {landingCopy.final.action}
-        </Button>
+      <Card class="landing-final__card" data-reveal>
+        <div class="landing-final__text">
+          <h2 id="final-title" class="landing-final__title">
+            {landingCopy.final.heading}
+          </h2>
+          <Button href="#join" class="landing-final__action" data-focus-signup>
+            {landingCopy.final.action}
+          </Button>
+        </div>
+        {
+          /* Three logo-only banners from the showcase file, decorative, from
+            48rem. They rise one after another, after the card's text. */
+        }
+        <div class="landing-final__visual" aria-hidden="true">
+          {
+            finalBanners.map((banner, index) => (
+              <ProviderBanner
+                banner={banner}
+                size="final"
+                revealIndex={index + 1}
+              />
+            ))
+          }
+        </div>
       </Card>
     </Section>
   </div>
@@ -1413,48 +1468,91 @@ Astro.response.headers.set(
     }
   }
   /*
-    The closing sections (E11.5-11f).
+    The closing sections (E11.5-11f, final design E11.5-11p, Main.dc.html).
 
     The guarantee band: full-bleed midnight, padded by the section gap, with
-    the dark band shadow in dark. Its promises are an ordered list: one
-    column 40px apart at small widths, three equal columns 24px apart from
-    48rem. Each is a column with 12px gaps: the 64px numeral ring (a 1.5px
-    inset coral ring, --ring-numeral, aria-hidden, 8px of extra space below it),
-    the H3 with a visually
-    hidden "I. " prefix, and the body, at most 340px wide at large widths.
-    The on-midnight link sits 32px below the list with a 44px hit area
-    (12px above and below its line) under 64rem, and 40px below with none
-    from 64rem, where the coral-lift star sits 160px from the band's right
-    edge and 80px from its top.
+    the dark band shadow in dark. Its header block sits 32px above the
+    promises at every width; the supporting line is --on-midnight-600. The
+    promises are an ordered list of midnight-deep panels (radius 12, the 1px
+    --on-midnight-line edge): one column 16px apart below 64rem, three equal
+    columns 24px apart from 64rem. A panel is padded 24px (32px from 64rem)
+    and stacks the 64px numeral ring (--ring-numeral, a 1.5px inset coral
+    ring, coral numeral 32/40 700, aria-hidden), the H3 24px below it with a
+    visually hidden "I. " prefix, and the --on-midnight-600 body 8px below
+    that. From 48rem to 64rem a panel is a row, padded 24px 32px: the ring
+    in a 4rem column, centred on the title and line, 24px before them, 4px
+    apart. "Read the guarantee" sits 40px below the list from 48rem; below
+    48rem it is a 44px tap target directly under it, as the canvas draws
+    link--tap. From 64rem the coral-lift star sits 4px below the top of the
+    content, at its right edge.
   */
   .landing :global(.landing-band) {
     position: relative;
     box-shadow: var(--shadow-band);
   }
+  .landing :global(.landing-band .container__content) {
+    position: relative;
+  }
+  .landing :global(.landing-band .section__heading) {
+    margin-block-end: var(--space-4);
+  }
+  .landing :global(.landing-band .section__heading p) {
+    color: var(--on-midnight-600);
+  }
   .landing-guarantee {
     display: grid;
-    gap: var(--space-5);
+    gap: var(--space-2);
   }
   .landing-promise {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1-5);
     align-items: flex-start;
     min-width: 0;
+    padding: var(--space-3);
+    background-color: var(--midnight-deep);
+    border-radius: var(--radius-card);
+    box-shadow: var(--inset-on-midnight-line);
   }
   .landing-promise__numeral {
+    position: relative;
     display: flex;
+    flex: none;
     align-items: center;
     justify-content: center;
     inline-size: var(--space-8);
     block-size: var(--space-8);
-    margin-block-end: var(--space-1);
     color: var(--coral);
     font-size: var(--step-5);
     font-weight: var(--weight-bold);
     line-height: var(--leading-5);
     border-radius: var(--radius-pill);
     box-shadow: var(--ring-numeral);
+  }
+  /*
+    The ring's drawing element: a panel-coloured cover over the resting
+    ring, 4px wide on the ring's own circle. At rest it is drawn nowhere
+    (its single dash is offset past the circle's end), so the ring shows
+    whole. While the ring draws, the cover starts whole and withdraws from
+    the top, clockwise, uncovering the resting ring itself: the drawn stroke
+    is the resting ring.
+  */
+  .landing-promise__draw {
+    position: absolute;
+    inset: var(--space-0);
+    inline-size: 100%;
+    block-size: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .landing-promise__draw circle {
+    fill: none;
+    stroke: var(--midnight-deep);
+    stroke-width: var(--space-0-5);
+    stroke-dasharray: 1;
+    stroke-dashoffset: -1;
+  }
+  .landing-promise__digits {
+    position: relative;
   }
   .landing .landing-promise__title,
   .landing .landing-trust-card__title {
@@ -1465,14 +1563,20 @@ Astro.response.headers.set(
     line-height: var(--leading-3);
     letter-spacing: var(--tracking-tight);
   }
+  .landing .landing-promise__title {
+    margin-block-start: var(--space-3);
+    text-wrap: balance;
+  }
   .landing .landing-promise__line {
-    margin-block: var(--space-0);
+    margin-block: var(--space-1) var(--space-0);
+    color: var(--on-midnight-600);
     font-size: var(--step-2);
     line-height: var(--leading-2);
+    text-wrap: pretty;
   }
   .landing :global(.text-link.landing-guarantee__link) {
-    margin-block-start: var(--space-4);
-    padding-block: var(--space-1-5);
+    min-block-size: var(--tap-min);
+    padding-block: var(--space-0);
     font-size: var(--step-2);
     line-height: var(--leading-2);
   }
@@ -1481,56 +1585,70 @@ Astro.response.headers.set(
     color: var(--coral-lift);
   }
   /*
-    "Get to know Valstara": one column 16px apart at small widths, three
-    equal columns 24px apart from 48rem. The whole card is the link: a
-    column with 12px gaps holding the icon tile, the 20/28 H3 with a 16px
-    ink-600 arrow 8px after it (not at medium widths), and the 16/24 ink-600
-    line.
+    "Get to know Valstara": one column 16px apart below 64rem, three equal
+    columns 24px apart from 64rem. The whole card is the link (E11.5-11j: it
+    rises by --lift and its arrow moves 3px on hover): the icon tile, the
+    20/28 H3 24px below it with the 16px ink-600 arrow 8px after its text,
+    and the 16/24 ink-600 line 8px below. From 48rem to 64rem a card is a
+    row: the tile, centred on the title and line, 16px before them.
   */
   .landing-trust-links {
     display: grid;
     gap: var(--space-2);
   }
   .landing :global(.landing-trust-card) {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1-5);
-    align-items: flex-start;
     min-width: 0;
   }
   .landing .landing-trust-card__title {
     display: flex;
     gap: var(--space-1);
     align-items: center;
+    margin-block-start: var(--space-3);
   }
   .landing .landing-trust-card__line {
-    margin-block: var(--space-0);
+    margin-block: var(--space-1) var(--space-0);
     color: var(--ink-600);
     font-size: var(--step-2);
     line-height: var(--leading-2);
   }
   /*
-    FAQ: the H2 above the card below 64rem; from 64rem, on the 12-column
-    grid, the H2 in columns 1-4 and the card in 5-12. The card is padded
-    0 20px at small widths and 0 24px from 48rem, and holds the native
+    FAQ: the H2 24px above the card below 64rem; from 64rem, on the
+    12-column grid, the H2 in columns 1-4 and the card in 5-12. The card is
+    padded 0 20px below 48rem and 0 32px from 48rem, and holds the native
     details items, the first open.
   */
+  .landing :global(.landing-faq .section__heading) {
+    margin-block-end: var(--space-3);
+  }
   .landing :global(.card.landing-faq__card) {
     padding-block: var(--space-0);
     padding-inline: var(--space-2-5);
   }
   /*
-    The final call to action: one surface card across the content width.
-    Small: a column with stretched items, 24px gaps and padding, so the
-    button is full width. Medium: a row with the H2 and the button at either
-    end, 24px apart, 32px padding; large: 40px padding. The section gap
-    above the footer is the only space below it.
+    The final call to action: one surface card across the content width,
+    padded 24px (40px from 48rem, 48px from 64rem). Its text column holds
+    the 24/32 H2 and the primary button 24px apart; below 48rem the button
+    is full width. From 48rem the card is a row, the text beside the
+    decorative logo-only banners (22rem wide, 24px apart, centred on each
+    other); from 64rem the text takes columns 1-7 and the banners 8-12 of
+    the 12-column grid. The three banners share their row 12px apart, the
+    middle one raised 12px. Below 48rem there are no banners. The section
+    gap above the footer is the only space below the card.
   */
   .landing :global(.card.landing-final__card) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+  .landing-final__text {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    align-items: stretch;
+    align-items: flex-start;
+    min-width: 0;
+  }
+  .landing :global(.landing-final__action) {
+    align-self: stretch;
   }
   .landing .landing-final__title {
     margin-block: var(--space-0);
@@ -1539,39 +1657,80 @@ Astro.response.headers.set(
     line-height: var(--leading-4);
     letter-spacing: var(--tracking-tight);
   }
+  .landing-final__visual {
+    display: none;
+  }
+  .landing-final__visual > :global(:nth-child(2)) {
+    top: calc(var(--space-1-5) * -1);
+  }
   @media (min-width: 48rem) {
+    .landing :global(.text-link.landing-guarantee__link) {
+      min-block-size: auto;
+      margin-block-start: var(--space-5);
+    }
+    .landing :global(.card.landing-faq__card) {
+      padding-inline: var(--space-4);
+    }
+    .landing :global(.card.landing-final__card) {
+      grid-template-columns: minmax(0, 1fr) calc(var(--space-2) * 22);
+      align-items: center;
+      padding: var(--space-5);
+    }
+    .landing :global(.landing-final__action) {
+      align-self: auto;
+    }
+    .landing-final__visual {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-1-5);
+    }
+  }
+  @media (min-width: 48rem) and (width < 64rem) {
+    .landing-promise {
+      display: grid;
+      grid-template-columns: var(--space-8) minmax(0, 1fr);
+      gap: var(--space-0-5) var(--space-3);
+      align-items: center;
+      padding: var(--space-3) var(--space-4);
+    }
+    .landing-promise__numeral {
+      grid-row: span 2;
+    }
+    .landing .landing-promise__title {
+      align-self: end;
+      margin-block-start: var(--space-0);
+    }
+    .landing .landing-promise__line {
+      align-self: start;
+      margin-block-start: var(--space-0);
+    }
+    .landing :global(.landing-trust-card) {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: var(--space-1) var(--space-2);
+      align-items: center;
+    }
+    .landing :global(.landing-trust-card .icon-tile) {
+      grid-row: span 2;
+    }
+    .landing .landing-trust-card__title,
+    .landing .landing-trust-card__line {
+      margin-block-start: var(--space-0);
+    }
+  }
+  @media (min-width: 64rem) {
     .landing-guarantee,
     .landing-trust-links {
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: var(--space-3);
     }
-    .landing :global(.card.landing-faq__card) {
-      padding-inline: var(--space-3);
-    }
-    .landing :global(.card.landing-final__card) {
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
+    .landing-promise {
       padding: var(--space-4);
-    }
-  }
-  @media (min-width: 48rem) and (width < 64rem) {
-    .landing :global(.landing-trust-card__arrow) {
-      display: none;
-    }
-  }
-  @media (min-width: 64rem) {
-    .landing .landing-promise__line {
-      max-inline-size: calc(var(--space-10) * 4.25);
-    }
-    .landing :global(.text-link.landing-guarantee__link) {
-      margin-block-start: var(--space-5);
-      padding-block: var(--space-0);
     }
     .landing :global(.landing-band__star) {
       position: absolute;
-      top: var(--space-10);
-      right: calc(var(--space-10) * 2);
+      top: var(--space-0-5);
+      right: var(--space-0);
       display: block;
     }
     .landing :global(.landing-faq .container__content) {
@@ -1588,7 +1747,121 @@ Astro.response.headers.set(
       grid-column: 5 / span 8;
     }
     .landing :global(.card.landing-final__card) {
-      padding: var(--space-5);
+      grid-template-columns: repeat(var(--grid-columns-wide), minmax(0, 1fr));
+      column-gap: var(--grid-gap-wide);
+      padding: var(--space-6);
+    }
+    .landing-final__text {
+      grid-column: 1 / span 7;
+    }
+    .landing-final__visual {
+      grid-column: 8 / span 5;
+    }
+  }
+  /*
+    The closing motion (E11.5-11p), only with motion allowed and
+    scroll-driven animations supported; otherwise everything is at rest and
+    every ring is whole. The band's header block and its link, the trust
+    cards (in order), the FAQ heading and card, and the final card reveal
+    through data-reveal; the final card's three banners rise after its text
+    (data-reveal, --reveal-index 1 to 3). The band itself and its panels do
+    not move.
+
+    The rings run on each panel's own view timeline (--landing-promise,
+    inset 0), from --sequence-start to --sequence-end into its cover range:
+    from the panel's top at 90% of the viewport height to its top at 75%,
+    split into equal steps. In its step the ring draws from the top,
+    clockwise; in the next its numeral fades in and its title and line rise
+    in by --enter-distance. Below 64rem each panel has its own two steps.
+    From 64rem the panels share a row, so the steps run across them, six in
+    all, in order I, II, III. The star turns from --star-turn to rest on
+    the band's view timeline (--landing-band) over --reveal-range, once.
+    Nothing loops.
+  */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .landing :global(.landing-band) {
+        view-timeline-name: --landing-band;
+        view-timeline-inset: 0;
+      }
+      .landing :global(.landing-band__star) {
+        animation-name: landing-star-turn;
+        animation-duration: auto;
+        animation-timing-function: var(--ease-enter);
+        animation-fill-mode: backwards;
+        animation-timeline: --landing-band;
+        animation-range: var(--reveal-range);
+      }
+      .landing-promise {
+        --sequence-steps: 2;
+        --promise-step: 0;
+
+        view-timeline-name: --landing-promise;
+        view-timeline-inset: 0;
+      }
+      .landing-promise__draw circle,
+      .landing-promise__digits,
+      .landing .landing-promise__title,
+      .landing .landing-promise__line {
+        --sequence-index: calc(var(--promise-step) + 1);
+
+        animation-duration: auto;
+        animation-timing-function: var(--ease-enter);
+        animation-fill-mode: backwards;
+        animation-timeline: --landing-promise;
+        animation-range-start: cover
+          calc(
+            var(--sequence-start) +
+              (var(--sequence-end) - var(--sequence-start)) *
+              var(--sequence-index) / var(--sequence-steps)
+          );
+        animation-range-end: cover
+          calc(
+            var(--sequence-start) +
+              (var(--sequence-end) - var(--sequence-start)) *
+              (var(--sequence-index) + 1) / var(--sequence-steps)
+          );
+      }
+      .landing-promise__draw circle {
+        --sequence-index: var(--promise-step);
+
+        animation-name: landing-ring-draw;
+        animation-timing-function: var(--ease-out);
+      }
+      .landing-promise__digits {
+        animation-name: landing-numeral-appear;
+      }
+      .landing .landing-promise__title,
+      .landing .landing-promise__line {
+        animation-name: landing-promise-rise;
+      }
+      @media (min-width: 64rem) {
+        .landing-promise {
+          --sequence-steps: 6;
+          --promise-step: calc(var(--promise-index) * 2);
+        }
+      }
+    }
+  }
+  @keyframes landing-star-turn {
+    from {
+      rotate: var(--star-turn);
+    }
+  }
+  @keyframes landing-ring-draw {
+    from {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes landing-numeral-appear {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes landing-promise-rise {
+    from {
+      opacity: 0;
+      translate: 0 var(--enter-distance);
     }
   }
   @media (min-width: 48rem) {

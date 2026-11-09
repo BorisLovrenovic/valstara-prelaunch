@@ -7,9 +7,13 @@ interface Props {
   // catalogue: the 104px catalogue banner, chip with logo and category.
   // stack: the hero stack's 136px (medium) and 184px (large) banner.
   // strip: the small hero strip's 56px banner, a name-only chip.
-  size: 'catalogue' | 'stack' | 'strip';
+  // final: the final call to action's logo-only banner (E11.5-11p), inside
+  // an aria-hidden visual, so its logo is decorative.
+  size: 'catalogue' | 'stack' | 'strip' | 'final';
   // The catalogue's large-width column, 0 to 4: the banner reveals on
   // scroll in reading order (E11.5-11n). Below 64rem the rail reveals whole.
+  // A final banner's place in its row, 1 to 3: it rises after the card's
+  // text (E11.5-11p).
   revealIndex?: number;
 }
 const { banner, size, revealIndex } = Astro.props;
@@ -18,7 +22,8 @@ const category =
   providerShowcaseCopy.categories[
     provider.category as keyof typeof providerShowcaseCopy.categories
   ];
-const hero = size !== 'catalogue';
+const hero = size === 'stack' || size === 'strip';
+const final = size === 'final';
 const wordmark = !hero && banner.wordmarkHeight !== null;
 const logo = {
   src: provider.logo,
@@ -61,8 +66,9 @@ const style = [
     { 'hero-banner': hero },
   ]}
   style={style}
-  data-provider-banner={hero ? undefined : provider.name}
+  data-provider-banner={size === 'catalogue' ? provider.name : undefined}
   data-hero-banner={hero ? provider.name : undefined}
+  data-final-banner={final ? provider.name : undefined}
   data-reveal={revealIndex === undefined ? undefined : ''}
 >
   {
@@ -103,7 +109,13 @@ const style = [
     ]}
   >
     {
-      size === 'catalogue' ? (
+      final ? (
+        <img
+          {...logo}
+          class:list={{ 'provider-banner__wordmark': wordmark }}
+          alt=""
+        />
+      ) : size === 'catalogue' ? (
         wordmark ? (
           <img
             {...logo}
@@ -127,7 +139,7 @@ const style = [
     }
   </span>
   {
-    size !== 'strip' && (
+    (size === 'catalogue' || size === 'stack') && (
       <span
         class:list={[
           'provider-banner__category',
@@ -200,6 +212,28 @@ const style = [
   .provider-banner--catalogue:hover .provider-banner__tones,
   .provider-banner--catalogue:focus-visible .provider-banner__tones {
     translate: var(--tone-shift) var(--tone-shift);
+  }
+
+  /*
+    Final call to action (E11.5-11p, Main.dc.html .cta__visual): at least
+    96px tall with 12px padding, the logo chip centred. It takes the
+    catalogue's hover lift: it rises by --lift from shadow 1 to shadow 2 over
+    --duration-base. It is never focusable, and its tonal layer stays put.
+  */
+  .provider-banner--final {
+    align-items: center;
+    justify-content: center;
+    min-block-size: calc(var(--space-1) * 12);
+    padding: var(--space-1-5);
+    box-shadow: var(--shadow-1), var(--banner-edge);
+    transition:
+      box-shadow var(--duration-base) var(--ease-out),
+      transform var(--duration-base) var(--ease-out);
+  }
+
+  .provider-banner--final:hover {
+    box-shadow: var(--shadow-2), var(--banner-edge);
+    transform: translateY(var(--lift));
   }
 
   /* Below 64rem the rail reveals as a whole, never banner by banner. */
@@ -403,6 +437,27 @@ const style = [
     object-position: left center;
   }
 
+  /*
+    The final chip: 40px tall, 0 12px padding, holding the logo alone: an
+    icon mark 24px tall, or a wordmark at its optical height from the data
+    file, at most 152px wide.
+  */
+  .provider-banner--final .provider-banner__logo {
+    max-inline-size: 100%;
+    min-block-size: var(--space-5);
+  }
+
+  .provider-banner--final .provider-banner__logo img {
+    block-size: var(--icon-md);
+  }
+
+  .provider-banner--final .provider-banner__logo img.provider-banner__wordmark {
+    max-inline-size: calc(var(--space-1) * 19);
+    block-size: var(--wordmark-height);
+    object-fit: contain;
+    object-position: left center;
+  }
+
   .provider-banner__name {
     min-inline-size: 0;
     text-wrap: balance;
@@ -448,6 +503,7 @@ const style = [
 
   @media (prefers-reduced-motion: reduce) {
     .provider-banner--catalogue,
+    .provider-banner--final,
     .provider-banner__tones {
       transition: none;
     }

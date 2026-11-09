@@ -1,25 +1,32 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
 
 import { chromium } from 'playwright';
 import axe from 'axe-core';
+import sharp from 'sharp';
 
 import { landingCopy } from '../src/copy/landing.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
-import { scrollSettled } from './helpers/motion.mjs';
+import { entranceEnded, scrollSettled } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import {
+  checkRegionLayout,
+  designWidths,
+} from '../scripts/design/layout-checks.mjs';
 
-// E11.5-11f: the guarantee band, "Get to know Valstara", the FAQ and the
-// final call to action from Main.dc.html, Tablet.dc.html and Phone.dc.html.
-// Every number below is the frame's: each frame was rendered on the
-// self-hosted fonts with its annotation layer off, and these boxes were read
-// from it. Text widths are left to the font (null); every position, every
-// line count (through the heights) and every other size is asserted, with a
-// 1px tolerance.
+// E11.5-11f built the guarantee band, "Get to know Valstara", the FAQ and the
+// final call to action from the wireframes; E11.5-11p restyles them to the
+// final-design canvas (Main.dc.html, as every landing board places it) and
+// adds their motion. Every box is compared with the canvas's own, measured
+// from the pinned snapshot by
+// test/fixtures/final-ui/measure-closing-geometry.mjs on the self-hosted
+// fonts, at rest (a reduced-motion context, design rule 12), with a 1px
+// tolerance, in both themes.
 
 const execFileAsync = promisify(execFile);
 const browserContainer = `valstara-landing-closing-playwright-${process.pid}`;
@@ -27,379 +34,27 @@ const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
 const themes = ['light', 'dark'];
 const tolerance = 1;
+const canvas = JSON.parse(
+  await readFile(
+    new URL('./fixtures/final-ui/closing-geometry.json', import.meta.url),
+    'utf8',
+  ),
+);
+const canvasWidths = [1440, 1024, 768, 390, 320];
+const finalList = JSON.parse(
+  await readFile(
+    new URL('../src/content/landing-final.json', import.meta.url),
+    'utf8',
+  ),
+);
+const showcase = JSON.parse(
+  await readFile(
+    new URL('../src/content/provider-showcase.json', import.meta.url),
+    'utf8',
+  ),
+);
 
-// Each entry: [origin selector, element selector, boxes as [x, y, w, h]
-// relative to the origin's top-left]. An empty list means not rendered.
-const band = '#guarantee';
-const trust = '.landing-trust-links';
-const faq = '#faq';
-const cta = '.landing-final__card';
-const frames = {
-  1440: {
-    band: [band, band, [[0, 0, 1440, 516]]],
-    promises: [band, '.landing-guarantee', [[120, 176, 1200, 196]]],
-    promise: [
-      band,
-      '.landing-promise',
-      [
-        [120, 176, 384, 196],
-        [528, 176, 384, 196],
-        [936, 176, 384, 196],
-      ],
-    ],
-    numeral: [
-      band,
-      '.landing-promise__numeral',
-      [
-        [120, 176, 64, 64],
-        [528, 176, 64, 64],
-        [936, 176, 64, 64],
-      ],
-    ],
-    title: [
-      band,
-      '.landing-promise__title',
-      [
-        [120, 260, null, 28],
-        [528, 260, null, 28],
-        [936, 260, null, 28],
-      ],
-    ],
-    // At most 340px wide at large widths.
-    line: [
-      band,
-      '.landing-promise__line',
-      [
-        [120, 300, 340, 48],
-        [528, 300, 340, 72],
-        [936, 300, 340, 48],
-      ],
-    ],
-    link: [band, '.landing-guarantee__link', [[120, 412, null, 24]]],
-    star: [band, '.landing-band__star', [[1264, 80, 16, 24]]],
-    trustSection: [band, `${band} + section`, [[0, 596, 1440, 228]]],
-    trustGrid: [trust, trust, [[0, 0, 1200, 164]]],
-    trustCard: [
-      trust,
-      '.landing-trust-card',
-      [
-        [0, 0, 384, 164],
-        [408, 0, 384, 164],
-        [816, 0, 384, 164],
-      ],
-    ],
-    trustTile: [
-      trust,
-      '.landing-trust-card .icon-tile',
-      [
-        [24, 24, 40, 40],
-        [432, 24, 40, 40],
-        [840, 24, 40, 40],
-      ],
-    ],
-    trustTitle: [
-      trust,
-      '.landing-trust-card__title',
-      [
-        [24, 76, null, 28],
-        [432, 76, null, 28],
-        [840, 76, null, 28],
-      ],
-    ],
-    trustArrow: [
-      trust,
-      '.landing-trust-card__arrow',
-      [
-        [null, 82, 16, 16],
-        [null, 82, 16, 16],
-        [null, 82, 16, 16],
-      ],
-    ],
-    trustLine: [
-      trust,
-      '.landing-trust-card__line',
-      [
-        [24, 116, null, 24],
-        [432, 116, null, 24],
-        [840, 116, null, 24],
-      ],
-    ],
-    // E11.5-11j, rule-7 rewrite (Components.dc.html): a summary is 72px with
-    // the library's 32px chevron disc, so each item is 8px taller.
-    faq: [`${band} + section`, faq, [[0, 308, 1440, 339]]],
-    // Columns 1-4 and 5-12 of the 12-column grid.
-    faqHeading: [faq, `${faq} h2`, [[120, 0, 384, 32]]],
-    faqCard: [faq, '.landing-faq__card', [[528, 0, 792, 339]]],
-    faqItem: [
-      faq,
-      `${faq} details`,
-      [
-        [552, 0, 744, 120],
-        [552, 120, 744, 73],
-        [552, 193, 744, 73],
-        [552, 266, 744, 73],
-      ],
-    ],
-    faqSummary: [
-      faq,
-      `${faq} summary`,
-      [
-        [552, 0, 744, 72],
-        [552, 121, 744, 72],
-        [552, 194, 744, 72],
-        [552, 267, 744, 72],
-      ],
-    ],
-    faqAnswer: [
-      faq,
-      `${faq} details[open] .accordion__content`,
-      [[552, 72, 744, 48]],
-    ],
-    cta: [faq, cta, [[120, 419, 1200, 128]]],
-    ctaHeading: [cta, '.landing-final__title', [[40, 48, null, 32]]],
-    ctaButton: [cta, '.landing-final__action', [[null, 40, null, 48]]],
-  },
-  768: {
-    band: [band, band, [[0, 0, 768, 552]]],
-    promises: [band, '.landing-guarantee', [[32, 160, 704, 248]]],
-    promise: [
-      band,
-      '.landing-promise',
-      [
-        [32, 160, 218.7, 248],
-        [274.7, 160, 218.7, 248],
-        [517.3, 160, 218.7, 248],
-      ],
-    ],
-    numeral: [
-      band,
-      '.landing-promise__numeral',
-      [
-        [32, 160, 64, 64],
-        [274.7, 160, 64, 64],
-        [517.3, 160, 64, 64],
-      ],
-    ],
-    title: [
-      band,
-      '.landing-promise__title',
-      [
-        [32, 244, 218.7, 56],
-        [274.7, 244, 218.7, 56],
-        [517.3, 244, 218.7, 56],
-      ],
-    ],
-    line: [
-      band,
-      '.landing-promise__line',
-      [
-        [32, 312, 218.7, 72],
-        [274.7, 312, 218.7, 96],
-        [517.3, 312, 218.7, 72],
-      ],
-    ],
-    // 32px below the list, with 12px above and below its 24px line.
-    link: [band, '.landing-guarantee__link', [[32, 440, null, 48]]],
-    star: [band, '.landing-band__star', []],
-    trustSection: [band, `${band} + section`, [[0, 616, 768, 252]]],
-    trustGrid: [trust, trust, [[0, 0, 704, 188]]],
-    trustCard: [
-      trust,
-      '.landing-trust-card',
-      [
-        [0, 0, 218.7, 188],
-        [242.7, 0, 218.7, 188],
-        [485.3, 0, 218.7, 188],
-      ],
-    ],
-    trustTile: [
-      trust,
-      '.landing-trust-card .icon-tile',
-      [
-        [24, 24, 40, 40],
-        [266.7, 24, 40, 40],
-        [509.3, 24, 40, 40],
-      ],
-    ],
-    trustTitle: [
-      trust,
-      '.landing-trust-card__title',
-      [
-        [24, 76, null, 28],
-        [266.7, 76, null, 28],
-        [509.3, 76, null, 28],
-      ],
-    ],
-    // Medium draws no arrow.
-    trustArrow: [trust, '.landing-trust-card__arrow', []],
-    trustLine: [
-      trust,
-      '.landing-trust-card__line',
-      [
-        [24, 116, 170.7, 48],
-        [266.7, 116, 170.7, 48],
-        [509.3, 116, 170.7, 48],
-      ],
-    ],
-    faq: [`${band} + section`, faq, [[0, 316, 768, 427]]],
-    faqHeading: [faq, `${faq} h2`, [[32, 0, 704, 32]]],
-    faqCard: [faq, '.landing-faq__card', [[32, 64, 704, 363]]],
-    faqItem: [
-      faq,
-      `${faq} details`,
-      [
-        [56, 64, 656, 144],
-        [56, 208, 656, 73],
-        [56, 281, 656, 73],
-        [56, 354, 656, 73],
-      ],
-    ],
-    faqSummary: [
-      faq,
-      `${faq} summary`,
-      [
-        [56, 64, 656, 72],
-        [56, 209, 656, 72],
-        [56, 282, 656, 72],
-        [56, 355, 656, 72],
-      ],
-    ],
-    faqAnswer: [
-      faq,
-      `${faq} details[open] .accordion__content`,
-      [[56, 136, 656, 72]],
-    ],
-    cta: [faq, cta, [[32, 491, 704, 112]]],
-    ctaHeading: [cta, '.landing-final__title', [[32, 40, null, 32]]],
-    ctaButton: [cta, '.landing-final__action', [[null, 32, null, 48]]],
-  },
-  390: {
-    band: [band, band, [[0, 0, 390, 916]]],
-    promises: [band, '.landing-guarantee', [[16, 176, 358, 596]]],
-    promise: [
-      band,
-      '.landing-promise',
-      [
-        [16, 176, 358, 172],
-        [16, 388, 358, 172],
-        [16, 600, 358, 172],
-      ],
-    ],
-    numeral: [
-      band,
-      '.landing-promise__numeral',
-      [
-        [16, 176, 64, 64],
-        [16, 388, 64, 64],
-        [16, 600, 64, 64],
-      ],
-    ],
-    title: [
-      band,
-      '.landing-promise__title',
-      [
-        [16, 260, null, 28],
-        [16, 472, null, 28],
-        [16, 684, null, 28],
-      ],
-    ],
-    line: [
-      band,
-      '.landing-promise__line',
-      [
-        [16, 300, 358, 48],
-        [16, 512, 358, 48],
-        [16, 724, 358, 48],
-      ],
-    ],
-    link: [band, '.landing-guarantee__link', [[16, 804, null, 48]]],
-    star: [band, '.landing-band__star', []],
-    trustSection: [band, `${band} + section`, [[0, 980, 390, 580]]],
-    trustGrid: [trust, trust, [[0, 0, 358, 524]]],
-    trustCard: [
-      trust,
-      '.landing-trust-card',
-      [
-        [0, 0, 358, 164],
-        [0, 180, 358, 164],
-        [0, 360, 358, 164],
-      ],
-    ],
-    trustTile: [
-      trust,
-      '.landing-trust-card .icon-tile',
-      [
-        [24, 24, 40, 40],
-        [24, 204, 40, 40],
-        [24, 384, 40, 40],
-      ],
-    ],
-    trustTitle: [
-      trust,
-      '.landing-trust-card__title',
-      [
-        [24, 76, null, 28],
-        [24, 256, null, 28],
-        [24, 436, null, 28],
-      ],
-    ],
-    trustArrow: [
-      trust,
-      '.landing-trust-card__arrow',
-      [
-        [null, 82, 16, 16],
-        [null, 262, 16, 16],
-        [null, 442, 16, 16],
-      ],
-    ],
-    trustLine: [
-      trust,
-      '.landing-trust-card__line',
-      [
-        [24, 116, null, 24],
-        [24, 296, null, 24],
-        [24, 476, null, 24],
-      ],
-    ],
-    faq: [`${band} + section`, faq, [[0, 644, 390, 443]]],
-    faqHeading: [faq, `${faq} h2`, [[16, 0, 358, 32]]],
-    faqCard: [faq, '.landing-faq__card', [[16, 56, 358, 387]]],
-    faqItem: [
-      faq,
-      `${faq} details`,
-      [
-        [36, 56, 318, 168],
-        [36, 224, 318, 73],
-        [36, 297, 318, 73],
-        [36, 370, 318, 73],
-      ],
-    ],
-    faqSummary: [
-      faq,
-      `${faq} summary`,
-      [
-        [36, 56, 318, 72],
-        [36, 225, 318, 72],
-        [36, 298, 318, 72],
-        [36, 371, 318, 72],
-      ],
-    ],
-    faqAnswer: [
-      faq,
-      `${faq} details[open] .accordion__content`,
-      [[36, 128, 318, 96]],
-    ],
-    cta: [faq, cta, [[16, 507, 358, 152]]],
-    ctaHeading: [cta, '.landing-final__title', [[24, 24, 310, 32]]],
-    // Full width in a stretched column.
-    ctaButton: [cta, '.landing-final__action', [[24, 80, 310, 48]]],
-  },
-};
-// The section gap above the footer is the only space below the call to
-// action.
-const footerGap = { 1440: 80, 768: 64, 390: 64 };
-
-// Every customer-visible string in the four sections, as the frames draw it.
+// Every customer-visible string in the four sections, as the canvas draws it.
 const frameCopy = {
   bandHeading: 'The Triple Guarantee',
   bandIntro: 'Every order at launch is covered by three promises.',
@@ -550,48 +205,212 @@ after(async () => {
   await app?.stop();
 });
 
+// With `supported: false` the page and every stylesheet are served with
+// their `(animation-timeline: view())` feature query renamed to a property
+// no browser has, so the page renders as a browser without scroll-driven
+// animations would: each `@supports` branch for them is false, and each
+// `@supports not` branch true.
+const scrollTimelineQuery = /\(\s*animation-timeline\s*:\s*view\(\)\s*\)/gu;
+const unsupportedQuery = '(-x-unsupported-timeline: view())';
+const withoutScrollTimelines = (text) =>
+  text.replace(scrollTimelineQuery, unsupportedQuery);
+
+// Opens the landing page. With `motion: true` the page allows motion and the
+// hero entrance is let end; otherwise it is at rest (reduced motion, design
+// rule 12).
 async function openLanding({
   width,
   height = 900,
   colorScheme = 'light',
   javaScriptEnabled = true,
+  motion = false,
+  supported = true,
 }) {
   const context = await browser.newContext({
     viewport: { width, height },
     colorScheme,
     javaScriptEnabled,
+    reducedMotion: motion ? 'no-preference' : 'reduce',
   });
   await context.route('https://challenges.cloudflare.com/**', (route) =>
     route.abort(),
   );
+  if (!supported)
+    await context.route(`${browserOrigin}/**`, async (route) => {
+      const response = await route.fetch();
+      const type = response.headers()['content-type'] ?? '';
+      if (!/text\/(?:html|css)/u.test(type)) return route.fulfill({ response });
+      return route.fulfill({
+        response,
+        body: withoutScrollTimelines(await response.text()),
+      });
+    });
   const page = await context.newPage();
   await page.goto(browserOrigin);
   await page.evaluate(() => globalThis.document.fonts.ready);
+  if (motion) await entranceEnded(page);
   return { context, page };
 }
 
-// The boxes of every rendered element a frame entry names. An element that
-// is not displayed has no box.
-function measure(page, frame) {
-  return page.evaluate((entries) => {
-    const { document } = globalThis;
-    const boxes = {};
-    for (const [key, [origin, selector]] of Object.entries(entries)) {
-      const base = document.querySelector(origin).getBoundingClientRect();
-      boxes[key] = [...document.querySelectorAll(selector)]
+// Every box, in the canvas fixture's shape: each section relative to the
+// band, and each element relative to its own section.
+function measure(page) {
+  return page.evaluate(() => {
+    const { document, getComputedStyle } = globalThis;
+    const relative = (element, from) => {
+      if (!element || element.getClientRects().length === 0) return null;
+      const rect = element.getBoundingClientRect();
+      return [
+        rect.left - from.left,
+        rect.top - from.top,
+        rect.width,
+        rect.height,
+      ];
+    };
+    const all = (selector, scope, from) =>
+      [...scope.querySelectorAll(selector)]
         .filter((element) => element.getClientRects().length > 0)
-        .map((element) => {
-          const rect = element.getBoundingClientRect();
-          return [
-            rect.left - base.left,
-            rect.top - base.top,
-            rect.width,
-            rect.height,
-          ];
-        });
-    }
-    return boxes;
-  }, frame);
+        .map((element) => relative(element, from));
+    // A section's box includes the section gap above it: the build sets it
+    // as the section's top margin, the canvas as its top padding. The band
+    // pads its own ground and keeps its margin outside, on both.
+    const outer = (section) => {
+      const rect = section.getBoundingClientRect();
+      const gap = Number.parseFloat(getComputedStyle(section).marginTop);
+      return new globalThis.DOMRect(
+        rect.left,
+        rect.top - gap,
+        rect.width,
+        rect.height + gap,
+      );
+    };
+    const outerBox = (section, from) => {
+      const rect = outer(section);
+      return [
+        rect.left - from.left,
+        rect.top - from.top,
+        rect.width,
+        rect.height,
+      ];
+    };
+    const band = document.querySelector('#guarantee');
+    const trust = document.querySelector('#guarantee + section');
+    const faq = document.querySelector('#faq');
+    const cta = document.querySelector('.landing-final');
+    const origin = band.getBoundingClientRect();
+    const bandBox = band.getBoundingClientRect();
+    const trustBox = outer(trust);
+    const faqBox = outer(faq);
+    const ctaBox = outer(cta);
+    const card = cta.querySelector('.landing-final__card');
+    return {
+      sections: {
+        band: relative(band, origin),
+        trust: outerBox(trust, origin),
+        faq: outerBox(faq, origin),
+        cta: outerBox(cta, origin),
+        footerGap:
+          document.querySelector('body > footer').getBoundingClientRect().top -
+          card.getBoundingClientRect().bottom,
+      },
+      band: {
+        head: relative(band.querySelector('.section__heading'), bandBox),
+        heading: relative(band.querySelector('h2'), bandBox),
+        intro: relative(band.querySelector('.section__heading p'), bandBox),
+        list: relative(band.querySelector('.landing-guarantee'), bandBox),
+        promises: all('.landing-promise', band, bandBox),
+        numerals: all('.landing-promise__numeral', band, bandBox),
+        titles: all('.landing-promise__title', band, bandBox),
+        lines: all('.landing-promise__line', band, bandBox),
+        link: relative(band.querySelector('.landing-guarantee__link'), bandBox),
+        linkIcon: relative(
+          band.querySelector('.landing-guarantee__link .text-link__arrow'),
+          bandBox,
+        ),
+        star: relative(band.querySelector('.landing-band__star'), bandBox),
+      },
+      trust: {
+        heading: relative(trust.querySelector('h2'), trustBox),
+        grid: relative(trust.querySelector('.landing-trust-links'), trustBox),
+        cards: all('.landing-trust-card', trust, trustBox),
+        tiles: all('.landing-trust-card .icon-tile', trust, trustBox),
+        titles: all('.landing-trust-card__title', trust, trustBox),
+        arrows: all('.landing-trust-card__arrow', trust, trustBox),
+        lines: all('.landing-trust-card__line', trust, trustBox),
+      },
+      faq: {
+        heading: relative(faq.querySelector('h2'), faqBox),
+        card: relative(faq.querySelector('.landing-faq__card'), faqBox),
+        items: all('details', faq, faqBox),
+        summaries: all('summary', faq, faqBox),
+        discs: all('.accordion__disc', faq, faqBox),
+        answers: all('details[open] .accordion__content', faq, faqBox),
+      },
+      cta: {
+        card: relative(card, ctaBox),
+        text: relative(cta.querySelector('.landing-final__text'), ctaBox),
+        heading: relative(cta.querySelector('.landing-final__title'), ctaBox),
+        button: relative(cta.querySelector('.landing-final__action'), ctaBox),
+        visual: relative(cta.querySelector('.landing-final__visual'), ctaBox),
+        banners: all('[data-final-banner]', cta, ctaBox),
+        chips: all('[data-final-banner] .provider-banner__logo', cta, ctaBox),
+        logos: all('[data-final-banner] img', cta, ctaBox),
+      },
+    };
+  });
+}
+
+// Compares a measured structure with the canvas's, box by box: a box within
+// 1px on every side, a list item by item, and an element the canvas does not
+// draw absent from the build too. Every difference is collected, so one run
+// reports them all.
+function canvasIssues(actual, expected, label, issues = []) {
+  if (expected === null || actual === null || actual === undefined) {
+    if ((actual ?? null) !== expected)
+      issues.push(`${label} presence: ${JSON.stringify(actual)}`);
+    return issues;
+  }
+  if (typeof expected === 'number') {
+    if (Math.abs(actual - expected) > tolerance)
+      issues.push(`${label}: ${actual} is not ${expected}`);
+    return issues;
+  }
+  if (Array.isArray(expected) && typeof expected[0] === 'number') {
+    if (actual.length !== expected.length)
+      issues.push(`${label} box: ${JSON.stringify(actual)}`);
+    else
+      ['x', 'y', 'w', 'h'].forEach((axis, index) => {
+        if (Math.abs(actual[index] - expected[index]) > tolerance)
+          issues.push(
+            `${label} ${axis}: ${Math.round(actual[index] * 100) / 100} is not ${expected[index]}`,
+          );
+      });
+    return issues;
+  }
+  if (Array.isArray(expected)) {
+    if (actual.length !== expected.length)
+      issues.push(`${label} count: ${actual.length} is not ${expected.length}`);
+    else
+      expected.forEach((item, index) =>
+        canvasIssues(actual[index], item, `${label} ${index + 1}`, issues),
+      );
+    return issues;
+  }
+  for (const [key, value] of Object.entries(expected))
+    canvasIssues(actual[key], value, `${label} ${key}`, issues);
+  return issues;
+}
+
+// The one place the build differs from the canvas on purpose: below 48rem the
+// final call to action's button is full width (E11.5-11f). The canvas's own
+// rule says so (`.cta .btn { width: 100% }`), but on the board the button
+// sits in the annotation layer's anchor span, which the build does not have
+// (final-design rule 3), so the board draws it at its content width. Every
+// other side of its box is the canvas's.
+function canvasFor(width) {
+  const expected = globalThis.structuredClone(canvas.widths[width]);
+  if (width < 768) expected.cta.button[2] = expected.cta.text[2];
+  return expected;
 }
 
 // A token resolved the way the browser resolves it, through a probe element.
@@ -610,7 +429,10 @@ function resolveTokens(page) {
     };
     const tokens = {
       midnight: colour('midnight'),
+      midnightDeep: colour('midnight-deep'),
       onMidnight: colour('on-midnight'),
+      onMidnight600: colour('on-midnight-600'),
+      onMidnightLine: colour('on-midnight-line'),
       coral: colour('coral'),
       coralLift: colour('coral-lift'),
       ink: colour('ink'),
@@ -619,7 +441,10 @@ function resolveTokens(page) {
       shadowBand: shadow('var(--shadow-band)'),
       card: shadow('var(--shadow-1), var(--edge)'),
       cardRaised: shadow('var(--shadow-2), var(--edge)'),
+      banner: shadow('var(--shadow-1), var(--banner-edge)'),
+      bannerRaised: shadow('var(--shadow-2), var(--banner-edge)'),
       ringNumeral: shadow('var(--ring-numeral)'),
+      panelEdge: shadow('var(--inset-on-midnight-line)'),
     };
     probe.remove();
     return tokens;
@@ -647,14 +472,12 @@ function styles(page) {
         ].map(Number.parseFloat),
         decorationColor: css.textDecorationColor,
         decorationLine: css.textDecorationLine,
-        position: css.position,
-        border: `${css.borderTopWidth} ${css.borderTopStyle} ${css.borderTopColor}`,
-        boxSizing: css.boxSizing,
       };
     };
     return {
       band: read('#guarantee'),
       intro: read('#guarantee .section__heading p'),
+      promise: read('.landing-promise'),
       numeral: read('.landing-promise__numeral'),
       title: read('.landing-promise__title'),
       line: read('.landing-promise__line'),
@@ -670,54 +493,53 @@ function styles(page) {
       cta: read('.landing-final__card'),
       ctaHeading: read('.landing-final__title'),
       ctaButton: read('.landing-final__action'),
+      banner: read('[data-final-banner]'),
     };
   });
 }
 
-test('the four closing sections match the frames at 1440, 768 and 390, in both themes', async () => {
+test('the four closing sections match the canvas at 1440, 1024, 768, 390 and 320, in both themes, at rest', async () => {
   for (const colorScheme of themes) {
-    for (const [width, frame] of Object.entries(frames)) {
-      const { context, page } = await openLanding({
-        width: Number(width),
-        colorScheme,
-      });
-      const boxes = await measure(page, frame);
-      for (const [key, [, , expected]] of Object.entries(frame)) {
-        const where = `${key} at ${width} ${colorScheme}`;
-        assert.equal(boxes[key].length, expected.length, `${where}: count`);
-        expected.forEach((box, index) => {
-          box.forEach((value, axis) => {
-            if (value !== null)
-              near(boxes[key][index][axis], value, `${where} [${index}]`);
-          });
-        });
-      }
-      const gap = await page.evaluate(
-        () =>
-          globalThis.document
-            .querySelector('body > footer')
-            .getBoundingClientRect().top -
-          globalThis.document
-            .querySelector('.landing-final__card')
-            .getBoundingClientRect().bottom,
+    for (const width of canvasWidths) {
+      const { context, page } = await openLanding({ width, colorScheme });
+      const where = `${width} ${colorScheme}`;
+      assert.deepEqual(
+        canvasIssues(await measure(page), canvasFor(width), where),
+        [],
       );
-      near(gap, footerGap[width], `footer gap at ${width} ${colorScheme}`);
 
       const tokens = await resolveTokens(page);
       const css = await styles(page);
-      const where = `${width} ${colorScheme}`;
       // The band: midnight ground, on-midnight text, the band shadow (none in
-      // light, the 24px 64px band shadow plus edge in dark).
+      // light, the 24px 64px band shadow plus edge in dark: its depth).
       assert.equal(css.band.background, tokens.midnight, where);
       assert.equal(css.band.color, tokens.onMidnight, where);
       assert.equal(css.band.shadow, tokens.shadowBand, where);
       if (colorScheme === 'dark') {
         assert.match(css.band.shadow, /0px 24px 64px/u, where);
         assert.match(css.band.shadow, /0px 0px 0px 1px/u, where);
-      } else
-        assert.doesNotMatch(css.band.shadow, /rgba\(0, 0, 0, 0\.6\)/u, where);
-      assert.equal(css.intro.color, tokens.onMidnight, where);
+      } else assert.equal(css.band.shadow, 'none', where);
+      // Rule-7 rewrite (change log, token delta --on-midnight-600): the
+      // supporting line and the promise text are secondary on midnight.
+      assert.equal(css.intro.color, tokens.onMidnight600, where);
       assert.equal(css.intro.font, '16px/24px 400', where);
+      // The promise panel: midnight-deep, radius 12, the 1px alpha edge,
+      // padded 24 (32 from 64rem; 24 32 between 48rem and 64rem).
+      assert.equal(css.promise.background, tokens.midnightDeep, where);
+      assert.equal(css.promise.radius, '12px', where);
+      assert.equal(css.promise.shadow, tokens.panelEdge, where);
+      assert.equal(
+        css.promise.shadow,
+        `${tokens.onMidnightLine} 0px 0px 0px 1px inset`,
+        where,
+      );
+      const panelPad =
+        width >= 1024 ? [32, 32] : width >= 768 ? [24, 32] : [24, 24];
+      assert.deepEqual(
+        css.promise.padding,
+        [panelPad[0], panelPad[1], panelPad[0], panelPad[1]],
+        where,
+      );
       // The numeral ring: --ring-numeral, an inset 1.5px coral ring, coral
       // 32/40 700, round.
       assert.equal(css.numeral.shadow, tokens.ringNumeral, where);
@@ -732,6 +554,7 @@ test('the four closing sections match the frames at 1440, 768 and 390, in both t
       assert.equal(css.title.font, '20px/28px 600', where);
       assert.equal(css.title.letterSpacing, '-0.2px', where);
       assert.equal(css.line.font, '16px/24px 400', where);
+      assert.equal(css.line.color, tokens.onMidnight600, where);
       // The on-midnight link: on-midnight text, coral-lift underline.
       assert.equal(css.link.color, tokens.onMidnight, where);
       assert.equal(css.link.decorationColor, tokens.coralLift, where);
@@ -748,84 +571,306 @@ test('the four closing sections match the frames at 1440, 768 and 390, in both t
       assert.equal(css.trustArrow.color, tokens.ink600, where);
       assert.equal(css.trustLine.color, tokens.ink600, where);
       assert.equal(css.trustLine.font, '16px/24px 400', where);
-      // The FAQ card and items.
-      const faqPad = Number(width) < 768 ? 20 : 24;
+      // The FAQ card (rule-7 rewrite: 0 24px → 0 32px from 48rem).
+      const faqPad = width < 768 ? 20 : 32;
       assert.deepEqual(css.faqCard.padding, [0, faqPad, 0, faqPad], where);
       assert.equal(css.faqCard.shadow, tokens.card, where);
       assert.equal(css.summary.font, '16px/24px 600', where);
       assert.equal(css.answer.color, tokens.ink600, where);
-      // The final call to action: a surface card on the light page.
-      const ctaPad = { 1440: 40, 768: 32, 390: 24 }[width];
+      // The final call to action: a surface card on the light page (rule-7
+      // rewrite: padding 24/32/40 → 24/40/48).
+      const ctaPad = width >= 1024 ? 48 : width >= 768 ? 40 : 24;
       assert.deepEqual(css.cta.padding, Array(4).fill(ctaPad), where);
       assert.equal(css.cta.background, tokens.surface, where);
       assert.equal(css.cta.shadow, tokens.card, where);
       assert.equal(css.ctaHeading.font, '24px/32px 600', where);
       assert.equal(css.ctaButton.background, tokens.coral, where);
+      // The banners: the catalogue's E1 and banner edge, radius 12.
+      assert.equal(css.banner.shadow, tokens.banner, where);
+      assert.equal(css.banner.radius, '12px', where);
       await context.close();
     }
   }
 });
 
-test('the numerals are hidden from assistive technology and each promise heading carries its numeral prefix', async () => {
-  for (const colorScheme of themes) {
-    const { context, page } = await openLanding({ width: 1440, colorScheme });
-    const list = page.locator('#guarantee ol.landing-guarantee');
-    assert.equal(await list.locator(':scope > li').count(), 3);
-    for (const [numeral, title] of frameCopy.promises) {
-      const name = `${numeral}. ${title}`;
-      assert.equal(
-        await page
-          .getByRole('heading', { level: 3, name, exact: true })
-          .count(),
-        1,
-        `${name} (${colorScheme})`,
+test('the final call to action banners are the three listed showcase providers, logo only and decorative, hidden on phone', async () => {
+  const providers = finalList.banners.map((name) =>
+    showcase.find((entry) => entry.name === name),
+  );
+  assert.equal(providers.length, 3);
+  for (const width of [1440, 768, 390]) {
+    const { context, page } = await openLanding({ width });
+    const banners = await page.$$eval('[data-final-banner]', (elements) =>
+      elements.map((element) => ({
+        name: element.dataset.finalBanner,
+        background: globalThis.getComputedStyle(element).backgroundColor,
+        logos: [...element.querySelectorAll('img')].map((img) => ({
+          src: img.getAttribute('src'),
+          alt: img.getAttribute('alt'),
+        })),
+        text: element.textContent.trim(),
+        shown: element.checkVisibility(),
+        focusable: element.tabIndex >= 0,
+        hidden: element.closest('[aria-hidden="true"]') !== null,
+      })),
+    );
+    const where = `${width}`;
+    assert.deepEqual(
+      banners.map((banner) => banner.name),
+      finalList.banners,
+      where,
+    );
+    for (const [index, banner] of banners.entries()) {
+      const provider = providers[index];
+      const hex = provider.brandColor.slice(1);
+      const rgb = [0, 2, 4].map((at) =>
+        Number.parseInt(hex.slice(at, at + 2), 16),
       );
+      assert.equal(banner.background, `rgb(${rgb.join(', ')})`, where);
+      // The logo alone: no name, no category, no figure.
+      assert.deepEqual(
+        banner.logos,
+        [{ src: provider.logo, alt: '' }],
+        `${banner.name} at ${where}`,
+      );
+      assert.equal(banner.text, '', `${banner.name} at ${where}`);
+      assert.equal(banner.focusable, false, where);
+      assert.equal(banner.hidden, true, where);
+      assert.equal(banner.shown, width >= 768, `${banner.name} at ${where}`);
     }
-    const tree = await list.ariaSnapshot();
-    for (const [numeral, title] of frameCopy.promises) {
-      assert.ok(tree.includes(`heading "${numeral}. ${title}" [level=3]`));
-    }
-    // No numeral is read on its own: each ring is aria-hidden.
-    const numerals = await page.$$eval('.landing-promise__numeral', (rings) =>
-      rings.map((ring) => [ring.getAttribute('aria-hidden'), ring.textContent]),
-    );
-    assert.deepEqual(numerals, [
-      ['true', 'I'],
-      ['true', 'II'],
-      ['true', 'III'],
-    ]);
-    assert.doesNotMatch(tree, /text: (I|II|III)$/mu);
-    // The prefix is clipped to nothing on screen, inside its heading's box.
-    const prefixes = await page.$$eval('.landing-promise__prefix', (spans) =>
-      spans.map((span) => {
-        const css = globalThis.getComputedStyle(span);
-        const rect = span.getBoundingClientRect();
-        const heading = span.parentElement.getBoundingClientRect();
-        return (
-          css.clipPath === 'inset(50%)' &&
-          rect.left >= heading.left &&
-          rect.right <= heading.right &&
-          rect.bottom <= heading.bottom
-        );
-      }),
-    );
-    assert.deepEqual(prefixes, [true, true, true]);
-    // The star is decorative.
-    assert.equal(
-      await page.getAttribute('.landing-band__star', 'aria-hidden'),
-      'true',
-    );
+    // Netflix is a wordmark, shown at its optical height from the data file.
+    const netflix = await page
+      .locator('[data-final-banner="Netflix"] img')
+      .evaluate((img) => img.getBoundingClientRect().height);
+    if (width >= 768) near(netflix, 18, `Netflix wordmark at ${where}`);
     await context.close();
   }
 });
 
-test('each trust card is one link with a visible focus state, and the contact card opens the support mailbox', async () => {
+test('the numerals, and the rings drawing elements, are hidden from assistive technology, and each promise heading carries its numeral prefix', async () => {
+  for (const colorScheme of themes) {
+    for (const motion of [false, true]) {
+      const { context, page } = await openLanding({
+        width: 1440,
+        colorScheme,
+        motion,
+      });
+      const where = `${colorScheme}${motion ? ' with motion' : ''}`;
+      const list = page.locator('#guarantee ol.landing-guarantee');
+      assert.equal(await list.locator(':scope > li').count(), 3, where);
+      for (const [numeral, title] of frameCopy.promises) {
+        const name = `${numeral}. ${title}`;
+        assert.equal(
+          await page
+            .getByRole('heading', { level: 3, name, exact: true })
+            .count(),
+          1,
+          `${name} (${where})`,
+        );
+      }
+      const tree = await list.ariaSnapshot();
+      for (const [numeral, title] of frameCopy.promises)
+        assert.ok(
+          tree.includes(`heading "${numeral}. ${title}" [level=3]`),
+          where,
+        );
+      // No numeral is read on its own, and nothing of a ring's drawing is in
+      // the tree: each ring, its drawing and its digits are aria-hidden.
+      const numerals = await page.$$eval('.landing-promise__numeral', (rings) =>
+        rings.map((ring) => {
+          const draw = ring.querySelector('.landing-promise__draw');
+          return [
+            ring.getAttribute('aria-hidden'),
+            ring.textContent.trim(),
+            draw.getAttribute('aria-hidden'),
+            draw.getAttribute('focusable'),
+            draw.parentElement.closest('[aria-hidden="true"]') === ring,
+          ];
+        }),
+      );
+      assert.deepEqual(
+        numerals,
+        [
+          ['true', 'I', 'true', 'false', true],
+          ['true', 'II', 'true', 'false', true],
+          ['true', 'III', 'true', 'false', true],
+        ],
+        where,
+      );
+      assert.doesNotMatch(tree, /text: (I|II|III)$/mu, where);
+      assert.doesNotMatch(tree, /img|graphics/u, where);
+      // The prefix is clipped to nothing on screen, inside its heading's box.
+      const prefixes = await page.$$eval('.landing-promise__prefix', (spans) =>
+        spans.map((span) => {
+          const css = globalThis.getComputedStyle(span);
+          const rect = span.getBoundingClientRect();
+          const heading = span.parentElement.getBoundingClientRect();
+          return (
+            css.clipPath === 'inset(50%)' &&
+            rect.left >= heading.left &&
+            rect.right <= heading.right &&
+            rect.bottom <= heading.bottom
+          );
+        }),
+      );
+      assert.deepEqual(prefixes, [true, true, true], where);
+      // The star and the banners are decorative.
+      assert.equal(
+        await page.getAttribute('.landing-band__star', 'aria-hidden'),
+        'true',
+      );
+      assert.equal(
+        await page.getAttribute('.landing-final__visual', 'aria-hidden'),
+        'true',
+      );
+      assert.doesNotMatch(
+        await page.locator('.landing-final').ariaSnapshot(),
+        /img/u,
+        where,
+      );
+      await context.close();
+    }
+  }
+});
+
+// What the numeral's ring paints: the share of each half (left and right)
+// of the 64px ring box that shows the ring's coral, read from the screen.
+async function ringPainted(page, index) {
+  const target = await page.evaluate((at) => {
+    const { document, getComputedStyle } = globalThis;
+    const ring = document.querySelectorAll('.landing-promise__numeral')[at];
+    const box = ring.getBoundingClientRect();
+    return {
+      clip: { x: box.left, y: box.top, width: box.width, height: box.height },
+      coral: getComputedStyle(ring).color,
+      panel: getComputedStyle(ring.closest('.landing-promise')).backgroundColor,
+    };
+  }, index);
+  const shot = await page.screenshot({
+    clip: target.clip,
+    scale: 'css',
+    style: '.signup-dock { visibility: hidden !important; }',
+  });
+  const { data, info } = await sharp(shot)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const rgb = (value) => value.match(/\d+/gu).slice(0, 3).map(Number);
+  const coral = rgb(target.coral);
+  const panel = rgb(target.panel);
+  const full = coral.reduce(
+    (sum, channel, at) => sum + Math.abs(channel - panel[at]),
+    0,
+  );
+  const halves = [0, 0];
+  // The ring's coverage in 24 equal sectors, clockwise from the top.
+  const sectors = Array(24).fill(0);
+  // Only the ring's own band of pixels, 4px in from the edge, is read.
+  const centre = info.width / 2;
+  for (let y = 0; y < info.height; y += 1)
+    for (let x = 0; x < info.width; x += 1) {
+      const dx = x + 0.5 - centre;
+      const dy = y + 0.5 - centre;
+      const radius = Math.hypot(dx, dy);
+      if (radius < centre - 4 || radius > centre) continue;
+      const at = (y * info.width + x) * info.channels;
+      const distance = coral.reduce(
+        (sum, channel, k) => sum + Math.abs(data[at + k] - channel),
+        0,
+      );
+      if (distance > full / 3) continue;
+      halves[x < centre ? 0 : 1] += 1;
+      const turn = (Math.atan2(dx, -dy) / (2 * Math.PI) + 1) % 1;
+      sectors[Math.floor(turn * 24)] += 1;
+    }
+  return { halves, sectors };
+}
+
+test('the rings at rest are the E11.5-11f ring exactly, at every width in both themes, and the drawn stroke ends in it', async () => {
+  for (const colorScheme of themes) {
+    for (const width of canvasWidths) {
+      const where = `${width} ${colorScheme}`;
+      // Reduced motion, then motion allowed once the ring has drawn (the
+      // panel's top at 70% of the viewport height).
+      const still = await openLanding({ width, colorScheme });
+      const moving = await openLanding({ width, colorScheme, motion: true });
+      for (const { page } of [still, moving]) {
+        const tokens = await resolveTokens(page);
+        for (let index = 0; index < 3; index += 1) {
+          await scrollToTop(page, `.landing-promise >> nth=${index}`, 0.7);
+          const rest = await page.evaluate((at) => {
+            const { document, getComputedStyle } = globalThis;
+            const ring = document.querySelectorAll('.landing-promise__numeral')[
+              at
+            ];
+            const circle = ring.querySelector('circle');
+            return {
+              shadow: getComputedStyle(ring).boxShadow,
+              offset: Number.parseFloat(
+                getComputedStyle(circle).strokeDashoffset,
+              ),
+              array: getComputedStyle(circle).strokeDasharray,
+              animating: circle
+                .getAnimations()
+                .some(
+                  (animation) =>
+                    animation.effect.getComputedTiming().progress !== null,
+                ),
+            };
+          }, index);
+          assert.equal(
+            rest.shadow,
+            `${tokens.coral} 0px 0px 0px 1.5px inset`,
+            `${where} ring ${index + 1}`,
+          );
+          // The drawing element covers nothing at rest.
+          assert.equal(rest.offset, -1, `${where} ring ${index + 1}`);
+          assert.match(rest.array, /^1(px)?$/u, where);
+          assert.equal(rest.animating, false, `${where} ring ${index + 1}`);
+        }
+      }
+      // What is on screen is the same whole ring with and without motion:
+      // coral in every 15° sector of the ring's band, and the same amount of
+      // it within 5%. (The moving page composites animated elements on their
+      // own layers, which can shift antialiasing by a fraction of a pixel.)
+      for (let index = 0; index < 3; index += 1) {
+        await scrollToTop(still.page, `.landing-promise >> nth=${index}`, 0.5);
+        await scrollToTop(moving.page, `.landing-promise >> nth=${index}`, 0.5);
+        const a = await ringPainted(still.page, index);
+        const b = await ringPainted(moving.page, index);
+        const label = `${where} ring ${index + 1}`;
+        for (const [name, ring] of [
+          ['still', a],
+          ['moving', b],
+        ])
+          assert.ok(
+            ring.sectors.every((count) => count > 0),
+            `${label} ${name}: whole ${ring.sectors}`,
+          );
+        const total = (ring) => ring.halves[0] + ring.halves[1];
+        assert.ok(
+          Math.abs(total(a) - total(b)) <= total(a) * 0.05,
+          `${label}: ${total(a)} and ${total(b)} coral pixels`,
+        );
+      }
+      await still.context.close();
+      await moving.context.close();
+    }
+  }
+});
+
+test('each trust card is one link with a visible focus state, lifts 2px with its arrow moving 3px, and the contact card opens the support mailbox', async () => {
   for (const colorScheme of themes) {
     for (const width of [1440, 768, 390]) {
-      const { context, page } = await openLanding({ width, colorScheme });
+      const { context, page } = await openLanding({
+        width,
+        colorScheme,
+        motion: true,
+      });
       const tokens = await resolveTokens(page);
       const cards = page.locator('.landing-trust-card');
       assert.equal(await cards.count(), frameCopy.trustCards.length);
+      await scrollToTop(page, '.landing-trust-links', 0.3);
       for (const [
         index,
         [href, heading, line],
@@ -847,8 +892,15 @@ test('each trust card is one link with a visible focus state, and the contact ca
           1,
           where,
         );
-        // The rest shadow, then the coral focus outline from the keyboard
-        // and the raised shadow on hover.
+        // The arrow shows at every width (the canvas draws it at 768 too).
+        assert.equal(
+          await card
+            .locator('.landing-trust-card__arrow')
+            .evaluate((icon) => icon.checkVisibility()),
+          true,
+          where,
+        );
+        // The coral focus outline from the keyboard.
         await card.focus();
         await page.keyboard.press('Shift+Tab');
         await page.keyboard.press('Tab');
@@ -866,22 +918,30 @@ test('each trust card is one link with a visible focus state, and the contact ca
         await page.evaluate(() => globalThis.document.activeElement.blur());
         await page.mouse.move(0, 0);
         await page.waitForTimeout(250);
-        assert.equal(
-          await card.evaluate(
-            (element) => globalThis.getComputedStyle(element).boxShadow,
-          ),
-          tokens.card,
+        const lift = () =>
+          card.evaluate((element) => {
+            const { getComputedStyle, DOMMatrixReadOnly } = globalThis;
+            const arrow = element.querySelector('.landing-trust-card__arrow');
+            return {
+              shadow: getComputedStyle(element).boxShadow,
+              y: new DOMMatrixReadOnly(getComputedStyle(element).transform).m42,
+              arrowX: new DOMMatrixReadOnly(getComputedStyle(arrow).transform)
+                .m41,
+            };
+          });
+        assert.deepEqual(
+          await lift(),
+          { shadow: tokens.card, y: 0, arrowX: 0 },
           where,
         );
         await card.hover();
         await page.waitForTimeout(250);
-        assert.equal(
-          await card.evaluate(
-            (element) => globalThis.getComputedStyle(element).boxShadow,
-          ),
-          tokens.cardRaised,
+        assert.deepEqual(
+          await lift(),
+          { shadow: tokens.cardRaised, y: -2, arrowX: 3 },
           where,
         );
+        await page.mouse.move(0, 0);
       }
       await context.close();
     }
@@ -985,10 +1045,19 @@ test('primary coral appears four times at small widths and three times at medium
 
 test('the final call to action scrolls to #join and focuses the email field, and works as an anchor without JavaScript', async () => {
   for (const width of [1440, 390]) {
-    const { context, page } = await openLanding({ width });
+    const { context, page } = await openLanding({ width, motion: true });
     const action = page.locator('.landing-final__action');
     assert.equal(await action.getAttribute('href'), '#join');
     assert.equal((await action.textContent()).trim(), frameCopy.ctaAction);
+    // The card reveals on scroll. A scroll-driven animation takes effect on
+    // the frame after the scroll, so in the frame Playwright scrolls the
+    // button into view the card still has its first keyframe: transparent,
+    // 24px down. A click in that frame focuses the button, and the reveal
+    // ends at once for the focused card (motion.css), moving it out from
+    // under the pointer before the button is released. No one can click a
+    // card they cannot yet see, so the click waits for the next frames.
+    await action.scrollIntoViewIfNeeded();
+    await frames(page);
     await action.click();
     await page.waitForFunction(
       () => globalThis.document.activeElement?.id === 'signup-email',
@@ -1020,8 +1089,8 @@ test('the final call to action scrolls to #join and focuses the email field, and
   await context.close();
 });
 
-test('every string in the four sections matches the frames verbatim and comes from the copy layer', async () => {
-  // The copy layer holds the frames' strings.
+test('every string in the four sections matches the canvas verbatim and comes from the copy layer', async () => {
+  // The copy layer holds the canvas's strings.
   assert.equal(landingCopy.trust.heading, frameCopy.bandHeading);
   assert.equal(landingCopy.trust.intro, frameCopy.bandIntro);
   assert.deepEqual(
@@ -1050,7 +1119,8 @@ test('every string in the four sections matches the frames verbatim and comes fr
   assert.equal(landingCopy.final.heading, frameCopy.ctaHeading);
   assert.equal(landingCopy.final.action, frameCopy.ctaAction);
 
-  // And the page renders exactly those strings, in order.
+  // And the page renders exactly those strings, in order, with the banners
+  // adding none.
   const { context, page } = await openLanding({ width: 1440 });
   const rendered = await page.evaluate(() => {
     const { document } = globalThis;
@@ -1082,6 +1152,9 @@ test('every string in the four sections matches the frames verbatim and comes fr
       answers: all('#faq .accordion__content'),
       ctaHeading: text(document.querySelector('.landing-final__title')),
       ctaAction: text(document.querySelector('.landing-final__action')),
+      ctaCard: document
+        .querySelector('.landing-final__card')
+        .textContent.replace(/\s+/gu, ''),
     };
   });
   assert.deepEqual(rendered, {
@@ -1101,48 +1174,603 @@ test('every string in the four sections matches the frames verbatim and comes fr
     answers: frameCopy.faq.map(([, answer]) => answer),
     ctaHeading: frameCopy.ctaHeading,
     ctaAction: frameCopy.ctaAction,
+    // The card holds the two strings and nothing else: the banners add no
+    // text.
+    ctaCard: `${frameCopy.ctaHeading}${frameCopy.ctaAction}`.replace(
+      /\s+/gu,
+      '',
+    ),
   });
   await context.close();
 });
 
-test('the four closing sections pass WCAG axe in both themes', async () => {
+// Scrolls so the element's top sits at the given fraction of the viewport
+// height, then lets the scroll-driven animations update.
+async function scrollToTop(page, selector, fraction) {
+  await page.locator(selector).evaluate((element, at) => {
+    const top = element.getBoundingClientRect().top + globalThis.scrollY;
+    globalThis.scrollTo({
+      top: top - globalThis.innerHeight * at,
+      behavior: 'instant',
+    });
+  }, fraction);
+  await frames(page);
+}
+
+async function scrollToEnd(page) {
+  await page.evaluate(() =>
+    globalThis.scrollTo({
+      top: globalThis.document.documentElement.scrollHeight,
+      behavior: 'instant',
+    }),
+  );
+  await frames(page);
+}
+
+function frames(page) {
+  return page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        globalThis.requestAnimationFrame(() =>
+          globalThis.requestAnimationFrame(resolve),
+        ),
+      ),
+  );
+}
+
+// The motion state of everything in the four sections that may move.
+function readMotion(page) {
+  return page.evaluate(() => {
+    const { document, getComputedStyle } = globalThis;
+    const state = (element) => {
+      const css = getComputedStyle(element);
+      return {
+        opacity: Number(css.opacity),
+        translate: css.translate,
+        rotate: css.rotate,
+      };
+    };
+    const all = (selector) =>
+      [...document.querySelectorAll(selector)].map(state);
+    return {
+      offsets: [
+        ...document.querySelectorAll('.landing-promise__draw circle'),
+      ].map((circle) =>
+        Number.parseFloat(getComputedStyle(circle).strokeDashoffset),
+      ),
+      digits: all('.landing-promise__digits'),
+      titles: all('.landing-promise__title'),
+      lines: all('.landing-promise__line'),
+      panels: all('.landing-promise'),
+      band: state(document.querySelector('#guarantee')),
+      star: state(document.querySelector('.landing-band__star')),
+      bandHead: all('#guarantee .section__heading > *'),
+      bandLink: state(document.querySelector('.landing-guarantee__link')),
+      trust: all('.landing-trust-card'),
+      faq: [
+        state(document.querySelector('#faq h2')),
+        state(document.querySelector('.landing-faq__card')),
+      ],
+      card: state(document.querySelector('.landing-final__card')),
+      banners: all('[data-final-banner]'),
+    };
+  });
+}
+
+const still = (element) =>
+  element.opacity === 1 &&
+  ['none', '0px', '0px 0px'].includes(element.translate) &&
+  ['none', '0deg'].includes(element.rotate);
+
+function assertAtRest(m, label) {
+  assert.deepEqual(m.offsets, [-1, -1, -1], `${label}: rings whole`);
+  for (const key of ['digits', 'titles', 'lines', 'panels', 'bandHead'])
+    m[key].forEach((element, index) =>
+      assert.ok(still(element), `${label}: ${key} ${index + 1} at rest`),
+    );
+  for (const key of ['band', 'star', 'bandLink', 'card'])
+    assert.ok(still(m[key]), `${label}: ${key} at rest`);
+  for (const key of ['trust', 'faq', 'banners'])
+    m[key].forEach((element, index) =>
+      assert.ok(still(element), `${label}: ${key} ${index + 1} at rest`),
+    );
+}
+
+test('the reveals: the band header and link, the trust cards in order, the FAQ heading and card, the final card, then its banners in order', async () => {
+  const { context, page } = await openLanding({ width: 1440, motion: true });
+  // Each reveals through data-reveal, in reading order where it shares a row.
+  const reveals = await page.evaluate(() => {
+    const { document } = globalThis;
+    const read = (selector) =>
+      [...document.querySelectorAll(selector)].map((element) => [
+        element.hasAttribute('data-reveal'),
+        element.style.getPropertyValue('--reveal-index').trim(),
+        element
+          .getAnimations()
+          .map((animation) => animation.animationName)
+          .join(),
+      ]);
+    return {
+      bandHead: read('#guarantee .section__heading > *'),
+      bandLink: read('.landing-guarantee__link'),
+      panels: read('.landing-promise'),
+      trust: read('.landing-trust-card'),
+      faq: read('#faq h2, .landing-faq__card'),
+      card: read('.landing-final__card'),
+      banners: read('[data-final-banner]'),
+    };
+  });
+  assert.deepEqual(reveals, {
+    bandHead: [
+      [true, '', 'motion-reveal'],
+      [true, '', 'motion-reveal'],
+    ],
+    bandLink: [[true, '', 'motion-reveal']],
+    // The band and its panels do not move.
+    panels: [
+      [false, '', ''],
+      [false, '', ''],
+      [false, '', ''],
+    ],
+    trust: [
+      [true, '0', 'motion-reveal'],
+      [true, '1', 'motion-reveal'],
+      [true, '2', 'motion-reveal'],
+    ],
+    faq: [
+      [true, '', 'motion-reveal'],
+      [true, '', 'motion-reveal'],
+    ],
+    card: [[true, '', 'motion-reveal']],
+    banners: [
+      [true, '1', 'motion-reveal'],
+      [true, '2', 'motion-reveal'],
+      [true, '3', 'motion-reveal'],
+    ],
+  });
+
+  // Partway into the trust row's entry, the cards show in reading order.
+  await scrollToTop(page, '.landing-trust-links', 0.93);
+  const trust = (await readMotion(page)).trust.map((card) => card.opacity);
+  assert.ok(trust[0] > trust[1] && trust[1] > trust[2], `trust ${trust}`);
+  // Partway into the final card's entry, the text (the card) leads and the
+  // banners follow it, one after another.
+  await scrollToTop(page, '.landing-final__card', 0.92);
+  const m = await readMotion(page);
+  const banners = m.banners.map((banner) => banner.opacity);
+  assert.ok(m.card.opacity > banners[0], `card ${m.card.opacity} ${banners}`);
+  assert.ok(
+    banners[0] > banners[1] && banners[1] > banners[2],
+    `banners ${banners}`,
+  );
+  // The middle banner keeps its 12px raise under the rise.
+  await scrollToTop(page, '.landing-final__card', 0.5);
+  const raise = await page.$$eval('[data-final-banner]', (elements) =>
+    elements.map((element) => element.getBoundingClientRect().top),
+  );
+  near(raise[0] - raise[1], 12, 'the middle banner is raised');
+  near(raise[2], raise[0], 'the outer banners share a top');
+  // The banners take the catalogue hover lift: 2px, shadow 1 to shadow 2.
+  const tokens = await resolveTokens(page);
+  const banner = page.locator('[data-final-banner]').first();
+  await banner.hover();
+  await page.waitForTimeout(250);
+  assert.deepEqual(
+    await banner.evaluate((element) => {
+      const css = globalThis.getComputedStyle(element);
+      return [
+        new globalThis.DOMMatrixReadOnly(css.transform).m42,
+        css.boxShadow,
+      ];
+    }),
+    [-2, tokens.bannerRaised],
+  );
+  await page.mouse.move(0, 0);
+  // The button has the primary press state: it moves down 1px while held.
+  const button = page.locator('.landing-final__action');
+  await button.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(250);
+  assert.equal(
+    await button.evaluate(
+      (element) =>
+        new globalThis.DOMMatrixReadOnly(
+          globalThis.getComputedStyle(element).transform,
+        ).m42,
+    ),
+    1,
+  );
+  await page.mouse.move(0, 0);
+  await page.mouse.up();
+  await context.close();
+});
+
+// Sweeps the band's promises through their sequence a pixel at a time and
+// returns, for each promise, the scroll steps at which its ring starts and
+// finishes drawing and at which its numeral, title and line start and finish
+// appearing. The step is the panel's top in pixels above the viewport's
+// bottom edge.
+async function sweepPromises(page, panel, from, to) {
+  const height = await page.evaluate(() => globalThis.innerHeight);
+  const marks = Array.from({ length: 3 }, () => ({}));
+  for (let up = Math.round(height * from); up <= height * to; up += 1) {
+    await scrollToTop(page, panel, 1 - up / height);
+    const m = await readMotion(page);
+    m.offsets.forEach((offset, index) => {
+      const mark = marks[index];
+      if (offset !== 0 && mark.ringStart === undefined) mark.ringStart = up;
+      if (offset === -1 && mark.ringEnd === undefined) mark.ringEnd = up;
+      const shown = [m.digits[index], m.titles[index], m.lines[index]];
+      if (shown.some((s) => s.opacity > 0) && mark.textStart === undefined)
+        mark.textStart = up;
+      if (shown.every(still) && mark.textEnd === undefined) mark.textEnd = up;
+      if (mark.ringEnd === undefined && shown.some((s) => s.opacity > 0))
+        mark.early = up;
+    });
+  }
+  return { height, marks };
+}
+
+test('each ring draws from the top, clockwise, then its numeral, title and line follow, in order I, II, III, at rest by 70%', async () => {
   for (const colorScheme of themes) {
-    for (const width of [1440, 768, 390]) {
-      const { context, page } = await openLanding({ width, colorScheme });
-      await page.addScriptTag({ content: axe.source });
-      for (const selector of [
-        '#guarantee',
-        '#guarantee + section',
-        '#faq',
-        '.landing-final',
-      ]) {
-        const violations = await page.evaluate(
-          async (scope) =>
-            (
-              await globalThis.axe.run(
-                globalThis.document.querySelector(scope),
-                {
-                  runOnly: {
-                    type: 'tag',
-                    values: [
-                      'wcag2a',
-                      'wcag2aa',
-                      'wcag21a',
-                      'wcag21aa',
-                      'wcag22aa',
-                    ],
-                  },
-                },
-              )
-            ).violations.map((violation) => ({
-              id: violation.id,
-              nodes: violation.nodes.map((node) => node.target.join(' ')),
-            })),
-          selector,
-        );
-        assert.deepEqual(violations, [], `${selector} ${width} ${colorScheme}`);
+    // From 64rem the panels share a row and the sequence runs across them.
+    {
+      const { context, page } = await openLanding({
+        width: 1440,
+        colorScheme,
+        motion: true,
+      });
+      const where = `1440 ${colorScheme}`;
+      await scrollToTop(page, '.landing-guarantee', 0.95);
+      const before = await readMotion(page);
+      assert.deepEqual(before.offsets, [0, 0, 0], `${where}: covered`);
+      assert.deepEqual(
+        before.digits.map((d) => d.opacity),
+        [0, 0, 0],
+        where,
+      );
+      const { height, marks } = await sweepPromises(
+        page,
+        '.landing-guarantee',
+        0.08,
+        0.3,
+      );
+      for (const [index, mark] of marks.entries()) {
+        const label = `${where} promise ${index + 1}`;
+        for (const key of ['ringStart', 'ringEnd', 'textStart', 'textEnd'])
+          assert.notEqual(mark[key], undefined, `${label} ${key}`);
+        assert.equal(mark.early, undefined, `${label}: text before its ring`);
+        assert.ok(mark.ringEnd <= mark.textStart + 1, label);
+        if (index > 0)
+          assert.ok(
+            marks[index - 1].textEnd <= mark.ringStart + 1,
+            `${label} follows ${index}`,
+          );
+        // At rest by 70% of the viewport height.
+        assert.ok(mark.textEnd < height * 0.3, `${label} at rest by 70%`);
+      }
+      // Mid-draw, the ring shows from the top along the right side only:
+      // clockwise from the top. Found by scrolling a pixel at a time into
+      // the first ring's step until it is between a fifth and four fifths
+      // drawn.
+      let found = null;
+      for (
+        let up = marks[0].ringStart;
+        up < marks[0].ringEnd && found === null;
+        up += 1
+      ) {
+        await scrollToTop(page, '.landing-guarantee', 1 - up / height);
+        const offset = (await readMotion(page)).offsets[0];
+        if (offset < -0.2 && offset > -0.8) found = offset;
+      }
+      assert.notEqual(found, null, `${where}: a mid-draw frame`);
+      const { halves } = await ringPainted(page, 0);
+      assert.ok(halves[1] > 20, `${where}: drawn on the right ${halves}`);
+      assert.equal(halves[0], 0, `${where}: not yet on the left ${halves}`);
+      await context.close();
+    }
+    // Below 64rem each panel has its own two steps on its own timeline.
+    for (const width of [768, 390]) {
+      const { context, page } = await openLanding({
+        width,
+        colorScheme,
+        motion: true,
+      });
+      for (let index = 0; index < 3; index += 1) {
+        const where = `${width} ${colorScheme} promise ${index + 1}`;
+        const panel = `.landing-promise >> nth=${index}`;
+        const height = await page.evaluate(() => globalThis.innerHeight);
+        let ringStart;
+        let ringEnd;
+        let textStart;
+        let textEnd;
+        for (let up = Math.round(height * 0.08); up <= height * 0.3; up += 1) {
+          await scrollToTop(page, panel, 1 - up / height);
+          const m = await readMotion(page);
+          const offset = m.offsets[index];
+          const shown = [m.digits[index], m.titles[index], m.lines[index]];
+          if (offset !== 0 && ringStart === undefined) ringStart = up;
+          if (offset === -1 && ringEnd === undefined) ringEnd = up;
+          if (shown.some((s) => s.opacity > 0) && textStart === undefined)
+            textStart = up;
+          if (shown.every(still) && textEnd === undefined) textEnd = up;
+        }
+        for (const [key, value] of Object.entries({
+          ringStart,
+          ringEnd,
+          textStart,
+          textEnd,
+        }))
+          assert.notEqual(value, undefined, `${where} ${key}`);
+        assert.ok(ringEnd <= textStart + 1, `${where}: ring, then text`);
+        assert.ok(textEnd < height * 0.3, `${where}: at rest by 70%`);
       }
       await context.close();
+    }
+  }
+});
+
+test('the star turns from -45 degrees to rest once, on the band view timeline, at large widths only', async () => {
+  const { context, page } = await openLanding({ width: 1440, motion: true });
+  const angle = async () => {
+    const rotate = (await readMotion(page)).star.rotate;
+    return rotate === 'none' ? 0 : Number.parseFloat(rotate);
+  };
+  await scrollToTop(page, '#guarantee', 1);
+  near(await angle(), -45, 'as the band enters');
+  await scrollToTop(page, '#guarantee', 0.9);
+  const mid = await angle();
+  assert.ok(mid > -45 && mid < 0, `turning: ${mid}`);
+  await scrollToTop(page, '#guarantee', 0.75);
+  assert.equal(await angle(), 0, 'at rest');
+  // It turns once: one animation, which runs on the band's view timeline and
+  // does not repeat.
+  const animation = await page.evaluate(() =>
+    globalThis.document
+      .querySelector('.landing-band__star')
+      .getAnimations()
+      .map((running) => [
+        running.animationName,
+        running.effect.getComputedTiming().iterations,
+        running.timeline?.constructor.name,
+      ]),
+  );
+  assert.deepEqual(animation, [['landing-star-turn', 1, 'ViewTimeline']]);
+  // Nothing in the four sections loops.
+  const loops = await page.evaluate(
+    () =>
+      globalThis.document
+        .getAnimations()
+        .filter(
+          (running) =>
+            running.effect.target.closest(
+              '#guarantee, #guarantee + section, #faq, .landing-final',
+            ) && running.effect.getComputedTiming().iterations !== 1,
+        ).length,
+  );
+  assert.equal(loops, 0);
+  await context.close();
+  // Below 64rem there is no star to turn.
+  const small = await openLanding({ width: 768, motion: true });
+  assert.equal(
+    await small.page
+      .locator('.landing-band__star')
+      .evaluate((star) => star.checkVisibility()),
+    false,
+  );
+  await small.context.close();
+});
+
+test('every moving element is at rest by 70% of the viewport height, and at the page end, at every design width in both themes', async () => {
+  const owners = [
+    '#guarantee h2',
+    '#guarantee .section__heading p',
+    '.landing-promise >> nth=0',
+    '.landing-promise >> nth=1',
+    '.landing-promise >> nth=2',
+    '.landing-guarantee__link',
+    '.landing-band__star',
+    '.landing-trust-card >> nth=0',
+    '.landing-trust-card >> nth=1',
+    '.landing-trust-card >> nth=2',
+    '#faq h2',
+    '.landing-faq__card',
+    '.landing-final__card',
+  ];
+  for (const colorScheme of themes) {
+    for (const width of designWidths) {
+      const { context, page } = await openLanding({
+        width,
+        colorScheme,
+        motion: true,
+      });
+      const where = `${width} ${colorScheme}`;
+      for (const owner of owners) {
+        const shown = await page
+          .locator(owner)
+          .evaluate((element) => element.checkVisibility());
+        if (!shown) continue;
+        await scrollToTop(page, owner, 0.7);
+        const m = await readMotion(page);
+        const pick = {
+          '#guarantee h2': [m.bandHead[0]],
+          '#guarantee .section__heading p': [m.bandHead[1]],
+          '.landing-guarantee__link': [m.bandLink],
+          '.landing-band__star': [m.star],
+          '#faq h2': [m.faq[0]],
+          '.landing-faq__card': [m.faq[1]],
+          '.landing-final__card': [m.card, ...m.banners],
+        };
+        const index = Number(/nth=(\d)/u.exec(owner)?.[1]);
+        const elements = owner.startsWith('.landing-promise')
+          ? [m.digits[index], m.titles[index], m.lines[index]]
+          : owner.startsWith('.landing-trust-card')
+            ? [m.trust[index]]
+            : pick[owner];
+        for (const element of elements)
+          assert.ok(still(element), `${owner} at 70%, ${where}`);
+        if (owner.startsWith('.landing-promise'))
+          assert.equal(m.offsets[index], -1, `${owner} ring at 70%, ${where}`);
+      }
+      await scrollToEnd(page);
+      assertAtRest(await readMotion(page), `page end, ${where}`);
+      await context.close();
+    }
+  }
+});
+
+test('the sticky bar still hides when the footer comes into view, and shows over the closing sections', async () => {
+  const { context, page } = await openLanding({
+    width: 390,
+    height: 844,
+    motion: true,
+  });
+  const dockShown = () =>
+    page.evaluate(() =>
+      globalThis.document.querySelector('[data-dock]').checkVisibility(),
+    );
+  await scrollToTop(page, '#faq', 0.3);
+  await page.waitForFunction(() =>
+    globalThis.document.querySelector('[data-dock]').checkVisibility(),
+  );
+  assert.equal(await dockShown(), true, 'shown over the FAQ');
+  await scrollToEnd(page);
+  await page.waitForFunction(
+    () => !globalThis.document.querySelector('[data-dock]').checkVisibility(),
+  );
+  assert.equal(await dockShown(), false, 'hidden with the footer in view');
+  await context.close();
+});
+
+test('under reduced motion nothing in the four sections moves: every ring whole, every numeral and line shown', async () => {
+  for (const colorScheme of themes) {
+    for (const width of [1440, 390]) {
+      const { context, page } = await openLanding({ width, colorScheme });
+      const where = `${width} ${colorScheme}`;
+      for (const at of [0.95, 0.85, 0.7]) {
+        await scrollToTop(page, '.landing-guarantee', at);
+        assertAtRest(await readMotion(page), `${where} at ${at}`);
+        await scrollToTop(page, '.landing-final__card', at);
+        assertAtRest(await readMotion(page), `${where} at ${at}`);
+      }
+      const animations = await page.evaluate(
+        () =>
+          globalThis.document
+            .getAnimations()
+            .filter((animation) =>
+              animation.effect.target.closest(
+                '#guarantee, #guarantee + section, #faq, .landing-final',
+              ),
+            ).length,
+      );
+      assert.equal(animations, 0, where);
+      await context.close();
+    }
+  }
+});
+
+test('with scroll-driven animations unsupported, the four sections are at rest: every ring whole, every numeral and line shown', async () => {
+  for (const width of [1440, 390]) {
+    const { context, page } = await openLanding({
+      width,
+      motion: true,
+      supported: false,
+    });
+    // No live feature query is left for scroll-driven animations.
+    const live = await page.evaluate(() =>
+      [...globalThis.document.styleSheets].some((sheet) =>
+        [...sheet.cssRules].some((rule) =>
+          /animation-timeline:\s*view\(\)/u.test(rule.conditionText ?? ''),
+        ),
+      ),
+    );
+    assert.equal(live, false, `${width}`);
+    for (const at of [0.95, 0.85, 0.7]) {
+      await scrollToTop(page, '.landing-guarantee', at);
+      assertAtRest(await readMotion(page), `${width} at ${at}`);
+      await scrollToTop(page, '.landing-final__card', at);
+      assertAtRest(await readMotion(page), `${width} at ${at}`);
+    }
+    const animated = await page.evaluate(() =>
+      globalThis.document
+        .getAnimations()
+        .filter((animation) =>
+          animation.effect.target.closest(
+            '#guarantee, #guarantee + section, #faq, .landing-final',
+          ),
+        )
+        .map((animation) => animation.animationName),
+    );
+    assert.deepEqual(animated, [], `${width}`);
+    await context.close();
+  }
+});
+
+test('the four closing sections pass the layout checks at every design width, in both themes', async () => {
+  for (const colorScheme of themes) {
+    for (const width of designWidths) {
+      const { context, page } = await openLanding({ width, colorScheme });
+      assert.deepEqual(
+        await checkRegionLayout(page, [
+          '#guarantee',
+          '#guarantee + section',
+          '#faq',
+          '.landing-final',
+        ]),
+        [],
+        `layout, ${colorScheme}, ${width}px`,
+      );
+      await context.close();
+    }
+  }
+});
+
+async function closingAxe(page) {
+  await page.addScriptTag({ content: axe.source });
+  const violations = [];
+  for (const selector of [
+    '#guarantee',
+    '#guarantee + section',
+    '#faq',
+    '.landing-final',
+  ]) {
+    const found = await page.evaluate(
+      async (scope) =>
+        (
+          await globalThis.axe.run(globalThis.document.querySelector(scope), {
+            runOnly: {
+              type: 'tag',
+              values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'],
+            },
+          })
+        ).violations.map((violation) => ({
+          id: violation.id,
+          nodes: violation.nodes.map((node) => node.target.join(' ')),
+        })),
+      selector,
+    );
+    violations.push(...found.map((item) => ({ selector, ...item })));
+  }
+  return violations;
+}
+
+test('the four closing sections pass WCAG axe in both themes, at rest and once the motion is over', async () => {
+  for (const colorScheme of themes) {
+    for (const width of [1440, 768, 390]) {
+      for (const motion of [false, true]) {
+        const { context, page } = await openLanding({
+          width,
+          colorScheme,
+          motion,
+        });
+        if (motion) await scrollToEnd(page);
+        assert.deepEqual(
+          await closingAxe(page),
+          [],
+          `${width} ${colorScheme}${motion ? ' after the motion' : ''}`,
+        );
+        await context.close();
+      }
     }
   }
 });
