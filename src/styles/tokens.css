@@ -284,6 +284,12 @@
      viewport height. */
   --tone-shift: 4%;
   --draw-range: entry min(100% - 1px, 20vh) cover 25vh;
+  /* E11.5-11o: a sequence on an element's view timeline (the "What you get"
+     referral equation) runs from --sequence-start to --sequence-end into
+     its cover range: from its top at 90% of the viewport height to its top
+     at 75%, so it is at rest well before 70%. */
+  --sequence-start: 10vh;
+  --sequence-end: 25vh;
 }
 
 .tabular-figure {
