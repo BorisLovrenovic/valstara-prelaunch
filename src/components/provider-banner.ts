@@ -16,6 +16,9 @@ export interface ProviderBannerModel {
   chipTone: 'light' | 'dark';
   logoWidth: number;
   logoHeight: number;
+  // The wordmark's optical height in pixels, or null for an icon mark shown
+  // beside the name (E11.5-11n).
+  wordmarkHeight: number | null;
 }
 
 const inkHex = '#101014';
@@ -70,6 +73,7 @@ export function composeBanner(
     chipTone: provider.chipTone === 'dark' ? 'dark' : 'light',
     logoWidth: size.width,
     logoHeight: size.height,
+    wordmarkHeight: provider.wordmarkHeight ?? null,
   };
 }
 

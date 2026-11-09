@@ -88,3 +88,21 @@ test('the hero composes its banners with the same function', () => {
   );
   assert.equal(hero.strip[1].chipTone, 'dark');
 });
+
+test('a composed banner carries the data file’s wordmark height, or null for an icon mark', () => {
+  // E11.5-11n (founder decision 2026-11-08).
+  assert.equal(
+    composeBanner(byName('Netflix'), 't5', () => null).wordmarkHeight,
+    18,
+  );
+  assert.equal(
+    composeBanner(byName('Spotify'), 't2', () => null).wordmarkHeight,
+    34,
+  );
+  assert.equal(
+    composeBanner(byName('ChatGPT'), 't1', () => null).wordmarkHeight,
+    null,
+  );
+  const planted = { ...byName('ChatGPT'), wordmarkHeight: 21 };
+  assert.equal(composeBanner(planted, 't1', () => null).wordmarkHeight, 21);
+});

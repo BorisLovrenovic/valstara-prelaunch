@@ -91,7 +91,11 @@
      viewport, over --reveal-range of its view timeline. The range ends a pixel
      before the element is fully in view, so it is past its animation at the
      end of any page, however little follows it. Without scroll-driven
-     animations the element simply stays at rest. */
+     animations the element simply stays at rest. The timeline's inset is 0,
+     not the root's scroll padding, which reserves the mobile sticky bar's
+     height while it shows: so a reveal measures the whole viewport, and an
+     element is at rest by 70% of its height whether the bar shows or not
+     (E11.5-11n). */
   @supports (animation-timeline: view()) {
     :where([data-reveal]) {
       --reveal-index: 0;
@@ -102,7 +106,7 @@
       animation-duration: auto;
       animation-timing-function: var(--ease-enter);
       animation-fill-mode: backwards;
-      animation-timeline: view();
+      animation-timeline: view(block 0);
       animation-range: var(--reveal-range);
     }
 

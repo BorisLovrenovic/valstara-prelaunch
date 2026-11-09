@@ -1264,7 +1264,12 @@ function heroEntrance(page, time = 0) {
         document.querySelector(selector).getBoundingClientRect().top,
       );
     hold.remove();
+    // Only time-based animations hold a frame of the entrance. The
+    // catalogue's scroll-driven reveals (E11.5-11n) are on a view timeline,
+    // which takes no time value, and are outside the hero.
     for (const animation of document.getAnimations()) {
+      if (!(animation.timeline instanceof globalThis.DocumentTimeline))
+        continue;
       animation.pause();
       animation.currentTime = at;
     }

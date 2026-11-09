@@ -36,21 +36,30 @@ const groups = Object.entries(providerShowcaseCopy.categories)
       ),
   }))
   .filter((group) => group.banners.length > 0);
+// The large-width grid's five columns: a row's banners reveal left to right.
+const largeColumns = 5;
 ---
 
 <div class="provider-rail">
   {
     groups.map((group) => (
       <div class="provider-rail__category">
-        <h3 class="provider-rail__label">{group.label}</h3>
+        <h3 class="provider-rail__label" data-reveal>
+          {group.label}
+        </h3>
         <div
           class="provider-rail__track"
           tabindex="0"
           role="region"
           aria-label={group.label}
+          data-reveal
         >
-          {group.banners.map((banner) => (
-            <ProviderBanner banner={banner} size="catalogue" />
+          {group.banners.map((banner, index) => (
+            <ProviderBanner
+              banner={banner}
+              size="catalogue"
+              revealIndex={index % largeColumns}
+            />
           ))}
         </div>
       </div>
@@ -64,6 +73,10 @@ const groups = Object.entries(providerShowcaseCopy.categories)
     the scrollbar hidden and no script. Large (64rem): a five-column grid.
     The bleed is a negative right margin of one gutter on the whole rail, so
     the parent must hold that gutter as its padding, and then no box overflows.
+    E11.5-11n: the rail pads 4px above and 16px below its banners, so a hover
+    lift and its shadow are never clipped, and its scrolling is never
+    animated. Each group's label reveals on scroll; below 64rem the rail
+    reveals as one unit, and from 64rem each banner does instead.
   */
   .provider-rail {
     --rail-bleed: calc(-1 * var(--gutter));
@@ -92,12 +105,13 @@ const groups = Object.entries(providerShowcaseCopy.categories)
   .provider-rail__track {
     display: flex;
     gap: var(--space-1-5);
-    padding-block: var(--space-0-5) var(--space-1-5);
+    padding-block: var(--space-0-5) var(--space-2);
     padding-inline: var(--space-0) var(--gutter);
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     overscroll-behavior-inline: contain;
     scrollbar-width: none;
+    scroll-behavior: auto;
   }
 
   .provider-rail__track::-webkit-scrollbar {
@@ -148,6 +162,10 @@ const groups = Object.entries(providerShowcaseCopy.categories)
       padding: var(--space-0);
       overflow: visible;
       scroll-snap-type: none;
+    }
+
+    .provider-rail__track[data-reveal] {
+      animation-name: none;
     }
   }
 </style>

@@ -118,3 +118,45 @@ test('chipTone accepts only "dark", and only CyberGhost carries it', async () =>
     );
   }
 });
+
+test('wordmarkHeight is a positive whole pixel count on exactly the 18 founder-listed wordmarks', async () => {
+  // Founder decision 2026-11-08 (E11.5-11n): the canvas's optical heights.
+  assert.deepEqual(
+    Object.fromEntries(
+      valid
+        .filter((entry) => 'wordmarkHeight' in entry)
+        .map((entry) => [entry.name, entry.wordmarkHeight]),
+    ),
+    {
+      Perplexity: 22,
+      Cursor: 18,
+      'Bolt.new': 18,
+      Lovable: 16,
+      n8n: 30,
+      Spotify: 34,
+      'YouTube Premium': 18,
+      'Prime Video': 24,
+      Netflix: 18,
+      'Apple TV': 20,
+      LinkedIn: 18,
+      MyFitnessPal: 15,
+      Canva: 24,
+      Dropbox: 17,
+      NordVPN: 22,
+      Norton: 20,
+      Kaspersky: 17,
+      CyberGhost: 20,
+    },
+  );
+  const fixture = clone();
+  fixture[0].wordmarkHeight = 1;
+  await validateProviderShowcase(fixture);
+  for (const height of [0, -4, 18.5, '18', '18px', null, Number.NaN]) {
+    fixture[0].wordmarkHeight = height;
+    await assert.rejects(
+      validateProviderShowcase(fixture),
+      /Invalid wordmark height: ChatGPT/u,
+      String(height),
+    );
+  }
+});
