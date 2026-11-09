@@ -45,9 +45,9 @@ test('the checklist maps every portable Markdown source to one known storefront 
     allContentFiles.filter((file) => !file.endsWith('.md')),
     [
       'src/content/giveaway-award-catalog.json',
-      // E11.5-11p (additive; pending founder acknowledgement at pre-PR
-      // review): the final call to action's banner list. No prose, no
-      // storefront port target (docs/brand/tokens.md).
+      // E11.5-11p (founder-authorised 2026-11-09, additive): the final call
+      // to action's banner list. No prose, no storefront port target
+      // (docs/brand/tokens.md).
       'src/content/landing-final.json',
       'src/content/landing-final.ts',
       // E11.5-11c (founder-authorised 2026-10-27): the landing hero's list.
