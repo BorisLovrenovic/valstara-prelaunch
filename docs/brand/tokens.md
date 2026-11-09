@@ -151,8 +151,9 @@ The primitives need these values beyond the delta, under final-design rule 6:
 | `--connector-dash` | `6px 6px` | The dash of the "How it works" connector into the optional step, as Chromium draws the canvas's 2px dashed border (E11.5-11n) |
 | `--tone-shift` | `4%` | How far a catalogue banner's tonal layer shifts on hover: 4% of its own size (E11.5-11n) |
 | `--draw-range` | `entry min(100% - 1px, 20vh) cover 25vh` | The stretch of a "How it works" step's view timeline over which its connector draws: from the end of the step's reveal until the step's top is at 75% of the viewport (E11.5-11n) |
+| `--sequence-start`, `--sequence-end` | `10vh`, `25vh` | Where a sequence on an element's view timeline runs, into its cover range: from the element's top at 90% of the viewport height to its top at 75%. The "What you get" referral equation divides it into equal steps, one per person icon, then the arrow, then the pills (E11.5-11o) |
 
-The arrow, error, spinner, star, enter-scale, tone-shift and draw-range values sit with the motion tokens on bare `:root`, with no dark redefinition.
+The arrow, error, spinner, star, enter-scale, tone-shift, draw-range and sequence values sit with the motion tokens on bare `:root`, with no dark redefinition.
 
 ### Motion tokens (E11.5-11i)
 
@@ -230,6 +231,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 **E11.5-11m port addition:** the file adds `--enter-scale`, declared once on bare `:root` beside the other motion tokens, and the role token `--well`, `var(--paper)` on `:root` and `var(--midnight-deep)` in both dark blocks, so the dark name sets stay identical. Both port with `tokens.css`; the success-panel motion that uses `--enter-scale` is waitlist presentation in the signup island.
 
 **E11.5-11n port addition:** the file adds the twelve `--banner-ring-t*` offsets and `--ring-badge` and `--connector-dash`, declared once on `:root` (the badge ring follows `--surface` in both themes), and `--tone-shift` and `--draw-range` on bare `:root` beside the other motion tokens. They port with `tokens.css`; the catalogue and step motion that uses them is waitlist presentation in the landing page and the provider banner.
+
+**E11.5-11o port addition:** the file adds `--sequence-start` and `--sequence-end` on bare `:root` beside the other motion tokens, with no dark redefinition. They port with `tokens.css`; the "What you get" motion that uses them is waitlist presentation in the landing page.
 
 E11-07 source-to-target reconciliation (targets are the storefront routes to build and verify before the DNS swap):
 

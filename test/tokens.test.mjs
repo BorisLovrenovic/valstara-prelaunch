@@ -248,6 +248,10 @@ const motionTokens = {
   // E11.5-11n: the banner's tonal shift and the connector drawing range.
   '--tone-shift': '4%',
   '--draw-range': 'entry min(100% - 1px, 20vh) cover 25vh',
+  // E11.5-11o: the referral equation's sequence, from 10vh to 25vh into its
+  // tier's cover range.
+  '--sequence-start': '10vh',
+  '--sequence-end': '25vh',
 };
 
 // E11.5-11j: the token delta in ChangeLog.dc.html, light values on bare :root
