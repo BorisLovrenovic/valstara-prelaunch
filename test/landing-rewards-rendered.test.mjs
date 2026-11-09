@@ -308,10 +308,25 @@ const contentTypes = {
 // same-origin requests are answered from the variant's own build output, or
 // from the running app server. With `motion: true` the page allows motion
 // and the hero entrance is let end; otherwise it is at rest (reduced
-// motion, design rule 12).
+// motion, design rule 12). With `supported: false` every stylesheet's
+// `(animation-timeline: view())` feature query names a property no browser
+// has, so the page renders as a browser without scroll-driven animations
+// would: each `@supports` branch for them is false, and each `@supports not`
+// branch is true.
+const scrollTimelineQuery = /\(\s*animation-timeline\s*:\s*view\(\)\s*\)/gu;
+const unsupportedQuery = '(-x-unsupported-timeline: view())';
+const withoutScrollTimelines = (css) =>
+  css.replace(scrollTimelineQuery, unsupportedQuery);
+
 async function openVariant(
   name,
-  { width, height = 900, colorScheme = 'light', motion = false },
+  {
+    width,
+    height = 900,
+    colorScheme = 'light',
+    motion = false,
+    supported = true,
+  },
 ) {
   const { html, assets } = pages[name];
   const context = await browser.newContext({
@@ -326,14 +341,16 @@ async function openVariant(
     const url = new URL(route.request().url());
     if (url.pathname === '/')
       return route.fulfill({
-        body: html,
+        body: supported ? html : withoutScrollTimelines(html),
         contentType: 'text/html; charset=utf-8',
       });
     if (route.request().method() !== 'GET')
       return route.fulfill({ status: 204 });
+    const stylesheet = extname(url.pathname) === '.css' && !supported;
     if (assets !== undefined && url.pathname.startsWith('/_astro/')) {
+      const body = await readFile(join(assets, url.pathname));
       return route.fulfill({
-        body: await readFile(join(assets, url.pathname)),
+        body: stylesheet ? withoutScrollTimelines(body.toString('utf8')) : body,
         contentType:
           contentTypes[extname(url.pathname)] ?? 'application/octet-stream',
       });
@@ -341,10 +358,11 @@ async function openVariant(
     const response = await globalThis.fetch(
       `http://127.0.0.1:${app.port}${url.pathname}${url.search}`,
     );
+    const body = Buffer.from(await response.arrayBuffer());
     return route.fulfill({
       status: response.status,
       contentType: response.headers.get('content-type') ?? undefined,
-      body: Buffer.from(await response.arrayBuffer()),
+      body: stylesheet ? withoutScrollTimelines(body.toString('utf8')) : body,
     });
   });
   const page = await context.newPage();
@@ -812,15 +830,16 @@ function readMotion(page) {
   });
 }
 
-// What the screen shows of the first tier's arrow, read from a screenshot
+// What the screen shows of a tier's arrow (the first's unless a tier
+// selector is given), read from a screenshot
 // rather than from its mask's stroke (which animates whether or not anything
 // is drawn through it): the share of the arrow's 20px box, in its left and
 // right halves, painted at least half-way from the well's colour to the
 // arrow's. The small-width signup dock is hidden from the capture.
-async function arrowPainted(page) {
-  const target = await page.evaluate(() => {
+async function arrowPainted(page, tierSelector = '.landing-tier') {
+  const target = await page.evaluate((tier) => {
     const { document, getComputedStyle } = globalThis;
-    const icon = document.querySelector('.landing-tier__arrow .icon');
+    const icon = document.querySelector(`${tier} .landing-tier__arrow .icon`);
     const box = icon.getBoundingClientRect();
     return {
       clip: { x: box.left, y: box.top, width: box.width, height: box.height },
@@ -828,7 +847,7 @@ async function arrowPainted(page) {
       background: getComputedStyle(icon.closest('.landing-reward__well'))
         .backgroundColor,
     };
-  });
+  }, tierSelector);
   const shot = await page.screenshot({
     clip: target.clip,
     scale: 'css',
@@ -1291,6 +1310,114 @@ test('the giveaway card states the published rules: the figures, one gift per pr
   assert.equal(m.rulesHref, '/giveaway/rules');
 });
 
+// One tier's equation, on that tier's own view timeline: its N person icons
+// appear one after another, then its arrow draws, then its two pills rise
+// in, with the figures at their source values in every frame, all at rest
+// by the time the tier's top is at 70% of the viewport height.
+async function assertTierSequence(page, position, source, label) {
+  const number = (
+    await page.$$eval('.landing-tier', (tiers) =>
+      tiers.map((tier) => tier.dataset.tier),
+    )
+  )[position];
+  const selector = `.landing-tier[data-tier="${number}"]`;
+  let motion = await readMotion(page);
+  const tier = motion.tiers[position];
+  assert.equal(tier.viewTimeline, '--landing-tier');
+  assert.equal(tier.steps, String(tier.persons.length + 2));
+  assert.equal(
+    tier.persons.length,
+    source.tiers[position].threshold,
+    `${label} N person icons`,
+  );
+  assert.deepEqual(
+    tier.persons.map((person) => [person.index, person.name, person.timeline]),
+    tier.persons.map((_, index) => [
+      String(index),
+      'landing-person-appear',
+      '--landing-tier',
+    ]),
+  );
+  assert.deepEqual(
+    [tier.draw.index, tier.draw.name, tier.draw.timeline, tier.draw.masked],
+    [String(tier.persons.length), 'landing-arrow-draw', '--landing-tier', true],
+  );
+  assert.deepEqual(
+    [tier.reward.index, tier.reward.name, tier.reward.timeline],
+    [String(tier.persons.length + 1), 'landing-reward-rise', '--landing-tier'],
+  );
+  // The "+" and the figures never move.
+  assert.equal(tier.plus.name, 'none');
+  const seen = { persons: false, arrow: false, pills: false };
+  for (let at = 1; at >= 0.7; at -= 2 / 900) {
+    await scrollToTop(page, selector, at);
+    motion = await readMotion(page);
+    const current = motion.tiers[position];
+    const opacities = current.persons.map((person) => person.opacity);
+    for (let index = 1; index < opacities.length; index += 1)
+      assert.ok(
+        opacities[index] <= opacities[index - 1] + 1e-6,
+        `${label} person ${index + 1} appears after person ${index}: ${opacities}`,
+      );
+    if (current.draw.offset < 1)
+      assert.ok(
+        opacities.every((opacity) => opacity === 1),
+        `${label} the arrow draws after every person: ${opacities}`,
+      );
+    if (current.reward.opacity > 0)
+      assert.equal(
+        current.draw.offset,
+        0,
+        `${label} the pills rise after the arrow`,
+      );
+    if (opacities[0] > 0 && opacities.at(-1) === 0) seen.persons = true;
+    if (current.draw.offset > 0 && current.draw.offset < 1) seen.arrow = true;
+    if (
+      current.reward.opacity > 0 &&
+      current.reward.opacity < 1 &&
+      current.reward.translate !== 'none'
+    )
+      seen.pills = true;
+    assertFigures(motion.figures, source, `${label} at ${at}`);
+  }
+  assert.deepEqual(
+    seen,
+    { persons: true, arrow: true, pills: true },
+    `${label} each step is seen mid-way`,
+  );
+  // Nothing has started before the sequence, and all of it is at rest by
+  // the time the tier's top is at 70% of the viewport height.
+  await scrollToTop(page, selector, 0.99);
+  motion = await readMotion(page);
+  assert.deepEqual(
+    [
+      motion.tiers[position].persons.map((person) => person.opacity),
+      motion.tiers[position].draw.offset,
+      motion.tiers[position].reward.opacity,
+    ],
+    [motion.tiers[position].persons.map(() => 0), 1, 0],
+    `${label} nothing before the sequence`,
+  );
+  // The arrow is painted only through its mask: on screen, still empty
+  // just before its step, with the arrow itself in view (a second tier's
+  // arrow sits lower in its row, under the divider and its padding).
+  await scrollToTop(page, `${selector} .landing-tier__arrow`, 0.92);
+  assert.equal((await readMotion(page)).tiers[position].draw.offset, 1);
+  assert.deepEqual(
+    await arrowPainted(page, selector),
+    [0, 0],
+    `${label} the arrow is not yet drawn on screen`,
+  );
+  await scrollToTop(page, selector, 0.7);
+  motion = await readMotion(page);
+  for (const share of await arrowPainted(page, selector))
+    assert.ok(share > 0.05, `${label} the arrow is drawn on screen: ${share}`);
+  for (const person of motion.tiers[position].persons)
+    assert.ok(atRest(person), `${label} person at rest at 70%`);
+  assert.equal(motion.tiers[position].draw.offset, 0, `${label} arrow drawn`);
+  assert.ok(atRest(motion.tiers[position].reward), `${label} pills at rest`);
+}
+
 test('the cards reveal in reading order, the waves grow from their start points, the equation runs icons → arrow → pills, the prize line and then the footer reveal, at rest by 70%', async () => {
   for (const width of [1440, 768, 390]) {
     const label = `${width}`;
@@ -1364,112 +1491,9 @@ test('the cards reveal in reading order, the waves grow from their start points,
     for (const fill of motion.fills)
       assert.equal(fill.scaleX, 1, `${label} wave fill at rest at 70%`);
 
-    // The equation, on the tier's own view timeline: N person icons one
-    // after another, then the arrow draws, then the two pills rise in.
-    const [tier] = motion.tiers;
-    assert.equal(tier.viewTimeline, '--landing-tier');
-    assert.equal(tier.steps, String(tier.persons.length + 2));
-    assert.deepEqual(
-      tier.persons.map((person) => [
-        person.index,
-        person.name,
-        person.timeline,
-      ]),
-      tier.persons.map((_, index) => [
-        String(index),
-        'landing-person-appear',
-        '--landing-tier',
-      ]),
-    );
-    assert.deepEqual(
-      [tier.draw.index, tier.draw.name, tier.draw.timeline, tier.draw.masked],
-      [
-        String(tier.persons.length),
-        'landing-arrow-draw',
-        '--landing-tier',
-        true,
-      ],
-    );
-    assert.deepEqual(
-      [tier.reward.index, tier.reward.name, tier.reward.timeline],
-      [
-        String(tier.persons.length + 1),
-        'landing-reward-rise',
-        '--landing-tier',
-      ],
-    );
-    // The "+" and the figures never move.
-    assert.equal(tier.plus.name, 'none');
-    const seen = { persons: false, arrow: false, pills: false };
-    for (let at = 1; at >= 0.7; at -= 2 / 900) {
-      await scrollToTop(page, '.landing-tier', at);
-      motion = await readMotion(page);
-      const [current] = motion.tiers;
-      const opacities = current.persons.map((person) => person.opacity);
-      for (let index = 1; index < opacities.length; index += 1)
-        assert.ok(
-          opacities[index] <= opacities[index - 1] + 1e-6,
-          `${label} person ${index + 1} appears after person ${index}: ${opacities}`,
-        );
-      if (current.draw.offset < 1)
-        assert.ok(
-          opacities.every((opacity) => opacity === 1),
-          `${label} the arrow draws after every person: ${opacities}`,
-        );
-      if (current.reward.opacity > 0)
-        assert.equal(
-          current.draw.offset,
-          0,
-          `${label} the pills rise after the arrow`,
-        );
-      if (opacities[0] > 0 && opacities.at(-1) === 0) seen.persons = true;
-      if (current.draw.offset > 0 && current.draw.offset < 1) seen.arrow = true;
-      if (
-        current.reward.opacity > 0 &&
-        current.reward.opacity < 1 &&
-        current.reward.translate !== 'none'
-      )
-        seen.pills = true;
-      assertFigures(motion.figures, sources.A, `${label} at ${at}`);
-    }
-    assert.deepEqual(
-      seen,
-      { persons: true, arrow: true, pills: true },
-      `${label} each step is seen mid-way`,
-    );
-    // Nothing has started before the sequence, and all of it is at rest by
-    // the time the tier's top is at 70% of the viewport height.
-    await scrollToTop(page, '.landing-tier', 0.99);
-    motion = await readMotion(page);
-    assert.deepEqual(
-      [
-        motion.tiers[0].persons.map((person) => person.opacity),
-        motion.tiers[0].draw.offset,
-        motion.tiers[0].reward.opacity,
-      ],
-      [motion.tiers[0].persons.map(() => 0), 1, 0],
-      `${label} nothing before the sequence`,
-    );
-    // The arrow is painted only through its mask: on screen, still empty
-    // just before its step, with the tier in view.
-    await scrollToTop(page, '.landing-tier', 0.92);
-    assert.equal((await readMotion(page)).tiers[0].draw.offset, 1);
-    assert.deepEqual(
-      await arrowPainted(page),
-      [0, 0],
-      `${label} the arrow is not yet drawn on screen`,
-    );
-    await scrollToTop(page, '.landing-tier', 0.7);
-    motion = await readMotion(page);
-    for (const share of await arrowPainted(page))
-      assert.ok(
-        share > 0.05,
-        `${label} the arrow is drawn on screen: ${share}`,
-      );
-    for (const person of motion.tiers[0].persons)
-      assert.ok(atRest(person), `${label} person at rest at 70%`);
-    assert.equal(motion.tiers[0].draw.offset, 0, `${label} arrow drawn`);
-    assert.ok(atRest(motion.tiers[0].reward), `${label} pills at rest`);
+    // The equation: N person icons one after another, then the arrow
+    // draws, then the two pills rise in.
+    await assertTierSequence(page, 0, sources.A, label);
     // Each card, read with its own top at 70% of the viewport height.
     for (const [index, card] of [
       '[data-access-card]',
@@ -1510,6 +1534,20 @@ test('the cards reveal in reading order, the waves grow from their start points,
     motion = await readMotion(page);
     assert.ok(atRest(motion.footer), `${label} footer at rest at 70%`);
     await context.close();
+
+    // Variant F: each configured tier runs its own sequence, the second as
+    // the first, on its own view timeline and with its own N.
+    const second = await openVariant('F', { width, motion: true });
+    const { tiers } = await readMotion(second.page);
+    assert.equal(tiers.length, 2, `${label} variant F has two tiers`);
+    for (const position of [0, 1])
+      await assertTierSequence(
+        second.page,
+        position,
+        sources.F,
+        `${label} variant F tier ${position + 1}`,
+      );
+    await second.context.close();
   }
 });
 
@@ -1553,17 +1591,47 @@ test('under reduced motion nothing in #rewards moves: every wave is full, every 
 
 test('with animations unsupported, #rewards is at rest: every wave full, every icon shown, the arrow drawn', async () => {
   for (const width of [1440, 390]) {
-    const { context, page } = await openVariant('A', { width, motion: true });
-    await page.addStyleTag({
-      content: '*, *::before, *::after { animation: none !important; }',
+    // Motion allowed, but the page's scroll-driven-animation feature queries
+    // are false, as in a browser without them.
+    const { context, page } = await openVariant('A', {
+      width,
+      motion: true,
+      supported: false,
     });
+    const queries = await page.evaluate(() => {
+      const conditions = [];
+      const walk = (rules) => {
+        for (const rule of rules) {
+          if (rule instanceof globalThis.CSSSupportsRule)
+            conditions.push(rule.conditionText);
+          if (rule.cssRules) walk(rule.cssRules);
+        }
+      };
+      for (const sheet of globalThis.document.styleSheets) walk(sheet.cssRules);
+      return {
+        scrollTimeline: conditions.filter((text) =>
+          /animation-timeline/u.test(text),
+        ).length,
+        unsupported: conditions.filter((text) =>
+          text.includes('-x-unsupported-timeline'),
+        ).length,
+      };
+    });
+    assert.equal(queries.scrollTimeline, 0, `${width} no live feature query`);
+    assert.ok(queries.unsupported > 0, `${width} the queries were rewritten`);
     for (const [selector, at] of [
       ['.landing-rewards', 0.99],
       ['.landing-tier', 0.85],
       ['.landing-prize', 0.95],
+      ['.landing-rewards__footer', 0.98],
     ]) {
       await scrollToTop(page, selector, at);
       const motion = await readMotion(page);
+      // Nothing in the section is set up to move: no animation, and no view
+      // timeline on the access card or a tier.
+      assert.deepEqual(motion.running, [], `${width} nothing animates`);
+      assert.equal(motion.cards[0].viewTimeline, 'none');
+      for (const tier of motion.tiers) assert.equal(tier.viewTimeline, 'none');
       for (const element of [
         ...motion.cards,
         ...motion.fills,

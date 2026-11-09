@@ -252,8 +252,8 @@ The suite also covers:
 - figure constancy: every figure equals its source in frames sampled at the start, middle and end of the reveal, and no figure carries an animation or generated content;
 - variants A–F against the canvas at 1440 and 390 (and the grid-hole check at 768), at rest and after the reveals;
 - the assistive-technology tree for the tier and prize sentences, and the rules figures;
-- the motion: reading order, the waves growing in order from their start points, icons then arrow then pills, the prize block, and the footer after the cards, all at rest by 70%;
-- the reduced-motion and no-support renders;
+- the motion: reading order, the waves growing in order from their start points, icons then arrow then pills in every tier (variant A's one and both of variant F's), the prize block, and the footer after the cards, all at rest by 70%;
+- the reduced-motion and no-support renders. The no-support render serves the stylesheets with their `(animation-timeline: view())` feature queries renamed to a property no browser has, so the page renders as a browser without scroll-driven animations would;
 - the layout checks within `#rewards` for every variant at every design width (`checkRegionLayout`);
 - axe on load, at rest and after the reveals, in both themes.
 
