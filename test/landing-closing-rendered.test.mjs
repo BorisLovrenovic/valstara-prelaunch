@@ -1464,9 +1464,25 @@ test('each ring draws from the top, clockwise, then its numeral, title and line 
         if (offset < -0.2 && offset > -0.8) found = offset;
       }
       assert.notEqual(found, null, `${where}: a mid-draw frame`);
-      const { halves } = await ringPainted(page, 0);
+      const { halves, sectors } = await ringPainted(page, 0);
       assert.ok(halves[1] > 20, `${where}: drawn on the right ${halves}`);
       assert.equal(halves[0], 0, `${where}: not yet on the left ${halves}`);
+      // The drawn share is the cover's offset; the coral is one run of
+      // sectors that begins at 12 o'clock (sector 0, the sectors count
+      // clockwise from the top) and ends where that share does, within a
+      // sector either way for the cover's antialiased edge. The sectors
+      // just before 12 o'clock stay empty.
+      const edge = -found * sectors.length;
+      const ring = `${where}: ${sectors} at ${-found}`;
+      sectors.forEach((count, sector) => {
+        if (sector + 1 <= edge - 1)
+          assert.ok(count > 0, `${ring}: sector ${sector} drawn`);
+        if (sector >= edge + 1)
+          assert.equal(count, 0, `${ring}: sector ${sector} not yet`);
+      });
+      const run = sectors.findIndex((count) => count === 0);
+      assert.ok(Math.abs(run - edge) <= 1, `${ring}: one run from the top`);
+      assert.equal(sectors.at(-1), 0, `${ring}: empty before 12 o'clock`);
       await context.close();
     }
     // Below 64rem each panel has its own two steps on its own timeline.
