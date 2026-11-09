@@ -150,16 +150,20 @@ async function openForm({
   turnstileMode = 'success',
   turnstileToken = 'rendered-page-turnstile-token',
   viewport,
-  accelerateResend = false,
+  holdResend = false,
 } = {}) {
   const context = await browser.newContext({ javaScriptEnabled, viewport });
-  if (accelerateResend) {
+  if (holdResend) {
+    // The 60-second resend delay is held, not shortened: the test fires it
+    // once it has read the resend control as hidden, so no wall-clock race
+    // decides what it reads (founder-authorised 2026-11-09).
     await context.addInitScript(() => {
       const original = globalThis.setTimeout.bind(globalThis);
       globalThis.setTimeout = (callback, delay, ...args) => {
         if (delay === 60_000) {
           globalThis.testResendDelay = delay;
-          return original(callback, 100, ...args);
+          globalThis.testFireResend = () => callback(...args);
+          return 0;
         }
         return original(callback, delay, ...args);
       };
@@ -766,7 +770,7 @@ test('success is identical for unknown, pending and verified responses and echoe
 });
 
 test('resend waits sixty seconds, uses a fresh token, and shows the route acknowledgement', async () => {
-  const { context, page } = await openForm({ accelerateResend: true });
+  const { context, page } = await openForm({ holdResend: true });
   const tokens = [];
   try {
     await page.route('**/api/signup', (route) => {
@@ -795,6 +799,7 @@ test('resend waits sixty seconds, uses a fresh token, and shows the route acknow
     await page.waitForSelector('[data-success]:not([hidden])');
     assert.equal(await page.locator('[data-resend]').isVisible(), false);
     assert.equal(await page.evaluate(() => globalThis.testResendDelay), 60_000);
+    await page.evaluate(() => globalThis.testFireResend());
     await page.waitForSelector('[data-resend]:visible');
     await page.click('[data-resend]');
     await page.waitForSelector('[data-resend-status]:not([hidden])');
