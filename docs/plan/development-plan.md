@@ -2997,6 +2997,7 @@ Adopt every change-log row for the header and footer that these rules allow.
 - The motion runs as specified, is at rest by 70% of the viewport height and at the page end, and stops under reduced motion. The sticky bar's footer detection is unaffected
 
 **Tests:** Section geometry per breakpoint · numeral and prefix accessibility · the ring at rest · trust-card link and focus · FAQ default state and measure · the primary-button count per breakpoint · copy match · ring, star and reveal motion · page-end at-rest · the reduced-motion and no-support renders · axe in both themes.
+**Named test rewrite (founder-authorised 2026-11-09):** `test/e11-07-port-checklist.test.ts` — the expected non-Markdown content files gain `src/content/landing-final.json` and `src/content/landing-final.ts` (the final call to action’s banner list; no prose, no storefront port target), additively, as E11.5-11c did for `landing-hero`.
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames) · E11.5-11f · `docs/brand/identity-guidelines.md` §2, §5.2
 
 ### E11.5-11q — Final-design verification and the success page
