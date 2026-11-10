@@ -616,6 +616,64 @@ test('focused content is never mid-motion: focus puts an entering or revealed el
   }
 });
 
+// E11.5-11p (founder decision 2026-11-10): only visible focus puts a reveal at
+// rest. A mouse press focuses a link without showing focus, so the reveal
+// holds still under the pointer and the click lands. Under the earlier
+// :focus-within rule, the press snapped the reveal to rest, the link moved out
+// from under the pointer before the release, and no click fired.
+const pressedRevealPage = () =>
+  `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Pressed reveal</title><style>${tokensCss}
+${motionCss}
+body { margin: 0; font-family: var(--font-sans); }
+.spacer { height: 200vh; }
+/* Taller than the reveal range, as the final call to action's card is, so
+   the range is the full --reveal-range rather than the element's height. */
+section { min-height: 50vh; }
+</style></head><body><main>
+<div class="spacer"></div>
+<section data-reveal><a id="pressed" href="#pressed">A link inside a reveal</a></section>
+<div class="spacer"></div>
+</main></body></html>`;
+
+test('a mouse press inside a revealing element does not move it, so the click lands mid-reveal', async () => {
+  const { context, page } = await openFixture({ html: pressedRevealPage() });
+  try {
+    // The section a sixth of the way into its reveal: still well below rest.
+    const top = await page.evaluate(
+      () =>
+        globalThis.document.querySelector('[data-reveal]').offsetTop -
+        globalThis.innerHeight +
+        30,
+    );
+    await scrollToY(page, top);
+    const read = () =>
+      page.evaluate(() => {
+        const { document, getComputedStyle } = globalThis;
+        const link = document.querySelector('#pressed');
+        const box = link.getBoundingClientRect();
+        return {
+          translate: getComputedStyle(link.closest('[data-reveal]')).translate,
+          bottom: box.bottom,
+          centre: box.left + box.width / 2,
+          hash: globalThis.location.hash,
+        };
+      });
+    const before = await read();
+    const rise = Number.parseFloat(before.translate.split(' ')[1]);
+    assert.ok(rise > 4, `mid-reveal: ${before.translate}`);
+    // Pressed near the link's lower edge, where a snap to rest would leave
+    // the pointer below the link at the release.
+    await page.mouse.move(before.centre, before.bottom - 2);
+    await page.mouse.down();
+    const pressed = await read();
+    assert.equal(pressed.translate, before.translate, 'still under the press');
+    await page.mouse.up();
+    assert.equal((await read()).hash, '#pressed', 'the click landed');
+  } finally {
+    await context.close();
+  }
+});
+
 // E11.5-11l: data-enter="fade" only fades, so content inside a rising
 // container travels exactly the container's distance. Focus ends an entrance
 // rather than removing it, so once it has run it never starts again when

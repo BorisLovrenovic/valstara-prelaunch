@@ -137,6 +137,8 @@ const wireframeTokens = {
   '--inset-on-midnight': 'inset 0 0 0 1px var(--on-midnight-border)',
   '--inset-on-midnight-disabled':
     'inset 0 0 0 1px var(--on-midnight-disabled-border)',
+  // E11.5-11p: the guarantee promise panel's edge.
+  '--inset-on-midnight-line': 'inset 0 0 0 1px var(--on-midnight-line)',
   '--shadow-chip': '0 1px 2px rgba(0,0,0,.2), 0 6px 14px rgba(0,0,0,.16)',
   // E11.5-11c (founder-authorised 2026-10-27): the banner chip and white
   // banner text stay #FFFFFF, and the chip name #101014, in both themes.

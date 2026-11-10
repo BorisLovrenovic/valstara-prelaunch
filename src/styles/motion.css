@@ -120,7 +120,13 @@
         calc(min(var(--reveal-index), 4) * var(--reveal-step));
     }
 
-    [data-reveal]:focus-within {
+    /* Visible focus puts a reveal at rest at once: keyboard focus, and focus
+       moved by script, on the element itself or anything inside it. A mouse
+       press focuses a link or button without showing focus, so the reveal
+       holds still under the pointer: snapping it to rest on the press would
+       move the target out from under the pointer before the release, and the
+       click would be lost (E11.5-11p, founder decision 2026-11-10). */
+    [data-reveal]:is(:focus-visible, :has(:focus-visible)) {
       animation-name: none;
     }
 
