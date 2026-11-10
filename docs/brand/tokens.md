@@ -152,6 +152,8 @@ The primitives need these values beyond the delta, under final-design rule 6:
 | `--tone-shift` | `4%` | How far a catalogue banner's tonal layer shifts on hover: 4% of its own size (E11.5-11n) |
 | `--draw-range` | `entry min(100% - 1px, 20vh) cover 25vh` | The stretch of a "How it works" step's view timeline over which its connector draws: from the end of the step's reveal until the step's top is at 75% of the viewport (E11.5-11n) |
 | `--sequence-start`, `--sequence-end` | `10vh`, `25vh` | Where a sequence on an element's view timeline runs, into its cover range: from the element's top at 90% of the viewport height to its top at 75%. The "What you get" referral equation divides it into equal steps, one per person icon, then the arrow, then the pills (E11.5-11o) |
+| `--wave-bar-width`, `--wave-bar-gap`, `--wave-bar-radius` | `3px`, `2px`, `1px` | The access-wave badge's four bars (the canvas's `.badge-wave__bars`, `/verify`, E11.5-11q). Their heights are calc()s of the spacing ramp |
+| `--inset-selected` | `inset 0 0 0 1.5px var(--ink)` | A selected read-only field's rule: the referral link box when a copy fails and the link is selected for manual copying (the canvas's `.linkbox.is-selected`, E11.5-11q). It follows `--ink` in both themes |
 
 The arrow, error, spinner, star, enter-scale, tone-shift, draw-range and sequence values sit with the motion tokens on bare `:root`, with no dark redefinition.
 
@@ -174,6 +176,7 @@ Founder-authorised 2026-10-30, with design rule 12 as amended. The motion tokens
 | `--press-shift` | `0.0625rem` | The 1px button press |
 | `--reveal-range` | `entry 0% entry min(100% - 1px, 20vh)` | The stretch of a revealed element's view timeline over which it reveals. It ends a pixel before the element is fully in view, or once it is 20% of the viewport in, whichever comes first, so it is at rest at the end of any page and by 70% of the viewport at any height |
 | `--reveal-step` | `min(20%, 4vh)` | The start offset between indexed siblings in a revealed row: a fifth of the range, so `motion.css` caps `--reveal-index` at 4 |
+| `--copy-confirm-hold` | `2s` | How long Copy link shows "Link copied." before its label returns, the canvas's 2s (E11.5-11q, founder decision 2026-11-10). It is a hold, not a motion: it applies under reduced motion too. The `/verify` page script reads it from the root, so the value stays in this file |
 
 The CI literal scan rejects a literal duration, delay, easing curve, animation range or movement distance in any component or global stylesheet, so each of these values is used through its token.
 
@@ -233,6 +236,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 **E11.5-11n port addition:** the file adds the twelve `--banner-ring-t*` offsets and `--ring-badge` and `--connector-dash`, declared once on `:root` (the badge ring follows `--surface` in both themes), and `--tone-shift` and `--draw-range` on bare `:root` beside the other motion tokens. They port with `tokens.css`; the catalogue and step motion that uses them is waitlist presentation in the landing page and the provider banner.
 
 **E11.5-11o port addition:** the file adds `--sequence-start` and `--sequence-end` on bare `:root` beside the other motion tokens, with no dark redefinition. They port with `tokens.css`; the "What you get" motion that uses them is waitlist presentation in the landing page.
+
+**E11.5-11q port addition:** the file adds `--wave-bar-width`, `--wave-bar-gap`, `--wave-bar-radius` and `--inset-selected` on `:root`, and `--copy-confirm-hold` on bare `:root` beside the motion tokens, none with a dark redefinition (`--inset-selected` follows `--ink`). They add no hue and no type size, and port with `tokens.css`. The `/verify` presentation that uses them, including the script's read of `--copy-confirm-hold`, is waitlist presentation.
 
 **E11.5-11p port addition:** the file adds `--inset-on-midnight-line` (`inset 0 0 0 1px var(--on-midnight-line)`), the guarantee promise panel's edge on midnight (change log "Guarantee band · promises"), declared once on `:root` with no dark redefinition: it follows `--on-midnight-line`, which the token delta gives one value in both themes. It adds no hue.
 

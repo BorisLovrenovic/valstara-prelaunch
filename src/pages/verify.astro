@@ -1,9 +1,11 @@
 ---
 import { verificationCopy } from '../copy/verification.ts';
 import { surveyCopy } from '../copy/survey.ts';
+import { resendVerificationCopy } from '../copy/resend-verification.ts';
 import Button from '../components/button.astro';
 import Card from '../components/card.astro';
 import Container from '../components/container.astro';
+import Field from '../components/field.astro';
 import Icon from '../components/icon.astro';
 import Input from '../components/input.astro';
 import Pill from '../components/pill.astro';
@@ -17,6 +19,7 @@ import {
   type VerificationCompletion,
 } from '../server/verification/complete.ts';
 import { currentSurveyVersion } from '../server/survey/questions.ts';
+import { accessWindows } from '../server/referral/config.ts';
 import { verificationReferralFigures } from '../server/referral/verification-presentation.ts';
 import { createAnalyticsService } from '../server/analytics/service.ts';
 import {
@@ -87,6 +90,17 @@ const referralFigures =
     ? null
     : verificationReferralFigures(completion.referralStatus);
 const ladderFigures = referralFigures?.ladder ?? null;
+const accessWindow = referralFigures?.accessWindow ?? null;
+// The badge's bars: one per access wave, filled up to the visitor's own,
+// so the four-wave set and the wave come from their sources.
+const waveBars =
+  accessWindow === null
+    ? []
+    : accessWindows.map(
+        (wave) =>
+          accessWindows.indexOf(wave) <=
+          accessWindows.indexOf(accessWindow as (typeof accessWindows)[number]),
+      );
 const surveyEnabled =
   completed && !completion.surveyCompleted
     ? await getFlagService().isEnabled('survey.enabled')
@@ -95,10 +109,35 @@ const referralUrl =
   referralEnabled && completion.referralStatus !== null
     ? new URL(completion.referralStatus.referralLink)
     : null;
+const showReferral = referralUrl !== null && ladderFigures !== null;
+// The link wraps after the origin and keeps its code in one unit, so it
+// never truncates (the canvas's .linkbox). The parts are the URL's own.
+const referralCode = referralUrl?.searchParams.get('ref') ?? '';
+const referralParts =
+  referralUrl === null
+    ? null
+    : referralUrl.search.endsWith(referralCode) && referralCode !== ''
+      ? {
+          base: `${referralUrl.origin}${referralUrl.pathname}`,
+          query: referralUrl.search.slice(
+            0,
+            referralUrl.search.length - referralCode.length,
+          ),
+          code: referralCode,
+        }
+      : { base: referralUrl.toString(), query: '', code: '' };
+const meterSegments =
+  ladderFigures === null
+    ? []
+    : Array.from(
+        { length: ladderFigures.threshold },
+        (_, index) => index < ladderFigures.progress,
+      );
 const statusUrl =
   completion.statusToken === null
     ? null
     : new URL(`/me?t=${encodeURIComponent(completion.statusToken)}`, Astro.url);
+const showSurvey = surveyEnabled && statusUrl !== null;
 const showConfirmation = !submitted && token !== '';
 const turnstileSiteKey = getConfig().turnstileSiteKey;
 ---
@@ -107,255 +146,643 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   title={verificationCopy.meta.title}
   description={verificationCopy.meta.description}
 >
-  <Container class="verification-container">
-    {
-      showConfirmation ? (
-        <form action="/verify" class="verification-confirm" method="post">
-          <Card class="verification-boundary">
-            <Icon name="shield" size="lg" />
-            <h1>{verificationCopy.confirm.body}</h1>
-            <p>{verificationCopy.confirm.next}</p>
-            <input name="token" type="hidden" value={token} />
-            <Button type="submit">{verificationCopy.confirm.submit}</Button>
-          </Card>
-        </form>
-      ) : completed ? (
-        <div class="verification-success">
-          <Card class="verification-boundary">
-            <div class="verification-heading">
-              <Icon name="check" size="lg" />
-              <div>
-                <h1 class="verification-success__message">
+  <div class="verification-page">
+    <Container class="verification-container">
+      {
+        showConfirmation ? (
+          <div class="verification-task">
+            <form action="/verify" class="verification-confirm" method="post">
+              <Card
+                class="verification-task__card"
+                aria-labelledby="verification-title"
+              >
+                <div class="verification-task__head">
+                  <span class="verification-tile verification-tile--task">
+                    <Icon name="mail" />
+                  </span>
+                  <h1 id="verification-title">
+                    {verificationCopy.confirm.body}
+                  </h1>
+                </div>
+                <p class="verification-task__line">
+                  {verificationCopy.confirm.next}
+                </p>
+                <input name="token" type="hidden" value={token} />
+                <div class="verification-task__actions">
+                  <Button type="submit">
+                    {verificationCopy.confirm.submit}
+                  </Button>
+                </div>
+              </Card>
+            </form>
+          </div>
+        ) : completed ? (
+          <div
+            class:list={[
+              'verification-success',
+              showReferral && 'verification-success--referral',
+              showSurvey && 'verification-success--survey',
+            ]}
+          >
+            <Card
+              class="verification-hero verification-main"
+              aria-labelledby="verification-title"
+            >
+              <div class="verification-hero__head">
+                <span
+                  class="verification-tile verification-tile--success"
+                  data-enter
+                  style="--enter-index: 0"
+                >
+                  <Icon name="check-circle" draw class="verification-check" />
+                </span>
+                <h1
+                  class="verification-success__message"
+                  id="verification-title"
+                  data-enter="shift"
+                  style="--enter-index: 1"
+                >
                   {verificationCopy.complete}
                 </h1>
-                <p>
+                <p data-enter="shift" style="--enter-index: 1">
                   {referralEnabled
                     ? verificationCopy.completeNext
                     : verificationCopy.completeNextNoReferral}
                 </p>
               </div>
-            </div>
-            {referralFigures?.accessWindow !== null &&
-            referralFigures?.accessWindow !== undefined ? (
-              <Pill variant="badge" data-access-wave>
-                {verificationCopy.referral.wave(referralFigures.accessWindow)}
-              </Pill>
-            ) : null}
-          </Card>
-
-          {referralUrl !== null && ladderFigures !== null ? (
-            <Card class="verification-success__section" data-referral-card>
-              <h2>{verificationCopy.referral.label}</h2>
-              <p>{verificationCopy.referral.link}</p>
-              <div class="verification-link-control">
-                <Input
-                  aria-label={verificationCopy.referral.linkLabel}
-                  data-referral-link
-                  readonly
-                  type="url"
-                  value={referralUrl.toString()}
-                />
-                <Button
-                  data-copy-referral
-                  data-copied={verificationCopy.referral.copied}
-                  data-copy-failed={verificationCopy.referral.copyFailed}
-                >
-                  {verificationCopy.referral.copy}
-                </Button>
-                <span
-                  data-share-host
-                  data-share-label={verificationCopy.referral.share}
-                  data-share-title={verificationCopy.referral.label}
-                />
-              </div>
-              <p aria-live="polite" data-copy-status />
-              <div class="verification-progress">
-                <label for="referral-progress">
-                  {verificationCopy.referral.progress(
-                    ladderFigures.progress,
-                    ladderFigures.threshold,
-                    ladderFigures.tier,
-                  )}
-                </label>
-                <progress
-                  id="referral-progress"
-                  data-referral-progress
-                  value={ladderFigures.progress}
-                  max={ladderFigures.threshold}
-                />
-              </div>
-              <div class="verification-rewards">
-                <h3>{verificationCopy.referral.unlocks(ladderFigures.tier)}</h3>
-                <p class="verification-reward-name">
-                  {verificationCopy.referral.reward(
-                    ladderFigures.discountPercent,
-                  )}
-                </p>
-                <p>{verificationCopy.referral.waveReward}</p>
-                {ladderFigures.rewardStates.map((reward) => (
-                  <Pill>
-                    {reward.kind === 'discount'
-                      ? verificationCopy.referral.reward(
-                          ladderFigures.discountPercent,
-                        )
-                      : verificationCopy.referral.waveReward}
-                    : {verificationCopy.referral[reward.state]}
-                  </Pill>
-                ))}
-                <p>{verificationCopy.referral.heldCondition}</p>
-              </div>
+              {accessWindow !== null ? (
+                <div class="verification-hero__meta">
+                  <span
+                    class="verification-wave"
+                    data-access-wave
+                    data-enter="shift"
+                    style="--enter-index: 2"
+                  >
+                    <span class="verification-wave__bars" aria-hidden="true">
+                      {waveBars.map((on) => (
+                        <i class:list={[on && 'is-on']} />
+                      ))}
+                    </span>
+                    {verificationCopy.referral.wave(accessWindow)}
+                  </span>
+                </div>
+              ) : null}
             </Card>
-          ) : null}
 
-          {surveyEnabled && statusUrl !== null ? (
-            <Card class="verification-success__section">
+            {showReferral &&
+            referralParts !== null &&
+            ladderFigures !== null ? (
+              <Card
+                class="verification-referral verification-main"
+                aria-labelledby="verification-referral-title"
+                data-referral-card
+                data-enter="shift"
+                style="--enter-index: 3"
+              >
+                <div class="verification-card-head">
+                  <span class="verification-tile">
+                    <Icon name="people" size="base" />
+                  </span>
+                  <h2
+                    class="verification-card-title"
+                    id="verification-referral-title"
+                  >
+                    {verificationCopy.referral.label}
+                  </h2>
+                </div>
+                {/* The link, Copy link and Share link, named for assistive
+                    technology by the E11.5-07 line the canvas no longer
+                    draws. */}
+                <div
+                  class="verification-share-group"
+                  role="group"
+                  aria-label={verificationCopy.referral.link}
+                >
+                  <div class="verification-ref-row">
+                    <p
+                      class="verification-linkbox"
+                      data-referral-link
+                      data-referral-url={referralUrl?.toString()}
+                    >
+                      {/* One expression, so no whitespace enters the link. */}
+                      {[
+                        referralParts.base,
+                        <wbr />,
+                        referralParts.query,
+                        <span class="verification-linkbox__code">
+                          {referralParts.code}
+                        </span>,
+                      ]}
+                    </p>
+                    <Button
+                      class="verification-copy"
+                      data-copy-referral
+                      data-copied={verificationCopy.referral.copied}
+                      data-copy-failed={verificationCopy.referral.copyFailed}
+                    >
+                      <span class="verification-copy__faces">
+                        <span class="verification-copy__face">
+                          <Icon name="copy" size="base" />
+                          <span>{verificationCopy.referral.copy}</span>
+                        </span>
+                        <span
+                          class="verification-copy__face verification-copy__face--done"
+                          aria-hidden="true"
+                        >
+                          <Icon name="check" size="base" />
+                          <span>{verificationCopy.referral.copied}</span>
+                        </span>
+                      </span>
+                    </Button>
+                  </div>
+                  <div class="verification-copy-result" data-copy-result>
+                    <Icon name="info" size="base" />
+                    <p aria-live="polite" data-copy-status />
+                  </div>
+                  <div
+                    class="verification-share"
+                    data-share-host
+                    data-share-title={verificationCopy.referral.label}
+                  >
+                    <template data-share-template>
+                      <Button
+                        class="verification-native-share verification-keep"
+                        variant="secondary"
+                        full
+                      >
+                        <Icon name="upload-share" size="base" />
+                        {verificationCopy.referral.share}
+                      </Button>
+                    </template>
+                  </div>
+                </div>
+                <div class="verification-well">
+                  <div class="verification-meter">
+                    <div class="verification-meter__top">
+                      <label
+                        class="verification-meter__value"
+                        for="referral-progress"
+                        data-meter-text
+                      >
+                        {verificationCopy.referral.progress(
+                          ladderFigures.progress,
+                          ladderFigures.threshold,
+                          ladderFigures.tier,
+                        )}
+                      </label>
+                    </div>
+                    <progress
+                      class="verification-meter__native"
+                      id="referral-progress"
+                      data-referral-progress
+                      value={ladderFigures.progress}
+                      max={ladderFigures.threshold}
+                    />
+                    <span
+                      class="verification-meter__track"
+                      aria-hidden="true"
+                      data-meter-track
+                    >
+                      {meterSegments.map((filled) => (
+                        <i
+                          class:list={[
+                            'verification-meter__segment',
+                            filled && 'is-filled',
+                          ]}
+                        >
+                          {filled ? (
+                            <b class="verification-meter__fill" />
+                          ) : null}
+                        </i>
+                      ))}
+                    </span>
+                  </div>
+                  <div class="verification-unlocks">
+                    <p class="verification-label">
+                      {verificationCopy.referral.unlocks(ladderFigures.tier)}
+                    </p>
+                    <ul class="verification-unlocks__list">
+                      <li>
+                        <Pill>
+                          <Icon name="arrow-up" size="sm" />
+                          {verificationCopy.referral.waveReward}
+                        </Pill>
+                      </li>
+                      <li>
+                        <Pill variant="coral">
+                          {verificationCopy.referral.reward(
+                            ladderFigures.discountPercent,
+                          )}
+                        </Pill>
+                      </li>
+                    </ul>
+                    {ladderFigures.rewardStates.length > 0 ? (
+                      <ul class="verification-unlocks__list">
+                        {ladderFigures.rewardStates.map((reward) => (
+                          <li>
+                            <Pill>
+                              {reward.kind === 'discount'
+                                ? verificationCopy.referral.reward(
+                                    ladderFigures.discountPercent,
+                                  )
+                                : verificationCopy.referral.waveReward}
+                              : {verificationCopy.referral[reward.state]}
+                            </Pill>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                </div>
+                <p class="verification-held">
+                  <Icon name="clock" size="sm" />
+                  <span>{verificationCopy.referral.heldCondition}</span>
+                </p>
+              </Card>
+            ) : null}
+
+            {showSurvey ? (
+              <Card
+                class:list={[
+                  'verification-survey-card',
+                  showReferral ? 'verification-side' : 'verification-main',
+                ]}
+                aria-labelledby="verification-survey-title"
+                data-reveal
+              >
+                <h2
+                  class="verification-card-title"
+                  id="verification-survey-title"
+                >
+                  {verificationCopy.survey.heading}
+                </h2>
+                <form
+                  action="/api/survey"
+                  class="verification-survey"
+                  data-survey-form
+                  data-unavailable-message={surveyCopy.unavailable}
+                  method="post"
+                >
+                  <input
+                    name="token"
+                    type="hidden"
+                    value={completion.statusToken}
+                  />
+                  <input
+                    name="version"
+                    type="hidden"
+                    value={currentSurveyVersion}
+                  />
+                  <div class="verification-survey__fields" data-survey-fields>
+                    <fieldset class="verification-question">
+                      <legend>{verificationCopy.survey.categoryLabel}</legend>
+                      <div class="verification-chips">
+                        {verificationCopy.survey.categoryOptions.map(
+                          (option) => (
+                            <label class="verification-choice">
+                              <input
+                                name="category_preference"
+                                type="checkbox"
+                                value={option.value}
+                              />
+                              <span class="verification-chip">
+                                <Icon
+                                  name="check"
+                                  size="sm"
+                                  class="verification-option__check"
+                                />
+                                <span>{option.label}</span>
+                              </span>
+                            </label>
+                          ),
+                        )}
+                      </div>
+                    </fieldset>
+                    <fieldset class="verification-question">
+                      <legend>{verificationCopy.survey.frequencyLabel}</legend>
+                      <div class="verification-segments">
+                        {verificationCopy.survey.frequencyOptions.map(
+                          (option) => (
+                            <label class="verification-choice">
+                              <input
+                                name="shopping_frequency"
+                                type="radio"
+                                value={option.value}
+                              />
+                              <span class="verification-segment">
+                                <Icon
+                                  name="check"
+                                  size="sm"
+                                  class="verification-option__check"
+                                />
+                                <span>{option.label}</span>
+                              </span>
+                            </label>
+                          ),
+                        )}
+                      </div>
+                    </fieldset>
+                  </div>
+                  <div
+                    class="verification-survey-result"
+                    data-survey-result
+                    tabindex="-1"
+                  >
+                    <Icon
+                      name="check-circle"
+                      size="base"
+                      class="verification-survey-result__icon verification-survey-result__icon--saved"
+                    />
+                    <Icon
+                      name="check"
+                      size="base"
+                      class="verification-survey-result__icon verification-survey-result__icon--skipped"
+                    />
+                    <Icon
+                      name="alert-circle"
+                      size="base"
+                      class="verification-survey-result__icon verification-survey-result__icon--error"
+                    />
+                    <p aria-live="polite" data-survey-status />
+                  </div>
+                  <div class="verification-survey-actions" data-survey-fields>
+                    <Button
+                      class="verification-keep"
+                      type="submit"
+                      variant="secondary"
+                    >
+                      {verificationCopy.survey.submit}
+                    </Button>
+                    <Button
+                      class="verification-keep"
+                      variant="secondary"
+                      data-survey-skip
+                    >
+                      {verificationCopy.survey.skip}
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            ) : null}
+
+            {statusUrl !== null ? (
+              <Card
+                class="verification-status"
+                aria-labelledby="verification-status-title"
+                data-reveal
+              >
+                <div class="verification-card-head">
+                  <span class="verification-tile verification-tile--neutral">
+                    <Icon name="person" size="base" />
+                  </span>
+                  <h2
+                    class="verification-card-title"
+                    id="verification-status-title"
+                  >
+                    {verificationCopy.status.label}
+                  </h2>
+                </div>
+                <Button
+                  class="verification-status__link verification-keep"
+                  href={statusUrl.toString()}
+                  variant="secondary"
+                >
+                  {verificationCopy.status.link}
+                  <Icon name="arrow-right" size="sm" />
+                </Button>
+              </Card>
+            ) : null}
+          </div>
+        ) : (
+          <div class="verification-task">
+            <Card
+              class="verification-task__card verification-invalid"
+              aria-labelledby="verification-title"
+            >
+              <div class="verification-notice verification-notice--info verification-invalid__notice">
+                <Icon name="info" size="base" />
+                <p>{verificationCopy.invalid}</p>
+              </div>
+              <div class="verification-task__head">
+                <span class="verification-tile verification-tile--task verification-tile--neutral">
+                  <Icon name="refresh" />
+                </span>
+                <h1 id="verification-title">
+                  {verificationCopy.invalidHeading}
+                </h1>
+              </div>
+              <noscript>
+                <div class="verification-notice verification-notice--info verification-task__notice">
+                  <Icon name="info" size="base" />
+                  <p>{verificationCopy.resend.javaScriptRequired}</p>
+                </div>
+              </noscript>
+              <div
+                class="verification-notice verification-task__notice verification-resend-result"
+                data-resend-result
+              >
+                <Icon
+                  name="check-circle"
+                  size="base"
+                  class="verification-resend-result__icon verification-resend-result__icon--success"
+                />
+                <Icon
+                  name="alert-circle"
+                  size="base"
+                  class="verification-resend-result__icon verification-resend-result__icon--error"
+                />
+                <p aria-live="polite" data-resend-status />
+              </div>
               <form
-                action="/api/survey"
-                class="verification-survey"
-                data-survey-form
-                data-unavailable-message={surveyCopy.unavailable}
+                action="/api/resend-verification"
+                class="verification-task__form"
+                data-resend-form
+                data-unavailable-message={resendVerificationCopy.unavailable}
                 method="post"
               >
-                <h2>{verificationCopy.survey.heading}</h2>
-                <input
-                  name="token"
-                  type="hidden"
-                  value={completion.statusToken}
-                />
-                <input
-                  name="version"
-                  type="hidden"
-                  value={currentSurveyVersion}
-                />
-                <fieldset>
-                  <legend>{verificationCopy.survey.categoryLabel}</legend>
-                  <div class="verification-options verification-options--chips">
-                    {verificationCopy.survey.categoryOptions.map((option) => (
-                      <label>
-                        <input
-                          name="category_preference"
-                          type="checkbox"
-                          value={option.value}
-                        />
-                        <span>{option.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <fieldset>
-                  <legend>{verificationCopy.survey.frequencyLabel}</legend>
-                  <div class="verification-options verification-options--segments">
-                    {verificationCopy.survey.frequencyOptions.map((option) => (
-                      <label>
-                        <input
-                          name="shopping_frequency"
-                          type="radio"
-                          value={option.value}
-                        />
-                        <span>{option.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <div class="verification-survey-actions">
-                  <Button type="submit" variant="secondary">
-                    {verificationCopy.survey.submit}
-                  </Button>
-                  <Button variant="secondary" data-survey-skip>
-                    {verificationCopy.survey.skip}
+                <Field
+                  controlId="resend-email"
+                  label={verificationCopy.resend.emailLabel}
+                >
+                  <Input
+                    id="resend-email"
+                    name="email"
+                    type="email"
+                    autocomplete="email"
+                    required
+                  />
+                </Field>
+                <div class="verification-task__actions verification-task__actions--form">
+                  <Button type="submit" disabled data-resend-submit>
+                    {verificationCopy.resend.submit}
                   </Button>
                 </div>
-                <p aria-live="polite" data-survey-status />
+                <div
+                  class="cf-turnstile"
+                  data-sitekey={turnstileSiteKey}
+                  data-size="compact"
+                  data-appearance="interaction-only"
+                  data-response-field-name="turnstile_token"
+                />
               </form>
+              <script
+                is:inline
+                src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+                async
+                defer
+              />
             </Card>
-          ) : null}
-
-          {statusUrl !== null ? (
-            <Button href={statusUrl.toString()} variant="secondary">
-              {verificationCopy.status.link}
-            </Button>
-          ) : null}
-        </div>
-      ) : (
-        <Card class="verification-invalid verification-boundary">
-          <Icon name="alert" size="lg" />
-          <h1>{verificationCopy.invalidHeading}</h1>
-          <p>{verificationCopy.invalid}</p>
-          <form action="/api/resend-verification" method="post">
-            <label for="resend-email">
-              {verificationCopy.resend.emailLabel}
-            </label>
-            <Input
-              id="resend-email"
-              name="email"
-              type="email"
-              autocomplete="email"
-              required
-            />
-            <div
-              class="cf-turnstile"
-              data-sitekey={turnstileSiteKey}
-              data-size="compact"
-              data-response-field-name="turnstile_token"
-            />
-            <noscript>
-              <p>{verificationCopy.resend.javaScriptRequired}</p>
-            </noscript>
-            <Button type="submit">{verificationCopy.resend.submit}</Button>
-          </form>
-          <script
-            is:inline
-            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-            async
-            defer
-          />
-        </Card>
-      )
-    }
-  </Container>
+          </div>
+        )
+      }
+    </Container>
+  </div>
 </BaseLayout>
 
 <script is:inline>
+  // A duration token, read from the root so the hold stays in tokens.css.
+  const durationToken = (name) => {
+    if (typeof getComputedStyle !== 'function') return 0;
+    const value = getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim();
+    const amount =
+      Number.parseFloat(value) * (/(?<!m)s$/u.test(value) ? 1000 : 1);
+    return Number.isFinite(amount) ? amount : 0;
+  };
+
   const referralLink = document.querySelector('[data-referral-link]');
   const copyButton = document.querySelector('[data-copy-referral]');
+  const copyResult = document.querySelector('[data-copy-result]');
   const copyStatus = document.querySelector('[data-copy-status]');
   if (
-    referralLink?.tagName === 'INPUT' &&
+    referralLink instanceof HTMLElement &&
     copyButton instanceof HTMLButtonElement &&
+    copyResult instanceof HTMLElement &&
     copyStatus instanceof HTMLElement
   ) {
+    const referralUrl = referralLink.dataset.referralUrl ?? '';
+    let copiedTimer;
     copyButton.addEventListener('click', async () => {
+      globalThis.clearTimeout(copiedTimer);
+      copyStatus.textContent = '';
+      copyResult.dataset.copyResult = '';
+      referralLink.dataset.selected = '';
       try {
-        await navigator.clipboard.writeText(referralLink.value);
+        await navigator.clipboard.writeText(referralUrl);
+        // The label cross-fades to "Link copied." and back after the hold;
+        // the live region announces it, shown only for a failure.
+        copyButton.dataset.copyState = 'copied';
+        copyResult.dataset.copyResult = 'copied';
         copyStatus.textContent = copyButton.dataset.copied ?? '';
+        copiedTimer = globalThis.setTimeout(() => {
+          copyButton.dataset.copyState = '';
+          copyResult.dataset.copyResult = '';
+          copyStatus.textContent = '';
+        }, durationToken('--copy-confirm-hold'));
       } catch {
-        referralLink.select();
+        copyButton.dataset.copyState = '';
+        const selection = globalThis.getSelection?.();
+        selection?.selectAllChildren(referralLink);
+        referralLink.dataset.selected = 'true';
+        copyResult.dataset.copyResult = 'failed';
         copyStatus.textContent = copyButton.dataset.copyFailed ?? '';
       }
     });
     const shareHost = document.querySelector('[data-share-host]');
+    const shareTemplate = shareHost?.querySelector('[data-share-template]');
     if (
       shareHost instanceof HTMLElement &&
+      shareTemplate instanceof HTMLTemplateElement &&
       typeof navigator.share === 'function'
     ) {
-      const shareButton = document.createElement('button');
-      shareButton.type = 'button';
-      shareButton.className = 'verification-native-share';
-      shareButton.textContent = shareHost.dataset.shareLabel ?? '';
-      shareButton.addEventListener('click', () => {
+      const share = shareTemplate.content.cloneNode(true);
+      const shareButton = share.querySelector('button');
+      shareButton?.addEventListener('click', () => {
         void navigator
-          .share({
-            title: shareHost.dataset.shareTitle,
-            url: referralLink.value,
-          })
+          .share({ title: shareHost.dataset.shareTitle, url: referralUrl })
           .catch(() => {});
       });
-      shareHost.append(shareButton);
+      shareHost.append(share);
+    }
+  }
+
+  const resendForm = document.querySelector('[data-resend-form]');
+  const resendResult = document.querySelector('[data-resend-result]');
+  const resendStatus = document.querySelector('[data-resend-status]');
+  if (
+    resendForm instanceof HTMLFormElement &&
+    resendResult instanceof HTMLElement &&
+    resendStatus instanceof HTMLElement
+  ) {
+    const resendSubmit = resendForm.querySelector('[data-resend-submit]');
+    if (resendSubmit instanceof HTMLButtonElement) {
+      // Server-rendered disabled: without JavaScript the security check
+      // cannot run, and the notice above says so (founder decision
+      // 2026-11-10).
+      resendSubmit.disabled = false;
+      resendForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (resendSubmit.disabled) return;
+        resendSubmit.disabled = true;
+        resendResult.dataset.resendResult = '';
+        resendStatus.textContent = '';
+        let tone = 'error';
+        let message = resendForm.dataset.unavailableMessage ?? '';
+        try {
+          const response = await fetch(resendForm.action, {
+            body: new FormData(resendForm),
+            method: 'POST',
+          });
+          const payload = await response.json();
+          if (response.ok && typeof payload.message === 'string') {
+            tone = 'success';
+            message = payload.message;
+          } else if (typeof payload.error?.message === 'string') {
+            message = payload.error.message;
+          }
+        } catch {
+          // The unavailable message stands.
+        }
+        resendResult.dataset.resendResult = tone;
+        resendStatus.textContent = message;
+        // A Turnstile token is single-use, so the next request needs a new one.
+        globalThis.turnstile?.reset?.();
+        resendSubmit.disabled = false;
+      });
     }
   }
 
   const surveyForm = document.querySelector('[data-survey-form]');
   if (surveyForm instanceof HTMLFormElement) {
+    // Saving or skipping fades the questions out over their transition, then
+    // the result takes their place (founder decision 2026-11-10).
+    const leaveQuestions = () => {
+      if (typeof getComputedStyle !== 'function') return Promise.resolve();
+      const fields = [...surveyForm.querySelectorAll('[data-survey-fields]')];
+      const longest = Math.max(
+        0,
+        ...fields.flatMap((field) =>
+          getComputedStyle(field).transitionProperty === 'none'
+            ? []
+            : getComputedStyle(field)
+                .transitionDuration.split(',')
+                .map(
+                  (value) =>
+                    Number.parseFloat(value) *
+                    (/(?<!m)s$/u.test(value.trim()) ? 1000 : 1),
+                ),
+        ),
+      );
+      if (!(longest > 0)) return Promise.resolve();
+      surveyForm.dataset.surveyState = 'leaving';
+      return new Promise((resolve) => {
+        fields[0]?.addEventListener('transitionend', () => resolve(), {
+          once: true,
+        });
+        globalThis.setTimeout(resolve, longest * 2);
+      });
+    };
     const skip = surveyForm.querySelector('[data-survey-skip]');
     if (skip instanceof HTMLButtonElement) {
       skip.addEventListener('click', () => {
@@ -379,209 +806,1035 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
       submit.disabled = true;
       if (skip instanceof HTMLButtonElement) skip.disabled = true;
+      surveyForm.dataset.surveyState = '';
+      status.textContent = '';
+      let state = 'error';
+      let message = surveyForm.dataset.unavailableMessage ?? '';
       try {
         const response = await fetch(surveyForm.action, {
           body: new FormData(surveyForm),
           method: 'POST',
         });
         const payload = await response.json();
-        status.textContent = response.ok
-          ? payload.message
-          : (payload.error?.message ?? surveyForm.dataset.unavailableMessage);
+        if (response.ok) {
+          state = payload.status === 'skipped' ? 'skipped' : 'saved';
+          message = payload.message;
+        } else {
+          state = payload.error?.code === 'invalid_input' ? 'invalid' : 'error';
+          message = payload.error?.message ?? message;
+        }
       } catch {
-        status.textContent = surveyForm.dataset.unavailableMessage ?? '';
-      } finally {
-        submit.disabled = false;
-        if (skip instanceof HTMLButtonElement) skip.disabled = false;
+        // The unavailable message stands.
+      }
+      if (state === 'saved' || state === 'skipped') await leaveQuestions();
+      surveyForm.dataset.surveyState = state;
+      status.textContent = message;
+      submit.disabled = false;
+      if (skip instanceof HTMLButtonElement) skip.disabled = false;
+      if (state === 'saved' || state === 'skipped') {
+        const result = surveyForm.querySelector('[data-survey-result]');
+        if (result instanceof HTMLElement)
+          result.focus?.({ preventScroll: true });
       }
     });
   }
 </script>
 
 <style>
+  /*
+    /verify on the final design (E11.5-11q, Verify.dc.html). The confirm and
+    invalid states are one task card: columns 1–7 from 64rem, at most 40rem
+    wide from 48rem, padded 24 (40 from 48rem). The success state is the
+    canvas's .vgrid: the verified card and the referral card in columns 1–7,
+    the status card beside the verified card from 64rem (last below it), and
+    the survey beside the referral card when both show.
+  */
+  /* The page sets its own rhythm: it takes back the shell's main padding,
+     as the landing page does, so the grid sits on the canvas's gutters and
+     starts 32, 48 or 64px below the header (.page-main). */
+  .verification-page {
+    margin-inline: calc(-1 * var(--space-3));
+    margin-block-start: calc(-1 * var(--space-4));
+  }
+
   :global(.verification-container) {
-    padding-block: var(--section-gap);
-  }
-
-  .verification-success,
-  .verification-boundary,
-  .verification-invalid form,
-  .verification-success__section,
-  .verification-survey,
-  .verification-progress,
-  .verification-rewards {
-    display: grid;
-    gap: var(--space-3);
-  }
-
-  .verification-boundary {
-    max-inline-size: var(--measure);
-  }
-
-  .verification-boundary :global(.pill),
-  .verification-rewards :global(.pill) {
-    justify-self: start;
-  }
-
-  .verification-heading,
-  .verification-link-control,
-  .verification-survey-actions,
-  .verification-options {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .verification-heading {
-    align-items: flex-start;
-  }
-
-  .verification-heading > div {
-    flex: auto;
+    padding-block-start: var(--space-4);
   }
 
   h1,
   h2,
-  h3,
   p {
     margin: 0;
   }
 
   h1 {
     font-size: var(--step-5);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-bold);
     line-height: var(--leading-5);
+    letter-spacing: var(--tracking-tight);
+    text-wrap: balance;
+  }
+
+  .verification-card-title {
+    font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-3);
     letter-spacing: var(--tracking-tight);
   }
 
-  h2 {
-    font-size: var(--step-4);
-    line-height: var(--leading-4);
+  .verification-label {
+    color: var(--ink-600);
+    font-size: var(--step-0);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-0);
   }
 
-  h3 {
-    font-size: var(--step-3);
-    line-height: var(--leading-3);
+  /* Tiles: 40 (card heads), 48 (task cards), 56 (the success icon). */
+  .verification-tile {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--tile-size);
+    block-size: var(--tile-size);
+    color: var(--ink);
+    background-color: var(--coral-tint);
+    border-radius: var(--radius-control);
   }
 
-  p,
-  legend,
-  label {
+  .verification-tile--neutral {
+    background-color: var(--wash);
+  }
+
+  .verification-tile--task {
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
+  }
+
+  .verification-tile--success {
+    inline-size: var(--space-7);
+    block-size: var(--space-7);
+    color: var(--success-icon);
+    background-color: var(--success-tint);
+    border-radius: var(--radius-card);
+  }
+
+  /* Notices (E11.5-11j): 16px padding, radius 8, a 12px gap between the
+     20px icon and the 14/20 500 text. */
+  .verification-notice,
+  .verification-survey-result,
+  .verification-copy-result {
+    display: flex;
+    gap: var(--space-1-5);
+    align-items: flex-start;
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+  }
+
+  .verification-notice,
+  .verification-survey-result {
+    padding: var(--space-2);
+    color: var(--ink);
+    background-color: var(--surface);
+    border-radius: var(--radius-control);
+    box-shadow: var(--inset-line), var(--edge);
+  }
+
+  .verification-notice :global(.icon),
+  .verification-survey-result :global(.icon),
+  .verification-copy-result :global(.icon) {
+    color: var(--ink-600);
+  }
+
+  .verification-notice--info {
+    background-color: var(--wash);
+    box-shadow: none;
+  }
+
+  @media (forced-colors: active) {
+    .verification-notice,
+    .verification-survey-result {
+      outline: var(--border-thin) solid currentColor;
+      outline-offset: calc(var(--border-thin) * -1);
+    }
+  }
+
+  /* Read by assistive technology and clipped to nothing on screen until it
+     has something to show, so a live region is in place before it speaks. */
+  .verification-resend-result:not(
+    [data-resend-result='success'],
+    [data-resend-result='error']
+  ),
+  .verification-copy-result:not([data-copy-result='failed']),
+  .verification-survey:not(
+      [data-survey-state='saved'],
+      [data-survey-state='skipped'],
+      [data-survey-state='error'],
+      [data-survey-state='invalid']
+    )
+    .verification-survey-result {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  /* The clipped regions are boxed inside their card or form, so a message
+     never overflows the 1px box the layout checks would read as clipped. */
+  .verification-task :global(.verification-task__card),
+  .verification-success :global([data-referral-card]),
+  .verification-survey {
+    position: relative;
+  }
+
+  /* ---- the task card: confirm, and the invalid or expired link ---- */
+  .verification-task {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .verification-confirm {
+    display: contents;
+  }
+
+  .verification-task :global(.verification-task__card) {
+    box-sizing: border-box;
+    padding: var(--space-3);
+  }
+
+  /* The board's secondary buttons keep their 48px size and 16/24 label at
+     every width (its .btn--keep), padded 24 like every .btn on the board. */
+  .verification-page :global(.verification-keep) {
+    min-block-size: var(--control-height);
+    padding-inline: var(--space-3);
     font-size: var(--step-2);
     line-height: var(--leading-2);
   }
 
-  .verification-heading p,
-  .verification-boundary > p,
-  .verification-rewards p {
+  .verification-task__head {
+    display: flex;
+    gap: var(--space-2);
+    align-items: flex-start;
+  }
+
+  .verification-task__head h1 {
+    padding-block-start: var(--space-0-5);
+    overflow-wrap: anywhere;
+  }
+
+  .verification-task__line {
+    margin-block-start: var(--space-2);
     color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    text-wrap: pretty;
   }
 
-  .verification-rewards .verification-reward-name {
-    color: var(--ink);
-    font-weight: var(--weight-semibold);
+  .verification-task__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    margin-block-start: var(--space-4);
   }
 
-  .verification-link-control :global(.input) {
-    min-inline-size: 0;
-    flex: auto;
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .verification-link-control :global(.button) {
-    flex: none;
-  }
-
-  .verification-progress label {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-  }
-
-  progress {
+  .verification-task__actions :global(.button) {
     inline-size: 100%;
-    block-size: var(--space-2);
-    accent-color: var(--coral);
+    white-space: normal;
   }
 
-  fieldset {
-    min-inline-size: 0;
-    margin: 0;
-    padding: 0;
-    border: 0;
+  .verification-task__actions--form {
+    margin-block-start: var(--space-0);
   }
 
-  legend {
-    margin-block-end: var(--space-2);
-    font-weight: var(--weight-semibold);
+  .verification-invalid__notice {
+    margin-block-end: var(--space-3);
   }
 
-  .verification-options label {
-    position: relative;
-    display: inline-flex;
-    min-block-size: var(--tap-min);
+  .verification-task__notice:not(.verification-resend-result),
+  .verification-resend-result[data-resend-result] {
+    margin-block-start: var(--space-3);
+  }
+
+  .verification-resend-result:not([data-resend-result='success'])
+    :global(.verification-resend-result__icon--success),
+  .verification-resend-result:not([data-resend-result='error'])
+    :global(.verification-resend-result__icon--error) {
+    display: none;
+  }
+
+  .verification-resend-result[data-resend-result='success']
+    :global(.verification-resend-result__icon--success) {
+    color: var(--success-icon);
+  }
+
+  .verification-resend-result[data-resend-result='error'] {
+    box-shadow: var(--inset-error);
+  }
+
+  .verification-resend-result[data-resend-result='error']
+    :global(.verification-resend-result__icon--error) {
+    color: var(--error);
+  }
+
+  .verification-task__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-block-start: var(--space-3);
+  }
+
+  .verification-task__form > .cf-turnstile:empty {
+    display: none;
+  }
+
+  /* ---- success ---- */
+  .verification-success {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+    align-items: start;
+  }
+
+  .verification-success :global(.card) {
+    padding: var(--space-3);
+  }
+
+  .verification-hero {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .verification-hero__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1) var(--space-2);
+    align-items: start;
+  }
+
+  .verification-hero__head .verification-tile {
+    margin-block-end: var(--space-1);
+  }
+
+  .verification-hero__head p {
+    max-inline-size: calc(var(--space-6) * 12);
+    color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    text-wrap: pretty;
+  }
+
+  .verification-hero__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
     align-items: center;
-    cursor: pointer;
+    justify-content: flex-end;
+    padding-block-start: var(--space-2);
+    border-block-start: var(--border-thin) solid var(--line);
   }
 
-  .verification-options input {
-    position: absolute;
-    inline-size: var(--tap-min);
-    block-size: var(--tap-min);
-    margin: 0;
-    opacity: 0;
-  }
-
-  .verification-options span {
+  /* The access-wave badge: four bars rising left to right, filled in coral
+     up to the visitor's wave, then the wave in mono. */
+  .verification-wave {
     display: inline-flex;
-    min-block-size: var(--tap-min);
+    gap: var(--space-1);
     align-items: center;
-    padding-inline: var(--space-2);
+    block-size: var(--space-4);
+    padding-inline: var(--space-1) var(--space-1-5);
     color: var(--ink);
-    background-color: var(--paper);
-    border: thin solid var(--line);
+    font-family: var(--font-mono);
+    font-size: var(--step-0);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: var(--leading-0);
+    white-space: nowrap;
+    background-color: var(--coral-tint);
     border-radius: var(--radius-pill);
   }
 
-  .verification-options--segments span {
-    border-radius: var(--radius-control);
+  .verification-wave__bars {
+    display: inline-flex;
+    gap: var(--wave-bar-gap);
+    align-items: flex-end;
+    block-size: var(--space-1-75);
   }
 
-  .verification-options input:checked + span {
-    background-color: var(--coral-tint);
-    border-color: var(--coral);
+  .verification-wave__bars i {
+    display: block;
+    inline-size: var(--wave-bar-width);
+    background-color: var(--ink-300);
+    border-radius: var(--wave-bar-radius);
   }
 
-  .verification-options label:focus-within span {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
+  .verification-wave__bars i:nth-child(1) {
+    block-size: var(--space-0-75);
   }
 
-  .verification-survey-actions :global(.button) {
-    min-inline-size: var(--space-10);
+  .verification-wave__bars i:nth-child(2) {
+    block-size: calc(var(--space-0-75) * 1.5);
   }
 
-  :global(.verification-native-share) {
-    min-block-size: var(--tap-min);
-    min-inline-size: var(--tap-min);
-    padding-inline: var(--space-3);
+  .verification-wave__bars i:nth-child(3) {
+    block-size: var(--space-1-5);
+  }
+
+  .verification-wave__bars i:nth-child(4) {
+    block-size: var(--space-1-75);
+  }
+
+  .verification-wave__bars i.is-on {
+    background-color: var(--coral);
+  }
+
+  .verification-card-head {
+    display: flex;
+    gap: var(--space-1-5);
+    align-items: center;
+  }
+
+  .verification-card-head h2 {
+    min-inline-size: 0;
+  }
+
+  /* The referral link wraps rather than truncating, and selects as one unit. */
+  .verification-ref-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+    margin-block-start: var(--space-1);
+  }
+
+  .verification-linkbox {
+    box-sizing: border-box;
+    min-inline-size: 0;
+    min-block-size: var(--control-height);
+    padding: var(--space-1-75) var(--space-2);
     color: var(--ink);
-    font: inherit;
-    background: var(--surface);
-    border: thin solid var(--line);
+    font-family: var(--font-mono);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+    overflow-wrap: anywhere;
+    background-color: var(--well);
     border-radius: var(--radius-control);
+    box-shadow: var(--inset-line);
+    user-select: all;
+  }
+
+  .verification-linkbox[data-selected='true'] {
+    background-color: var(--wash-strong);
+    box-shadow: var(--inset-selected);
+  }
+
+  .verification-linkbox__code {
+    font-weight: var(--weight-semibold);
+  }
+
+  .verification-ref-row :global(.button) {
+    inline-size: 100%;
+  }
+
+  /* Copy link: the idle and copied faces share one cell, so the button keeps
+     its size while the label cross-fades. */
+  .verification-copy__faces {
+    display: grid;
+  }
+
+  .verification-copy__face {
+    display: inline-flex;
+    grid-area: 1 / 1;
+    gap: var(--space-1);
+    align-items: center;
+    justify-content: center;
+    transition-property: opacity;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .verification-copy__face--done,
+  :global(.verification-copy[data-copy-state='copied'])
+    .verification-copy__face:not(.verification-copy__face--done) {
+    opacity: 0;
+  }
+
+  :global(.verification-copy[data-copy-state='copied'])
+    .verification-copy__face--done {
+    opacity: 1;
+  }
+
+  .verification-copy-result {
+    gap: var(--space-1);
+    min-block-size: var(--space-3);
+    margin-block-start: var(--space-1);
+    align-items: center;
+    padding: var(--space-0);
+    color: var(--ink);
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  .verification-share:has(.button) {
+    margin-block-start: var(--space-1);
+  }
+
+  .verification-well {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-block-start: var(--space-3);
+    padding: var(--space-2);
+    background-color: var(--well);
+    border-radius: var(--radius-control);
+  }
+
+  .verification-meter,
+  .verification-unlocks {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .verification-meter__top {
+    display: flex;
+    gap: var(--space-2);
+    align-items: baseline;
+    justify-content: flex-end;
+  }
+
+  .verification-meter__value {
+    font-family: var(--font-mono);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: var(--leading-1);
+  }
+
+  /* The native meter stays for assistive technology; the drawn track is
+     its picture, one segment per referral the tier needs. */
+  .verification-meter__native {
+    position: absolute;
+    overflow: hidden;
+    inline-size: var(--border-thin);
+    block-size: var(--border-thin);
+    clip-path: inset(50%);
+  }
+
+  .verification-meter__track {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: var(--space-0-5);
+  }
+
+  .verification-meter__segment {
+    display: block;
+    overflow: hidden;
+    block-size: var(--space-1);
+    background-color: var(--wash-strong);
+    border-radius: var(--radius-pill);
+  }
+
+  .verification-meter__fill {
+    display: block;
+    block-size: 100%;
+    background-color: var(--ink);
+    transform-origin: left;
+  }
+
+  .verification-unlocks__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin: var(--space-0);
+    padding: var(--space-0);
+    list-style: none;
+  }
+
+  .verification-held {
+    display: flex;
+    gap: var(--space-1);
+    align-items: flex-start;
+    margin-block-start: var(--space-2);
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    text-wrap: pretty;
+  }
+
+  .verification-held :global(.icon) {
+    margin-block-start: calc(var(--space-0-5) / 2);
+  }
+
+  /* ---- the survey: chips (multi-select) and segments (single-select) ---- */
+  :global(.verification-survey-card) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .verification-survey {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .verification-survey__fields {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .verification-survey__fields,
+  .verification-survey-actions {
+    transition-property: opacity;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .verification-survey[data-survey-state='leaving'] [data-survey-fields] {
+    opacity: 0;
+  }
+
+  .verification-survey[data-survey-state='saved'] [data-survey-fields],
+  .verification-survey[data-survey-state='skipped'] [data-survey-fields] {
+    display: none;
+  }
+
+  .verification-question {
+    min-inline-size: 0;
+    margin: var(--space-0);
+    margin-block-start: var(--space-3);
+    padding: var(--space-0);
+    border: 0;
+  }
+
+  .verification-question legend {
+    padding: var(--space-0);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
+  }
+
+  .verification-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin-block-start: var(--space-1-5);
+  }
+
+  /* Each option is a label holding the native input, transparent over the
+     shape it draws (its next sibling), so the target is the drawn shape,
+     keyboard focus lands on a real control, and the focus ring is on the
+     shape (E11.5-11i's focus walk reads it there). */
+  .verification-choice {
+    position: relative;
+    display: inline-grid;
     cursor: pointer;
   }
 
-  :global(.verification-native-share:focus-visible) {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
+  .verification-choice input {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    margin: var(--space-0);
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .verification-chip,
+  .verification-segment {
+    display: inline-flex;
+    gap: var(--space-0-75);
+    align-items: center;
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+    transition-property: background-color, box-shadow, color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .verification-chip :global(.verification-option__check),
+  .verification-segment :global(.verification-option__check) {
+    display: none;
+  }
+
+  input:checked + .verification-chip :global(.verification-option__check),
+  input:checked + .verification-segment :global(.verification-option__check) {
+    display: block;
+  }
+
+  .verification-chip :global(.verification-option__check path),
+  .verification-segment :global(.verification-option__check path) {
+    stroke-width: var(--stroke-heavy);
+  }
+
+  /* One line at every width the canvas draws; below 390px a long label
+     wraps inside its chip or segment rather than overflowing it. */
+  .verification-chip {
+    min-block-size: var(--tap-min);
+    padding-inline: var(--space-2);
+    color: var(--ink);
+    background-color: var(--surface);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--inset-line), var(--edge);
+  }
+
+  .verification-choice:hover > .verification-chip {
+    box-shadow: var(--inset-strong), var(--edge);
+  }
+
+  input:checked + .verification-chip {
+    padding-inline-start: var(--space-1-5);
+    color: var(--paper);
+    font-weight: var(--weight-semibold);
+    background-color: var(--ink);
+    box-shadow: none;
+  }
+
+  input:focus-visible + .verification-chip {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
+  }
+
+  .verification-segments {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-0-5);
+    margin-block-start: var(--space-1-5);
+    padding: var(--space-0-5);
+    background-color: var(--wash);
+    border-radius: var(--radius-card);
+  }
+
+  .verification-segments .verification-choice {
+    display: grid;
+  }
+
+  .verification-segment {
+    justify-content: center;
+    min-block-size: var(--tap-min);
+    text-align: center;
+    padding-inline: var(--space-2);
+    color: var(--ink-600);
+    border-radius: var(--radius-control);
+  }
+
+  .verification-choice:hover > .verification-segment {
+    color: var(--ink);
+  }
+
+  input:checked + .verification-segment {
+    color: var(--ink);
+    font-weight: var(--weight-semibold);
+    background-color: var(--surface);
+    box-shadow: var(--shadow-1), var(--edge);
+  }
+
+  input:focus-visible + .verification-segment {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--space-0);
+  }
+
+  @media (forced-colors: active) {
+    input:checked + .verification-chip,
+    input:checked + .verification-segment {
+      outline: var(--border-strong) solid Highlight;
+    }
+  }
+
+  /* The result: the saved line, the skipped line, an error notice above the
+     actions, or an invalid-option message under its question. */
+  .verification-survey-result {
+    margin-block-start: var(--space-3);
+  }
+
+  .verification-survey-result:focus {
+    outline: none;
+  }
+
+  .verification-survey-result:focus-visible {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
+  }
+
+  .verification-survey-result :global(.verification-survey-result__icon) {
+    display: none;
+  }
+
+  .verification-survey[data-survey-state='saved']
+    :global(.verification-survey-result__icon--saved),
+  .verification-survey[data-survey-state='skipped']
+    :global(.verification-survey-result__icon--skipped),
+  .verification-survey[data-survey-state='error']
+    :global(.verification-survey-result__icon--error),
+  .verification-survey[data-survey-state='invalid']
+    :global(.verification-survey-result__icon--error) {
+    display: block;
+  }
+
+  .verification-survey[data-survey-state='saved']
+    :global(.verification-survey-result__icon--saved) {
+    color: var(--success-icon);
+  }
+
+  .verification-survey[data-survey-state='skipped']
+    .verification-survey-result {
+    background-color: var(--wash);
+    box-shadow: none;
+  }
+
+  .verification-survey[data-survey-state='error'] .verification-survey-result {
+    box-shadow: var(--inset-error);
+  }
+
+  .verification-survey[data-survey-state='error']
+    :global(.verification-survey-result__icon--error),
+  .verification-survey[data-survey-state='invalid']
+    :global(.verification-survey-result__icon--error) {
+    color: var(--error);
+  }
+
+  .verification-survey[data-survey-state='invalid']
+    .verification-survey-result {
+    gap: var(--space-1);
+    margin-block-start: var(--space-1);
+    padding: var(--space-0);
+    color: var(--error-text);
+    font-weight: var(--weight-semibold);
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  .verification-survey-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-1);
+    margin-block-start: var(--space-4);
+  }
+
+  .verification-survey-actions :global(.button) {
+    inline-size: 100%;
+  }
+
+  /* ---- the status card ---- */
+  :global(.verification-status) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .verification-success :global(.verification-status__link) {
+    align-self: stretch;
+  }
+
+  /* ---- motion and finish (E11.5-11q) ----
+     The success entrance runs on data-enter, indices 0 to 3: the success
+     tile, whose check draws in; the heading and its line; the wave badge;
+     the referral card, whose meter fills from 0 as it rises. Only the tile
+     fades in. Every piece of text and every control only rises (shift), so
+     it is at full opacity and readable from first paint, and the meter's
+     text is its exact figure throughout. */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(.verification-check path) {
+      stroke-dasharray: 1;
+      animation-name: verification-check-draw;
+      animation-duration: var(--duration-enter);
+      animation-timing-function: var(--ease-enter);
+      animation-delay: var(--stagger);
+      animation-fill-mode: backwards;
+    }
+
+    .verification-meter__fill {
+      animation-name: verification-meter-fill;
+      animation-duration: var(--duration-enter);
+      animation-timing-function: var(--ease-enter);
+      animation-delay: calc(var(--stagger) * 3);
+      animation-fill-mode: backwards;
+    }
+
+    .verification-survey-result {
+      transition-property: opacity;
+      transition-duration: var(--duration-base);
+      transition-timing-function: var(--ease-out);
+    }
+
+    @starting-style {
+      .verification-survey[data-survey-state='saved']
+        .verification-survey-result,
+      .verification-survey[data-survey-state='skipped']
+        .verification-survey-result {
+        opacity: 0;
+      }
+    }
+
+    @keyframes verification-check-draw {
+      from {
+        stroke-dashoffset: 1;
+      }
+    }
+
+    @keyframes verification-meter-fill {
+      from {
+        transform: scaleX(0);
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .verification-copy__face,
+    .verification-chip,
+    .verification-segment,
+    .verification-survey__fields,
+    .verification-survey-actions {
+      transition-property: none;
+    }
+  }
+
+  @media (min-width: 48rem) {
+    :global(.verification-container) {
+      padding-block-start: var(--space-6);
+    }
+
+    .verification-task :global(.verification-task__card) {
+      padding: var(--space-5);
+      max-inline-size: calc(var(--space-10) * 8);
+    }
+
+    .verification-task__actions {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+
+    .verification-task__actions :global(.button) {
+      inline-size: auto;
+      white-space: nowrap;
+    }
+
+    .verification-success {
+      gap: var(--space-3);
+    }
+
+    .verification-success :global(.card) {
+      padding: var(--space-4);
+    }
+
+    .verification-hero__head {
+      grid-template-columns: auto minmax(0, 1fr);
+      column-gap: var(--space-3);
+    }
+
+    .verification-hero__head .verification-tile {
+      grid-row: span 3;
+      margin-block-end: var(--space-0);
+    }
+
+    .verification-hero__head h1 {
+      padding-block-start: var(--space-0-5);
+    }
+
+    .verification-ref-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .verification-ref-row :global(.button) {
+      inline-size: auto;
+    }
+
+    .verification-segments {
+      display: inline-grid;
+      grid-template-columns: repeat(4, auto);
+    }
+
+    .verification-chip {
+      min-block-size: var(--tile-size);
+    }
+
+    .verification-chip,
+    .verification-segment {
+      white-space: nowrap;
+    }
+
+    .verification-segment {
+      min-block-size: calc(var(--space-4) + var(--space-0-5));
+    }
+
+    .verification-survey-actions {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .verification-survey-actions :global(.button) {
+      inline-size: auto;
+      min-inline-size: calc(var(--space-10) * 2);
+    }
+
+    :global(.verification-status) {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .verification-success :global(.verification-status__link) {
+      align-self: flex-start;
+    }
   }
 
   @media (min-width: 64rem) {
     :global(.verification-container) {
-      padding-block: var(--section-gap-wide);
+      padding-block-start: var(--space-8);
+    }
+
+    .verification-task {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--grid-gap-wide);
+    }
+
+    .verification-task :global(.verification-task__card) {
+      grid-column: 1 / span 7;
+      max-inline-size: none;
+    }
+
+    .verification-success {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--grid-gap-wide);
+      row-gap: var(--space-3);
+      align-items: stretch;
+    }
+
+    .verification-success > :global(*) {
+      grid-column: 1 / -1;
+    }
+
+    .verification-success > :global(.verification-main) {
+      grid-column: 1 / span 7;
+    }
+
+    .verification-success > :global(.verification-side),
+    .verification-success > :global(.verification-status) {
+      grid-column: 8 / span 5;
+    }
+
+    .verification-success > :global(.verification-status) {
+      grid-row: 1;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .verification-success--referral.verification-success--survey
+      > :global(:is(.verification-referral, .verification-survey-card)) {
+      align-self: start;
+    }
+
+    :global(.verification-side) .verification-segments {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* The side column is narrowest at 1024px, which the canvas does not
+       draw: a long segment label wraps there rather than overflowing. */
+    :global(.verification-side) .verification-segment {
+      white-space: normal;
     }
   }
 </style>

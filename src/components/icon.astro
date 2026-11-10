@@ -154,9 +154,19 @@ interface Props {
   size?: IconSize;
   label?: string;
   class?: string;
+  // E11.5-11q: each path gets pathLength 1, so a page can draw its stroke
+  // with stroke-dashoffset (the /verify success check). Off by default, so
+  // every other icon renders exactly as before.
+  draw?: boolean;
 }
 
-const { name, size = 'md', label, class: className } = Astro.props;
+const {
+  name,
+  size = 'md',
+  label,
+  class: className,
+  draw = false,
+} = Astro.props;
 const isStar = name === 'star';
 // The star is drawn only at its two wireframe sizes: 12 × 18 and 16 × 24.
 if (isStar && size !== 'sm' && size !== 'md') {
@@ -210,7 +220,10 @@ const stroke = {
   }
   {
     shapes.map((shape) => {
-      if (shape.tag === 'path') return <path d={shape.d} {...stroke} />;
+      if (shape.tag === 'path')
+        return (
+          <path d={shape.d} pathLength={draw ? '1' : undefined} {...stroke} />
+        );
       if (shape.tag === 'circle')
         return <circle cx={shape.cx} cy={shape.cy} r={shape.r} {...stroke} />;
       return (

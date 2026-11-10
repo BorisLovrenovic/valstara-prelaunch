@@ -83,11 +83,33 @@ async function fixture() {
         createHash('sha256').update(otherToken).digest(),
       ],
     );
+    // E11.5-11q (founder-authorised 2026-11-10): the survey turns into its
+    // result for good once saved or skipped, so the skip runs on this third
+    // subscriber's own success page.
+    const skipSubscriberId = randomUUID();
+    const skipTokenId = randomUUID();
+    const skipToken = deriveEmailToken(
+      skipTokenId,
+      process.env.EMAIL_TOKEN_SECRET,
+    );
+    await database.query(
+      "INSERT INTO subscriber (id,email,email_normalised,email_domain,status) VALUES ($1,$2,$2,'example.test','pending')",
+      [skipSubscriberId, 'verify-design-skip@example.test'],
+    );
+    await database.query(
+      "INSERT INTO verification_token (id,subscriber_id,token_hash,purpose,expires_at) VALUES ($1,$2,$3,'verify','2099-01-01T00:00:00Z')",
+      [
+        skipTokenId,
+        skipSubscriberId,
+        createHash('sha256').update(skipToken).digest(),
+      ],
+    );
     return {
       appUrl: appUrl.toString(),
       database,
       token,
       otherToken,
+      skipToken,
       subscriberId,
       async dispose() {
         await database.end();
@@ -447,10 +469,6 @@ test('verification states, exact figures, native actions and flags render access
     );
     assert.ok(captures.every((capture) => capture.layoutIssues.length === 0));
     await confirmation.locator('input[value="ai"]').check();
-    await confirmation.locator('[data-survey-skip]').click();
-    await confirmation.getByText("Skipped. We won't ask again.").waitFor();
-    assert.equal(confirmation.url(), successUrl);
-    await confirmation.locator('input[value="ai"]').check();
     await confirmation.locator('input[value="weekly"]').check();
     await confirmation
       .locator('[data-survey-form] button[type="submit"]')
@@ -459,6 +477,25 @@ test('verification states, exact figures, native actions and flags render access
     assert.equal(confirmation.url(), successUrl);
     assert.ok(requests.every((host) => host === new URL(origin).host));
     await confirmation.close();
+    // Named rewrite (founder-authorised 2026-11-10): the skip runs on its own
+    // subscriber's success page, because a saved survey does not come back.
+    const skipping = await remote.browser.newPage();
+    const skipRequests = [];
+    skipping.on('request', (request) =>
+      skipRequests.push(new URL(request.url()).host),
+    );
+    await skipping.goto(
+      origin + '/verify?token=' + encodeURIComponent(data.skipToken),
+    );
+    await skipping.locator('.verification-confirm button').click();
+    await skipping.getByText('Your email address is verified.').waitFor();
+    const skipUrl = skipping.url();
+    await skipping.locator('input[value="ai"]').check();
+    await skipping.locator('[data-survey-skip]').click();
+    await skipping.getByText("Skipped. We won't ask again.").waitFor();
+    assert.equal(skipping.url(), skipUrl);
+    assert.ok(skipRequests.every((host) => host === new URL(origin).host));
+    await skipping.close();
     const saved = await data.database.query(
       "SELECT answers FROM survey_response WHERE subscriber_id=(SELECT id FROM subscriber WHERE email_normalised='verify-design@example.test')",
     );

@@ -254,6 +254,8 @@ const motionTokens = {
   // tier's cover range.
   '--sequence-start': '10vh',
   '--sequence-end': '25vh',
+  // E11.5-11q (founder decision 2026-11-10): Copy link's confirmation hold.
+  '--copy-confirm-hold': '2s',
 };
 
 // E11.5-11j: the token delta in ChangeLog.dc.html, light values on bare :root
@@ -273,6 +275,13 @@ const finalDesignTokens = {
   '--ring-focus-error': '0 0 0 2px var(--surface), 0 0 0 4px var(--error)',
   '--inset-error': 'inset 0 0 0 1.5px var(--error)',
   '--radius-link': '2px',
+  // E11.5-11q: the access-wave badge's bars and the selected link field's
+  // 1.5px ink rule (Verify.dc.html, valstara.css .badge-wave__bars and
+  // .linkbox.is-selected).
+  '--wave-bar-width': '3px',
+  '--wave-bar-gap': '2px',
+  '--wave-bar-radius': '1px',
+  '--inset-selected': 'inset 0 0 0 1.5px var(--ink)',
   '--stroke-heavy': '2.25',
 };
 
