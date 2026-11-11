@@ -1,0 +1,155 @@
+---
+import { leaderboardCopy } from '../copy/leaderboard.ts';
+import Icon from '../components/icon.astro';
+
+// The switched-off leaderboard (E11.5-11r decision 3, Leaderboard frame 05):
+// the heading, the intro and the paused card, with no ranked list and
+// neither side panel. The page renders it in place of the flagged section
+// when leaderboard.public is off, and the island swaps it in for the whole
+// section when a poll gets the paused 503. It is never inside
+// [data-leaderboard-section], so the kill-switch drill is unchanged.
+//
+// Its global styles are the page frame both states share: the intro, the
+// grid, the board card and its state block. The island renders this
+// component in a template, so the frame's styles ship with it too.
+---
+
+<div class="leaderboard-paused" data-leaderboard-paused>
+  <div class="leaderboard-intro">
+    <h1 class="leaderboard-heading">{leaderboardCopy.heading}</h1>
+    <p class="leaderboard-introduction">{leaderboardCopy.introduction}</p>
+  </div>
+  <div class="leaderboard-grid">
+    <div class="leaderboard-board" data-state="paused">
+      <div class="leaderboard-state">
+        <span class="leaderboard-tile">
+          <Icon name="pause" />
+        </span>
+        <p class="leaderboard-status" role="status">
+          {leaderboardCopy.paused}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  /*
+    /leaderboard on the final design (E11.5-11r, Leaderboard.dc.html as
+    Leaderboard1440 and Leaderboard390 place it). The intro (the 32/40 bold
+    H1 and the 16/24 ink-600 line, at most 40rem, 32px above the grid), then
+    the canvas's .vgrid: one column with 16px gaps (24px from 48rem); from
+    64rem twelve columns with 24px gutters, the board in columns 1–8 and the
+    side panel in columns 9–12.
+  */
+  .leaderboard-paused,
+  .leaderboard-section {
+    display: block;
+  }
+
+  .leaderboard-intro {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    max-inline-size: calc(var(--space-10) * 8);
+    margin-block-end: var(--space-4);
+  }
+
+  .leaderboard-heading,
+  .leaderboard-introduction,
+  .leaderboard-status {
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+
+  .leaderboard-heading {
+    color: var(--ink);
+    font-size: var(--step-5);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-5);
+    letter-spacing: var(--tracking-tight);
+    text-wrap: balance;
+  }
+
+  .leaderboard-introduction {
+    color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    text-wrap: pretty;
+  }
+
+  .leaderboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+    align-items: start;
+  }
+
+  /* The board card: unpadded, so its rows and meta line run edge to edge. */
+  .leaderboard-board {
+    display: block;
+    overflow: hidden;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    background-color: var(--surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-1), var(--edge);
+  }
+
+  /* The state block: empty, unavailable or paused. */
+  .leaderboard-state {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    align-items: flex-start;
+    padding: var(--space-4) var(--space-2);
+  }
+
+  .leaderboard-status {
+    max-inline-size: calc(var(--space-10) * 5 + var(--space-6));
+    color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    text-wrap: pretty;
+  }
+
+  /* The 48px neutral tile. */
+  .leaderboard-tile {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
+    color: var(--ink);
+    background-color: var(--wash);
+    border-radius: var(--radius-control);
+  }
+
+  @media (min-width: 48rem) {
+    .leaderboard-grid {
+      gap: var(--space-3);
+    }
+
+    .leaderboard-state {
+      padding: var(--space-6) var(--space-3);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .leaderboard-grid {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--grid-gap-wide);
+      row-gap: var(--space-3);
+      align-items: stretch;
+    }
+
+    .leaderboard-grid > * {
+      grid-column: 1 / span 8;
+    }
+
+    .leaderboard-grid > .leaderboard-aside {
+      grid-column: 9 / span 4;
+    }
+  }
+</style>

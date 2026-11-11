@@ -7,13 +7,12 @@ import Button from '../components/button.astro';
 import Card from '../components/card.astro';
 import Container from '../components/container.astro';
 import Icon from '../components/icon.astro';
-import Input from '../components/input.astro';
-import Pill from '../components/pill.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
 import { createUnsubscribeRepository } from '../server/db/unsubscribe.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
+import { accessWindows } from '../server/referral/config.ts';
 import { createReferralService } from '../server/referral/service.ts';
 import { presentReferralStatus } from '../server/referral/status-presentation.ts';
 import { verificationReferralFigures } from '../server/referral/verification-presentation.ts';
@@ -108,32 +107,68 @@ if (Astro.request.method === 'POST') {
 }
 const dashboardView =
   dashboardStatus === null ? null : presentReferralStatus(dashboardStatus);
-// Every card reads its figures from the one shared status presentation; the
-// keys only decide which card a field sits on.
+// Every fact reads its figure from the one shared status presentation; the
+// keys only decide the order. Giveaway entries show only when there is at
+// least one (E11.5-11r decision 1).
 const dashboardFields =
   dashboardView === null
     ? null
     : new Map(dashboardView.fields.map((field) => [field.key, field]));
 type DashboardField = NonNullable<typeof dashboardView>['fields'][number];
-const placedFields = (keys: readonly DashboardField['key'][]) =>
-  keys.flatMap((key) => dashboardFields?.get(key) ?? []);
-const statusFields = placedFields([
+const factKeys: readonly DashboardField['key'][] = [
   'subscriberStatus',
   'accessWindow',
   'ownRank',
-]);
-const referralFields = placedFields(['confirmedReferrals', 'tier']);
-const entriesField =
-  dashboardStatus !== null && dashboardStatus.giveawayEntries > 0
-    ? (dashboardFields?.get('giveawayEntries') ?? null)
-    : null;
+  'confirmedReferrals',
+  'tier',
+  ...(dashboardStatus !== null && dashboardStatus.giveawayEntries > 0
+    ? (['giveawayEntries'] as const)
+    : []),
+];
+const facts = factKeys.flatMap((key) => dashboardFields?.get(key) ?? []);
 const ladderFigures =
   dashboardStatus === null
     ? null
     : verificationReferralFigures(dashboardStatus).ladder;
 const accessWindow = dashboardStatus?.accessWindow ?? null;
-// Held and settled differ by icon, label and outline, never by colour alone.
-const rewardStates = ['settled', 'held'] as const;
+// The wave badge's four bars, filled up to the member's wave.
+const waveBars = accessWindows.map(
+  (wave) =>
+    accessWindow !== null &&
+    accessWindows.indexOf(wave) <=
+      accessWindows.indexOf(accessWindow as (typeof accessWindows)[number]),
+);
+// A figure is mono; a word in its place ("Not currently ranked") is muted.
+const mutedValue = (field: DashboardField) =>
+  (field.key === 'ownRank' && dashboardStatus?.ownRank === null) ||
+  (field.key === 'accessWindow' && accessWindow === null);
+// The link wraps after the origin and keeps its code in one unit, so it
+// never truncates, as on /verify (E11.5-11r decision 2).
+const referralUrl =
+  dashboardView === null ? null : new URL(dashboardView.referralLink);
+const referralCode = referralUrl?.searchParams.get('ref') ?? '';
+const referralParts =
+  referralUrl === null
+    ? null
+    : referralUrl.search.endsWith(referralCode) && referralCode !== ''
+      ? {
+          base: `${referralUrl.origin}${referralUrl.pathname}`,
+          query: referralUrl.search.slice(
+            0,
+            referralUrl.search.length - referralCode.length,
+          ),
+          code: referralCode,
+        }
+      : { base: referralUrl.toString(), query: '', code: '' };
+const meterSegments =
+  ladderFigures === null
+    ? []
+    : Array.from(
+        { length: ladderFigures.threshold },
+        (_, index) => index < ladderFigures.progress,
+      );
+// Held and settled differ by icon, word, fill and outline, never by colour
+// alone.
 const rewardIcon = { held: 'clock', settled: 'check' } as const;
 ---
 
@@ -141,41 +176,85 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
   title={memberStatusCopy.meta.title}
   description={memberStatusCopy.meta.description}
 >
-  <Container class="member-container">
-    {
-      authentication.kind === 'authenticated' && leftWaitlist ? (
-        <Card class="member-boundary" data-member-state="left">
-          <Icon name="check" size="lg" />
-          <h1>{memberStatusCopy.left.heading}</h1>
-          <p>{memberStatusCopy.left.body}</p>
-        </Card>
-      ) : authentication.kind === 'authenticated' && dashboardView !== null ? (
-        <div class="member-dashboard" data-member-dashboard>
-          <div class="member-column">
-            <Card class="member-card" data-member-card="status">
-              <div class="member-heading">
-                <Icon name="check" size="lg" />
-                <div>
-                  <h1>{memberStatusCopy.authenticated.heading}</h1>
-                  <p>{memberStatusCopy.authenticated.body}</p>
-                </div>
+  <div class="member-page">
+    <Container class="member-container">
+      {
+        authentication.kind === 'authenticated' && leftWaitlist ? (
+          <div class="member-task">
+            <Card
+              class="member-boundary member-task__card"
+              data-member-state="left"
+              aria-labelledby="member-title"
+            >
+              <div class="member-task__head">
+                <span class="member-tile member-tile--task member-tile--neutral">
+                  <Icon name="x" />
+                </span>
+                <h1 id="member-title">{memberStatusCopy.left.heading}</h1>
               </div>
-              <dl class="member-stats">
-                {statusFields.map((field) => (
-                  <div class="member-stat" data-member-field={field.key}>
+              <p class="member-task__line">{memberStatusCopy.left.body}</p>
+            </Card>
+          </div>
+        ) : authentication.kind === 'authenticated' &&
+          dashboardView !== null &&
+          referralParts !== null ? (
+          <div class="member-grid" data-member-dashboard>
+            <Card
+              class="member-card member-status"
+              data-member-card="status"
+              aria-labelledby="member-title"
+            >
+              <div class="member-head" data-enter="shift">
+                <h1 id="member-title">
+                  {memberStatusCopy.authenticated.heading}
+                </h1>
+                <p>{memberStatusCopy.authenticated.body}</p>
+              </div>
+              <dl
+                class:list={[
+                  'member-facts',
+                  facts.length === 6 && 'member-facts--6',
+                ]}
+                data-enter="shift"
+                style="--enter-index: 1"
+              >
+                {facts.map((field) => (
+                  <div class="member-fact" data-member-field={field.key}>
                     <dt>{field.label}</dt>
-                    {field.key === 'accessWindow' && accessWindow !== null ? (
+                    {field.key === 'subscriberStatus' ? (
                       <dd>
-                        <Pill variant="badge" data-access-wave>
+                        <Icon name="check-circle" size="base" />
+                        {field.value}
+                      </dd>
+                    ) : field.key === 'accessWindow' &&
+                      accessWindow !== null ? (
+                      <dd>
+                        <span
+                          class="member-wave"
+                          data-access-wave
+                          data-enter="shift"
+                          style="--enter-index: 2"
+                        >
+                          <span class="member-wave__bars" aria-hidden="true">
+                            {waveBars.map((on) => (
+                              <i class:list={[on && 'is-on']} />
+                            ))}
+                          </span>
                           <data value={field.value}>
                             {memberStatusCopy.authenticated.waveBadge(
                               accessWindow,
                             )}
                           </data>
-                        </Pill>
+                        </span>
                       </dd>
                     ) : (
-                      <dd class:list={[field.tabular && 'tabular-figure']}>
+                      <dd
+                        class:list={[
+                          mutedValue(field)
+                            ? 'member-fact__muted'
+                            : field.tabular && 'tabular-figure',
+                        ]}
+                      >
                         {field.value}
                       </dd>
                     )}
@@ -184,86 +263,150 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
               </dl>
             </Card>
 
-            <Card class="member-card" data-member-card="referral">
-              <h2>{memberStatusCopy.referral.heading}</h2>
-              <div class="member-link-control">
-                <Input
-                  aria-label={memberStatusCopy.referral.linkLabel}
+            <Card
+              class="member-card member-main member-referral"
+              data-member-card="referral"
+              aria-labelledby="member-referral-title"
+              data-reveal
+            >
+              <div class="member-card-head">
+                <span class="member-tile">
+                  <Icon name="people" size="base" />
+                </span>
+                <h2 class="member-card-title" id="member-referral-title">
+                  {memberStatusCopy.referral.heading}
+                </h2>
+              </div>
+              <div class="member-ref-row">
+                <p
+                  class="member-linkbox"
                   data-referral-link
-                  readonly
-                  type="url"
-                  value={dashboardView.referralLink}
-                />
+                  data-referral-url={dashboardView.referralLink}
+                >
+                  {/* One expression, so no whitespace enters the link. */}
+                  {[
+                    referralParts.base,
+                    <wbr />,
+                    referralParts.query,
+                    <span class="member-linkbox__code">
+                      {referralParts.code}
+                    </span>,
+                  ]}
+                </p>
                 <Button
-                  data-copy-failed={memberStatusCopy.referral.copyFailed}
+                  class="member-copy"
                   data-copy-referral
                   data-copied={memberStatusCopy.referral.copied}
+                  data-copy-failed={memberStatusCopy.referral.copyFailed}
                 >
-                  {memberStatusCopy.referral.copy}
+                  <span class="member-copy__faces">
+                    <span class="member-copy__face">
+                      <Icon name="copy" size="base" />
+                      <span>{memberStatusCopy.referral.copy}</span>
+                    </span>
+                    <span
+                      class="member-copy__face member-copy__face--done"
+                      aria-hidden="true"
+                    >
+                      <Icon name="check" size="base" />
+                      <span>{memberStatusCopy.referral.copied}</span>
+                    </span>
+                  </span>
                 </Button>
-                <span
-                  data-share-host
-                  data-share-label={memberStatusCopy.referral.share}
-                  data-share-title={memberStatusCopy.referral.heading}
-                />
               </div>
-              <p aria-live="polite" data-copy-status />
-              <dl class="member-stats">
-                {referralFields.map((field) => (
-                  <div class="member-stat" data-member-field={field.key}>
-                    <dt>{field.label}</dt>
-                    <dd class="member-figure tabular-figure">{field.value}</dd>
-                  </div>
-                ))}
-              </dl>
+              <div class="member-copy-result" data-copy-result>
+                <Icon name="info" size="base" />
+                <p aria-live="polite" data-copy-status />
+              </div>
+              <div
+                class="member-share"
+                data-share-host
+                data-share-title={memberStatusCopy.referral.heading}
+              >
+                <template data-share-template>
+                  <Button
+                    class="member-native-share member-keep"
+                    variant="secondary"
+                    full
+                  >
+                    <Icon name="upload-share" size="base" />
+                    {memberStatusCopy.referral.share}
+                  </Button>
+                </template>
+              </div>
               {ladderFigures !== null ? (
-                <div class="member-progress">
-                  <label class="tabular-figure" for="member-referral-progress">
-                    {memberStatusCopy.referral.progress(
-                      ladderFigures.progress,
-                      ladderFigures.threshold,
-                      ladderFigures.tier,
-                    )}
-                  </label>
+                <div class="member-well member-meter">
+                  <div class="member-meter__top">
+                    <label
+                      class="member-meter__value"
+                      for="member-referral-progress"
+                      data-meter-text
+                    >
+                      {memberStatusCopy.referral.progress(
+                        ladderFigures.progress,
+                        ladderFigures.threshold,
+                        ladderFigures.tier,
+                      )}
+                    </label>
+                  </div>
                   <progress
+                    class="member-meter__native"
                     id="member-referral-progress"
                     data-referral-progress
                     value={ladderFigures.progress}
                     max={ladderFigures.threshold}
                   />
+                  <span
+                    class="member-meter__track"
+                    aria-hidden="true"
+                    data-meter-track
+                  >
+                    {meterSegments.map((filled) => (
+                      <i
+                        class:list={[
+                          'member-meter__segment',
+                          filled && 'is-filled',
+                        ]}
+                      >
+                        {filled ? <b class="member-meter__fill" /> : null}
+                      </i>
+                    ))}
+                  </span>
                 </div>
               ) : null}
             </Card>
 
-            <Card class="member-card" data-member-card="rewards">
-              <h2>{memberStatusCopy.rewards.heading}</h2>
-              <ul class="member-reward-key">
-                {rewardStates.map((state) => (
-                  <li data-reward-key={state}>
-                    <Icon name={rewardIcon[state]} />
-                    <span>
-                      <strong>{memberStatusCopy.rewards.states[state]}</strong>
-                      <span>
-                        {memberStatusCopy.rewards.explanations[state]}
-                      </span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
+            <Card
+              class="member-card member-side"
+              data-member-card="rewards"
+              aria-labelledby="member-rewards-title"
+              data-reveal
+              style="--reveal-index: 1"
+            >
+              <div class="member-card-head">
+                <span class="member-tile">
+                  <Icon name="gift" size="base" />
+                </span>
+                <h2 class="member-card-title" id="member-rewards-title">
+                  {memberStatusCopy.rewards.heading}
+                </h2>
+              </div>
               {dashboardView.rewards.length === 0 ? (
-                <p>{memberStatusCopy.rewards.empty}</p>
+                <div class="member-well member-rewards-empty">
+                  <p>{memberStatusCopy.rewards.empty}</p>
+                </div>
               ) : (
                 <ul class="member-rewards">
+                  {/* Each row carries its state's whole key: the icon, the
+                      word and the plain explanation. */}
                   {dashboardView.rewards.map((reward) => (
                     <li
                       class="member-reward"
                       data-reward-state={reward.stateKey}
+                      data-reward-key={reward.stateKey}
                     >
-                      <span class="member-reward__name">
-                        <span>{reward.label}</span>
-                        <span class="member-reward__tier">{reward.tier}</span>
-                      </span>
-                      <strong
+                      <span class="member-reward__kind">{reward.label}</span>
+                      <span
                         class:list={[
                           'member-reward__state',
                           `member-reward__state--${reward.stateKey}`,
@@ -271,140 +414,213 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
                       >
                         <Icon name={rewardIcon[reward.stateKey]} size="sm" />
                         {reward.state}
-                      </strong>
+                      </span>
+                      <span class="member-reward__tier">{reward.tier}</span>
+                      <p class="member-reward__why">
+                        {memberStatusCopy.rewards.explanations[reward.stateKey]}
+                      </p>
                     </li>
                   ))}
                 </ul>
               )}
             </Card>
 
-            {entriesField !== null ? (
-              <Card class="member-card" data-member-card="entries">
-                <dl class="member-stats">
-                  <div class="member-stat" data-member-field={entriesField.key}>
-                    <dt>{entriesField.label}</dt>
-                    <dd class="member-figure tabular-figure">
-                      {entriesField.value}
-                    </dd>
-                  </div>
-                </dl>
-              </Card>
-            ) : null}
-          </div>
-
-          <div class="member-column">
-            <Card class="member-card" data-member-card="preferences">
-              <h2>{memberStatusCopy.preferences.heading}</h2>
+            <Card
+              class="member-card member-main"
+              data-member-card="preferences"
+              aria-labelledby="member-preferences-title"
+              data-reveal
+            >
+              <h2 class="member-card-title" id="member-preferences-title">
+                {memberStatusCopy.preferences.heading}
+              </h2>
               <form
                 action="/api/me/marketing"
-                class="member-marketing"
+                class="member-pref member-marketing"
                 data-marketing-form
+                data-saved-message={memberStatusCopy.marketing.saved}
                 data-unavailable-message={
                   memberStatusCopy.marketing.unavailable
                 }
                 method="post"
               >
-                <div class="member-switch-row">
-                  <h3>{memberStatusCopy.marketing.heading}</h3>
-                  <Pill data-marketing-state>
-                    {marketingEnabled
-                      ? memberStatusCopy.marketing.enabled
-                      : memberStatusCopy.marketing.disabled}
-                  </Pill>
-                </div>
-                {!marketingEnabled ? (
+                <h3>{memberStatusCopy.marketing.heading}</h3>
+                <div class="member-pref-switch">
                   <p>{memberStatusCopy.marketing.wording}</p>
-                ) : null}
+                  <div class="member-switch-row">
+                    {/* Still the submit button posting the existing route;
+                        drawn as the component library's switch. Its name is
+                        the action, and only the current one is ever in the
+                        page (E11.5-11r decision 4). */}
+                    <button
+                      class="member-switch"
+                      data-marketing-switch
+                      data-switch-state={marketingEnabled ? 'on' : 'off'}
+                      name="marketing"
+                      role="switch"
+                      aria-checked={marketingEnabled ? 'true' : 'false'}
+                      type="submit"
+                      value={marketingEnabled ? 'off' : 'on'}
+                    >
+                      <span class="member-switch__track">
+                        <span class="member-switch__knob">
+                          <Icon name="check" size="sm" />
+                        </span>
+                      </span>
+                      <span class="member-switch__label">
+                        {marketingEnabled
+                          ? memberStatusCopy.marketing.turnOff
+                          : memberStatusCopy.marketing.turnOn}
+                      </span>
+                    </button>
+                    <span
+                      class="member-switch__words"
+                      aria-hidden="true"
+                      data-marketing-words
+                      data-next-word={
+                        marketingEnabled
+                          ? memberStatusCopy.marketing.disabled
+                          : memberStatusCopy.marketing.enabled
+                      }
+                    >
+                      <span class="member-switch__word" data-marketing-state>
+                        {marketingEnabled
+                          ? memberStatusCopy.marketing.enabled
+                          : memberStatusCopy.marketing.disabled}
+                      </span>
+                    </span>
+                  </div>
+                </div>
                 <input name="t" type="hidden" value={token} />
+                <noscript>
+                  <div class="member-notice member-notice--info member-pref__notice">
+                    <Icon name="info" size="base" />
+                    <p>{memberStatusCopy.marketing.javaScriptRequired}</p>
+                  </div>
+                </noscript>
+                <div
+                  class="member-notice member-pref__notice member-result"
+                  data-marketing-result
+                  tabindex="-1"
+                >
+                  <Icon
+                    name="check-circle"
+                    size="base"
+                    class="member-result__icon member-result__icon--success"
+                  />
+                  <Icon
+                    name="alert-circle"
+                    size="base"
+                    class="member-result__icon member-result__icon--error"
+                  />
+                  <p aria-live="polite" data-marketing-status />
+                </div>
                 <div
                   class="cf-turnstile"
                   data-sitekey={config.turnstileSiteKey}
                   data-size="compact"
+                  data-appearance="interaction-only"
                   data-response-field-name="turnstile_token"
                 />
-                <noscript>
-                  <p>{memberStatusCopy.marketing.javaScriptRequired}</p>
-                </noscript>
-                <button
-                  class:list={[
-                    'member-switch',
-                    marketingEnabled && 'member-switch--on',
-                  ]}
-                  data-marketing-switch
-                  name="marketing"
-                  type="submit"
-                  value={marketingEnabled ? 'off' : 'on'}
-                >
-                  <span class="member-switch__track">
-                    <span class="member-switch__thumb" />
-                  </span>
-                  <span>
-                    {marketingEnabled
-                      ? memberStatusCopy.marketing.turnOff
-                      : memberStatusCopy.marketing.turnOn}
-                  </span>
-                </button>
-                <p aria-live="polite" data-marketing-status />
               </form>
 
               {surveyEnabled ? (
-                <Accordion
-                  class="member-survey"
-                  summary={memberStatusCopy.survey.heading}
-                >
-                  <form
-                    action="/api/survey"
-                    class="member-survey-form"
-                    data-survey-form
-                    data-unavailable-message={surveyCopy.unavailable}
-                    method="post"
+                <div class="member-pref member-pref--survey">
+                  <Accordion
+                    class="member-survey"
+                    summary={memberStatusCopy.survey.heading}
                   >
-                    <input name="token" type="hidden" value={token} />
-                    <input
-                      name="version"
-                      type="hidden"
-                      value={currentSurveyVersion}
-                    />
-                    <fieldset>
-                      <legend>{verificationCopy.survey.categoryLabel}</legend>
-                      <div class="member-options member-options--chips">
-                        {verificationCopy.survey.categoryOptions.map(
-                          (option) => (
-                            <label>
-                              <input
-                                name="category_preference"
-                                type="checkbox"
-                                value={option.value}
-                              />
-                              <span>{option.label}</span>
-                            </label>
-                          ),
-                        )}
+                    <form
+                      action="/api/survey"
+                      class="member-survey-form"
+                      data-survey-form
+                      data-unavailable-message={surveyCopy.unavailable}
+                      method="post"
+                    >
+                      <input name="token" type="hidden" value={token} />
+                      <input
+                        name="version"
+                        type="hidden"
+                        value={currentSurveyVersion}
+                      />
+                      <fieldset class="member-question">
+                        <legend>{verificationCopy.survey.categoryLabel}</legend>
+                        <div class="member-chips">
+                          {verificationCopy.survey.categoryOptions.map(
+                            (option) => (
+                              <label class="member-choice">
+                                <input
+                                  name="category_preference"
+                                  type="checkbox"
+                                  value={option.value}
+                                />
+                                <span class="member-chip">
+                                  <Icon
+                                    name="check"
+                                    size="sm"
+                                    class="member-option__check"
+                                  />
+                                  <span>{option.label}</span>
+                                </span>
+                              </label>
+                            ),
+                          )}
+                        </div>
+                      </fieldset>
+                      <fieldset class="member-question">
+                        <legend>
+                          {verificationCopy.survey.frequencyLabel}
+                        </legend>
+                        <div class="member-segments">
+                          {verificationCopy.survey.frequencyOptions.map(
+                            (option) => (
+                              <label class="member-choice">
+                                <input
+                                  name="shopping_frequency"
+                                  type="radio"
+                                  value={option.value}
+                                />
+                                <span class="member-segment">
+                                  <Icon
+                                    name="check"
+                                    size="sm"
+                                    class="member-option__check"
+                                  />
+                                  <span>{option.label}</span>
+                                </span>
+                              </label>
+                            ),
+                          )}
+                        </div>
+                      </fieldset>
+                      <div
+                        class="member-notice member-result member-survey__result"
+                        data-survey-result
+                      >
+                        <Icon
+                          name="check-circle"
+                          size="base"
+                          class="member-result__icon member-result__icon--success"
+                        />
+                        <Icon
+                          name="alert-circle"
+                          size="base"
+                          class="member-result__icon member-result__icon--error"
+                        />
+                        <p aria-live="polite" data-survey-status />
                       </div>
-                    </fieldset>
-                    <fieldset>
-                      <legend>{verificationCopy.survey.frequencyLabel}</legend>
-                      <div class="member-options member-options--segments">
-                        {verificationCopy.survey.frequencyOptions.map(
-                          (option) => (
-                            <label>
-                              <input
-                                name="shopping_frequency"
-                                type="radio"
-                                value={option.value}
-                              />
-                              <span>{option.label}</span>
-                            </label>
-                          ),
-                        )}
+                      <div class="member-survey__actions">
+                        <Button
+                          class="member-keep"
+                          type="submit"
+                          variant="secondary"
+                        >
+                          {memberStatusCopy.survey.submit}
+                        </Button>
                       </div>
-                    </fieldset>
-                    <Button type="submit" variant="secondary">
-                      {memberStatusCopy.survey.submit}
-                    </Button>
-                    <p aria-live="polite" data-survey-status />
-                  </form>
-                </Accordion>
+                    </form>
+                  </Accordion>
+                </div>
               ) : null}
               <script
                 is:inline
@@ -414,132 +630,245 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
               />
             </Card>
 
-            <Card class="member-card" data-member-card="data-rights">
-              <h2>{memberStatusCopy.dataRights.heading}</h2>
-              <ul class="member-links">
+            <Card
+              class="member-card member-side"
+              data-member-card="data-rights"
+              aria-labelledby="member-data-title"
+              data-reveal
+              style="--reveal-index: 1"
+            >
+              <h2 class="member-card-title" id="member-data-title">
+                {memberStatusCopy.dataRights.heading}
+              </h2>
+              <ul class="member-data-links">
                 <li>
                   <a href="/dsr?operation=export">
-                    {dsrCopy.export.heading}
-                    <Icon name="arrow-right" size="sm" />
+                    <span class="member-tile member-tile--small member-tile--neutral">
+                      <Icon name="download" size="base" />
+                    </span>
+                    <span class="member-data-links__label">
+                      {dsrCopy.export.heading}
+                    </span>
+                    <Icon name="arrow-right" size="sm" class="member-arrow" />
                   </a>
                 </li>
                 <li>
                   <a href="/dsr?operation=delete">
-                    {dsrCopy.delete.heading}
-                    <Icon name="arrow-right" size="sm" />
+                    <span class="member-tile member-tile--small member-tile--neutral">
+                      <Icon name="erase" size="base" />
+                    </span>
+                    <span class="member-data-links__label">
+                      {dsrCopy.delete.heading}
+                    </span>
+                    <Icon name="arrow-right" size="sm" class="member-arrow" />
                   </a>
                 </li>
               </ul>
             </Card>
 
-            <section class="member-leave" data-member-card="leave">
-              <h2>{memberStatusCopy.leave.heading}</h2>
-              <p>{memberStatusCopy.leave.body}</p>
+            <section
+              class="member-leave"
+              data-member-card="leave"
+              aria-labelledby="member-leave-title"
+            >
+              <div class="member-leave__text">
+                <h2 id="member-leave-title">
+                  {memberStatusCopy.leave.heading}
+                </h2>
+                <p>{memberStatusCopy.leave.body}</p>
+              </div>
               <form
                 action="/api/me/leave"
+                class="member-leave__form"
                 data-leave-form
                 data-unavailable-message={memberStatusCopy.leave.unavailable}
                 method="post"
               >
                 <input name="t" type="hidden" value={token} />
+                <Button class="member-keep" type="submit" variant="secondary">
+                  {memberStatusCopy.leave.submit}
+                </Button>
                 <div
                   class="cf-turnstile"
                   data-sitekey={config.turnstileSiteKey}
                   data-size="compact"
+                  data-appearance="interaction-only"
                   data-response-field-name="turnstile_token"
                 />
                 <noscript>
-                  <p>{memberStatusCopy.leave.javaScriptRequired}</p>
+                  <div class="member-notice member-notice--info">
+                    <Icon name="info" size="base" />
+                    <p>{memberStatusCopy.leave.javaScriptRequired}</p>
+                  </div>
                 </noscript>
-                <Button type="submit" variant="secondary">
-                  {memberStatusCopy.leave.submit}
-                </Button>
-                <p aria-live="polite" data-leave-status />
+                <div class="member-notice member-result" data-leave-result>
+                  <Icon
+                    name="check-circle"
+                    size="base"
+                    class="member-result__icon member-result__icon--success"
+                  />
+                  <Icon
+                    name="alert-circle"
+                    size="base"
+                    class="member-result__icon member-result__icon--error"
+                  />
+                  <p aria-live="polite" data-leave-status />
+                </div>
               </form>
             </section>
           </div>
-        </div>
-      ) : authentication.kind === 'disabled' ? (
-        <Card class="member-boundary" data-member-state="disabled">
-          <Icon name="alert" size="lg" />
-          <h1>{memberStatusCopy.disabled.heading}</h1>
-          <p>{memberStatusCopy.disabled.body}</p>
-        </Card>
-      ) : (
-        <Card class="member-boundary" data-member-state="recovery">
-          <Icon name="link" size="lg" />
-          <h1>{memberStatusCopy.recovery.heading}</h1>
-          <p>
-            {replacementRequested
-              ? memberStatusCopy.recovery.sent
-              : challengeFailed
-                ? memberStatusCopy.recovery.challengeFailed
-                : memberStatusCopy.recovery.body}
-          </p>
-          {!replacementRequested ? (
-            <form method="post" class="member-recovery">
-              <div
-                class="cf-turnstile"
-                data-sitekey={config.turnstileSiteKey}
-                data-size="compact"
-                data-response-field-name="turnstile_token"
-              />
-              <noscript>
-                <p>{memberStatusCopy.recovery.javaScriptRequired}</p>
-              </noscript>
-              <Button type="submit">{memberStatusCopy.recovery.submit}</Button>
-            </form>
-          ) : null}
-          {!replacementRequested ? (
-            <script
-              is:inline
-              src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-              async
-              defer
-            />
-          ) : null}
-        </Card>
-      )
-    }
-  </Container>
+        ) : authentication.kind === 'disabled' ? (
+          <div class="member-task">
+            <Card
+              class="member-boundary member-task__card"
+              data-member-state="disabled"
+              aria-labelledby="member-title"
+            >
+              <div class="member-task__head">
+                <span class="member-tile member-tile--task member-tile--neutral">
+                  <Icon name="alert" />
+                </span>
+                <h1 id="member-title">{memberStatusCopy.disabled.heading}</h1>
+              </div>
+              <p class="member-task__line">{memberStatusCopy.disabled.body}</p>
+            </Card>
+          </div>
+        ) : (
+          <div class="member-task">
+            <Card
+              class="member-boundary member-task__card"
+              data-member-state="recovery"
+              aria-labelledby="member-title"
+            >
+              <div class="member-task__head">
+                <span class="member-tile member-tile--task member-tile--neutral">
+                  <Icon name="refresh" />
+                </span>
+                <h1 id="member-title">{memberStatusCopy.recovery.heading}</h1>
+              </div>
+              <p class="member-task__line">{memberStatusCopy.recovery.body}</p>
+              {replacementRequested ? (
+                <div
+                  class="member-notice member-notice--success member-task__notice"
+                  role="status"
+                >
+                  <Icon name="check-circle" size="base" />
+                  <p>{memberStatusCopy.recovery.sent}</p>
+                </div>
+              ) : null}
+              {challengeFailed ? (
+                <div
+                  class="member-notice member-notice--error member-task__notice"
+                  role="alert"
+                >
+                  <Icon name="alert-circle" size="base" />
+                  <p>{memberStatusCopy.recovery.challengeFailed}</p>
+                </div>
+              ) : null}
+              {!replacementRequested ? (
+                <form method="post" class="member-recovery">
+                  <noscript>
+                    <div class="member-notice member-notice--info member-task__notice">
+                      <Icon name="info" size="base" />
+                      <p>{memberStatusCopy.recovery.javaScriptRequired}</p>
+                    </div>
+                  </noscript>
+                  <div class="member-task__actions">
+                    <Button type="submit">
+                      {memberStatusCopy.recovery.submit}
+                    </Button>
+                  </div>
+                  <div
+                    class="cf-turnstile"
+                    data-sitekey={config.turnstileSiteKey}
+                    data-size="compact"
+                    data-appearance="interaction-only"
+                    data-response-field-name="turnstile_token"
+                  />
+                </form>
+              ) : null}
+              {!replacementRequested ? (
+                <script
+                  is:inline
+                  src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+                  async
+                  defer
+                />
+              ) : null}
+            </Card>
+          </div>
+        )
+      }
+    </Container>
+  </div>
 </BaseLayout>
 
 <script is:inline>
-  const copyButton = document.querySelector('[data-copy-referral]');
+  // A duration token, read from the root so the hold stays in tokens.css.
+  const durationToken = (name) => {
+    if (typeof getComputedStyle !== 'function') return 0;
+    const value = getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim();
+    const amount =
+      Number.parseFloat(value) * (/(?<!m)s$/u.test(value) ? 1000 : 1);
+    return Number.isFinite(amount) ? amount : 0;
+  };
+
+  // Copy link behaves as on /verify (E11.5-11q decision 3): the label
+  // cross-fades to the copied line and back after --copy-confirm-hold; the
+  // live region announces it, shown only when the copy fails.
   const referralLink = document.querySelector('[data-referral-link]');
+  const copyButton = document.querySelector('[data-copy-referral]');
+  const copyResult = document.querySelector('[data-copy-result]');
   const copyStatus = document.querySelector('[data-copy-status]');
   if (
+    referralLink instanceof HTMLElement &&
     copyButton instanceof HTMLButtonElement &&
-    referralLink instanceof HTMLInputElement &&
+    copyResult instanceof HTMLElement &&
     copyStatus instanceof HTMLElement
   ) {
+    const referralUrl = referralLink.dataset.referralUrl ?? '';
+    let copiedTimer;
     copyButton.addEventListener('click', async () => {
+      globalThis.clearTimeout(copiedTimer);
+      copyStatus.textContent = '';
+      copyResult.dataset.copyResult = '';
+      referralLink.dataset.selected = '';
       try {
-        await navigator.clipboard.writeText(referralLink.value);
+        await navigator.clipboard.writeText(referralUrl);
+        copyButton.dataset.copyState = 'copied';
+        copyResult.dataset.copyResult = 'copied';
         copyStatus.textContent = copyButton.dataset.copied ?? '';
+        copiedTimer = globalThis.setTimeout(() => {
+          copyButton.dataset.copyState = '';
+          copyResult.dataset.copyResult = '';
+          copyStatus.textContent = '';
+        }, durationToken('--copy-confirm-hold'));
       } catch {
-        referralLink.select();
+        copyButton.dataset.copyState = '';
+        const selection = globalThis.getSelection?.();
+        selection?.selectAllChildren(referralLink);
+        referralLink.dataset.selected = 'true';
+        copyResult.dataset.copyResult = 'failed';
         copyStatus.textContent = copyButton.dataset.copyFailed ?? '';
       }
     });
     const shareHost = document.querySelector('[data-share-host]');
+    const shareTemplate = shareHost?.querySelector('[data-share-template]');
     if (
       shareHost instanceof HTMLElement &&
+      shareTemplate instanceof HTMLTemplateElement &&
       typeof navigator.share === 'function'
     ) {
-      const shareButton = document.createElement('button');
-      shareButton.type = 'button';
-      shareButton.className = 'member-native-share';
-      shareButton.textContent = shareHost.dataset.shareLabel ?? '';
-      shareButton.addEventListener('click', () => {
+      const share = shareTemplate.content.cloneNode(true);
+      const shareButton = share.querySelector('button');
+      shareButton?.addEventListener('click', () => {
         void navigator
-          .share({
-            title: shareHost.dataset.shareTitle,
-            url: referralLink.value,
-          })
+          .share({ title: shareHost.dataset.shareTitle, url: referralUrl })
           .catch(() => {});
       });
-      shareHost.append(shareButton);
+      shareHost.append(share);
     }
   }
 
@@ -548,61 +877,129 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
     surveyForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       const submit = surveyForm.querySelector('[type="submit"]');
+      const result = surveyForm.querySelector('[data-survey-result]');
       const status = surveyForm.querySelector('[data-survey-status]');
       if (
         !(submit instanceof HTMLButtonElement) ||
+        !(result instanceof HTMLElement) ||
         !(status instanceof HTMLElement)
       )
         return;
 
       submit.disabled = true;
+      result.dataset.result = '';
+      let tone = 'error';
       try {
         const response = await fetch(surveyForm.action, {
           body: new FormData(surveyForm),
           method: 'POST',
         });
         const payload = await response.json();
+        if (response.ok) tone = 'success';
         status.textContent = response.ok
           ? payload.message
           : (payload.error?.message ?? surveyForm.dataset.unavailableMessage);
       } catch {
         status.textContent = surveyForm.dataset.unavailableMessage ?? '';
       } finally {
+        result.dataset.result = tone;
         submit.disabled = false;
       }
     });
   }
 
+  // The marketing switch posts the existing route with the same fields and
+  // Turnstile token. Its knob slides and its word cross-fades as it submits;
+  // a success reloads with #marketing-saved, and the reloaded page shows the
+  // saved notice, focuses it and drops the fragment. An error puts the switch
+  // back and shows the route's message (E11.5-11r decision 4).
   const marketingForm = document.querySelector('[data-marketing-form]');
-  if (marketingForm instanceof HTMLFormElement) {
+  const marketingSwitch = marketingForm?.querySelector(
+    '[data-marketing-switch]',
+  );
+  const marketingResult = marketingForm?.querySelector(
+    '[data-marketing-result]',
+  );
+  const marketingStatus = marketingForm?.querySelector(
+    '[data-marketing-status]',
+  );
+  const marketingWords = marketingForm?.querySelector('[data-marketing-words]');
+  if (
+    marketingForm instanceof HTMLFormElement &&
+    marketingSwitch instanceof HTMLButtonElement &&
+    marketingResult instanceof HTMLElement &&
+    marketingStatus instanceof HTMLElement &&
+    marketingWords instanceof HTMLElement
+  ) {
+    // The fragment is set and cleared without reading the query: a
+    // fragment-only URL resolves against the current one, and clearing
+    // copies the whole URL and blanks only its fragment.
+    const savedFragment = '#marketing-saved';
+    if (globalThis.location.hash === savedFragment) {
+      const unsaved = new URL(document.URL);
+      unsaved.hash = '';
+      globalThis.history.replaceState(globalThis.history.state, '', unsaved);
+      marketingResult.dataset.result = 'success';
+      marketingStatus.textContent = marketingForm.dataset.savedMessage ?? '';
+      marketingResult.focus();
+    }
+
+    const resting = marketingSwitch.dataset.switchState;
+    const requested = resting === 'on' ? 'off' : 'on';
+    let nextWord;
+    // Shows the switch in a state: the knob, the track, the checked state
+    // and the word, which cross-fades with the other one.
+    const show = (state) => {
+      if (nextWord === undefined) {
+        nextWord = document.createElement('span');
+        nextWord.className = 'member-switch__word member-switch__word--next';
+        nextWord.textContent = marketingWords.dataset.nextWord ?? '';
+        marketingWords.append(nextWord);
+        // The next word starts transparent, so it fades in from there.
+        void nextWord.offsetWidth;
+      }
+      marketingSwitch.dataset.switchState = state;
+      marketingSwitch.setAttribute('aria-checked', String(state === 'on'));
+      marketingWords.dataset.word = state === resting ? '' : 'next';
+    };
+
+    let pending = false;
     marketingForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const submit = marketingForm.querySelector('[type="submit"]');
-      const status = marketingForm.querySelector('[data-marketing-status]');
-      if (
-        !(submit instanceof HTMLButtonElement) ||
-        !(status instanceof HTMLElement)
-      )
-        return;
-      submit.disabled = true;
+      if (pending) return;
+      pending = true;
+      marketingResult.dataset.result = '';
+      marketingStatus.textContent = '';
+      show(requested);
+      let message = marketingForm.dataset.unavailableMessage ?? '';
       try {
         const body = new FormData(marketingForm);
-        body.set('marketing', submit.value);
+        body.set('marketing', marketingSwitch.value);
         const response = await fetch(marketingForm.action, {
           body,
           method: 'POST',
         });
         const payload = await response.json();
         if (response.ok) {
-          window.location.reload();
+          globalThis.history.replaceState(
+            globalThis.history.state,
+            '',
+            savedFragment,
+          );
+          globalThis.location.reload();
           return;
         }
-        status.textContent = payload.error?.message ?? '';
+        if (typeof payload.error?.message === 'string')
+          message = payload.error.message;
       } catch {
-        status.textContent = marketingForm.dataset.unavailableMessage ?? '';
-      } finally {
-        submit.disabled = false;
+        // The unavailable message stands.
       }
+      show(resting);
+      marketingResult.dataset.result = 'error';
+      marketingStatus.textContent = message;
+      // A Turnstile token is single-use, so the next attempt needs a new one.
+      globalThis.turnstile?.reset?.();
+      pending = false;
     });
   }
 
@@ -611,13 +1008,16 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
     leaveForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       const submit = leaveForm.querySelector('[type="submit"]');
+      const result = leaveForm.querySelector('[data-leave-result]');
       const status = leaveForm.querySelector('[data-leave-status]');
       if (
         !(submit instanceof HTMLButtonElement) ||
+        !(result instanceof HTMLElement) ||
         !(status instanceof HTMLElement)
       )
         return;
       submit.disabled = true;
+      result.dataset.result = '';
       try {
         const response = await fetch(leaveForm.action, {
           body: new FormData(leaveForm),
@@ -627,9 +1027,11 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
         status.textContent = response.ok
           ? payload.message
           : (payload.error?.message ?? leaveForm.dataset.unavailableMessage);
+        result.dataset.result = response.ok ? 'success' : 'error';
         if (!response.ok) submit.disabled = false;
       } catch {
         status.textContent = leaveForm.dataset.unavailableMessage ?? '';
+        result.dataset.result = 'error';
         submit.disabled = false;
       }
     });
@@ -637,55 +1039,23 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
 </script>
 
 <style>
+  /*
+    /me on the final design (E11.5-11r, Me.dc.html as Me1440, Me768 and
+    Me390 place it). The dashboard is the canvas's .vgrid: the status card
+    across the grid, then the referral and preferences cards in columns 1–7
+    beside the rewards and data cards in columns 8–12 from 64rem, then
+    "Leave the waitlist" set apart below. The recovery, left and unavailable
+    states are the task card: columns 1–7 from 64rem, at most 40rem from
+    48rem. The page takes back the shell's main padding, as /verify does, so
+    the content sits on the canvas's gutters 32, 48 or 64px below the header.
+  */
+  .member-page {
+    margin-inline: calc(-1 * var(--space-3));
+    margin-block-start: calc(-1 * var(--space-4));
+  }
+
   :global(.member-container) {
-    padding-block: var(--section-gap);
-  }
-
-  .member-dashboard,
-  .member-column,
-  :global(.member-card),
-  :global(.member-boundary),
-  .member-marketing,
-  .member-survey-form,
-  .member-progress,
-  .member-leave,
-  .member-leave form,
-  .member-recovery {
-    display: grid;
-    gap: var(--space-3);
-  }
-
-  .member-dashboard,
-  .member-column {
-    align-content: start;
-  }
-
-  :global(.member-boundary) {
-    max-inline-size: var(--measure);
-  }
-
-  :global(.member-boundary) :global(.icon),
-  :global(.member-heading) :global(.icon) {
-    color: var(--coral);
-  }
-
-  .member-heading,
-  .member-link-control,
-  .member-switch-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .member-heading {
-    align-items: flex-start;
-  }
-
-  /* The heading drops below its icon before it would wrap word by word. */
-  .member-heading > div {
-    flex: 1 1 calc(var(--space-10) * 2);
-    min-inline-size: 0;
+    padding-block-start: var(--space-4);
   }
 
   h1,
@@ -698,358 +1068,1177 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
     margin: 0;
   }
 
-  h1 {
-    font-size: var(--step-5);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-5);
-    letter-spacing: var(--tracking-tight);
-  }
-
-  h2 {
-    font-size: var(--step-4);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-4);
-  }
-
-  h3 {
-    font-size: var(--step-3);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-3);
-  }
-
-  p,
-  legend,
-  label,
-  li {
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
-  }
-
-  p {
-    max-inline-size: var(--measure);
-    color: var(--ink-600);
-  }
-
-  .member-stats {
-    display: grid;
-    gap: var(--space-2);
-  }
-
-  .member-stat {
-    display: grid;
-    gap: var(--space-1);
-    align-content: start;
-    padding: var(--space-2);
-    background-color: var(--paper);
-    border-radius: var(--radius-control);
-  }
-
-  dt {
-    color: var(--ink-600);
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
-  }
-
-  dd {
-    color: var(--ink);
-    font-size: var(--step-3);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-3);
-  }
-
-  dd :global(.pill) {
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
-  }
-
-  .member-figure {
-    font-size: var(--step-5);
-    line-height: var(--leading-5);
-  }
-
-  /* The link takes its own line before it would shrink below a usable width. */
-  .member-link-control :global(.input) {
-    min-inline-size: 0;
-    flex: 1 1 calc(var(--space-10) * 2);
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .member-link-control :global(.button) {
-    flex: none;
-  }
-
-  .member-progress label {
-    color: var(--ink);
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-  }
-
-  progress {
-    inline-size: 100%;
-    block-size: var(--space-2);
-    accent-color: var(--coral);
-  }
-
-  .member-reward-key,
-  .member-rewards,
-  .member-links {
-    display: grid;
-    gap: var(--space-2);
+  ul {
     padding: 0;
     list-style: none;
   }
 
-  .member-reward-key li {
+  h1 {
+    font-size: var(--step-5);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-5);
+    letter-spacing: var(--tracking-tight);
+    text-wrap: balance;
+  }
+
+  .member-card-title,
+  .member-leave h2 {
+    font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-3);
+    letter-spacing: var(--tracking-tight);
+    text-wrap: balance;
+  }
+
+  /* Tiles: 40 (card heads), 36 (data links), 48 (task cards). */
+  .member-tile {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--tile-size);
+    block-size: var(--tile-size);
+    color: var(--ink);
+    background-color: var(--coral-tint);
+    border-radius: var(--radius-control);
+  }
+
+  .member-tile--neutral {
+    background-color: var(--wash);
+  }
+
+  .member-tile--task {
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
+  }
+
+  .member-tile--small {
+    inline-size: calc(var(--space-4) + var(--space-0-5));
+    block-size: calc(var(--space-4) + var(--space-0-5));
+  }
+
+  /* Notices (E11.5-11j): 16px padding, radius 8, a 12px gap between the
+     20px icon and the 14/20 500 text. */
+  .member-notice {
+    display: flex;
+    gap: var(--space-1-5);
+    align-items: flex-start;
+    padding: var(--space-2);
+    color: var(--ink);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+    background-color: var(--surface);
+    border-radius: var(--radius-control);
+    box-shadow: var(--inset-line), var(--edge);
+  }
+
+  .member-notice p {
+    text-wrap: pretty;
+  }
+
+  .member-notice :global(.icon) {
+    flex: none;
+    color: var(--ink-600);
+  }
+
+  .member-notice--info {
+    background-color: var(--wash);
+    box-shadow: none;
+  }
+
+  .member-notice--success :global(.icon),
+  .member-result[data-result='success'] :global(.member-result__icon--success) {
+    color: var(--success-icon);
+  }
+
+  .member-notice--error,
+  .member-result[data-result='error'] {
+    box-shadow: var(--inset-error);
+  }
+
+  .member-notice--error :global(.icon),
+  .member-result[data-result='error'] :global(.member-result__icon--error) {
+    color: var(--error);
+  }
+
+  @media (forced-colors: active) {
+    .member-notice {
+      outline: var(--border-thin) solid currentColor;
+      outline-offset: calc(var(--border-thin) * -1);
+    }
+  }
+
+  /* A result notice speaks through its live region, and is clipped to
+     nothing on screen until it has something to show. */
+  .member-result :global(.member-result__icon) {
+    display: none;
+  }
+
+  .member-result[data-result='success'] :global(.member-result__icon--success),
+  .member-result[data-result='error'] :global(.member-result__icon--error) {
+    display: block;
+  }
+
+  .member-result:not([data-result='success'], [data-result='error']),
+  .member-copy-result:not([data-copy-result='failed']) {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .member-result:focus {
+    outline: none;
+  }
+
+  .member-result:focus-visible {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
+  }
+
+  /* The clipped regions are boxed inside their card or form. */
+  .member-grid :global(.card),
+  .member-leave__form {
+    position: relative;
+  }
+
+  /* The board's secondary buttons keep their 48px size and 16/24 label at
+     every width (its .btn--keep), padded 24 like every .btn on the board. */
+  .member-page :global(.member-keep) {
+    min-block-size: var(--control-height);
+    padding-inline: var(--space-3);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .cf-turnstile:empty {
+    display: none;
+  }
+
+  /* ---- the task card: recovery, left and unavailable ---- */
+  .member-task {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .member-task :global(.member-task__card) {
+    box-sizing: border-box;
+    padding: var(--space-3);
+  }
+
+  .member-task__head {
     display: flex;
     gap: var(--space-2);
     align-items: flex-start;
   }
 
-  .member-reward-key li > span {
-    display: grid;
-    min-inline-size: 0;
+  .member-task__head h1 {
+    padding-block-start: var(--space-0-5);
+    overflow-wrap: anywhere;
   }
 
-  .member-reward-key :global(.icon) {
-    color: var(--coral);
-  }
-
-  .member-reward-key li > span > span {
+  .member-task__line {
+    margin-block-start: var(--space-2);
     color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    text-wrap: pretty;
   }
 
-  .member-reward {
+  .member-task__notice {
+    margin-block-start: var(--space-3);
+  }
+
+  .member-recovery {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+  }
+
+  .member-task__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    margin-block-start: var(--space-4);
+  }
+
+  .member-task__actions :global(.button) {
+    inline-size: 100%;
+    white-space: normal;
+  }
+
+  .member-recovery > .cf-turnstile {
+    margin-block-start: var(--space-3);
+  }
+
+  /* ---- the dashboard ---- */
+  .member-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);
-    align-items: center;
-    justify-content: space-between;
+    align-items: start;
+  }
+
+  .member-grid :global(.member-card) {
+    padding: var(--space-3);
+  }
+
+  .member-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    max-inline-size: calc(var(--space-10) * 8);
+  }
+
+  .member-head p {
+    color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    text-wrap: pretty;
+  }
+
+  /* The facts: two columns, three from 48rem, five (six when giveaway
+     entries show) from 64rem, each on the well. */
+  .member-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-block-start: var(--space-3);
+  }
+
+  /* Below 22.5rem a fact takes the row, so the wave badge fits. */
+  @media (width < 22.5rem) {
+    .member-facts {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .member-fact {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-inline-size: 0;
     padding: var(--space-2);
-    border: thin solid var(--line);
+    background-color: var(--well);
     border-radius: var(--radius-control);
   }
 
-  .member-reward__name {
-    display: grid;
+  .member-fact dt {
+    color: var(--ink-600);
+    font-size: var(--step-0);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-0);
+  }
+
+  .member-fact dd {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    min-block-size: var(--space-4);
+    font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-3);
+  }
+
+  .member-fact dd :global(.icon) {
+    color: var(--success-icon);
+  }
+
+  .member-fact .member-fact__muted {
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+  }
+
+  /* The access-wave badge: four bars rising left to right, filled in coral
+     up to the member's wave, then the wave in mono. */
+  .member-wave {
+    display: inline-flex;
+    gap: var(--space-1);
+    align-items: center;
+    block-size: var(--space-4);
+    padding-inline: var(--space-1) var(--space-1-5);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: var(--leading-0);
+    white-space: nowrap;
+    background-color: var(--coral-tint);
+    border-radius: var(--radius-pill);
+  }
+
+  .member-wave__bars {
+    display: inline-flex;
+    gap: var(--wave-bar-gap);
+    align-items: flex-end;
+    block-size: var(--space-1-75);
+  }
+
+  .member-wave__bars i {
+    display: block;
+    inline-size: var(--wave-bar-width);
+    background-color: var(--ink-300);
+    border-radius: var(--wave-bar-radius);
+  }
+
+  .member-wave__bars i:nth-child(1) {
+    block-size: var(--space-0-75);
+  }
+
+  .member-wave__bars i:nth-child(2) {
+    block-size: calc(var(--space-0-75) * 1.5);
+  }
+
+  .member-wave__bars i:nth-child(3) {
+    block-size: var(--space-1-5);
+  }
+
+  .member-wave__bars i:nth-child(4) {
+    block-size: var(--space-1-75);
+  }
+
+  .member-wave__bars i.is-on {
+    background-color: var(--coral);
+  }
+
+  .member-card-head {
+    display: flex;
+    gap: var(--space-1-5);
+    align-items: center;
+  }
+
+  .member-card-head h2 {
     min-inline-size: 0;
+  }
+
+  /* ---- the referral card ---- */
+  .member-ref-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+    margin-block-start: var(--space-1);
+  }
+
+  .member-linkbox {
+    box-sizing: border-box;
+    min-inline-size: 0;
+    min-block-size: var(--control-height);
+    padding: var(--space-1-75) var(--space-2);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+    overflow-wrap: anywhere;
+    background-color: var(--well);
+    border-radius: var(--radius-control);
+    box-shadow: var(--inset-line);
+    user-select: all;
+  }
+
+  .member-linkbox[data-selected='true'] {
+    background-color: var(--wash-strong);
+    box-shadow: var(--inset-selected);
+  }
+
+  .member-linkbox__code {
+    font-weight: var(--weight-semibold);
+  }
+
+  .member-ref-row :global(.button) {
+    inline-size: 100%;
+  }
+
+  /* Copy referral link: the idle and copied faces share one cell, so the
+     button keeps its size while the label cross-fades. */
+  .member-copy__faces {
+    display: grid;
+  }
+
+  .member-copy__face {
+    display: inline-flex;
+    grid-area: 1 / 1;
+    gap: var(--space-1);
+    align-items: center;
+    justify-content: center;
+    transition-property: opacity;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .member-copy__face--done,
+  :global(.member-copy[data-copy-state='copied'])
+    .member-copy__face:not(.member-copy__face--done) {
+    opacity: 0;
+  }
+
+  :global(.member-copy[data-copy-state='copied']) .member-copy__face--done {
+    opacity: 1;
+  }
+
+  .member-copy-result {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    min-block-size: var(--space-3);
+    margin-block-start: var(--space-1);
+    color: var(--ink);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+  }
+
+  .member-copy-result :global(.icon) {
+    color: var(--ink-600);
+  }
+
+  .member-share:has(.button) {
+    margin-block-start: var(--space-1);
+  }
+
+  .member-well {
+    padding: var(--space-2);
+    background-color: var(--well);
+    border-radius: var(--radius-control);
+  }
+
+  .member-meter {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-block-start: var(--space-3);
+  }
+
+  .member-meter__top {
+    display: flex;
+    gap: var(--space-2);
+    align-items: baseline;
+    justify-content: flex-end;
+  }
+
+  .member-meter__value {
+    font-family: var(--font-mono);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: var(--leading-1);
+  }
+
+  /* The native meter stays for assistive technology; the drawn track is
+     its picture, one segment per referral the tier needs. */
+  .member-meter__native {
+    position: absolute;
+    overflow: hidden;
+    inline-size: var(--border-thin);
+    block-size: var(--border-thin);
+    clip-path: inset(50%);
+  }
+
+  .member-meter__track {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: var(--space-0-5);
+  }
+
+  .member-meter__segment {
+    display: block;
+    overflow: hidden;
+    block-size: var(--space-1);
+    background-color: var(--wash-strong);
+    border-radius: var(--radius-pill);
+  }
+
+  .member-meter__fill {
+    display: block;
+    block-size: 100%;
+    background-color: var(--ink);
+    transform-origin: left;
+  }
+
+  /* ---- the rewards card ---- */
+  .member-rewards {
+    margin-block-start: var(--space-1);
+  }
+
+  .member-rewards-empty {
+    margin-block-start: var(--space-2);
+  }
+
+  .member-rewards-empty p {
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    text-wrap: pretty;
+  }
+
+  .member-reward {
+    display: grid;
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-0-5) var(--space-2);
+    align-items: center;
+    padding-block: var(--space-2);
+  }
+
+  .member-reward + .member-reward {
+    border-block-start: var(--border-thin) solid var(--line);
+  }
+
+  .member-reward__kind {
+    font-weight: var(--weight-semibold);
   }
 
   .member-reward__tier {
     color: var(--ink-600);
     font-family: var(--font-mono);
-    font-size: var(--step-1);
-    font-variant-numeric: tabular-nums;
-    line-height: var(--leading-1);
+    font-size: var(--step-0);
+    line-height: var(--leading-0);
   }
 
-  .member-reward__state {
-    display: inline-flex;
-    gap: var(--space-1);
-    align-items: center;
-    padding-block: var(--space-1);
-    padding-inline: var(--space-2);
-    color: var(--midnight);
+  .member-reward__why {
+    grid-column: 1 / -1;
+    color: var(--ink-600);
     font-size: var(--step-1);
     line-height: var(--leading-1);
+    text-wrap: pretty;
+  }
+
+  /* Settled is filled ink with a check; held is an outline with a clock.
+     The held outline is a real border, so it survives forced colours, and
+     its padding gives back the border's width, so the badge keeps the
+     board's size. */
+  .member-reward__state {
+    box-sizing: border-box;
+    display: inline-flex;
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    gap: var(--space-0-75);
+    align-items: center;
+    block-size: calc(var(--space-3) + var(--space-0-5));
+    padding-inline: var(--space-1) var(--space-1-5);
+    font-size: var(--step-0);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-0);
+    white-space: nowrap;
     border-radius: var(--radius-pill);
   }
 
-  /* Ink on coral-tint: dark coral-tint is translucent (E11.5-11a). */
+  .member-reward__state :global(.icon path) {
+    stroke-width: var(--stroke-heavy);
+  }
+
   .member-reward__state--settled {
-    color: var(--ink);
-    background-color: var(--coral-tint);
+    color: var(--paper);
+    background-color: var(--ink);
   }
 
   .member-reward__state--held {
+    padding-inline: calc(var(--space-1) - var(--border-check))
+      calc(var(--space-1-5) - var(--border-check));
     color: var(--ink);
-    background-color: var(--surface);
-    border: thin dashed var(--ink-600);
+    background-color: transparent;
+    border: var(--border-check) solid var(--ink-300);
   }
 
-  .member-switch-row h3 {
-    flex: 1 1 0;
-    min-inline-size: 0;
+  /* ---- the preferences card ---- */
+  .member-pref {
+    margin-block-start: var(--space-2);
+  }
+
+  .member-pref + .member-pref {
+    margin-block-start: var(--space-3);
+    padding-block-start: var(--space-3);
+    border-block-start: var(--border-thin) solid var(--line);
+  }
+
+  .member-marketing h3 {
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
+  }
+
+  .member-pref-switch {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    align-items: start;
+    margin-block-start: var(--space-1-5);
+  }
+
+  .member-pref-switch p {
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    text-wrap: pretty;
+  }
+
+  .member-pref__notice[data-result],
+  noscript .member-pref__notice {
+    margin-block-start: var(--space-2);
+  }
+
+  .member-marketing > .cf-turnstile {
+    margin-block-start: var(--space-2);
+  }
+
+  .member-switch-row {
+    display: flex;
+    gap: var(--space-1-5);
+    align-items: center;
+    min-block-size: var(--tap-min);
+  }
+
+  /* The component library's switch: a 44 × 24 track with a 16px knob and
+     its check, and the state in knob, glyph and word. The button itself is
+     the 44px target around the track. Its name is the action, read from a
+     label that fills the switch's row and is clipped to nothing, so it never
+     overflows the button. */
+  .member-pref-switch {
+    position: relative;
   }
 
   .member-switch {
-    box-sizing: border-box;
-    display: inline-flex;
-    gap: var(--space-2);
-    align-items: center;
-    justify-self: start;
-    min-block-size: var(--tap-min);
-    padding-block: var(--space-1);
-    padding-inline: var(--space-2);
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--step-2);
-    font-weight: var(--weight-medium);
-    line-height: var(--leading-2);
-    text-align: start;
-    background-color: var(--surface);
-    border: thin solid var(--line);
-    border-radius: var(--radius-control);
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    inline-size: var(--tap-min);
+    block-size: var(--tap-min);
+    margin: var(--space-0);
+    padding: var(--space-0);
+    font: inherit;
+    background-color: transparent;
+    border: 0;
     cursor: pointer;
+    appearance: none;
   }
 
-  .member-switch:hover {
-    border-color: var(--coral);
-  }
-
-  .member-switch:focus-visible,
-  .member-links a:focus-visible,
-  :global(.member-native-share:focus-visible) {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
-  }
-
-  .member-switch:disabled {
-    color: var(--ink-600);
-    cursor: not-allowed;
+  .member-switch__label {
+    position: absolute;
+    inset: var(--space-0);
+    overflow: hidden;
+    clip-path: inset(50%);
   }
 
   .member-switch__track {
-    box-sizing: border-box;
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    inline-size: var(--space-6);
+    position: relative;
+    inline-size: var(--tap-min);
     block-size: var(--space-3);
-    padding: var(--space-1);
-    background-color: var(--line);
-    border: thin solid var(--ink-600);
+    background-color: var(--surface);
     border-radius: var(--radius-pill);
+    box-shadow: var(--inset-field);
+    transition-property: background-color, box-shadow;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-out);
   }
 
-  .member-switch__thumb {
+  .member-switch__knob {
+    position: absolute;
+    inset-block-start: var(--space-0-5);
+    inset-inline-start: var(--space-0-5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     inline-size: var(--space-2);
     block-size: var(--space-2);
-    background-color: var(--surface);
-    border: thin solid var(--ink-600);
+    color: var(--ink);
+    background-color: var(--ink-600);
     border-radius: var(--radius-pill);
+    transition-property: transform, background-color;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-out);
   }
 
-  .member-switch--on .member-switch__track {
-    justify-content: flex-end;
-    background-color: var(--coral);
-    border-color: var(--coral);
-  }
-
-  fieldset {
-    min-inline-size: 0;
-    margin: 0;
-    padding: 0;
-    border: 0;
-  }
-
-  legend {
-    margin-block-end: var(--space-2);
-    font-weight: var(--weight-semibold);
-  }
-
-  .member-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .member-options label {
-    position: relative;
-    display: inline-flex;
-    min-block-size: var(--tap-min);
-    align-items: center;
-    cursor: pointer;
-  }
-
-  .member-options input {
-    position: absolute;
-    inline-size: var(--tap-min);
-    block-size: var(--tap-min);
-    margin: 0;
+  .member-switch__knob :global(.icon) {
+    inline-size: var(--space-1-5);
+    block-size: var(--space-1-5);
     opacity: 0;
   }
 
-  .member-options span {
-    display: inline-flex;
+  .member-switch__knob :global(.icon path) {
+    stroke-width: var(--stroke-heavy);
+  }
+
+  .member-switch:hover .member-switch__track {
+    box-shadow: var(--inset-selected);
+  }
+
+  .member-switch[data-switch-state='on'] .member-switch__track {
+    background-color: var(--ink);
+    box-shadow: var(--inset-selected);
+  }
+
+  .member-switch[data-switch-state='on'] .member-switch__knob {
+    background-color: var(--surface);
+    transform: translateX(var(--space-2-5));
+  }
+
+  .member-switch[data-switch-state='on'] .member-switch__knob :global(.icon) {
+    opacity: 1;
+  }
+
+  .member-switch:focus-visible {
+    outline: none;
+  }
+
+  .member-switch:focus-visible .member-switch__track {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
+  }
+
+  @media (forced-colors: active) {
+    .member-switch__track {
+      border: var(--border-thin) solid ButtonText;
+    }
+  }
+
+  /* The word: the current one, and the requested one fading in over it. */
+  .member-switch__words {
+    display: inline-grid;
+    min-inline-size: calc(var(--space-3) + var(--space-0-5));
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
+  }
+
+  .member-switch__word {
+    grid-area: 1 / 1;
+    transition-property: opacity;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .member-switch__word--next,
+  .member-switch__words[data-word='next'] [data-marketing-state] {
+    opacity: 0;
+  }
+
+  .member-switch__words[data-word='next'] .member-switch__word--next {
+    opacity: 1;
+  }
+
+  /* The survey re-answer: the canvas's disclosure, a 44px summary in the
+     16/24 600 body face, over the chips and segments of /verify. */
+  .member-pref--survey :global(.accordion__summary) {
     min-block-size: var(--tap-min);
-    align-items: center;
-    padding-inline: var(--space-2);
+    padding-block: var(--space-0);
+  }
+
+  .member-pref--survey :global(.accordion__content) {
+    max-inline-size: none;
+    padding-block-end: var(--space-0);
+    padding-inline-end: var(--space-0);
     color: var(--ink);
-    background-color: var(--paper);
-    border: thin solid var(--line);
-    border-radius: var(--radius-pill);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
   }
 
-  .member-options--segments span {
-    border-radius: var(--radius-control);
+  .member-survey-form {
+    display: flex;
+    flex-direction: column;
   }
 
-  .member-options input:checked + span {
-    background-color: var(--coral-tint);
-    border-color: var(--coral);
+  .member-question {
+    min-inline-size: 0;
+    margin: var(--space-0);
+    margin-block-start: var(--space-3);
+    padding: var(--space-0);
+    border: 0;
   }
 
-  .member-options label:focus-within span {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
+  .member-question:first-of-type {
+    margin-block-start: var(--space-1);
   }
 
-  .member-survey-form :global(.button) {
-    justify-self: start;
+  .member-question legend {
+    padding: var(--space-0);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
   }
 
-  .member-links a {
-    display: inline-flex;
+  .member-chips {
+    display: flex;
+    flex-wrap: wrap;
     gap: var(--space-1);
-    align-items: center;
-    min-block-size: var(--tap-min);
-    color: var(--ink);
-    font-weight: var(--weight-medium);
-    text-decoration: underline;
-    text-underline-offset: var(--space-1);
+    margin-block-start: var(--space-1-5);
   }
 
-  .member-links a :global(.icon) {
-    color: var(--coral);
-  }
-
-  .member-leave {
-    padding-block-start: var(--space-4);
-    border-block-start: thin solid var(--line);
-  }
-
-  .member-leave :global(.button) {
-    justify-self: start;
-  }
-
-  :global(.member-native-share) {
-    min-block-size: var(--tap-min);
-    min-inline-size: var(--tap-min);
-    padding-inline: var(--space-3);
-    color: var(--ink);
-    font: inherit;
-    background: var(--surface);
-    border: thin solid var(--line);
-    border-radius: var(--radius-control);
+  /* Each option is a label holding the native input, transparent over the
+     shape it draws (its next sibling), so the target is the drawn shape,
+     keyboard focus lands on a real control, and the focus ring is on the
+     shape. */
+  .member-choice {
+    position: relative;
+    display: inline-grid;
     cursor: pointer;
   }
 
+  .member-choice input {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    margin: var(--space-0);
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .member-chip,
+  .member-segment {
+    display: inline-flex;
+    gap: var(--space-0-75);
+    align-items: center;
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+    transition-property: background-color, box-shadow, color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .member-chip :global(.member-option__check),
+  .member-segment :global(.member-option__check) {
+    display: none;
+  }
+
+  input:checked + .member-chip :global(.member-option__check),
+  input:checked + .member-segment :global(.member-option__check) {
+    display: block;
+  }
+
+  .member-chip :global(.member-option__check path),
+  .member-segment :global(.member-option__check path) {
+    stroke-width: var(--stroke-heavy);
+  }
+
+  .member-chip {
+    min-block-size: var(--tap-min);
+    padding-inline: var(--space-2);
+    color: var(--ink);
+    background-color: var(--surface);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--inset-line), var(--edge);
+  }
+
+  .member-choice:hover > .member-chip {
+    box-shadow: var(--inset-strong), var(--edge);
+  }
+
+  input:checked + .member-chip {
+    padding-inline-start: var(--space-1-5);
+    color: var(--paper);
+    font-weight: var(--weight-semibold);
+    background-color: var(--ink);
+    box-shadow: none;
+  }
+
+  input:focus-visible + .member-chip {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
+  }
+
+  .member-segments {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-0-5);
+    margin-block-start: var(--space-1-5);
+    padding: var(--space-0-5);
+    background-color: var(--wash);
+    border-radius: var(--radius-card);
+  }
+
+  .member-segments .member-choice {
+    display: grid;
+  }
+
+  .member-segment {
+    justify-content: center;
+    min-block-size: var(--tap-min);
+    padding-inline: var(--space-2);
+    color: var(--ink-600);
+    text-align: center;
+    border-radius: var(--radius-control);
+  }
+
+  .member-choice:hover > .member-segment {
+    color: var(--ink);
+  }
+
+  input:checked + .member-segment {
+    color: var(--ink);
+    font-weight: var(--weight-semibold);
+    background-color: var(--surface);
+    box-shadow: var(--shadow-1), var(--edge);
+  }
+
+  input:focus-visible + .member-segment {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--space-0);
+  }
+
+  @media (forced-colors: active) {
+    input:checked + .member-chip,
+    input:checked + .member-segment {
+      outline: var(--border-strong) solid Highlight;
+    }
+  }
+
+  .member-survey__result[data-result] {
+    margin-block-start: var(--space-3);
+  }
+
+  .member-survey__actions {
+    display: flex;
+    margin-block-start: var(--space-4);
+  }
+
+  /* ---- the data card ---- */
+  .member-data-links {
+    display: flex;
+    flex-direction: column;
+    margin-block-start: var(--space-1);
+  }
+
+  .member-data-links li + li {
+    border-block-start: var(--border-thin) solid var(--line);
+  }
+
+  .member-data-links a {
+    box-sizing: border-box;
+    display: flex;
+    gap: var(--space-1-5);
+    align-items: center;
+    min-block-size: var(--space-7);
+    padding-block: var(--space-1);
+    color: var(--ink);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
+  }
+
+  .member-data-links a :global(.member-arrow) {
+    margin-inline-start: auto;
+    color: var(--ink-600);
+    transition-property: transform, color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .member-data-links a:hover :global(.member-arrow) {
+    color: var(--ink);
+  }
+
+  .member-data-links a:hover .member-data-links__label {
+    text-decoration: underline;
+    text-decoration-color: var(--coral);
+    text-decoration-thickness: var(--underline-thickness);
+    text-underline-offset: var(--underline-offset);
+  }
+
+  .member-data-links a:focus-visible {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
+    border-radius: var(--radius-control);
+  }
+
+  /* ---- leave the waitlist: set apart, plain, one action ---- */
+  .member-leave {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+    margin-block-start: var(--space-5);
+    padding-block-start: var(--space-3);
+    border-block-start: var(--border-thin) solid var(--line);
+  }
+
+  .member-leave__text p {
+    margin-block-start: var(--space-0-5);
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    text-wrap: pretty;
+  }
+
+  .member-leave__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .member-leave__form > .member-notice {
+    align-self: stretch;
+  }
+
+  /* ---- motion and finish (E11.5-11r) ----
+     The status card enters on data-enter: the heading and line (0), the
+     facts (1) and the wave badge (2). All three only rise, as on /verify,
+     so every word is at full opacity from first paint. The cards below reveal on scroll in order. The meter's earned
+     segments fill from nothing on the meter's own view timeline, as its
+     card reveals; its text is the exact figure throughout. The switch's
+     knob and track move over --duration-base (the canvas's motion table)
+     and its word cross-fades over --duration-fast. The data links' arrows
+     move --arrow-shift on hover. */
+  @media (prefers-reduced-motion: no-preference) {
+    .member-data-links a:hover :global(.member-arrow) {
+      transform: translateX(var(--arrow-shift));
+    }
+
+    @supports (animation-timeline: view()) {
+      .member-meter__fill {
+        animation-name: member-meter-fill;
+        animation-duration: auto;
+        animation-timing-function: var(--ease-enter);
+        animation-fill-mode: backwards;
+        animation-timeline: view(block 0);
+        animation-range: var(--reveal-range);
+      }
+    }
+
+    @keyframes member-meter-fill {
+      from {
+        transform: scaleX(0);
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .member-copy__face,
+    .member-switch__track,
+    .member-switch__knob,
+    .member-switch__word,
+    .member-chip,
+    .member-segment,
+    .member-data-links a :global(.member-arrow) {
+      transition-property: none;
+    }
+  }
+
   @media (min-width: 48rem) {
-    .member-stats {
-      grid-template-columns: repeat(auto-fit, minmax(var(--space-10), 1fr));
+    :global(.member-container) {
+      padding-block-start: var(--space-6);
+    }
+
+    .member-task :global(.member-task__card) {
+      max-inline-size: calc(var(--space-10) * 8);
+      padding: var(--space-5);
+    }
+
+    .member-task__actions {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+
+    .member-task__actions :global(.button) {
+      inline-size: auto;
+      white-space: nowrap;
+    }
+
+    .member-grid {
+      gap: var(--space-3);
+    }
+
+    .member-grid :global(.member-card) {
+      padding: var(--space-4);
+    }
+
+    .member-facts {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-3);
+    }
+
+    .member-ref-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .member-ref-row :global(.button) {
+      inline-size: auto;
+    }
+
+    .member-segments {
+      display: inline-grid;
+      grid-template-columns: repeat(4, auto);
+    }
+
+    .member-chip {
+      min-block-size: var(--tile-size);
+    }
+
+    .member-chip,
+    .member-segment {
+      white-space: nowrap;
+    }
+
+    .member-segment {
+      min-block-size: calc(var(--space-4) + var(--space-0-5));
+    }
+
+    .member-leave {
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: var(--space-4);
+      align-items: center;
+    }
+
+    .member-leave__form {
+      align-items: flex-end;
     }
   }
 
   @media (min-width: 64rem) {
     :global(.member-container) {
-      padding-block: var(--section-gap-wide);
+      padding-block-start: var(--space-8);
     }
 
-    .member-dashboard {
-      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-      gap: var(--space-4);
-      align-items: start;
+    .member-task {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--grid-gap-wide);
+    }
+
+    .member-task :global(.member-task__card) {
+      grid-column: 1 / span 7;
+      max-inline-size: none;
+    }
+
+    .member-grid {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--grid-gap-wide);
+      row-gap: var(--space-3);
+      align-items: stretch;
+    }
+
+    .member-grid > :global(*) {
+      grid-column: 1 / -1;
+    }
+
+    .member-grid > :global(.member-main) {
+      grid-column: 1 / span 7;
+    }
+
+    .member-grid > :global(.member-side) {
+      grid-column: 8 / span 5;
+    }
+
+    .member-facts {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    /* Six facts share a row only from 80rem; at 64rem (which the canvas
+       does not draw) a six-column fact is too narrow for the wave badge. */
+    .member-facts--6 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .member-leave {
+      margin-block-start: var(--space-6);
+    }
+  }
+
+  @media (min-width: 80rem) {
+    .member-facts--6 {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
     }
   }
 </style>

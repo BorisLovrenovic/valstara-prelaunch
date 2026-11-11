@@ -484,7 +484,11 @@ test('the dashboard copy control copies the bearer referral link', async () => {
     { waitUntil: 'load' },
   );
 
-  const referralLink = await page.locator('[data-referral-link]').inputValue();
+  // E11.5-11r named rewrite (founder-authorised 2026-11-11, decision 2): the
+  // link is a wrapping paragraph, read from its data-referral-url.
+  const referralLink = await page
+    .locator('[data-referral-link]')
+    .getAttribute('data-referral-url');
   await page.locator('[data-copy-referral]').click();
 
   assert.equal(

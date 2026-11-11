@@ -31,6 +31,7 @@ import {
 } from '../scripts/design/layout-checks.mjs';
 import { captureContactSheet } from '../scripts/design/contact-sheet.mjs';
 import { seedGiveawayEntryRows } from './helpers/giveaway-entry-rows.ts';
+import { entranceEnded } from './helpers/motion.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
@@ -253,7 +254,32 @@ async function startBrowser() {
   }
 }
 
+// E11.5-11r named rewrite (founder-authorised 2026-11-11): axe reads the page
+// at rest. This suite reads within about 100ms of load, while an entrance can
+// still be fading, so it first waits, bounded at 2s, for the first-paint
+// entrance (E11.5-11l's entranceEnded, `[data-enter]`) and the leaderboard
+// rows' first entrance (`[data-row-enter]`). Animations are filtered by
+// target: the loading spinner loops forever and is not waited on. Where no
+// entrance runs, the wait returns at once.
+async function rowEntranceEnded(page) {
+  const entering = () =>
+    page.evaluate(
+      () =>
+        globalThis.document
+          .getAnimations()
+          .filter((animation) =>
+            animation.effect?.target?.matches?.('[data-row-enter]'),
+          ).length,
+    );
+  for (let attempt = 0; (await entering()) > 0; attempt += 1) {
+    assert.ok(attempt < 40, 'the row entrance ends within 2 seconds');
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 50));
+  }
+}
+
 async function axeViolations(page) {
+  await entranceEnded(page);
+  await rowEntranceEnded(page);
   await page.addScriptTag({ content: axe.source });
   return page.evaluate(async () =>
     (
@@ -405,15 +431,10 @@ test('the member page and the leaderboard render every state from their sources,
         .evaluateAll((cards) =>
           cards.map((card) => card.getAttribute('data-member-card')),
         ),
-      [
-        'status',
-        'referral',
-        'rewards',
-        'entries',
-        'preferences',
-        'data-rights',
-        'leave',
-      ],
+      // E11.5-11r named rewrite (founder-authorised 2026-11-11, decision 1):
+      // giveaway entries are a fact on the status card, not a card of their
+      // own.
+      ['status', 'referral', 'rewards', 'preferences', 'data-rights', 'leave'],
     );
     const renderedFields = await page
       .locator('[data-member-field]')
@@ -458,8 +479,17 @@ test('the member page and the leaderboard render every state from their sources,
       ).trim(),
       memberStatusCopy.referral.progress(2, 3, 1),
     );
+    // E11.5-11r named rewrite (founder-authorised 2026-11-11, decision 2):
+    // the link is /verify's wrapping box, a paragraph, so it is read from its
+    // data-referral-url and its visible text.
     assert.equal(
-      await page.locator('[data-referral-link]').inputValue(),
+      await page
+        .locator('[data-referral-link]')
+        .getAttribute('data-referral-url'),
+      memberStatus.referralLink,
+    );
+    assert.equal(
+      (await page.locator('[data-referral-link]').textContent()).trim(),
       memberStatus.referralLink,
     );
     for (const key of ['ownRank', 'confirmedReferrals', 'giveawayEntries']) {
@@ -568,7 +598,10 @@ test('the member page and the leaderboard render every state from their sources,
 
     // A member with no entries and no rewards gets no entries card, and their
     // progress still comes from the ladder.
-    assert.doesNotMatch(freshHtml, /data-member-card="entries"/u);
+    // E11.5-11r named rewrite (founder-authorised 2026-11-11, decision 1):
+    // the zero-entries rule is asserted on the field, now that entries are a
+    // fact rather than a card.
+    assert.doesNotMatch(freshHtml, /data-member-field="giveawayEntries"/u);
     assert.match(freshHtml, new RegExp(memberStatusCopy.rewards.empty, 'u'));
     assert.match(freshHtml, />\s*0 of 3 to Tier 1\s*</u);
     assert.match(
