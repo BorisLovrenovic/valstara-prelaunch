@@ -8,7 +8,18 @@ This is a production system that will hold real people's personal data and run a
 - **Epic:** {EPIC}
 - **Notes / changes since the plan was written (leave "None" if the plan is current):** {NOTES}
 
-These values are given once. Everywhere below, *the ticket ID*, *the ticket title*, *the epic* and *the branch* refer back to this block — substitute them yourself wherever an output format asks.
+These values are given once. Everywhere below, *the ticket ID*, *the ticket title* and *the epic* refer back to this block — substitute them yourself wherever an output format asks.
+
+**Create the ticket's branch first, before anything else.** You start on `main`. Name the branch `feat/<ticket ID>-<slug>`, where the slug is the ticket title in lowercase ASCII words joined by hyphens, cut at a word boundary to at most 50 characters (for example `feat/E11.5-11r-final-design-member-page-and-leaderboard`). Then:
+
+```
+git fetch origin
+git branch --list 'feat/<ticket ID>-*'      # a re-run finds the branch the earlier run created
+git switch <that branch>                    # if it exists
+git switch -c <new branch> origin/main      # if it does not
+```
+
+Everywhere below, *the branch* means this branch. Report its exact name in the result block, because every later step uses it. Creating it first means a run that stops before any code still leaves a branch for the founder's decision to be recorded on.
 
 The ticket's **Model** and **Why this model** lines are routing metadata already applied by the founder. Read past them; they are not instructions to you.
 
@@ -96,7 +107,7 @@ The QA gate later is an **audit, not the safety net.** Implement, minimum:
 
 ## Step 7 — Verify locally, then commit
 
-- **Work on the branch.** If it does not exist yet, create it from an up-to-date `main` (`git fetch origin && git switch -c <branch> origin/main`). If it exists, switch to it. Never work on `main`, and never create a second branch for this ticket.
+- **Stay on the branch you created or switched to at the start.** Never work on `main`, and never create a second branch for this ticket.
 - Start the stack if integration tests need it: `docker compose -f infra/compose/docker-compose.yml up -d`
 - Run the quick local checks: `npm run check`, then `npm run test:changed -- <each test file on the Tests line>`. It also picks every test your change affects and prints why. **The full suite runs in CI on the pull request** (`docs/engineering/ci-cd.md#local-checks`), so do not run the whole `npm test` locally, even for a dependency upgrade.
 - Schema changed? Add a **new forward-only migration file** — additive first — and **never edit one that has already run.** Review it in the diff.
@@ -129,7 +140,7 @@ If any acceptance criterion is not demonstrably met, **say so explicitly under D
 {
   "prompt": "01-implement-ticket",
   "ticket_id": "<ticket ID>",
-  "branch": "<branch>",
+  "branch": "<the exact name of the branch you created or reused>",
   "status": "DONE | PARTIAL | BLOCKED",
   "head_sha": "<full SHA of HEAD after your last commit, or null if you committed nothing>",
   "uncommitted_changes": false,

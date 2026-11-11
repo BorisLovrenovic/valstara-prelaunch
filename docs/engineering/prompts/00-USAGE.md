@@ -10,7 +10,7 @@ Seven reusable prompts run a coding agent through this repository's workflow, by
 
 | Prompt | What it does | Session | Model (Opus 5.5) | Placeholders |
 |---|---|---|---|---|
-| `01-implement-ticket.md` | Implements one ticket | Fresh | The ticket's **Model** line | `{TICKET_ID}` `{TICKET_TITLE}` `{EPIC}` `{BRANCH}` `{NOTES}` |
+| `01-implement-ticket.md` | Implements one ticket | Fresh | The ticket's **Model** line | `{TICKET_ID}` `{TICKET_TITLE}` `{EPIC}` `{NOTES}` — it starts on `main` and creates the branch itself |
 | `02-pre-pr-review.md` | Reviews one ticket's diff against its contract | Fresh — **must not have seen the implementation** | High; Extra High when the ticket's Model line is Extra High | `{TICKET_ID}` `{TICKET_TITLE}` `{EPIC}` `{BRANCH}` `{ROUND}` `{PRIOR_FINDINGS}` |
 | `03-integrated-qa.md` | Audits a group of epics at a QA gate | Fresh, on `main` | Per plan §6 | `{GATE_ID}` `{EPICS}` `{TICKET_LIST}` `{RUN}` `{PRIOR_BLOCKERS}` `{FOCUS_NOTES}` |
 | `04-fix-and-verify.md` | Fixes an explicit list of findings | Fresh, on the branch | The ticket's Model line (High for a gate) | `{TICKET_ID}` `{TICKET_TITLE}` `{EPIC}` `{BRANCH}` `{SOURCE}` `{DECISIONS}` `{FINDINGS}` |
@@ -21,7 +21,7 @@ Seven reusable prompts run a coding agent through this repository's workflow, by
 **Where the values come from:**
 
 - `{TICKET_ID}`, `{TICKET_TITLE}` and `{EPIC}` — the ticket's row in `docs/plan/ticket-register.md`, which matches its plan heading exactly. Supply both ID and title, always: the title pairs correctly even if an ID shifts.
-- `{BRANCH}` — `feat/<ticket ID>-<slug>`, where the slug is the title in lowercase ASCII words joined by hyphens, cut at a word boundary to at most 50 characters (for example `feat/E11.5-11r-final-design-member-page-and-leaderboard`). A QA-fix branch is `fix/qa-gate-<n>-run-<run>`. The branch is fixed once, by whoever starts the ticket, and passed to every later step.
+- `{BRANCH}` — `feat/<ticket ID>-<slug>`, where the slug is the title in lowercase ASCII words joined by hyphens, cut at a word boundary to at most 50 characters (for example `feat/E11.5-11r-final-design-member-page-and-leaderboard`). **`01` creates the branch itself**, from `main`, by this rule, and reports its exact name in its result block; every later step receives that name. A QA-fix branch is `fix/qa-gate-<n>-run-<run>`.
 - `{NOTES}` and `{DECISIONS}` — the accepted decisions since the plan entry was written, or "None".
 - `{PRIOR_FINDINGS}` — the previous fix-and-verify (or CI triage) report, verbatim, including its result block; "None" on round 1.
 - `{FINDINGS}` — the findings to fix, verbatim from the report, with their IDs.

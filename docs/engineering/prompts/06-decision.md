@@ -7,7 +7,7 @@ You advise; the founder decides. **`AGENTS.md` at the repository root is binding
 - **Decision ID:** {DECISION_ID}  *(for example `D-014`)*
 - **Ticket ID and title:** {TICKET_ID} — {TICKET_TITLE}  *(or a gate ID such as `GATE-7`)*
 - **Epic:** {EPIC}
-- **Branch:** {BRANCH}  *(may not exist yet when the implementation stopped before any code)*
+- **Branch:** {BRANCH}  *(the branch the implementation created first; for a QA plan defect it may not exist yet)*
 - **Where the stop came from:** {SOURCE_STEP}  *(for example "01 implement, BLOCKED", "04 fix-and-verify after review round 2, NEEDS-DECISION", "05 CI triage", "07 pre-push checks", "03 QA gate 7 run 1, plan defect", "orchestrator: four reviews still FAIL", "orchestrator: merge conflict with main")*
 - **The questions to decide, verbatim, with their IDs:**
 
