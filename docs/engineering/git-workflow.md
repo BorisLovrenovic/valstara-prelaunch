@@ -13,7 +13,7 @@ There is no `develop` branch. A `develop` branch protects production from unvett
 | `main` | — | The trunk. Always green, always deployable |
 | `feat/<ticket-id>-<slug>` | `main` | One ticket, e.g. `feat/E3-06-verification-tokens` |
 | `fix/<ticket-id>-<slug>` | `main` | A fix ticket |
-| `fix/qa-<epics>-tests` | `main` | Cheap tests added during a QA gate |
+| `fix/qa-gate-<n>-run-<run>` | `main` | One QA gate run's tests and fixes, e.g. `fix/qa-gate-7-run-1` |
 
 **One ticket = one branch = one PR.** Branches are deleted on merge.
 
@@ -32,7 +32,7 @@ The ticket ID in square brackets is mandatory — it is how work traces back to 
 ## Pull requests
 
 - **Squash-merge only.** One ticket becomes one commit on `main`, with the ticket ID in the title.
-- **The PR is opened only after the pre-PR review passes.** Implement → review → push → PR, deliberately: the reviewer must not have seen the implementation conversation.
+- **The PR is opened only after the pre-PR review passes and the pre-push checks are green.** Implement → review → pre-push checks → push → PR, deliberately: the reviewer must not have seen the implementation conversation. The cycle, the review cap and the decision procedure are in `docs/engineering/prompts/00-USAGE.md`.
 - **PR body carries:** what was built, acceptance criteria met, tests added, docs and ADRs updated, new dependencies with licences, and any deviations.
 - **Never merge with a red check.** Never merge without the review having run.
 
