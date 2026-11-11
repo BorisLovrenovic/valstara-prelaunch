@@ -61,7 +61,8 @@ const tolerance = 1;
 // The board's compact Turnstile slot (valstara.css .turnstile--compact,
 // 8.75rem) and the form's 24px gap above it. The built widget renders only
 // when the check needs interaction (data-appearance="interaction-only", as
-// the signup form's does), so the slot is empty and takes no room.
+// the signup form's does), so the slot is empty and takes no room
+// (founder decision 2026-11-11, E11.5-11q decision 4).
 const turnstileSlot = 140 + 24;
 // The component library's Field puts its control 8px under the label
 // (E11.5-11j). On the board, .input's own `margin: 0` cancels the
