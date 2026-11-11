@@ -377,7 +377,7 @@ The E11.5-06 contract in `test/signup-form-rendered-page.test.mjs` passes, chang
   - In the copied state the board's visible "Link copied." line is not shown (decision 3).
   - The coral pill sets "15% launch discount" in one face, so the pill is up to 4px narrower than the board's mono figure: the E11.5-07 suite reads that text from the HTML in one piece.
   - The field sits 8px under its label, the component library's `Field`. On the board, `.input`'s own `margin: 0` cancels the `.field__control` margin that draws that gap.
-  - The Turnstile slot is empty until the check needs interaction.
+  - The Turnstile slot is empty until the check needs interaction, and takes no space while empty. The board reserves its 150 × 140 box ("reserved slot · shown only when the check needs interaction"). Collapsing it awaits founder sign-off.
 - **Motion** (E11.5-11q). It runs only with motion allowed. Otherwise everything is at rest and drawn whole.
   - **The success entrance** (`data-enter`) is indices 0 to 3 and ends by 580ms: the success tile, whose check draws in on its own path (`stroke-dashoffset` over `--duration-enter`, `pathLength` 1 from the `Icon` component's `draw` prop); the heading and its line; the wave badge; then the referral card, whose earned meter segments fill from nothing (`scaleX`, from the start) as it rises. Only the tile fades. The heading, the line, the badge and the referral card only rise (`shift`), so every word and every control is readable and usable from first paint, and the meter's text is its exact figure in every frame.
   - **The survey and the status card reveal on scroll** (`data-reveal`) and are at rest by 70% of the viewport height and at the page end.

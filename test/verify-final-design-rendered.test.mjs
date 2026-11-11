@@ -497,6 +497,12 @@ function canvasFor(width, state, actual) {
     const built = actual.referral.copy;
     const grown = built[2] - copy[2];
     assert.ok(grown >= 0, `${width} ${state}: Copy link is narrower`);
+    // Up to 20px wider than the board's (docs/brand/page-design.md), within
+    // the suite's 1px tolerance.
+    assert.ok(
+      grown <= 20 + tolerance,
+      `${width} ${state}: Copy link is ${grown}px wider than the board's`,
+    );
     if (width < 768) assert.equal(grown, 0);
     expected.referral.copy = [copy[0] - grown, copy[1], built[2], copy[3]];
     expected.referral.linkbox[2] -= grown;
@@ -837,6 +843,9 @@ test('every figure comes from ReferralService.status and the ladder: count, thre
 
 test('the meter text is exact in every captured frame of the entrance, while the meter fills from 0', async () => {
   const { subscriberId, token } = fixture.subscribers.figures;
+  // Verified first, so the status set below is the one the page renders,
+  // whichever test ran before this one.
+  await successHtml(token);
   await fixture.database.query(
     "UPDATE subscriber SET confirmed_referrals=2, access_window='wave-2' WHERE id=$1",
     [subscriberId],
