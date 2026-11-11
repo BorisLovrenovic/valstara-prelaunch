@@ -1,32 +1,35 @@
-# Integrated QA Prompt (per epic gate)
-
-Run in a **fresh session on `main`** after the epics under audit are merged, before anything builds on them. Model: **Tier B Extra High** (Tier B High acceptable for content-only epics). On a **dual gate**, this exact prompt runs a second time, independently, on a model from **a different family**, at high reasoning. This is a deep audit — budget a long run.
-
----
-
-You are auditing the foundation the Valstara pre-launch campaign is about to build on. The per-ticket reviews already passed; **your job is to find what they could not see** — cross-ticket integration gaps, missing failure paths, privacy and security weaknesses, and drift. **If you cannot verify something, that is a finding.** This gate must fully clear before the next epics start.
+You are auditing the foundation the Valstara pre-launch campaign is about to build on. Read `AGENTS.md` first; it is binding. The per-ticket reviews already passed; **your job is to find what they could not see** — cross-ticket integration gaps, missing failure paths, privacy and security weaknesses, and drift. **If you cannot verify something, that is a finding.** This gate must fully clear before the next epics start.
 
 Hold one thing in mind throughout: **this campaign has a small number of unrecoverable failures**, and most of them are silent. A leaked list, a destroyed sending reputation, a privacy property broken after data was already collected, an unreproducible draw, a non-idempotent handoff. A per-ticket review cannot see any of those. You can.
 
 ## Inputs
 
+- **Gate:** {GATE_ID}  *(for example `GATE-7`; the gate's row in `docs/plan/development-plan.md#6-qa-gates`)*
 - **Epics under audit:** {EPICS}
 - **Tickets in scope:** {TICKET_LIST}
+- **Run:** {RUN}  *(1 for the full audit; 2+ re-checks the previous run's blockers after their fixes merged)*
+- **Previous run's blockers and their fix reports (verbatim; "None" on run 1):**
+
+{PRIOR_BLOCKERS}
+
 - **Extra focus (optional):** {FOCUS_NOTES}
+
+**On run 2 or later, your scope narrows:** verify that each previous blocker is genuinely fixed on `main`, with the evidence its fix report names, and check the fixes did not break what they touched. Skip passes 1–7 except where a fix touched their ground. Do not start a new full audit.
 
 ## Step 1 — Ground yourself
 
-Read fully: `docs/plan/development-plan.md` — the sections for these epics closely, the rest for what they must hand forward · every `docs/features/*.md` these epics implement (**their acceptance criteria and edge-case sections are your checklist**) · `docs/architecture/overview.md`, `docs/architecture/modules.md`, and every `docs/architecture/fallbacks.md` row touching what these epics changed · `docs/security/threat-model.md` · `docs/legal/compliance.md` · `docs/testing/strategy.md` · the `docs/modules/*.md` files and ADRs these epics touched · `AGENTS.md`.
+Read fully: `docs/plan/development-plan.md` — the sections for these epics closely, the rest for what they must hand forward · every `docs/features/*.md` these epics implement (**their acceptance criteria and edge-case sections are your checklist**) · `docs/architecture/overview.md`, `docs/architecture/modules.md`, and every `docs/architecture/fallbacks.md` row touching what these epics changed · `docs/security/threat-model.md` · `docs/legal/compliance.md` · `docs/testing/strategy.md` · the `docs/modules/*.md` files and ADRs these epics touched.
 
 ## Step 2 — Run everything
 
 ```
-git checkout main && git pull
+git switch main && git pull --ff-only origin main
+git status --short                         # must be clean
 gh workflow run pr.yml --ref main          # the full suite on main, sharded across CI runners
 gh run list --workflow pr.yml --branch main --event workflow_dispatch --limit 1
 gh run watch <that run's ID>
 docker compose -f infra/compose/docker-compose.yml up -d
-npm i && npm run check
+npm ci && npm run check
 npm run test:privacy      # rendered-page cookie, storage, third-party and fingerprinting checks
 npm run test:a11y         # axe over the built pages, both themes
 ```
@@ -35,7 +38,7 @@ The full suite runs in CI, not on this machine (`docs/engineering/ci-cd.md#local
 
 Record every failure **and every flake — a flake is a finding, not noise.**
 
-## Step 3 — Audit passes (do all seven)
+## Step 3 — Audit passes (do all seven on run 1)
 
 **1. Spec conformance.** For each feature spec in scope, map every acceptance-criterion checkbox and every "Edge cases and error states" bullet to concrete code plus a test. **Unmapped items are findings.**
 
@@ -58,16 +61,21 @@ Look for **mismatched assumptions between tickets, fields produced but never con
 
 The data-model-versus-policy comparison is the one to do carefully: **a column collected but not disclosed is a compliance defect, not doc drift.**
 
-**7. Strengthen the net.** Where a missing test is cheap, write it now on a branch `fix/qa-<epics>-tests` and include it in the report. Larger gaps become findings for fix-and-verify.
+**7. Strengthen the net.** Where a missing test is cheap, write it now on the branch `fix/qa-gate-<n>-run-<run>` (for example `fix/qa-gate-7-run-1`), created from `main`, commit it there, and include it in the report. Larger gaps become findings for fix-and-verify, which continues on the same branch. Do not push. If you wrote no test, create no branch and finish on a clean `main`.
 
 ## Step 4 — Output exactly this
 
+Number every finding with an ID made of the gate number, the run and a letter: `G<n>-<run>-B<k>` for blockers, `-I<k>` important findings, `-D<k>` doc-drift items, `-T<k>` remaining test gaps, `-P<k>` plan defects. For each finding, name the ticket that owns the code where one does.
+
 ```
-# Integrated QA report — <epics under audit>
+# Integrated QA report — <gate> — <epics under audit> — run <run>
 VERDICT: GO | NO-GO   — one-paragraph justification
 
+## Previous run's blockers (run 2+ only)
+- <finding ID>: cleared / not cleared — <evidence>
+
 ## Blockers (must fix before the next epics build on this)
-1. <evidence (file:line / failing command output) — rule or spec violated (path#anchor) — required fix>
+- G<n>-<run>-B1: <evidence (file:line / failing command output) — rule or spec violated (path#anchor) — required fix — owner ticket>
 
 ## Important findings (fix soon; not gating)
 ## Doc-drift items (doc path → what it says → what reality is → required correction)
@@ -84,8 +92,37 @@ VERDICT: GO | NO-GO   — one-paragraph justification
 - Browser-reaching dependencies and what each loads
 ```
 
-**NO-GO** if any blocker exists, or if a campaign-gating invariant is unverifiable: **the privacy properties · double-opt-in exclusivity · reward-hold integrity · email idempotency and suppression · giveaway eligibility and draw reproducibility · audit append-only.**
+**NO-GO** if any blocker exists, if a previous blocker is not cleared, or if a campaign-gating invariant is unverifiable: **the privacy properties · double-opt-in exclusivity · reward-hold integrity · email idempotency and suppression · giveaway eligibility and draw reproducibility · audit append-only.**
 
-**Do not fix blockers yourself** beyond pass 7's cheap tests. Findings go to the fix-and-verify prompt, and **this blocker list must be re-verified clear before the next epic opens.**
+**Do not fix blockers yourself** beyond pass 7's cheap tests. Findings go to the fix-and-verify prompt, and **this blocker list must be re-verified clear before the next epic opens.** Do not edit the plan or `docs/plan/ticket-register.md`.
 
-**Dual-model gates:** if this run is one of two, work **strictly independently** — you must not read, receive or reference the other model's report, and yours must not speculate about it. The founder merges them afterward; the deduplicated **union** of blockers gates, and disagreements are settled **by evidence through the fix-and-verify dispute path, never by which model said it.**
+**Then end your output with this result block, and nothing after it.** It is read by a program: valid JSON, these keys, no comments. Use `[]` for an empty list and `null` for an unknown value.
+
+````
+```orchestrator-result
+{
+  "prompt": "03-integrated-qa",
+  "gate_id": "<gate>",
+  "run": 1,
+  "verdict": "GO | NO-GO",
+  "main_sha": "<full SHA of main you audited>",
+  "ci_run": "<URL or ID of the dispatched CI run>",
+  "ci_result": "pass | fail",
+  "previous_blockers": [
+    { "id": "G7-1-B1", "outcome": "cleared | not_cleared" }
+  ],
+  "findings": [
+    {
+      "id": "G7-1-B1",
+      "kind": "blocker | important | doc_drift | test_gap | plan_defect",
+      "location": "<file:line or doc path>",
+      "summary": "<what is wrong, one sentence>",
+      "required_fix": "<what must change>",
+      "owner_ticket": "<ticket ID or null>"
+    }
+  ],
+  "test_branch": "<fix/qa-gate-<n>-run-<run>, or null if you wrote no test>",
+  "summary": "<one or two plain sentences: the verdict and why>"
+}
+```
+````

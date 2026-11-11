@@ -14,6 +14,7 @@ dist/
 !.env.example
 
 # Local
+/pr-*.md
 *.log
 .DS_Store
 coverage/

@@ -17,6 +17,8 @@ Four rules follow, and they are binding:
 3. **Ticket scope is exact.** No scope creep, no unrequested refactors, no scaffolding for future tickets, no drive-by improvements.
 4. **Changes are made here first, then implemented.** Never the reverse.
 
+**The order and status of the work live in [`ticket-register.md`](ticket-register.md)** (founder-authorised 2026-11-11). This plan says what each ticket builds; the register says which ticket runs next and which are done. A ticket added to this plan gets its register row in the same change. **A founder decision is recorded on its ticket's entry here**, by the decision session, after the founder accepts and before anything is built on it (`docs/engineering/prompts/00-USAGE.md#decisions`). That is the only way a session edits this plan.
+
 ### Ticket anatomy
 Every ticket carries: **Model** and reasoning level (§3) · **Priority** · **Flag** · **Area** · why that model where it is not obvious · **Build** · **Acceptance criteria** (the contract) · **Tests** · **Docs** it must read. Each is sized for **one focused agent run producing one PR.**
 
@@ -31,7 +33,7 @@ This plan is written against a **12-week campaign**, and three of its constraint
 
 **One consequence applies from early on:** production carries **real sending credentials and a real domain reputation** the moment email is configured. From the first live Resend key onward, a mistake in production is a deliverability event. Sandbox keys never reach production; live keys never reach local.
 
-**Per-ticket cycle:** implement (fresh session, the ticket's model) → **pre-PR review in a fresh session that has not seen the implementation** → fix blockers → push, PR, squash-merge to `main`. Prompts are in `docs/engineering/prompts/`.
+**Per-ticket cycle:** implement (fresh session, the ticket's model) → **pre-PR review in a fresh session that has not seen the implementation** → fix the findings, at most four review rounds → pre-push checks → push, PR, CI, squash-merge to `main`. Prompts, the review cap and the decision procedure are in `docs/engineering/prompts/00-USAGE.md`.
 
 **Local checks, full suite in CI (founder-authorised 2026-10-23).** Before committing, a session runs only the quick local checks: `npm run check`, and `npm run test:changed` naming the ticket's Tests-line files. The full suite runs once per pull request in CI, under coverage, split across four parallel runners by recorded file timings, and every check must be green before merge (`docs/engineering/ci-cd.md#how-the-suite-runs`).
 
@@ -63,45 +65,17 @@ Items no agent can complete. Each gates something, and the gate is stated so it 
 
 ## 3. Model assignment policy
 
-**Rebound by benchmark evidence — founder-authorised 2026-09-28.** Every ticket not merged by that date (E8-02 to E12-07, 34 tickets) names a concrete Codex model and reasoning level on its **Model** line. Tickets merged before it keep the tier they were built under, as history; the tier policy is kept below because §6 and the prompt guide still use it.
-
-### Models for E8–E12
-
-The Codex roster on 2026-09-28 was GPT-5.6 Luna, Terra and Sol, and GPT-6 Luna, Sol and Astra. The roster was first written down with a "GPT-6 Terra", but no such model is published: the small GPT-6 model is Luna. If GPT-6 Luna is unavailable, use GPT-5.6 Luna at High for the two Luna tickets. Reasoning levels are Light, Medium, High and Extra High; in the CLI, Light is `low` and Extra High is `xhigh`.
-
-| Model | Use for | Evidence |
-|---|---|---|
-| **GPT-6 Sol** | Code written into this repository: routes, modules, templates, their tests and docs | Same score as Astra on real-repository coding (DeepSWE 69 vs 68), at about 40% of Astra's cost and a quarter less time per task |
-| **GPT-6 Astra** | Terminal and operations work (the stack, the host, drills, load, backups, Cloudflare) and audits of the whole system | Leads every Sol level on terminal tasks (Terminal-Bench 4.0 at Light/Medium/High/Extra High: 42/49/54/60% vs Sol 9/19/26/30%) and on factual reliability (AA-Omniscience 41–44 vs 27) |
-| **GPT-6 Luna** | Small, low-stakes tickets with no terminal work, no audit and no new factual claim, where an existing gate catches the dangerous failure | 14–16 points below Sol on the Coding Agent Index (41 vs 57). It is cheaper, not faster: it writes more tokens per task |
-| GPT-5.6 Sol, Terra, Luna | Not used | GPT-6 Sol matches or beats GPT-5.6 Sol and Terra at every level for less; GPT-6 Luna matches or beats GPT-5.6 Luna from Light to High |
-
-**E11.5 (founder-authorised 2026-10-19) follows the same binding:** its thirty-one code tickets, including the eight wireframe tickets added 2026-10-26 and the twelve final-design tickets added 2026-10-30, go to GPT-6 Sol and its design-QA and re-audit ticket, E11.5-12, to GPT-6 Astra.
-
-**Two tickets are exceptions to "code goes to Sol":** E9-05, because its erasure design spans every table and conflicts with the append-only audit log and six-year award retention, and E11-06, because it is the campaign's unrecoverable output and includes the scratch-database rehearsals. Both go to Astra.
+**Every session runs on Claude Opus 5.5 — founder-authorised 2026-11-11.** A ticket's **Model** line names Opus 5.5 and a reasoning level; sessions other than implementation take the levels in `docs/engineering/prompts/00-USAGE.md`, and QA gates the levels in §6.
 
 **Reasoning level:**
-- **GPT-6 Sol — Medium** for contained, fully specified work; **High** when the ticket spans several modules or owns a privacy, security or sending-reputation property. Never Light: Light to Medium is Sol's largest step (+6 on the Intelligence Index, +10 on Terminal-Bench). Never Extra High: Astra at Light scores higher (46 vs 44; 42% vs 30%) and finishes sooner, so escalate to Astra instead.
-- **GPT-6 Astra — Light** for routine operations against a clear spec; **Medium** for audits and procedures led by reasoning, where its general score levels off (50, 51, 52 at Medium, High, Extra High); **High** for terminal-heavy, high-stakes work; **Extra High** only for E11-05, whose failure is retroactive and whose work is inspection of running systems.
-- **GPT-6 Luna — High**, where its agentic score levels off (AutomationBench 40, 48, 48 at Medium, High, Extra High).
+- **Medium** for contained, fully specified work;
+- **High** when the ticket spans several modules, owns a privacy, security or sending-reputation property, or is terminal and operations work;
+- **Extra High** for the deepest work, where a subtle error invalidates a whole class of work;
+- **Low** only for routine operations against a clear spec.
 
-**Escalation rule:** on a second failed attempt at the same ticket, move one step up this ladder: GPT-6 Luna High → GPT-6 Sol Medium → GPT-6 Sol High → GPT-6 Astra Light → Astra Medium → Astra High → Astra Extra High. Each step is stronger on both the Intelligence Index (32, 40, 43, 46, 50, 51, 52) and Terminal-Bench 4.0 (5, 19, 26, 42, 49, 54, 60%). **A third failure is a signal that the ticket is wrong, not the agent** — stop and revisit the plan entry.
+**Escalation rule:** on a second failed attempt at the same ticket or finding, move one level up: Low → Medium → High → Extra High. **A third failure is a signal that the ticket is wrong, not the agent** — stop and revisit the plan entry.
 
-**Evidence and its limits.** Artificial Analysis Coding Agent Index v1.5 on the Codex harness, Intelligence Index v4.3 per reasoning level, Terminal-Bench 4.0 and AA-Omniscience, with the arena.ai Agent and Code leaderboards as a cross-check; all retrieved 2026-09-28. The Coding Agent Index is published only at max effort, which is not selectable here, so the per-level figures come from the Intelligence Index and Terminal-Bench. Benchmarks measure general ability, not this repository: revise from real runs, starting with review blockers per ticket.
-
-**Not changed by this binding:** pre-PR reviews, fix runs, CI triage and the QA gates (§6, `docs/engineering/prompts/00-USAGE.md`) still name tiers under the binding below. Where the review rule asks whether "the ticket was Tier B", an E8–E12 ticket counts as Tier B when it is assigned GPT-6 Astra, or GPT-6 Sol at High.
-
-### The tier policy (tickets merged before 2026-09-28, reviews and QA gates)
-
-| Tier | Bound to | Use for |
-|---|---|---|
-| **Tier A** | The founder's fast implementation model | Scaffolding, config, wiring, well-specified CRUD, content and markup, admin screens |
-| **Tier B** | The founder's strongest implementation model | Money-adjacent logic, personal data, privacy properties, concurrency, security, and anything architecture-bearing that later tickets inherit |
-| **Second-model QA** | A model from a **different family** | The dual QA gates only |
-
-> **Binding.** The tier → model binding is carried over from the founder's existing setup. Before 2026-09-28 it was the only line to change if the roster changed; since then it governs only the merged tickets and the review, fix, triage and QA-gate roles.
-
-This policy was reasoned from task characteristics, not from a benchmark: **route to Tier B where a mistake is expensive, subtle, or hard to detect after the fact.** Reasoning levels: **Medium** for well-specified work · **High** for multi-file integration or novel design · **Extra High** for the four deepest tickets. Where a ticket sat between Tier A at maximum effort and Tier B at moderate effort, Tier B at moderate was chosen. Escalation stepped Tier A Medium → Tier A High → Tier B Medium → Tier B High.
+**History.** Tickets merged before 2026-09-28 were planned under two tiers — **Tier A**, the founder's fast implementation model, and **Tier B**, the strongest, for money-adjacent logic, personal data, privacy, concurrency, security and anything architecture-bearing. From 2026-09-28 the Model lines named Codex models chosen by benchmark (GPT-6 Sol for code, GPT-6 Astra for operations and audits, GPT-6 Luna for small tickets); the founder ran each on Opus 5.5 at the same level. Model lines on merged tickets keep the names they were planned under, as history; they are not read again.
 
 ---
 
@@ -172,21 +146,21 @@ flowchart TD
 
 ## 6. QA gates
 
-A gate runs after the listed epics, in a fresh session on `main`, using the integrated-QA prompt. **No next epic opens on a NO-GO.**
+A gate runs after the listed epics, in a fresh session on `main`, using the integrated-QA prompt. **No next epic opens on a NO-GO.** Each gate is a row in `ticket-register.md`, after the last ticket it audits.
 
-| Gate | After | Runs | Models |
-|---|---|---|---|
-| 1 | E1 | 1 | Tier B |
-| 2 | E2 + E3 | 2 | Tier B + second model |
-| 3 | E4 + E5 | 2 | Tier B + second model |
-| 4 | S-01 + E6 + E7 | 2 | Tier B + second model |
-| 5 | E8 | 2 | Tier B + second model |
-| 6 | E9 + E10 | 1 | Tier B |
-| 7 | E11 + E11.5 | 2 | Tier B + second model |
+**One run per gate, on one model — founder decision 2026-11-11.** The dual gates, with a second run on a model from a different family, are retired. The gates that cover something unrecoverable run at Extra High instead.
 
-**Dual-gate rules, no exceptions:** the two runs are fully independent — fresh sessions, neither model sees the other's report · the deduplicated **union** of blockers is cleared · disagreements are settled **by evidence from the code and docs, never by which model raised it.** The value is a decorrelated blind spot from a different model family, not extra capability.
+| Gate | After | Model |
+|---|---|---|
+| 1 | E1 | Opus 5.5 — High |
+| 2 | E2 + E3 | Opus 5.5 — Extra High |
+| 3 | E4 + E5 | Opus 5.5 — Extra High |
+| 4 | S-01 + E6 + E7 | Opus 5.5 — Extra High |
+| 5 | E8 | Opus 5.5 — Extra High |
+| 6 | E9 + E10 | Opus 5.5 — High |
+| 7 | E11 + E11.5 | Opus 5.5 — Extra High |
 
-**Gates 2, 3, 4 and 5 are dual because each covers something unrecoverable**: the privacy properties, the fraud invariants, the prize draw, and the sending reputation.
+**Gates 2, 3, 4, 5 and 7 run at Extra High because each covers something unrecoverable**: the privacy properties, the fraud invariants, the prize draw, the sending reputation, and the launch surface with its privacy re-audit. A gate added with new epics names its model here, at Extra High when it covers personal data, privacy, security, money or email, and at High otherwise.
 
 ---
 
@@ -1384,7 +1358,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Recovery and member action (founder-authorised 2026-09-28):** A failed unsubscribe transaction emits a P1 `operator_task` alert containing `token_sha256` and request action, even if database lookup fails; bound IDs may then be null. The operator CLI applies by token ID or hash, requires `--action leave_waitlist` for an explicit leave task, and records its actor. `/me` offers its own Turnstile-first, rate-limited leave action authenticated by the reusable status token, using the same transactional suppression and audit service. An explicit leave also sets a verified subscriber's status to `unsubscribed` and stamps `unsubscribed_at` in that transaction, so leaving removes draw eligibility. The member page does not pass that status token to `/unsubscribe`.
 
 ### E8-02 — The Resend provider and domain authentication
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 
 **Build:** `providers/resend.ts` on `send.valstara.com`, declaring its capabilities. Verify **SPF, DKIM and DMARC** for the domain as a startup or health check, not as a one-time manual step.
 
@@ -1405,7 +1379,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Production-key and DNS criteria (founder-authorised 2026-09-28):** Resend exposes no sandbox marker in an API key, so boot validates the explicit configuration marker and From-domain isolation described above; E12-07 verifies the actual key in the dashboard. Domain health uses public DNS without a domain-read credential and compares DKIM and both return-path CNAMEs exactly with non-secret configured expected values. It also requires the resolved send return-path TXT to start with `v=spf1`, and reports a present `v=DMARC1` policy, including valid `p=none`. Missing or mismatched records produce distinct sanitized codes and P1.
 
 ### E8-03 — The seven transactional templates
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
 **Build:** Verification, verification reminder, welcome, milestone reached, status link, giveaway entry receipt (entries, and a link to the immutable global rules version that governs them — no jurisdiction), and provisional winner notification. One shared layout, tokens where email clients support them, **plain-text alternative for every one.** All copy from the copy layer. The welcome and milestone templates render referral status from `ReferralService.status`, including a plain settled-versus-held distinction. Those renderings and the cross-surface parity assertion were assigned here by founder authorisation on 2026-09-14.
 
@@ -1448,7 +1422,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Docs:** `docs/modules/email.md` · `docs/features/email-campaign.md` · `docs/data/model.md` (the three business-key formats).
 
 ### E8-04 — Rendering QA and seed tests
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Build:** A **weekly automated seed test** into the four mailbox providers — Gmail, Outlook, GMX and Web.de — recording where each lands. The rendering pass across five clients (those four plus Apple Mail) is no longer part of this ticket: it is a manual check at E12-07 (see the note below).
 
@@ -1467,7 +1441,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Brevo broadcast seed extension (founder-authorised 2026-09-29):** E8-05 extends the weekly seed harness with an internal Brevo probe to the same four seed mailboxes. It runs independently of `email.broadcast`, which gates customer campaign sends, so the provider can be checked before enabling the flag. Inspect delivered raw MIME: a real `text/plain` part must be present, no tracking pixel may be injected, and the first-party probe link must not be rewritten. Failures alert P1. Local tests use injected mailbox messages; the first live Brevo seed and account-level tracking verification remain E12-07's. This does not add a broadcast campaign template before E8-07.
 
 ### E8-05 — The Brevo provider and contact sync
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `email.broadcast` · **Area:** backend
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** `email.broadcast` · **Area:** backend
 
 **Build:** `providers/brevo.ts` on `mail.valstara.com`. **Idempotent, resumable contact sync keyed on `email_normalised`**, syncing only verified, unsuppressed subscribers **with current marketing consent** (ADR-027). A withdrawal removes the contact from broadcast lists on the next sync, and dispatch re-checks consent regardless.
 
@@ -1484,7 +1458,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Header contract and MIME evidence (founder-authorised 2026-09-29):** The founder's real `POST /v3/smtp/email` send delivered exactly one `List-Unsubscribe` — the E8-01 bound-token header, unchanged — and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`. Both were covered by Brevo's DKIM signature for `mail.valstara.com`; SPF, DKIM and DMARC passed. E8-05 passes both headers in Brevo's `headers` payload and tests that payload. The same send showed Brevo converted `textContent`-only input to HTML-only output, so the provider must send both `htmlContent` and `textContent`. It also showed an injected open-tracking pixel. Account-level open and click tracking must be disabled on both providers. E8-04's broadcast seed extension checks delivered Brevo output; E12-07 confirms both account settings and obtains the first live seed evidence.
 
 ### E8-06 — Bounce and complaint handling
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this model:** an unhandled complaint stream is how a sending reputation dies, and webhook handling is where signature and idempotency mistakes hide.
 
 **Build:** `/api/webhooks/{provider}` — **provider authentication verified before the payload is parsed** (Resend raw-body Svix signature; Brevo bearer token checked before the body is read), idempotent on the recorded event key, writing hard bounces and complaints into `suppression`. Plus **hourly reconciliation**: Brevo provider reads and Resend webhook-gap detection.
@@ -1505,7 +1479,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 **Webhook and reconciliation contract (founder-authorised 2026-09-30):** Resend authenticates raw bodies with Svix before parsing and deduplicates on its Svix event ID. Brevo authenticates with `BREVO_WEBHOOK_TOKEN`, validated at boot and compared in constant time against `Authorization` before reading the body; a missing or wrong token returns 401. Its only ingested events are `hard_bounce` and `spam`; deduplicate on SHA-256 of `provider | message-id | event`, without recipient or timestamp, and store only the key. No Brevo-managed unsubscribe event is ingested. The hourly Brevo reconciliation reads transactional events and blocklist with the existing key in bounded batches. Resend has no read credential: after a configurable window (default two hours), a `sent` row with no recorded terminal event raises one aggregated sanitized P2 operator task with counts and `email_send` IDs, requesting dashboard replay. All non-2xx Resend webhook responses are counted by sanitized reason; a signature-verified request that cannot be ingested raises P1, and repeated authentication failures raise P2. The runbook requires weekly review of failed Resend webhook deliveries and replay. Resend's provider suppression and roughly one-day webhook retries protect its own sends while local suppression awaits recovery. A delivered event followed by a lost complaint or bounce has no detectable gap; webhook-failure alert and dashboard review are its fallbacks.
 
 ### E8-07 — The weekly campaign update
-**Model:** GPT-6 Sol — Medium · **Priority:** Medium · **Flag:** `email.broadcast` · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** Medium · **Flag:** `email.broadcast` · **Area:** frontend
 
 **Build:** The weekly broadcast composed from a shared layout, **including the top-10 block that is the leaderboard's designed fallback surface** when `leaderboard.public` is off.
 
@@ -1527,7 +1501,7 @@ A walking skeleton that skips the site's own standing rules proves nothing about
 Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The SubSlush announcement is sent manually by the founder, outside this system. Do not build it.
 
 ### E8-09 — Quota projection and the free-tier gate
-**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
 
 **Build:** A daily projection of send volume against each provider's cap, **alerting at a week's headroom.** Plus a hard precondition: **`giveaway.open` cannot be turned on while either provider is on its free tier.**
 
@@ -1569,7 +1543,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/architecture/adr/017-content-files.md` · `docs/modules/platform.md#content`
 
 ### E9-02 — Trust pages at permanent URLs
-**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
 **Build:** `/legit`, `/guarantee`, `/about` from content files. **BLOCKED if P3 prose is outstanding** — a page shell with placeholder text is not a deliverable.
 
@@ -1584,7 +1558,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/features/trust-pages.md` · `docs/brand/copy-rules.md#claims-that-must-stay-true`
 
 ### E9-03 — Legal pages and the representative gate
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** security
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this model:** these are public legal pages for a system holding personal data, and their contents must match the recorded founder decision.
 
 **Build:** `/terms` and `/privacy` from content files. Founder decision 2026-10-01 (ADR-029): do not appoint EU or UK Article 27 representatives; remove the representative assertion and its signup gate.
@@ -1601,7 +1575,7 @@ Removed by founder decision on 2026-09-27 (ADR-028, superseding ADR-010). The Su
 **Docs:** `docs/legal/compliance.md` · `docs/architecture/adr/019-article-27-representatives.md` · `docs/architecture/adr/029-no-article-27-representatives.md`
 
 ### E9-04 — The cookie and storage inventory
-**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Build:** A published inventory page listing every cookie and storage value — **exactly two: the first-party theme preference and Cloudflare Turnstile's `cf.turnstile.u` on protected forms** — with the reasoning for why no banner is required, and the CI gates that keep it true (founder-authorised 2026-10-10). Valstara's source code still makes exactly one permitted storage write, the theme preference; Cloudflare's script makes the second.
 
@@ -1643,7 +1617,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **E9-05 delivery contract:** `/dsr` hosts a Turnstile-protected email request form and an inert emailed-link confirmation form; `/me` links to it. The two POST routes distinguish requesting a link from consuming a purpose-bound link. DSR tokens last 24 hours; expiry requires a fresh request, GET never consumes, and replay never repeats fulfilment. Export streams subject-scoped NDJSON in 100-row pages, with other people's identities redacted. Recovery commands are `scripts/complete-erasure.ts` and `scripts/reapply-erasures.ts`. No feature flag gates rights. The leaderboard remains snapshot-only, but its public response uses `no-store` and pending confirmation redacts existing snapshots and the web cache; a database trigger also filters stale refreshes. The top-20 review uses committed snapshot evidence for erased subjects after commitment, so erasure cannot invalidate an otherwise reproducible publication.
 
 ### E9-06 — SEO foundations
-**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Build:** Per-page title, description and canonical, **enforced at build time.** Sitemap **generated from the route set.** `robots.txt` allowing the trust and legal pages and excluding `/me`, `/verify`, `/api` and the admin routes. Organisation structured data. The current `/giveaway/rules` page and every `/giveaway/rules/<rules_version>` revision also emit schema.org WebPage JSON-LD with `name`, their own permanent `url`, `publisher` pointing to the Organisation entity, `version` from `rules_version`, and `datePublished` from validated revision frontmatter. Generate this in the layout without editing published rules content files. Do not emit Event, Offer, Product, prize, odds or date claims in structured data. The current page and each versioned URL are self-canonical, as distinct permanent records (founder-authorised 2026-10-03).
 
@@ -1716,7 +1690,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **Docs:** `docs/features/analytics.md` · `docs/architecture/adr/007-cookieless-analytics.md` · `docs/legal/compliance.md#3-eprivacy--why-there-is-no-banner`
 
 ### E10-02 — The event schema and registry
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** backend
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** — · **Area:** backend
 **Why this model:** the personal-data assertion over the registry is a privacy control, and it is the kind that decays silently as events are added.
 
 **Founder-authorised clarification, 2026-10-06:** One registry covers every event and tags each `source: 'client' | 'server'`. `page_view` is client-sourced and has exactly the six E10-01 emitter fields. There is no server view event: edge caching (`s-maxage=300`) means it would undercount, and caching is retained. Server `track()` rejects a client-sourced event in the same way as an unregistered event. A test compares the E10-01 emitter's payload keys with the registered `page_view` fields.
@@ -1733,7 +1707,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **Docs:** `docs/modules/analytics.md`
 
 ### E10-03 — Server-side funnel events
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** backend
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** — · **Area:** backend
 
 **Founder-authorised clarification, 2026-10-06:** There is no server view event. The landing page remains edge-cached (`s-maxage=300`). A view-based rate uses the client `page_view` event and is labelled as an estimate because ad-blocker loss inflates it.
 
@@ -1749,7 +1723,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **Docs:** `docs/features/analytics.md`
 
 ### E10-04 — The CSV export
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** admin
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** — · **Area:** admin
 **Why this model:** it is the one route that emits the entire list, on a box with hard memory limits and no swap.
 
 **Build:** `GET /api/admin/export.csv` — **streamed, batch-capped**, audited with a row count. The export set is exactly *verified, unsuppressed, not disqualified*, and every row carries its marketing-consent state (ADR-027).
@@ -1765,7 +1739,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **Docs:** `docs/features/admin.md` · `docs/data/model.md`
 
 ### E10-05 — The health view
-**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
+**Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** security
 
 **Founder-authorised clarification, 2026-10-06:** Any view-based rate shown in the admin view is labelled "estimate".
 
@@ -1826,7 +1800,7 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 **Docs:** `docs/architecture/fallbacks.md`
 
 ### E11-03 — Accessibility audit
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Build:** A manual audit beyond the automated gate: keyboard-only traversal of the full signup and verification journey, screen-reader passes on the form and its error states, contrast verified in both themes at real sizes, reduced-motion respected.
 
@@ -1998,7 +1972,7 @@ Not restated per ticket. **Violating one fails review.**
     - **Under `prefers-reduced-motion: reduce`, all of it stops:** content renders at rest, nothing enters, pages swap instantly and anchors jump. Layout checks and geometry tests measure at rest.
 
 ### E11.5-01 — Design foundations: tokens, breakpoints, icons, layout checks and the extended literal-value scan
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
 **Why this model:** `tokens.css` is the file the storefront inherits verbatim (ADR-015), and every later E11.5 ticket builds on what this one adds.
 
 **Build:** Add these tokens to `src/styles/tokens.css`. **The values are founder-authorised 2026-10-19**, because §7 is DIRECTIONAL and gives none:
@@ -2031,7 +2005,7 @@ Record the closed breakpoint set (`40rem`, `64rem`, `80rem`) in `docs/brand/toke
 **Docs:** `docs/brand/tokens.md` · `docs/brand/identity-guidelines.md` §4–§7 · `docs/architecture/adr/015-portable-design-tokens.md` · `docs/brand/page-design.md` (created here)
 
 ### E11.5-02 — Survey v2: the digital-goods taxonomy
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `survey.enabled` · **Area:** backend
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** `survey.enabled` · **Area:** backend
 **Why this model:** `category_preference` is a handoff field — the storefront creates its categories from these tokens (ADR-025) — so changing it is a contract change, not a copy edit.
 
 **Build:** Founder decision 2026-10-19: the v1 taxonomy (`apparel`, `footwear`, `accessories`, `home`, `beauty`) does not describe a digital-goods store. Add survey version `"2026-10-19"` to `src/server/survey/questions.ts`:
@@ -2052,7 +2026,7 @@ New renders on `/verify` and `/me` use v2. **v1 stays in the versioned set**: st
 **Docs:** `docs/architecture/adr/025-campaign-configuration.md` · `docs/features/survey.md` · `docs/data/model.md#the-launch-day-handoff-contract`
 
 ### E11.5-03 — The site shell and the primitives
-**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
 **Build:** Restyle `BaseLayout` and the E2-04 primitives on the E11.5-01 foundations.
 
@@ -2075,7 +2049,7 @@ New renders on `/verify` and `/me` use v2. **v1 stays in the versioned set**: st
 **Review decisions (founder-authorised 2026-10-20):** (1) The E2-07 “tab order follows the visual reading order” test reads the links in one list top to bottom as a single block. Planted reversed-column and swapped-column fixtures must still fail it. (2) The E2-04 primitives test expects seven icons and the extended file list, additively. (3) /legit, /guarantee and /about render the shell without the theme toggle, keeping E9-02’s zero-JavaScript criterion. They follow the system theme, and their small-width header is the wordmark and the Join button. (4) The header’s landing anchors resolve from E11.5-05, which owns that criterion. (5) “The shell joins the enforced layout-check set” means assertShellLayout checks the header and footer on every rendered page, at all 8 widths in both themes. enforcedPages gains pages only in the ticket that redesigns them.
 
 ### E11.5-04 — The provider showcase
-**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **P8 supplied 2026-10-25** (`docs/prerequisites/p8-provider-list.md`). Build every provider that record lists. A showcase with placeholder logos or invented providers is not a deliverable.
 
@@ -2100,7 +2074,7 @@ Record the decision to show third-party marks, the asset source rule and the no-
 **Docs:** `docs/brand/identity-guidelines.md` §5.3, §7 · `docs/brand/copy-rules.md#claims-that-must-stay-true` · `docs/prerequisites/founder-prerequisites.md#p8` · `docs/prerequisites/p8-provider-list.md`
 
 ### E11.5-05 — The landing page
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · `referral.enabled` · `giveaway.open` · `leaderboard.public` (read only) · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `signup.enabled` · `referral.enabled` · `giveaway.open` · `leaderboard.public` (read only) · **Area:** frontend
 **Why this model:** the page that converts. It reads four flags, the referral ladder and the current rules, and every figure it shows is a claim.
 
 **Build:** Rebuild `src/pages/index.astro` on the shell, in this order:
@@ -2136,7 +2110,7 @@ Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache hea
 **Docs:** `docs/features/signup.md` · `docs/features/referral.md` · `docs/features/giveaway.md` · `docs/architecture/adr/024-no-dark-patterns.md` · `docs/architecture/adr/025-campaign-configuration.md` · `docs/brand/copy-rules.md` · `docs/brand/page-design.md`
 
 ### E11.5-06 — Signup form states and the mobile sticky signup bar
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
 **Why this model:** this is the only public write path. The bar adds a second entry point without a second island, a second challenge or a membership oracle.
 
 **Build:** In the `SignupForm` island:
@@ -2164,7 +2138,7 @@ Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache hea
 **Docs:** `docs/features/signup.md` · `docs/architecture/adr/001-astro-node-adapter.md` · `docs/architecture/adr/006-turnstile.md` · `docs/architecture/adr/027-entry-separate-from-marketing-consent.md` · E3-05 · E3-09 · S-01
 
 ### E11.5-07 — Verification and the success page
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `survey.enabled` · `referral.enabled` · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** `survey.enabled` · `referral.enabled` · **Area:** frontend
 
 **Build:** Redesign `/verify`. Behaviour is unchanged; a replay still renders the same success page.
 
@@ -2184,7 +2158,7 @@ Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache hea
 **Docs:** `docs/features/double-opt-in.md` · `docs/features/survey.md` · `docs/features/member-status.md` · `docs/architecture/adr/012-reward-gating.md`
 
 ### E11.5-08 — The member page and the leaderboard page
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `member.dashboard` · `leaderboard.public` · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** `member.dashboard` · `leaderboard.public` · **Area:** frontend
 
 **Build:**
 - **`/me`** as a dashboard of cards, in this order: status, access-wave badge and own rank → the referral card (link, copy, share, progress to the next tier) → rewards, with settled and held as two clearly labelled states, each with an icon and the plain held explanation → giveaway entries when any exist, in mono tabular figures → preferences (survey v2 re-answer in a disclosure; the marketing on/off control styled as a switch but still the Turnstile form posting the existing route) → data rights (the `/dsr` links) → leave the waitlist, plain and visually separated, one action, no retention plea. The recovery, left and disabled states are restyled.
@@ -2202,7 +2176,7 @@ Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache hea
 **Docs:** `docs/features/member-status.md` · `docs/features/leaderboard.md` · `docs/architecture/adr/024-no-dark-patterns.md` · `docs/architecture/adr/027-entry-separate-from-marketing-consent.md`
 
 ### E11.5-09 — Trust, legal and giveaway rules pages
-**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Build:** Restyle the trust-page and giveaway-rules layouts and `/terms`, `/privacy` and `/privacy/storage`.
 
@@ -2224,7 +2198,7 @@ Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache hea
 **Founder decisions (2026-10-23):** the content's existing leading H1 stays visible and is the page's only H1, styled with CSS as the band headline; it is never hidden and no byte changes. The band markup, outside the content and the hashed article, holds only an eyebrow label from the copy layer ("Trust", "Legal" or "Giveaway rules"), rendered immediately before the article, and the summary line, rendered after the title band area. No `display: none` on any part of the content or the rules article. The summary is read from each content file's frontmatter `description` (the revision's `description` for the rules pages); the legal pages keep their existing `src/copy/legal.ts` entries. `src/content/` is the copy layer for prose under the copy rules: no new summary text is written and no description is duplicated into `src/copy/`. Tests: exactly one H1 per page, no content element hidden, and the rules hash suites unchanged. **Confirmed by the founder 2026-10-24**, who also accepted the content article's `display: contents` band layout as built, including in older engines that drop its landmark semantics.
 
 ### E11.5-10 — Task pages, and branded 404 and 500 pages
-**Model:** GPT-6 Sol — Medium · **Priority:** Medium · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** Medium · **Flag:** — · **Area:** frontend
 
 **Build:** Move `/unsubscribe`, `/dsr` (request and confirmation) and `/giveaway/award` (every state) onto one task-card pattern: a left-aligned card in the container, one primary action, and plain outcome states with icons. Their behaviour is unchanged: token consumption, Turnstile and identical responses stay as built. Add `src/pages/404.astro` and `src/pages/500.astro` on the shell — a plain heading, one line, links home and to `/legit` — with `noindex`, excluded from the sitemap and served with the correct status.
 
@@ -2238,7 +2212,7 @@ Rewrite `src/copy/landing.ts` within the copy budget. Keep the landing cache hea
 **Docs:** `docs/features/legal-and-dsr.md` · `docs/features/giveaway.md` · `docs/features/seo.md` · E6-06 · E11-05
 
 ### E11.5-11 — The email layout
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** — · **Area:** frontend
 **Why this model:** email clients are the least forgiving renderer in this project, and a broken message is a sending-reputation and trust event at once.
 
 **Build:** Redesign the shared layout in `src/server/email/template-layout.ts` and `weekly-template.ts`, used by the seven transactional templates and the weekly update. A 600px table-based layout with inline styles: the text wordmark header; one bulletproof coral primary button per message for its main action; secondary links as text; facts as a compact list with mono figures; a footer with the §3.4 legal line, `support@valstara.com` and the unsubscribe link; and a hidden preheader per template from the copy layer. Light by default, with a `prefers-color-scheme: dark` block where supported. **Colours and fonts are resolved from `tokens.css` at render time and inlined**: Gmail and Outlook ignore CSS custom properties, so the output contains no `var(`, and the tokens remain the single source. No image, remote resource, tracking pixel or link rewriting. Copy is unchanged apart from the new preheaders, and the verification mail still says what it is in its first line.
@@ -2293,7 +2267,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 **Artboard precedence (2026-10-29).** Where artboards disagree on a primitive's size or style, Components.dc.html wins; page and state artboards govern placement and layout (founder-authorised 2026-10-29).
 
 ### E11.5-11a — Wireframe foundations: tokens, breakpoints, icons and primitives
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
 **Why this model:** `tokens.css` is inherited verbatim by the storefront (ADR-015), and every later wireframe ticket builds on these primitives.
 
 **Build:** Implement the wireframes' token set and the component sheet (`Components.dc.html`; values also in the `<style>` block of `Main.dc.html`).
@@ -2332,7 +2306,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 **Docs:** `Components.dc.html` · `docs/brand/tokens.md` · `docs/brand/page-design.md` · `docs/architecture/adr/015-portable-design-tokens.md`
 
 ### E11.5-11b — Wireframe shell: header and footer
-**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
 **Build:** The header and footer from `Main.dc.html`, `Tablet.dc.html` and `Phone.dc.html`, on every page that uses the shell.
 
@@ -2361,7 +2335,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 **Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `DarkDesktop.dc.html` · `DarkPhone.dc.html` · E11.5-03
 
 ### E11.5-11c — Wireframe hero and above-the-fold
-**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** `signup.enabled` · `giveaway.open` (read only) · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** `signup.enabled` · `giveaway.open` (read only) · **Area:** frontend
 
 **Build:** The `#join` hero from `Main.dc.html`, `Tablet.dc.html`, `Phone.dc.html` and `Fold.dc.html`. Form states and the sticky bar are E11.5-11g and E11.5-11h.
 
@@ -2395,7 +2369,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 **Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `Fold.dc.html` · `Proposals.dc.html` (P2) · `Switches.dc.html` (B, G) · E11.5-05
 
 ### E11.5-11d — Wireframe catalogue and "How it works"
-**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Build:** The `#catalogue` and `#how` sections from `Main.dc.html`, `Tablet.dc.html`, `Phone.dc.html` and the provider banner on `Components.dc.html`.
 
@@ -2441,7 +2415,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 **Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `Components.dc.html` · E11.5-04
 
 ### E11.5-11e — Wireframe "What you get" and its feature-switch variants
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `referral.enabled` · `giveaway.open` · `leaderboard.public` (read only) · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `referral.enabled` · `giveaway.open` · `leaderboard.public` (read only) · **Area:** frontend
 **Why this model:** every figure on these cards is a claim read from configuration or the published rules, across a seven-variant flag matrix.
 
 **Build:** The `#rewards` section from `Main.dc.html`, `Tablet.dc.html`, `Phone.dc.html` and `Switches.dc.html`.
@@ -2477,7 +2451,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 **Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `Switches.dc.html` · `docs/architecture/adr/025-campaign-configuration.md` · `docs/features/giveaway.md`
 
 ### E11.5-11f — Wireframe guarantee band, trust cards, FAQ and final call to action
-**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Build:** The last four landing sections from `Main.dc.html`, `Tablet.dc.html` and `Phone.dc.html`.
 
@@ -2518,7 +2492,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 **Docs:** `Main.dc.html` · `Tablet.dc.html` · `Phone.dc.html` · `Components.dc.html` · `docs/brand/identity-guidelines.md` §2
 
 ### E11.5-11g — Wireframe signup form states
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
 **Why this model:** this restyles every state of the only public write path, where the membership-oracle and privacy properties live.
 
 **Build:** The 17 states of `StatesDesktop.dc.html` (on the large hero) and `StatesPhone.dc.html` (on the small hero), styled exactly as drawn. Behaviour, the error mapping and the response copy rules from E3-05, E11.5-06 and S-01 are unchanged. **Server-supplied messages render the copy-layer strings below;** if a string differs, update the copy-layer entry to the wireframe text, keeping it identical for every address.
@@ -2567,7 +2541,7 @@ Not restated per ticket. They add to the E11.5 design rules above; **violating o
 **Docs:** `StatesDesktop.dc.html` · `StatesPhone.dc.html` · `docs/features/signup.md` · E3-05 · E3-09 · E11.5-06
 
 ### E11.5-11h — Wireframe mobile sticky signup bar
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
 **Why this model:** the bar is the second entry to the public write path; it must change appearance only, never the single-island submission contract.
 
 **Build:** The bar from `Sticky.dc.html` (seven frames) and its placement in `Phone.dc.html`. The E11.5-06 contract is unchanged: part of the `SignupForm` island, one Turnstile widget, one submission path, only the hero input named `email`, and no marketing checkbox.
@@ -2642,7 +2616,7 @@ These are not restated per ticket. They add to the E11.5 design rules above, and
 11. **Evidence.** Design rule 9's contact sheet is still captured at rest. A PR that adds motion also attaches two short screen recordings of the surfaces it touched: one at 390 px and one at 1440 px, both with motion on. They are made with Playwright's local video capture, are not committed, and load nothing.
 
 ### E11.5-11i — The motion system: tokens, utilities, guards and at-rest measurement
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
 **Why this model:** the ticket amends a binding design rule into code, owns the accessibility property that every later ticket relies on (all motion stops under reduced motion, and nothing is ever hidden without its reveal), and changes the harness that every geometry test runs through.
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Tokens.dc.html`, `Components.dc.html` and `ComponentsDark.dc.html`, plus every `transition` in `valstara.css`. Also read `ChangeLog.dc.html`. Read the token sheet's motion entries and every transition the component library specifies before starting (final-design rule 1). The canvas is static and allows only state transitions, so the motion system below is built **on top of** it, by founder direction.
@@ -2718,7 +2692,7 @@ These are not restated per ticket. They add to the E11.5 design rules above, and
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: token sheet, component library) · `docs/brand/page-design.md` · `docs/brand/tokens.md` · `docs/brand/identity-guidelines.md` §7 · `docs/architecture/adr/001-astro-node-adapter.md` · `docs/architecture/adr/015-portable-design-tokens.md` · E11.5-01 · E11.5-11h
 
 ### E11.5-11j — Final-design foundations: the token delta, icons and primitives
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
 **Why this model:** `tokens.css` is inherited verbatim by the storefront (ADR-015), and every later final-design ticket builds on these primitives.
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Tokens.dc.html`, `Components.dc.html`, `ComponentsDark.dc.html`, `Icons.dc.html`, and the token delta in `ChangeLog.dc.html`. On the canvas, that covers the token sheet, the component library in light and dark, the icon sheet and the token delta. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws within the rules above, **plus** the motion and finish below, which it does not show.
@@ -2760,7 +2734,7 @@ These are not restated per ticket. They add to the E11.5 design rules above, and
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: token sheet, component library light and dark, icon sheet, token delta) · `docs/brand/tokens.md` · `docs/brand/page-design.md` · `docs/brand/identity-guidelines.md` §4–§7 · `docs/architecture/adr/015-portable-design-tokens.md` · E11.5-11a
 
 ### E11.5-11k — Final-design shell: header and footer
-**Model:** GPT-6 Sol — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Header.dc.html` and `Footer.dc.html`, as placed on `Main.dc.html`, `Landing1024.dc.html`, `Landing768.dc.html`, `Landing390.dc.html`, `Landing320.dc.html`, `LandingDark1440.dc.html` and `LandingDark390.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers the header and footer as drawn on the landing frames at 1440, 1024, 768, 390 and 320, the dark landing frames, and every other page's frames. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
 
@@ -2794,7 +2768,7 @@ Adopt every change-log row for the header and footer that these rules allow.
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames, dark frames, component library) · E11.5-03 · E11.5-11b · `docs/brand/identity-guidelines.md` §4.5, §5.2
 
 ### E11.5-11l — Final-design hero: the text column, the entrance and the fold
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · `giveaway.open` (read only) · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `signup.enabled` · `giveaway.open` (read only) · **Area:** frontend
 **Why this model:** the hero is the page that converts. Its entrance must not cost the fold, the largest contentful paint or the form's readiness.
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Hero.dc.html` as placed on the landing boards (`Main.dc.html`, `Landing1024.dc.html`, `Landing768.dc.html`, `Landing390.dc.html`, `Landing320.dc.html`, `LandingDark1440.dc.html` and `LandingDark390.dc.html`), plus `Fold.dc.html` and `Switches.dc.html` (giveaway off; G). Also read `ChangeLog.dc.html`. On the canvas, that covers the hero on the landing frames at 1440, 1024, 768, 390 and 320 in both themes, the above-the-fold crops, and the feature-switch variants for the hero (giveaway off; G, signups off). Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws for the hero's text column, **plus** the motion and finish below.
@@ -2836,7 +2810,7 @@ Adopt every change-log row for the header and footer that these rules allow.
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames, above-the-fold crops, feature-switch variants) · E11.5-05 · E11.5-11c · `docs/brand/page-design.md`
 
 ### E11.5-11m — Final-design signup form states and the mobile sticky bar
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `signup.enabled` · **Area:** frontend
 **Why this model:** this restyles every state of the only public write path, where the membership-oracle and privacy properties live, and its second entry point.
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `StatesDesktop.dc.html`, `StatesPhone.dc.html`, `Sticky.dc.html`, the state tweak in `Hero.dc.html`, and `Switches.dc.html` (G). Also read `ChangeLog.dc.html`. On the canvas, that covers the signup form states on desktop and phone (all 17), the sticky bar's seven frames, and the signups-off variant. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
@@ -2881,7 +2855,7 @@ Adopt every change-log row for the header and footer that these rules allow.
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: signup form states desktop and phone, sticky bar, feature-switch G) · `docs/features/signup.md` · E3-05 · E3-09 · E11.5-06 · E11.5-11g · E11.5-11h · `docs/architecture/adr/001-astro-node-adapter.md`
 
 ### E11.5-11n — Final-design catalogue and "How it works"
-**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `#catalogue` and `#how` on `Main.dc.html`, `Landing1024.dc.html`, `Landing768.dc.html`, `Landing390.dc.html`, `Landing320.dc.html`, `LandingDark1440.dc.html` and `LandingDark390.dc.html`, plus the provider banner on `Components.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers `#catalogue` and `#how` on the landing frames at every width in both themes, and the provider banner in all its cases on the component library. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
 
@@ -2936,7 +2910,7 @@ Adopt every change-log row for the header and footer that these rules allow.
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames, component library provider banner) · E11.5-04 · E11.5-11d · `docs/architecture/adr/032-provider-marks-in-the-prelaunch-showcase.md`
 
 ### E11.5-11o — Final-design "What you get" and its feature-switch variants
-**Model:** GPT-6 Sol — High · **Priority:** Highest · **Flag:** `referral.enabled` · `giveaway.open` · `leaderboard.public` (read only) · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `referral.enabled` · `giveaway.open` · `leaderboard.public` (read only) · **Area:** frontend
 **Why this model:** every figure on these cards is a claim read from configuration or the published rules, across a seven-variant flag matrix, and motion must never show a figure that is not the real one.
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Rewards.dc.html` as placed on the landing boards, plus `Switches.dc.html` (A–F). Also read `ChangeLog.dc.html`. On the canvas, that covers `#rewards` on the landing frames at every width in both themes, and feature-switch variants A to F. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
@@ -2967,7 +2941,7 @@ Adopt every change-log row for the header and footer that these rules allow.
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames, feature-switch variants A–F) · E11.5-11e · `docs/architecture/adr/024-no-dark-patterns.md` · `docs/architecture/adr/025-campaign-configuration.md` · `docs/features/giveaway.md`
 
 ### E11.5-11p — Final-design guarantee band, trust cards, FAQ and final call to action
-**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `#guarantee`, the trust row, `#faq` and the final call to action on `Main.dc.html`, `Landing1024.dc.html`, `Landing768.dc.html`, `Landing390.dc.html`, `Landing320.dc.html`, `LandingDark1440.dc.html` and `LandingDark390.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers `#guarantee`, "Get to know Valstara", `#faq` and the final call to action on the landing frames at every width in both themes. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
 
@@ -3002,7 +2976,7 @@ Adopt every change-log row for the header and footer that these rules allow.
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: landing frames) · E11.5-11f · `docs/brand/identity-guidelines.md` §2, §5.2
 
 ### E11.5-11q — Final-design verification and the success page
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `survey.enabled` · `referral.enabled` · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** `survey.enabled` · `referral.enabled` · **Area:** frontend
 **Why this model:** this is the funnel's highest-attention moment, and every figure on it is the visitor's own status.
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Verify.dc.html`, `Verify1440.dc.html`, `Verify768.dc.html` and `Verify390.dc.html`, plus `Components.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers `/verify` in every state at 390, 768 and 1440 in both themes, and the component library's referral link field, copy control, progress meter, chips and segmented options. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
@@ -3047,7 +3021,7 @@ Adopt every change-log row for the header and footer that these rules allow.
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: `/verify`, component library) · E11.5-07 · `docs/features/double-opt-in.md` · `docs/features/survey.md` · `docs/architecture/adr/012-reward-gating.md`
 
 ### E11.5-11r — Final-design member page and leaderboard
-**Model:** GPT-6 Sol — High · **Priority:** High · **Flag:** `member.dashboard` · `leaderboard.public` · **Area:** frontend
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** `member.dashboard` · `leaderboard.public` · **Area:** frontend
 **Why this model:** `/me` renders only the bearer's data across many states, and the leaderboard is the third island.
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Me.dc.html`, `Me1440.dc.html`, `Me768.dc.html`, `Me390.dc.html`, `Leaderboard.dc.html`, `Leaderboard1440.dc.html` and `Leaderboard390.dc.html`, plus `Components.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers
@@ -3079,7 +3053,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: `/me`, `/leaderboard`, component library) · E11.5-08 · `docs/features/member-status.md` · `docs/features/leaderboard.md` · `docs/architecture/adr/024-no-dark-patterns.md` · `docs/architecture/adr/027-entry-separate-from-marketing-consent.md`
 
 ### E11.5-11s — Final-design trust, legal and giveaway rules pages
-**Model:** GPT-6 Sol — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** frontend
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Doc.dc.html`, `TrustLegit.dc.html`, `TrustGuarantee.dc.html`, `TrustAbout.dc.html`, `LegalPrivacy.dc.html`, `LegalTermsStorage.dc.html`, `Rules.dc.html`, `RulesArchived.dc.html` and `Manifest.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers `/legit`, `/guarantee` and `/about` at 390, 768 and 1440 (with the 390 join bar); `/privacy`, `/terms` and `/privacy/storage` at 390 and 1440; and `/giveaway/rules` current and archived at 390 and 1440, in both themes. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
 
@@ -3110,7 +3084,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: trust, legal and rules pages) · E11.5-09 · `docs/features/trust-pages.md` · `docs/features/legal-and-dsr.md` · `docs/architecture/adr/017-content-files.md` · E7-02 · E11-04
 
 ### E11.5-11t — Final-design task pages, and the 404 and 500 pages
-**Model:** GPT-6 Sol — Medium · **Priority:** Medium · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** Medium · **Flag:** — · **Area:** frontend
 
 **Source:** the canvas at `https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`, version `1793367843-fe69`, read from the snapshot in `docs/design/final-ui/project/`. Board files: `Task.dc.html`, `TaskUnsubDsr1440.dc.html`, `TaskUnsubDsr390.dc.html`, `Award1440.dc.html`, `Award390.dc.html` and `Errors.dc.html`. Also read `ChangeLog.dc.html`. On the canvas, that covers `/unsubscribe` and `/dsr` in every state, `/giveaway/award` in every state, and 404 and 500, at 390 and 1440 in both themes, together with the component library's task card. Read and analyse them before starting (final-design rule 1). The canvas is the direction, not the finished design. Build what it draws, **plus** the motion and finish below.
 
@@ -3135,7 +3109,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 **Docs:** the canvas (`https://claude.ai/artifact/VsdApoe6yfcRRQCpCRmQcD#page-dcb81aee8d83`: task pages, award page, 404 and 500, component library) · E11.5-10 · `docs/features/legal-and-dsr.md` · `docs/features/giveaway.md` · E11-05
 
 ### E11.5-12 — Design QA, the re-audits and founder sign-off
-**Model:** GPT-6 Astra — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
+**Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** frontend
 **Why this model:** a reasoning-led audit across every page (§3), and E11's audits ran against the old surfaces.
 
 **Build:**
@@ -3170,8 +3144,8 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 **Prerequisite: the VPS is provisioned and reachable, and E11.5 is merged.** No ticket here starts before both hold, so E12 deploys, load-tests and gates the final build (founder-authorised 2026-10-19).
 
 ### E12-01 — Provision the host and run the production stack on it
-**Model:** GPT-6 Astra — Light · **Priority:** Highest · **Flag:** — · **Area:** infra
-**Why this model:** routine host work against an existing assertion script. Astra at Light beats every Sol level on terminal tasks and finishes faster than Sol at High (§3).
+**Model:** Opus 5.5 — Low · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Why this model:** routine host work against an existing assertion script (§3).
 
 **Build:** Provision the VPS. Install Docker and Compose. Bring up `infra/compose/docker-compose.production.yml` **unchanged** — it has been running locally since E1-06, and any edit needed here is a defect in that file, to be fixed there and re-verified locally first. Create `infra/ENV.md` entries for the host and every production-only variable.
 
@@ -3186,7 +3160,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 **Docs:** `docs/architecture/adr/003-self-hosted-vps.md` · `infra/ENV.md`
 
 ### E12-02 — Deploy from GHCR against the real host, with the migration audit
-**Model:** GPT-6 Astra — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
 **Why this model:** the first real pull-migrate-restart against live data paths; a mis-recorded migration here is the failure E1-07 exists to prevent, now with somewhere to actually happen.
 
 **Build:** Run `infra/deploy/deploy.sh` on the host against a real GHCR image. Confirm the migration audit record is written to persistent storage. Then run the E1-11 thin slice end to end against the deployed site.
@@ -3201,7 +3175,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 **Docs:** `docs/engineering/ci-cd.md#deploy-and-the-migration-audit`
 
 ### E12-03 — The timed rollback drill
-**Model:** GPT-6 Astra — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** infra
 **Why this ticket exists:** this is the RTO. E1-07 proved the rollback *logic* locally; the number is dominated by a real registry pull to a real host, and an unmeasured RTO is a guess written down.
 
 **Build:** Deploy release A, deploy release B, then roll back to A with `rollback.sh`. Time it with a monotonic clock, from command to the previous release verifiably serving. Repeat from a cold local image cache, which is the honest worst case.
@@ -3216,7 +3190,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 **Docs:** `docs/engineering/ci-cd.md#rollback`
 
 ### E12-04 — Backups to R2, and a restore proven from the remote
-**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** infra
 **Why this model:** the waitlist is the campaign's only durable asset, and a backup that has only ever been restored from a local repository has not been tested against the failure that matters — losing the box.
 
 **Build:** Point the E1-08 pgBackRest configuration at Cloudflare R2. Enable the schedule. Move the repository passphrase off the host. Then restore **from R2** into a scratch container and verify against known rows.
@@ -3234,7 +3208,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 **Docs:** `docs/engineering/ci-cd.md#backups` · `docs/architecture/adr/003-self-hosted-vps.md`
 
 ### E12-05 — Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics
-**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** security
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this model:** an origin reachable around the proxy defeats the caching the spike plan depends on and exposes the box directly.
 
 **Build:** Put the zone in front of the host, proxied. Restrict the origin to Cloudflare. Move Turnstile and Web Analytics to production keys. Implement and verify the recorded landing-cache contract: a ref-less/default-flag response is cached with `X-Valstara-Flag-Generation` in the custom key (no country since ADR-026); `?ref=` and non-default flag states remain `private, no-store`. Verify static-asset cache behaviour as well.
@@ -3250,7 +3224,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 **Docs:** `docs/architecture/adr/003-self-hosted-vps.md` · `docs/architecture/adr/006-turnstile.md` · `docs/architecture/adr/007-cookieless-analytics.md`
 
 ### E12-06 — Chaos drills and the capacity run on the real box
-**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** infra
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** infra
 
 **Build:** Execute drills 7, 9 and 10 from `docs/architecture/fallbacks.md#chaos-drills` — restore from R2, a host OOM against real limits, and the Cloudflare-absent path — plus drills 1–6 and 8 re-run on the host. Then the capacity run: the signup endpoint at 10× expected peak against the VPS, and the leaderboard under spike load.
 
@@ -3266,7 +3240,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 **Docs:** `docs/architecture/fallbacks.md` · `docs/security/threat-model.md#t8--the-box-goes-down-under-a-viral-spike`
 
 ### E12-07 — Production readiness gate
-**Model:** GPT-6 Astra — High · **Priority:** Highest · **Flag:** — · **Area:** docs
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** docs
 
 **Build:** Install live provider keys on the host. Deploy Umami to production behind the proxy. Then verify a single checklist, **every item evidenced rather than asserted**:
 
@@ -3312,11 +3286,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
 | **Total** | **129** | |
 
-**Model distribution (2026-09-28, the 34 tickets not yet merged):** GPT-6 Astra 16 (Extra High 1 · High 8 · Medium 6 · Light 1) · GPT-6 Sol 16 (High 10 · Medium 6) · GPT-6 Luna 2 (High 2). **Astra carries the operations and audit work of E11 and E12**, plus E9-05 and E10-01; **Sol carries the code of E8–E10**; Luna carries two small tickets whose dangerous failures an existing gate already catches (§3).
-
-E8-03a was added after that model distribution was recorded, with an explicit founder assignment of Tier B — Medium (2026-09-28).
-
-**E11.5 (founder-authorised 2026-10-19; wireframe tickets added 2026-10-26; final-design tickets added 2026-10-30), 32 tickets:** GPT-6 Sol 31 (High 18 · Medium 13) · GPT-6 Astra 1 (Medium 1).
+**Models (founder-authorised 2026-11-11):** every ticket not yet merged runs on Opus 5.5 at the level on its Model line (§3). The Codex distribution recorded on 2026-09-28 and the tier distribution below are history.
 
 **Tier distribution before 2026-09-28** (all 96 tickets as first planned; the merged ones keep these tiers): Tier B Extra High 4 · Tier B High 15 · Tier B Medium 30 · Tier A High 16 · Tier A Medium 31. *(2026-09-25: S-01 added at Tier B High; E7-01 moved from Tier B High to Tier A Medium once jurisdiction gating was removed; E7-06 moved from Tier A Medium to Tier B Medium because it now collects provisional winners' countries of residence and runs the sanctions check. 2026-09-27: E8-08 removed from Tier B High by ADR-028.)*
 

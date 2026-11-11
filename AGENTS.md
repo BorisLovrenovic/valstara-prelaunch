@@ -30,7 +30,7 @@ This repository builds the **Valstara pre-launch waitlist site**. You are workin
 
 **Write no speculative code** when: the ticket and its docs conflict · the ticket contradicts the wider plan · a decision that materially changes the implementation is unrecorded · a `Proposed` ADR is in the path · a required founder input (brand token values, trust-page prose, the representatives' names, prize details) is missing.
 
-**Never resolve an ambiguity by assumption, and never edit the plan yourself.**
+**Never resolve an ambiguity by assumption, and never edit the plan yourself.** The one exception: a decision session (`docs/engineering/prompts/06-decision.md`) writes a founder-accepted decision onto its ticket's entry, in the founder's wording, in one `docs(plan)` commit. Likewise, only the pre-push step (`07-pre-push-checks.md`) touches `docs/plan/ticket-register.md`, to mark its own ticket done.
 
 ## Hard rules, in full
 
@@ -77,10 +77,10 @@ npm run test:changed -- <each test file on your ticket's Tests line>
 
 `npm run check` runs lint, format, typecheck, the security and privacy scans, and the build. `npm run test:changed` runs every test file your branch changed, every test whose imports reach a changed file, the files you name, and the privacy and accessibility suites whenever a change can reach the browser. It prints why it picked each file. The full `npm test` is not part of the local gate, **including for a dependency upgrade**: `test:changed` also picks the tests that load an upgraded package, and `npm run check` rebuilds and audits. To reproduce a CI failure, run the failing file.
 
-Fix every failure. **Never skip, delete or weaken a test or gate to get green.** Branch `feat/<ticket-id>-<slug>` from `main`; Conventional Commits including the ticket ID. **Do not push or open a PR** — that happens only after the pre-PR review passes.
+Fix every failure. **Never skip, delete or weaken a test or gate to get green.** Work on the branch you are given (`feat/<ticket-id>-<slug>`, from `main`); Conventional Commits including the ticket ID. **Do not push or open a PR** — that happens only after the pre-PR review passes and the pre-push checks are green, and never with `--force`.
 
 ## Reference
 
-`docs/README.md` is the map. `docs/architecture/modules.md` is the boundary model. `docs/data/model.md` is the schema. `docs/testing/strategy.md` is the definition of done.
+`docs/README.md` is the map. `docs/plan/ticket-register.md` is the execution order and status. `docs/engineering/prompts/00-USAGE.md` is the ticket cycle, the review cap and the decision procedure. `docs/architecture/modules.md` is the boundary model. `docs/data/model.md` is the schema. `docs/testing/strategy.md` is the definition of done.
 
 **The folder `docs/example development plan and prompts/` is reference material from a different project. Nothing in it is a decision for this campaign.**

@@ -33,6 +33,7 @@ docs/
   README.md                        this file
   prelaunch-stack-decisions.md     the founder's decisions (source)
   plan/development-plan.md         ★ the single source of truth for scope
+  plan/ticket-register.md          ★ the execution order and the status of every ticket and QA gate
   architecture/
     overview.md                    principles, context, the five runtime flows
     modules.md                     code boundaries, repository layout, dependency direction
@@ -53,7 +54,7 @@ docs/
     standards.md                   coding standards
     git-workflow.md                branches, commits, PRs, releases
     ci-cd.md                       pipelines, deploy, rollback, backups
-    prompts/                       ★ the six agent prompts
+    prompts/                       ★ the seven agent prompts and their usage guide (00-USAGE.md)
   security/threat-model.md         threats, CI security gates, secret handling
   legal/compliance.md              GDPR, ePrivacy, the global giveaway under Hong Kong law, Article 27
   testing/strategy.md              test tiers, invariants, definition of done
