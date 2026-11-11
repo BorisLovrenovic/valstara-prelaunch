@@ -3,41 +3,91 @@ import { leaderboardCopy, leaderboardPanelCopy } from '../copy/leaderboard.ts';
 import Button from '../components/button.astro';
 import Card from '../components/card.astro';
 import Icon from '../components/icon.astro';
+import LeaderboardPaused from '../layouts/leaderboard-paused.astro';
 
 // The explanation and the call to action sit inside the flagged section, so
-// the kill switch removes the whole surface, as it always has.
+// the kill switch removes the whole surface, as it always has. The paused
+// card that takes its place is outside it (E11.5-11r decision 3).
+const skeletonRows = 5;
 ---
 
 <section class="leaderboard-section" data-leaderboard-section>
-  <valstara-leaderboard data-endpoint="/api/leaderboard">
+  <div class="leaderboard-intro">
     <h1 class="leaderboard-heading">{leaderboardCopy.heading}</h1>
     <p class="leaderboard-introduction">{leaderboardCopy.introduction}</p>
-    <p class="leaderboard-meta" data-leaderboard-meta hidden></p>
-    <p class="leaderboard-status" data-leaderboard-status role="status">
-      {leaderboardCopy.loading}
-    </p>
-    <ol class="leaderboard-entries" data-leaderboard-entries></ol>
-  </valstara-leaderboard>
-  <div class="leaderboard-aside">
-    <Card class="leaderboard-panel" data-leaderboard-counts>
-      <h2>{leaderboardPanelCopy.counts.heading}</h2>
-      <ul>
+  </div>
+  <div class="leaderboard-grid">
+    <valstara-leaderboard
+      class="leaderboard-board"
+      data-endpoint="/api/leaderboard"
+      data-state="loading"
+    >
+      {
+        /* The canvas's static skeleton: five rows of --wash-strong bars, with
+          no shimmer or pulse, and the spinner on the loading line. */
+      }
+      <ol class="leaderboard-skeleton" aria-hidden="true">
         {
-          leaderboardPanelCopy.counts.lines.map((line) => (
-            <li>
-              <Icon name="check" />
-              <span>{line}</span>
+          Array.from({ length: skeletonRows }, () => (
+            <li class="leaderboard-row">
+              <span class="leaderboard-rank-tile" />
+              <span class="leaderboard-bar" />
+              <span class="leaderboard-bar leaderboard-bar--count" />
             </li>
           ))
         }
-      </ul>
-    </Card>
-    <Card class="leaderboard-panel" data-leaderboard-cta>
-      <h2>{leaderboardPanelCopy.cta.heading}</h2>
-      <Button href="/#join">{leaderboardPanelCopy.cta.join}</Button>
-      <p>{leaderboardPanelCopy.cta.member}</p>
-    </Card>
+      </ol>
+      <ol class="leaderboard-entries" data-leaderboard-entries></ol>
+      <div class="leaderboard-state">
+        <span class="leaderboard-tile">
+          <Icon name="people" class="leaderboard-state__icon--empty" />
+          <Icon name="alert" class="leaderboard-state__icon--unavailable" />
+        </span>
+        <p class="leaderboard-status" data-leaderboard-status role="status">
+          {leaderboardCopy.loading}
+        </p>
+      </div>
+      <p class="leaderboard-loading" aria-hidden="true">
+        <span class="leaderboard-spinner"></span>
+        {leaderboardCopy.loading}
+      </p>
+      <p class="leaderboard-meta" data-leaderboard-meta hidden>
+        <Icon name="clock" size="sm" />
+        <span class="leaderboard-meta__text">
+          <span data-leaderboard-taken></span>
+          <span data-leaderboard-age></span>
+        </span>
+      </p>
+    </valstara-leaderboard>
+    <div class="leaderboard-aside">
+      <Card class="leaderboard-panel" data-leaderboard-counts>
+        <div class="leaderboard-panel__head">
+          <span class="leaderboard-panel__tile">
+            <Icon name="list" size="base" />
+          </span>
+          <h2>{leaderboardPanelCopy.counts.heading}</h2>
+        </div>
+        <ul>
+          {
+            leaderboardPanelCopy.counts.lines.map((line) => (
+              <li>
+                <Icon name="check" size="sm" />
+                <span>{line}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </Card>
+      <Card class="leaderboard-panel" data-leaderboard-cta>
+        <h2>{leaderboardPanelCopy.cta.heading}</h2>
+        <Button href="/#join" full>{leaderboardPanelCopy.cta.join}</Button>
+        <p>{leaderboardPanelCopy.cta.member}</p>
+      </Card>
+    </div>
   </div>
+  <template data-leaderboard-paused-template>
+    <LeaderboardPaused />
+  </template>
 </section>
 
 <script>
@@ -47,7 +97,9 @@ import Icon from '../components/icon.astro';
     leaderboardErrorMessage,
     leaderboardPollIntervalMilliseconds,
     parseLeaderboardSnapshot,
+    snapshotAgeFigure,
     snapshotAgeSeconds,
+    splitOnFigure,
     type PublicLeaderboardSnapshot,
   } from './leaderboard.ts';
 
@@ -58,11 +110,23 @@ import Icon from '../components/icon.astro';
     return element;
   }
 
+  // A sentence with one figure set in mono, its words as the copy layer
+  // words them.
+  function withFigure(text: string, figure: string): HTMLSpanElement {
+    const [before, value, after] = splitOnFigure(text, figure);
+    const sentence = span('');
+    sentence.append(before);
+    if (value !== '') sentence.append(span('tabular-figure', value));
+    sentence.append(after);
+    return sentence;
+  }
+
   class ValstaraLeaderboard extends HTMLElement {
     #interval: ReturnType<typeof globalThis.setInterval> | null = null;
     #observer: IntersectionObserver | null = null;
     #refreshing = false;
     #snapshot: PublicLeaderboardSnapshot | null = null;
+    #entered = false;
 
     connectedCallback(): void {
       if ('IntersectionObserver' in globalThis) {
@@ -115,7 +179,7 @@ import Icon from '../components/icon.astro';
           response.status === 503 &&
           leaderboardErrorMessage(body) === leaderboardCopy.paused
         ) {
-          this.closest('[data-leaderboard-section]')?.remove();
+          this.#pause();
           return;
         }
         if (!response.ok) {
@@ -137,21 +201,56 @@ import Icon from '../components/icon.astro';
       }
     }
 
+    // The kill switch: the whole flagged section goes, and the paused card
+    // takes its place (E11.5-11r decision 3).
+    #pause(): void {
+      const section = this.closest('[data-leaderboard-section]');
+      const template = section?.querySelector(
+        '[data-leaderboard-paused-template]',
+      );
+      if (section === null || section === undefined) return;
+      if (template instanceof HTMLTemplateElement) {
+        section.replaceWith(template.content.cloneNode(true));
+        return;
+      }
+      section.remove();
+    }
+
     #render(snapshot: PublicLeaderboardSnapshot): void {
       const list = this.querySelector('[data-leaderboard-entries]');
       const meta = this.querySelector('[data-leaderboard-meta]');
+      const taken = this.querySelector('[data-leaderboard-taken]');
+      const age = this.querySelector('[data-leaderboard-age]');
       const status = this.querySelector('[data-leaderboard-status]');
       if (
         !(list instanceof HTMLOListElement) ||
-        !(meta instanceof HTMLElement)
+        !(meta instanceof HTMLElement) ||
+        !(taken instanceof HTMLElement) ||
+        !(age instanceof HTMLElement)
       ) {
         return;
       }
 
+      // Rows enter in rank order the first time a snapshot renders, each
+      // --stagger-row after the one above; a refresh does not animate them.
+      // Every figure is its exact value from the first frame.
+      const entering = !this.#entered;
+      this.#entered = true;
       list.replaceChildren(
-        ...snapshot.entries.map((entry) => {
+        ...snapshot.entries.map((entry, index) => {
           const item = document.createElement('li');
-          item.className = 'leaderboard-entry';
+          item.className = 'leaderboard-row leaderboard-entry';
+          if (entering) {
+            item.dataset.rowEnter = '';
+            item.style.setProperty('--row-index', String(index));
+            // The entrance runs once: when it ends, or is cancelled (reduced
+            // motion requested meanwhile), the row is at rest for good.
+            const settle = () => {
+              delete item.dataset.rowEnter;
+            };
+            item.addEventListener('animationend', settle, { once: true });
+            item.addEventListener('animationcancel', settle, { once: true });
+          }
 
           // Each figure is its own mono tabular span; the text node between
           // label and figure keeps the read-out "Rank 1" and
@@ -162,10 +261,14 @@ import Icon from '../components/icon.astro';
             ' ',
             span('leaderboard-rank-figure tabular-figure', String(entry.rank)),
           );
-          const handle = span(
-            'leaderboard-handle',
+          const handle = span('leaderboard-handle');
+          const [before, displayHandle, after] = splitOnFigure(
             leaderboardCopy.handle(entry.displayHandle),
+            entry.displayHandle,
           );
+          const handleFigure = document.createElement('b');
+          handleFigure.textContent = displayHandle;
+          handle.append(before, handleFigure, after);
           const count = span('leaderboard-count');
           count.append(
             span(
@@ -184,15 +287,22 @@ import Icon from '../components/icon.astro';
         }),
       );
 
-      const age = leaderboardCopy.snapshotAge(
-        snapshotAgeSeconds(snapshot.asOf, new Date()),
+      const timestamp = formatSnapshotTimestamp(snapshot.asOf);
+      const seconds = snapshotAgeSeconds(snapshot.asOf, new Date());
+      taken.replaceChildren(
+        withFigure(`${leaderboardCopy.snapshotAsOf} ${timestamp}`, timestamp),
       );
-      meta.textContent = `${leaderboardCopy.snapshotAsOf} ${formatSnapshotTimestamp(snapshot.asOf)} · ${age}`;
-      meta.hidden = false;
+      age.replaceChildren(
+        withFigure(
+          leaderboardCopy.snapshotAge(seconds),
+          String(snapshotAgeFigure(seconds)),
+        ),
+      );
+      meta.hidden = snapshot.entries.length === 0;
+      this.dataset.state = snapshot.entries.length === 0 ? 'empty' : 'rows';
       if (status instanceof HTMLElement) {
         status.textContent =
           snapshot.entries.length === 0 ? leaderboardCopy.empty : '';
-        status.hidden = snapshot.entries.length > 0;
       }
     }
 
@@ -201,10 +311,10 @@ import Icon from '../components/icon.astro';
         this.#render(this.#snapshot);
         return;
       }
+      this.dataset.state = 'unavailable';
       const status = this.querySelector('[data-leaderboard-status]');
       if (status instanceof HTMLElement) {
         status.textContent = leaderboardCopy.unavailable;
-        status.hidden = false;
       }
     }
   }
@@ -215,19 +325,233 @@ import Icon from '../components/icon.astro';
 </script>
 
 <style is:global>
-  .leaderboard-section,
-  valstara-leaderboard,
-  .leaderboard-aside,
-  .leaderboard-panel {
-    display: grid;
-    gap: var(--space-3);
-    align-content: start;
+  /*
+    The board (E11.5-11r, Leaderboard.dc.html): rows 64px tall, padded
+    12px 24px (12px 16px below 48rem), divided by a 1px line, each a 40px
+    paper rank tile in mono, the anonymous handle (14/20 ink-600, the
+    handle itself mono) and the exact count (16/24 600 mono, then its
+    14/20 label), which drops under the handle below 48rem. The meta line
+    follows the last row. No medals, no avatars. The page frame (intro,
+    grid, board card, state block) is styled with the paused card
+    (src/layouts/leaderboard-paused.astro), which this island renders in a template.
+  */
+  .leaderboard-skeleton,
+  .leaderboard-entries {
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .leaderboard-heading,
-  .leaderboard-introduction,
-  .leaderboard-status,
+  .leaderboard-row {
+    display: grid;
+    grid-template-columns: var(--tile-size) minmax(0, 1fr);
+    column-gap: var(--space-2);
+    row-gap: var(--space-0);
+    align-items: center;
+    box-sizing: border-box;
+    min-block-size: var(--space-8);
+    padding: var(--space-1-5) var(--space-2);
+  }
+
+  .leaderboard-row + .leaderboard-row {
+    border-block-start: var(--border-thin) solid var(--line);
+  }
+
+  .leaderboard-rank,
+  .leaderboard-rank-tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--tile-size);
+    block-size: var(--tile-size);
+    background-color: var(--well);
+    border-radius: var(--radius-control);
+  }
+
+  /* "Rank" is read, not shown: it fills the row and is clipped to
+     nothing, so it never overflows the tile. */
+  .leaderboard-entry {
+    position: relative;
+  }
+
+  .leaderboard-rank-label {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .leaderboard-rank-figure {
+    color: var(--ink);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
+  }
+
+  .leaderboard-handle {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+    color: var(--ink-600);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  .leaderboard-handle b {
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-weight: var(--weight-medium);
+  }
+
+  .leaderboard-count {
+    grid-column: 2;
+    color: var(--ink-600);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    white-space: nowrap;
+  }
+
+  .leaderboard-count-figure {
+    color: var(--ink);
+    font-size: var(--step-2);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-2);
+  }
+
+  /* The skeleton's bars: 12px, --wash-strong, the canvas's five widths. */
+  .leaderboard-bar {
+    display: block;
+    block-size: var(--space-1-5);
+    background-color: var(--wash-strong);
+    border-radius: var(--radius-pill);
+  }
+
+  .leaderboard-skeleton .leaderboard-bar--count {
+    grid-column: 2;
+    inline-size: calc(var(--space-6) * 2);
+  }
+
+  .leaderboard-skeleton
+    li:nth-child(1)
+    .leaderboard-bar:not(.leaderboard-bar--count) {
+    inline-size: calc(var(--space-10) * 2);
+  }
+
+  .leaderboard-skeleton
+    li:nth-child(2)
+    .leaderboard-bar:not(.leaderboard-bar--count) {
+    inline-size: calc(var(--space-8) * 2);
+  }
+
+  .leaderboard-skeleton
+    li:nth-child(3)
+    .leaderboard-bar:not(.leaderboard-bar--count) {
+    inline-size: calc(var(--space-10) * 2 + var(--space-2));
+  }
+
+  .leaderboard-skeleton
+    li:nth-child(4)
+    .leaderboard-bar:not(.leaderboard-bar--count) {
+    inline-size: calc(var(--space-9) * 2);
+  }
+
+  .leaderboard-skeleton
+    li:nth-child(5)
+    .leaderboard-bar:not(.leaderboard-bar--count) {
+    inline-size: calc(var(--space-7) * 2);
+  }
+
+  /* The meta line and the loading line, under a 1px rule. */
   .leaderboard-meta,
+  .leaderboard-loading {
+    display: flex;
+    gap: var(--space-1) var(--space-2);
+    align-items: flex-start;
+    margin: 0;
+    padding: var(--space-2);
+    color: var(--ink-600);
+    font-family: var(--font-sans);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    border-block-start: var(--border-thin) solid var(--line);
+  }
+
+  .leaderboard-loading {
+    align-items: center;
+  }
+
+  /* The 16px icons sit 2px down, on their line's first baseline. */
+  .leaderboard-meta .icon {
+    flex: none;
+    margin-block-start: var(--border-strong);
+  }
+
+  .leaderboard-meta__text {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-0) var(--space-2);
+  }
+
+  .leaderboard-meta .tabular-figure {
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  .leaderboard-meta[hidden] {
+    display: none;
+  }
+
+  .leaderboard-spinner {
+    box-sizing: border-box;
+    flex: none;
+    inline-size: var(--icon-sm);
+    block-size: var(--icon-sm);
+    border: var(--border-strong) solid currentColor;
+    border-inline-end-color: transparent;
+    border-radius: var(--radius-pill);
+    opacity: var(--spinner-opacity);
+  }
+
+  /* One state at a time: loading draws the skeleton and the loading line
+     and keeps the status for assistive technology only; rows draw the list
+     and meta; empty and unavailable draw the state block. */
+  valstara-leaderboard:not([data-state='loading']) .leaderboard-skeleton,
+  valstara-leaderboard:not([data-state='loading']) .leaderboard-loading,
+  valstara-leaderboard:not([data-state='rows']) .leaderboard-entries {
+    display: none;
+  }
+
+  valstara-leaderboard {
+    position: relative;
+  }
+
+  valstara-leaderboard:is([data-state='loading'], [data-state='rows'])
+    .leaderboard-state {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  valstara-leaderboard:not([data-state='empty'])
+    .leaderboard-state__icon--empty,
+  valstara-leaderboard:not([data-state='unavailable'])
+    .leaderboard-state__icon--unavailable {
+    display: none;
+  }
+
+  /* The side panel: "What counts" and the call to action. */
+  .leaderboard-aside {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .leaderboard-aside > .card.leaderboard-panel {
+    padding: var(--space-3);
+  }
+
   .leaderboard-panel h2,
   .leaderboard-panel p,
   .leaderboard-panel ul {
@@ -235,113 +559,38 @@ import Icon from '../components/icon.astro';
     font-family: var(--font-sans);
   }
 
-  .leaderboard-heading {
-    color: var(--ink);
-    font-size: var(--step-5);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-5);
-    letter-spacing: var(--tracking-tight);
-  }
-
-  .leaderboard-introduction,
-  .leaderboard-panel p,
-  .leaderboard-panel li {
-    color: var(--ink-600);
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
-  }
-
-  .leaderboard-status,
-  .leaderboard-meta {
-    color: var(--ink-600);
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
-  }
-
-  .leaderboard-meta {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .leaderboard-status[hidden],
-  .leaderboard-meta[hidden] {
-    display: none;
-  }
-
-  .leaderboard-entries {
-    display: grid;
-    gap: var(--space-1);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .leaderboard-entry {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: var(--space-1) var(--space-3);
+  .leaderboard-panel__head {
+    display: flex;
+    gap: var(--space-1-5);
     align-items: center;
-    padding: var(--space-2) var(--space-3);
-    color: var(--ink);
-    background-color: var(--surface);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow-1);
   }
 
-  .leaderboard-rank {
-    display: grid;
-    grid-row: span 2;
-    justify-items: start;
-    min-inline-size: var(--tap-min);
-  }
-
-  .leaderboard-rank-label,
-  .leaderboard-count-label {
-    color: var(--ink-600);
-    font-family: var(--font-sans);
-    font-size: var(--step-1);
-    line-height: var(--leading-1);
-  }
-
-  .leaderboard-rank-figure {
-    color: var(--ink);
-    font-size: var(--step-5);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-5);
-  }
-
-  .leaderboard-handle {
-    overflow-wrap: anywhere;
-    font-family: var(--font-sans);
-    font-size: var(--step-2);
-    font-weight: var(--weight-medium);
-    line-height: var(--leading-2);
-  }
-
-  .leaderboard-count {
+  .leaderboard-panel__tile {
     display: inline-flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    align-items: baseline;
-  }
-
-  .leaderboard-count-figure {
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--tile-size);
+    block-size: var(--tile-size);
     color: var(--ink);
-    font-size: var(--step-3);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-3);
+    background-color: var(--wash);
+    border-radius: var(--radius-control);
   }
 
   .leaderboard-panel h2 {
+    min-inline-size: 0;
     color: var(--ink);
     font-size: var(--step-3);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-3);
+    letter-spacing: var(--tracking-tight);
   }
 
   .leaderboard-panel ul {
-    display: grid;
-    gap: var(--space-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    margin-block-start: var(--space-2);
     padding: 0;
     list-style: none;
   }
@@ -350,31 +599,104 @@ import Icon from '../components/icon.astro';
     display: flex;
     gap: var(--space-1);
     align-items: flex-start;
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    text-wrap: pretty;
   }
 
-  .leaderboard-panel .icon {
-    color: var(--coral);
+  .leaderboard-panel li .icon {
+    flex: none;
+    margin-block-start: var(--border-strong);
+    color: var(--ink);
   }
 
   .leaderboard-panel .button {
-    justify-self: start;
+    margin-block-start: var(--space-2);
+  }
+
+  .leaderboard-panel p {
+    margin-block-start: var(--space-2);
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    text-wrap: pretty;
+  }
+
+  /* Motion (E11.5-11r): the rows' first entrance, and the spinner, the one
+     looping animation design rule 12 allows. Neither runs under reduced
+     motion. */
+  :where(.leaderboard-entry) {
+    --row-index: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .leaderboard-entry[data-row-enter] {
+      animation-name: leaderboard-row-enter;
+      animation-duration: var(--duration-enter);
+      animation-timing-function: var(--ease-enter);
+      animation-delay: calc(var(--row-index) * var(--stagger-row));
+      animation-fill-mode: backwards;
+    }
+
+    .leaderboard-spinner {
+      animation-name: leaderboard-spin;
+      animation-duration: var(--duration-spin);
+      animation-timing-function: linear;
+      animation-iteration-count: infinite;
+    }
+
+    @keyframes leaderboard-row-enter {
+      from {
+        opacity: 0;
+        translate: 0 var(--enter-distance);
+      }
+    }
+
+    @keyframes leaderboard-spin {
+      to {
+        transform: rotate(1turn);
+      }
+    }
   }
 
   @media (min-width: 48rem) {
-    .leaderboard-entry {
-      grid-template-columns: auto minmax(0, 1fr) auto;
+    .leaderboard-row {
+      grid-template-columns: var(--tile-size) minmax(0, 1fr) auto;
+      padding: var(--space-1-5) var(--space-3);
     }
 
-    .leaderboard-rank {
-      grid-row: auto;
+    .leaderboard-skeleton .leaderboard-bar--count {
+      grid-column: auto;
+      justify-self: end;
+    }
+
+    .leaderboard-count {
+      grid-column: auto;
+      text-align: end;
+    }
+
+    .leaderboard-meta,
+    .leaderboard-loading {
+      padding: var(--space-2) var(--space-3);
+    }
+
+    .leaderboard-aside {
+      gap: var(--space-3);
+    }
+
+    .leaderboard-aside > .card.leaderboard-panel {
+      padding: var(--space-4);
     }
   }
 
-  @media (min-width: 64rem) {
-    .leaderboard-section {
-      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-      gap: var(--space-4);
-      align-items: start;
+  @media (48rem <= width < 64rem) {
+    .leaderboard-aside {
+      flex-direction: row;
+    }
+
+    .leaderboard-aside > * {
+      flex: 1 1 0;
     }
   }
 </style>

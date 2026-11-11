@@ -261,6 +261,9 @@
   --wave-bar-gap: 2px;
   --wave-bar-radius: 1px;
   --inset-selected: inset 0 0 0 1.5px var(--ink);
+  /* E11.5-11r: the marketing switch's resting track, a 1.5px ring in the
+     field colour (Components.dc.html, valstara.css .switch). */
+  --inset-field: inset 0 0 0 1.5px var(--field);
   --layer-dock: 20;
   --layer-skip: 30;
 
@@ -303,6 +306,9 @@
   /* E11.5-11q (founder decision 2026-11-10): how long Copy link shows
      "Link copied." before its label returns, the canvas's 2s. */
   --copy-confirm-hold: 2s;
+  /* E11.5-11r (founder decision 2026-11-11): the step between leaderboard
+     rows as they enter, so ten rows end by 580ms (400ms + 9 x 20ms). */
+  --stagger-row: 20ms;
 }
 
 .tabular-figure {

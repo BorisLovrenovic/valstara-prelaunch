@@ -256,6 +256,8 @@ const motionTokens = {
   '--sequence-end': '25vh',
   // E11.5-11q (founder decision 2026-11-10): Copy link's confirmation hold.
   '--copy-confirm-hold': '2s',
+  // E11.5-11r (founder decision 2026-11-11): the leaderboard rows' step.
+  '--stagger-row': '20ms',
 };
 
 // E11.5-11j: the token delta in ChangeLog.dc.html, light values on bare :root
@@ -282,6 +284,8 @@ const finalDesignTokens = {
   '--wave-bar-gap': '2px',
   '--wave-bar-radius': '1px',
   '--inset-selected': 'inset 0 0 0 1.5px var(--ink)',
+  // E11.5-11r: the marketing switch's resting ring (valstara.css .switch).
+  '--inset-field': 'inset 0 0 0 1.5px var(--field)',
   '--stroke-heavy': '2.25',
 };
 

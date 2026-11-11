@@ -85,3 +85,23 @@ export function leaderboardErrorMessage(value: unknown): string | null {
   }
   return typeof value.error.message === 'string' ? value.error.message : null;
 }
+
+/**
+ * Splits a copy-layer sentence around one of its figures, so the figure can
+ * be set in mono without rewording the sentence: "Snapshot age: 3 minutes."
+ * becomes ["Snapshot age: ", "3", " minutes."]. A sentence without the
+ * figure is returned whole.
+ */
+export function splitOnFigure(
+  text: string,
+  figure: string,
+): readonly [string, string, string] {
+  const at = text.indexOf(figure);
+  if (figure === '' || at < 0) return [text, '', ''];
+  return [text.slice(0, at), figure, text.slice(at + figure.length)];
+}
+
+/** The figure snapshotAge prints: seconds below a minute, then minutes. */
+export function snapshotAgeFigure(seconds: number): number {
+  return seconds < 60 ? seconds : Math.floor(seconds / 60);
+}

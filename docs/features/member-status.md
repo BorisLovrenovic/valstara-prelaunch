@@ -35,6 +35,35 @@ confirmation step. Every figure still comes from the one
 `presentReferralStatus` result; the field keys only decide which card shows a
 field. The recovery, left and disabled states are single cards.
 
+E11.5-11r restyles `/me` to the final-design canvas (`Me.dc.html`), and the
+behaviour above stands except where the founder decided otherwise on
+2026-11-11. **Giveaway entries are a fact on the status card**, not a card of
+their own. The status card's facts are, in order: status, access wave, own
+rank, confirmed referrals, referral tier, and giveaway entries when there is
+at least one. The referral card holds the link, Copy and Share, and the meter.
+**The referral link is the wrapping read-only box used on `/verify`**, a
+paragraph whose text is the whole link and whose `data-referral-url` is what
+Copy referral link copies. Copy behaves as on `/verify`: the label
+cross-fades to "Referral link copied." and back after `--copy-confirm-hold`,
+the live region announces it, and a refused copy selects the box. Rewards are
+rows, and each carries its state's word, icon and explanation. Settled is
+filled ink with a check; held is an outlined badge with a clock, the outline a
+real border so it survives forced colours. **The marketing switch** is still
+the Turnstile-protected form posting `POST /api/me/marketing`, with the same
+fields. It is drawn as the component library's switch, and its name is the
+action ("Turn on marketing email" or "Turn off marketing email"). Only the
+current action's label is ever in the page. On submit, the knob slides and
+the "On" or "Off" word cross-fades. On success, the script sets the URL
+fragment `#marketing-saved` and reloads. The reloaded page shows the route's
+saved message in the notice under the switch, moves focus to it and removes
+the fragment with `history.replaceState`. On an error the switch returns,
+there is no reload, and the route's message shows in the same notice. There
+is no query parameter and no storage. **The marketing, leave and recovery
+Turnstile widgets render only when the check needs interaction**
+(`data-appearance="interaction-only"`, as on the signup form). They take no
+space otherwise. Leaving is still one plain action, set apart below the
+cards, with no confirmation step and no plea.
+
 1. **Receive** — every transactional email carries the signed status link.
 2. **View** — `/me?t=…` renders the bearer's own row, own rank and referral link, with a copy control.
 3. **Act** — re-answer the survey, switch marketing email on or off (ADR-027; switching off never affects the waitlist place or giveaway entries), or unsubscribe.
