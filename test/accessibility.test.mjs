@@ -1073,19 +1073,41 @@ test('signup and verification text clears AA contrast at rendered font sizes in 
           .first()
           .evaluate((element) => {
             const style = globalThis.getComputedStyle(element);
-            let parent = element;
-            let background = '';
-            while (parent !== null) {
+            // E11.5-11q (named rewrite, founder-authorised 2026-11-10): a
+            // translucent background is composited over the next opaque
+            // one behind it, as the browser paints it, rather than read as
+            // if it were opaque.
+            const layers = [];
+            for (
+              let parent = element;
+              parent !== null;
+              parent = parent.parentElement
+            ) {
               const candidate =
                 globalThis.getComputedStyle(parent).backgroundColor;
               if (
-                candidate !== 'rgba(0, 0, 0, 0)' &&
-                candidate !== 'transparent'
-              ) {
-                background = candidate;
-                break;
-              }
-              parent = parent.parentElement;
+                candidate === 'rgba(0, 0, 0, 0)' ||
+                candidate === 'transparent'
+              )
+                continue;
+              const [red, green, blue, alpha = 1] = candidate
+                .match(/[\d.]+/gu)
+                .map(Number);
+              layers.push({ red, green, blue, alpha });
+              if (alpha === 1) break;
+            }
+            let background = '';
+            if (layers.length > 0) {
+              const painted = layers.reduceRight((under, over) => ({
+                red: over.red * over.alpha + under.red * (1 - over.alpha),
+                green: over.green * over.alpha + under.green * (1 - over.alpha),
+                blue: over.blue * over.alpha + under.blue * (1 - over.alpha),
+                alpha: 1,
+              }));
+              background =
+                layers.at(-1).alpha === 1
+                  ? `rgb(${painted.red}, ${painted.green}, ${painted.blue})`
+                  : '';
             }
             return {
               background,

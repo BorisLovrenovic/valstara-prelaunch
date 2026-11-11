@@ -254,6 +254,13 @@
   --check-target-offset: calc((var(--check-size) - var(--tap-min)) / 2);
   --badge-size: 1.5rem;
   --tile-size: 2.5rem;
+  /* E11.5-11q: the access-wave badge's four bars (the canvas's
+     .badge-wave__bars), and the 1.5px ink rule of a selected read-only
+     field (the canvas's .linkbox.is-selected). */
+  --wave-bar-width: 3px;
+  --wave-bar-gap: 2px;
+  --wave-bar-radius: 1px;
+  --inset-selected: inset 0 0 0 1.5px var(--ink);
   --layer-dock: 20;
   --layer-skip: 30;
 
@@ -293,6 +300,9 @@
      at 75%, so it is at rest well before 70%. */
   --sequence-start: 10vh;
   --sequence-end: 25vh;
+  /* E11.5-11q (founder decision 2026-11-10): how long Copy link shows
+     "Link copied." before its label returns, the canvas's 2s. */
+  --copy-confirm-hold: 2s;
 }
 
 .tabular-figure {

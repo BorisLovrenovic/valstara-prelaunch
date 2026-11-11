@@ -22,6 +22,11 @@ appear as selectable chips and frequency options as segmented choices. Save
 and Skip have equal button weight. With JavaScript, both submit through the
 existing same-origin survey route without a page load; Skip sends no selected
 answers.
+Since E11.5-11q (founder decision 2026-11-10), saving or skipping fades the
+questions out and shows the route's own result line in their place, and the form
+does not come back on that page. A server error or an invalid option shows in
+place, and the questions stay with their answers. A later replay of the success
+page shows no survey once a response exists, as before.
 
 ## User flows
 1. **Ask** — on the verification success page, below the referral link, answerable in one interaction each.

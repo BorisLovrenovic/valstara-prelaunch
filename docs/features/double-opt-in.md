@@ -39,3 +39,25 @@ expired tokens retain one generic message and the Turnstile-protected
 request-new-link form. The page remains private and no-store.
 With referrals disabled, the success message confirms the place without asking
 the visitor to share a link that is not shown.
+
+## E11.5-11q final design
+The page follows the final-design canvas (`docs/brand/page-design.md`,
+"Verification and the success page"). Two behaviours change by founder decision
+(2026-11-10):
+
+- **The request for a new link is answered in the card.** With JavaScript, the
+  page script submits the invalid card's form with `fetch` to the unchanged
+  `POST /api/resend-verification`, with the same fields, and shows the
+  route's own message in the card: the acknowledgement, which is identical for
+  known and unknown addresses, or its error. A failed request shows the
+  route's unavailable message. The Turnstile widget is reset after each
+  answer, because a token is single-use. The submit button is server-rendered
+  disabled and enabled by the script, so without JavaScript, when the security
+  check cannot run, it stays disabled beside the existing no-JavaScript notice.
+  Before this, the form posted natively and the browser showed the route's JSON.
+  The form keeps its `action` and `method`, and no route, island or request host
+  is added.
+- **Copy link confirms in place.** Its label cross-fades to "Link copied." and
+  returns after `--copy-confirm-hold` (2s). The live region still announces
+  the result. A failed copy selects the link and shows "Select and copy the
+  link instead."
