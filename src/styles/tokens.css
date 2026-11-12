@@ -136,6 +136,10 @@
   --section-gap: var(--space-8);
   --section-gap-wide: var(--space-10);
   --measure: 68ch;
+  /* E11.5-11s: how far a full-bleed band's paint reaches past its container
+     (the document header band, the archived-rules notice). Drawn as a shadow,
+     which never widens the page, and clipped to the band's own height. */
+  --bleed: 100vmax;
   --grid-columns: 4;
   --grid-columns-wide: 12;
   --grid-gap: var(--space-2);

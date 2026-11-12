@@ -287,6 +287,9 @@ const finalDesignTokens = {
   // E11.5-11r: the marketing switch's resting ring (valstara.css .switch).
   '--inset-field': 'inset 0 0 0 1.5px var(--field)',
   '--stroke-heavy': '2.25',
+  // E11.5-11s: the full-bleed paint of the document band and the archived
+  // rules notice (Doc.dc.html .doc-band, .archived).
+  '--bleed': '100vmax',
 };
 
 // Compares CSS values as written: whitespace, a leading zero and trailing
