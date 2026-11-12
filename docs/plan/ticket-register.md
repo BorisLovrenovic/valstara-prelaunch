@@ -146,7 +146,7 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 124 | E11.5-11p | Final-design guarantee band, trust cards, FAQ and final call to action | Epic E11.5 — Frontend design | done | auto |
 | 125 | E11.5-11q | Final-design verification and the success page | Epic E11.5 — Frontend design | done | auto |
 | 126 | E11.5-11r | Final-design member page and leaderboard | Epic E11.5 — Frontend design | done | auto |
-| 127 | E11.5-11s | Final-design trust, legal and giveaway rules pages | Epic E11.5 — Frontend design | todo | auto |
+| 127 | E11.5-11s | Final-design trust, legal and giveaway rules pages | Epic E11.5 — Frontend design | done | auto |
 | 128 | E11.5-11t | Final-design task pages, and the 404 and 500 pages | Epic E11.5 — Frontend design | todo | auto |
 | 129 | E11.5-12 | Design QA, the re-audits and founder sign-off | Epic E11.5 — Frontend design | todo | auto |
 | 130 | GATE-7 | QA gate 7 — E11 + E11.5 | E11 + E11.5 | todo | auto |
