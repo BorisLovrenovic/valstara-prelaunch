@@ -514,7 +514,7 @@ function readEntrance(page) {
   });
 }
 
-test('the band and the side card enter at first paint within 600ms, the join bar slides in, and the title never moves', async () => {
+test('the band and the side card rise in at first paint within 600ms, the join bar slides in, and the title never moves', async () => {
   for (const [route, width] of [
     ['/legit', 390],
     ['/guarantee', 1440],
@@ -527,17 +527,18 @@ test('the band and the side card enter at first paint within 600ms, the join bar
       const label = `${route} ${width}px`;
       const rest = { opacity: '1', translate: 'none', transform: 'none' };
       const risen = (state) => /^0px 12px$/u.test(state.translate);
-      // The eyebrow (index 0) and the summary (index 2) rise 12px and fade
-      // in over --duration-enter, one --stagger step apart per index.
+      // The eyebrow (index 0) and the summary (index 2) rise 12px over
+      // --duration-enter, one --stagger step apart per index. Nothing fades,
+      // so every word is readable from first paint.
       for (const [part, delay] of [
         ['eyebrow', 0],
         ['summary', 120],
       ]) {
         const read = entrance[part];
-        assert.equal(read.name, 'motion-enter', `${label} ${part}`);
+        assert.equal(read.name, 'motion-enter-shift', `${label} ${part}`);
         assert.equal(read.delay, delay, `${label} ${part} delay`);
         assert.equal(read.duration, 400, `${label} ${part} duration`);
-        assert.equal(read.start.opacity, '0', `${label} ${part} start`);
+        assert.equal(read.start.opacity, '1', `${label} ${part} start`);
         assert.ok(risen(read.start), `${label} ${part} rises`);
         assert.deepEqual(read.end, rest, `${label} ${part} rest`);
       }

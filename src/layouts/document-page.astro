@@ -716,13 +716,14 @@ const hasAside = kind === 'trust' || contents.length > 0;
     /* The band enters at first paint from outside the article, on the
        motion system's entrance (E11.5-11i): the eyebrow at index 0, then the
        summary at index 2. The title between them is the content's H1, inside
-       the article, so it never moves. The side card follows at index 3 and
-       only rises (data-enter="shift"): it holds the Join button or the
-       contents links, which are at full opacity and usable from first paint
+       the article, so it never moves. The side card follows at index 3
+       (data-enter="shift"). Like the /verify and /me cards, nothing fades:
+       each part only rises, so every word, the Join button and the contents
+       links are at full opacity, readable and usable from first paint
        (design rule 12). */
     .document__eyebrow,
     .document__summary {
-      animation-name: motion-enter;
+      animation-name: motion-enter-shift;
       animation-duration: var(--duration-enter);
       animation-timing-function: var(--ease-enter);
       animation-fill-mode: backwards;
