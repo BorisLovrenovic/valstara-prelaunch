@@ -154,6 +154,7 @@ The primitives need these values beyond the delta, under final-design rule 6:
 | `--sequence-start`, `--sequence-end` | `10vh`, `25vh` | Where a sequence on an element's view timeline runs, into its cover range: from the element's top at 90% of the viewport height to its top at 75%. The "What you get" referral equation divides it into equal steps, one per person icon, then the arrow, then the pills (E11.5-11o) |
 | `--wave-bar-width`, `--wave-bar-gap`, `--wave-bar-radius` | `3px`, `2px`, `1px` | The access-wave badge's four bars (the canvas's `.badge-wave__bars`, `/verify`, E11.5-11q). Their heights are calc()s of the spacing ramp |
 | `--inset-selected` | `inset 0 0 0 1.5px var(--ink)` | A selected read-only field's rule: the referral link box when a copy fails and the link is selected for manual copying (the canvas's `.linkbox.is-selected`, E11.5-11q). It follows `--ink` in both themes. The `/me` marketing switch also uses it, on hover and when on (E11.5-11r) |
+| `--bleed` | `100vmax` | How far a full-bleed band's paint reaches past its container: the spread of the shadow that draws the document header band and the archived-rules notice to both viewport edges, clipped to the band's own height, so the page never widens (E11.5-11s) |
 | `--inset-field` | `inset 0 0 0 1.5px var(--field)` | The `/me` marketing switch's resting track: a 1.5px ring in the field colour (the canvas's `.switch`, E11.5-11r). It follows `--field` in both themes |
 
 The arrow, error, spinner, star, enter-scale, tone-shift, draw-range and sequence values sit with the motion tokens on bare `:root`, with no dark redefinition.
@@ -240,6 +241,8 @@ Kept current from the first commit, because it is what makes launch day a checkl
 **E11.5-11o port addition:** the file adds `--sequence-start` and `--sequence-end` on bare `:root` beside the other motion tokens, with no dark redefinition. They port with `tokens.css`; the "What you get" motion that uses them is waitlist presentation in the landing page.
 
 **E11.5-11r port addition:** the file adds `--inset-field` on `:root` and `--stagger-row` on bare `:root` beside the motion tokens, neither with a dark redefinition (`--inset-field` follows `--field`). They add no hue and no type size, and port with `tokens.css`. The `/me` and `/leaderboard` presentation that uses them is waitlist presentation.
+
+**E11.5-11s port addition:** the file adds `--bleed` on `:root`, a length with no dark redefinition. It adds no hue and no type size, and ports with `tokens.css`. The document-page presentation that uses it is waitlist presentation.
 
 **E11.5-11q port addition:** the file adds `--wave-bar-width`, `--wave-bar-gap`, `--wave-bar-radius` and `--inset-selected` on `:root`, and `--copy-confirm-hold` on bare `:root` beside the motion tokens, none with a dark redefinition (`--inset-selected` follows `--ink`). They add no hue and no type size, and port with `tokens.css`. The `/verify` presentation that uses them, including the script's read of `--copy-confirm-hold`, is waitlist presentation.
 
