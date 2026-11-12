@@ -112,9 +112,10 @@ async function fixture() {
     const winnerId = randomUUID();
     const exporterId = randomUUID();
     const eraserId = randomUUID();
+    const replacedId = randomUUID();
     await database.query(
-      "INSERT INTO subscriber (id,email,email_normalised,email_domain,status,verified_at,referral_code,access_window) VALUES ($1,'task-final-winner@example.test','task-final-winner@example.test','example.test','verified','2026-10-01T00:00:00Z','TFWINNER2345','wave-1'),($2,'task-final-export@example.test','task-final-export@example.test','example.test','verified','2026-10-01T00:00:00Z','TFEXPORT2345','wave-1'),($3,'task-final-erase@example.test','task-final-erase@example.test','example.test','verified','2026-10-01T00:00:00Z','TFERASER2345','wave-1')",
-      [winnerId, exporterId, eraserId],
+      "INSERT INTO subscriber (id,email,email_normalised,email_domain,status,verified_at,referral_code,access_window) VALUES ($1,'task-final-winner@example.test','task-final-winner@example.test','example.test','verified','2026-10-01T00:00:00Z','TFWINNER2345','wave-1'),($2,'task-final-export@example.test','task-final-export@example.test','example.test','verified','2026-10-01T00:00:00Z','TFEXPORT2345','wave-1'),($3,'task-final-erase@example.test','task-final-erase@example.test','example.test','verified','2026-10-01T00:00:00Z','TFERASER2345','wave-1'),($4,'task-final-replaced@example.test','task-final-replaced@example.test','example.test','verified','2026-10-01T00:00:00Z','TFREPLACE234','wave-1')",
+      [winnerId, exporterId, eraserId, replacedId],
     );
     const unsubscribeId = randomUUID();
     const unsubscribe = token(unsubscribeId);
@@ -131,6 +132,7 @@ async function fixture() {
       [randomUUID(), winnerId, randomUUID(), unsubscribeId],
     );
     const winnerStatus = await insertToken(database, winnerId, 'status');
+    const replacedStatus = await insertToken(database, replacedId, 'status');
     const exportToken = await insertToken(database, exporterId, 'dsr_export');
     const deleteToken = await insertToken(database, eraserId, 'dsr_delete');
 
@@ -139,24 +141,30 @@ async function fixture() {
     );
     const drawId = randomUUID();
     const entryId = randomUUID();
+    const replacedEntry = randomUUID();
     await database.query(
       "INSERT INTO giveaway_draw (id,executed_by) VALUES ($1,'task-final-test')",
       [drawId],
     );
+    for (const [entry, subscriber] of [
+      [entryId, winnerId],
+      [replacedEntry, replacedId],
+    ]) {
+      await database.query(
+        "INSERT INTO giveaway_entry (id,subscriber_id,method,entries,rules_version,rules_sha256) VALUES ($1,$2,'base',1,$3,decode($4,'hex'))",
+        [entry, subscriber, rulesVersion, 'ab'.repeat(32)],
+      );
+      await database.query(
+        "INSERT INTO giveaway_draw_snapshot_row (draw_id,entry_id,subscriber_id,method,rules_version,rules_sha256) VALUES ($1,$2,$3,'base',$4,decode($5,'hex'))",
+        [drawId, entry, subscriber, rulesVersion, 'ab'.repeat(32)],
+      );
+    }
     await database.query(
-      "INSERT INTO giveaway_entry (id,subscriber_id,method,entries,rules_version,rules_sha256) VALUES ($1,$2,'base',1,$3,decode($4,'hex'))",
-      [entryId, winnerId, rulesVersion, 'ab'.repeat(32)],
+      'INSERT INTO giveaway_draw_selection (draw_id,position,subscriber_id,entry_id,is_winner) VALUES ($1,1,$2,$3,true),($1,2,$4,$5,false)',
+      [drawId, winnerId, entryId, replacedId, replacedEntry],
     );
     await database.query(
-      "INSERT INTO giveaway_draw_snapshot_row (draw_id,entry_id,subscriber_id,method,rules_version,rules_sha256) VALUES ($1,$2,$3,'base',$4,decode($5,'hex'))",
-      [drawId, entryId, winnerId, rulesVersion, 'ab'.repeat(32)],
-    );
-    await database.query(
-      'INSERT INTO giveaway_draw_selection (draw_id,position,subscriber_id,entry_id,is_winner) VALUES ($1,1,$2,$3,true)',
-      [drawId, winnerId, entryId],
-    );
-    await database.query(
-      "UPDATE giveaway_draw SET snapshot_committed_at='2026-10-01T00:00:00Z', entry_snapshot_hash=decode($2,'hex'), snapshot_count=1, prize_count=1, rules_version=$3, rules_sha256=decode($4,'hex'), drand_chain_hash=decode($5,'hex'), drand_chain_info='{}'::jsonb, target_round=1, target_round_at='2026-10-01T00:06:00Z' WHERE id=$1",
+      "UPDATE giveaway_draw SET snapshot_committed_at='2026-10-01T00:00:00Z', entry_snapshot_hash=decode($2,'hex'), snapshot_count=2, prize_count=1, rules_version=$3, rules_sha256=decode($4,'hex'), drand_chain_hash=decode($5,'hex'), drand_chain_info='{}'::jsonb, target_round=1, target_round_at='2026-10-01T00:06:00Z' WHERE id=$1",
       [drawId, 'cd'.repeat(32), rulesVersion, 'ab'.repeat(32), 'ef'.repeat(32)],
     );
     await database.query(
@@ -174,6 +182,11 @@ async function fixture() {
       "INSERT INTO giveaway_award (id,draw_id,prize_slot,entry_snapshot_hash,selection_position,entry_id,subscriber_id,notified_at,response_deadline_at) VALUES ($1,$2,1,decode($3,'hex'),1,$4,$5,'2026-10-01T00:03:00Z','2099-01-01T00:00:00Z')",
       [awardId, drawId, 'cd'.repeat(32), entryId, winnerId],
     );
+    // The earlier provisional winner the award passed over.
+    await database.query(
+      "INSERT INTO giveaway_award_candidate (draw_id,selection_position,award_id,subscriber_id,outcome,reason,checked_at) VALUES ($1,2,$2,$3,'replaced','deadline','2026-10-02T00:00:00Z')",
+      [drawId, awardId, replacedId],
+    );
     return {
       appUrl: appUrl.toString(),
       awardId,
@@ -182,6 +195,7 @@ async function fixture() {
       dispose,
       exporterId,
       exportToken,
+      replacedStatus,
       unsubscribe,
       winnerStatus,
     };
@@ -308,6 +322,19 @@ function card(html, state) {
   assert.notEqual(start, -1, `task card ${state} renders`);
   const open = html.lastIndexOf('<article', start);
   return html.slice(open, html.indexOf('</article>', start));
+}
+
+// The state tile: its tone class and the icon drawn in it.
+function assertTile(body, state, tone, icon) {
+  const tile = body.match(
+    /<span class="task-card__tile ([^"]*)"[^>]*>\s*<svg class="([^"]*)"/u,
+  );
+  assert.ok(tile, `${state} draws its tile`);
+  assert.deepEqual(
+    [tile[1].split(/\s+/u), tile[2].split(/\s+/u).includes(`icon--${icon}`)],
+    [[`task-card__tile--${tone}`], true],
+    `${state} tile is ${tone} with the ${icon} icon`,
+  );
 }
 
 // Boxes of the card's parts, relative to the viewport, plus the theme
@@ -685,15 +712,62 @@ test('the task pages, 404 and 500 follow the final design: /dsr outcomes, the aw
       200,
       'GET',
     );
+    html = await capture(
+      'export-confirm',
+      exportPath + '&t=emailed-link',
+      await get(exportPath + '&t=emailed-link'),
+      200,
+      'GET',
+    );
+    assert.match(card(html, 'export-confirm'), /name="token"/u);
+    // /unsubscribe, every state, each with its own tile tone and icon.
     const unsubscribePath =
       '/unsubscribe?t=' + encodeURIComponent(data.unsubscribe);
-    await capture(
+    html = await capture(
       'confirm',
       unsubscribePath,
       await get(unsubscribePath),
       200,
       'GET',
     );
+    assertTile(card(html, 'confirm'), 'confirm', 'accent', 'mail');
+    html = await capture(
+      'invalid',
+      '/unsubscribe',
+      await get('/unsubscribe'),
+      200,
+      'GET',
+    );
+    assertTile(card(html, 'invalid'), 'invalid', 'neutral', 'link');
+    html = await capture(
+      'invalid',
+      '/unsubscribe?state=invalid-post',
+      await post('/unsubscribe', { t: 'not-a-token', intent: 'message' }),
+      400,
+      'POST',
+    );
+    assertTile(card(html, 'invalid'), 'invalid (POST)', 'neutral', 'link');
+    // The suppression write fails, so the unsubscribe is unavailable.
+    await data.database.query(
+      "CREATE FUNCTION reject_suppression() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected'; END; $$",
+    );
+    await data.database.query(
+      'CREATE TRIGGER reject_suppression BEFORE INSERT ON suppression FOR EACH ROW EXECUTE FUNCTION reject_suppression()',
+    );
+    html = await capture(
+      'unavailable',
+      '/unsubscribe?state=unavailable',
+      await post('/unsubscribe', { t: data.unsubscribe, intent: 'message' }),
+      503,
+      'POST',
+    );
+    assertTile(
+      card(html, 'unavailable'),
+      'unavailable',
+      'error',
+      'alert-circle',
+    );
+    await data.database.query('DROP TRIGGER reject_suppression ON suppression');
     html = await capture(
       'complete',
       '/unsubscribe?state=complete',
@@ -701,11 +775,34 @@ test('the task pages, 404 and 500 follow the final design: /dsr outcomes, the aw
       200,
       'POST',
     );
+    assertTile(card(html, 'complete'), 'complete', 'success', 'check-circle');
     // The outcome line is what fades after a POST; the H1 and tile do not.
     assert.match(
       card(html, 'complete'),
       /class="task-card__line"[^>]*data-task-outcome/u,
     );
+    let unsubscribeLimited;
+    for (
+      let attempt = 0;
+      attempt < 12 && unsubscribeLimited === undefined;
+      attempt += 1
+    ) {
+      const response = await post('/unsubscribe', {
+        t: 'not-a-token-' + attempt,
+        intent: 'message',
+      });
+      if (response.status === 429) unsubscribeLimited = response;
+      else await response.arrayBuffer();
+    }
+    assert.ok(unsubscribeLimited, 'the unsubscribe IP limit is reached');
+    html = await capture(
+      'rate-limited',
+      '/unsubscribe?state=rate-limited',
+      unsubscribeLimited,
+      429,
+      'POST',
+    );
+    assertTile(card(html, 'rate-limited'), 'rate-limited', 'neutral', 'clock');
 
     // The award checks step: invalid_input is the country field's error, with
     // the bearer's answers kept (founder decision 2026-11-12).
@@ -757,6 +854,34 @@ test('the task pages, 404 and 500 follow the final design: /dsr outcomes, the aw
       data.database.query(`UPDATE giveaway_award SET ${columns} WHERE id=$1`, [
         data.awardId,
       ]);
+    // The award's closed states: no link, no reserve left, passed over.
+    await capture(
+      'unavailable',
+      '/giveaway/award',
+      await get('/giveaway/award'),
+      200,
+      'GET',
+    );
+    await award("state='exhausted'");
+    await capture(
+      'exhausted',
+      awardPath + '&state=exhausted',
+      await get(awardPath),
+      200,
+      'GET',
+    );
+    const replacedPath =
+      '/giveaway/award?award=' +
+      data.awardId +
+      '&t=' +
+      encodeURIComponent(data.replacedStatus);
+    await capture(
+      'replaced',
+      replacedPath,
+      await get(replacedPath),
+      200,
+      'GET',
+    );
     await award(
       "state='confirmed', country_of_residence='DE', age_confirmed=true, sanctions_passed=true",
     );
