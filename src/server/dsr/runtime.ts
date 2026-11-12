@@ -8,13 +8,18 @@ import { createBrevoProvider } from '../email/providers/brevo.ts';
 import { createAlertWebhookTransport } from '../verification-rate/p1-webhook.ts';
 import { verifyTurnstileToken } from '../turnstile/verify.ts';
 import { createErasureService } from './service.ts';
-import { createDsrHandler, type DsrOperation } from './http.ts';
+import {
+  createDsrHandler,
+  createDsrService,
+  type DsrDependencies,
+  type DsrOperation,
+  type DsrOutcome,
+} from './http.ts';
 let database: ReturnType<typeof createPool> | undefined;
-export function handleDsr(
-  operation: DsrOperation,
-  request: Request,
-  ipPrefixHash: string,
-) {
+function runtime(): {
+  database: ReturnType<typeof createPool>;
+  dependencies: DsrDependencies;
+} {
   const config = getConfig();
   database ??= createPool(config.databaseUrl);
   const brevo = getBrevoConfiguration();
@@ -31,10 +36,25 @@ export function handleDsr(
       await provider.deleteContact(email);
     },
   });
-  return createDsrHandler(database, {
-    clock,
-    challenge: verifyTurnstileToken,
-    erasure,
-    alerts,
-  })(operation, request, ipPrefixHash);
+  return {
+    database,
+    dependencies: { clock, challenge: verifyTurnstileToken, erasure, alerts },
+  };
+}
+export function handleDsr(
+  operation: DsrOperation,
+  request: Request,
+  ipPrefixHash: string,
+) {
+  const { database: pool, dependencies } = runtime();
+  return createDsrHandler(pool, dependencies)(operation, request, ipPrefixHash);
+}
+/** The `/dsr` page's POST: the same logic as `handleDsr`, as an outcome. */
+export function runDsr(
+  operation: DsrOperation,
+  form: FormData,
+  ipPrefixHash: string,
+): Promise<DsrOutcome> {
+  const { database: pool, dependencies } = runtime();
+  return createDsrService(pool, dependencies)(operation, form, ipPrefixHash);
 }

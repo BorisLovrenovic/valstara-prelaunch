@@ -16,6 +16,15 @@ import type { createErasureService } from './service.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 
 export type DsrOperation = 'export' | 'delete';
+export type DsrOutcome =
+  | { readonly kind: 'accepted' }
+  | { readonly kind: 'pending' }
+  | { readonly kind: 'export_used' }
+  | { readonly kind: 'invalid' }
+  | { readonly kind: 'unavailable' }
+  | { readonly kind: 'rate_limited' }
+  | { readonly kind: 'challenge_failed' }
+  | { readonly kind: 'export'; readonly body: ReadableStream<Uint8Array> };
 const windowMs = 15 * 60_000;
 const headers = {
   'Cache-Control': 'private, no-store',
@@ -28,34 +37,39 @@ function response(message: string, status = 200, code?: string) {
     { status, headers },
   );
 }
-export function createDsrHandler(
+export interface DsrDependencies {
+  clock: () => Date;
+  challenge: (token: string) => Promise<TurnstileOutcome>;
+  erasure: Pick<ReturnType<typeof createErasureService>, 'request'>;
+  alerts: AlertTransport;
+}
+
+/**
+ * The DSR request and confirmation logic, yielding a typed outcome (E11.5-11t,
+ * founder decision 2026-11-12). The `/api/dsr/*` routes turn it into their
+ * unchanged JSON responses; `/dsr` renders it on the task card. Turnstile,
+ * token consumption, both rate limits, the bounded identical acknowledgement,
+ * the audit and the alerts all live here, so both callers share them.
+ */
+export function createDsrService(
   database: DatabasePool,
-  deps: {
-    clock: () => Date;
-    challenge: (token: string) => Promise<TurnstileOutcome>;
-    erasure: Pick<ReturnType<typeof createErasureService>, 'request'>;
-    alerts: AlertTransport;
-  },
+  deps: DsrDependencies,
 ) {
   return async (
     operation: DsrOperation,
-    request: Request,
+    form: FormData,
     ipHash: string,
-  ): Promise<Response> => {
-    const form = await request.formData().catch(() => new FormData());
+  ): Promise<DsrOutcome> => {
     const value = form.get('token');
     const token = typeof value === 'string' ? value : '';
     const now = deps.clock();
     if (!form.has('token')) {
       const challenge = form.get('turnstile_token');
-      if (typeof challenge !== 'string')
-        return response(dsrCopy.challengeFailed, 400, 'challenge_failed');
+      if (typeof challenge !== 'string') return { kind: 'challenge_failed' };
       const checked = await deps.challenge(challenge);
-      if (checked === 'rejected')
-        return response(dsrCopy.challengeFailed, 400, 'challenge_failed');
+      if (checked === 'rejected') return { kind: 'challenge_failed' };
       // A DSR request cannot silently flag an unknown person; timeout retries.
-      if (checked === 'unavailable')
-        return response(dsrCopy.unavailable, 503, 'unavailable');
+      if (checked === 'unavailable') return { kind: 'unavailable' };
       try {
         const email = normaliseEmail(String(form.get('email') ?? ''));
         if (
@@ -67,7 +81,7 @@ export function createDsrHandler(
             now,
           )) > 5
         )
-          return response(dsrCopy.rateLimited, 429, 'rate_limited');
+          return { kind: 'rate_limited' };
         const work = withTransaction(database, async (connection) => {
           const subject =
             email === null
@@ -113,9 +127,9 @@ export function createDsrHandler(
         await Promise.race([work, deadline]);
         await deadline;
         void work;
-        return response(dsrCopy.accepted);
+        return { kind: 'accepted' };
       } catch {
-        return response(dsrCopy.unavailable, 503, 'unavailable');
+        return { kind: 'unavailable' };
       }
     }
     const connection = await database.connect();
@@ -139,16 +153,16 @@ export function createDsrHandler(
         )) > 5
       ) {
         await connection.execute({ text: 'ROLLBACK' });
-        return response(dsrCopy.rateLimited, 429, 'rate_limited');
+        return { kind: 'rate_limited' };
       }
       if (consumed.outcome !== 'verified' || consumed.subscriberId === null) {
         await connection.execute({ text: 'COMMIT' });
         // Replay never repeats a write or returns another copy of the export.
         return operation === 'delete'
-          ? response(dsrCopy.pending)
+          ? { kind: 'pending' }
           : consumed.outcome === 'already'
-            ? response(dsrCopy.exportUsed)
-            : response(dsrCopy.invalid, 400, 'invalid_input');
+            ? { kind: 'export_used' }
+            : { kind: 'invalid' };
       }
       const id = consumed.subscriberId;
       // Independent rate transaction persists a rejected subject attempt, while
@@ -162,13 +176,13 @@ export function createDsrHandler(
         )) > 5
       ) {
         await connection.execute({ text: 'ROLLBACK' });
-        return response(dsrCopy.rateLimited, 429, 'rate_limited');
+        return { kind: 'rate_limited' };
       }
       if (operation === 'delete') {
         await deps.erasure.request(connection, id);
         await connection.execute({ text: 'COMMIT' });
         redactLeaderboardSubject(id);
-        return response(dsrCopy.pending);
+        return { kind: 'pending' };
       }
       await createAuditService(connection).record({
         action: 'dsr.requested',
@@ -215,18 +229,91 @@ export function createDsrHandler(
         },
       });
       streaming = true;
-      return new Response(stream, {
-        headers: {
-          ...headers,
-          'Content-Type': 'application/x-ndjson',
-          'Content-Disposition': 'attachment; filename="valstara-data.ndjson"',
-        },
-      });
+      return { kind: 'export', body: stream };
     } catch {
       await connection.execute({ text: 'ROLLBACK' });
-      return response(dsrCopy.unavailable, 503, 'unavailable');
+      return { kind: 'unavailable' };
     } finally {
       if (!streaming) connection.release();
     }
   };
+}
+
+/** The HTTP status each non-export outcome is served with, on both callers. */
+export const dsrOutcomeStatus = {
+  accepted: 200,
+  pending: 200,
+  export_used: 200,
+  invalid: 400,
+  unavailable: 503,
+  rate_limited: 429,
+  challenge_failed: 400,
+} as const satisfies Record<Exclude<DsrOutcome['kind'], 'export'>, number>;
+
+/** A confirmed export: the NDJSON stream as a download, on both callers. */
+export function dsrExportResponse(body: ReadableStream<Uint8Array>): Response {
+  return new Response(body, {
+    headers: {
+      ...headers,
+      'Content-Type': 'application/x-ndjson',
+      'Content-Disposition': 'attachment; filename="valstara-data.ndjson"',
+    },
+  });
+}
+
+/** The `/api/dsr/*` JSON response for an outcome, byte-identical to E9-05's. */
+export function dsrResponse(outcome: DsrOutcome): Response {
+  switch (outcome.kind) {
+    case 'export':
+      return dsrExportResponse(outcome.body);
+    case 'accepted':
+      return response(dsrCopy.accepted);
+    case 'pending':
+      return response(dsrCopy.pending);
+    case 'export_used':
+      return response(dsrCopy.exportUsed);
+    case 'invalid':
+      return response(
+        dsrCopy.invalid,
+        dsrOutcomeStatus.invalid,
+        'invalid_input',
+      );
+    case 'unavailable':
+      return response(
+        dsrCopy.unavailable,
+        dsrOutcomeStatus.unavailable,
+        'unavailable',
+      );
+    case 'rate_limited':
+      return response(
+        dsrCopy.rateLimited,
+        dsrOutcomeStatus.rate_limited,
+        'rate_limited',
+      );
+    case 'challenge_failed':
+      return response(
+        dsrCopy.challengeFailed,
+        dsrOutcomeStatus.challenge_failed,
+        'challenge_failed',
+      );
+  }
+}
+
+export function createDsrHandler(
+  database: DatabasePool,
+  deps: DsrDependencies,
+) {
+  const run = createDsrService(database, deps);
+  return async (
+    operation: DsrOperation,
+    request: Request,
+    ipHash: string,
+  ): Promise<Response> =>
+    dsrResponse(
+      await run(
+        operation,
+        await request.formData().catch(() => new FormData()),
+        ipHash,
+      ),
+    );
 }

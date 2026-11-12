@@ -18,9 +18,10 @@ export const prerender = true;
   <TaskCard
     heading={errorPagesCopy.serverError.heading}
     icon="alert"
+    tone="neutral"
     state="server-error"
+    line={errorPagesCopy.serverError.body}
   >
-    <p>{errorPagesCopy.serverError.body}</p>
     <div class="task-card__actions">
       <Button href="/">{errorPagesCopy.home}</Button>
       <Button href="/legit" variant="secondary">{errorPagesCopy.legit}</Button>

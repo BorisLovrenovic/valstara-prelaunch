@@ -1,0 +1,95 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import Icon, { type IconName } from '../components/icon.astro';
+
+// The task card's notice (E11.5-11t, the component library's notice on
+// Task.dc.html): an outcome or a state line with its icon, so it never relies
+// on colour alone. error has the 1.5px --error rule, success the success
+// check, info sits on --wash, and wait is the plain notice with the clock.
+// A page partial, like task-card.astro, not a primitive.
+type Props = HTMLAttributes<'div'> & {
+  tone: 'error' | 'success' | 'info' | 'wait';
+  message: string;
+  // An outcome is announced; the no-JavaScript notice is not.
+  live?: boolean;
+};
+
+const {
+  class: className,
+  tone,
+  message,
+  live = false,
+  ...attributes
+} = Astro.props;
+const icons: Record<Props['tone'], IconName> = {
+  error: 'alert-circle',
+  success: 'check-circle',
+  info: 'info',
+  wait: 'clock',
+};
+---
+
+<div
+  {...attributes}
+  class:list={['task-card__notice', className]}
+  data-tone={tone}
+>
+  <Icon name={icons[tone]} size="base" class="task-card__notice-icon" />
+  <p role={live ? 'status' : undefined}>{message}</p>
+</div>
+
+<style>
+  .task-card__notice {
+    box-sizing: border-box;
+    display: flex;
+    gap: var(--space-1-5);
+    align-items: flex-start;
+    margin-block-start: var(--space-3);
+    padding: var(--space-2);
+    color: var(--ink);
+    background-color: var(--surface);
+    border-radius: var(--radius-control);
+    box-shadow: var(--inset-line), var(--edge);
+  }
+
+  .task-card__notice p {
+    margin: 0;
+    color: var(--ink);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-1);
+    text-wrap: pretty;
+    overflow-wrap: anywhere;
+  }
+
+  .task-card__notice :global(.task-card__notice-icon) {
+    flex: none;
+    color: var(--ink-600);
+  }
+
+  .task-card__notice[data-tone='error'] {
+    box-shadow: var(--inset-error);
+  }
+
+  .task-card__notice[data-tone='error'] :global(.task-card__notice-icon) {
+    color: var(--error);
+  }
+
+  .task-card__notice[data-tone='success'] :global(.task-card__notice-icon) {
+    color: var(--success-icon);
+  }
+
+  .task-card__notice[data-tone='info'] {
+    background-color: var(--wash);
+    box-shadow: none;
+  }
+
+  /* Box shadows are dropped in forced-colours mode, so an outline draws the
+     notice's edge there. */
+  @media (forced-colors: active) {
+    .task-card__notice {
+      outline: var(--border-thin) solid currentColor;
+      outline-offset: calc(var(--border-thin) * -1);
+    }
+  }
+</style>

@@ -306,7 +306,13 @@ test('E11-05 generates the registered API inventory and rejects personal fields 
           entry.path.endsWith('.astro') && entry.methods.includes('POST'),
       )
       .map((entry) => entry.path),
-    ['giveaway/award.astro', 'me.astro', 'unsubscribe.astro', 'verify.astro'],
+    [
+      'dsr.astro',
+      'giveaway/award.astro',
+      'me.astro',
+      'unsubscribe.astro',
+      'verify.astro',
+    ],
   );
 });
 
