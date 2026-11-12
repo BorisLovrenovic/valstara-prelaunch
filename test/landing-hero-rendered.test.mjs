@@ -648,7 +648,7 @@ test('the small hero matches Phone.dc.html at 390, in both themes', async () => 
 // A stand-in for Cloudflare's api.js, served at its real URL, so the island's
 // own render call mounts it. Like the real widget with appearance:
 // 'interaction-only', it mounts a 0px child on the first keystroke and grows
-// to the drawn 300 × 65 only between its before- and after-interactive
+// to its drawn size (300 × 65, or 150 × 140 compact) only between its before- and after-interactive
 // callbacks.
 const turnstileStandIn = `
   globalThis.turnstile = {
@@ -657,9 +657,14 @@ const turnstileStandIn = `
       widget.style.cssText = 'width: 0; height: 0';
       container.append(widget);
       globalThis.turnstileStandIn = {
+        size: options.size,
         open() {
           options['before-interactive-callback']?.();
-          widget.style.cssText = 'width: 300px; height: 65px';
+          // Cloudflare's sizes: normal 300 × 65, compact 150 × 140.
+          widget.style.cssText =
+            options.size === 'compact'
+              ? 'width: 150px; height: 140px'
+              : 'width: 300px; height: 65px';
         },
         close() {
           widget.style.cssText = 'width: 0; height: 0';
@@ -727,6 +732,58 @@ test('the Turnstile slot sits 12px under the microline only while Cloudflare sho
       near(closed.facts - closed.micro, factsGap, `widget closed, ${label}`);
       await context.close();
     }
+  }
+});
+
+// E11.5-12: Cloudflare's normal widget is a fixed 300px wide. On a screen
+// too narrow for it beside the card's padding (320px), the island asks for
+// the compact widget, so the open check never overflows the page.
+test('the open Turnstile widget fits the form card at every design width', async () => {
+  for (const width of designWidths) {
+    const context = await browser.newContext({
+      viewport: { width, height: 900 },
+    });
+    await context.route('https://challenges.cloudflare.com/**', (route) =>
+      route.fulfill({ body: turnstileStandIn, contentType: 'text/javascript' }),
+    );
+    const page = await context.newPage();
+    await page.goto(browserOrigin);
+    await page.locator('#signup-email').fill('a');
+    await page.waitForFunction(() => globalThis.turnstileStandIn !== undefined);
+    await page.evaluate(() => globalThis.turnstileStandIn.open());
+    const fit = await page.evaluate(() => {
+      const { document } = globalThis;
+      const form = document.querySelector('#join form');
+      const widget = document.querySelector('[data-turnstile-container] > div');
+      const box = form.getBoundingClientRect();
+      const style = globalThis.getComputedStyle(form);
+      return {
+        size: globalThis.turnstileStandIn.size,
+        contentRight: box.right - Number.parseFloat(style.paddingRight),
+        widgetRight: widget.getBoundingClientRect().right,
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      };
+    });
+    assert.equal(
+      fit.size,
+      width < 390 ? 'compact' : 'normal',
+      `widget size at ${width}px`,
+    );
+    assert.ok(
+      fit.widgetRight <= fit.contentRight + 0.5,
+      `widget inside the form at ${width}px`,
+    );
+    assert.ok(
+      fit.scrollWidth <= fit.clientWidth,
+      `no horizontal overflow at ${width}px`,
+    );
+    assert.deepEqual(
+      await checkRegionLayout(page, ['#join']),
+      [],
+      `open-widget hero layout at ${width}px`,
+    );
+    await context.close();
   }
 });
 

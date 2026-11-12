@@ -1145,3 +1145,429 @@ test('signup and verification text clears AA contrast at rendered font sizes in 
     await context.close();
   }
 });
+
+// E11.5-12: the E11-03 keyboard-only journey re-run through the mobile sticky
+// bar. A keyboard user tabs past the hero, the bar appears, and one step back
+// (Shift+Tab) from the first control below the hero is the bar's Join button,
+// because the bar follows the hero form in the document. The signup is real:
+// the server validates the always-pass Turnstile token and writes the row.
+test('keyboard-only signup through the sticky bar exposes its error and reaches the confirmation', async () => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    reducedMotion: 'reduce',
+  });
+  await context.route('https://challenges.cloudflare.com/**', (route) =>
+    route.fulfill({ contentType: 'text/javascript', body: '' }),
+  );
+  await context.addInitScript(() => {
+    globalThis.turnstile = {
+      render(_element, options) {
+        globalThis.setTimeout(
+          () => options.callback('XXXX.DUMMY.TOKEN.XXXX'),
+          0,
+        );
+        return 'audit-widget';
+      },
+      reset() {},
+    };
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto(browserOrigin);
+    await page.evaluate(() =>
+      globalThis.customElements.whenDefined('valstara-signup-form'),
+    );
+    const focusState = () =>
+      page.evaluate(() => {
+        const { document } = globalThis;
+        const active = document.activeElement;
+        const bar = document.querySelector('[data-dock]');
+        const form = document.querySelector('valstara-signup-form form');
+        return {
+          id: active?.id ?? '',
+          inBar: bar.contains(active),
+          barShown: !bar.hidden,
+          belowHero:
+            active !== null &&
+            active !== document.body &&
+            !bar.contains(active) &&
+            (form.compareDocumentPosition(active) &
+              globalThis.Node.DOCUMENT_POSITION_FOLLOWING) !==
+              0,
+        };
+      });
+    // Tab forward until focus has carried the page past the hero form and
+    // the bar has appeared, giving the bar's visibility observer two frames
+    // after each step.
+    let state = await focusState();
+    for (
+      let step = 0;
+      step < 80 && !(state.belowHero && state.barShown);
+      step += 1
+    ) {
+      await page.keyboard.press('Tab');
+      await page.evaluate(
+        () =>
+          new Promise((resolve) =>
+            globalThis.requestAnimationFrame(() =>
+              globalThis.requestAnimationFrame(resolve),
+            ),
+          ),
+      );
+      state = await focusState();
+    }
+    assert.ok(
+      state.belowHero && state.barShown,
+      'tabbing past the hero form brings the bar in',
+    );
+    // One step back reaches the bar's Join button, the next its field.
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(
+      await page.evaluate(() =>
+        globalThis.document.activeElement?.hasAttribute('data-dock-submit'),
+      ),
+      true,
+      'Shift+Tab from below the hero reaches the bar',
+    );
+    await page.keyboard.press('Shift+Tab');
+    state = await focusState();
+    assert.deepEqual(
+      { id: state.id, inBar: state.inBar, barShown: state.barShown },
+      { id: 'signup-dock-email', inBar: true, barShown: true },
+    );
+
+    // Enter in the empty field submits, as in the hero form: the error is
+    // announced, linked to the field, and focus stays in the field.
+    await page.keyboard.press('Enter');
+    await page.locator('[data-dock-error]:not([hidden])').waitFor();
+    assert.equal(
+      await page.locator('[data-dock-error]').getAttribute('role'),
+      'alert',
+    );
+    assert.equal(
+      await page.locator('#signup-dock-email').getAttribute('aria-invalid'),
+      'true',
+    );
+    assert.ok(
+      (
+        await page
+          .locator('#signup-dock-email')
+          .getAttribute('aria-describedby')
+      )
+        .split(' ')
+        .includes('signup-dock-error'),
+    );
+    assert.equal(
+      await page.evaluate(() => globalThis.document.activeElement?.id),
+      'signup-dock-email',
+    );
+    assert.deepEqual(await axeViolations(page), []);
+
+    const email = `a11ydock${randomUUID().replaceAll('-', '')}@gmail.com`;
+    await page.keyboard.type(email);
+    // Join, by keyboard: Tab to the button and press Enter.
+    await page.keyboard.press('Tab');
+    assert.equal(
+      await page.evaluate(() =>
+        globalThis.document.activeElement?.hasAttribute('data-dock-submit'),
+      ),
+      true,
+    );
+    await page.keyboard.press('Enter');
+    await page.locator('[data-dock-confirmation]:not([hidden])').waitFor();
+    assert.equal(
+      await page.locator('[data-dock-confirmation]').getAttribute('role'),
+      'status',
+    );
+    assert.equal(
+      await page.evaluate(() =>
+        globalThis.document.activeElement?.hasAttribute('data-dock-close'),
+      ),
+      true,
+      'focus moves into the confirmation row',
+    );
+    assert.deepEqual(await axeViolations(page), []);
+    const stored = await databaseFixture.database.query(
+      'SELECT status FROM subscriber WHERE email_normalised = $1',
+      [email],
+    );
+    assert.deepEqual(
+      stored.rows.map(({ status }) => status),
+      ['pending'],
+    );
+    // Close, by keyboard: the bar goes and focus is not lost to the body.
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(
+      () => globalThis.document.querySelector('[data-dock]').hidden,
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+// E11.5-12: the E11-03 contrast check re-run at real sizes on the redesign's
+// own surfaces, the `midnight` bands (the guarantee band and the footer) and
+// the provider banners (hero strip and stack, catalogue, final call to
+// action). Every visible text run is read where it is painted: the colours
+// beneath its centre are composited from the browser's own stack at that
+// point, and a translucent text colour is composited over that background.
+// Colours are resolved through a canvas, so any CSS colour syntax reads.
+async function paintedTextContrast(page, scopes) {
+  return page.evaluate((selectors) => {
+    const { document } = globalThis;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const paint = canvas.getContext('2d', { willReadFrequently: true });
+    const rgba = (color) => {
+      paint.clearRect(0, 0, 1, 1);
+      paint.fillStyle = '#000';
+      paint.fillStyle = color;
+      paint.fillRect(0, 0, 1, 1);
+      const [red, green, blue, alpha] = paint.getImageData(0, 0, 1, 1).data;
+      // A fully transparent fill reads back as zero alpha.
+      return { red, green, blue, alpha: alpha / 255 };
+    };
+    const over = (top, under) => ({
+      red: top.red * top.alpha + under.red * (1 - top.alpha),
+      green: top.green * top.alpha + under.green * (1 - top.alpha),
+      blue: top.blue * top.alpha + under.blue * (1 - top.alpha),
+      alpha: 1,
+    });
+    const luminance = ({ red, green, blue }) => {
+      const channel = (value) => {
+        const unit = value / 255;
+        return unit <= 0.04045 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4;
+      };
+      return (
+        channel(red) * 0.2126 + channel(green) * 0.7152 + channel(blue) * 0.0722
+      );
+    };
+    const hidden = (element) => {
+      for (let node = element; node !== null; node = node.parentElement) {
+        const style = globalThis.getComputedStyle(node);
+        if (
+          style.clip !== 'auto' ||
+          style.clipPath.startsWith('inset(50%') ||
+          (node.getAttribute('aria-hidden') === 'true' && node.closest('svg'))
+        )
+          return true;
+      }
+      return false;
+    };
+    const results = [];
+    for (const scope of selectors) {
+      for (const [index, root] of [
+        ...document.querySelectorAll(scope),
+      ].entries()) {
+        const walker = document.createTreeWalker(
+          root,
+          globalThis.NodeFilter.SHOW_TEXT,
+        );
+        for (
+          let text = walker.nextNode();
+          text !== null;
+          text = walker.nextNode()
+        ) {
+          if (text.textContent.trim() === '') continue;
+          const element = text.parentElement;
+          if (
+            !element.checkVisibility({
+              opacityProperty: true,
+              visibilityProperty: true,
+            }) ||
+            hidden(element)
+          )
+            continue;
+          const range = document.createRange();
+          range.selectNodeContents(text);
+          const box = [...range.getClientRects()].find(
+            (rectangle) => rectangle.width > 1 && rectangle.height > 1,
+          );
+          if (box === undefined) continue;
+          const x = box.left + box.width / 2;
+          const y = box.top + box.height / 2;
+          if (
+            x < 0 ||
+            y < 0 ||
+            x >= globalThis.innerWidth ||
+            y >= globalThis.innerHeight
+          )
+            continue;
+          const stack = document.elementsFromPoint(x, y);
+          const start = stack.indexOf(element);
+          // Text a scrolling track clips away is not painted at this point;
+          // it is read when the track brings it into view.
+          if (start < 0) continue;
+          const layers = [];
+          let image = null;
+          for (const layer of stack.slice(start)) {
+            const style = globalThis.getComputedStyle(layer);
+            if (style.backgroundImage !== 'none') {
+              image = layer.className || layer.tagName;
+              break;
+            }
+            const fill = rgba(style.backgroundColor);
+            if (fill.alpha === 0) continue;
+            layers.push(fill);
+            if (fill.alpha === 1) break;
+          }
+          const style = globalThis.getComputedStyle(element);
+          const base = layers.at(-1);
+          const background =
+            base?.alpha === 1
+              ? layers
+                  .slice(0, -1)
+                  .reduceRight((under, top) => over(top, under), base)
+              : null;
+          const foreground = background && over(rgba(style.color), background);
+          const ratio =
+            background &&
+            (Math.max(luminance(foreground), luminance(background)) + 0.05) /
+              (Math.min(luminance(foreground), luminance(background)) + 0.05);
+          const size = Number.parseFloat(style.fontSize);
+          const weight = Number.parseInt(style.fontWeight, 10);
+          results.push({
+            root: index,
+            text: text.textContent.trim().slice(0, 40),
+            scope,
+            image,
+            ratio,
+            size,
+            weight,
+            minimum: size >= 24 || (size >= 18.66 && weight >= 700) ? 3 : 4.5,
+          });
+        }
+      }
+    }
+    return results;
+  }, scopes);
+}
+
+test('E11.5-12: text on midnight bands and provider banners clears AA contrast at rendered sizes in both themes', async () => {
+  const scopes = [
+    '.section--midnight',
+    'body > footer',
+    '[data-hero-banner]',
+    '[data-provider-banner]',
+    '[data-final-banner]',
+  ];
+  for (const colorScheme of themes) {
+    for (const width of [390, 1440]) {
+      const context = await browser.newContext({
+        viewport: { width, height: 900 },
+        colorScheme,
+        reducedMotion: 'reduce',
+      });
+      const page = await context.newPage();
+      try {
+        await page.goto(browserOrigin);
+        await page.evaluate(() => globalThis.document.fonts.ready);
+        const height = await page.evaluate(
+          () => globalThis.document.documentElement.scrollHeight,
+        );
+        // Text is read where it is on screen, one viewport at a time.
+        const read = new Map();
+        for (let y = 0; y < height; y += 600) {
+          await page.evaluate(
+            (top) => globalThis.scrollTo({ top, behavior: 'instant' }),
+            y,
+          );
+          await entranceEnded(page);
+          for (const result of await paintedTextContrast(page, scopes))
+            read.set(`${result.scope}#${result.root} ${result.text}`, result);
+          // A catalogue track that scrolls sideways is read across its
+          // whole width, so no banner is left unread off screen.
+          const tracks = await page.locator('.provider-rail__track').count();
+          for (let track = 0; track < tracks; track += 1) {
+            const steps = await page
+              .locator('.provider-rail__track')
+              .nth(track)
+              .evaluate((element) =>
+                Math.ceil(element.scrollWidth / element.clientWidth),
+              );
+            for (let step = 1; step < steps; step += 1) {
+              await page
+                .locator('.provider-rail__track')
+                .nth(track)
+                .evaluate((element, index) => {
+                  element.scrollLeft = index * element.clientWidth;
+                }, step);
+              for (const result of await paintedTextContrast(page, scopes))
+                read.set(
+                  `${result.scope}#${result.root} ${result.text}`,
+                  result,
+                );
+            }
+            await page
+              .locator('.provider-rail__track')
+              .nth(track)
+              .evaluate((element) => {
+                element.scrollLeft = 0;
+              });
+          }
+        }
+        const providers = await page
+          .locator('[data-provider-banner]')
+          .evaluateAll((banners) =>
+            banners.map((banner) => banner.dataset.providerBanner),
+          );
+        // Every catalogue banner's name was read where its logo does not
+        // already spell it.
+        const namedBanners = await page
+          .locator('[data-provider-banner] .provider-banner__name')
+          .evaluateAll((names) =>
+            names
+              .filter((name) => name.checkVisibility())
+              .map((name) => name.textContent.trim()),
+          );
+        const readCatalogue = new Set(
+          [...read.values()]
+            .filter((result) => result.scope === '[data-provider-banner]')
+            .map((result) => result.text),
+        );
+        for (const name of namedBanners)
+          assert.ok(
+            readCatalogue.has(name.slice(0, 40)),
+            `${colorScheme} ${width}px: ${name} banner read`,
+          );
+        assert.equal(providers.length, 34);
+        const where = `${colorScheme} ${width}px`;
+        const results = [...read.values()];
+        // The final call to action's banners are logo-only, with no text.
+        for (const scope of scopes.filter(
+          (candidate) => candidate !== '[data-final-banner]',
+        ))
+          assert.ok(
+            results.some((result) => result.scope === scope),
+            `${where}: ${scope} text was read`,
+          );
+        assert.deepEqual(
+          results.filter(
+            (result) => result.image !== null || result.ratio === null,
+          ),
+          [],
+          `${where}: every text run has a solid painted background`,
+        );
+        assert.deepEqual(
+          results
+            .filter((result) => result.ratio < result.minimum)
+            .map(
+              ({ scope, text, ratio, size, weight, minimum }) =>
+                `${scope} "${text}" ${ratio.toFixed(2)}:1 at ${size}px/${weight}, needs ${minimum}:1`,
+            ),
+          [],
+          where,
+        );
+        const lowest = results.reduce((low, result) =>
+          result.ratio < low.ratio ? result : low,
+        );
+        process.stdout.write(
+          `# ${where}: ${results.length} text runs, lowest ${lowest.ratio.toFixed(2)}:1 (${lowest.scope} "${lowest.text}")\n`,
+        );
+      } finally {
+        await context.close();
+      }
+    }
+  }
+});

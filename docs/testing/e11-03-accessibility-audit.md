@@ -33,3 +33,7 @@ To repeat the spoken check on a Linux desktop, start the local stack with `docke
 ## Finding and fix
 
 The signup island hid the focused submit control after an accepted response, leaving focus outside the completed interaction. Asynchronous form-level errors also left focus behind after the submit control was disabled. `src/islands/SignupForm.astro` now focuses the status or alert, each with `tabindex="-1"` so the normal Tab order is unchanged. The keyboard journey asserts both focus destinations. The success-focus assertion failed before the change and passed afterward.
+
+## Re-run on the final design (E11.5-12, 2026-11-12)
+
+The audit was re-run on the redesigned surfaces and recorded in [`e11-5-design-qa.md`](e11-5-design-qa.md#e11-03-accessibility-on-the-new-surfaces). Two checks were added to `test/accessibility.test.mjs`: a keyboard-only signup through the mobile sticky bar, and contrast at rendered sizes on the `midnight` bands and every provider banner, read where each text run is painted. The contrast check passes (lowest 4.61:1). The sticky-bar journey records finding A1, the bar's field and button are never reachable by keyboard, which is open for a founder decision. The spoken pass was repeated on the final design on 2026-11-13 with the same method, over the hero form and `/verify`; the sticky bar could not be reached to speak.

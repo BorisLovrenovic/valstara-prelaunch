@@ -337,6 +337,23 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     reset(widgetId?: string): void;
   }
 
+  // Cloudflare's normal widget is a fixed 300px wide, the size the hero
+  // design draws. Where the form's content box is narrower (the card on a
+  // 320px screen), the compact widget renders instead, as on the task pages,
+  // so the check never overflows the page (E11.5-12). The slot itself is
+  // hidden while empty, so the form is measured.
+  const turnstileNormalWidth = 300;
+  const turnstileSizeFor = (container: HTMLElement): 'normal' | 'compact' => {
+    const form = container.parentElement;
+    if (form === null) return 'compact';
+    const style = getComputedStyle(form);
+    const contentWidth =
+      form.clientWidth -
+      Number.parseFloat(style.paddingInlineStart) -
+      Number.parseFloat(style.paddingInlineEnd);
+    return contentWidth < turnstileNormalWidth ? 'compact' : 'normal';
+  };
+
   declare global {
     interface Window {
       turnstile?: TurnstileApi;
@@ -653,6 +670,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
           this.#widgetId = turnstile.render(container, {
             sitekey,
             appearance: 'interaction-only',
+            size: turnstileSizeFor(container),
             // The hidden widget still mounts a child, so the slot is marked
             // open only while Cloudflare shows it; the 12px gap under the
             // microline follows the mark (E11.5-11c).

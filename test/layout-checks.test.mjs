@@ -25,6 +25,7 @@ import {
   runContactSheetActions,
 } from '../scripts/design/contact-sheet.mjs';
 import { publishedPort, reserveListenPort } from './helpers/listen-port.mjs';
+import { sourcePagePaths } from './helpers/page-inventory.mjs';
 
 const execFileAsync = promisify(execFile);
 const container = `valstara-design-layout-${process.pid}`;
@@ -118,6 +119,39 @@ test('closed widths and themes, with the redesigned pages enforced', () => {
     '/404',
     '/500',
   ]);
+});
+
+// E11.5-12: the enforced set and the E11-05 rendered-page inventory, compared
+// both ways, so a page that is never checked and a check on a page that no
+// longer renders each fail.
+function enforcedSetDifference(enforced, inventory) {
+  return {
+    unchecked: inventory.filter((route) => !enforced.includes(route)),
+    unrendered: enforced.filter((route) => !inventory.includes(route)),
+  };
+}
+
+test('E11.5-12: the enforced layout-check set equals the E11-05 rendered-page inventory', async () => {
+  const { routes } = await sourcePagePaths();
+  assert.equal(new Set(enforcedPages).size, enforcedPages.length);
+  assert.deepEqual(enforcedSetDifference(enforcedPages, routes), {
+    unchecked: [],
+    unrendered: [],
+  });
+  assert.deepEqual([...enforcedPages].sort(), routes);
+  // Planted drift in either direction is reported, so the equality above
+  // cannot pass over a gap.
+  assert.deepEqual(
+    enforcedSetDifference(
+      enforcedPages.filter((route) => route !== '/dsr'),
+      routes,
+    ),
+    { unchecked: ['/dsr'], unrendered: [] },
+  );
+  assert.deepEqual(
+    enforcedSetDifference([...enforcedPages, '/retired'], routes),
+    { unchecked: [], unrendered: ['/retired'] },
+  );
 });
 
 test('a sound fixture passes every layout rule', async () => {

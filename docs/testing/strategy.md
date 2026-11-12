@@ -24,6 +24,13 @@ E11-03's keyboard journey, rendered contrast measurements, error-state checks
 and spoken screen-reader pass are recorded in
 [`e11-03-accessibility-audit.md`](e11-03-accessibility-audit.md).
 
+E11.5-12 re-runs the E11-03, E11-04, E11-05 and E11-07 audits on the final
+design and measures the landing page's performance
+(`test/e11-5-12-landing-performance.test.mjs`: zero layout shift and LCP within
+2.5 s at 390px with 4× CPU throttling). Its evidence, the full contact sheet's
+index and the founder's sign-off are recorded in
+[`e11-5-design-qa.md`](e11-5-design-qa.md).
+
 ## Coverage bars
 
 ≥80% changed code. **≥90% in `subscriber`, `verification`, `referral`, `giveaway`, `email`** — the five modules where a defect is either unrecoverable or discredits the campaign.
