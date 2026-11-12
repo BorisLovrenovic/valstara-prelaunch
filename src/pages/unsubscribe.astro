@@ -1,6 +1,6 @@
 ---
 import Button from '../components/button.astro';
-import type { IconName } from '../components/icon.astro';
+import Icon, { type IconName } from '../components/icon.astro';
 import TaskCard from '../layouts/task-card.astro';
 import { unsubscribeCopy } from '../copy/unsubscribe.ts';
 import { createAnalyticsService } from '../server/analytics/service.ts';
@@ -88,47 +88,78 @@ if (Astro.request.method === 'POST') {
     }
   }
 }
-// Each outcome renders as one task-card state with its icon (E11.5-10).
+// Each outcome renders as one task-card state with its tile (E11.5-10, final
+// design E11.5-11t, Task.dc.html frames 01 to 05). After a POST the line is the
+// outcome, and it fades in (founder decision 2026-11-12).
 const view: {
   state: string;
   icon: IconName;
+  tone: 'accent' | 'neutral' | 'success' | 'error';
   heading: string;
   body: string;
 } =
   outcome === 'accepted' || outcome === 'already'
-    ? { state: 'complete', icon: 'check', ...unsubscribeCopy.complete }
+    ? {
+        state: 'complete',
+        icon: 'check-circle',
+        tone: 'success',
+        ...unsubscribeCopy.complete,
+      }
     : outcome === 'unavailable'
-      ? { state: 'unavailable', icon: 'alert', ...unsubscribeCopy.unavailable }
+      ? {
+          state: 'unavailable',
+          icon: 'alert-circle',
+          tone: 'error',
+          ...unsubscribeCopy.unavailable,
+        }
       : outcome === 'rate_limited'
         ? {
             state: 'rate-limited',
             icon: 'clock',
+            tone: 'neutral',
             heading: unsubscribeCopy.rateLimitedHeading,
             body: unsubscribeCopy.rateLimited,
           }
         : outcome === 'invalid' || token === ''
-          ? { state: 'invalid', icon: 'alert', ...unsubscribeCopy.invalid }
-          : { state: 'confirm', icon: 'shield', ...unsubscribeCopy.confirm };
+          ? {
+              state: 'invalid',
+              icon: 'link',
+              tone: 'neutral',
+              ...unsubscribeCopy.invalid,
+            }
+          : {
+              state: 'confirm',
+              icon: 'mail',
+              tone: 'accent',
+              ...unsubscribeCopy.confirm,
+            };
 ---
 
 <BaseLayout
   title={unsubscribeCopy.meta.title}
   description={unsubscribeCopy.meta.description}
 >
-  <TaskCard heading={view.heading} icon={view.icon} state={view.state}>
-    <p>{view.body}</p>
+  <TaskCard
+    heading={view.heading}
+    icon={view.icon}
+    tone={view.tone}
+    state={view.state}
+    line={view.body}
+    outcome={Astro.request.method === 'POST'}
+  >
     {
       view.state === 'unavailable' ? (
-        <form method="post">
+        <form class="task-card__form" method="post">
           <input type="hidden" name="t" value={submittedToken} />
           <div class="task-card__actions">
             <Button type="submit" name="intent" value={submittedIntent}>
+              <Icon name="refresh" size="base" />
               {unsubscribeCopy.unavailable.retry}
             </Button>
           </div>
         </form>
       ) : view.state === 'confirm' ? (
-        <form method="post">
+        <form class="task-card__form" method="post">
           <input type="hidden" name="t" value={token} />
           <div class="task-card__actions">
             <Button type="submit" name="intent" value="message">

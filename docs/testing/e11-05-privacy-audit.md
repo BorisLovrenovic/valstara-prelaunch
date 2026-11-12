@@ -26,7 +26,7 @@ Mutation check: disabling signup's `turnstile.render()` branch after the fix mak
 
 ## Route response inventory
 
-`test/e11-05-route-shapes.test.mjs` generates its inventory from every `src/pages/api/**/*.ts` and `src/pages/**/*.astro` route and checks API exports and the four Astro POST handlers. It reconciles all five admin files and methods with the authenticated admin registry. For the public API files it inspects constructed JSON response fields against the closed safe set and rejects personal values in approved fields, including direct and aliased client addresses. For Astro routes it checks rendered expressions for personal values, including the raw client address. The DSR routes delegate to a purpose-bound, subject-scoped handler. Existing route and module tests exercise the success cases; this generated test is the addition/removal guard.
+`test/e11-05-route-shapes.test.mjs` generates its inventory from every `src/pages/api/**/*.ts` and `src/pages/**/*.astro` route and checks API exports and the five Astro POST handlers (`/dsr` joined them in E11.5-11t). It reconciles all five admin files and methods with the authenticated admin registry. For the public API files it inspects constructed JSON response fields against the closed safe set and rejects personal values in approved fields, including direct and aliased client addresses. For Astro routes it checks rendered expressions for personal values, including the raw client address. The DSR routes, and the `/dsr` page's own POST, delegate to a purpose-bound, subject-scoped handler; the page renders no submitted value. Existing route and module tests exercise the success cases; this generated test is the addition/removal guard.
 
 | Registered method | Response shape / boundary |
 |---|---|

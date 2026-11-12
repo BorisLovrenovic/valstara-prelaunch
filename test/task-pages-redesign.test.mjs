@@ -406,7 +406,10 @@ test('task pages, 404 and 500 render every state on the task card, with honest s
         200,
       );
       body = card(html, operation + '-request');
-      assert.match(body, new RegExp(`action="/api/dsr/${operation}"`, 'u'));
+      assert.match(
+        body,
+        new RegExp(`action="/dsr\\?operation=${operation}"`, 'u'),
+      );
       assert.match(body, /name="email"/u);
       assert.match(body, /class="cf-turnstile"/u);
       assert.match(body, /data-response-field-name="turnstile_token"/u);

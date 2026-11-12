@@ -71,3 +71,50 @@ export function confirmedAwardMessage(award: OwnAward): string {
       ? copy.replacement
       : copy.confirmed;
 }
+
+/**
+ * The final-design tile for each card state (E11.5-11t, Task.dc.html): the
+ * gift on the accent tile while the bearer has something to do, the check on
+ * a success tile once confirmed, and a neutral tile when the award is closed
+ * or the link is not available.
+ */
+export function awardTile(state: AwardCardState): {
+  readonly icon: 'gift' | 'check-circle' | 'link';
+  readonly tone: 'accent' | 'neutral' | 'success';
+} {
+  switch (state) {
+    case 'checks':
+    case 'substitution':
+      return { icon: 'gift', tone: 'accent' };
+    case 'confirmed':
+      return { icon: 'check-circle', tone: 'success' };
+    case 'unavailable':
+      return { icon: 'link', tone: 'neutral' };
+    case 'replaced':
+    case 'exhausted':
+      return { icon: 'gift', tone: 'neutral' };
+  }
+}
+
+/**
+ * The final-design notice kind for a POST outcome (E11.5-11t): an error rule
+ * for a failed check or input, the clock for a wait, an info notice when
+ * responses are paused or the award has passed on, success when recorded.
+ */
+export function awardNoticeTone(
+  outcome: Exclude<AwardPageOutcome, null>,
+): 'error' | 'wait' | 'info' | 'success' {
+  switch (outcome) {
+    case 'challenge_failed':
+    case 'invalid_input':
+      return 'error';
+    case 'rate_limited':
+      return 'wait';
+    case 'disabled':
+    case 'unavailable':
+    case 'replaced':
+      return 'info';
+    default:
+      return 'success';
+  }
+}

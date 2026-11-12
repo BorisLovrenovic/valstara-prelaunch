@@ -3,231 +3,527 @@ import type { HTMLAttributes } from 'astro/types';
 import Card from '../components/card.astro';
 import Container from '../components/container.astro';
 import Icon, { type IconName } from '../components/icon.astro';
+import TaskNotice from './task-notice.astro';
 
-// The one task-card pattern (E11.5-10): a left-aligned card in the container
-// with a state icon, the page's only H1 and, in the default slot, one line,
-// any form and one primary action. Zero JavaScript.
+// The one task-card pattern (E11.5-10, final design E11.5-11t, Task.dc.html):
+// a left-aligned card on the container grid with the state tile beside the
+// page's only H1, then one line, an outcome notice, and in the default slot
+// any form, the actions and a link. Zero JavaScript.
+//
+// Motion (E11.5-11t). The card enters at first paint, rising only, so every
+// word and control is at full opacity from the first frame: the tile and H1
+// (index 0), the line (1), then the form or actions (2). On a page the server
+// renders after a POST (`outcome`), the outcome notice, or the line where
+// there is no notice, fades in instead, opacity only, over --duration-base
+// (founder decision 2026-11-12). With reduced motion nothing moves.
 type Props = HTMLAttributes<'article'> & {
   heading: string;
   icon: IconName;
   state: string;
+  tone?: 'accent' | 'neutral' | 'success' | 'error';
+  line?: string | null;
+  notice?: {
+    readonly tone: 'error' | 'success' | 'info' | 'wait';
+    readonly message: string;
+  } | null;
+  outcome?: boolean;
 };
 
-const { class: className, heading, icon, state, ...attributes } = Astro.props;
+const {
+  class: className,
+  heading,
+  icon,
+  state,
+  tone = 'accent',
+  line = null,
+  notice = null,
+  outcome = false,
+  ...attributes
+} = Astro.props;
+const lineIsOutcome = outcome && notice === null;
 ---
 
-<Container class="task-container">
-  <Card
-    {...attributes}
-    class:list={['task-card', className]}
-    data-task-state={state}
-  >
-    <div class="task-card__heading">
-      <Icon name={icon} size="lg" class="task-card__icon" />
-      <h1>{heading}</h1>
+<div class="task-page">
+  <Container class="task-container">
+    <div class="task">
+      <Card
+        {...attributes}
+        class:list={['task-card', className]}
+        aria-labelledby="task-card-title"
+        data-task-state={state}
+      >
+        <div
+          class="task-card__head"
+          data-enter="shift"
+          style="--enter-index: 0"
+        >
+          <span
+            class:list={['task-card__tile', `task-card__tile--${tone}`]}
+            aria-hidden="true"
+          >
+            <Icon name={icon} size="md" />
+          </span>
+          <h1 id="task-card-title">{heading}</h1>
+        </div>
+        {
+          line === null ? null : lineIsOutcome ? (
+            <p class="task-card__line" data-task-outcome>
+              {line}
+            </p>
+          ) : (
+            <p
+              class="task-card__line"
+              data-enter="shift"
+              style="--enter-index: 1"
+            >
+              {line}
+            </p>
+          )
+        }
+        {
+          notice === null ? null : outcome ? (
+            <TaskNotice
+              tone={notice.tone}
+              message={notice.message}
+              live
+              data-task-outcome
+            />
+          ) : (
+            <TaskNotice
+              tone={notice.tone}
+              message={notice.message}
+              live
+              data-enter="shift"
+              style="--enter-index: 1"
+            />
+          )
+        }
+        <div
+          class="task-card__body"
+          data-enter="shift"
+          style="--enter-index: 2"
+        >
+          <slot />
+        </div>
+      </Card>
     </div>
-    <slot />
-  </Card>
-</Container>
+  </Container>
+</div>
 
 <style>
-  :global(.task-container) {
-    padding-block: var(--section-gap);
+  /* The page takes back the shell's main padding, as /verify and /me do, so
+     the card sits on the canvas's gutters 32, 48 or 64px below the header
+     (.page-main), and the footer follows at the section gap. */
+  .task-page {
+    margin-inline: calc(-1 * var(--space-3));
+    margin-block-start: calc(-1 * var(--space-4));
   }
 
-  /* Left-aligned in the container and capped at the reading measure, so a
-     short task never stretches into one wide line (§7.3). */
-  .task-card {
+  .task-page :global(.task-container) {
+    padding-block-start: var(--space-4);
+  }
+
+  /* Full width below 48rem, at most 40rem to 64rem, columns 1–7 from 64rem. */
+  .task {
     display: grid;
-    gap: var(--space-3);
-    max-inline-size: var(--measure);
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .task-card__heading {
+  .task > :global(.task-card) {
+    box-sizing: border-box;
+    min-inline-size: 0;
+    padding: var(--space-3);
+  }
+
+  @media (min-width: 48rem) {
+    .task-page :global(.task-container) {
+      padding-block-start: var(--space-6);
+    }
+
+    .task > :global(.task-card) {
+      max-inline-size: calc(var(--space-10) * 8);
+      padding: var(--space-5);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .task-page :global(.task-container) {
+      padding-block-start: var(--space-8);
+    }
+
+    .task {
+      grid-template-columns: repeat(var(--grid-columns-wide), minmax(0, 1fr));
+      column-gap: var(--grid-gap-wide);
+    }
+
+    .task > :global(.task-card) {
+      grid-column: 1 / span 7;
+      max-inline-size: none;
+    }
+  }
+
+  /* The head: the 48px tile 16px before the 32/40 bold H1, which sits 4px
+     down so its first line centres on the tile. */
+  .task-card__head {
     display: flex;
     gap: var(--space-2);
     align-items: flex-start;
   }
 
-  .task-card__heading :global(.task-card__icon) {
+  .task-card__tile {
+    display: inline-flex;
     flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
     color: var(--ink);
+    background-color: var(--coral-tint);
+    border-radius: var(--radius-control);
   }
 
-  .task-card h1 {
+  .task-card__tile--neutral {
+    background-color: var(--wash);
+  }
+
+  .task-card__tile--success {
+    color: var(--success-icon);
+    background-color: var(--success-tint);
+  }
+
+  /* --error-text is --error in light and ink in dark, as the canvas's error
+     tile is. */
+  .task-card__tile--error {
+    color: var(--error-text);
+    background-color: var(--error-tint);
+  }
+
+  .task-card__head h1 {
+    min-inline-size: 0;
     margin: 0;
+    padding-block-start: var(--space-0-5);
+    color: var(--ink);
     font-size: var(--step-5);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-bold);
     line-height: var(--leading-5);
     letter-spacing: var(--tracking-tight);
+    text-wrap: balance;
     overflow-wrap: anywhere;
   }
 
-  .task-card :global(h2) {
+  .task-card__line {
     margin: 0;
-    font-size: var(--step-4);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-4);
-  }
-
-  .task-card :global(p) {
-    margin: 0;
+    margin-block-start: var(--space-2);
     color: var(--ink-600);
     font-size: var(--step-2);
     line-height: var(--leading-2);
+    text-wrap: pretty;
     overflow-wrap: anywhere;
   }
 
-  .task-card :global(form),
-  .task-card :global(fieldset) {
-    display: grid;
+  /* The slot's parts: a form 24px below, its fields 24px apart, the actions
+     32px below the last field, and a link 16px below the actions. */
+  .task-card__body :global(p) {
+    margin: 0;
+  }
+
+  .task :global(.task-card__form) {
+    display: flex;
+    flex-direction: column;
     gap: var(--space-3);
+    min-inline-size: 0;
+    margin: 0;
+    margin-block-start: var(--space-3);
+  }
+
+  .task :global(.task-card__form h2) {
+    margin: 0;
+    color: var(--ink);
+    font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-3);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .task :global(.task-card__form h2 + p) {
+    margin-block-start: calc(-1 * var(--space-1-5));
+    color: var(--ink-600);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    text-wrap: pretty;
+  }
+
+  /* Below 48rem the actions stack, each the full width of the card; from
+     48rem they sit in a row that wraps. */
+  .task :global(.task-card__actions) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    align-items: stretch;
+    margin-block-start: var(--space-4);
+  }
+
+  .task :global(.task-card__form > .task-card__actions) {
+    margin-block-start: calc(var(--space-4) - var(--space-3));
+  }
+
+  /* Every action is the 48px control height at every width (the canvas's
+     task-card rule), the secondary included. */
+  .task :global(.task-card__actions .button) {
+    min-block-size: var(--control-height);
+    max-inline-size: 100%;
+    white-space: normal;
+  }
+
+  /* The wrapping secondary (the cash decline): left-aligned text that may
+     run to several lines, at least the button height (the canvas's
+     .btn--wrap). */
+  .task :global(.task-card__actions .task-card__wrap) {
+    padding-block: var(--space-1-5);
+    padding-inline: var(--space-3);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    text-align: start;
+    justify-content: flex-start;
+  }
+
+  .task :global(.task-card__actions .button) {
+    inline-size: 100%;
+  }
+
+  @media (min-width: 48rem) {
+    .task :global(.task-card__actions) {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .task :global(.task-card__actions .button) {
+      inline-size: auto;
+    }
+  }
+
+  .task :global(.task-card__link) {
+    align-self: flex-start;
+    min-block-size: var(--tap-min);
+    margin-block-start: var(--space-2);
+  }
+
+  .task-card__body {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .task-card__body > :global(.task-card__link) {
+    align-self: flex-start;
+  }
+
+  /* A checkbox (the canvas's .check): a 20px drawn box with a transparent
+     --tap-min native input centred over it, the label 12px beside it. */
+  .task :global(.task-card__choice) {
+    position: relative;
+    display: flex;
+    gap: var(--space-1-5);
+    align-items: flex-start;
+    margin-block-start: var(--space-0-5);
+    /* The 44px target hangs 12px below a one-line label. The label's box
+       takes it in with padding, and an equal negative margin keeps every
+       position as drawn. */
+    margin-block-end: var(--check-target-offset);
+    padding-block-end: calc(-1 * var(--check-target-offset));
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    cursor: pointer;
+  }
+
+  /* The label text (the canvas's .check__text) may shrink and wrap. */
+  .task :global(.task-card__choice > span:last-child) {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+  }
+
+  .task :global(.task-card__choice--strong) {
+    color: var(--ink);
+    font-weight: var(--weight-medium);
+  }
+
+  .task :global(.task-card__control) {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    inline-size: var(--check-size);
+    block-size: var(--check-size);
+  }
+
+  .task :global(.task-card__control input),
+  .task :global(.task-card__option input) {
+    position: absolute;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .task :global(.task-card__control input) {
+    inset: var(--check-target-offset);
+    inline-size: var(--tap-min);
+    block-size: var(--tap-min);
+  }
+
+  .task :global(.task-card__box) {
+    box-sizing: border-box;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--check-size);
+    block-size: var(--check-size);
+    color: transparent;
+    background-color: var(--surface);
+    border: var(--border-check) solid var(--field);
+    border-radius: var(--radius-check);
+    pointer-events: none;
+    transition-property: background-color, border-color, box-shadow;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .task :global(.task-card__box .icon) {
+    inline-size: var(--space-1-75);
+    block-size: var(--space-1-75);
+  }
+
+  .task :global(.task-card__box .icon path) {
+    stroke-width: var(--stroke-heavy);
+  }
+
+  .task :global(.task-card__choice:hover .task-card__box),
+  .task :global(.task-card__option:hover .task-card__box) {
+    border-color: var(--ink);
+  }
+
+  .task :global(input:checked + .task-card__box) {
+    color: var(--paper);
+    background-color: var(--ink);
+    border-color: var(--ink);
+  }
+
+  .task :global(input:focus-visible + .task-card__box) {
+    border-color: var(--coral);
+    outline: var(--focus-width) solid transparent;
+    box-shadow: var(--ring-focus);
+  }
+
+  .task :global(.task-card__optional) {
+    display: inline-flex;
+    margin-inline-end: var(--space-0-75);
+    padding-inline: var(--space-1);
+    font-size: var(--step-0);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-0);
+    vertical-align: var(--border-thin);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--inset-line);
+  }
+
+  /* A replacement product (the canvas's .option): a row on surface with a
+     1px line, its whole area the native checkbox's target; ticked, a 1.5px
+     ink rule on --well. */
+  .task :global(.task-card__options) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
     min-inline-size: 0;
     margin: 0;
     padding: 0;
     border: 0;
   }
 
-  .task-card :global(legend) {
-    margin-block-end: var(--space-2);
-    padding: 0;
-  }
-
-  /* One primary action first, then any secondary one, wrapping on small
-     widths; every action keeps its --tap-min size from the Button. */
-  .task-card :global(.task-card__actions) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    align-items: center;
-  }
-
-  .task-card :global(.task-card__actions .button) {
-    max-inline-size: 100%;
-    text-align: start;
-  }
-
-  /* A checkbox choice: the native input is a transparent --tap-min target
-     over a drawn box, so a long label can wrap beside it (as /verify's chips
-     do). Checked shows the check icon, never colour alone. */
-  .task-card :global(.task-card__choice) {
+  .task :global(.task-card__option) {
     position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: var(--space-1-5);
+    align-items: center;
+    padding: var(--space-1-5) var(--space-2);
+    color: var(--ink);
+    background-color: var(--surface);
+    border-radius: var(--radius-control);
+    box-shadow: var(--inset-line);
+    cursor: pointer;
+    transition-property: background-color, box-shadow;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .task :global(.task-card__option input) {
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+  }
+
+  .task :global(.task-card__option:has(input:checked)) {
+    background-color: var(--well);
+    box-shadow: var(--inset-selected);
+  }
+
+  .task :global(.task-card__option-name) {
+    min-inline-size: 0;
+    font-size: var(--step-2);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-2);
+    overflow-wrap: anywhere;
+  }
+
+  /* The substitution deadline (the canvas's .deadline): the 16px clock
+     beside the 14/20 ink-600 line. */
+  .task :global(.task-card__deadline) {
     display: flex;
     gap: var(--space-1);
-    align-items: center;
-    min-block-size: var(--tap-min);
-    color: var(--ink);
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
-    cursor: pointer;
-  }
-
-  .task-card :global(.task-card__choice input) {
-    position: absolute;
-    inset-block-start: 0;
-    inset-inline-start: 0;
-    inline-size: var(--tap-min);
-    block-size: var(--tap-min);
-    margin: 0;
-    opacity: 0;
-    cursor: pointer;
-  }
-
-  .task-card :global(.task-card__box) {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    inline-size: var(--tap-min);
-    block-size: var(--tap-min);
-  }
-
-  .task-card :global(.task-card__mark) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    inline-size: var(--icon-md);
-    block-size: var(--icon-md);
-    color: transparent;
-    background-color: var(--surface);
-    border: medium solid var(--ink-600);
-    border-radius: var(--radius-control);
-  }
-
-  .task-card
-    :global(
-      .task-card__choice input:checked + .task-card__box .task-card__mark
-    ) {
-    color: var(--midnight);
-    background-color: var(--coral);
-    border-color: var(--coral);
-  }
-
-  .task-card
-    :global(
-      .task-card__choice input:focus-visible + .task-card__box .task-card__mark
-    ) {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
-  }
-
-  /* An outcome notice carries its icon and text, so it never relies on
-     colour alone. The neutral and success notices have a 1px line, and the
-     error notice a 1.5px --error rule. The edges are box shadows, as drawn, so
-     forced-colours mode draws an outline in their place. */
-  .task-card :global(.task-card__notice) {
-    box-sizing: border-box;
-    display: flex;
-    gap: var(--space-1-5);
     align-items: flex-start;
-    padding: var(--space-2);
-    color: var(--ink);
-    background-color: var(--surface);
-    border-radius: var(--radius-control);
-    box-shadow: var(--inset-line), var(--edge);
-  }
-
-  @media (forced-colors: active) {
-    .task-card :global(.task-card__notice) {
-      outline: var(--border-thin) solid currentColor;
-      outline-offset: calc(var(--border-thin) * -1);
-    }
-  }
-
-  .task-card :global(.task-card__notice .icon) {
     color: var(--ink-600);
-  }
-
-  .task-card :global(.task-card__notice[data-tone='error']) {
-    box-shadow: var(--inset-error);
-  }
-
-  .task-card :global(.task-card__notice[data-tone='error'] .icon) {
-    color: var(--error);
-  }
-
-  .task-card :global(.task-card__notice[data-tone='success'] .icon) {
-    color: var(--success-icon);
-  }
-
-  .task-card :global(.task-card__notice p) {
-    color: var(--ink);
     font-size: var(--step-1);
-    font-weight: var(--weight-medium);
     line-height: var(--leading-1);
   }
 
-  .task-card :global(.task-card__link) {
-    display: inline-flex;
-    align-items: center;
-    min-block-size: var(--tap-min);
-    color: var(--ink);
-    font-size: var(--step-2);
-    line-height: var(--leading-2);
+  .task :global(.task-card__deadline .icon) {
+    flex: none;
+    margin-block-start: calc((var(--leading-1) - var(--icon-sm)) / 2);
   }
 
-  .task-card :global(.task-card__link:focus-visible) {
-    outline: medium solid var(--coral);
-    outline-offset: var(--space-1);
+  /* The country and skill-answer fields keep the canvas's control widths. */
+  .task :global(.task-card__country) {
+    max-inline-size: calc(var(--space-8) * 4);
+  }
+
+  .task :global(.task-card__short) {
+    max-inline-size: calc(var(--space-10) * 1.5);
+    font-family: var(--font-mono);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* The outcome of a POST fades in, opacity only, from its first style. A
+       starting style applies once, when the element first renders, so the
+       fade never runs again later in the page's life. */
+    .task :global([data-task-outcome]) {
+      transition-property: opacity;
+      transition-duration: var(--duration-base);
+      transition-timing-function: var(--ease-out);
+    }
+
+    @starting-style {
+      .task :global([data-task-outcome]) {
+        opacity: 0;
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .task :global(.task-card__box),
+    .task :global(.task-card__option) {
+      transition-property: none;
+    }
   }
 </style>

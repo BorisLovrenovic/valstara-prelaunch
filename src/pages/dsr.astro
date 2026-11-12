@@ -1,32 +1,81 @@
 ---
 import Button from '../components/button.astro';
 import Field from '../components/field.astro';
+import Icon from '../components/icon.astro';
 import Input from '../components/input.astro';
+import TextLink from '../components/text-link.astro';
 import TaskCard from '../layouts/task-card.astro';
+import TaskNotice from '../layouts/task-notice.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { dsrCopy } from '../copy/dsr.ts';
 import { getConfig } from '../server/config.ts';
+import { dsrExportResponse, dsrOutcomeStatus } from '../server/dsr/http.ts';
+import {
+  dsrPageView,
+  type DsrPageOutcome,
+} from '../server/dsr/page-presentation.ts';
+import { runDsr } from '../server/dsr/runtime.ts';
+import { hashedIpPrefix } from '../server/ratelimit/ip-prefix.ts';
+
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 Astro.response.headers.set('Referrer-Policy', 'no-referrer');
 const operation =
   Astro.url.searchParams.get('operation') === 'delete' ? 'delete' : 'export';
 const token = Astro.url.searchParams.get('t');
-const copy = dsrCopy[operation];
+let outcome: DsrPageOutcome | null = null;
+
+// /dsr handles its own POST (E11.5-11t, founder decision 2026-11-12): the same
+// DSR logic as /api/dsr/*, so Turnstile, token consumption, both rate limits,
+// the bounded identical acknowledgement, the audit and the alerts are shared.
+// The outcome renders on the card with its status; a confirmed export is the
+// same NDJSON download. Nothing submitted is rendered back.
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData().catch(() => new FormData());
+  const ipPrefixHash =
+    hashedIpPrefix(Astro.clientAddress, getConfig().ipPrefixPepper) ?? '';
+  let result: Awaited<ReturnType<typeof runDsr>>;
+  try {
+    result = await runDsr(operation, form, ipPrefixHash);
+  } catch {
+    result = { kind: 'unavailable' };
+  }
+  if (result.kind === 'export') return dsrExportResponse(result.body);
+  outcome = result.kind;
+  Astro.response.status = dsrOutcomeStatus[outcome];
+}
+const view = dsrPageView(operation, token !== null, outcome);
+const action = `/dsr?operation=${operation}`;
 ---
 
 <BaseLayout title={dsrCopy.title} description={dsrCopy.description}>
   <TaskCard
-    heading={copy.heading}
-    icon="shield"
-    state={`${operation}-${token !== null ? 'confirm' : 'request'}`}
+    heading={view.heading}
+    icon={view.icon}
+    tone={view.tone}
+    state={view.state}
+    line={view.line}
+    notice={view.notice}
+    outcome={outcome !== null}
   >
-    <p>{copy.body}</p>
-    <form method="post" action={`/api/dsr/${operation}`}>
-      {
-        token !== null ? (
+    {
+      view.form === 'confirm' && token !== null ? (
+        <form class="task-card__form" method="post" action={action}>
           <input type="hidden" name="token" value={token} />
-        ) : (
-          <>
+          <div class="task-card__actions">
+            <Button type="submit">
+              {operation === 'export' ? (
+                <Icon name="download" size="base" />
+              ) : null}
+              {dsrCopy[operation].button}
+            </Button>
+          </div>
+        </form>
+      ) : view.form === 'request' ? (
+        <>
+          <noscript>
+            <TaskNotice tone="info" message={dsrCopy.noJavaScript} />
+          </noscript>
+          <form class="task-card__form" method="post" action={action}>
             <Field controlId="dsr-email" label={dsrCopy.email}>
               <Input
                 id="dsr-email"
@@ -42,28 +91,29 @@ const copy = dsrCopy[operation];
               data-size="compact"
               data-response-field-name="turnstile_token"
             />
-            <noscript>
-              <p>{dsrCopy.noJavaScript}</p>
-            </noscript>
-          </>
-        )
-      }
-      <div class="task-card__actions">
-        <Button type="submit"
-          >{token !== null ? copy.button : dsrCopy.request}</Button
-        >
-      </div>
-    </form>
-    <a class="task-card__link" href="/privacy">{dsrCopy.privacy}</a>
+            <div class="task-card__actions">
+              <Button type="submit">{dsrCopy.request}</Button>
+            </div>
+          </form>
+        </>
+      ) : null
+    }
     {
-      token === null && (
+      view.privacyLink ? (
+        <TextLink class="task-card__link" href="/privacy" arrow>
+          {dsrCopy.privacy}
+        </TextLink>
+      ) : null
+    }
+    {
+      view.form === 'request' ? (
         <script
           is:inline
           src="https://challenges.cloudflare.com/turnstile/v0/api.js"
           async
           defer
         />
-      )
+      ) : null
     }
   </TaskCard>
 </BaseLayout>

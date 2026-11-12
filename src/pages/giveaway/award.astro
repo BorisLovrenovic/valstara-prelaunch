@@ -4,7 +4,9 @@ import Field from '../../components/field.astro';
 import Icon from '../../components/icon.astro';
 import Input from '../../components/input.astro';
 import TaskCard from '../../layouts/task-card.astro';
+import TaskNotice from '../../layouts/task-notice.astro';
 import { giveawayAwardCopy as copy } from '../../copy/giveaway-award.ts';
+import { primitivesCopy } from '../../copy/primitives.ts';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getConfig } from '../../server/config.ts';
 import { createPool } from '../../server/db/pool.ts';
@@ -13,6 +15,8 @@ import { createAwardService } from '../../server/giveaway/award.ts';
 import {
   awardCardState,
   awardNotice,
+  awardNoticeTone,
+  awardTile,
   confirmedAwardMessage,
   type AwardPageOutcome,
 } from '../../server/giveaway/award-presentation.ts';
@@ -25,6 +29,14 @@ const config = getConfig();
 const token = Astro.url.searchParams.get('t') ?? '';
 const awardId = Astro.url.searchParams.get('award') ?? '';
 let outcome: AwardPageOutcome = null;
+let submittedStep: 'checks' | 'substitution' | null = null;
+// The bearer's own answers on the checks step, kept when it is shown again.
+let submittedChecks = {
+  country: '',
+  ageConfirmed: false,
+  skillAnswer: '',
+  publicityPermission: false,
+};
 let ownAward = null as Awaited<
   ReturnType<ReturnType<typeof createAwardService>['ownAward']>
 >;
@@ -51,6 +63,7 @@ if (Astro.request.method === 'POST') {
       const ipPrefixHash =
         hashedIpPrefix(Astro.clientAddress, config.ipPrefixPepper) ?? '';
       if (form.get('step') === 'substitution') {
+        submittedStep = 'substitution';
         const choice = form.get('choice');
         outcome =
           choice === 'decline' || choice === 'replacement'
@@ -68,8 +81,15 @@ if (Astro.request.method === 'POST') {
               })
             : 'invalid_input';
       } else if (form.get('step') === 'checks') {
+        submittedStep = 'checks';
         const country = form.get('country');
         const skillAnswer = form.get('skill_answer');
+        submittedChecks = {
+          country: typeof country === 'string' ? country : '',
+          ageConfirmed: form.get('age_confirmed') === 'yes',
+          skillAnswer: typeof skillAnswer === 'string' ? skillAnswer : '',
+          publicityPermission: form.get('publicity_permission') === 'yes',
+        };
         outcome =
           typeof country === 'string' && typeof skillAnswer === 'string'
             ? await service.submitChecks({
@@ -109,130 +129,183 @@ if (token !== '' && awardId !== '') {
   }
 }
 
-const notice = awardNotice(outcome);
+// The checks step's invalid_input is the country field's error, under the
+// country input, with the bearer's answers kept (founder decision 2026-11-12):
+// a malformed or missing country is its only honest source. Every other
+// outcome is the card's notice.
+const countryError =
+  outcome === 'invalid_input' && submittedStep === 'checks'
+    ? copy.invalidInput
+    : undefined;
+const outcomeNotice = countryError === undefined ? awardNotice(outcome) : null;
 const card = awardCardState(ownAward);
+const tile = awardTile(card.state);
 const challengeActive =
   card.state === 'checks' || card.state === 'substitution';
+const keptChecks =
+  submittedStep === 'checks' && card.state === 'checks'
+    ? submittedChecks
+    : null;
 ---
 
 <BaseLayout title={copy.meta.title} description={copy.meta.description}>
-  <TaskCard heading={copy.heading} icon={card.icon} state={card.state}>
-    {
-      notice ? (
-        <div class="task-card__notice" data-tone={notice.tone}>
-          <Icon name={notice.icon} size="base" />
-          <p role="status">{notice.message}</p>
-        </div>
-      ) : null
-    }
+  <TaskCard
+    heading={copy.heading}
+    icon={tile.icon}
+    tone={tile.tone}
+    state={card.state}
+    notice={outcome !== null && outcomeNotice !== null
+      ? { tone: awardNoticeTone(outcome), message: outcomeNotice.message }
+      : null}
+    outcome={Astro.request.method === 'POST'}
+  >
     {
       ownAward === null ? (
-        <p>{copy.unavailable}</p>
+        <TaskNotice tone="info" message={copy.unavailable} />
       ) : ownAward.state === 'replaced' ? (
-        <p>{copy.replaced}</p>
+        <TaskNotice tone="info" message={copy.replaced} />
       ) : card.state === 'checks' ? (
-        <form method="post">
-          <input name="step" type="hidden" value="checks" />
-          <h2>{copy.checks.heading}</h2>
-          <Field controlId="award-country" label={copy.checks.country}>
-            <Input
-              id="award-country"
-              name="country"
-              pattern="[A-Za-z]{2}"
-              required
-              maxlength="2"
-            />
-          </Field>
-          <label class="task-card__choice">
-            <input name="age_confirmed" type="checkbox" value="yes" />
-            <span class="task-card__box" aria-hidden="true">
-              <span class="task-card__mark">
-                <Icon name="check" size="sm" />
-              </span>
-            </span>
-            <span>{copy.checks.age}</span>
-          </label>
-          <Field controlId="award-skill" label={copy.checks.skill}>
-            <Input id="award-skill" name="skill_answer" inputmode="numeric" />
-          </Field>
-          <label class="task-card__choice">
-            <input name="publicity_permission" type="checkbox" value="yes" />
-            <span class="task-card__box" aria-hidden="true">
-              <span class="task-card__mark">
-                <Icon name="check" size="sm" />
-              </span>
-            </span>
-            <span>{copy.checks.publicity}</span>
-          </label>
-          <div
-            class="cf-turnstile"
-            data-sitekey={config.turnstileSiteKey}
-            data-size="compact"
-            data-response-field-name="turnstile_token"
-          />
+        <>
           <noscript>
-            <p>{copy.javaScriptRequired}</p>
+            <TaskNotice tone="info" message={copy.javaScriptRequired} />
           </noscript>
-          <div class="task-card__actions">
-            <Button type="submit">{copy.checks.submit}</Button>
-          </div>
-        </form>
-      ) : card.state === 'substitution' ? (
-        <form method="post">
-          <input name="step" type="hidden" value="substitution" />
-          <h2>{copy.substitution.heading}</h2>
-          <p>{copy.substitution.body}</p>
-          {ownAward.substitutionDeadline ? (
-            <div class="task-card__notice">
-              <Icon name="clock" size="base" />
-              <p>{copy.substitution.deadline(ownAward.substitutionDeadline)}</p>
-            </div>
-          ) : null}
-          <fieldset>
-            {ownAward.replacements.map((product) => (
-              <label class="task-card__choice">
-                <input name="product" type="checkbox" value={product.id} />
+          <form class="task-card__form" method="post">
+            <input name="step" type="hidden" value="checks" />
+            <h2>{copy.checks.heading}</h2>
+            <Field
+              controlId="award-country"
+              label={copy.checks.country}
+              error={countryError}
+              errorId={
+                countryError === undefined ? undefined : 'award-country-error'
+              }
+            >
+              <Input
+                id="award-country"
+                class="task-card__country"
+                name="country"
+                pattern="[A-Za-z]{2}"
+                required
+                maxlength="2"
+                value={keptChecks?.country}
+                invalid={countryError !== undefined}
+                aria-describedby={
+                  countryError === undefined ? undefined : 'award-country-error'
+                }
+              />
+            </Field>
+            <label class="task-card__choice task-card__choice--strong">
+              <span class="task-card__control">
+                <input
+                  name="age_confirmed"
+                  type="checkbox"
+                  value="yes"
+                  checked={keptChecks?.ageConfirmed === true}
+                />
                 <span class="task-card__box" aria-hidden="true">
-                  <span class="task-card__mark">
+                  <Icon name="check" size="sm" />
+                </span>
+              </span>
+              <span>{copy.checks.age}</span>
+            </label>
+            <Field controlId="award-skill" label={copy.checks.skill}>
+              <Input
+                id="award-skill"
+                class="task-card__short"
+                name="skill_answer"
+                inputmode="numeric"
+                value={keptChecks?.skillAnswer}
+              />
+            </Field>
+            <label class="task-card__choice">
+              <span class="task-card__control">
+                <input
+                  name="publicity_permission"
+                  type="checkbox"
+                  value="yes"
+                  checked={keptChecks?.publicityPermission === true}
+                />
+                <span class="task-card__box" aria-hidden="true">
+                  <Icon name="check" size="sm" />
+                </span>
+              </span>
+              <span>
+                <span class="task-card__optional">
+                  {primitivesCopy.optional}
+                </span>
+                {copy.checks.publicity}
+              </span>
+            </label>
+            <div
+              class="cf-turnstile"
+              data-sitekey={config.turnstileSiteKey}
+              data-size="compact"
+              data-response-field-name="turnstile_token"
+            />
+            <div class="task-card__actions">
+              <Button type="submit">{copy.checks.submit}</Button>
+            </div>
+          </form>
+        </>
+      ) : card.state === 'substitution' ? (
+        <>
+          <noscript>
+            <TaskNotice tone="info" message={copy.javaScriptRequired} />
+          </noscript>
+          <form class="task-card__form" method="post">
+            <input name="step" type="hidden" value="substitution" />
+            <h2>{copy.substitution.heading}</h2>
+            <p>{copy.substitution.body}</p>
+            <fieldset class="task-card__options">
+              {ownAward.replacements.map((product) => (
+                <label class="task-card__option">
+                  <input name="product" type="checkbox" value={product.id} />
+                  <span class="task-card__box" aria-hidden="true">
                     <Icon name="check" size="sm" />
                   </span>
-                </span>
+                  <span class="task-card__option-name">
+                    {copy.substitution.product(
+                      product.name,
+                      product.retailValueEurCents,
+                    )}
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            {ownAward.substitutionDeadline ? (
+              <p class="task-card__deadline">
+                <Icon name="clock" size="sm" />
                 <span>
-                  {copy.substitution.product(
-                    product.name,
-                    product.retailValueEurCents,
-                  )}
+                  {copy.substitution.deadline(ownAward.substitutionDeadline)}
                 </span>
-              </label>
-            ))}
-          </fieldset>
-          <div
-            class="cf-turnstile"
-            data-sitekey={config.turnstileSiteKey}
-            data-size="compact"
-            data-response-field-name="turnstile_token"
-          />
-          <noscript>
-            <p>{copy.javaScriptRequired}</p>
-          </noscript>
-          <div class="task-card__actions">
-            <Button name="choice" type="submit" value="replacement">
-              {copy.substitution.replacement}
-            </Button>
-            <Button
-              name="choice"
-              type="submit"
-              value="decline"
-              variant="secondary"
-            >
-              {copy.substitution.decline}
-            </Button>
-          </div>
-        </form>
+              </p>
+            ) : null}
+            <div
+              class="cf-turnstile"
+              data-sitekey={config.turnstileSiteKey}
+              data-size="compact"
+              data-response-field-name="turnstile_token"
+            />
+            <div class="task-card__actions">
+              <Button name="choice" type="submit" value="replacement">
+                {copy.substitution.replacement}
+              </Button>
+              <Button
+                class="task-card__wrap"
+                name="choice"
+                type="submit"
+                value="decline"
+                variant="secondary"
+              >
+                {copy.substitution.decline}
+              </Button>
+            </div>
+          </form>
+        </>
       ) : card.state === 'confirmed' ? (
-        <p>{confirmedAwardMessage(ownAward)}</p>
+        <TaskNotice tone="success" message={confirmedAwardMessage(ownAward)} />
       ) : (
-        <p>{copy.exhausted}</p>
+        <TaskNotice tone="info" message={copy.exhausted} />
       )
     }
     {

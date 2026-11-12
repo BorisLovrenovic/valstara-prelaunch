@@ -17,10 +17,11 @@ export const prerender = true;
   <meta slot="head" name="robots" content="noindex" />
   <TaskCard
     heading={errorPagesCopy.notFound.heading}
-    icon="link"
+    icon="search-check"
+    tone="neutral"
     state="not-found"
+    line={errorPagesCopy.notFound.body}
   >
-    <p>{errorPagesCopy.notFound.body}</p>
     <div class="task-card__actions">
       <Button href="/">{errorPagesCopy.home}</Button>
       <Button href="/legit" variant="secondary">{errorPagesCopy.legit}</Button>

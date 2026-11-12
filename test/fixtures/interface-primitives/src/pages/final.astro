@@ -7,6 +7,7 @@ import Icon from '../../../../../src/components/icon.astro';
 import Section from '../../../../../src/components/section.astro';
 import TextLink from '../../../../../src/components/text-link.astro';
 import TaskCard from '../../../../../src/layouts/task-card.astro';
+import TaskNotice from '../../../../../src/layouts/task-notice.astro';
 import '../../../../../src/styles/tokens.css';
 
 const added = ['copy', 'download', 'erase', 'history', 'list', 'x'] as const;
@@ -84,18 +85,18 @@ const sizes = ['sm', 'base', 'md'] as const;
         </p>
       </Section>
       <TaskCard heading="Notices" icon="shield" state="fixture">
-        <div class="task-card__notice" id="notice-neutral">
-          <Icon name="clock" size="base" />
-          <p>Choose by the deadline.</p>
-        </div>
-        <div class="task-card__notice" id="notice-error" data-tone="error">
-          <Icon name="alert" size="base" />
-          <p role="alert">That did not work.</p>
-        </div>
-        <div class="task-card__notice" id="notice-success" data-tone="success">
-          <Icon name="check" size="base" />
-          <p role="status">Saved.</p>
-        </div>
+        <TaskNotice
+          id="notice-neutral"
+          tone="wait"
+          message="Choose by the deadline."
+        />
+        <TaskNotice
+          id="notice-error"
+          tone="error"
+          message="That did not work."
+          live
+        />
+        <TaskNotice id="notice-success" tone="success" message="Saved." live />
       </TaskCard>
     </main>
   </body>
