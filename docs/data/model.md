@@ -284,6 +284,10 @@ E6-06 also records `consent.marketing_withdrawn` or `subscriber.unsubscribed` wi
 
 One row per scheduled purge job. `job_key` text primary key with a finite CHECK over `ip_prefix_retention` (the fraud IP-prefix retention job), `rate_limit_retention`, `verification_token_retention` (verification and status tokens), and `leaderboard_snapshot_purge`. `last_started_at` · nullable `last_finished_at` · nullable `last_succeeded_at` · nullable `last_outcome` (`succeeded` or `failed`) · `rows_purged` integer at least zero · nullable sanitized `last_error_code`. No personal data. Each job upserts at start and finish; a record-write failure cannot fail the purge. The application role has SELECT, INSERT and UPDATE, never DELETE. Health treats a missing success as stale and a daily job's last success as stale only after 48 hours. The clock is injected. The subscriber expiry sweep changes status and is not a purge job.
 
+## `maintenance_heartbeat`
+
+One row per maintenance-worker loop (QA gate 7, G7-1-I2; founder decision 2026-11-13 on E10-05). `loop_key` text primary key with a finite CHECK over `scheduler_cycle` (the hourly scheduler cycle) and `email_dispatch` (the one-minute email dispatch pass) · nullable `last_beat_at` · nullable `stale_alerted_at`. No personal data. The worker upserts its loop's row after each completed pass, setting `last_beat_at` and clearing `stale_alerted_at`; an older beat never overwrites a newer one, and a failed write is logged as a sanitized code and never fails the pass. The app's watchdog stamps `stale_alerted_at` when it sends the one P1 for a stale episode, so repeated passes and app restarts send no second alert; it inserts a row with a NULL `last_beat_at` only for a loop that has never beaten past the start-up grace. The application role has SELECT, INSERT and UPDATE, never DELETE. The clock is injected.
+
 ## `migration_ledger`
 
 `filename` pk · `applied_at` · `checksum` · `applied_by_release`. **A checksum mismatch on an already-applied migration aborts the deploy** — an edited migration is a defect, not a difference to tolerate.

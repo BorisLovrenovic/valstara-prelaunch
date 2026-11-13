@@ -208,7 +208,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      56,
+      57,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -219,7 +219,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
           ORDER BY table_name
         `,
       },
-      34,
+      35,
     );
     const giveawayRulesVersionColumn = await fixture.database.readOne<{
       data_type: string;
@@ -291,6 +291,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0054-referral-attribution-health.sql',
       '0055-purge-job-run.sql',
       '0056-purge-job-run-success-shape.sql',
+      '0057-maintenance-heartbeat.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -352,6 +353,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0054-referral-attribution-health.sql',
         '0055-purge-job-run.sql',
         '0056-purge-job-run-success-shape.sql',
+        '0057-maintenance-heartbeat.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -385,6 +387,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'giveaway_entry',
         'leaderboard_served_snapshot',
         'leaderboard_snapshot',
+        'maintenance_heartbeat',
         'migration_ledger',
         'milestone_award',
         'purge_job_run',
@@ -496,10 +499,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          56,
+          57,
         );
 
-        assert.equal(appliedCount, 56);
+        assert.equal(appliedCount, 57);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -559,6 +562,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0054-referral-attribution-health.sql',
             '0055-purge-job-run.sql',
             '0056-purge-job-run-success-shape.sql',
+            '0057-maintenance-heartbeat.sql',
           ],
         );
       } finally {

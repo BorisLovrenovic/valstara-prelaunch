@@ -662,6 +662,80 @@ try {
     };
   });
 
+  await time('drill11_maintenance_heartbeat', async () => {
+    // Pause the deployed worker: a hung process cannot report itself, so the
+    // app's watchdog must raise exactly one P1 once the dispatch loop's beat
+    // is older than twice its one-minute interval, and stay quiet while the
+    // episode lasts. Unpausing lets the overdue pass run; its beat clears the
+    // episode (QA gate 7, G7-1-I2).
+    const stale = (sent) =>
+      sent.filter(
+        (alert) =>
+          alert.event === 'maintenance_heartbeat_stale' &&
+          alert.severity === 'P1',
+      );
+    await waitLong(
+      async () =>
+        (
+          await sql(
+            `SELECT 1 FROM maintenance_heartbeat WHERE loop_key='email_dispatch' AND stale_alerted_at IS NULL AND last_beat_at > now() - interval '90 seconds'`,
+          )
+        )[0],
+      'a fresh dispatch heartbeat before the pause',
+      120_000,
+    );
+    const baseline = (await alerts()).length;
+    assert.equal((await maintenanceContainer()).running, true);
+    await compose('pause', 'maintenance');
+    const pausedAt = startedAt();
+    const raised = await waitLong(
+      async () => {
+        const sent = stale((await alerts()).slice(baseline));
+        return sent.length > 0 ? sent : null;
+      },
+      'the stale-heartbeat P1',
+      300_000,
+    );
+    // The last beat landed up to one dispatch interval before the pause, so
+    // the alert's own age, not the time since the pause, must exceed twice
+    // the interval (asserted below).
+    const alertAfterMs = Math.round(startedAt() - pausedAt);
+    // Two more watchdog passes: still exactly one alert for the episode.
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 65_000));
+    const episode = stale((await alerts()).slice(baseline));
+    assert.equal(episode.length, 1, JSON.stringify(episode));
+    assert.deepEqual(Object.keys(episode[0].detail).sort(), [
+      'age_seconds',
+      'loop_key',
+    ]);
+    assert.equal(episode[0].detail.loop_key, 'email_dispatch');
+    assert.ok(episode[0].detail.age_seconds > 120);
+    assert.equal(raised.length, 1);
+    await compose('unpause', 'maintenance');
+    const unpausedAt = startedAt();
+    const cleared = await waitLong(
+      async () =>
+        (
+          await sql(
+            `SELECT last_beat_at FROM maintenance_heartbeat WHERE loop_key='email_dispatch' AND stale_alerted_at IS NULL`,
+          )
+        )[0],
+      'a fresh beat clearing the episode',
+      120_000,
+    );
+    const clearedAfterUnpauseMs = Math.round(startedAt() - unpausedAt);
+    assert.ok(cleared.last_beat_at);
+    assert.equal((await maintenanceContainer()).restarts, 0);
+    assert.equal(stale((await alerts()).slice(baseline)).length, 1);
+    return {
+      via: 'maintenance container',
+      p1Alerts: 1,
+      alertAfterPauseMs: alertAfterMs,
+      clearedAfterUnpauseMs,
+      detailKeys: ['age_seconds', 'loop_key'],
+    };
+  });
+
   const result = {
     ticket: 'E11-02',
     stack: 'isolated local production Compose with provider fault injection',

@@ -106,12 +106,13 @@ test('every production source entry point loads only files the runtime image cop
   ]);
   const copies = runtimeCopies(dockerfile);
   const entries = sourceEntryPoints(compose, dockerfile, runbook);
-  // The app's config check, the migration runner, the maintenance worker and
-  // the runbook's flag CLI.
+  // The app's config check, the migration runner, the maintenance worker, its
+  // heartbeat health check (G7-1-I2) and the runbook's flag CLI.
   assert.deepEqual(entries, [
     'src/server/config.ts',
     'src/server/db/run-migrations.ts',
     'src/server/flags/cli.ts',
+    'src/server/subscriber/heartbeat-check.ts',
     'src/server/subscriber/run-maintenance.ts',
   ]);
 

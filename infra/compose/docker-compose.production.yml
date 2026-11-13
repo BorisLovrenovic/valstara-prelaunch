@@ -161,8 +161,11 @@ services:
         condition: service_completed_successfully
     volumes:
       - ${SEED_TEST_SECRETS_HOST_DIR:-/var/lib/valstara/seed-secrets}:/run/seed-secrets:ro
+    # Healthy while the worker's heartbeat file is under two minutes old (QA
+    # gate 7, G7-1-I2). Compose does not restart an unhealthy container: the
+    # app's stale-heartbeat P1 is the recovery signal.
     healthcheck:
-      test: ['CMD', 'node', '-e', 'process.kill(1, 0)']
+      test: ['CMD', 'node', './src/server/subscriber/heartbeat-check.ts']
       interval: 5s
       timeout: 3s
       retries: 12

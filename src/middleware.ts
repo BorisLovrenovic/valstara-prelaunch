@@ -5,6 +5,7 @@ import { createAdminAuthenticator } from './server/admin-auth/authenticate.ts';
 import { createAdminAuthMiddleware } from './server/admin-auth/middleware.ts';
 import { serveRender } from './server/cache/render-runtime.ts';
 import { getConfig } from './server/config.ts';
+import { ensureMaintenanceWatchdog } from './server/subscriber/heartbeat-runtime.ts';
 
 let middleware: ReturnType<typeof createAdminAuthMiddleware> | undefined;
 
@@ -19,6 +20,7 @@ function configuredMiddleware(): ReturnType<typeof createAdminAuthMiddleware> {
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  if (!context.isPrerendered) ensureMaintenanceWatchdog();
   const method = context.request.method;
   const staticPath = context.url.pathname.replace(/\/$/u, '');
   if (

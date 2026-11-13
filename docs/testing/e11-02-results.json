@@ -4,20 +4,20 @@
   "image": "valstara-chaos:e11-02",
   "drills": {
     "drill1_postgres_mid_signup": {
-      "elapsedMs": 7179,
+      "elapsedMs": 6967,
       "response": 503,
       "insertReached": true,
       "partialRows": 0
     },
     "drill2_resend_revoked": {
-      "elapsedMs": 63766,
+      "elapsedMs": 62689,
       "via": "maintenance container",
       "committedRows": 1,
       "attempts": 2,
       "queuedAfterRecovery": 0
     },
     "drill3_turnstile": {
-      "elapsedMs": 1600,
+      "elapsedMs": 1599,
       "invalidRows": 0,
       "replayRows": 0,
       "strictAccepted": 2,
@@ -27,16 +27,16 @@
       "restored": true
     },
     "drill4_snapshot_job_stopped": {
-      "elapsedMs": 306004,
+      "elapsedMs": 305732,
       "via": "maintenance container",
-      "snapshotId": "bd6122e1-a044-4598-9ddd-f8ae8ae7403e",
-      "asOf": "2026-11-13T15:26:05.150Z",
-      "stoppedForMs": 301228,
+      "snapshotId": "f3e46a28-2fcb-4714-a0cd-a797fc1d7b85",
+      "asOf": "2026-11-13T18:13:01.836Z",
+      "stoppedForMs": 301188,
       "staleServed": true,
       "refreshedAfterRestart": true
     },
     "drill5_counter_repair": {
-      "elapsedMs": 1152,
+      "elapsedMs": 1930,
       "via": "maintenance container",
       "corrected": 1,
       "restoredCount": 1,
@@ -44,18 +44,29 @@
       "auditRows": 1
     },
     "drill6_leaderboard_kill_switch": {
-      "elapsedMs": 7318,
-      "removalMs": 1047,
+      "elapsedMs": 10619,
+      "removalMs": 4413,
       "restored": true,
       "deploys": 0
     },
     "drill8_replays": {
-      "elapsedMs": 827,
+      "elapsedMs": 783,
       "verificationReplay": "success",
       "verificationEffectsUnchanged": true,
       "turnstileReplay": "rejected",
       "webhookEvents": 1,
       "suppressionRows": 1
+    },
+    "drill11_maintenance_heartbeat": {
+      "elapsedMs": 179294,
+      "via": "maintenance container",
+      "p1Alerts": 1,
+      "alertAfterPauseMs": 112341,
+      "clearedAfterUnpauseMs": 1006,
+      "detailKeys": [
+        "age_seconds",
+        "loop_key"
+      ]
     }
   },
   "deferredToE1206": [

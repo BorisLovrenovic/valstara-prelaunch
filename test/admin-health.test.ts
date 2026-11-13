@@ -96,6 +96,18 @@ function fixtureSources(fixedClock: () => Date) {
         last_error_code: null,
       },
     ],
+    heartbeats: async () => [
+      {
+        loop_key: 'email_dispatch' as const,
+        last_beat_at: new Date(at.getTime() - 90_000),
+        stale_alerted_at: null,
+      },
+      {
+        loop_key: 'scheduler_cycle' as const,
+        last_beat_at: new Date(at.getTime() - 3 * 60 * 60 * 1_000),
+        stale_alerted_at: new Date(at.getTime() - 60_000),
+      },
+    ],
   };
 }
 
@@ -108,6 +120,7 @@ test('health view includes every named metric and projects away IDs, secrets and
       'attribution',
       'domainAuthentication',
       'emailQueue',
+      'maintenanceHeartbeat',
       'measuredAt',
       'openFlags',
       'purges',
@@ -132,6 +145,22 @@ test('health view includes every named metric and projects away IDs, secrets and
   assert.equal(health.purges[0]?.rowsPurged, 6);
   assert.equal(health.purges[0]?.stale, false);
   assert.ok(health.purges.slice(1).every((job) => job.stale));
+  // The maintenance heartbeat (G7-1-I2): each loop's last beat, age and
+  // stale state, with no alert bookkeeping.
+  assert.deepEqual(health.maintenanceHeartbeat, [
+    {
+      loopKey: 'scheduler_cycle',
+      lastBeatAt: new Date(at.getTime() - 3 * 60 * 60 * 1_000),
+      ageSeconds: 3 * 60 * 60,
+      stale: true,
+    },
+    {
+      loopKey: 'email_dispatch',
+      lastBeatAt: new Date(at.getTime() - 90_000),
+      ageSeconds: 90,
+      stale: false,
+    },
+  ]);
   assert.doesNotMatch(
     JSON.stringify(health),
     /203\.0\.113\.47|raw-secret-token|ABCDEFGHJKMN|43f31509-8942-4a26-8771-91d77c4c897f|"subscriberId"|"referralCode"|"token"|"rawIp"/u,
@@ -171,6 +200,7 @@ test('health view includes every named metric and projects away IDs, secrets and
     /203\.0\.113\.47|raw-secret-token|ABCDEFGHJKMN|43f31509-8942-4a26-8771-91d77c4c897f|"subscriberId"|"referralCode"|"token"|"rawIp"/u,
   );
   assert.equal(JSON.parse(body).purges.length, 4);
+  assert.equal(JSON.parse(body).maintenanceHeartbeat.length, 2);
 });
 
 test('production health sources read the local database and show never-run purges as stale', async () => {
@@ -286,6 +316,13 @@ test('production health sources read the local database and show never-run purge
     assert.equal(health.quota.providers.length, 2);
     assert.equal(health.purges.length, 4);
     assert.ok(health.purges.every((job) => job.stale));
+    assert.deepEqual(
+      health.maintenanceHeartbeat.map((loop) => [loop.loopKey, loop.stale]),
+      [
+        ['scheduler_cycle', true],
+        ['email_dispatch', true],
+      ],
+    );
     assert.equal(health.openFlags, 1);
   } finally {
     await app?.close();

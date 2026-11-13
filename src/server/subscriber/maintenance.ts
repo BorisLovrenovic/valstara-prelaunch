@@ -6,7 +6,7 @@ import type { FlagService } from '../flags/types.ts';
 import { createReferralAttributionMaintenanceJob } from '../referral/attribution-maintenance.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 
-const HOUR_MS = 60 * 60 * 1_000;
+import { maintenanceLoopIntervalMs } from './heartbeat-file.ts';
 
 export const verificationMaintenanceBatchLimit = 1_000;
 
@@ -59,6 +59,8 @@ export interface VerificationMaintenanceJobs {
 export interface VerificationMaintenanceDependencies {
   readonly clock?: () => Date;
   readonly reportFailure?: (job: MaintenanceJobName) => Promise<void> | void;
+  /** Called after each completed cycle: the worker's heartbeat (G7-1-I2). */
+  readonly onCycleComplete?: () => Promise<void>;
   readonly sleep?: (
     milliseconds: number,
     signal?: AbortSignal,
@@ -285,9 +287,14 @@ export function createVerificationMaintenanceScheduler(
     async run(cycles = Number.POSITIVE_INFINITY, signal?: AbortSignal) {
       for (let cycle = 0; cycle < cycles && !signal?.aborted; cycle += 1) {
         await runCycle();
+        try {
+          await dependencies.onCycleComplete?.();
+        } catch {
+          // A heartbeat failure never fails the cycle.
+        }
         if (cycle + 1 < cycles && !signal?.aborted) {
           try {
-            await sleep(HOUR_MS, signal);
+            await sleep(maintenanceLoopIntervalMs.scheduler_cycle, signal);
           } catch (error) {
             if (
               !signal?.aborted ||

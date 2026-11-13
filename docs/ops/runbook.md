@@ -160,6 +160,26 @@ buckets (seven days) independently.
 
 ---
 
+## "The maintenance worker is stale"
+
+A P1 `maintenance_heartbeat_stale` alert carries only `loop_key` and
+`age_seconds`. It means the maintenance worker has not completed a pass of
+that loop for over twice its interval: two minutes for `email_dispatch`, two
+hours for `scheduler_cycle`. While the worker is down, verification mail,
+reminders, snapshots, purges and erasures wait, and **both silent-failure
+guards stop**. The app's watchdog sends one alert per episode; a second will
+not come while it lasts.
+
+1. Check the container: `docker compose -f infra/compose/docker-compose.production.yml ps maintenance`. An `unhealthy` status means its heartbeat file is over two minutes old. Compose does not restart an unhealthy container, so this alert is the signal to act.
+2. Read its recent log for a sanitized error code: `docker compose -f infra/compose/docker-compose.production.yml logs --tail 100 maintenance`.
+3. Restart it: `docker compose -f infra/compose/docker-compose.production.yml restart maintenance`.
+4. Confirm recovery in `GET /api/admin/health`: `maintenanceHeartbeat` shows both loops with `stale: false` once each has beaten again. The scheduler cycle beats at the end of its first cycle after the restart. If the database itself is down, the worker cannot beat; follow "The site is up but signups fail".
+
+Every job reads durable rows, so the work catches up when the worker runs
+again: late, never lost.
+
+---
+
 ## "We need to stop everything"
 
 In order: `signup.enabled` off → the form shows an honest paused message. `giveaway.open` off → no further accrual. `email.broadcast` off → no further sends. **None of these needs a deploy**, and each takes effect within the flag TTL. The site keeps serving its trust and legal pages, which is the state you want to be in while deciding what happened.

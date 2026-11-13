@@ -96,7 +96,9 @@ for about six seconds, past its three-second timeout.
 
 Three production services run TypeScript source under native Node rather than
 the built bundle: the app's boot check (`src/server/config.ts`), the migration
-runner and the maintenance worker (`src/server/subscriber/run-maintenance.ts`).
+runner and the maintenance worker (`src/server/subscriber/run-maintenance.ts`),
+whose Compose health check also runs from source
+(`src/server/subscriber/heartbeat-check.ts`, QA gate 7, G7-1-I2).
 The runtime stage therefore copies every `src/server` module those entry points
 load. `test/production-image-entry-closure.test.mjs` walks each entry point's
 import closure and fails when a module it loads is not copied; that gap once
@@ -107,9 +109,10 @@ The workflow builds the image into the runner's Docker first and **smoke-starts
 its maintenance worker before anything is pushed**:
 `infra/compose/assert-maintenance-start.mjs <image>` starts PostgreSQL, the
 migration gate and the maintenance service from the production Compose file
-with placeholder configuration, and fails unless the worker is still running,
-unrestarted, after a 20-second settle window with no module or configuration
-error in its log. Only then does the same build push the SHA tag. Run it
+with placeholder configuration, waits for its health check (a heartbeat file
+the worker touches after each completed pass), and fails unless the worker is
+still running, unrestarted, after a 20-second settle window with no module or
+configuration error in its log. Only then does the same build push the SHA tag. Run it
 locally against any built image:
 
 ```sh
