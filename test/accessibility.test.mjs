@@ -9,6 +9,7 @@ import test, { after, before } from 'node:test';
 
 import axe from 'axe-core';
 import { providerShowcaseCopy } from '../src/copy/provider-showcase.ts';
+import { signupFormCopy } from '../src/copy/signup.ts';
 import { chromium } from 'playwright';
 import { Pool } from 'pg';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
@@ -1151,6 +1152,64 @@ test('signup and verification text clears AA contrast at rendered font sizes in 
 // (Shift+Tab) from the first control below the hero is the bar's Join button,
 // because the bar follows the hero form in the document. The signup is real:
 // the server validates the always-pass Turnstile token and writes the row.
+// E11.5-12 (finding A1): the bar's keyboard stop exists only where the bar
+// can open. At 48rem and up, and without JavaScript, Tab from the hero
+// form's last control leaves the island.
+test('the sticky bar is never a tab stop at 48rem and up, or without JavaScript', async () => {
+  for (const [width, javaScriptEnabled] of [
+    [768, true],
+    [1440, true],
+    [390, false],
+  ]) {
+    const context = await browser.newContext({
+      viewport: { width, height: 900 },
+      reducedMotion: 'reduce',
+      javaScriptEnabled,
+    });
+    await context.route('https://challenges.cloudflare.com/**', (route) =>
+      route.fulfill({ contentType: 'text/javascript', body: '' }),
+    );
+    const page = await context.newPage();
+    try {
+      await page.goto(browserOrigin);
+      if (javaScriptEnabled)
+        await page.evaluate(() =>
+          globalThis.customElements.whenDefined('valstara-signup-form'),
+        );
+      await page.evaluate(() => {
+        const controls = [
+          ...globalThis.document.querySelectorAll(
+            'valstara-signup-form form input, valstara-signup-form form button',
+          ),
+        ].filter(
+          (control) =>
+            control.type !== 'hidden' && control.closest('[hidden]') === null,
+        );
+        controls.at(-1).setAttribute('data-audit-last', '');
+      });
+      await page.focus('[data-audit-last]');
+      await page.keyboard.press('Tab');
+      const after = await page.evaluate(() => {
+        const { document } = globalThis;
+        const active = document.activeElement;
+        return {
+          inIsland:
+            document.querySelector('valstara-signup-form')?.contains(active) ??
+            false,
+          barShown: document.querySelector('[data-dock]')?.hidden === false,
+        };
+      });
+      assert.deepEqual(
+        after,
+        { inIsland: false, barShown: false },
+        `${width}px, JavaScript ${javaScriptEnabled ? 'on' : 'off'}`,
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 test('keyboard-only signup through the sticky bar exposes its error and reaches the confirmation', async () => {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
@@ -1196,32 +1255,49 @@ test('keyboard-only signup through the sticky bar exposes its error and reaches 
               0,
         };
       });
-    // Tab forward until focus has carried the page past the hero form and
-    // the bar has appeared, giving the bar's visibility observer two frames
-    // after each step.
-    let state = await focusState();
-    for (
-      let step = 0;
-      step < 80 && !(state.belowHero && state.barShown);
-      step += 1
-    ) {
-      await page.keyboard.press('Tab');
-      await page.evaluate(
-        () =>
-          new Promise((resolve) =>
-            globalThis.requestAnimationFrame(() =>
-              globalThis.requestAnimationFrame(resolve),
-            ),
-          ),
+    // E11.5-12 (founder decision 2026-11-13, finding A1): the bar is in the
+    // tab order right after the hero form. Tab from the hero form's last
+    // control opens it with focus in its field, even with the hero in view.
+    const lastHeroControl = await page.evaluate(() => {
+      const controls = [
+        ...globalThis.document.querySelectorAll(
+          'valstara-signup-form form input, valstara-signup-form form button',
+        ),
+      ].filter(
+        (control) =>
+          control.type !== 'hidden' &&
+          control.closest('[hidden]') === null &&
+          !control.disabled,
       );
-      state = await focusState();
-    }
-    assert.ok(
-      state.belowHero && state.barShown,
-      'tabbing past the hero form brings the bar in',
+      const last = controls.at(-1);
+      last.setAttribute('data-audit-last', '');
+      return last.id || last.tagName;
+    });
+    assert.ok(lastHeroControl, 'the hero form has a last control');
+    await page.focus('[data-audit-last]');
+    await page.keyboard.press('Tab');
+    let state = await focusState();
+    assert.deepEqual(
+      { id: state.id, inBar: state.inBar, barShown: state.barShown },
+      { id: 'signup-dock-email', inBar: true, barShown: true },
+      'Tab from the hero form opens the bar at its field',
     );
-    // One step back reaches the bar's Join button, the next its field.
+    await page.keyboard.press('Tab');
+    assert.equal(
+      await page.evaluate(() =>
+        globalThis.document.activeElement?.hasAttribute('data-dock-submit'),
+      ),
+      true,
+      'Tab moves on to the bar Join',
+    );
+    // Tab leaves the bar for the content after the hero, never the stop again.
+    await page.keyboard.press('Tab');
+    state = await focusState();
+    assert.ok(state.belowHero, 'Tab from the bar moves on past it');
+    // Shift+Tab from the first control after the hero reaches the bar's
+    // Join, whether the scroll shows the bar or not, then its field.
     await page.keyboard.press('Shift+Tab');
+    state = await focusState();
     assert.equal(
       await page.evaluate(() =>
         globalThis.document.activeElement?.hasAttribute('data-dock-submit'),
@@ -1229,6 +1305,7 @@ test('keyboard-only signup through the sticky bar exposes its error and reaches 
       true,
       'Shift+Tab from below the hero reaches the bar',
     );
+    assert.equal(state.barShown, true, 'the bar is open while focused');
     await page.keyboard.press('Shift+Tab');
     state = await focusState();
     assert.deepEqual(
@@ -1236,8 +1313,10 @@ test('keyboard-only signup through the sticky bar exposes its error and reaches 
       { id: 'signup-dock-email', inBar: true, barShown: true },
     );
 
-    // Enter in the empty field submits, as in the hero form: the error is
-    // announced, linked to the field, and focus stays in the field.
+    // The bar has no form of its own, so Join submits it, as built: Tab to
+    // Join and press Enter with the field empty. The error is announced,
+    // linked to the field, and focus returns to the field.
+    await page.keyboard.press('Tab');
     await page.keyboard.press('Enter');
     await page.locator('[data-dock-error]:not([hidden])').waitFor();
     assert.equal(
@@ -1285,6 +1364,21 @@ test('keyboard-only signup through the sticky bar exposes its error and reaches 
       ),
       true,
       'focus moves into the confirmation row',
+    );
+    // Focus on Close interrupts the polite status, so Close carries the
+    // confirmation as its description (E11.5-12 spoken pass).
+    assert.equal(
+      await page.evaluate(() => {
+        const { document } = globalThis;
+        const close = document.querySelector('[data-dock-close]');
+        return close
+          .getAttribute('aria-describedby')
+          .split(' ')
+          .map((id) => document.getElementById(id)?.textContent?.trim())
+          .join(' ');
+      }),
+      signupFormCopy.barConfirmation,
+      'Close is described by the confirmation',
     );
     assert.deepEqual(await axeViolations(page), []);
     const stored = await databaseFixture.database.query(

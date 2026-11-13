@@ -50,6 +50,13 @@ import {
   renderEmailPreviews,
 } from './email-previews.ts';
 import { designThemes, designWidths, openRoute } from './layout-checks.mjs';
+import { sourcePagePaths } from '../../test/helpers/page-inventory.mjs';
+
+// Wall-clock seconds for the run's own progress lines, from Node's monotonic
+// clock (this script runs in Node, never in a page).
+const clockStart = () => process.hrtime.bigint();
+const secondsSince = (start) =>
+  Number(process.hrtime.bigint() - start) / 1_000_000_000;
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const execFileAsync = promisify(execFile);
@@ -1678,7 +1685,7 @@ async function capturePages(manifest, run, endpoint, directory) {
   const captures = [];
   const failures = [];
   for (const [index, entry] of manifest.entries()) {
-    const started = globalThis.performance.now();
+    const started = clockStart();
     let prepared;
     try {
       const result = await captureContactSheet({
@@ -1717,7 +1724,7 @@ async function capturePages(manifest, run, endpoint, directory) {
       });
     }
     process.stdout.write(
-      `[${index + 1}/${manifest.length}] ${entry.label} ${failures.at(-1)?.label === entry.label ? 'FAILED' : 'ok'} (${Math.round((globalThis.performance.now() - started) / 1000)}s)\n`,
+      `[${index + 1}/${manifest.length}] ${entry.label} ${failures.at(-1)?.label === entry.label ? 'FAILED' : 'ok'} (${Math.round(secondsSince(started))}s)\n`,
     );
   }
   await writeContactSheetIndex(directory, captures);
@@ -1930,7 +1937,7 @@ async function main() {
   for (const [key, value] of Object.entries(localEnvironment))
     process.env[key] ??= value;
   const record = process.argv.includes('--record');
-  const started = globalThis.performance.now();
+  const started = clockStart();
   const cleanups = [];
   const cleanUp = async () => {
     while (cleanups.length > 0) {
@@ -1951,9 +1958,6 @@ async function main() {
   try {
     process.stdout.write('Building the app if its inputs changed…\n');
     await ensureAppBuild();
-    const { sourcePagePaths } = await import(
-      pathToFileURL(join(root, 'test/helpers/page-inventory.mjs')).href
-    );
     const { routes } = await sourcePagePaths();
     const complete = buildManifest({ rulesRoutes: rulesRoutesOf(routes) });
     const gaps = coverageGaps(complete, routes);
@@ -2001,9 +2005,7 @@ async function main() {
       const summary = {
         ticket: 'E11.5-12',
         generatedAt: new Date().toISOString(),
-        wallTimeSeconds: Math.round(
-          (globalThis.performance.now() - started) / 1000,
-        ),
+        wallTimeSeconds: Math.round(secondsSince(started)),
         widths: recordingWidths,
         recordings: result.recorded,
         failures: result.failures,
@@ -2032,11 +2034,7 @@ async function main() {
         join(directory, 'emails'),
         selected,
       );
-      const summary = summarise(
-        pages,
-        emails,
-        (globalThis.performance.now() - started) / 1000,
-      );
+      const summary = summarise(pages, emails, secondsSince(started));
       if (only !== undefined) summary.partial = { only };
       await writeFile(
         join(directory, 'summary.json'),

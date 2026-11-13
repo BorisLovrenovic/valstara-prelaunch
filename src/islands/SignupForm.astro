@@ -289,14 +289,38 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       aria-live="polite"
       hidden
     >
-      <p>
+      {
+        /*
+        Focus moves to Close, which interrupts the polite status, so Close is
+        described by the confirmation line: a screen reader reads "Check your
+        inbox." with it (E11.5-12 spoken pass).
+      */
+      }
+      <p id="signup-dock-confirmation">
         <Icon name="check-circle" size="base" />{signupFormCopy.barConfirmation}
       </p>
-      <Button type="button" data-dock-close variant="secondary"
+      <Button
+        type="button"
+        data-dock-close
+        variant="secondary"
+        aria-describedby="signup-dock-confirmation"
         >{signupFormCopy.barClose}</Button
       >
     </div>
   </section>
+  {
+    /*
+    The bar's keyboard stop (E11.5-12, founder decision 2026-11-13, finding
+    A1). The bar shows only while the hero form is off screen, and moving
+    focus back towards the hero scrolls it into view, so the bar alone was
+    never reachable by Tab. This stop keeps the bar in the tab order where it
+    sits, right after the hero form: reaching it opens the bar and moves
+    focus inside, to the field going forward and to Join going backward. It
+    is fixed in place, so focusing it never scrolls the page, and the script
+    shows it only where the bar may open.
+  */
+  }
+  <span class="signup-dock-stop" data-dock-stop hidden></span>
 </valstara-signup-form>
 
 {
@@ -375,6 +399,9 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     #dock: HTMLElement | null = null;
     #dockInput: HTMLInputElement | null = null;
     #dockResize: ResizeObserver | null = null;
+    #dockStop: HTMLElement | null = null;
+    // Focus is inside the bar: it stays open wherever the hero form is.
+    #dockFocused = false;
     #entryPoint: 'hero' | 'dock' = 'hero';
     #signedUpEmail = '';
     #succeeded = false;
@@ -401,6 +428,9 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       );
       this.#dock = this.querySelector('[data-dock]');
       this.#dockInput = this.querySelector('#signup-dock-email');
+      this.#dockStop = this.querySelector('[data-dock-stop]');
+      if (this.#dockStop !== null) this.#dockStop.tabIndex = 0;
+      this.#dockStop?.addEventListener('focus', this.#enterDock);
       document.querySelectorAll('[data-focus-signup]').forEach((link) => {
         link.addEventListener('click', () => {
           // With smooth anchor scrolling (motion.css), focus moves once the
@@ -480,6 +510,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       window.addEventListener('scroll', this.#updateDock, { passive: true });
       window.addEventListener('resize', this.#updateDock);
       document.addEventListener('focusin', this.#protectFocus);
+      document.addEventListener('focusin', this.#trackDockFocus);
       this.addEventListener('focusin', this.#endEntrance);
       this.#endEntrance();
       // The bar grows upward with an error and collapses on success, so the
@@ -506,6 +537,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       window.removeEventListener('scroll', this.#updateDock);
       window.removeEventListener('resize', this.#updateDock);
       document.removeEventListener('focusin', this.#protectFocus);
+      document.removeEventListener('focusin', this.#trackDockFocus);
       this.removeEventListener('focusin', this.#endEntrance);
       this.#dockResize?.disconnect();
       window.clearTimeout(this.#resendTimer);
@@ -565,15 +597,69 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       const footerIn =
         footer !== null &&
         footer.getBoundingClientRect().top < window.innerHeight;
+      const open = !this.#succeeded || this.#dockConfirming;
+      // Focus inside the bar keeps it open over the hero form, never over the
+      // footer; a bar that hides holds no focus.
       const visible =
-        small &&
-        heroOut &&
-        !footerIn &&
-        (!this.#succeeded || this.#dockConfirming);
+        small && open && !footerIn && (this.#dockFocused || heroOut);
       if (visible && this.#dock.hidden && !this.#succeeded) this.#mirrorHero();
-      if (!visible) this.#releaseDockFocus();
+      if (!visible) {
+        this.#releaseDockFocus();
+        this.#dockFocused = false;
+        delete this.#dock.dataset.dockKeyboard;
+      }
       this.#dock.hidden = !visible;
       this.#reserveDock(visible);
+      // The keyboard stop exists wherever the bar may open, and leaves the
+      // tab order while focus is inside the bar, so Tab moves on past it.
+      if (this.#dockStop !== null)
+        this.#dockStop.hidden = !(small && open && !this.#dockFocused);
+    };
+
+    // Reaching the keyboard stop opens the bar and moves focus into it: to
+    // its first control coming from before it, to its last coming back from
+    // after it. The bar is fixed, so nothing scrolls.
+    readonly #enterDock = (event: FocusEvent): void => {
+      const dock = this.#dock;
+      const stop = this.#dockStop;
+      if (dock === null || stop === null) return;
+      const from = event.relatedTarget;
+      const backward =
+        from instanceof Node &&
+        (stop.compareDocumentPosition(from) &
+          Node.DOCUMENT_POSITION_FOLLOWING) !==
+          0;
+      this.#dockFocused = true;
+      // Opened from the keyboard, the bar is at rest at once: focus never
+      // lands on a control that is still sliding in (design rule 12).
+      if (dock.hidden) dock.dataset.dockKeyboard = '';
+      this.#updateDock();
+      const controls = [
+        ...dock.querySelectorAll<HTMLElement>('input, button'),
+      ].filter(
+        (control) =>
+          control.closest('[hidden]') === null &&
+          !(control as HTMLInputElement | HTMLButtonElement).disabled,
+      );
+      const target = backward ? controls.at(-1) : controls[0];
+      if (target === undefined) {
+        this.#dockFocused = false;
+        this.#updateDock();
+        return;
+      }
+      target.focus({ preventScroll: true });
+    };
+
+    // Focus that lands outside the bar (and off its stop) releases it to
+    // the usual visibility rules. A control disabled in flight only blurs,
+    // so the bar stays open through its own submission.
+    readonly #trackDockFocus = (event: FocusEvent): void => {
+      const target = event.target;
+      if (!(target instanceof Node) || this.#dock === null) return;
+      const inside = this.#dock.contains(target);
+      if (inside === this.#dockFocused || target === this.#dockStop) return;
+      this.#dockFocused = inside;
+      this.#updateDock();
     };
 
     #reserveDock(visible: boolean): void {
@@ -591,6 +677,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
     readonly #closeDock = (): void => {
       this.#dockConfirming = false;
+      this.#dockFocused = false;
       this.#releaseDockFocus();
       if (this.#dock !== null) this.#dock.hidden = true;
       this.#reserveDock(false);
@@ -621,6 +708,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         const focused = document.activeElement;
         if (
           !(focused instanceof HTMLElement) ||
+          focused === this.#dockStop ||
           this.#dock?.hidden !== false ||
           this.#dock.contains(focused)
         )
@@ -1741,8 +1829,19 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     color: var(--success-icon);
   }
 
+  /* The bar's keyboard stop: fixed where the bar opens, so focusing it never
+     scrolls, and clipped to nothing; focus moves on into the bar at once. */
+  valstara-signup-form .signup-dock-stop {
+    position: fixed;
+    inset-inline-start: 0;
+    inset-block-end: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
   @media (min-width: 48rem) {
-    valstara-signup-form .signup-dock {
+    valstara-signup-form .signup-dock,
+    valstara-signup-form .signup-dock-stop {
       display: none !important;
     }
   }
@@ -1751,6 +1850,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     valstara-signup-form .signup-dock:not([hidden]) {
       animation-name: none;
     }
+  }
+
+  /* Opened from its keyboard stop, the bar shows at rest (E11.5-12). */
+  valstara-signup-form .signup-dock[data-dock-keyboard]:not([hidden]) {
+    animation-name: none;
   }
 
   /*

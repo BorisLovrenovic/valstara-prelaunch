@@ -358,6 +358,42 @@ test('E11.5-11 the layout is at most 600px wide and its one button is at least 4
   }
 });
 
+// E11.5-12 (founder decision 2026-11-13, finding E1): every link in every
+// template, not only the button, is a 44px tap target. The button's anchor
+// is padded inline; every other link sits in a cell or line whose class the
+// head's style block pads around its one line of text.
+test('E11.5-12 every link in every template is at least 44px tall', () => {
+  const theme = emailThemeFromCss(tokensCss);
+  for (const { template, message } of previews) {
+    const markup = html(message);
+    const head = /<style>([\s\S]*?)<\/style>/u.exec(markup)?.[1] ?? '';
+    const tapRule = (name: string, leading: number): void => {
+      const rule = new RegExp(
+        `\\.${name} a\\{display:block;padding:(\\d+)px 0\\}`,
+        'u',
+      ).exec(head);
+      assert.ok(rule, `${template}: .${name} has no tap rule`);
+      const height = 2 * Number(rule[1]) + leading;
+      assert.ok(height >= 44, `${template}: .${name} links are ${height}px`);
+    };
+    tapRule('v-link', theme.px.bodyLeading);
+    tapRule('v-link-small', theme.px.labelLeading);
+    const anchors = [...markup.matchAll(/<a href="[^"]*"[^>]*>/gu)];
+    for (const found of anchors) {
+      const before = markup.slice(0, found.index);
+      const opener = /<(td|div)( class="([^"]*)")?[^>]*>$/u.exec(before);
+      const classes = opener?.[3]?.split(' ') ?? [];
+      assert.ok(
+        classes.includes('v-button') ||
+          classes.includes('v-link') ||
+          classes.includes('v-link-small'),
+        `${template}: ${found[0]} is not a tap target`,
+      );
+    }
+    assert.ok(anchors.length >= 2, `${template}: the button and the footer`);
+  }
+});
+
 test('E11.5-11 the footer carries the legal line, the support address and the unsubscribe link, and plain text keeps every link', () => {
   for (const { template, message } of previews) {
     const markup = html(message);
