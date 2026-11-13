@@ -94,6 +94,29 @@ requests the landing page and releases the response body once the status is
 known. Left unread, the 68 KB landing response kept the probe process alive
 for about six seconds, past its three-second timeout.
 
+Three production services run TypeScript source under native Node rather than
+the built bundle: the app's boot check (`src/server/config.ts`), the migration
+runner and the maintenance worker (`src/server/subscriber/run-maintenance.ts`).
+The runtime stage therefore copies every `src/server` module those entry points
+load. `test/production-image-entry-closure.test.mjs` walks each entry point's
+import closure and fails when a module it loads is not copied; that gap once
+left the maintenance worker exiting at start with `ERR_MODULE_NOT_FOUND`
+(QA gate 7, G7-1-B1).
+
+The workflow builds the image into the runner's Docker first and **smoke-starts
+its maintenance worker before anything is pushed**:
+`infra/compose/assert-maintenance-start.mjs <image>` starts PostgreSQL, the
+migration gate and the maintenance service from the production Compose file
+with placeholder configuration, and fails unless the worker is still running,
+unrestarted, after a 20-second settle window with no module or configuration
+error in its log. Only then does the same build push the SHA tag. Run it
+locally against any built image:
+
+```sh
+docker build --tag ghcr.io/local/valstara-prelaunch:smoke .
+node infra/compose/assert-maintenance-start.mjs ghcr.io/local/valstara-prelaunch:smoke
+```
+
 ## Environments
 
 **Two, deliberately: local and production.**

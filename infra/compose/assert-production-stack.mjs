@@ -9,6 +9,10 @@ import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 import { promisify } from 'node:util';
 
+import {
+  productionTestEnvironment,
+  productionTestRelease,
+} from './production-test-environment.mjs';
 import { waitFor } from './wait-for.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -18,7 +22,7 @@ const composeFile = fileURLToPath(
 );
 const project = `valstara-e1-06-${process.pid}`;
 const cloudflareNetwork = `${project}-cloudflare`;
-const release = '0123456789012345678901234567890123456789';
+const release = productionTestRelease;
 const image = `ghcr.io/local/valstara-prelaunch:${release}`;
 const temporaryDirectory = await mkdtemp(join(tmpdir(), 'valstara-e1-06-'));
 const certificate = join(temporaryDirectory, 'origin-cert.pem');
@@ -26,38 +30,10 @@ const privateKey = join(temporaryDirectory, 'origin-key.pem');
 
 const environment = {
   ...process.env,
-  ADMIN_CREDENTIAL: 'production-stack-admin-credential-32-chars',
-  ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+  ...productionTestEnvironment({ certificate, image, privateKey, release }),
   CADDY_BIND_ADDRESS: '127.0.0.1',
   CADDY_HTTP_PORT: '18080',
   CADDY_HTTPS_PORT: '18443',
-  CADDY_ORIGIN_CERT_PATH: certificate,
-  CADDY_ORIGIN_KEY_PATH: privateKey,
-  IP_PREFIX_PEPPER: 'production-stack-test-prefix-pepper',
-  P1_ALERT_WEBHOOK_TOKEN: 'production-stack-test-alert-token',
-  P1_ALERT_WEBHOOK_URL: 'https://alerts.example.test/valstara',
-  REFERRAL_SIGNING_SECRET: 'production-stack-test-referral-secret',
-  EMAIL_BASE_URL: 'https://valstara.com',
-  EMAIL_TOKEN_SECRET: 'production-stack-email-token-secret-32-chars',
-  RESEND_API_KEY: 'production-stack-test-resend-key',
-  RESEND_WEBHOOK_SECRET: 'whsec_cHJvZHVjdGlvbi1zdGFjay13ZWJob29rLXRlc3Q=',
-  BREVO_WEBHOOK_TOKEN: 'production-stack-test-brevo-webhook-token',
-  RESEND_DKIM_EXPECTED_VALUE: 'p=production-stack-test-public-key',
-  RESEND_KEY_MODE: 'live',
-  RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
-  RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
-  RESEND_SENDING_DOMAIN: 'send.valstara.com',
-  SITE_HOST: 'valstara.com',
-  TURNSTILE_SECRET_KEY: 'production-stack-test-turnstile-secret',
-  UMAMI_APP_SECRET: 'production-stack-test-umami-secret',
-  UMAMI_DB_PASSWORD: 'production-stack-test-umami-password',
-  UMAMI_DB_USER: 'umami',
-  VALSTARA_APP_DB_PASSWORD: 'production-stack-test-app-password',
-  VALSTARA_DB_PASSWORD: 'production-stack-test-owner-password',
-  VALSTARA_DB_USER: 'valstara',
-  VALSTARA_IMAGE: image,
-  VALSTARA_RELEASE: release,
-  WEEKLY_SEND_UTC: '2@09:00',
 };
 
 async function run(command, args, options = {}) {

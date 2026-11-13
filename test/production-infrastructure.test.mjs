@@ -125,6 +125,17 @@ test('main pushes produce an immutable SHA image and retain three versions', asy
     /tags: \$\{\{ steps\.image\.outputs\.name \}\}:\$\{\{ github\.sha \}\}/,
   );
   assert.match(workflow, /push: true/);
+  // G7-1-T3: the built image's maintenance worker is smoke-started before
+  // anything is pushed.
+  const smoke = workflow.indexOf(
+    'run: node infra/compose/assert-maintenance-start.mjs',
+  );
+  assert.ok(smoke > 0, 'the maintenance smoke start is missing');
+  assert.ok(
+    workflow.indexOf('load: true') < smoke &&
+      smoke < workflow.indexOf('push: true'),
+    'the smoke start must run on the loaded image before the push',
+  );
   assert.match(workflow, /min-versions-to-keep: 3/);
   assert.match(workflow, /package-type: container/);
 });
@@ -222,8 +233,10 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
   assert.equal(config.services.maintenance.ports, undefined);
   assert.deepEqual(Object.keys(config.services.maintenance.environment), [
     'BREVO_API_KEY',
+    'BREVO_DAILY_CAP',
     'BREVO_LIST_ID',
     'BREVO_SENDING_DOMAIN',
+    'BREVO_TIER',
     'BREVO_WEBHOOK_TOKEN',
     'DATABASE_URL',
     'DRAND_CHAIN_HASH',
@@ -231,15 +244,23 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
     'DRAND_RELAY_URLS',
     'EMAIL_BASE_URL',
     'EMAIL_TOKEN_SECRET',
+    'GIVEAWAY_SANCTIONED_COUNTRIES',
+    'GIVEAWAY_SUBSTITUTION_DAYS',
     'NODE_ENV',
     'P1_ALERT_WEBHOOK_TOKEN',
     'P1_ALERT_WEBHOOK_URL',
+    'REFERRAL_ATTRIBUTION_BASELINE_DAYS',
+    'REFERRAL_ATTRIBUTION_COHORT_HOURS',
+    'REFERRAL_ATTRIBUTION_DROP_PERCENT',
+    'REFERRAL_ATTRIBUTION_MINIMUM_SIGNUPS',
     'RESEND_API_KEY',
+    'RESEND_DAILY_CAP',
     'RESEND_DKIM_EXPECTED_VALUE',
     'RESEND_KEY_MODE',
     'RESEND_RSEND_CNAME_EXPECTED_TARGET',
     'RESEND_SENDING_DOMAIN',
     'RESEND_SEND_CNAME_EXPECTED_TARGET',
+    'RESEND_TIER',
     'RESEND_WEBHOOK_GAP_MINUTES',
     'RESEND_WEBHOOK_SECRET',
     'SEED_TEST_CONFIG_PATH',

@@ -46,6 +46,9 @@ COPY --chown=node:node --from=build /app/src/server/fraud ./src/server/fraud
 COPY --chown=node:node --from=build /app/src/server/ratelimit ./src/server/ratelimit
 COPY --chown=node:node --from=build /app/src/server/verification ./src/server/verification
 COPY --chown=node:node --from=build /app/src/server/verification-rate ./src/server/verification-rate
+COPY --chown=node:node --from=build /app/src/server/analytics ./src/server/analytics
+COPY --chown=node:node --from=build /app/src/server/dsr ./src/server/dsr
+COPY --chown=node:node --from=build /app/src/server/leaderboard ./src/server/leaderboard
 COPY --chown=node:node --from=build /app/src/copy ./src/copy
 COPY --chown=node:node --from=build /app/src/styles/tokens.css ./src/styles/tokens.css
 COPY --chown=node:node --from=build /app/src/content/giveaway-rules ./src/content/giveaway-rules

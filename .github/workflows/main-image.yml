@@ -41,6 +41,27 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
 
+      - name: Build the image locally for the smoke start
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Set up Node for the smoke start
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.3
+
+      # The maintenance worker runs from TypeScript source in the image, so a
+      # module missing from the runtime stage only fails when it starts. Nothing
+      # is pushed unless it starts and stays up (QA gate 7, G7-1-B1).
+      - name: Smoke-start the image's maintenance worker
+        run: node infra/compose/assert-maintenance-start.mjs "${{ steps.image.outputs.name }}:${{ github.sha }}"
+
       - name: Build and push immutable image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
