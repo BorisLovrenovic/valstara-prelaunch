@@ -1924,6 +1924,8 @@ Brevo erasure **DELETEs the contact by `ext_id`**, rather than unlinking list me
 - The founder prerequisites P1–P5 are complete or expressly waived, including P2 under ADR-029
 
 **Tests:** The checklist is the gate.
+**Founder decisions (2026-11-13):**
+1. **E11-08 stands as done as the local launch-readiness inventory; its P1–P5 criterion is carried by E12-07, not met here.** At E11-08, the criterion "The founder prerequisites P1–P5 are complete or expressly waived" requires each prerequisite's state to be recorded with evidence; a prerequisite still open is recorded RED, and its closure belongs to E12-07, whose checklist already requires "Every founder prerequisite P1, P2, P3b, P4, P5 complete or expressly waived" and "The E11-08 campaign launch gate re-verified on the real host". P5 is that open item (Brevo Starter not purchased, 2026-10-18). When it is bought, its plan and limit are still recorded in the P5 line of `docs/ops/e11-08-launch-readiness.md` before P5 is marked complete (founder decision 2026-10-18, `docs/engineering/ci-cd.md#campaign-open-sequencing`). That record states that the local inventory is complete and that the campaign-open gate is E12-07; it never reads as a pass. `giveaway.open` stays off until P5 completes. No other E11-08 criterion changes. (GATE-7 finding G7-1-P1.) *(Accepted under the founder's standing rule for high-confidence recommendations.)*
 **Docs:** This plan · `docs/architecture/adr/README.md` · `docs/engineering/ci-cd.md#campaign-open-sequencing`
 
 ---
@@ -3263,6 +3265,8 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 - Memory headroom under full load is recorded against E12-01's baseline
 
 **Tests:** The drills and the load run are the tests; all figures recorded.
+**Founder decisions (2026-11-13):**
+1. **The capacity run also covers the two uncacheable page renders: referral-link landings (`/?ref=<code>`) and the `/leaderboard` page.** Both are served `private, no-store` by the origin on every view (`src/pages/index.astro`, `src/pages/leaderboard.astro`; E12-05's landing-cache contract keeps `?ref=` uncached), so a viral spike reaches the box through them. On the host, run each at 200 requests/s for two minutes — the leaderboard spike rate founder-authorised for E11-01 on 2026-10-07 — with rates as configurable inputs and `?ref=` spread across valid referral codes, then once more concurrently with the 20 signups/s profile. Record 5xx against a target of zero, p95 latency, and container memory against E12-01's baseline, and confirm `/leaderboard` page renders run no `subscriber` query. A failure is a blocking finding under this ticket's "fix the system or fix the matrix" rule. The figures are recorded with the rest of the run and cited from threat-model T8. (GATE-7 finding G7-1-P2.) *(Accepted under the founder's standing rule for high-confidence recommendations.)*
 **Docs:** `docs/architecture/fallbacks.md` · `docs/security/threat-model.md#t8--the-box-goes-down-under-a-viral-spike`
 
 ### E12-07 — Production readiness gate
