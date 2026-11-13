@@ -3148,6 +3148,11 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 - **The founder's sign-off is recorded**
 
 **Tests:** The audits and the layout-check suite are the tests; evidence recorded.
+**Founder decisions (2026-11-13):**
+1. **The mobile sticky bar is reachable by keyboard (finding A1).** The bar shows only while the hero form is off screen, and moving focus back towards the hero scrolls the hero into view and hides the bar, so its field and Join were never focusable. The bar stays in the tab order where it sits, right after the hero form, at small widths while signup is open: a keyboard stop after the bar, inside the `SignupForm` island, opens the bar when focus reaches it and moves focus into the bar, to its field going forward and to Join going backward. While focus is inside the bar, the bar stays open even if the hero form is in view, and the stop leaves the tab order so Tab and Shift+Tab move on past the bar. When focus leaves the bar, the usual visibility rules apply again. The stop is never focusable at 48rem and up, without JavaScript, with signups paused, or after a hero signup. Everything else about the bar is unchanged: its visibility rules for pointer and scroll, its states, copy, motion and submission path. No new island. *(Founder decision.)*
+2. **Email text links are 44px tap targets (finding E1).** In `src/server/email/template-layout.ts` each secondary link and the footer's unsubscribe link is a block whose height is at least `--tap-min` (44px), its one line padded like the button's anchor, at every width, since mail clients do not reliably honour media queries. The links stay text links, as E11.5-11 specified, with the same colour, size and wording, and the emails' copy, plain-text parts and links are unchanged. Every email preview on the contact sheet then passes the 44px target check. *(Founder decision.)*
+3. **The founder's visual review, motion review and sign-off are done (2026-11-13).** The founder reviewed the contact sheet against the final-design canvas frames and the landing wireframes, and the motion recordings, and signed off. No motion token was changed. *(Founder decision.)*
+
 **Docs:** `docs/testing/strategy.md` · `docs/brand/page-design.md` · E11-03 · E11-04 · E11-05 · E11-07
 
 ---
