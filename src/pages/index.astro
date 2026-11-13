@@ -25,6 +25,7 @@ import {
   landingCacheVary,
   landingFlagGeneration,
 } from '../server/cache/landing.ts';
+import { landingReferralField } from '../server/cache/render.ts';
 import { getConfig } from '../server/config.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
 import { campaignFlagRegistry } from '../server/flags/registry.ts';
@@ -70,15 +71,18 @@ const showRewardsFooter = referralEnabled || leaderboardEnabled;
 // The "How it works" step icons, in step order (E11.5-11d).
 const stepIcons = ['mail', 'check-circle', 'upload-share'] as const;
 
-const referralCaptureService = createReferralCaptureService(
-  getConfig().referralSigningSecret,
+const signedReferralCapture = landingReferralField(
+  createReferralCaptureService(getConfig().referralSigningSecret),
+  Astro.url,
+  flags,
 );
-const referralCapture = referralCaptureService.capture(Astro.url);
-const signedReferralCapture =
-  referralEnabled &&
-  (referralCapture.ref !== null || referralCapture.utm !== null)
-    ? referralCaptureService.signRef(referralCapture)
-    : null;
+const flagGeneration = landingFlagGeneration(flags);
+// The origin render cache (G7-1-I4) stores this render under the generation
+// it was rendered for, and substitutes each request's own signed field.
+Astro.locals.renderCache = {
+  generation: flagGeneration,
+  field: signedReferralCapture,
+};
 const hasReferralQuery = Astro.url.searchParams.has('ref');
 const bypassLandingCache = hasReferralQuery || hasNonDefaultFlagState(flags);
 Astro.response.headers.set(
@@ -86,10 +90,7 @@ Astro.response.headers.set(
   bypassLandingCache ? 'private, no-store' : 'public, max-age=0, s-maxage=300',
 );
 Astro.response.headers.set('Vary', landingCacheVary);
-Astro.response.headers.set(
-  'X-Valstara-Flag-Generation',
-  landingFlagGeneration(flags),
-);
+Astro.response.headers.set('X-Valstara-Flag-Generation', flagGeneration);
 ---
 
 <BaseLayout

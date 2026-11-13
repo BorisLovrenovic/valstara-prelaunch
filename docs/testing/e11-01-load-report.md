@@ -90,32 +90,34 @@ QA gate 7 (finding G7-1-I4) found that the two page renders a viral spike reache
 
 A page request that has no response within 30 seconds counts as a transport error, and any transport error or 5xx fails the run. The authorised profile sets 200/s for each page for 120 seconds, the leaderboard spike rate the founder authorised for E11-01 on 2026-10-07, across 200 referral codes.
 
-**Result, 2026-11-13 UTC: failed.** Run `5feacafc` used `scripts/load/e11-01-profile.json` against an isolated production-Compose project with image ID `sha256:0db76e52249645e24108464b24722644895988e20cf69bdc361f3839e20e95a3` (the QA gate 7 branch). The machine-readable result, including 210 memory samples, is [`e11-01-gate-7-results.json`](e11-01-gate-7-results.json). The run stopped at the combined phase's signup assertion, so the original leaderboard-API phase did not run in it; the 2026-10-07 result above still stands for that route.
+**The origin render cache (founder decision 2026-11-14 on E11-01).** Both renders now go through a bounded in-process cache (`src/server/cache/render.ts`, wired in `src/middleware.ts`). The landing is rendered once per flag generation, with and without the signed referral field, and the `/leaderboard` page once per flag generation. Each request gets the stored body with its own freshly signed referral field substituted, so a referral spike costs the box a cache lookup and an HMAC, not a page render. Responses and headers are unchanged: `?ref=` and any non-default flag state stay `private, no-store`, and E12-05's landing-cache contract is untouched. A flag change changes the generation, so the `leaderboard.public` kill switch still takes effect within the flag cache's five seconds (ADR-023). The cache holds no visitor data, keys on route, field presence, the `ref` parameter's presence and the flag generation, and is capped at 16 entries; it never grows with distinct referral codes.
+
+**Any non-default flag state leaves every landing uncached at Cloudflare**, including the state the campaign reaches once `giveaway.open` or `email.broadcast` is turned on. From then on even a plain `/` reaches the origin on every view. The render cache carries that case too, because its key is the flag generation, not the default state.
+
+**Result, 2026-11-13 UTC (2026-11-14 local): passed.** Run `bf3d83cc` used the unchanged authorised profile `scripts/load/e11-01-profile.json` against an isolated production-Compose project with image ID `sha256:ea65519908345109f501b5437cb7ed8c83be01b55030f147f64ca60e109d430c`, built from the QA gate 7 branch with the render cache and the maintenance heartbeat. The machine-readable result, including 243 memory samples, is [`e11-01-gate-7-results.json`](e11-01-gate-7-results.json). Every phase ran, including the original leaderboard-API phase, and the 5xx count was **0**.
 
 | Phase | Requests | Outcome | p95 |
 |---|---:|---|---:|
-| Sustained and burst signups (20/s for 600 s, then 50/s for 60 s) | 15,000 | 15,000 HTTP 200 | 543 ms sustained, 539 ms burst |
-| Referral landings alone, 200/s for 120 s | 24,000 | 24,000 HTTP 200, all `private, no-store`; no `subscriber` or `leaderboard_snapshot` query | 25 ms |
-| `/leaderboard` page alone, 200/s for 120 s | 24,000 | 24,000 HTTP 200; **0 `subscriber` queries**, one `leaderboard_snapshot` read by the API's background cache refresh | 5 ms |
-| Combined: referral landings at 200/s | 24,000 | 23,105 HTTP 200; **895 with no response within 30 s** | 352 ms |
-| Combined: `/leaderboard` page at 200/s | 24,000 | 22,377 HTTP 200; **1,623 with no response within 30 s** | 661 ms |
-| Combined: signups at 20/s | 2,400 | **520 HTTP 200, 1,604 HTTP 503 and 276 HTTP 500** | 69,384 ms |
+| Sustained and burst signups (20/s for 600 s, then 50/s for 60 s) | 15,000 | 15,000 HTTP 200 | 590 ms sustained, 605 ms burst |
+| Hostile prefix | 200 | 5 HTTP 200, then 195 HTTP 429; all 195 `Retry-After` headers match the recorded window | — |
+| Large export during signup | 50,000 rows | 50,001 CSV lines, 4,680,391 bytes | — |
+| Referral landings alone, 200/s for 120 s | 24,000 | 24,000 HTTP 200, all `private, no-store`; no `subscriber` or `leaderboard_snapshot` query | 27 ms |
+| `/leaderboard` page alone, 200/s for 120 s | 24,000 | 24,000 HTTP 200; **0 `subscriber` queries**, one `leaderboard_snapshot` read by the API's background cache refresh | 9 ms |
+| Combined: referral landings at 200/s | 24,000 | **24,000 HTTP 200**, 0 transport errors | 28 ms |
+| Combined: `/leaderboard` page at 200/s | 24,000 | **24,000 HTTP 200**, 0 transport errors | 28 ms |
+| Combined: signups at 20/s | 2,400 | **2,400 HTTP 200** | 657 ms |
+| Leaderboard API spike, 200/s for 120 s (the original phase) | 24,000 | 24,000 HTTP 200, every response carrying the seeded snapshot; 0 `subscriber` calls and one `leaderboard_snapshot` read by the background refresh | 12 ms |
+
+The row, business-key and drained-queue invariants held across all 17,400 timed signups and the warm-up: 15,665 subscriber rows, all distinct; 15,665 `email_send` rows with 15,665 distinct business keys, all sent by the fake sink in 157 batches; 0 queued and 0 failed.
 
 | Container | Peak sampled memory | Limit |
 |---|---:|---:|
-| App | 135.6 MiB | 768 MiB |
-| PostgreSQL | 179.5 MiB | 512 MiB |
-| Umami | 235.6 MiB | 768 MiB |
+| App | 134.9 MiB | 768 MiB |
+| PostgreSQL | 168.8 MiB | 512 MiB |
+| Umami | 210.3 MiB | 768 MiB |
 
-**Memory is not the limit; one Node process's CPU is.** The page renders and the signup route share the single app process. At 400 page renders a second it falls behind, requests queue, and signups wait for the database pool long enough to fail. The 503s carry the honest "We can't take signups right now" response. Because the run stopped at the combined phase's status assertion, the row, business-key and drained-queue checks did not run in it. The combined phase still loses most signups during the spike, which is the opposite of what a viral moment needs.
+An earlier full run the same evening, `7e5b897a`, on a build of the same branch taken before a type-only change to how the cache copies response headers (image `sha256:389b6a9b…`), also passed every phase: combined page p95 8 ms, combined signup p95 545 ms, leaderboard-API p95 4 ms, app peak 145.1 MiB. The run above is the record because its image matches the committed code.
 
-Referral landings alone sit close to the limit at 200/s. Two earlier full-profile runs the same day, with earlier versions of the runner, saturated on landings at that rate: run `446a2f00` ran landings alone at a p95 of 8,898 ms with 190 timeouts, then lost 1,163 signups in its combined phase (200 HTTP 500, 819 HTTP 503 and 144 with no response) while 21–25% of its page requests had no response; run `e18d3f8b` had no page-alone phases and lost 552 signups in its combined phase (53 HTTP 500 and 499 HTTP 503) while 31–34% of its page requests had no response. Short probes (30 seconds per phase, small signup phases) found:
+**Before the render cache, the same profile failed (2026-11-13 UTC).** Run `5feacafc` (image `sha256:0db76e52…`) stopped at the combined phase: 895 referral landings and 1,623 `/leaderboard` page requests had no response within 30 seconds, and only 520 of the 2,400 signups succeeded (1,604 HTTP 503, 276 HTTP 500, signup p95 69,384 ms). Two earlier full runs that day, `446a2f00` and `e18d3f8b`, lost 1,163 and 552 signups in their combined phases, with 21–34% of page requests unanswered. Memory was never the limit: one Node process's CPU was. Short probes then held at 100/s per page combined with signups and saturated at 150–200/s. Those figures are kept in git history in the earlier version of `e11-01-gate-7-results.json`.
 
-| Probe rate per page | Landings alone | `/leaderboard` alone | Combined with 20 signups/s |
-|---:|---|---|---|
-| 100/s | p95 14 ms | p95 8 ms | All 200; page p95 36–37 ms, signup p95 704 ms |
-| 150/s | p95 72 ms | p95 7 ms | All 200, but page p95 15–24 s and signup p95 27 s |
-| 200/s | p95 22,522 ms, throughput about 170/s | p95 7 ms | 4–9% page timeouts; signup p95 31 s |
-
-**This is an open finding, not a pass.** The fix is the QA gate 7 decision G7-1-I4, recorded in [threat-model T8](../security/threat-model.md#t8--the-box-goes-down-under-a-viral-spike). This laptop's numbers do not predict the host's; E12-06 re-runs these phases there.
-
+This laptop's numbers do not predict the host's; E12-06 re-runs these phases there with the same script and profile.

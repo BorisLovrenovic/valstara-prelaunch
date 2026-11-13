@@ -3,6 +3,7 @@ import { defineMiddleware } from 'astro:middleware';
 import { securityCopy } from './copy/security.ts';
 import { createAdminAuthenticator } from './server/admin-auth/authenticate.ts';
 import { createAdminAuthMiddleware } from './server/admin-auth/middleware.ts';
+import { serveRender } from './server/cache/render-runtime.ts';
 import { getConfig } from './server/config.ts';
 
 let middleware: ReturnType<typeof createAdminAuthMiddleware> | undefined;
@@ -60,5 +61,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
   ) {
     return next();
   }
-  return configuredMiddleware()(context, next);
+  return configuredMiddleware()(context, () =>
+    serveRender(
+      {
+        method: context.request.method,
+        url: context.url,
+        locals: context.locals,
+      },
+      next,
+    ),
+  );
 });
