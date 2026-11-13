@@ -725,8 +725,8 @@ after(async () => {
 });
 
 // A Turnstile stand-in: `success` resolves at once (and with a fresh token
-// on reset), `pending` never resolves, and `interactive` opens a 300 × 65
-// widget, as Cloudflare does when it needs the visitor, and waits.
+// on reset), `pending` never resolves, and `interactive` opens the
+// widget at the size asked for, as Cloudflare does when it needs the visitor, and waits.
 function installTurnstile(mode) {
   globalThis.turnstile = {
     render(element, options) {
@@ -737,8 +737,10 @@ function installTurnstile(mode) {
         globalThis.setTimeout(() => {
           options['before-interactive-callback']();
           const widget = globalThis.document.createElement('div');
-          widget.style.width = '300px';
-          widget.style.height = '65px';
+          // Cloudflare's sizes: normal 300 × 65, compact 150 × 140.
+          const compact = options.size === 'compact';
+          widget.style.width = compact ? '150px' : '300px';
+          widget.style.height = compact ? '140px' : '65px';
           element.append(widget);
         }, 0);
       }

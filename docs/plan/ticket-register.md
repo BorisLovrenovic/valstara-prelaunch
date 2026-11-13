@@ -148,7 +148,7 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 126 | E11.5-11r | Final-design member page and leaderboard | Epic E11.5 — Frontend design | done | auto |
 | 127 | E11.5-11s | Final-design trust, legal and giveaway rules pages | Epic E11.5 — Frontend design | done | auto |
 | 128 | E11.5-11t | Final-design task pages, and the 404 and 500 pages | Epic E11.5 — Frontend design | done | auto |
-| 129 | E11.5-12 | Design QA, the re-audits and founder sign-off | Epic E11.5 — Frontend design | todo | auto |
+| 129 | E11.5-12 | Design QA, the re-audits and founder sign-off | Epic E11.5 — Frontend design | done | auto |
 | 130 | GATE-7 | QA gate 7 — E11 + E11.5 | E11 + E11.5 | todo | auto |
 | 131 | E12-01 | Provision the host and run the production stack on it | Epic E12 — Production bring-up | todo | manual |
 | 132 | E12-02 | Deploy from GHCR against the real host, with the migration audit | Epic E12 — Production bring-up | todo | manual |

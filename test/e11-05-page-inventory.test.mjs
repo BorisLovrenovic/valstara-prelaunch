@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
-import { readdir, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test from 'node:test';
 import { chromium } from 'playwright';
 import { Pool } from 'pg';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import { sourcePagePaths } from './helpers/page-inventory.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const executeFile = promisify(execFile);
@@ -60,30 +61,6 @@ function expectedProtectedFormCount(url) {
       : 0;
   }
   return 0;
-}
-
-async function sourcePagePaths() {
-  const pages = await readdir(`${root}/src/pages`, { recursive: true });
-  const astro = pages.filter((path) => path.endsWith('.astro')).sort();
-  const revisionFiles = await readdir(`${root}/src/content/giveaway-rules`);
-  const revisions = revisionFiles
-    .filter((path) => path.endsWith('.md'))
-    .map((path) => path.slice(0, -3))
-    .sort();
-  assert.ok(revisions.length > 0, 'rules revisions must be inventoried');
-  const routes = astro.flatMap((path) => {
-    const route =
-      `/${path.replace(/\.astro$/u, '').replace(/(?:^|\/)index$/u, '')}`.replace(
-        /\/$/u,
-        '',
-      ) || '/';
-    if (path === 'giveaway/rules/[rulesVersion].astro') {
-      return revisions.map((version) => `/giveaway/rules/${version}`);
-    }
-    assert.ok(!route.includes('['), `unexpanded page route: ${route}`);
-    return [route];
-  });
-  return { astro, routes: [...new Set(routes)].sort() };
 }
 
 async function startBrowser() {
@@ -470,6 +447,56 @@ async function crawl(
       `${path} protected-form count`,
     );
     if (pageUrl.pathname === '/') {
+      // E11.5-12: the provider logos. Every catalogue, hero and final banner
+      // logo is brought into view, sideways tracks included, so a lazy image
+      // loads, and every one must come from this origin's showcase files.
+      await page.evaluate(async () => {
+        const frame = () =>
+          new Promise((resolve) => globalThis.requestAnimationFrame(resolve));
+        const { document } = globalThis;
+        for (
+          let top = 0;
+          top < document.documentElement.scrollHeight;
+          top += globalThis.innerHeight / 2
+        ) {
+          globalThis.scrollTo({ top, behavior: 'instant' });
+          await frame();
+        }
+        for (const track of document.querySelectorAll('.provider-rail__track'))
+          for (
+            let left = 0;
+            left < track.scrollWidth;
+            left += track.clientWidth / 2
+          ) {
+            track.scrollIntoView({ behavior: 'instant', block: 'center' });
+            track.scrollLeft = left;
+            await frame();
+          }
+        globalThis.scrollTo({ top: 0, behavior: 'instant' });
+      });
+      await page.waitForFunction(() =>
+        [
+          ...globalThis.document.querySelectorAll(
+            'img[src*="/images/providers/"]',
+          ),
+        ].every((image) => image.complete && image.naturalWidth > 0),
+      );
+      const showcase = JSON.parse(
+        await readFile(`${root}/src/content/provider-showcase.json`, 'utf8'),
+      );
+      const logoRequests = requests.filter((url) =>
+        new URL(url).pathname.startsWith('/images/providers/'),
+      );
+      assert.deepEqual(
+        [...new Set(logoRequests.map((url) => new URL(url).pathname))].sort(),
+        [...new Set(showcase.map(({ logo }) => logo))].sort(),
+        '/ loads every showcase logo, and only those',
+      );
+      assert.deepEqual(
+        logoRequests.filter((url) => new URL(url).hostname !== 'valstara.test'),
+        [],
+        '/ loads every provider logo from its own origin',
+      );
       await page.waitForFunction(
         () =>
           globalThis.document.querySelector('valstara-signup-form form')

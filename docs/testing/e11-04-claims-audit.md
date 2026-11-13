@@ -33,3 +33,7 @@ The forbidden-copy gate covers `src/copy`, `src/content` and Astro markup. The E
 ## Browser loading and privacy impact
 
 The revised rules pages load the same first-party layout assets as before. The archive notice adds only HTML and a first-party link. It makes no new request, storage write or personal-data read. The landing FAQ change is text only.
+
+## Re-run on the final design (E11.5-12, 2026-11-12)
+
+Recorded in [`e11-5-design-qa.md`](e11-5-design-qa.md#e11-04-claims-on-the-new-copy). `test/e11-04-claims-audit.test.mjs` now also compares every showcase entry with its P8 confirmation and the rendered catalogue with the P8 list, and every rendered reward figure with the referral configuration and its documented source (ADR-025 tiers, the 90-day held window). All checks pass; no finding.

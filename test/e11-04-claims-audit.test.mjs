@@ -210,3 +210,201 @@ test('landing data claim names email processors without promising exclusive proc
   );
   assert.doesNotMatch(landing, /and nowhere else/u);
 });
+
+// E11.5-12: the claims audit re-run on the redesigned surfaces.
+
+// The P8 record's provider tables: display name, logo file, brand colour,
+// under the category heading whose v2 token they sit beneath.
+async function p8Providers() {
+  const record = await readFile(
+    join(root, 'docs/prerequisites/p8-provider-list.md'),
+    'utf8',
+  );
+  const providers = [];
+  let category;
+  for (const line of record.split('\n')) {
+    const heading = /^### .+ — `([a-z_]+)`$/u.exec(line);
+    if (heading) {
+      category = heading[1];
+      continue;
+    }
+    const row = /^\| ([^|]+?) \| `([^`]+)` \| `(#[0-9a-f]{6})` \|/u.exec(line);
+    if (row && category)
+      providers.push({
+        name: row[1],
+        category,
+        logo: `/images/providers/${row[2]}`,
+        brandColor: row[3],
+      });
+  }
+  return { record, providers };
+}
+
+function showcaseDrift(p8, showcase) {
+  const key = ({ name, category, logo, brandColor }) =>
+    JSON.stringify({ name, category, logo, brandColor });
+  const recorded = new Set(p8.map(key));
+  const built = new Set(showcase.map(key));
+  return {
+    unconfirmed: showcase.filter((entry) => !recorded.has(key(entry))),
+    missing: p8.filter((entry) => !built.has(key(entry))),
+  };
+}
+
+test('E11.5-12: every showcase entry matches its P8 confirmation, and the landing page shows exactly those providers', async () => {
+  const { record, providers: p8 } = await p8Providers();
+  const showcase = JSON.parse(
+    await readFile(join(root, 'src/content/provider-showcase.json'), 'utf8'),
+  );
+  assert.equal(p8.length, 34, 'the P8 record lists 34 providers');
+  assert.match(
+    record,
+    /Every provider below is confirmed for the launch catalogue by \*\*Boris Lovrenovic, 2026-10-25\*\*/u,
+  );
+  assert.deepEqual(showcaseDrift(p8, showcase), {
+    unconfirmed: [],
+    missing: [],
+  });
+  assert.deepEqual(
+    showcase.map(({ name }) => name),
+    p8.map(({ name }) => name),
+    'the showcase keeps the P8 order',
+  );
+  for (const entry of showcase) {
+    assert.deepEqual(
+      entry.confirmation,
+      { name: 'Boris Lovrenovic', date: '2026-10-25' },
+      `${entry.name}: catalogue confirmation`,
+    );
+    assert.deepEqual(
+      entry.source,
+      { kind: 'founder-supplied', date: '2026-10-25' },
+      `${entry.name}: logo source`,
+    );
+  }
+  // Planted drift in either direction is reported, so the comparison above
+  // cannot pass over an unconfirmed or a dropped provider.
+  assert.deepEqual(
+    showcaseDrift(p8, [
+      ...showcase.slice(1),
+      { ...showcase[0], name: 'Unconfirmed Provider' },
+    ]).unconfirmed.map(({ name }) => name),
+    ['Unconfirmed Provider'],
+  );
+  assert.deepEqual(
+    showcaseDrift(p8, showcase.slice(1)).missing.map(({ name }) => name),
+    [showcase[0].name],
+  );
+
+  const { body } = await renderLanding();
+  const catalogue = [...body.matchAll(/data-provider-banner="([^"]+)"/gu)].map(
+    ([, name]) => name.replaceAll('&amp;', '&'),
+  );
+  assert.deepEqual(
+    catalogue,
+    p8.map(({ name }) => name),
+    'the catalogue shows every confirmed provider, once, and no other',
+  );
+  const logos = new Set(
+    [...body.matchAll(/\/images\/providers\/[a-z0-9-]+\.(?:svg|webp)/gu)].map(
+      ([path]) => path,
+    ),
+  );
+  const confirmedLogos = new Set(p8.map(({ logo }) => logo));
+  assert.deepEqual(
+    [...logos].filter((logo) => !confirmedLogos.has(logo)),
+    [],
+    'every rendered logo is a confirmed P8 file',
+  );
+  for (const attribute of ['data-hero-banner', 'data-final-banner']) {
+    const names = [
+      ...body.matchAll(new RegExp(`${attribute}="([^"]+)"`, 'gu')),
+    ];
+    assert.ok(names.length > 0, `${attribute} banners render`);
+    for (const [, name] of names)
+      assert.ok(
+        p8.some((provider) => provider.name === name.replaceAll('&amp;', '&')),
+        `${attribute} ${name} is a confirmed provider`,
+      );
+  }
+});
+
+test('E11.5-12: every rendered reward figure matches the referral configuration and its documented source', async () => {
+  const { milestoneTiers } = await import('../src/server/referral/config.ts');
+  const referral = await readFile(
+    join(root, 'docs/modules/referral.md'),
+    'utf8',
+  );
+  // ADR-025's confirmed values, as the referral module records them.
+  assert.match(referral, /\*\*Tier 1 — 3 confirmed referrals:\*\*/u);
+  assert.match(referral, /= 15% launch discount/u);
+  assert.match(
+    referral,
+    /\(15% \/ 25%\) are \*\*confirmed production values\*\*/u,
+  );
+  assert.match(referral, /qualification deadline 90 days after store launch/u);
+  assert.deepEqual(
+    milestoneTiers.map(({ number, threshold, discountPercent, enabled }) => ({
+      number,
+      threshold,
+      discountPercent,
+      enabled,
+    })),
+    [
+      { number: 1, threshold: 3, discountPercent: 15, enabled: true },
+      { number: 2, threshold: 5, discountPercent: 25, enabled: false },
+    ],
+  );
+
+  const { body } = await renderLanding();
+  // What a reader sees: the page's text, without its styles and scripts,
+  // whose percentages are geometry rather than claims.
+  const visible = body
+    .replace(/<(style|script)\b[\s\S]*?<\/\1>/gu, ' ')
+    .replace(/<[^>]+>/gu, ' ')
+    .replace(/\s+/gu, ' ');
+  const enabled = milestoneTiers.filter((tier) => tier.enabled);
+  assert.deepEqual(
+    [...body.matchAll(/class="landing-tier" data-tier="(\d+)"/gu)].map(
+      ([, number]) => Number(number),
+    ),
+    enabled.map(({ number }) => number),
+    'only enabled tiers are promised',
+  );
+  for (const tier of enabled) {
+    const sentence = landingCopy.rewards.tier(tier);
+    assert.ok(visible.includes(sentence), `tier ${tier.number} sentence`);
+    assert.ok(
+      sentence.includes(`${tier.threshold} confirmed referrals`) &&
+        sentence.includes(`${tier.discountPercent}% off`),
+    );
+    const drawn = new RegExp(
+      `data-tier="${tier.number}"[\\s\\S]*?<span class="landing-figure tabular-figure"[^>]*>\\s*${tier.threshold}\\s*</span>[\\s\\S]*?<span class="tabular-figure"[^>]*>\\s*${tier.discountPercent}%\\s*</span>`,
+      'u',
+    );
+    assert.match(body, drawn, `tier ${tier.number} drawn figures`);
+  }
+  for (const tier of milestoneTiers.filter((candidate) => !candidate.enabled))
+    assert.ok(
+      !visible.includes(landingCopy.rewards.tier(tier)) &&
+        !visible.includes(`${tier.discountPercent}%`) &&
+        !new RegExp(`\\b${tier.threshold} confirmed referrals`, 'u').test(
+          visible,
+        ),
+      `disabled tier ${tier.number} is not promised`,
+    );
+  // The held-discount window, wherever a surface states it.
+  const window = /within (\d+) days after (?:store )?launch/u;
+  for (const path of [
+    'src/copy/landing.ts',
+    'src/copy/verification.ts',
+    'src/copy/member-status.ts',
+    'src/copy/email.ts',
+  ]) {
+    const source = await readFile(join(root, path), 'utf8');
+    const stated = [...source.matchAll(new RegExp(window, 'gu'))];
+    assert.ok(stated.length > 0, `${path} states the held window`);
+    for (const [, days] of stated) assert.equal(days, '90', path);
+  }
+  assert.ok(body.includes(landingCopy.rewards.held));
+});

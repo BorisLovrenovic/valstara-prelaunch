@@ -262,13 +262,21 @@ function head(subject: string, theme: EmailTheme): string {
     `.v-button{background-color:${dark.coral} !important}`,
     `.v-button a{color:${dark.midnight} !important}`,
   ].join('');
+  // E11.5-12 (founder decision 2026-11-13, finding E1): every text link is a
+  // 44px tap target, its one line padded like the button's anchor, at every
+  // width, because mail clients do not reliably honour media queries. The
+  // links stay plain text links in the markup.
+  const tapLinks = [
+    `.v-link a{display:block;padding:${(px.tapMin - px.bodyLeading) / 2}px 0}`,
+    `.v-link-small a{display:block;padding:${(px.tapMin - px.labelLeading) / 2}px 0}`,
+  ].join('');
   return [
     '<head><meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     '<meta name="color-scheme" content="light dark">',
     '<meta name="supported-color-schemes" content="light dark">',
     `<title>${escapeHtml(subject)}</title>`,
-    `<style>body{margin:0;padding:0}p{margin:0 0 ${px.space2}px}a{color:${light.ink};text-decoration:underline}.v-muted a{color:${light.muted}}@media (prefers-color-scheme: dark){${darkRules}}</style>`,
+    `<style>body{margin:0;padding:0}p{margin:0 0 ${px.space2}px}a{color:${light.ink};text-decoration:underline}.v-muted a{color:${light.muted}}${tapLinks}@media (prefers-color-scheme: dark){${darkRules}}</style>`,
     `<!--[if mso]><style>body,table,td,div,p,a,li{font-family:${theme.msoFontSans} !important}.v-facts,.v-facts li{font-family:${theme.msoFontMono} !important}</style><![endif]-->`,
     '</head>',
   ].join('');
@@ -331,7 +339,7 @@ function body(
   const links = secondary
     .map(
       ({ label, url }) =>
-        `<tr><td class="v-text" style="${style({ padding: `0 0 ${px.space1}px` })};${prose}"><a href="${escapeHtml(url)}">${escapeHtml(label)}</a></td></tr>`,
+        `<tr><td class="v-text v-link" style="${style({ padding: `0 0 ${px.space1}px` })};${prose}"><a href="${escapeHtml(url)}">${escapeHtml(label)}</a></td></tr>`,
     )
     .join('');
   const footerLine = style({ padding: `0 0 ${px.space1}px` });
@@ -341,7 +349,7 @@ function body(
     'font-size': px.label,
     'line-height': px.labelLeading,
     color: light.muted,
-  })}"><div style="${footerLine}">${escapeHtml(emailCopy.footer.legalLine)}</div><div style="${footerLine}">${escapeHtml(emailCopy.footer.supportEmail)}</div><div><a href="${escapeHtml(unsubscribePageUrl)}">${escapeHtml(emailCopy.unsubscribe)}</a></div></td></tr>`;
+  })}"><div style="${footerLine}">${escapeHtml(emailCopy.footer.legalLine)}</div><div style="${footerLine}">${escapeHtml(emailCopy.footer.supportEmail)}</div><div class="v-link-small"><a href="${escapeHtml(unsubscribePageUrl)}">${escapeHtml(emailCopy.unsubscribe)}</a></div></td></tr>`;
   const preheader = `<div style="${style({
     display: 'none',
     'max-height': 0,

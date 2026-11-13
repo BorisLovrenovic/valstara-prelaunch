@@ -6,6 +6,7 @@ import {
   checkPageLayout,
   designThemes,
   designWidths,
+  openRoute,
   settlePage,
 } from './layout-checks.mjs';
 
@@ -54,6 +55,26 @@ export async function runContactSheetActions(page, actions = []) {
   }
 }
 
+// The index of a contact sheet: one card per capture, and the same list as
+// JSON. A caller that captures a sheet in parts writes one index over all of
+// them.
+export async function writeContactSheetIndex(directory, captures) {
+  const cards = captures
+    .map(
+      ({ state, width, theme, filename }) =>
+        `<figure><img src="${escapeHtml(filename)}" alt="${escapeHtml(state)} at ${width}px in ${theme} theme" loading="lazy"><figcaption>${escapeHtml(state)} · ${width}px · ${theme}</figcaption></figure>`,
+    )
+    .join('\n');
+  await writeFile(
+    join(directory, 'index.html'),
+    `<!doctype html><html lang="en"><meta charset="utf-8"><title>Valstara design contact sheet</title><style>body{font:16px system-ui;margin:24px;background:#eee}main{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px}figure{margin:0}img{width:100%;height:auto}figcaption{padding:8px}</style><main>${cards}</main></html>`,
+  );
+  await writeFile(
+    join(directory, 'index.json'),
+    JSON.stringify(captures, null, 2),
+  );
+}
+
 export async function captureContactSheet({
   origin,
   entries,
@@ -75,11 +96,32 @@ export async function captureContactSheet({
       const url = new URL(entry.route, base);
       if (url.origin !== base.origin)
         throw new Error('Contact-sheet routes must be same-origin.');
+      // E11.5-12: an error page is captured at its own status (404, 500);
+      // every other state must answer 2xx.
+      if (entry.status !== undefined && !Number.isInteger(entry.status))
+        throw new Error(`${entry.state}: status must be an integer.`);
+      for (const hook of ['prepare', 'setup', 'run'])
+        if (entry[hook] !== undefined && typeof entry[hook] !== 'function')
+          throw new Error(`${entry.state}: ${hook} must be a function.`);
+      // A state that exists only at some widths (the mobile sticky bar) names
+      // them; every other state is captured at every design width.
+      const widths = entry.widths ?? designWidths;
+      if (
+        !Array.isArray(widths) ||
+        widths.length === 0 ||
+        widths.some((width) => !designWidths.includes(width))
+      )
+        throw new Error(`${entry.state}: widths must be design widths.`);
       const label = safeName(entry.state);
       if (labels.has(label))
         throw new Error(`Duplicate contact-sheet state label: ${label}`);
       labels.add(label);
-      for (const width of designWidths) {
+      // Programmatic callers only: `prepare` runs once before the entry's
+      // captures (a flag change, say), `setup` on each new context before
+      // the page opens (a Turnstile stand-in, an answered route) and `run`
+      // after the declarative actions (a state no action list can reach).
+      await entry.prepare?.();
+      for (const width of widths) {
         for (const theme of designThemes) {
           // Screenshots are taken at rest, in a reduced-motion context
           // (E11.5-11i): nothing entering, revealing or cross-fading.
@@ -87,26 +129,40 @@ export async function captureContactSheet({
             ...atRestContext,
             viewport: { width, height: 900 },
             colorScheme: theme,
+            javaScriptEnabled: entry.javaScriptEnabled !== false,
           });
           try {
+            await entry.setup?.(context);
             const page = await context.newPage();
-            const response = await page.goto(url.href, {
-              // Protected forms keep Turnstile active after load; waiting for
-              // network silence can hang a contact sheet on those states.
-              waitUntil: 'load',
-            });
-            if (!response?.ok())
+            // Through the harness's opener, so the prerendered 500 page is
+            // served at /500 exactly as the layout checks open it. Protected
+            // forms keep Turnstile active after load, so it waits for the
+            // load event, never for network silence.
+            const response = await openRoute(
+              page,
+              `${url.pathname}${url.search}${url.hash}`,
+              base,
+            );
+            const status = response?.status();
+            if (
+              entry.status === undefined
+                ? !response?.ok()
+                : status !== entry.status
+            )
               throw new Error(
-                `${entry.state} returned ${response?.status() ?? 'no response'}`,
+                `${entry.state} returned ${status ?? 'no response'}`,
               );
             await runContactSheetActions(page, entry.actions);
+            await entry.run?.(page);
             // The screenshot and the checks take the same loaded, settled
             // state, including after an action that loads a new document.
             await settlePage(page);
             const filename = `${label}-${width}-${theme}.png`;
+            // A state drawn over the viewport (a fixed bar) sets `fullPage:
+            // false`, so the capture shows the viewport the bar sits in.
             await page.screenshot({
               path: join(directory, filename),
-              fullPage: true,
+              fullPage: entry.fullPage !== false,
             });
             const layoutIssues = await checkPageLayout(page);
             captures.push({
@@ -125,20 +181,7 @@ export async function captureContactSheet({
   } finally {
     await browser.close();
   }
-  const cards = captures
-    .map(
-      ({ state, width, theme, filename }) =>
-        `<figure><img src="${escapeHtml(filename)}" alt="${escapeHtml(state)} at ${width}px in ${theme} theme" loading="lazy"><figcaption>${escapeHtml(state)} · ${width}px · ${theme}</figcaption></figure>`,
-    )
-    .join('\n');
-  await writeFile(
-    join(directory, 'index.html'),
-    `<!doctype html><html lang="en"><meta charset="utf-8"><title>Valstara design contact sheet</title><style>body{font:16px system-ui;margin:24px;background:#eee}main{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px}figure{margin:0}img{width:100%;height:auto}figcaption{padding:8px}</style><main>${cards}</main></html>`,
-  );
-  await writeFile(
-    join(directory, 'index.json'),
-    JSON.stringify(captures, null, 2),
-  );
+  await writeContactSheetIndex(directory, captures);
   return captures;
 }
 
