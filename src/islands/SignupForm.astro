@@ -702,12 +702,18 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     // The page's scroll padding is the bar's height plus the clearance, so a
     // focused element lands clear of the bar. Where the browser has not
     // scrolled it there, this lifts it by the shortfall. Reading the padding
-    // rather than the bar's box keeps the slide-in from skewing it.
-    readonly #protectFocus = (): void => {
+    // rather than the bar's box keeps the slide-in from skewing it. Only the
+    // element that received focus is lifted, and only while it still holds
+    // it: a control disabled in flight drops focus to the body, which
+    // received no focus and so is never scrolled to: a bar submission is not
+    // scrolled away.
+    readonly #protectFocus = (event: FocusEvent): void => {
+      const received = event.target;
       window.requestAnimationFrame(() => {
         const focused = document.activeElement;
         if (
           !(focused instanceof HTMLElement) ||
+          focused !== received ||
           focused === this.#dockStop ||
           this.#dock?.hidden !== false ||
           this.#dock.contains(focused)

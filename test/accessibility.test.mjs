@@ -1344,7 +1344,23 @@ test('keyboard-only signup through the sticky bar exposes its error and reaches 
 
     const email = `a11ydock${randomUUID().replaceAll('-', '')}@gmail.com`;
     await page.keyboard.type(email);
-    // Join, by keyboard: Tab to the button and press Enter.
+    // Join, by keyboard: Tab to the button and press Enter. Tab and Enter
+    // land inside one frame here, as they can for a fast keyboard user: the
+    // frames queued by the Tab are held until Join is disabled in flight and
+    // focus has dropped to the body, then released. The bar must stay open
+    // through its own submission and show its own confirmation.
+    await page.evaluate(() => {
+      const held = [];
+      const request = globalThis.requestAnimationFrame;
+      globalThis.requestAnimationFrame = (callback) => {
+        held.push(callback);
+        return 0;
+      };
+      globalThis.releaseAuditFrames = () => {
+        globalThis.requestAnimationFrame = request;
+        for (const callback of held.splice(0)) request(callback);
+      };
+    });
     await page.keyboard.press('Tab');
     assert.equal(
       await page.evaluate(() =>
@@ -1353,6 +1369,7 @@ test('keyboard-only signup through the sticky bar exposes its error and reaches 
       true,
     );
     await page.keyboard.press('Enter');
+    await page.evaluate(() => globalThis.releaseAuditFrames());
     await page.locator('[data-dock-confirmation]:not([hidden])').waitFor();
     assert.equal(
       await page.locator('[data-dock-confirmation]').getAttribute('role'),
