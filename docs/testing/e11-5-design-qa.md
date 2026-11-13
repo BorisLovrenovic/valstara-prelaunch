@@ -95,8 +95,8 @@ The speech was captured from a PulseAudio null sink's monitor, 64 s of 44.1 kHz 
 |---|---|---|---|
 | Cumulative layout shift at load | 0 | 0 | **0** |
 | Layout shift through the whole page | 0 | 0 | **0** |
-| Largest contentful paint | ≤ 2.5 s | 372–384 ms (`.lp-hero__body`) | **808–1,484 ms** (`.landing-hero__body`, held by the first-paint entrance; 860 ms on the final 2026-11-13 run) |
-| First-party JavaScript | recorded | 7,795 bytes: island 4,683 + `page-view.js` 1,112 + inline 2,000 | **17,847 bytes**: island 14,548 + `page-view.js` 1,112 + inline 2,187 (final, after the L1, A1 and S1 fixes; 16,687 before them) |
+| Largest contentful paint | ≤ 2.5 s | 372–384 ms (`.lp-hero__body`) | **808–1,484 ms** (`.landing-hero__body`, held by the first-paint entrance; 1,144 ms on the final 2026-11-13 run, after pre-PR review round 1) |
+| First-party JavaScript | recorded | 7,795 bytes: island 4,683 + `page-view.js` 1,112 + inline 2,000 | **17,868 bytes**: island 14,569 + `page-view.js` 1,112 + inline 2,187 (final, after the L1, A1 and S1 fixes and the round-1 in-flight scroll fix; 17,847 before that fix, 16,687 before L1, A1 and S1) |
 | Provider logos | recorded | none | **34 files, 112,959 bytes** |
 
 Bytes are uncompressed response bodies. The before figure was taken with the same function against a build of `8b30be4`, the commit before E11.5-01, made in a scratch worktree with this branch's installed packages (Astro 7.3.3 rather than that commit's 7.2.8). The LCP rise is the hero entrance (E11.5-11i/l), which holds the body text's first paint; it is within budget.
@@ -119,6 +119,7 @@ All on this branch, the local Compose stack up.
 | `npm run check` and `node --test test/e11-04-claims-audit.test.mjs` (via `npm test --`), after pre-PR review round 1 | 2026-11-13 | Both fail before the fix on this record's §5 wording (fingerprinting gate; "full-site customer copy … has no forbidden or placeholder prose"); both pass after it was reworded |
 | `npm run test:a11y`, after pre-PR review round 1 | 2026-11-13 | With the journey's frames held, fails before the in-flight scroll fix (times out waiting for the bar's confirmation); after it, **15 of 15 pass on three consecutive full-file runs** |
 | `npm run check`, then `npm run test:changed --` the audit suites, the layout-check suite, the two E11.5-12 suites and `signup-sticky-bar-rendered`, after pre-PR review round 1 | 2026-11-13 | `npm run check` passes. `test:changed`: 311 tests, 305 pass and 6 fail, every failure a `page.goto` timeout (in `accessibility`, `e11-5-12-landing-performance`, `landing-hero-rendered` and `member-leaderboard-redesign`) while another checkout's stack ran on this machine. Each of those files passes when run alone, and a fourth full `npm run test:a11y` run passes 15 of 15 |
+| `npm run check`, then `npm run test:changed --` the Tests-line suites and every test file this branch changed (final local checks) | 2026-11-13 | `npm run check` passes. `test:changed`: **311 tests, all pass**, including the privacy and accessibility suites |
 
 ## 6. Founder visual review, motion review and sign-off
 
