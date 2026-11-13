@@ -16,6 +16,8 @@ const composeUrl = new URL(
   '../infra/compose/docker-compose.production.yml',
   import.meta.url,
 );
+// Operator commands the runbook runs inside the production image (G7-1-I5).
+const runbookUrl = new URL('../docs/ops/runbook.md', import.meta.url);
 
 // Statements that load a module at runtime. `import type` and `export type`
 // are erased by native type stripping; `import { type X } from` still loads.
@@ -45,10 +47,10 @@ export function runtimeCopies(dockerfile) {
   return copies;
 }
 
-/** `node ./src/...ts` entry points the production services run. */
-export function sourceEntryPoints(compose, dockerfile) {
+/** `node ./src/...ts` entry points the production services and runbook run. */
+export function sourceEntryPoints(...texts) {
   const entries = new Set();
-  for (const text of [compose, dockerfile]) {
+  for (const text of texts) {
     for (const match of text.matchAll(/node['",\s]+\.\/(src\/[^'"\s&]+\.ts)/gu))
       entries.add(match[1]);
   }
@@ -97,16 +99,19 @@ export function uncopied(files, copies) {
 }
 
 test('every production source entry point loads only files the runtime image copies', async () => {
-  const [dockerfile, compose] = await Promise.all([
+  const [dockerfile, compose, runbook] = await Promise.all([
     readFile(dockerfileUrl, 'utf8'),
     readFile(composeUrl, 'utf8'),
+    readFile(runbookUrl, 'utf8'),
   ]);
   const copies = runtimeCopies(dockerfile);
-  const entries = sourceEntryPoints(compose, dockerfile);
-  // The app's config check, the migration runner and the maintenance worker.
+  const entries = sourceEntryPoints(compose, dockerfile, runbook);
+  // The app's config check, the migration runner, the maintenance worker and
+  // the runbook's flag CLI.
   assert.deepEqual(entries, [
     'src/server/config.ts',
     'src/server/db/run-migrations.ts',
+    'src/server/flags/cli.ts',
     'src/server/subscriber/run-maintenance.ts',
   ]);
 

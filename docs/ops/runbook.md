@@ -97,7 +97,7 @@ alert is sent. The alert carries shares only, never subscriber IDs or codes.
 
 **Diagnose:** compare `confirmed_referrals` against a live count from `referral_edge` for the top rows. Check the snapshot's `as_of` age. Check whether flagged accounts are appearing.
 
-**Resolve:** run the counter repair job — it is idempotent and reports its corrections. **A non-zero correction is a bug to investigate, not a fix to celebrate.** If the board is being gamed and the answer is not immediate, **flip `leaderboard.public` off**; the section disappears within the flag TTL with no deploy, and the weekly email's top-10 block becomes the surface.
+**Resolve:** run the counter repair job — it is idempotent and reports its corrections. **A non-zero correction is a bug to investigate, not a fix to celebrate.** If the board is being gamed and the answer is not immediate, **flip `leaderboard.public` off** ([command](#setting-a-campaign-flag)); the section disappears within the flag TTL with no deploy, and the weekly email's top-10 block becomes the surface.
 
 ---
 
@@ -163,6 +163,34 @@ buckets (seven days) independently.
 ## "We need to stop everything"
 
 In order: `signup.enabled` off → the form shows an honest paused message. `giveaway.open` off → no further accrual. `email.broadcast` off → no further sends. **None of these needs a deploy**, and each takes effect within the flag TTL. The site keeps serving its trust and legal pages, which is the state you want to be in while deciding what happened.
+
+Each lever is one command (see [Setting a campaign flag](#setting-a-campaign-flag)).
+
+---
+
+## Setting a campaign flag
+
+Every incident lever above is a campaign flag, set with the audited flag CLI.
+It runs inside the production image, in a one-off container that reuses the
+maintenance service's database credentials and configuration, so no port is
+opened and no extra credential is issued. Run from the production checkout on
+the host, with the same environment the stack was started with:
+
+```sh
+docker compose -f infra/compose/docker-compose.production.yml run --rm --no-deps \
+  maintenance node ./src/server/flags/cli.ts set leaderboard.public off --actor <operator>
+docker compose -f infra/compose/docker-compose.production.yml run --rm --no-deps \
+  maintenance node ./src/server/flags/cli.ts list
+```
+
+`set <key> on|off --actor <operator>` refuses an unregistered key or a missing
+actor, and changes nothing. Every change goes through `FlagService.set()`,
+which writes the override and a `flag.changed` audit record with the named
+actor and the flag key as its subject in one transaction. The app and the
+maintenance worker see the change within the five-second flag cache TTL; no
+deploy and no restart is needed. Turning `giveaway.open` on still refuses, and
+audits the refusal, while either email provider is on its free tier (E8-09).
+There is no admin HTTP route for flags.
 
 ---
 

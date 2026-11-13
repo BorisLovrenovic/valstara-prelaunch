@@ -126,7 +126,6 @@ middleware.
 | Route | Purpose |
 |---|---|
 | `GET /api/admin/export.csv` | The list export. A `text/csv` attachment with the exact handoff fields in `docs/data/model.md`, streamed in 500-row pages from one repeatable-read snapshot. An `export.run` audit with actor and snapshot row count is committed before bytes are returned. `Cache-Control: no-store` |
-| `GET /api/admin/flags` · `POST /api/admin/flags` | Read and set campaign flags |
 | `GET /api/admin/fraud?limit=…` · `POST /api/admin/fraud/:id` | Priority-ordered review queue (hard maximum 50); POST body is `{ "outcome": "dismissed" | "upheld" }`. Both outcomes use the authenticated actor and are audited. Upholding disqualifies once E5-05 adds that downstream transition |
 | `POST /api/admin/draw` | Authenticated, audited draw commitment. Reconciles eligible entries, checks the top-20 review and listed bundle contents, closes entry inserts, and commits the non-voided snapshot hash and future drand round. Returns `202` with `{ draw: { id, state: "pending", target_round, target_round_at } }`. The maintenance worker verifies two relays, selects winners and ordered reserves, and publishes only after offline reproduction. A second active draw is refused. |
 | `GET /api/admin/health` | Verification and referral-attribution health, snapshot age, queue depth, domain authentication, seed tests, quota consumption and projection, persisted purge-job status, open flag count; `no-store` |
@@ -138,6 +137,12 @@ never logged, audited or returned. There is one operator, exposed to routes as
 the `admin.operator` audit actor. There is no password, session or permission
 matrix. A missing or invalid factor returns the same `401 unauthorized`
 envelope with `Cache-Control: no-store`.
+
+**Campaign flags have no HTTP route.** They are read and set with the audited
+operator CLI, `node ./src/server/flags/cli.ts list` and
+`node ./src/server/flags/cli.ts set <key> on|off --actor <operator>`, run inside
+the production image as `docs/ops/runbook.md#setting-a-campaign-flag`
+describes. Each change is audited with the named actor.
 
 ---
 

@@ -24,6 +24,9 @@ interface FlagService {
 - **`leaderboard.public` off must remove the section, not break it** — drilled, not assumed.
 - Every change is audited with an actor.
 
+## Operator CLI
+`src/server/flags/cli.ts` is the only way an operator sets a flag: `list`, and `set <key> on|off --actor <name>`. It refuses a missing actor or an unregistered key before touching the database, and every change goes through `set()`, so it is audited with the named actor. It runs inside the production image; the command is in `docs/ops/runbook.md#setting-a-campaign-flag`. There is no admin HTTP route for flags.
+
 ## Dependencies
 `db`, `audit`.
 
