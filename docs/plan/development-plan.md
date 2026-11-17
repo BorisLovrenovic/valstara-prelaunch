@@ -167,10 +167,9 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 | 5 | E8 | Opus 5.5 — Extra High |
 | 6 | E9 + E10 | Opus 5.5 — High |
 | 7 | E11 + E11.5 | Opus 5.5 — Extra High |
-| 8 | E11.6 | Opus 5.5 — Extra High |
-| 9 | E11.7 | Opus 5.5 — Extra High |
+| 8 | E11.6 + E11.7 | Opus 5.5 — Extra High |
 
-**Gates 2, 3, 4, 5, 7, 8 and 9 run at Extra High because each covers something unrecoverable**: the privacy properties, the fraud invariants, the prize draw, the sending reputation, the launch surface with its privacy re-audit, hundreds of new public pages carrying the signup island and published price claims (gate 8), and partners' personal data with the rewritten reward rules under the reward-gating invariant (gate 9) (both founder-authorised 2026-11-17). A gate added with new epics names its model here, at Extra High when it covers personal data, privacy, security, money or email, and at High otherwise.
+**Gates 2, 3, 4, 5, 7 and 8 run at Extra High because each covers something unrecoverable**: the privacy properties, the fraud invariants, the prize draw, the sending reputation, the launch surface with its privacy re-audit, and, in gate 8, hundreds of new public pages carrying the signup island and published price claims (E11.6) together with partners' personal data and the rewritten reward rules under the reward-gating invariant (E11.7) (founder-authorised 2026-11-17). **Gate 8 runs once, after E11.7, and audits E11.6 and E11.7 together** (founder-authorised 2026-11-17); it replaces the separate gates 8 and 9 first planned for them. A gate added with new epics names its model here, at Extra High when it covers personal data, privacy, security, money or email, and at High otherwise.
 
 ---
 
