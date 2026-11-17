@@ -201,6 +201,42 @@ test('requests with different codes each get their own valid field', async () =>
   );
 });
 
+// QA gate 7 run 2: the cache replays every stored response header, and the
+// test above uses codes of equal length. A cache hit whose field is shorter or
+// longer than the stored render's must still arrive complete, so a framing
+// header carried over from the first render (Content-Length) cannot truncate
+// or stall it.
+test('a cache hit whose signed field differs in length arrives complete', async () => {
+  const longCode = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const paths = [
+    '/?ref=A',
+    `/?ref=${longCode}&utm_source=a-much-longer-utm-source`,
+    '/?ref=AB',
+  ];
+  const responses = await renderPages({ paths });
+  const verifier = createReferralCaptureService(secret);
+  const expected = [
+    { ref: 'A', utm: null },
+    { ref: longCode, utm: { source: 'a-much-longer-utm-source' } },
+    { ref: 'AB', utm: null },
+  ];
+  const fields = responses.map((response, index) => {
+    assert.match(
+      response.body.trimEnd(),
+      /<\/html>$/u,
+      `${paths[index]} arrived complete`,
+    );
+    const field = fieldPattern.exec(response.body)?.[1] ?? null;
+    assert.deepEqual(verifier.verifyRef(field), expected[index]);
+    return field ?? '';
+  });
+  // The second and third requests are cache hits on the first one's render.
+  assert.ok(
+    new Set(fields.map((field) => field.length)).size === fields.length,
+    'the three signed fields differ in length',
+  );
+});
+
 test('a flag change re-renders', async () => {
   const site = fakeSite(defaults);
   const enabledBody = await (await site.request('/leaderboard')).text();
