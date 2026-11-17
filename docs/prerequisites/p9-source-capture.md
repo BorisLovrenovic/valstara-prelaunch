@@ -1,236 +1,212 @@
 # P9 — Capturing the source pages for E11.6-01
 
-**Who:** the founder. **When:** before E11.6-01 starts. **Time:** about 15 minutes of your attention, plus roughly an hour of the script waiting politely between requests.
+**Who:** the founder, with one click. **When:** before E11.6-01 starts. **Time:** one click, then about 20 minutes of waiting.
 
-## Why you capture the pages and the agent doesn't
+## How it works
 
-`https://www.youfundceo.com/robots.txt` blocks AI agents (ClaudeBot, GPTBot and others) from the whole site, so no agent session may fetch it. You capture the pages. The agent then works out the site's structure, and builds and tests the scraper, from your saved copies alone. Those copies become the scraper's permanent test fixtures.
+`https://www.youfundceo.com` sits behind Vercel's bot protection. On 2026-11-17 a plain capture script got `robots.txt` and `sitemap.xml`, but every page answered with a "Vercel Security Checkpoint" (HTTP 429); those responses are kept in `raw/` as evidence. **By founder decision (2026-11-17, recorded on E11.6-04), the capture runs in a headless browser that presents itself as an ordinary browser**, the same way the monthly fetcher will. It never solves a CAPTCHA and never rotates proxies.
 
-**What matters is saving the page exactly as the server sends it.** That is what the scraper will receive. The browser's "Save page as → Webpage, Complete" saves the page *after* the browser has rebuilt it, which is not what a scraper sees. The script below saves the server's response byte for byte. The browser steps add the two things a script cannot record: what the page looks like, and what extra data it loads.
+The capture script is `/home/ccbl3/youfundceo-capture/capture.mjs`, outside the repository; its text is at the end of this file. It runs inside the repository's pinned Playwright container (`mcr.microsoft.com/playwright:v1.62.1-noble`), which carries Chromium and the system libraries it needs, so nothing has to be installed. **The founder starts it. No AI agent session runs it**, because the source's `robots.txt` blocks AI agents (epic rule 2).
 
-## Is `/countries` enough?
+It visits, one page at a time with a 10–20 second pause:
 
-**No.** `/countries` is only the list of countries and their links. The prices live on the country pages (`/countries/sweden`) and on the country × service pages (`/services/netflix/sweden`). So you capture:
+- the home page, where it finds the "Price moves" and terms-of-use links and adds them;
+- `/countries`, `/services`, `/services/netflix` and `/services/spotify`;
+- the 38 country pages of E11.6-01;
+- twelve service-by-country pages: Adobe, Apple Music, ChatGPT, Netflix, Spotify and YouTube Premium, each in Sweden and the United States.
 
-| What | Why |
-|---|---|
-| `/countries`, `/services`, `/sitemap.xml`, `/robots.txt` | The slugs of every country and service, and the rules the scraper must follow |
-| **A country page for each of the 38 countries below** | Every currency and number format the parser must read. They also show the "No price shown" section and which services each country lists |
-| Two service pages (`/services/netflix`, `/services/spotify`) | What a service page holds, so the agent can tell whether the scraper needs it |
-| **Country × service pages** for each tracked service in five markets | Plan-level prices (Netflix Basic, Standard and Premium), the "last checked" date and the USD figure. These are the pages the monthly run will mostly read |
-| The "Price moves" page and the terms of use | The change cross-check, and whether the site allows automated access and reuse |
+For each page it saves:
 
-You only do this once. Every monthly run afterwards fetches its own pages.
+- the page as the browser shows it (`pages/<name>.html`);
+- the page as the server sent it (`pages/<name>.server.html`);
+- full-page screenshots of five page types (`browser/*.png`);
+- two network recordings with cookies removed (`browser/countries__sweden.har`, `browser/services__netflix__sweden.har`).
 
-## Where the files go
+Every file gets a line in `manifest.tsv` with its URL, status, time and SHA-256. A page that doesn't exist is recorded as `404` and skipped. **Three refused pages in a row stop the run**, and nothing is retried.
 
-Save everything into your working copy of the repository, under:
+## Run it
 
-```
-packages/price-index/test/fixtures/youfundceo/
-  raw/          the script's output: one .html (or .xml/.txt) and one .headers file per URL
-  browser/      your screenshots and HAR files
-  manifest.tsv  written by the script: URL, file, HTTP status, capture time, SHA-256
-  urls-step1.txt
-  urls-step2.txt
-```
-
-**Do not commit anything.** The E11.6-01 session checks the files and commits them on its own branch. Files you have not committed stay put when branches change.
-
-## Step 1 — Look at the site in your browser (5 minutes)
-
-Open `https://www.youfundceo.com/` and note three things:
-
-1. **The link to the "Price moves" page.** Copy its full URL.
-2. **The link to the terms of use** (usually in the footer). Copy its full URL.
-3. **The country slugs.** Open `https://www.youfundceo.com/countries` and hover over a few countries. Do Czech Republic, Bosnia and Herzegovina, North Macedonia, the United Kingdom and the United States use the slugs guessed below? If one differs (`czechia` instead of `czech-republic`, say), fix that line in the list before running.
-
-## Step 2 — Save the capture script
-
-Save this as `capture.sh` **outside the repository** (e.g. `~/youfundceo-capture/capture.sh`), so it is never committed. It requests one URL at a time and waits 10–20 seconds between requests. It identifies itself truthfully as a bot, under the neutral name `PriceIndexBot/1.0` (D6, founder 2026-11-17), and stops by itself after three failed requests in a row.
+Click **Run** on this command. Docker Desktop must be running.
 
 ```bash
-#!/usr/bin/env bash
-# Usage: bash capture.sh <urls-file> <output-dir>
-set -uo pipefail
-urls="$1"
-out="$2"
-ua='PriceIndexBot/1.0'
-mkdir -p "$out/raw"
-manifest="$out/manifest.tsv"
-[ -f "$manifest" ] || printf 'url\tfile\tstatus\tcaptured_at\tsha256\n' > "$manifest"
-fails=0
-first=1
-while IFS= read -r url || [ -n "$url" ]; do
-  case "$url" in ''|'#'*) continue ;; esac
-  case "$url" in */api/*|*/go/*) echo "skip (disallowed by robots.txt): $url"; continue ;; esac
-  [ "$first" -eq 1 ] || sleep $((10 + RANDOM % 11))
-  first=0
-  name=$(printf '%s' "${url#https://www.youfundceo.com/}" | sed 's#/$##; s#[/?=&]#__#g')
-  [ -n "$name" ] || name=home
-  case "$name" in *.txt|*.xml) file="$name" ;; *) file="$name.html" ;; esac
-  status=$(curl -sS --compressed --max-time 30 -A "$ua" \
-    -D "$out/raw/$file.headers" -o "$out/raw/$file" -w '%{http_code}' "$url") || status=000
-  stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  hash=-
-  if [ -f "$out/raw/$file" ]; then
-    hash=$( (sha256sum "$out/raw/$file" 2>/dev/null || shasum -a 256 "$out/raw/$file") | cut -d' ' -f1)
-  fi
-  printf '%s\t%s\t%s\t%s\t%s\n' "$url" "raw/$file" "$status" "$stamp" "$hash" >> "$manifest"
-  echo "$status  $url"
-  case "$status" in
-    200|304) fails=0 ;;
-    404) echo "   404 — check this slug against the site and fix the line" ;;
-    *) fails=$((fails + 1))
-       echo "   problem ($status) — waiting a minute before the next request"
-       sleep 60
-       if [ "$fails" -ge 3 ]; then
-         echo "Stopped after three failures in a row. Do not retry; tell the E11.6-01 session what happened."
-         exit 2
-       fi ;;
-  esac
-done < "$urls"
-echo "Done. Manifest: $manifest"
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v /home/ccbl3/projects/valstara-prelaunch:/home/ccbl3/projects/valstara-prelaunch -v /home/ccbl3/youfundceo-capture:/home/ccbl3/youfundceo-capture:ro -w /home/ccbl3/projects/valstara-prelaunch mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e node /home/ccbl3/youfundceo-capture/capture.mjs packages/price-index/test/fixtures/youfundceo
 ```
 
-## Step 3 — First pass: indexes and the 38 country pages (about 13 minutes)
+Each page prints its status. `200` is good, and `404` means that page doesn't exist on the source. **If it prints "Stopped after three refused pages in a row", don't retry.** Tell the E11.6-01 session what happened; it is a finding for the founder.
 
-Create `packages/price-index/test/fixtures/youfundceo/urls-step1.txt` with this content. Replace the two `PASTE-…` lines with the URLs you found in Step 1, and fix any slug that differed:
+**Do not commit anything.** The E11.6-01 session checks the files and commits them on its own branch.
 
+## The script
+
+```js
+// One-off fixture capture for E11.6-01 (founder decision 2026-11-17: headless
+// browser presenting as an ordinary browser; no CAPTCHA solving, no proxies).
+// Run by the founder, never by an AI agent session.
+//
+// It runs inside the repository's pinned Playwright container, which carries
+// Chromium and its system libraries; the command is in
+// docs/prerequisites/p9-source-capture.md.
+import { createHash } from 'node:crypto';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join, resolve } from 'node:path';
+
+const require = createRequire(join(process.cwd(), 'package.json'));
+const { chromium } = require('playwright');
+
+const out = resolve(process.argv[2] ?? '');
+if (!process.argv[2]) throw new Error('Give the output folder as the first argument.');
+const base = (process.env.BASE_URL ?? 'https://www.youfundceo.com').replace(/\/$/u, '');
+const delayMin = Number(process.env.DELAY_MIN ?? 10);
+const delayMax = Number(process.env.DELAY_MAX ?? 20);
+const checkpointWait = Number(process.env.CHECKPOINT_WAIT ?? 30);
+const failWait = Number(process.env.FAIL_WAIT ?? 60);
+
+const countries = ['sweden', 'germany', 'united-kingdom', 'poland', 'romania', 'norway', 'denmark',
+  'switzerland', 'canada', 'australia', 'austria', 'belgium', 'bosnia-and-herzegovina', 'croatia',
+  'cyprus', 'czech-republic', 'estonia', 'finland', 'france', 'greece', 'hungary', 'iceland', 'ireland',
+  'italy', 'latvia', 'liechtenstein', 'lithuania', 'luxembourg', 'malta', 'netherlands', 'new-zealand',
+  'north-macedonia', 'portugal', 'serbia', 'slovakia', 'slovenia', 'spain', 'united-states'];
+const pairServices = ['adobe', 'apple-music', 'chatgpt', 'netflix', 'spotify', 'youtube-premium'];
+const screenshotPaths = new Set(['/countries', '/countries/sweden', '/services/netflix', '/services/netflix/sweden']);
+const harPaths = new Set(['/countries/sweden', '/services/netflix/sweden']);
+
+const paths = ['/', '/countries', '/services', '/services/netflix', '/services/spotify',
+  ...countries.map((c) => `/countries/${c}`),
+  ...pairServices.flatMap((s) => [`/services/${s}/sweden`, `/services/${s}/united-states`])];
+
+for (const dir of ['pages', 'browser']) mkdirSync(join(out, dir), { recursive: true });
+const manifest = join(out, 'manifest.tsv');
+if (!existsSync(manifest)) writeFileSync(manifest, 'url\tfile\tstatus\tcaptured_at\tsha256\n');
+const sha = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
+const nameOf = (path) => (path === '/' ? 'home' : path.replace(/^\//u, '').replace(/\/$/u, '').replaceAll('/', '__'));
+const sleep = (seconds) => new Promise((done) => setTimeout(done, seconds * 1000));
+const pause = () => sleep(delayMin + Math.random() * (delayMax - delayMin));
+const record = (url, file, status) => {
+  const full = join(out, file);
+  appendFileSync(manifest, `${url}\t${file}\t${status}\t${new Date().toISOString()}\t${existsSync(full) ? sha(full) : '-'}\n`);
+};
+
+const browser = await chromium.launch({
+  channel: 'chromium',
+  headless: true,
+  args: ['--disable-blink-features=AutomationControlled'],
+});
+const probe = await browser.newPage();
+const userAgent = (await probe.evaluate(() => navigator.userAgent)).replace('HeadlessChrome', 'Chrome');
+await probe.close();
+const contextOptions = { userAgent, locale: 'en-US', viewport: { width: 1366, height: 900 } };
+const context = await browser.newContext(contextOptions);
+await context.addInitScript(() => {
+  Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => undefined });
+});
+
+// Bounds any step, so a page stuck in the checkpoint's reload loop never hangs the run.
+const within = (promise, seconds) =>
+  Promise.race([promise, sleep(seconds).then(() => { throw new Error(`timed out after ${seconds}s`); })]);
+const isCheckpoint = async (page) => /security checkpoint/iu.test(await within(page.title(), 5).catch(() => ''));
+
+async function load(page, url) {
+  let last = null;
+  page.on('response', (r) => {
+    if (r.request().isNavigationRequest() && r.frame() === page.mainFrame()) last = r;
+  });
+  const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  last ??= response;
+  // Through the checkpoint once the latest page response is no longer a refusal
+  // and the title is no longer the checkpoint's; a reload in progress counts as not yet.
+  const refused = () => [403, 429].includes(last?.status() ?? 429);
+  for (let waited = 0; waited < checkpointWait; waited += 1) {
+    if (!refused() && !(await isCheckpoint(page))) break;
+    await sleep(1);
+  }
+  await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
+  return { checkpoint: refused() || (await isCheckpoint(page)), status: last?.status() ?? 0, response: last };
+}
+
+function stripCookies(harFile) {
+  const har = JSON.parse(readFileSync(harFile, 'utf8'));
+  for (const entry of har.log.entries) {
+    for (const part of [entry.request, entry.response]) {
+      part.cookies = [];
+      part.headers = part.headers.filter((h) => !/^(cookie|set-cookie)$/iu.test(h.name));
+    }
+  }
+  writeFileSync(harFile, JSON.stringify(har, null, 2));
+}
+
+let failures = 0;
+const queue = [...paths];
+const extra = new Set();
+for (let index = 0; index < queue.length; index += 1) {
+  const path = queue[index];
+  if (/^\/(api|go)\//u.test(path)) { console.log(`skip (disallowed by robots.txt): ${path}`); continue; }
+  if (index > 0) await pause();
+  const url = `${base}${path}`;
+  const name = nameOf(path);
+  const wantsHar = harPaths.has(path);
+  const ctx = wantsHar
+    ? await browser.newContext({ ...contextOptions, recordHar: { path: join(out, 'browser', `${name}.har`) } })
+    : context;
+  if (wantsHar) await ctx.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => undefined });
+  });
+  const page = await ctx.newPage();
+  try {
+    const { checkpoint, status, response } = await load(page, url);
+    if (checkpoint || status === 429 || status === 403 || status >= 500) {
+      failures += 1;
+      record(url, '-', checkpoint ? `${status}-checkpoint` : status);
+      console.log(`${status}  ${url}  ${checkpoint ? '(still the security checkpoint)' : ''}`);
+      if (failures >= 3) {
+        console.log('Stopped after three refused pages in a row. Do not retry; tell Claude what happened.');
+        break;
+      }
+      console.log('   waiting a minute before the next page');
+      await sleep(failWait);
+      continue;
+    }
+    failures = 0;
+    if (status === 404) { record(url, '-', 404); console.log(`404  ${url}  (does not exist)`); continue; }
+    writeFileSync(join(out, 'pages', `${name}.html`), await page.content());
+    record(url, `pages/${name}.html`, status);
+    const body = response ? await within(response.text(), 15).catch(() => null) : null;
+    if (body) {
+      writeFileSync(join(out, 'pages', `${name}.server.html`), body);
+      record(url, `pages/${name}.server.html`, status);
+    }
+    if (screenshotPaths.has(path)) {
+      await page.screenshot({ path: join(out, 'browser', `${name}.png`), fullPage: true });
+      record(url, `browser/${name}.png`, status);
+    }
+    console.log(`${status}  ${url}`);
+    if (path === '/') {
+      const links = await page.$$eval('a[href]', (as) => as.map((a) => ({ href: a.getAttribute('href'), text: a.textContent ?? '' })));
+      for (const { href, text } of links) {
+        if (!href || !/price[\s-]*moves|terms/iu.test(`${text} ${href}`)) continue;
+        const target = new URL(href, url);
+        if (target.origin !== new URL(base).origin || extra.has(target.pathname)) continue;
+        extra.add(target.pathname);
+        queue.push(target.pathname);
+        if (/price[\s-]*moves/iu.test(`${text} ${href}`)) screenshotPaths.add(target.pathname);
+        console.log(`   found: ${target.pathname}`);
+      }
+    }
+  } catch (error) {
+    failures += 1;
+    record(url, '-', 'error');
+    console.log(`error  ${url}  ${error.message.split('\n')[0]}`);
+    if (failures >= 3) { console.log('Stopped after three failed pages in a row. Tell Claude what happened.'); break; }
+  } finally {
+    await within(page.goto('about:blank'), 10).catch(() => {});
+    await within(page.close(), 10).catch(() => {});
+    if (wantsHar) {
+      await within(ctx.close(), 30).catch(() => {});
+      const harFile = join(out, 'browser', `${name}.har`);
+      if (existsSync(harFile)) { stripCookies(harFile); record(url, `browser/${name}.har`, 'har'); }
+    }
+  }
+}
+await browser.close();
+console.log(`Done. Manifest: ${manifest}`);
 ```
-https://www.youfundceo.com/robots.txt
-https://www.youfundceo.com/sitemap.xml
-https://www.youfundceo.com/countries
-https://www.youfundceo.com/services
-https://www.youfundceo.com/services/netflix
-https://www.youfundceo.com/services/spotify
-PASTE-THE-PRICE-MOVES-URL-HERE
-PASTE-THE-TERMS-OF-USE-URL-HERE
-https://www.youfundceo.com/countries/sweden
-https://www.youfundceo.com/countries/germany
-https://www.youfundceo.com/countries/united-kingdom
-https://www.youfundceo.com/countries/poland
-https://www.youfundceo.com/countries/romania
-https://www.youfundceo.com/countries/norway
-https://www.youfundceo.com/countries/denmark
-https://www.youfundceo.com/countries/switzerland
-https://www.youfundceo.com/countries/canada
-https://www.youfundceo.com/countries/australia
-https://www.youfundceo.com/countries/austria
-https://www.youfundceo.com/countries/belgium
-https://www.youfundceo.com/countries/bosnia-and-herzegovina
-https://www.youfundceo.com/countries/croatia
-https://www.youfundceo.com/countries/cyprus
-https://www.youfundceo.com/countries/czech-republic
-https://www.youfundceo.com/countries/estonia
-https://www.youfundceo.com/countries/finland
-https://www.youfundceo.com/countries/france
-https://www.youfundceo.com/countries/greece
-https://www.youfundceo.com/countries/hungary
-https://www.youfundceo.com/countries/iceland
-https://www.youfundceo.com/countries/ireland
-https://www.youfundceo.com/countries/italy
-https://www.youfundceo.com/countries/latvia
-https://www.youfundceo.com/countries/liechtenstein
-https://www.youfundceo.com/countries/lithuania
-https://www.youfundceo.com/countries/luxembourg
-https://www.youfundceo.com/countries/malta
-https://www.youfundceo.com/countries/netherlands
-https://www.youfundceo.com/countries/new-zealand
-https://www.youfundceo.com/countries/north-macedonia
-https://www.youfundceo.com/countries/portugal
-https://www.youfundceo.com/countries/serbia
-https://www.youfundceo.com/countries/slovakia
-https://www.youfundceo.com/countries/slovenia
-https://www.youfundceo.com/countries/spain
-https://www.youfundceo.com/countries/united-states
-```
-
-Then, from the repository root:
-
-```bash
-bash ~/youfundceo-capture/capture.sh packages/price-index/test/fixtures/youfundceo/urls-step1.txt packages/price-index/test/fixtures/youfundceo
-```
-
-Every line should print `200`. A `404` means a wrong slug: fix that line in a new file holding only the corrected lines, and run the script again on that file. It appends to the same manifest. **If you see `403` or `429`, or the script stops by itself, do not retry and do not try another network.** That is a finding for E11.6-01, and the browser fallback below is the next step.
-
-## Step 4 — Second pass: country × service pages in five markets (about 25 minutes)
-
-Open `https://www.youfundceo.com/services` in your browser. For each product we track, find its slug: the last part of its link, e.g. `netflix` in `/services/netflix`. These are the products to look for:
-
-- Adobe Creative Cloud
-- Amazon Prime / Prime Video
-- Apple TV
-- Apple Music
-- Bolt.new
-- Canva
-- ChatGPT
-- Crunchyroll
-- Duolingo
-- Figma
-- LinkedIn Premium
-- Lovable
-- MyFitnessPal
-- n8n
-- Netflix
-- Notion
-- Perplexity
-- Spotify
-- YouTube Premium
-
-**A product that isn't on the site gets no line.** Just note it; it will be flagged as `missing` for manual entry, which is expected.
-
-Write the slugs you found, one per line, into `~/youfundceo-capture/services.txt`. Then generate the URL list and run the script:
-
-```bash
-for s in $(cat ~/youfundceo-capture/services.txt); do for c in sweden germany united-kingdom switzerland united-states; do echo "https://www.youfundceo.com/services/$s/$c"; done; done > packages/price-index/test/fixtures/youfundceo/urls-step2.txt
-```
-
-```bash
-bash ~/youfundceo-capture/capture.sh packages/price-index/test/fixtures/youfundceo/urls-step2.txt packages/price-index/test/fixtures/youfundceo
-```
-
-A `404` here can be genuine: the service may simply not be listed in that country. Leave it in the manifest. It tells the agent something.
-
-## Step 5 — Browser evidence (5 minutes)
-
-Use Chrome or Edge, and save into `packages/price-index/test/fixtures/youfundceo/browser/`.
-
-**Full-page screenshots** of five pages:
-- `/countries`
-- `/countries/sweden`
-- `/services/netflix`
-- `/services/netflix/sweden`
-- the Price moves page
-
-For each one:
-1. Open the page.
-2. Press F12 to open the developer tools.
-3. Press Ctrl+Shift+P (Cmd+Shift+P on a Mac), type `full size screenshot`, and press Enter.
-4. Rename the file after the page, e.g. `countries__sweden.png`.
-
-**Two HAR files**, for `/countries/sweden` and `/services/netflix/sweden`. These show any extra data the page loads after it arrives. For each page:
-1. Open the developer tools and go to the Network tab.
-2. Tick "Preserve log" and "Disable cache".
-3. Reload the page and wait until it settles.
-4. Click the download arrow ("Export HAR") and choose **"Export HAR (sanitized)…"** if it is offered. The sanitised export leaves out your cookies.
-5. Save it as e.g. `countries__sweden.har`.
-
-## Fallback if the script is refused
-
-If Step 3 or Step 4 gets `403` or `429`, save the pages from the browser instead. For each URL:
-
-1. Open `view-source:` followed by the URL, e.g. `view-source:https://www.youfundceo.com/countries/sweden`.
-2. Press Ctrl+S (Cmd+S on a Mac), and choose **"Webpage, HTML Only"** — never "Webpage, Complete".
-3. Name the file the way the script would, i.e. the path with `/` replaced by `__`, e.g. `countries__sweden.html`, and save it into `raw/`.
-
-Then tell the E11.6-01 session that the browser was used and the script was refused. That is itself a finding about how the monthly scraper will fare.
-
-## When you are done
-
-Check:
-- `manifest.tsv` has a line for every URL;
-- `raw/` has the 38 country pages;
-- `browser/` has five screenshots and two HAR files.
-
-Then start E11.6-01 and mark its register row `done` only after that session's pull request merges.
