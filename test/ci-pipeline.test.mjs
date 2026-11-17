@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import {
@@ -7,6 +10,7 @@ import {
   changedCoverage,
   parseChangedLines,
   parseLcov,
+  readChangedDiff,
 } from '../scripts/ci/changed-coverage.mjs';
 
 const workflowUrl = new URL('../.github/workflows/pr.yml', import.meta.url);
@@ -198,6 +202,38 @@ test('changed-line coverage passes at 80% and fails below it', () => {
   assert.equal(passing.percentage, 80);
   assert.doesNotThrow(() => assertCoverage(passing, 80));
   assert.throws(() => assertCoverage(passing, 81), /below 81%/);
+});
+
+test('the changed-line diff survives a large change outside the measured roots', async (t) => {
+  const repo = await mkdtemp(join(tmpdir(), 'changed-coverage-'));
+  t.after(() => rm(repo, { recursive: true, force: true }));
+  const git = (...args) =>
+    execFileSync('git', args, { cwd: repo, encoding: 'utf8' });
+  git('init', '-q');
+  git('config', 'user.email', 'ci@example.invalid');
+  git('config', 'user.name', 'CI');
+  await mkdir(join(repo, 'src'));
+  await writeFile(join(repo, 'src/example.ts'), 'export const a = 1;\n');
+  git('add', '.');
+  git('commit', '-q', '-m', 'base');
+  const base = git('rev-parse', 'HEAD').trim();
+
+  // Above the 1 MiB default child-process buffer that overflowed in CI.
+  await mkdir(join(repo, 'fixtures'));
+  await writeFile(
+    join(repo, 'fixtures/capture.html'),
+    'x'.repeat(200).concat('\n').repeat(12_000),
+  );
+  await writeFile(
+    join(repo, 'src/example.ts'),
+    'export const a = 1;\nexport const b = 2;\n',
+  );
+  git('add', '.');
+  git('commit', '-q', '-m', 'change');
+
+  const changed = parseChangedLines(readChangedDiff(base, ['src/'], repo));
+  assert.deepEqual([...changed.keys()], ['src/example.ts']);
+  assert.deepEqual([...(changed.get('src/example.ts') ?? [])], [2]);
 });
 
 test('changed-line coverage ignores deletion-only hunks but still checks added lines', () => {
