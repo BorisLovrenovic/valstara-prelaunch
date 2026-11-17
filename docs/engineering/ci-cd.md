@@ -36,7 +36,7 @@ The five critical-module thresholds are registered in `coverage.config.json` but
 
 | Command | Runs |
 |---|---|
-| `npm run check` | Lint, format, typecheck, `npm run security` and the build, stamped so tests reuse it |
+| `npm run check` | `npm run price-index -- validate` first, so an invalid price-index config file stops it at once (E11.6-02); then lint, format, typecheck, `npm run security` and the build, stamped so tests reuse it |
 | `npm run test:changed -- <files>` | Test files changed since the merge base with `origin/main` (committed, uncommitted or untracked); tests whose imports reach a changed file, or that read a changed file through `new URL(…, import.meta.url)`; tests whose code (or a test helper they import) names a repository file or directory in a string literal, when that file changes or anything beneath that directory changes or is added; tests that load, at runtime, a package a lockfile change reaches; the files named; and the `test:privacy` and `test:a11y` suites whenever a change touches `src/pages`, `src/components`, `src/islands`, `src/layouts`, `src/styles`, `src/copy`, `src/content`, `src/middleware.ts`, `public/` or `astro.config.mjs` |
 
 A ticket names its Tests-line files explicitly, because rendered-page tests reach pages over HTTP, not by import.
@@ -57,7 +57,7 @@ node scripts/ci/changed-coverage.mjs
 
 ### The security and privacy stage
 
-Seven scans, each with a **planted red-path fixture committed in-repo** so a scan that silently stops working is caught:
+Nine scans, each with a **planted red-path fixture committed in-repo** so a scan that silently stops working is caught:
 
 | Scan | Fails on |
 |---|---|
@@ -69,12 +69,13 @@ Seven scans, each with a **planted red-path fixture committed in-repo** so a sca
 | **Vendor-boundary rule** | An email vendor SDK imported outside its own provider module. Runtime `import()` targets must resolve statically; **an unresolved target fails closed** |
 | **Forbidden-copy scan** | A never-use string in `src/copy/`, `src/content/` or any `.astro` file |
 | **Inline-prose scan** | Customer-visible prose inline in an `src/**/*.astro` component instead of in the copy layer |
+| **Price-index isolation scan** | A file under `src/` importing any part of `packages/price-index/` other than `src/publish` and `src/schema`; a package file importing from `src/`; a Dockerfile, Compose file, CI workflow or crontab naming the tool or running `npm run price-index`; a Dockerfile copying the whole context or `packages/`; the `dev`, `start`, `build` or `preview` script, their hooks or a script they run naming the tool (E11.6-02, ADR-033) |
 
 **The cookie, fingerprinting and third-party rules are what make "no consent banner" a verified property rather than an intention.** They are the reason it is safe to have no banner at all.
 
 **One path is excepted from the fingerprinting rule and from Prettier: `packages/price-index/test/fixtures/`** (E11.6-01, founder decision D-019 Q1, 2026-11-17). It holds the founder's verbatim capture of the price index's source site, third-party pages whose inline React code reads the high-resolution timer, a timing-entropy API the rule matches. Each file's SHA-256 is pinned in `fixtures/youfundceo/manifest.tsv`, so it cannot be edited or reformatted to pass. Those pages are test inputs: nothing in them is served, bundled or loaded by a rendered page. The exception covers that directory only. The fingerprinting rule still reads the rest of `packages/price-index/`, including the tool's own `src/` and the rest of its `test/`, and every other scan still reads the fixtures. The `fingerprinting-price-index` red path in `test/fixtures/security/gates.json` plants that timer call in `packages/price-index/test/` and proves the scan still fails there. `.prettierignore` lists the same directory.
 
-`npm run security` runs the eight scans. `npm run ci:security-red-paths` materialises the committed fixture definitions and proves each scan fails; it is mandatory beside the production scan. The policy files live in `scripts/ci/`, while `scripts/forbidden-copy.json` is seeded from the LOCKED never-use table.
+`npm run security` runs the nine scans. `npm run ci:security-red-paths` materialises the committed fixture definitions and proves each scan fails; it is mandatory beside the production scan. The policy files live in `scripts/ci/`, while `scripts/forbidden-copy.json` is seeded from the LOCKED never-use table.
 
 ## Main pipeline
 
