@@ -3228,7 +3228,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 
 ### E11.6-01 — Discovery spike: the source site's structure, terms and fixtures
 **Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** docs
-**Why this model:** analysis of saved pages against a short checklist, with no code beyond a fixture manifest. Mode is `manual` because only the founder may capture the pages (rule 2).
+**Why this model:** analysis of saved pages against a short checklist, with no code beyond the fixture manifest test. Mode is `manual` because only the founder may run the capture (rule 2).
 
 **Build:** The founder captures the pages by following `docs/prerequisites/p9-source-capture.md`. They are saved unmodified into `packages/price-index/test/fixtures/youfundceo/`:
 - `/robots.txt`, `/sitemap.xml`, `/countries`, `/services`, the "Price moves" page and the terms of use;
@@ -3237,7 +3237,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 - **a sample of country × service pages**: the tracked services that have a per-service sitemap on the source (Adobe, Apple Music, ChatGPT, Netflix, Spotify, YouTube Premium), in Sweden and the United States;
 - full-page screenshots of each page type, and a sanitised HAR export of one country page and one country × service page, which also carry the response headers.
 
-**Every page is saved from Chrome** (founder-authorised 2026-11-17), because the source serves scripted requests a Vercel bot checkpoint (`x-vercel-mitigated: challenge`, HTTP 429). The founder's scripted capture of 2026-11-17 got `robots.txt` and `sitemap.xml` and three checkpoint responses, which stay in the fixtures as evidence.
+**The pages are captured by a headless browser that the founder starts with one command** (founder decision 2026-11-17, recorded on E11.6-04), because the source serves plain scripted requests a Vercel bot checkpoint (`x-vercel-mitigated: challenge`, HTTP 429). The founder's first, plain capture of 2026-11-17 got `robots.txt` and `sitemap.xml` and three checkpoint responses, which stay in the fixtures as evidence. The capture saves each page both as the browser rendered it and as the server sent it, so the findings can tell server-rendered content from content built in the browser.
 
 The agent then writes `docs/features/price-index-source-findings.md` from the saved files only, covering:
 - the structure and slug scheme of each page type, confirming or correcting the founder's known structure;
@@ -3262,7 +3262,7 @@ The agent then writes `docs/features/price-index-source-findings.md` from the sa
 It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the founder as decisions; the agent does not edit the plan.
 
 **Acceptance criteria:**
-- **No agent session requests the source site.** Every fixture is a founder capture, unmodified, listed in `fixtures/youfundceo/manifest.tsv` with its URL, capture time, save method and SHA-256 (HTTP status where the script recorded one)
+- **No agent session requests the source site.** Every fixture is a founder capture, unmodified, listed in `fixtures/youfundceo/manifest.tsv` with its URL, HTTP status, capture time and SHA-256
 - All 38 country pages are present. A country the source does not list is recorded as such, not substituted. Every saved page shows real content, not the checkpoint
 - The findings name one extraction source per page type and say why it is the most stable
 - **Every uncertain name mapping and every tracked product missing from the source is listed for the founder**, and none is guessed
