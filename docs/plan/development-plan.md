@@ -278,6 +278,14 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 - Every fixture is committed in-repo, so a scan that stops working is caught
 
 **Tests:** Planted-violation fixtures per gate in a dedicated job.
+
+**Founder decisions (2026-11-17):**
+1. **The 2026-11 Astro advisories are fixed by upgrade on a dedicated branch merged to `main` before GATE-7 merges, not by allowlist (D-009).** GHSA-mh32-jxcr-mh9f and GHSA-r3h5-4585-7x3w (npm 1246685–1246687) fail the dependency scan on `main` at astro 7.3.3 and @astrojs/node 11.1.4. The dedicated branch, cut from `main`, pins `astro` 7.4.12 and `@astrojs/node` 11.1.13. Every patched Astro release declares `node >=22.23.4`, so the same change moves the Node runtime from 22.22.3 to 22.23.5 everywhere it is pinned: `Dockerfile` (both stages), the three `infra/compose/docker-compose.yml` images, `.github/workflows/pr.yml` and `main-image.yml`, `.nvmrc`, `package.json` engines (`>=22.23.5 <23`), `infra/compose/assert-production-stack.mjs` and `infra/ENV.md`. The allowlist stays empty. Nothing new loads in the browser. The full suite runs in CI on that pull request; once merged, GATE-7 merges `main` and re-runs its pre-push checks. *(Accepted under the founder's standing rule for high-confidence recommendations.)*
+
+**Named test rewrite (founder-authorised 2026-11-17):** `test/security-gates.test.mjs`, "Astro remote-image caching uses only the expected policy methods": the pinned version changes from `'7.3.3'` to `'7.4.12'`, after re-confirming that `http-cache-semantics` is consumed only by `assets/build/remote.js` through `storable()` and `timeToLive()`; every other assertion stays. *(Accepted under the founder's standing rule for high-confidence recommendations.)*
+
+**Named test rewrite (founder-authorised 2026-11-17):** `test/ci-pipeline.test.mjs`, "developer, CI, and local Compose Node versions satisfy lint plugin engines": `.nvmrc` `22.22.3` → `22.23.5`, engines `>=22.22.3 <23` → `>=22.23.5 <23`, and the compose image pattern `node:22.22.3-bookworm-slim` → `node:22.23.5-bookworm-slim`, still exactly 3 matches; nothing else changes. *(Accepted under the founder's standing rule for high-confidence recommendations.)*
+
 **Docs:** `docs/security/threat-model.md#ci-security-gates` · `docs/architecture/adr/007-cookieless-analytics.md` · `docs/architecture/adr/013-no-fingerprinting.md`
 
 ### E1-06 — Image build, GHCR push, production Compose behind Cloudflare
