@@ -3227,7 +3227,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 
 ### E11.6-01 — Discovery spike: the source site's structure, terms and fixtures
 **Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** docs
-**Why this model:** analysis of saved pages against a short checklist, with no code beyond the fixture manifest test. Mode is `manual` because only the founder may run the capture (rule 2).
+**Why this model:** analysis of saved pages against a short checklist, with no code beyond the fixture manifest test. **Mode is `auto` (founder-authorised 2026-11-17).** Only the founder may run the capture (rule 2), and the founder ran it on 2026-11-17: the fixtures are in `packages/price-index/test/fixtures/youfundceo/` in the working tree, not yet committed. The session commits them unmodified on the ticket branch, adds the manifest test and writes the findings from the saved files. It never runs the capture again and never requests the source site.
 
 **Build:** The founder captures the pages by following `docs/prerequisites/p9-source-capture.md`. They are saved unmodified into `packages/price-index/test/fixtures/youfundceo/`:
 - `/robots.txt`, `/sitemap.xml`, `/countries`, `/services`, the "Price moves" page and the terms of use;
