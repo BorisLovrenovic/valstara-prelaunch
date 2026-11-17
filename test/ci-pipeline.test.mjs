@@ -29,7 +29,7 @@ test('the PR workflow exposes the mandatory E1-04 and E1-05 check names', async 
   ]);
   // Every job but coverage installs; coverage merges reports with Node alone.
   assert.equal((workflow.match(/- run: npm ci/g) ?? []).length, 6);
-  assert.equal((workflow.match(/node-version: 22\.22\.3/g) ?? []).length, 7);
+  assert.equal((workflow.match(/node-version: 22\.23\.5/g) ?? []).length, 7);
   assert.match(workflow, /npm run lint && npm run format/);
   assert.match(workflow, /npm run typecheck/);
   assert.match(workflow, /npm run build/);
