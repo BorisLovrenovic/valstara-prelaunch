@@ -45,7 +45,7 @@ services:
     memswap_limit: ${POSTGRES_MEM_LIMIT:-512m}
 
   app:
-    image: node:22.22.3-bookworm-slim
+    image: node:22.23.5-bookworm-slim
     restart: unless-stopped
     working_dir: /workspace
     command: ['sh', '/workspace/infra/compose/run-app.sh']
@@ -105,7 +105,7 @@ services:
     memswap_limit: ${APP_MEM_LIMIT:-768m}
 
   migrate:
-    image: node:22.22.3-bookworm-slim
+    image: node:22.23.5-bookworm-slim
     restart: 'no'
     working_dir: /workspace
     command: ['sh', '/workspace/infra/compose/run-migrations.sh']
@@ -128,7 +128,7 @@ services:
     memswap_limit: ${MIGRATION_MEM_LIMIT:-768m}
 
   maintenance:
-    image: node:22.22.3-bookworm-slim
+    image: node:22.23.5-bookworm-slim
     restart: unless-stopped
     working_dir: /workspace
     command: ['node', '/workspace/src/server/subscriber/run-maintenance.ts']
