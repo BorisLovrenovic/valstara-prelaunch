@@ -4,7 +4,7 @@
 
 ## Rules
 
-1. **Rows are in execution order**, not ID order. E6-06 runs inside Epic E8, S-01 runs before E7, E11.5 ran in the order its founder authorisations set (plan, Epic E11.5), E11.6 runs between GATE-7 and E12, and E11.7 runs between GATE-8 and E12 (both founder-authorised 2026-11-17).
+1. **Rows are in execution order**, not ID order. E6-06 runs inside Epic E8, S-01 runs before E7, E11.5 ran in the order its founder authorisations set (plan, Epic E11.5), E11.6 and E11.7 run between GATE-7 and E12 (both founder-authorised 2026-11-17), with one gate, GATE-8, after E11.7 that audits both epics together (founder-authorised 2026-11-17).
 2. **Two kinds of row.** A ticket row's ID and Title match a `### <ID> — <Title>` heading in the plan exactly. A gate row (`GATE-<n>`) is a QA gate from plan §6; it audits every ticket row between the previous gate row and itself, and its Epic column is the `{EPICS}` value for `03-integrated-qa.md`.
 3. **Status** is `todo`, `done` or `removed`. **Mode** is `auto` (the orchestrator may run it, with the founder approving each step) or `manual` (the founder runs it; the orchestrator stops and says so).
 4. **Who changes a row:**
@@ -166,27 +166,26 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 144 | E11.6-14 | Social cards for the price pages | Epic E11.6 — Price index and price pages | todo | auto |
 | 145 | E11.6-15 | The first monthly run and the monthly runbook | Epic E11.6 — Price index and price pages | todo | manual |
 | 146 | E11.6-16 | Price-page audit and founder sign-off | Epic E11.6 — Price index and price pages | todo | auto |
-| 147 | GATE-8 | QA gate 8 — E11.6 | E11.6 | todo | auto |
-| 148 | E11.7-01 | The shared code registry and the partner code rules | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 149 | E11.7-02 | Voiding a referral, and the founder command line | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 150 | E11.7-03 | The coupon ladder and wave 1 replace the milestone tiers | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 151 | E11.7-04 | Showing the ladder: `/me`, verification, the landing page, emails and the privacy policy | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 152 | E11.7-05 | The programme page and the partner application | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 153 | E11.7-06 | Founder review, contract tracking and lifecycle commands | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 154 | E11.7-07 | Activation: `/r/{CODE}`, partner attribution and retroactive attribution | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 155 | E11.7-08 | The typed referral code, and partner perks at signup | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 156 | E11.7-09 | The partner dashboard: private link, stats and settings | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 157 | E11.7-10 | The partner leaderboard | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 158 | E11.7-11 | The asset kit: QR codes, message templates and the print flyer | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 159 | E11.7-12 | The auto-invite and the first-signup email | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 160 | E11.7-13 | The partner digest | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 161 | E11.7-14 | The attribution export and the hand-over document | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 162 | E11.7-15 | Seed data, the partner-programme audit and founder sign-off | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 163 | GATE-9 | QA gate 9 — E11.7 | E11.7 | todo | auto |
-| 164 | E12-01 | Provision the host and run the production stack on it | Epic E12 — Production bring-up | todo | manual |
-| 165 | E12-02 | Deploy from GHCR against the real host, with the migration audit | Epic E12 — Production bring-up | todo | manual |
-| 166 | E12-03 | The timed rollback drill | Epic E12 — Production bring-up | todo | manual |
-| 167 | E12-04 | Backups to R2, and a restore proven from the remote | Epic E12 — Production bring-up | todo | manual |
-| 168 | E12-05 | Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics | Epic E12 — Production bring-up | todo | manual |
-| 169 | E12-06 | Chaos drills and the capacity run on the real box | Epic E12 — Production bring-up | todo | manual |
-| 170 | E12-07 | Production readiness gate | Epic E12 — Production bring-up | todo | manual |
+| 147 | E11.7-01 | The shared code registry and the partner code rules | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 148 | E11.7-02 | Voiding a referral, and the founder command line | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 149 | E11.7-03 | The coupon ladder and wave 1 replace the milestone tiers | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 150 | E11.7-04 | Showing the ladder: `/me`, verification, the landing page, emails and the privacy policy | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 151 | E11.7-05 | The programme page and the partner application | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 152 | E11.7-06 | Founder review, contract tracking and lifecycle commands | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 153 | E11.7-07 | Activation: `/r/{CODE}`, partner attribution and retroactive attribution | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 154 | E11.7-08 | The typed referral code, and partner perks at signup | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 155 | E11.7-09 | The partner dashboard: private link, stats and settings | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 156 | E11.7-10 | The partner leaderboard | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 157 | E11.7-11 | The asset kit: QR codes, message templates and the print flyer | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 158 | E11.7-12 | The auto-invite and the first-signup email | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 159 | E11.7-13 | The partner digest | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 160 | E11.7-14 | The attribution export and the hand-over document | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 161 | E11.7-15 | Seed data, the partner-programme audit and founder sign-off | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 162 | GATE-8 | QA gate 8 — E11.6 + E11.7 | E11.6 + E11.7 | todo | auto |
+| 163 | E12-01 | Provision the host and run the production stack on it | Epic E12 — Production bring-up | todo | manual |
+| 164 | E12-02 | Deploy from GHCR against the real host, with the migration audit | Epic E12 — Production bring-up | todo | manual |
+| 165 | E12-03 | The timed rollback drill | Epic E12 — Production bring-up | todo | manual |
+| 166 | E12-04 | Backups to R2, and a restore proven from the remote | Epic E12 — Production bring-up | todo | manual |
+| 167 | E12-05 | Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics | Epic E12 — Production bring-up | todo | manual |
+| 168 | E12-06 | Chaos drills and the capacity run on the real box | Epic E12 — Production bring-up | todo | manual |
+| 169 | E12-07 | Production readiness gate | Epic E12 — Production bring-up | todo | manual |
