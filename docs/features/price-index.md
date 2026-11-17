@@ -145,7 +145,7 @@ Prices are shown in local currency with an approximate USD figure, plus a "last 
 **What the 2026-11-17 check of `robots.txt` found (one request, before the spike):** the `*` group allows `/` and disallows only `/api/` and `/go/`. A separate group disallows the whole site to named AI agents, including `ClaudeBot`, `anthropic-ai`, `Claude-Web`, `GPTBot`, `CCBot` and `Scrapy`. The responses carry `ETag` and `Last-Modified`, and the site is served by Vercel. So:
 
 - **No AI agent session fetches the site.** The founder captures E11.6-01's fixtures following `docs/prerequisites/p9-source-capture.md`, and agents work on them offline.
-- **The tool identifies itself honestly** with its own user-agent token (`ValstaraPriceIndex`) and a contact URL, and obeys the group that applies to that token, otherwise `*`. It never sends a browser user agent, and never one from the disallowed list.
+- **The tool sends a truthful bot user agent** (its name is D6) and obeys the `robots.txt` group that applies to that name, otherwise `*`. It never sends a browser user agent, and never one from the disallowed list or of any other known crawler.
 - **Nothing under `/api/` or `/go/` is requested**, however stable a JSON endpoint there looks.
 
 **Fetching rules.** One request at a time. A randomised delay between requests (default 8–20 s, configurable), or the source's `Crawl-delay` if longer. It never crawls the whole site. It backs off exponentially on 429, 403 and 5xx, honouring `Retry-After`, and stops the run cleanly after repeated failures. **There is no proxy rotation, no CAPTCHA solving and no fingerprint evasion. If the source blocks us, that is a signal for the founder, never something to work around.** It makes conditional requests (`If-None-Match`, `If-Modified-Since`). It checkpoints after each market and resumes an interrupted run.
@@ -216,7 +216,7 @@ A **real change** is a published value replaced by a different published value f
 - no countdowns or scarcity;
 - **never a price we do not have, and never a converted price.**
 
-**The methodology** describes the process in general terms (founder, 2026-11-17): prices checked monthly, and verified by hand where needed. **Every sentence on it must be literally true** of the built system (E11-04's claims rules). The founder approves the final wording in E11.6-13 (open question D4).
+**The methodology** describes the process in general terms (founder, 2026-11-17, D4): "We collect official list prices once a month from public price listings, and check them by hand against providers' own pricing pages where needed." **Every sentence on it must be literally true** of the built system (E11-04's claims rules), and it does not name the source.
 
 ## User flows
 
@@ -237,7 +237,7 @@ A **real change** is a published value replaced by a different published value f
 - **A crash mid-write.** Every write is atomic (temporary file, then rename), so the previous `latest.json` survives intact.
 - **An interrupted run.** It resumes from the last market checkpoint.
 - **A previously published page loses all publishable data.** The page keeps rendering with a "temporarily unavailable" note and no price, carries `noindex`, and leaves the sitemap until data returns. **It never becomes a 404**, so indexed URLs do not churn. The published-URL ledger is what lets the site know it was published.
-- **A service or market removed from config.** Its URLs behave exactly like lost data until the founder retires a URL with a recorded 301 target in the ledger (open question D2).
+- **A service or market removed from config.** Its URLs behave exactly like lost data until the founder retires a URL with a recorded 301 target in the ledger (D2).
 - **A record has no `price_usd_source`.** It is shown in its own page's plan table, but it is left out of every ranking, and M counts only the ranked markets.
 - **`prices.pages` is off.** Every price route answers 503, `noindex`, `Retry-After`.
 
@@ -245,7 +245,7 @@ A **real change** is a published value replaced by a different published value f
 
 - [ ] The tool runs only on an explicit command and exits when done. Nothing in `npm run dev`, `npm start`, Compose, the production image or a CI schedule starts or contains it, which is asserted.
 - [ ] A failed, blocked or interrupted run leaves `data/price-index/latest.json` byte-identical.
-- [ ] The tool requests only the source host, obeys `robots.txt` for its own honest user agent, makes one request at a time, and backs off and stops on repeated trouble.
+- [ ] The tool requests only the source host, obeys `robots.txt` for its own truthful bot user agent (D6), makes one request at a time, and backs off and stops on repeated trouble.
 - [ ] Every currency in `config/markets.json`, and every currency with a captured fixture, has parser tests against founder-captured fixtures.
 - [ ] Prices are exact decimals end to end, no float holds a price, and no conversion is computed or displayed anywhere.
 - [ ] Override precedence, `not_offered`, conflict detection, staleness, disappearance and the ±40% threshold behave as specified. **Only `ok` and approved `manual_override` records reach any page.**
@@ -290,15 +290,16 @@ docs/price-index-runbook.md   the founder's monthly routine
 
 ## Open questions for the founder
 
-The brief's six questions were answered on 2026-11-17 (see "Founder amendments"). Five questions raised while planning remain. Each one names the ticket it blocks, and that ticket reports `BLOCKED:` until the answer is recorded on it by the decision procedure (`docs/engineering/prompts/00-USAGE.md#decisions`). A recommended default is a recommendation, not a decision.
+The brief's six questions were answered on 2026-11-17 (see "Founder amendments"). So were D1–D5, raised while planning; each answer is recorded on its ticket in the plan. One question remains. The ticket it blocks reports `BLOCKED:` until the answer is recorded on it by the decision procedure (`docs/engineering/prompts/00-USAGE.md#decisions`). A recommended default is a recommendation, not a decision.
 
-| # | Question | Recommended default | Blocks |
+| # | Question | Answer or recommended default | Ticket |
 |---|---|---|---|
-| D1 | How price pages render | **Server-rendered on request from build-bundled data**, through the existing origin render cache, with the landing page's cache contract: a ref-less, default-flag render is cacheable, and `?ref=` is `private, no-store`. A prerendered page cannot read `?ref=` on the server, and a client-side path is forbidden (hard rule 4). Prerendering would mean dropping referral capture on price pages | E11.6-10 |
-| D2 | A service or market removed from config | Its URLs stay "temporarily unavailable" and `noindex` until the founder runs `price-index retire-url`, which records a 301 to the nearest hub in the ledger | E11.6-12 |
-| D3 | The legal basis for republishing data extracted from one source (its terms of use; the EU sui generis database right over systematic extraction), now without crediting it | Proceed only if E11.6-01 finds no terms prohibiting automated access or reuse. Republish facts (prices) only, never the source's prose. Spot-check against official pages. Treat the direct-from-provider source as the long-term basis. The founder records the risk decision, as ADR-030 does for the legal review | E11.6-05 |
-| D4 | The methodology wording | The amendment's "prices are taken from official pricing pages" is not literally true while the data comes from a third-party listing. A true general wording: "We collect official list prices once a month from public price listings, and check them by hand against providers' own pricing pages where needed." The founder approves the final text in the E11.6-13 pull request | E11.6-13 |
-| D5 | Where the site links to the price pages | A "Price index" link in the footer, so the pages are crawlable from every page | E11.6-12 |
+| D1 | How price pages render | **Answered 2026-11-17:** server-rendered on request from build-bundled data, with the landing page's cache contract, so `?ref=` capture works | E11.6-10 |
+| D2 | A service or market removed from config | **Answered 2026-11-17:** "temporarily unavailable" and `noindex` until `price-index retire-url` records a 301 to the nearest hub | E11.6-12 |
+| D3 | The legal basis for republishing the source's data | **Answered 2026-11-17:** the founder accepts the risk. The source itself republishes the providers' own public prices. Not a gate | E11.6-05 |
+| D4 | The methodology wording | **Answered 2026-11-17:** "We collect official list prices once a month from public price listings, and check them by hand against providers' own pricing pages where needed." | E11.6-13 |
+| D5 | Where the site links to the price pages | **Answered 2026-11-17:** a "Price index" link in the footer, added with the hubs | E11.6-12 |
+| D6 | The name the tool gives in its `User-Agent` | **Open.** Recommended: a neutral, unbranded bot name such as `PriceIndexBot/1.0`, with no URL. It is truthful about being a bot without naming the operator. Rejected options: SubSlush, which ties that brand to Valstara's tool on a third party's logs; and any browser or known-crawler string, which is evasion. Naming Valstara with a contact URL remains possible if the founder prefers openness | E11.6-04 and the P9 capture |
 
 ## Founder amendments, 17 November 2026 (verbatim)
 

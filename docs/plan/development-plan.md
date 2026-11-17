@@ -58,7 +58,7 @@ Items no agent can complete. Each gates something, and the gate is stated so it 
 | **P5** | **Upgrade Resend and Brevo past the free tiers** | Purchase — Resend free is 100/day, Brevo 300/day | **Turning `giveaway.open` on.** Upgrade *before* the giveaway opens, not when the limits hit | Before E7 exit |
 | **P7** | **Create the four seed mailboxes** — one each at Gmail, Outlook.com, GMX and Web.de, IMAP access enabled, used for seed tests and nothing else. Outlook.com allows IMAP only through OAuth, not a password. Credentials go to the production secret manager; none is committed (founder-authorised 2026-09-29) | Account setup, free | **E12-07:** the first live seed run and the rendering check | Before E12 |
 | **P8** | **Launch provider list and logo files** — for each provider shown on the landing page: display name, category (E11.5-02's v2 taxonomy), confirmation that its goods are on the launch catalogue, the official SVG logo (plus a dark-theme variant where the provider supplies one) from the provider's published brand resources with its source URL, and its brand colour (founder-authorised 2026-10-19). **SUPPLIED 2026-10-25** for 34 providers across four categories (AI tools, Streaming and subscriptions, Software, In-game currency), recorded in `docs/prerequisites/p8-provider-list.md`. Founder-authorised amendments 2026-10-25: a logo without a source URL records its source as `founder-supplied` with the supply date, and a brand colour may be derived from the supplied logo by the rule in that record. AION2's logo is a WebP raster, the only non-SVG logo, by founder exception (no SVG exists) | Founder input | **E11.5-04** only. A showcase with placeholder logos is not a deliverable | Done |
-| **P9** | **Price-index answers and source capture.** The brief's open questions were **answered 2026-11-17** (the founder's amendments, verbatim in `docs/features/price-index.md#founder-amendments-17-november-2026-verbatim`). Still open: D1 (how price pages render), D2 (removed services' URLs), D3 (the legal basis for republishing the source's data), D4 (the methodology wording) and D5 (the footer link), each with a recommended default. The founder also captures the source pages for E11.6-01 by `docs/prerequisites/p9-source-capture.md` | Founder decisions, recorded on each blocked ticket by the decision procedure; a founder capture | The E11.6 ticket each question names; E11.6-01 waits for the capture | Before E11.6-01 |
+| **P9** | **Price-index answers and source capture.** The brief's open questions and D1–D5 were **answered 2026-11-17** (the brief amendments are verbatim in `docs/features/price-index.md#founder-amendments-17-november-2026-verbatim`; D1–D5 are recorded on E11.6-05, E11.6-10, E11.6-12 and E11.6-13). **Still open: D6, the tool's user-agent name.** The founder then captures the source pages for E11.6-01 by `docs/prerequisites/p9-source-capture.md` | Founder decision; a founder capture | E11.6-04, and the capture E11.6-01 waits for | Before E11.6-01 |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
 
@@ -3206,12 +3206,12 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 
 **E11.6-01 is a discovery spike whose findings may change E11.6-04 to E11.6-07.** Any such change is a founder decision, recorded on the affected ticket by the decision procedure before that ticket starts.
 
-**Founder inputs.** The brief's open questions were answered on 2026-11-17. The five raised while planning (D1–D5 in `docs/features/price-index.md#open-questions-for-the-founder`) each name the ticket they block. A blocked ticket reports `BLOCKED:` and does not adopt the recommended default on its own (§2, P9).
+**Founder inputs.** The brief's open questions, and D1–D5 raised while planning, were all answered on 2026-11-17. Each answer is recorded on its ticket. **D6, the tool's user-agent name, is still open** (`docs/features/price-index.md#open-questions-for-the-founder`). It blocks E11.6-04 and the founder's capture for E11.6-01. A blocked ticket reports `BLOCKED:` and does not adopt the recommended default on its own (§2, P9).
 
 ### Rules for every E11.6 ticket
 
 1. **The tool is a separate process that runs to completion (founder requirement, 2026-11-17).** It runs only when the founder types `npm run price-index -- <command>`. It writes its files, then exits. **It has no daemon, timer, watcher, server, cron, scheduled workflow or automatic notification.** Nothing in `npm run dev`, `npm start`, `npm run build`, either Compose file, the Dockerfile or a CI workflow starts it, imports it or copies it. **The site reads only the committed `data/price-index/` files, and only at build time**, so nothing the tool does, fails at or leaves half-written can reach a running site. `src/` may import only `packages/price-index/src/publish` and `packages/price-index/src/schema`, and a scan enforces it.
-2. **No AI agent session requests the source site.** Its `robots.txt` disallows named AI agents, including Anthropic's, outright (checked 2026-11-17). Agents work on the founder-captured fixtures. Tests never touch the network: transports are injected, and HTTP behaviour is tested against a local fake server. **The tool follows its politeness rules without exception**: one request at a time, jitter, `Crawl-delay`, backoff, a clean stop, an honest user agent, the source host only. It never uses a proxy, solves a CAPTCHA or evades fingerprinting.
+2. **No AI agent session requests the source site.** Its `robots.txt` disallows named AI agents, including Anthropic's, outright (checked 2026-11-17). Agents work on the founder-captured fixtures. Tests never touch the network: transports are injected, and HTTP behaviour is tested against a local fake server. **The tool follows its politeness rules without exception**: one request at a time, jitter, `Crawl-delay`, backoff, a clean stop, a truthful bot user agent that imitates no browser and no other crawler (D6), the source host only. It never uses a proxy, solves a CAPTCHA or evades fingerprinting.
 3. **Money is exact, and never converted (founder, 2026-11-17).** A price is stored exactly as the source shows it: a decimal string at the currency's exponent, computed in integer minor units, with the source's text kept beside it. A float never holds a price. **There is no FX provider and no conversion anywhere.** `price_usd_source` is used only internally to rank markets, and it never appears on a page.
 4. **There is one publish gate, and everything published goes through it.** Only `ok` records and approved `manual_override` records reach a page, hub, sitemap, FAQ, ranking or published report figure.
 5. **A catalogue change is data, not code.** Every ticket that consumes `config/catalogue.json` or `config/markets.json` tests an added and a removed service, plan and market against its own layer.
@@ -3260,7 +3260,7 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the
 - All 38 country pages are present. A country the source does not list is recorded as such, not substituted
 - The findings name one extraction source per page type and say why it is the most stable
 - **Every uncertain name mapping and every tracked product missing from the source is listed for the founder**, and none is guessed
-- **If the terms of use prohibit automated access to the pages we need, or reuse of their data, the ticket reports `BLOCKED:` to the founder, and E11.6-04 onward do not start**
+- The terms-of-use clauses on automated access and reuse are quoted in the findings. **Under D3 (founder, 2026-11-17, recorded on E11.6-05) the founder has accepted the legal risk, so they inform the founder and do not block the later tickets**
 - `robots.txt` is recorded verbatim with its capture date, and the findings state which group applies to the tool's own user-agent token
 - The HAR files hold no cookie or authorisation header, checked before they are committed
 - Every proposed change to a later ticket is listed for a founder decision, and none is applied
@@ -3333,14 +3333,15 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the
 **Why this model:** not being blocked is the whole requirement, and a fetcher that misbehaves once can lose the source for good.
 
 **Build:** `src/http/`, with an injected transport, clock and seeded randomness:
-- **Robots.** Fetch and parse `robots.txt` and apply the group for the tool's own token (`ValstaraPriceIndex`), otherwise `*`.
+- **Robots.** Fetch and parse `robots.txt` and apply the group for the tool's own token (D6), otherwise `*`.
 - **Crawl delay.** Honour `Crawl-delay` when it is longer than the jitter.
 - **One request at a time, by construction.**
 - **Jitter.** A randomised delay of 8–20 s by default, set in `config/price-index.json` (created here with only the fetcher's keys).
 - **Backoff.** Exponential backoff on 429, 403 and 5xx, honouring `Retry-After`. **After three consecutive failures (configurable), stop the run cleanly** with a non-zero exit and a report.
 - **Timeouts** on every request.
 - **Conditional requests.** `If-None-Match` and `If-Modified-Since`, using the validators of the previous run.
-- **User agent.** An honest `User-Agent` naming the tool and a contact URL on `valstara.com`.
+- **User agent.** A truthful bot `User-Agent`, as decided in D6. It never imitates a browser or another known crawler.
+- **BLOCKED until D6 is decided.**
 - **Host allowlist.** `www.youfundceo.com` only. Anything else, and any path `robots.txt` disallows, is refused before a request is made.
 - **Raw store.** `data/raw/<run_id>/`, gitignored and rotated to the last six runs (configurable).
 - **Checkpoints.** A checkpoint after each market lets an interrupted run resume where it stopped.
@@ -3382,7 +3383,6 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the
 - A tracked service the source does not list, globally or in that country, yields `missing` with `not_on_source`. A service in "No price shown" yields `source_no_price` for each of its tracked plans. Both are expected, never errors.
 - Names are matched through `source_aliases` after normalising case, whitespace, punctuation and diacritics. Unmatched entries are listed as "untracked on source", each with a fuzzy alias *suggestion* that is never applied.
 - The "Price moves" entries are kept as a separate list for E11.6-09's cross-check, and never merged into prices.
-- **BLOCKED until D3 is decided.**
 
 **Acceptance criteria:**
 - Every fixture parses to the exact expected observations, written by hand in the test, not generated from the parser's own output
@@ -3394,6 +3394,9 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the
 - Price-moves entries never alter an observation
 
 **Tests:** The per-fixture expectation tables · the request plan over a fixture catalogue · `not_on_source` and `source_no_price` · the restructured-page fixture · alias add and remove · the suggestion-never-applied assertion · price moves kept separate.
+**Founder decisions (2026-11-17):**
+1. **D3: the founder accepts the legal risk of republishing the source's data.** In the founder's words: "that site republishes the same data from the services own site data (e.g. from Spotify, netflix etc.), so they're already republishing someone elses data. Us doing it doesn't matter. It's publicly available data from the original brand themselve. I accept any risk that comes with it." The adapter is built without a further legal gate. The politeness rules and `robots.txt` still apply in full. Pages republish prices as facts in Valstara's own templates and never copy the source's prose. *(Founder decision.)*
+
 **Docs:** `docs/features/price-index-source-findings.md` · `docs/modules/price-index.md`
 
 ### E11.6-06 — Merge, validation and the publish gate
@@ -3544,7 +3547,6 @@ Also in this ticket:
 - **Caching.** The ref-less, default-flag render is cacheable through the origin render cache, keyed by flag generation. `?ref=` and non-default flag states are `private, no-store`, as for `/`.
 - **The sitemap.** Turn `/sitemap.xml` into a sitemap index over `/sitemaps/pages.xml` (the existing routes, unchanged) and `/sitemaps/prices-service-market.xml`, whose `lastmod` is each page's verification date, not the build date. It lists indexable pages only.
 - **Metadata.** Unique title, description and self-canonical, BreadcrumbList JSON-LD, and the typed `prices` OG fallback, all through the existing E9-06 and E9-07 checks.
-- **BLOCKED until D1 is decided.**
 
 **Acceptance criteria:**
 - **A page is generated only when at least one of its plans passes the publish gate**. A pair with none is absent from the sitemap and returns 404 unless it is in the ledger
@@ -3557,6 +3559,9 @@ Also in this ticket:
 - The copy is from `src/copy/prices.ts` only. The inline-prose and forbidden-copy scans pass, and no copy names the data source
 
 **Tests:** Generation rule over a fixture dataset (generated, skipped and ledger-unavailable cases) · the number-trace and no-USD render test · flag-off on every route · the `?ref=` attribution path · zero extra JS · the third-party gate crawl · sitemap index and `lastmod` from data · the ledger append-only check and its red path · catalogue add and remove at the page layer.
+**Founder decisions (2026-11-17):**
+1. **D1: price pages are server-rendered on request from build-bundled data.** "This is ok." The route renders from the `latest.json` bundled at build, through the existing origin render cache, with the landing page's cache contract: a ref-less, default-flag render is cacheable, and `?ref=` and non-default flag states are `private, no-store`. This keeps the server-side signed referral capture of E4-02 on every price page. *(Founder decision.)*
+
 **Docs:** `docs/features/price-index.md#pages` · `docs/features/seo.md` · `docs/architecture/adr/008-server-side-referral-attribution.md` · `docs/architecture/adr/001-astro-node-adapter.md`
 
 ### E11.6-11 — Service × market page content: history, comparison, related services, FAQ and the Valstara price
@@ -3597,7 +3602,6 @@ Also in this ticket:
   - the service × market page gains links to its service hub and market hub;
   - a "Price index" footer link (D5);
   - `price-index retire-url <url> --to <hub> --actor`, which records a 301 target in the ledger (D2). A retired URL answers 301 and leaves the sitemap.
-- **BLOCKED until D2 and D5 are decided.**
 
 **Acceptance criteria:**
 - A hub lists only generated pages, and a service or market with none has no hub and no sitemap entry
@@ -3609,6 +3613,10 @@ Also in this ticket:
 - Adding a market or service produces its hub entries with no code change
 
 **Tests:** Hub generation and omission · link resolution · rank agreement · unranked ordering · the no-USD assertion · retire-url and its refusal · the footer link · catalogue and market add and remove.
+**Founder decisions (2026-11-17):**
+1. **D2: a removed service's or market's URLs stay "temporarily unavailable" until retired.** "Ok." Such a URL renders the unavailable state with `noindex` until the founder runs `price-index retire-url <url> --to <hub> --actor`, which records a 301 to the nearest hub in the ledger. *(Founder decision.)*
+2. **D5: a "Price index" link goes in the site footer.** "Ok, add it." It links to `/prices`, so every price page is crawlable from every page of the site. Its label lives in the copy layer. It ships in this ticket, when the hubs it points at exist, so the footer never links to a page that is not there. *(Founder decision.)*
+
 **Docs:** `docs/features/price-index.md#pages` · `docs/features/seo.md`
 
 ### E11.6-13 — `/price-index`, the methodology and the monthly report pages
@@ -3621,7 +3629,6 @@ Also in this ticket:
 - **`/price-index/{yyyy-mm}`** renders from `data/price-index/monthly/YYYY-MM.json` and links to every page it mentions.
 - Monthly pages get their own child sitemap.
 - The service × market page gains its methodology link to `/price-index`.
-- **BLOCKED until D4 is decided.** The founder approves the methodology wording in this ticket's pull request.
 
 **Acceptance criteria:**
 - **Every methodology statement is literally true of the built system and traceable to code or config**: the cadence, the gate, the hand verification, the staleness limits. A changed setting with an unchanged statement fails a reconciliation test
@@ -3632,6 +3639,9 @@ Also in this ticket:
 - Zero client JavaScript beyond the shell islands
 
 **Tests:** Methodology–config reconciliation · Dataset JSON-LD validation · monthly page links · the absent-month case.
+**Founder decisions (2026-11-17):**
+1. **D4: the methodology uses this wording.** "Ok." The methodology says: "We collect official list prices once a month from public price listings, and check them by hand against providers' own pricing pages where needed." It does not say that prices are taken from official pricing pages, because the data comes from a public listing, and it does not name the source. The rest of the methodology is drafted in the same general terms, and each statement must stay literally true of the built system. *(Founder decision.)*
+
 **Docs:** `docs/features/price-index.md` · `docs/architecture/adr/017-content-files.md` · `docs/brand/copy-rules.md#claims-that-must-stay-true`
 
 ### E11.6-14 — Social cards for the price pages
@@ -3899,19 +3909,19 @@ The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan i
 
 | Ticket | Depends on | Estimate |
 |---|---|---:|
-| E11.6-01 Discovery spike | The founder's capture (P9) | 4 h |
+| E11.6-01 Discovery spike | The founder's capture (P9, after D6) | 4 h |
 | E11.6-02 Markets, catalogue, schemas | 01; the founder's confirmed name mappings | 4 h |
 | E11.6-03 Exact money, record, storage | 01, 02 | 5 h |
-| E11.6-04 The polite fetcher | 01, 03 | 6 h |
-| E11.6-05 Source adapter | 01, 04; P9 D3 | 7 h |
+| E11.6-04 The polite fetcher | 01, 03; P9 D6 | 6 h |
+| E11.6-05 Source adapter | 01, 04 | 7 h |
 | E11.6-06 Merge and the publish gate | 03, 05 | 8 h |
 | E11.6-07 The run, dry run, isolation | 04–06 | 5 h |
 | E11.6-08 Coverage and overrides | 06, 07 | 5 h |
 | E11.6-09 Change log, monthly report | 06, 07 | 6 h |
-| E11.6-10 Service × market page | 06, 07; P9 D1 | 8 h |
+| E11.6-10 Service × market page | 06, 07 | 8 h |
 | E11.6-11 Page content and Valstara price | 09, 10 | 6 h |
-| E11.6-12 Hubs and `/prices` | 11; P9 D2, D5 | 5 h |
-| E11.6-13 Index, methodology, monthly pages | 09, 12; P9 D4 | 5 h |
+| E11.6-12 Hubs and `/prices` | 11 | 5 h |
+| E11.6-13 Index, methodology, monthly pages | 09, 12 | 5 h |
 | E11.6-14 Social cards | 12, 13 | 4 h |
 | E11.6-15 First run and the runbook | 01–09 merged; the founder at the keyboard | 3 h |
 | E11.6-16 Audit and sign-off | 10–15 | 6 h |

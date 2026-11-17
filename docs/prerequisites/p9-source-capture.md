@@ -1,6 +1,6 @@
 # P9 — Capturing the source pages for E11.6-01
 
-**Who:** the founder. **When:** before E11.6-01 starts. **Time:** about 15 minutes of your attention, plus roughly an hour of the script waiting politely between requests.
+**Who:** the founder. **When:** after D6 (the bot's name) is decided, and before E11.6-01 starts. **Time:** about 15 minutes of your attention, plus roughly an hour of the script waiting politely between requests.
 
 ## Why you capture the pages and the agent doesn't
 
@@ -47,7 +47,7 @@ Open `https://www.youfundceo.com/` and note three things:
 
 ## Step 2 — Save the capture script
 
-Save this as `capture.sh` **outside the repository** (e.g. `~/youfundceo-capture/capture.sh`), so it is never committed. It requests one URL at a time and waits 10–20 seconds between requests. It identifies itself honestly as Valstara, and stops by itself after three failed requests in a row.
+Save this as `capture.sh` **outside the repository** (e.g. `~/youfundceo-capture/capture.sh`), so it is never committed. It requests one URL at a time and waits 10–20 seconds between requests. It identifies itself truthfully as a bot, using the name decided in D6 (`docs/features/price-index.md#open-questions-for-the-founder`), and stops by itself after three failed requests in a row. **Set the `ua=` line to that name before running.**
 
 ```bash
 #!/usr/bin/env bash
@@ -55,7 +55,7 @@ Save this as `capture.sh` **outside the repository** (e.g. `~/youfundceo-capture
 set -uo pipefail
 urls="$1"
 out="$2"
-ua='ValstaraPriceIndex/0.1 (one-off fixture capture; +https://valstara.com)'
+ua='SET-THE-D6-NAME-HERE/1.0'
 mkdir -p "$out/raw"
 manifest="$out/manifest.tsv"
 [ -f "$manifest" ] || printf 'url\tfile\tstatus\tcaptured_at\tsha256\n' > "$manifest"
