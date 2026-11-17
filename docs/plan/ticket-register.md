@@ -155,23 +155,22 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 133 | E11.6-03 | Exact money, the price record and JSON storage | Epic E11.6 — Price index and price pages | todo | auto |
 | 134 | E11.6-04 | The polite fetcher: robots, one request at a time, backoff and checkpoints | Epic E11.6 — Price index and price pages | todo | auto |
 | 135 | E11.6-05 | The source-adapter interface and the youfundceo adapter | Epic E11.6 — Price index and price pages | todo | auto |
-| 136 | E11.6-06 | FX reference rates and conversions | Epic E11.6 — Price index and price pages | todo | auto |
-| 137 | E11.6-07 | Merge, validation and the publish gate | Epic E11.6 — Price index and price pages | todo | auto |
-| 138 | E11.6-08 | The scrape run: commands, run log, dry run and isolation from the site | Epic E11.6 — Price index and price pages | todo | auto |
-| 139 | E11.6-09 | The coverage report, spot checks and the override command | Epic E11.6 — Price index and price pages | todo | auto |
-| 140 | E11.6-10 | The change log and the monthly report | Epic E11.6 — Price index and price pages | todo | auto |
-| 141 | E11.6-11 | The service × market page: route, flag, published-URL ledger and sitemap index | Epic E11.6 — Price index and price pages | todo | auto |
-| 142 | E11.6-12 | Service × market page content: history, comparison, related services, FAQ and the Valstara price | Epic E11.6 — Price index and price pages | todo | auto |
-| 143 | E11.6-13 | The service hub, the market hub and `/prices` | Epic E11.6 — Price index and price pages | todo | auto |
-| 144 | E11.6-14 | `/price-index`, the methodology and the monthly report pages | Epic E11.6 — Price index and price pages | todo | auto |
-| 145 | E11.6-15 | Social cards for the price pages | Epic E11.6 — Price index and price pages | todo | auto |
-| 146 | E11.6-16 | The first monthly run, the data release path and the scheduled-run design | Epic E11.6 — Price index and price pages | todo | manual |
-| 147 | E11.6-17 | Price-page audit and founder sign-off | Epic E11.6 — Price index and price pages | todo | auto |
-| 148 | GATE-8 | QA gate 8 — E11.6 | E11.6 | todo | auto |
-| 149 | E12-01 | Provision the host and run the production stack on it | Epic E12 — Production bring-up | todo | manual |
-| 150 | E12-02 | Deploy from GHCR against the real host, with the migration audit | Epic E12 — Production bring-up | todo | manual |
-| 151 | E12-03 | The timed rollback drill | Epic E12 — Production bring-up | todo | manual |
-| 152 | E12-04 | Backups to R2, and a restore proven from the remote | Epic E12 — Production bring-up | todo | manual |
-| 153 | E12-05 | Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics | Epic E12 — Production bring-up | todo | manual |
-| 154 | E12-06 | Chaos drills and the capacity run on the real box | Epic E12 — Production bring-up | todo | manual |
-| 155 | E12-07 | Production readiness gate | Epic E12 — Production bring-up | todo | manual |
+| 136 | E11.6-06 | Merge, validation and the publish gate | Epic E11.6 — Price index and price pages | todo | auto |
+| 137 | E11.6-07 | The scrape run: commands, run log, dry run and isolation from the site | Epic E11.6 — Price index and price pages | todo | auto |
+| 138 | E11.6-08 | The coverage report, spot checks and the override commands | Epic E11.6 — Price index and price pages | todo | auto |
+| 139 | E11.6-09 | The change log and the monthly report | Epic E11.6 — Price index and price pages | todo | auto |
+| 140 | E11.6-10 | The service × market page: route, flag, published-URL ledger and sitemap index | Epic E11.6 — Price index and price pages | todo | auto |
+| 141 | E11.6-11 | Service × market page content: history, comparison, related services, FAQ and the Valstara price | Epic E11.6 — Price index and price pages | todo | auto |
+| 142 | E11.6-12 | The service hub, the market hub and `/prices` | Epic E11.6 — Price index and price pages | todo | auto |
+| 143 | E11.6-13 | `/price-index`, the methodology and the monthly report pages | Epic E11.6 — Price index and price pages | todo | auto |
+| 144 | E11.6-14 | Social cards for the price pages | Epic E11.6 — Price index and price pages | todo | auto |
+| 145 | E11.6-15 | The first monthly run and the monthly runbook | Epic E11.6 — Price index and price pages | todo | manual |
+| 146 | E11.6-16 | Price-page audit and founder sign-off | Epic E11.6 — Price index and price pages | todo | auto |
+| 147 | GATE-8 | QA gate 8 — E11.6 | E11.6 | todo | auto |
+| 148 | E12-01 | Provision the host and run the production stack on it | Epic E12 — Production bring-up | todo | manual |
+| 149 | E12-02 | Deploy from GHCR against the real host, with the migration audit | Epic E12 — Production bring-up | todo | manual |
+| 150 | E12-03 | The timed rollback drill | Epic E12 — Production bring-up | todo | manual |
+| 151 | E12-04 | Backups to R2, and a restore proven from the remote | Epic E12 — Production bring-up | todo | manual |
+| 152 | E12-05 | Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics | Epic E12 — Production bring-up | todo | manual |
+| 153 | E12-06 | Chaos drills and the capacity run on the real box | Epic E12 — Production bring-up | todo | manual |
+| 154 | E12-07 | Production readiness gate | Epic E12 — Production bring-up | todo | manual |

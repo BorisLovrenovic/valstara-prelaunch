@@ -58,7 +58,7 @@ Items no agent can complete. Each gates something, and the gate is stated so it 
 | **P5** | **Upgrade Resend and Brevo past the free tiers** | Purchase — Resend free is 100/day, Brevo 300/day | **Turning `giveaway.open` on.** Upgrade *before* the giveaway opens, not when the limits hit | Before E7 exit |
 | **P7** | **Create the four seed mailboxes** — one each at Gmail, Outlook.com, GMX and Web.de, IMAP access enabled, used for seed tests and nothing else. Outlook.com allows IMAP only through OAuth, not a password. Credentials go to the production secret manager; none is committed (founder-authorised 2026-09-29) | Account setup, free | **E12-07:** the first live seed run and the rendering check | Before E12 |
 | **P8** | **Launch provider list and logo files** — for each provider shown on the landing page: display name, category (E11.5-02's v2 taxonomy), confirmation that its goods are on the launch catalogue, the official SVG logo (plus a dark-theme variant where the provider supplies one) from the provider's published brand resources with its source URL, and its brand colour (founder-authorised 2026-10-19). **SUPPLIED 2026-10-25** for 34 providers across four categories (AI tools, Streaming and subscriptions, Software, In-game currency), recorded in `docs/prerequisites/p8-provider-list.md`. Founder-authorised amendments 2026-10-25: a logo without a source URL records its source as `founder-supplied` with the supply date, and a brand colour may be derived from the supplied logo by the rule in that record. AION2's logo is a WebP raster, the only non-SVG logo, by founder exception (no SVG exists) | Founder input | **E11.5-04** only. A showcase with placeholder logos is not a deliverable | Done |
-| **P9** | **Price-index answers** — the open questions Q1–Q4, Q6, Q7 and D1–D5 in `docs/features/price-index.md#open-questions-for-the-founder`: the source's user-agent group, the plan tiers to track, services priced in USD or EUR everywhere, the US and Australia, the source credit, the FX provider, how price pages render, retired URLs, the legal basis for republishing the source's data, the methodology text and the footer link. Each has a recommended default; a default is not a decision. Q1 (the source domain) and Q5 (monthly, by hand) were answered on 2026-11-17 (founder-authorised 2026-11-17) | Founder decisions, recorded on each blocked ticket by the decision procedure | The E11.6 ticket each question names | Before E11.6-02 |
+| **P9** | **Price-index answers and source capture.** The brief's open questions were **answered 2026-11-17** (the founder's amendments, verbatim in `docs/features/price-index.md#founder-amendments-17-november-2026-verbatim`). Still open: D1 (how price pages render), D2 (removed services' URLs), D3 (the legal basis for republishing the source's data), D4 (the methodology wording) and D5 (the footer link), each with a recommended default. The founder also captures the source pages for E11.6-01 by `docs/prerequisites/p9-source-capture.md` | Founder decisions, recorded on each blocked ticket by the decision procedure; a founder capture | The E11.6 ticket each question names; E11.6-01 waits for the capture | Before E11.6-01 |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
 
@@ -138,7 +138,7 @@ flowchart TD
 
 **E11.5 runs after E11 and before E12 (founder-authorised 2026-10-19).** It redesigns every surface a visitor sees without changing behaviour, then re-runs E11's accessibility, claims and privacy audits on the new surfaces, so E12 deploys and measures the final build.
 
-**E11.6 runs after E11.5 and before E12 (founder-authorised 2026-11-17).** It adds the price index — a separate tool the founder runs by hand once a month — and the price pages built from its data, so E12 deploys, load-tests and gates the site with them.
+**E11.6 runs after E11.5 and before E12 (founder-authorised 2026-11-17).** It adds the price index — a separate tool the founder runs by hand once a month — and the price pages built from its data, in local currency only, so E12 deploys, load-tests and gates the site with them.
 
 **Everything through E11 is built and verified locally.** The VPS is provisioned once, at the end, and **E12 collects every piece of evidence that needs real infrastructure** — the rollback RTO, a restore from R2, capacity on the actual box (founder decision, 2026-08-27).
 
@@ -3182,9 +3182,9 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 
 ## Epic E11.6 — Price index and price pages
 
-**Founder-authorised 2026-11-17.** Added after E11.5 and before E12. Branches follow the usual pattern, e.g. `feat/E11.6-07-merge-and-publish-gate`; commits carry `[E11.6-07]`. **The brief is recorded in `docs/features/price-index.md`, which every ticket here reads first.**
+**Founder-authorised 2026-11-17**, and amended by the founder's answers the same day. Added after E11.5 and before E12. Branches follow the usual pattern, e.g. `feat/E11.6-06-merge-and-publish-gate`; commits carry `[E11.6-06]`. **The brief and the founder's amendments are recorded in `docs/features/price-index.md`, which every ticket here reads first.** Where the amendments and the original brief conflict, the amendments win.
 
-**Goal:** a monthly index of the official list prices of the subscriptions Valstara tracks, in every market it serves. It is collected by a separate, polite, run-to-completion tool, every gap and doubtful value is flagged for the founder, and it is published as permanent, data-rich price pages that bring in waitlist signups and survive into the storefront. *17 tickets.*
+**Goal:** a monthly index of the official list prices of the subscriptions Valstara tracks, in every market it serves. It is collected by a separate, polite tool that the founder runs by hand and that exits when done, every gap and doubtful value is flagged for the founder, and it is published as permanent, data-rich price pages in local currency that bring in waitlist signups and survive into the storefront. *16 tickets.*
 
 **Why this epic exists.** The price pages rank for long-tail searches before launch, which no other page on the site can do. The change log gives the founder a monthly story for outreach. The same data later feeds the storefront's "official price vs Valstara price" comparison. For a brand whose whole proposition is trust, **a wrong price on our own page is worse than no page**, so most of this epic is the machinery that keeps unverified numbers off the site.
 
@@ -3193,75 +3193,93 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 - The tool runs only on the founder's command, exits when done, and cannot affect the running site.
 - A real monthly run has completed, with its coverage report, and the founder has resolved its flags.
 - Only `ok` and approved `manual_override` records reach any page.
-- The price pages, hubs and monthly report are live behind `prices.pages`, at their permanent URLs, with no JavaScript beyond the existing islands and no third-party request.
+- The price pages, hubs and monthly report are live behind `prices.pages`, at their permanent URLs, in local currency only, with no JavaScript beyond the existing islands and no third-party request.
 - The privacy, accessibility and copy gates pass on every price route.
 - The founder has signed off the price-page contact sheet.
 
-**Order.** The tickets run in register order, and each builds only on the ones before it. E11.6-01 to E11.6-10 build the tool, E11.6-11 to E11.6-15 the pages, E11.6-16 is the founder's first real run and the release path, and E11.6-17 audits the pages against that real data. **E11.6-01 is a discovery spike whose findings may change E11.6-04 to E11.6-08.** Any such change is a founder decision, recorded on the affected ticket by the decision procedure before that ticket starts.
+**Order.** The tickets run in register order, and each builds only on the ones before it:
 
-**Founder inputs.** The open questions in `docs/features/price-index.md#open-questions-for-the-founder` each name the ticket they block. A blocked ticket reports `BLOCKED:` and does not adopt the recommended default on its own (§2, P9).
+- E11.6-01 to E11.6-09 build the tool;
+- E11.6-10 to E11.6-14 build the pages;
+- E11.6-15 is the founder's first real run and the monthly runbook;
+- E11.6-16 audits the pages against that real data.
+
+**E11.6-01 is a discovery spike whose findings may change E11.6-04 to E11.6-07.** Any such change is a founder decision, recorded on the affected ticket by the decision procedure before that ticket starts.
+
+**Founder inputs.** The brief's open questions were answered on 2026-11-17. The five raised while planning (D1–D5 in `docs/features/price-index.md#open-questions-for-the-founder`) each name the ticket they block. A blocked ticket reports `BLOCKED:` and does not adopt the recommended default on its own (§2, P9).
 
 ### Rules for every E11.6 ticket
 
-1. **The tool is a separate process that runs to completion (founder requirement, 2026-11-17).** It runs only when the founder types `npm run price-index -- <command>`. It writes its files, then exits. It has no daemon, timer, watcher, server or schedule. Nothing in `npm run dev`, `npm start`, `npm run build`, either Compose file or the Dockerfile starts it, imports it or copies it. **The site reads only the committed `data/price-index/` files, and only at build time**, so nothing the tool does, fails at or leaves half-written can reach a running site. `src/` may import only `packages/price-index/src/publish` and `packages/price-index/src/schema`, and a scan enforces it.
-2. **No AI agent session requests the source site.** Its `robots.txt` disallows named AI agents, including Anthropic's, outright (checked 2026-11-17). Agents work on the founder-captured fixtures. Tests never touch the network: transports are injected, and HTTP behaviour is tested against a local fake server. **The tool follows its politeness rules without exception**: one request at a time, jitter, `Crawl-delay`, backoff, a clean stop, an honest user agent, an allowlist of hosts. It never uses a proxy, solves a CAPTCHA or evades fingerprinting.
-3. **Money is exact.** A price is a decimal string at the currency's exponent and is computed in integer minor units. A float never holds a price. Conversions round half-even only at display.
-4. **There is one publish gate, and everything published goes through it.** Only `ok` records and approved `manual_override` records reach a page, hub, sitemap, FAQ, comparison or published report figure.
+1. **The tool is a separate process that runs to completion (founder requirement, 2026-11-17).** It runs only when the founder types `npm run price-index -- <command>`. It writes its files, then exits. **It has no daemon, timer, watcher, server, cron, scheduled workflow or automatic notification.** Nothing in `npm run dev`, `npm start`, `npm run build`, either Compose file, the Dockerfile or a CI workflow starts it, imports it or copies it. **The site reads only the committed `data/price-index/` files, and only at build time**, so nothing the tool does, fails at or leaves half-written can reach a running site. `src/` may import only `packages/price-index/src/publish` and `packages/price-index/src/schema`, and a scan enforces it.
+2. **No AI agent session requests the source site.** Its `robots.txt` disallows named AI agents, including Anthropic's, outright (checked 2026-11-17). Agents work on the founder-captured fixtures. Tests never touch the network: transports are injected, and HTTP behaviour is tested against a local fake server. **The tool follows its politeness rules without exception**: one request at a time, jitter, `Crawl-delay`, backoff, a clean stop, an honest user agent, the source host only. It never uses a proxy, solves a CAPTCHA or evades fingerprinting.
+3. **Money is exact, and never converted (founder, 2026-11-17).** A price is stored exactly as the source shows it: a decimal string at the currency's exponent, computed in integer minor units, with the source's text kept beside it. A float never holds a price. **There is no FX provider and no conversion anywhere.** `price_usd_source` is used only internally to rank markets, and it never appears on a page.
+4. **There is one publish gate, and everything published goes through it.** Only `ok` records and approved `manual_override` records reach a page, hub, sitemap, FAQ, ranking or published report figure.
 5. **A catalogue change is data, not code.** Every ticket that consumes `config/catalogue.json` or `config/markets.json` tests an added and a removed service, plan and market against its own layer.
-6. **Humans decide.** `needs_review` and `conflict` clear only through a founder action recorded with an actor. Nothing auto-accepts an alias, an approval or a value.
+6. **Humans decide.** `needs_review`, `conflict` and `not_offered` are settled only by a founder action recorded with an actor. Nothing auto-accepts an alias, an approval, a value or a `not_offered`.
 7. **History is never rewritten.** Snapshots are immutable. `changes.json`, `approvals.json` and `published-urls.json` are append-only, enforced in CI against the merge base.
 8. **Data files are deterministic.** They are written with stable key and record order, two-space indentation and a trailing newline, so a diff shows only real changes, and they pass `npm run format`.
 9. **Time and randomness are injected.** Clock, jitter and sampling take an injected clock and a seeded source. There is no `Date.now()` and no unseeded randomness in a test path. The security gates scan the whole tracked tree, so the tool uses no timing-entropy API and no dynamic `import()`, and passes every gate unchanged. **No gate is weakened or excepted for it.**
-10. **Copy lives in the copy layer.** Page sentences are templates in `src/copy/prices.ts` and content files. The report's sentences are templates in `packages/price-index/copy/`, which the forbidden-copy scan covers from E11.6-10. Every rule of `docs/brand/copy-rules.md` applies, and **every conversion carries "≈"**.
+10. **Copy lives in the copy layer.** Page sentences are templates in `src/copy/prices.ts` and content files. The report's sentences are templates in `packages/price-index/copy/`, which the forbidden-copy scan covers from E11.6-09. Every rule of `docs/brand/copy-rules.md` applies. **No page credits the data source (founder, 2026-11-17).**
 
 ### E11.6-01 — Discovery spike: the source site's structure, terms and fixtures
 **Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** docs
 **Why this model:** analysis of saved pages against a short checklist, with no code beyond a fixture manifest. Mode is `manual` because only the founder may capture the pages (rule 2).
 
-**Build:** The founder captures, in a browser, and saves unmodified into `packages/price-index/test/fixtures/youfundceo/`:
-- `/robots.txt` and `/sitemap.xml`;
-- `/countries`;
-- one country page for each currency format: Sweden (SEK), Germany (EUR), United Kingdom (GBP), Poland (PLN), Romania (RON), Norway (NOK), Denmark (DKK), Switzerland (CHF) and Canada (CAD);
-- the site's terms of use;
-- the response headers of one country page, from the browser's developer tools.
+**Build:** The founder captures the pages by following `docs/prerequisites/p9-source-capture.md`. They are saved unmodified into `packages/price-index/test/fixtures/youfundceo/`:
+- `/robots.txt`, `/sitemap.xml`, `/countries`, `/services`, the "Price moves" page and the terms of use;
+- **one country page for each of these 38 countries** (founder, 2026-11-17), covering every currency and number format the parser must handle: Sweden, Germany, United Kingdom, Poland, Romania, Norway, Denmark, Switzerland, Canada, Australia, Austria, Belgium, Bosnia and Herzegovina, Croatia, Cyprus, Czech Republic, Estonia, Finland, France, Greece, Hungary, Iceland, Ireland, Italy, Latvia, Liechtenstein, Lithuania, Luxembourg, Malta, Netherlands, New Zealand, North Macedonia, Portugal, Serbia, Slovakia, Slovenia, Spain and the United States. **The countries outside the 20 markets of `docs/features/price-index.md#markets-configmarketsjson` are parser fixtures, not markets**;
+- the service pages for Netflix and Spotify;
+- **the country × service pages** for every tracked service the source lists, in Sweden, Germany, the United Kingdom, Switzerland and the United States;
+- the response headers of every capture;
+- full-page screenshots of each page type, and a sanitised HAR export of one country page and one country × service page.
 
 The agent then writes `docs/features/price-index-source-findings.md` from the saved files only, covering:
-- how the country index and country pages are structured, with the slug scheme;
+- the structure and slug scheme of each page type, confirming or correcting the founder's known structure;
 - whether the content is server-rendered or rendered by JavaScript;
-- **the extraction source, in order of preference:** embedded framework data (e.g. Next.js page data), then JSON-LD, then HTML. **Nothing under `/api/` or `/go/` is a candidate**, because `robots.txt` disallows both for every agent;
-- the boundaries of the top price section, the "What you get in <country>" section (not scraped) and the "No price shown for <country>" section (scraped);
-- how plan names, billing periods, currency, local number formats, the USD figure and any "last updated" date appear;
+- **the extraction source for each page type, in order of preference:** embedded framework data (e.g. Next.js page data), then JSON-LD, then HTML. **Nothing under `/api/` or `/go/` is a candidate**, because `robots.txt` disallows both for every agent;
+- **which page type carries each fact we need:**
+  - plan-level prices;
+  - the local price and its currency;
+  - the approximate USD figure;
+  - the "last checked" date;
+  - the "No price shown for <country>" list;
+  - whether a plan is absent in a country;
+  - which section is "What you get in <country>", which is not read;
+- **the minimum set of requests a monthly run needs** for the 20 markets, with an estimated count and duration;
+- how the "Price moves" page lists changes, and over what period;
+- local number and currency formats, one row per captured country;
 - whether `ETag` and `Last-Modified` support conditional requests;
-- how services billed in USD or EUR everywhere are displayed (Q3);
+- **every name mapping between the source and the catalogue**, marked confirmed or uncertain. The uncertain ones (e.g. Adobe Creative Cloud's individual plan, Lovable's paid plan, Netflix's tiers) go to the founder to confirm, together with every tracked product the source does not list;
 - the terms-of-use clauses on automated access and reuse, quoted with the capture date;
 - the parser dependency the extraction needs, if any, with name, licence and why. It is a dev dependency only, because the tool never ships in the image.
 
-It ends with a list of proposed changes to E11.6-04 to E11.6-08. These go to the founder as decisions; the agent does not edit the plan.
+It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the founder as decisions; the agent does not edit the plan.
 
 **Acceptance criteria:**
-- **No agent session requests the source site.** Every fixture is a founder capture, unmodified, listed in `fixtures/youfundceo/manifest.json` with its URL, capture date and SHA-256
-- Every enabled market's currency has a fixture
+- **No agent session requests the source site.** Every fixture is a founder capture, unmodified, listed in `fixtures/youfundceo/manifest.tsv` with its URL, HTTP status, capture time and SHA-256
+- All 38 country pages are present. A country the source does not list is recorded as such, not substituted
 - The findings name one extraction source per page type and say why it is the most stable
+- **Every uncertain name mapping and every tracked product missing from the source is listed for the founder**, and none is guessed
 - **If the terms of use prohibit automated access to the pages we need, or reuse of their data, the ticket reports `BLOCKED:` to the founder, and E11.6-04 onward do not start**
 - `robots.txt` is recorded verbatim with its capture date, and the findings state which group applies to the tool's own user-agent token
+- The HAR files hold no cookie or authorisation header, checked before they are committed
 - Every proposed change to a later ticket is listed for a founder decision, and none is applied
 
-**Tests:** The fixture manifest test: every listed file exists, its SHA-256 matches, and every enabled currency has a fixture.
-**Docs:** `docs/features/price-index.md` · `AGENTS.md#stop-and-ask`
+**Tests:** The fixture manifest test: every listed file exists, its SHA-256 matches, and all 38 countries are accounted for.
+**Docs:** `docs/features/price-index.md` · `docs/prerequisites/p9-source-capture.md` · `AGENTS.md#stop-and-ask`
 
 ### E11.6-02 — Markets, the catalogue and their schemas
 **Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
 
 **Build:**
 - Create `packages/price-index/` (the layout in `docs/features/price-index.md#repository-layout`), with `src/schema/` holding Zod schemas for `config/markets.json`, `config/catalogue.json` and `config/valstara-prices.json` only.
-- Seed `config/markets.json` with the 18 enabled markets, plus the United States and Australia disabled (Q4).
-- Seed `config/catalogue.json` from the founder's answers to Q2 and Q3.
+- Seed `config/markets.json` with the 20 markets, all enabled (founder, 2026-11-17).
+- Seed `config/catalogue.json` with exactly the products and plans of `docs/features/price-index.md#catalogue-configcataloguejson`. Its `source_aliases` come from the founder-confirmed mappings in E11.6-01's findings. A mapping still unconfirmed blocks only the plan it concerns, which is left without aliases and therefore `missing`.
 - Seed `config/valstara-prices.json` empty.
 - Add `price-index validate` for these three files and the `price-index` npm script (`tsx packages/price-index/src/cli/main.ts`), and add `validate` to `npm run check`.
 - Add `zod` as a direct dependency at the version already installed through Astro (4.6.7), so no new code is added to the tree and none reaches the browser.
 - Write ADR-033, "The price index is a separate offline tool with JSON data in the repository", recording rule 1 of this epic, the one-way import boundary and the storage and source interfaces as the extension points.
 - Create `docs/modules/price-index.md`.
-- **BLOCKED until Q2, Q3 and Q4 are answered.**
 
 **Acceptance criteria:**
 - `validate` rejects, each with a planted fixture:
@@ -3270,25 +3288,28 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-08. These go to the
   - a currency not in the ISO 4217 table;
   - a slug that is not lower-case kebab-case;
   - **an alias that maps to two different plans**;
-  - a Valstara price for an unknown service, plan or market
+  - a Valstara price for an unknown service, plan or market, or in a currency other than the market's
 - **`npm run check` fails on an invalid config file**, proven by a planted fixture
 - **Adding or removing a service, a plan or a market in the config files passes `validate` with no code change**, proven by fixtures
 - **The isolation scan:**
   - no file under `src/` imports anything in `packages/price-index` except `src/publish` and `src/schema`;
   - nothing in the package imports from `src/`;
-  - the Dockerfile, both Compose files, and the `dev`, `start`, `build` and `preview` scripts neither reference nor copy the tool
+  - the Dockerfile, both Compose files, every CI workflow, and the `dev`, `start`, `build` and `preview` scripts neither reference nor copy the tool
 - The scan's red path is a planted fixture
 
 **Tests:** Schema accept and reject cases for every field rule · the alias-collision case · add and remove fixtures · the isolation scan and its red path · `npm run check` failing on a planted invalid file.
-**Docs:** `docs/features/price-index.md` · `docs/architecture/modules.md` · `docs/architecture/adr/000-template.md`
+**Docs:** `docs/features/price-index.md` · `docs/features/price-index-source-findings.md` · `docs/architecture/modules.md` · `docs/architecture/adr/000-template.md`
 
 ### E11.6-03 — Exact money, the price record and JSON storage
 **Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this model:** every published number passes through this code. A rounding or locale-parsing slip here makes every page quietly wrong.
 
 **Build:**
-- **`src/money/`** parses local formats into exact decimals and formats them back. It handles `149 kr`, `kr 149`, `11,99 €`, `€11.99`, `CHF 14.39`, `£10.99`, `zł 23,99`, `25,99 lei`, `C$12.99`, and thousands separators written as `.`, `,`, space, no-break space, narrow no-break space or apostrophe. It does arithmetic in integer minor units.
-- **`src/schema/`** gains the price record (`docs/features/price-index.md#the-price-record`, including `missing_reason`), `latest.json` and the snapshot schema.
+- **`src/money/`** parses local formats into exact decimals and formats them back. It covers every format E11.6-01 recorded across the 38 captured countries, e.g. `149 kr`, `kr 149`, `11,99 €`, `€11.99`, `CHF 14.39`, `£10.99`, `23,99 zł`, `25,99 lei`, `C$12.99`, `A$16.99`, `$11.99`, and thousands separators written as `.`, `,`, space, no-break space, narrow no-break space or apostrophe. It does arithmetic in integer minor units.
+- **`src/schema/`** gains:
+  - the price record (`docs/features/price-index.md#the-price-record`), with `price_source_text`, the `not_offered` status and `missing_reason`. **There is no `fx` field**;
+  - the `latest.json` schema;
+  - the snapshot schema.
 - **`src/storage/`** defines the `PriceStore` interface and a JSON-file implementation:
   - `readLatest`, `writeLatest`, `writeSnapshot` and `listSnapshots`;
   - writes are atomic (a temporary file in the same directory, flush, rename);
@@ -3296,13 +3317,15 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-08. These go to the
   - snapshots are immutable, so a same-date second build gets a numeric suffix and an existing file is never replaced.
 
 **Acceptance criteria:**
-- **Every currency in `config/markets.json`, enabled or not, has parse tests** covering its own formats and every thousands separator it can carry, and an ambiguous string (`1.299` with no currency context) is rejected rather than guessed
+- **Every currency in `config/markets.json`, and every currency with a captured fixture, has parse tests** covering its own formats and every thousands separator it can carry, and an ambiguous string (`1.299` with no currency context) is rejected rather than guessed
+- `price_source_text` round-trips the source's text unchanged
 - **No float holds a price.** The money module rejects a `number` input, and a scan of `packages/price-index/src` finds no `parseFloat` and no `Number(` applied to a price
+- **The record schema rejects an `fx` field or any converted-price field**
 - A failure injected between the temporary write and the rename leaves the previous `latest.json` byte-identical
 - An attempt to overwrite an existing snapshot fails
 - Serialising the same data twice yields byte-identical files that pass `npm run format`
 
-**Tests:** Per-currency parse tables · ambiguity rejection · round-trip formatting · the float scan · the injected-crash write · snapshot immutability · byte-stable serialisation.
+**Tests:** Per-currency parse tables · ambiguity rejection · round-trip formatting and source text · the float scan · the no-conversion schema case · the injected-crash write · snapshot immutability · byte-stable serialisation.
 **Docs:** `docs/features/price-index.md#the-price-record` · `docs/modules/price-index.md`
 
 ### E11.6-04 — The polite fetcher: robots, one request at a time, backoff and checkpoints
@@ -3318,17 +3341,16 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-08. These go to the
 - **Timeouts** on every request.
 - **Conditional requests.** `If-None-Match` and `If-Modified-Since`, using the validators of the previous run.
 - **User agent.** An honest `User-Agent` naming the tool and a contact URL on `valstara.com`.
-- **Host allowlist.** Only `www.youfundceo.com` and the FX host. Anything else, and any path `robots.txt` disallows, is refused before a request is made.
+- **Host allowlist.** `www.youfundceo.com` only. Anything else, and any path `robots.txt` disallows, is refused before a request is made.
 - **Raw store.** `data/raw/<run_id>/`, gitignored and rotated to the last six runs (configurable).
 - **Checkpoints.** A checkpoint after each market lets an interrupted run resume where it stopped.
-- **BLOCKED until Q1 is confirmed.**
 
 **Acceptance criteria:**
 - **At most one request is ever in flight**, asserted against the fake server under a queue of 50
 - A path disallowed for the tool's group is never requested, and nothing under `/api/` or `/go/` is ever requested
 - The delay between requests is always at least the larger of the jitter floor and `Crawl-delay`, asserted with the injected clock
 - The backoff sequence and the `Retry-After` handling match the configuration, and the run stops after the configured number of consecutive failures, **leaving the checkpoint for a resume**
-- A resumed run fetches only the markets not yet checkpointed
+- A resumed run fetches only what is not yet checkpointed
 - A 304 reuses the stored raw page and counts as "not modified"
 - Rotation keeps exactly the configured number of runs
 - **A scan finds no proxy configuration, no rotating user agent and no CAPTCHA or challenge-solving code** in the package
@@ -3343,50 +3365,38 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-08. These go to the
 **Build:**
 - **`src/sources/`** defines the `SourceAdapter` interface:
   - an `id`;
-  - which requests a run needs for the enabled markets;
+  - which requests a run needs for the enabled markets and the catalogue;
   - `parse(raw)`, returning observations, source-declared gaps and untracked entries;
   - designed so a later `direct:<provider>` adapter plugs in with no pipeline change.
-- **The youfundceo adapter:**
-  - Resolves enabled markets' slugs from `/countries`, then requests only their country pages.
-  - Reads the top price section and the "No price shown for <country>" section, and ignores "What you get in <country>". It uses the extraction source E11.6-01 chose.
-  - Matches names through `source_aliases` after normalising case, whitespace, punctuation and diacritics.
-  - Lists unmatched entries as "untracked on source", each with a fuzzy alias *suggestion* that is never applied.
-  - Records `price_usd_source` and `source_verified_at` where shown.
+- **The youfundceo adapter** uses the minimum request set and the extraction sources E11.6-01 chose. With the founder's known structure, that means:
+  - resolve slugs from `/countries` and `/services`;
+  - read each enabled market's country page for its service list and its "No price shown for <country>" section, ignoring "What you get in <country>";
+  - **request a country × service page only for a tracked service the source lists in that country**;
+  - read the "Price moves" page once per run.
+- From those pages it records:
+  - the local price;
+  - the currency;
+  - the source text;
+  - `price_usd_source`;
+  - **the "last checked" date as `source_verified_at`**.
+- A tracked service the source does not list, globally or in that country, yields `missing` with `not_on_source`. A service in "No price shown" yields `source_no_price` for each of its tracked plans. Both are expected, never errors.
+- Names are matched through `source_aliases` after normalising case, whitespace, punctuation and diacritics. Unmatched entries are listed as "untracked on source", each with a fuzzy alias *suggestion* that is never applied.
+- The "Price moves" entries are kept as a separate list for E11.6-09's cross-check, and never merged into prices.
 - **BLOCKED until D3 is decided.**
 
 **Acceptance criteria:**
 - Every fixture parses to the exact expected observations, written by hand in the test, not generated from the parser's own output
-- Every service in a "No price shown" section yields `source_no_price` gaps for each tracked plan of that service
-- **A planted fixture with the price section missing or restructured fails that market as `parse_failed`, never zero records**, and the other markets still parse
-- A disabled market is never requested
+- **No country × service page is requested for a service the source does not list in that country**, and no disabled market is requested
+- **A tracked product absent from the source appears as `missing` with `not_on_source` in every enabled market**, and a "No price shown" service yields `source_no_price`
+- **A planted fixture with the price section missing or restructured fails that page as `parse_failed`, never zero records**, and other pages still parse
 - **A new alias added to the catalogue matches with no code change**, and a removed service's entries become untracked
 - No suggestion is ever written to the catalogue
-- The adapter reads no section other than the two named
+- Price-moves entries never alter an observation
 
-**Tests:** The per-fixture expectation tables · the restructured-page fixture · gaps from the "No price shown" section · alias add and remove · the suggestion-never-applied assertion.
+**Tests:** The per-fixture expectation tables · the request plan over a fixture catalogue · `not_on_source` and `source_no_price` · the restructured-page fixture · alias add and remove · the suggestion-never-applied assertion · price moves kept separate.
 **Docs:** `docs/features/price-index-source-findings.md` · `docs/modules/price-index.md`
 
-### E11.6-06 — FX reference rates and conversions
-**Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** backend
-
-**Build:**
-- **`src/fx/`** defines the `FxProvider` interface and the ECB euro reference-rate adapter (Q7). It fetches the daily rates file through the polite fetcher, as an allowlisted host.
-- Each build records the rates it used in `data/price-index/fx/YYYY-MM-DD.json`, as decimal strings with the ECB's `rate_date` and the provider.
-- Converts local → EUR → USD with exact rational arithmetic, rounding half-even only at display.
-- Fills each record's `fx` field.
-- A currency missing from the rates leaves that record's conversion absent. **It never carries a rate forward silently.**
-- **BLOCKED until Q7 is answered.**
-
-**Acceptance criteria:**
-- Conversions for every seeded currency match hand-computed expectations from a fixture rates file
-- A weekend or holiday run records the ECB's last published `rate_date`, not the run date
-- **A missing currency produces no conversion and a note**, and no stale rate is used
-- The rates file of every build is committed and reproduces that build's conversions
-
-**Tests:** Hand-computed conversion table · weekend `rate_date` · missing-currency path · reproduction from the stored rates file.
-**Docs:** `docs/features/price-index.md#the-price-record`
-
-### E11.6-07 — Merge, validation and the publish gate
+### E11.6-06 — Merge, validation and the publish gate
 **Model:** Opus 5.5 — Extra High · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this model:** this is the trust boundary. A subtle error here publishes a wrong price across hundreds of pages, which is exactly the failure the brand cannot afford.
 
@@ -3400,38 +3410,41 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-08. These go to the
 
 It returns the new `latest.json`. The status rules are those of `docs/features/price-index.md#validation-merge-and-the-publish-gate`:
 - override precedence and retirable-override detection;
+- **`not_offered` only from a founder-confirmed manual entry, and a scraped price against a `not_offered` entry → `conflict`**;
 - `conflict` showing both values;
-- expected-currency, price > 0 and billing-period checks;
+- the market-currency, price > 0 and billing-period checks;
 - the ±40% threshold, configurable;
-- staleness at 45 and 90 days, configurable;
+- **staleness at 45 days for scraped records and 90 days for manual entries, including `not_offered`** (founder, 2026-11-17; configurable);
 - **disappearance → `needs_review`, never deletion**;
 - a failed market keeping its previous values.
 
 Also in this ticket:
-- **`src/publish/` exports `isPublishable()` and `publishedView(latest)`, the only gate (rule 4).**
-- Create `data/price-index/manual-overrides.json` and `data/price-index/approvals.json` with their schemas.
+- **`src/publish/` exports `isPublishable()`, `publishedView(latest)` and `rankMarkets()`.** `rankMarkets()` ranks by `price_usd_source`, among publishable records that have one. **They are the only gate (rule 4).**
+- Create `data/price-index/manual-overrides.json` and `data/price-index/approvals.json` with their schemas. An override needs a local price and currency, while `price_usd_source` is optional; a `not_offered` entry needs the official URL that shows it.
 - **The approvals append-only CI check.**
 - `price-index review approve|reject --market --service --plan --actor`. An approval binds to the exact value and source it approves.
 
 **Acceptance criteria:**
-- Every row of the status table in the feature spec is a named test case with explicit inputs
-- **A seeded property test over generated merges asserts that no record whose status is not `ok` or approved `manual_override` ever passes `isPublishable()` or appears in `publishedView()`**
+- Every row of the status rules in the feature spec is a named test case with explicit inputs
+- **A seeded property test over generated merges asserts that no record whose status is not `ok` or approved `manual_override` ever passes `isPublishable()`, appears in `publishedView()` or is ranked by `rankMarkets()`**
+- A record without `price_usd_source` is publishable but never ranked, and M counts only ranked markets
+- A `not_offered` entry is never published as a price, and a scraped price against it yields `conflict`
 - An approval of one value does not approve a later, different value
 - An approval or rejection without `--actor` is refused before anything is written
 - **Disagreement between an override and the scraper never resolves without an approval**, and both values remain visible in `latest.json`
 - **Removing a service from the catalogue removes its records from `latest.json` and from `publishedView()` without touching any snapshot**. Adding one yields `missing` records
 - **Editing or deleting an existing `approvals.json` entry fails CI**, proven by a planted fixture
 
-**Tests:** The status-table cases · the seeded property test over the publish gate · approval binding · the actor requirement · catalogue add and remove · the append-only check and its red path.
+**Tests:** The status-rule cases · the seeded property test over the publish gate and ranking · the unranked-without-USD case · the `not_offered` cases · approval binding · the actor requirement · catalogue add and remove · the append-only check and its red path.
 **Docs:** `docs/features/price-index.md#validation-merge-and-the-publish-gate` · `docs/architecture/adr/033-price-index-offline-tool.md`
 
-### E11.6-08 — The scrape run: commands, run log, dry run and isolation from the site
+### E11.6-07 — The scrape run: commands, run log, dry run and isolation from the site
 **Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** backend
 **Why this model:** this is where the founder's isolation requirement is proven, and where a partial run must leave everything already published untouched.
 
 **Build:**
-- **`price-index scrape [--market SE] [--dry-run] [--resume <run_id>]`:** fetch, store raw, parse, then write the run's normalised observations to `data/raw/<run_id>/observations.json`.
-- **`price-index build-data`:** merge the latest observations, overrides and approvals. On full validation, write `latest.json`, a snapshot, the FX file and `reports/runs/<run_id>.json` (counts for fetched, not modified, matched, unmatched, flagged by status, failed markets, and changed). The changed count is zero until E11.6-10 adds detection.
+- **`price-index scrape [--market SE] [--dry-run] [--resume <run_id>]`:** fetch, store raw, parse, then write the run's normalised observations to `data/raw/<run_id>/observations.json`. It also writes a **preview** merge as a coverage report, so the founder can read it before building. **It never writes `latest.json`.**
+- **`price-index build-data`:** merge the latest observations, overrides and approvals. On full validation, write `latest.json`, a snapshot and `reports/runs/<run_id>.json` (counts for fetched, not modified, matched, unmatched, flagged by status, failed markets, and changed). The changed count is zero until E11.6-09 adds detection.
 - **`price-index validate`** extends to every data file.
 - **`--dry-run`** makes no network request, replaying the latest raw run or `--from-fixtures`, writes nothing under `data/price-index/`, and prints what would change.
 - Every command exits when its work is done.
@@ -3439,57 +3452,60 @@ Also in this ticket:
 
 **Acceptance criteria:**
 - **A dry run with a transport that throws on any request, and a read-only `data/price-index/`, completes and changes nothing**
-- **A run stopped by the source, a run killed mid-market, and a build that fails validation each leave `latest.json` and every snapshot byte-identical**
+- **`scrape` never modifies `latest.json`.** A run stopped by the source, a run killed mid-market, and a build that fails validation each leave `latest.json` and every snapshot byte-identical
 - A partial run builds with failed markets keeping their previous values, and the run log names them
 - **The process exits after every command**: no open handle remains, asserted by running the CLI as a child process against the fake server and requiring a normal exit
 - **The isolation proof:**
   - the site builds and serves with the tool absent;
   - the tool's failure modes alter no file the site reads;
-  - the built site contains no code from `src/http`, `src/sources`, `src/fx`, `src/cli` or `src/reports`, checked against the build output
+  - the built site contains no code from `src/http`, `src/sources`, `src/cli` or `src/reports`, checked against the build output
 - The console summary prints coverage %, the counts and the path of each report
 
-**Tests:** The dry-run no-network and no-write test · the three byte-identical failure cases · the partial-run case · the child-process exit test · the isolation proof against the build output.
+**Tests:** The dry-run no-network and no-write test · `scrape` leaving `latest.json` untouched · the three byte-identical failure cases · the partial-run case · the child-process exit test · the isolation proof against the build output.
 **Docs:** `docs/features/price-index.md#two-separate-things-a-tool-and-some-pages` · `docs/architecture/adr/033-price-index-offline-tool.md`
 
-### E11.6-09 — The coverage report, spot checks and the override command
+### E11.6-08 — The coverage report, spot checks and the override commands
 **Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** backend
 
 **Build:**
-- **`price-index report`**, also run by `build-data`, writes `reports/coverage-YYYY-MM-DD.md` and `.json`:
+- **`price-index report`**, also run by `scrape` (preview) and `build-data` (final), writes `reports/coverage-YYYY-MM-DD.md` and `.json`:
   - the full matrix of enabled markets × catalogue plans, with each cell's status and, for `missing`, its reason;
   - coverage % overall, per market and per service;
-  - **the missing combinations grouped by service**, ready for manual entry;
+  - **the missing combinations grouped by service**, with `not_on_source` grouped first, ready for manual entry;
   - every `needs_review`, `conflict` and `stale` record, with both values for conflicts;
   - retirable overrides;
+  - publishable records without a USD figure, which are therefore unranked;
   - the "untracked on source" list with suggestions;
   - **a spot-check list of N `ok` records (default 5)**, sampled by a source seeded from the run id so the list is reproducible, each with the service's official URL.
-- **`price-index override add`** prompts for market, service, plan, billing period, price, currency, `source_url`, `verified_at`, `verified_by` and note. It validates against the schemas and writes atomically.
+- **`price-index override add`** prompts for market, service, plan, billing period, local price, currency, optional USD figure, `source_url`, `verified_at`, `verified_by` and note. It validates against the schemas and writes atomically.
+- **`price-index override not-offered`** records a confirmed `not_offered` with its official URL and `verified_by`.
 - **`price-index override retire`** removes an override.
 
 **Acceptance criteria:**
 - The matrix has exactly one cell for every enabled market × plan, and none for disabled markets or removed plans
 - The JSON and the Markdown report the same figures, asserted
 - The same run id always yields the same spot-check sample
-- **`override add` refuses**:
-  - a currency that is not the expected currency;
+- **`override add` and `override not-offered` refuse:**
+  - a currency other than the market's;
   - a `source_url` whose host is not the service's official host from the catalogue;
   - a price that does not parse exactly;
   - an empty `verified_by`
 - A catalogue addition appears as missing cells, and a removal leaves no cells
 
-**Tests:** Matrix completeness over a fixture catalogue · JSON–Markdown parity · sample reproducibility · each override refusal · scripted `override add` and `retire` · catalogue add and remove.
+**Tests:** Matrix completeness over a fixture catalogue · JSON–Markdown parity · sample reproducibility · each refusal · scripted `override add`, `not-offered` and `retire` · catalogue add and remove.
 **Docs:** `docs/features/price-index.md` · `docs/modules/price-index.md`
 
-### E11.6-10 — The change log and the monthly report
+### E11.6-09 — The change log and the monthly report
 **Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** backend
 
 **Build:**
-- `build-data` compares published values with the previous `latest.json` and appends **real changes** (`docs/features/price-index.md#change-log-and-monthly-report`) to `data/price-index/changes.json`. Each entry has market, service, plan, old and new price, % change, detected date and source. Add **the append-only CI check**.
+- `build-data` compares published values with the previous `latest.json` and appends **real changes** (`docs/features/price-index.md#change-log-and-monthly-report`) to `data/price-index/changes.json`. Each entry has market, service, plan, old and new local price, currency, % change, detected date and source. Add **the append-only CI check**.
 - **`price-index monthly-report --month YYYY-MM`** writes `reports/monthly/YYYY-MM.md` and `data/price-index/monthly/YYYY-MM.json`:
-  - every change that month, largest first;
-  - the most and least expensive market for each plan, by ≈ EUR and ≈ USD at a stated FX date;
-  - each plan's spread across markets;
-  - counts such as "Spotify Premium — Individual rose in 4 of 18 markets".
+  - every change that month, largest % first, in local currency;
+  - the most and least expensive market for each plan, ranked with `rankMarkets()` and shown in local prices;
+  - each plan's spread across markets, as a ratio;
+  - counts such as "Spotify Premium — Individual rose in 4 of 20 markets";
+  - **a founder-only cross-check against the source's "Price moves"** (moves we did not detect, and changes the source does not list). It is written to the Markdown report only, never to the page feed, and it never changes a value.
 - The sentences are templates in `packages/price-index/copy/`, and this ticket adds that directory to the forbidden-copy scan.
 - **Only published values are counted.**
 
@@ -3497,15 +3513,17 @@ Also in this ticket:
 - A first observation, a status change and a formatting-only difference produce no entry
 - An approved `needs_review` change is logged once, dated by its observation
 - **Editing or removing an existing entry fails CI**, proven by a planted fixture
-- The report's counts and extremes match hand-computed expectations over a fixture month
+- The report's counts, extremes and ratios match hand-computed expectations over a fixture month
+- **No USD figure and no converted price appears in the report or the feed**
 - **A record excluded by the publish gate contributes to no figure**
+- The cross-check lists both kinds of disagreement over a fixture month, and is absent from `monthly/YYYY-MM.json`
 - A planted forbidden string in a report template fails the scan
 - A month with no changes produces an honest "no changes" report
 
-**Tests:** The change-detection cases · the append-only check and its red path · the fixture-month expectations · publish-gate exclusion · the forbidden-copy red path · the empty month.
+**Tests:** The change-detection cases · the append-only check and its red path · the fixture-month expectations · the no-USD assertion · publish-gate exclusion · the cross-check cases · the forbidden-copy red path · the empty month.
 **Docs:** `docs/features/price-index.md#change-log-and-monthly-report` · `docs/brand/copy-rules.md`
 
-### E11.6-11 — The service × market page: route, flag, published-URL ledger and sitemap index
+### E11.6-10 — The service × market page: route, flag, published-URL ledger and sitemap index
 **Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `prices.pages` · **Area:** frontend
 **Why this model:** the first public surface built from the index. It carries the signup island and the signed `?ref=` capture, and it sets the cache contract and URL permanence every later price page inherits.
 
@@ -3513,11 +3531,11 @@ Also in this ticket:
 - **The route.** `/prices/[service]/[country]`, server-rendered on request from `publishedView()` of the `latest.json` bundled at build (D1). The view model lives in `src/server/prices/`, so the page only renders.
 - **The page:**
   - H1 and title with the month and year of the last verification;
-  - the plan table: local price in the monospace token, ≈ USD, ≈ EUR, the FX date and "last verified";
+  - **the plan table in local currency only**, set in the monospace token, with "last verified";
   - the "Prices verified on …" line;
-  - the configurable source credit (Q6);
   - the not-affiliated statement;
-  - the waitlist call to action through the existing `SignupForm` island, with the server-rendered signed referral field exactly as on `/` (E4-02).
+  - the waitlist call to action through the existing `SignupForm` island, with the server-rendered signed referral field exactly as on `/` (E4-02);
+  - **no source credit, and no USD or converted figure.**
 - **The flag.** Register `prices.pages` (default on). Off returns 503 with `Retry-After` and `noindex` from every price route.
 - **The ledger.** Create the append-only `data/price-index/published-urls.json` ledger, written by `build-data` for every page that passes the generation rule, with its CI check:
   - a ledger URL with no publishable data renders "temporarily unavailable" with no price and `noindex`;
@@ -3526,52 +3544,52 @@ Also in this ticket:
 - **Caching.** The ref-less, default-flag render is cacheable through the origin render cache, keyed by flag generation. `?ref=` and non-default flag states are `private, no-store`, as for `/`.
 - **The sitemap.** Turn `/sitemap.xml` into a sitemap index over `/sitemaps/pages.xml` (the existing routes, unchanged) and `/sitemaps/prices-service-market.xml`, whose `lastmod` is each page's verification date, not the build date. It lists indexable pages only.
 - **Metadata.** Unique title, description and self-canonical, BreadcrumbList JSON-LD, and the typed `prices` OG fallback, all through the existing E9-06 and E9-07 checks.
-- **BLOCKED until D1 and Q6 are decided.**
+- **BLOCKED until D1 is decided.**
 
 **Acceptance criteria:**
 - **A page is generated only when at least one of its plans passes the publish gate**. A pair with none is absent from the sitemap and returns 404 unless it is in the ledger
 - **A ledger URL whose data is lost renders the unavailable state, `noindex`, with no price**, and leaves the sitemap
-- **Every number on the page equals the published record it came from**, asserted by a render test over a fixture dataset
+- **Every number on the page equals the published record it came from, and no USD figure appears**, asserted by a render test over a fixture dataset
 - `prices.pages` off returns 503 with `Retry-After` and `noindex` on every price route, and on is the code default
 - **A `?ref=` visit renders the signed field, is `private, no-store`, and attributes a signup exactly as on `/`**
 - The route loads no JavaScript beyond `SignupForm` and `ThemeToggle`, and makes no third-party request beyond the sanctioned Turnstile widget, under the existing gates
 - The sitemap index lists both child sitemaps, and `/sitemaps/pages.xml` holds exactly the previous `/sitemap.xml` entries
-- The copy is from `src/copy/prices.ts` only. The inline-prose and forbidden-copy scans pass
+- The copy is from `src/copy/prices.ts` only. The inline-prose and forbidden-copy scans pass, and no copy names the data source
 
-**Tests:** Generation rule over a fixture dataset (generated, skipped and ledger-unavailable cases) · the number-trace render test · flag-off on every route · the `?ref=` attribution path · zero extra JS · the third-party gate crawl · sitemap index and `lastmod` from data · the ledger append-only check and its red path · catalogue add and remove at the page layer.
+**Tests:** Generation rule over a fixture dataset (generated, skipped and ledger-unavailable cases) · the number-trace and no-USD render test · flag-off on every route · the `?ref=` attribution path · zero extra JS · the third-party gate crawl · sitemap index and `lastmod` from data · the ledger append-only check and its red path · catalogue add and remove at the page layer.
 **Docs:** `docs/features/price-index.md#pages` · `docs/features/seo.md` · `docs/architecture/adr/008-server-side-referral-attribution.md` · `docs/architecture/adr/001-astro-node-adapter.md`
 
-### E11.6-12 — Service × market page content: history, comparison, related services, FAQ and the Valstara price
+### E11.6-11 — Service × market page content: history, comparison, related services, FAQ and the Valstara price
 **Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `prices.valstara_comparison` · **Area:** frontend
 **Why this model:** each block is a published factual claim (a rank, a history, a percentage below list), and each must be derivable from the data alone.
 
 **Build:**
 - **Price history** from `changes.json` ("Raised from 129 SEK to 149 SEK in October 2026"), hidden when there is none.
 - **The cross-market comparison:**
-  - "Sweden is the Nth most expensive of our M markets for <plan>", ranked by ≈ EUR at a stated FX date, among markets whose record is publishable;
-  - a mini-table of the cheapest and most expensive markets;
-  - the ranking function lives in `src/publish/` for reuse by the hubs.
+  - "Sweden is the Nth most expensive of our M markets for <plan>", from `rankMarkets()`, where M is the number of ranked markets;
+  - a mini-table of the cheapest and most expensive markets, **each in its own local currency**;
+  - hidden when this market is unranked.
 - **Related services**: same category, same market, published pages only.
 - **An FAQ generated only from data**, with FAQPage JSON-LD only when it renders.
-- **The Valstara comparison block.** Register `prices.valstara_comparison`, default off. With it on and an entry in `config/valstara-prices.json`, the block shows the official price, the Valstara price and the % below list, compared like for like (`docs/features/price-index.md#valstara-prices-configvalstara-pricesjson`). Otherwise the waitlist call to action stays.
+- **The Valstara comparison block.** Register `prices.valstara_comparison`, default off. With it on and an entry in `config/valstara-prices.json`, the block shows the official price, the Valstara price and the % below list, in local currency, compared like for like (`docs/features/price-index.md#valstara-prices-configvalstara-pricesjson`). Otherwise the waitlist call to action stays.
 
 **Acceptance criteria:**
 - Every sentence is a filled template, and **every number in it traces to a published record or a `changes.json` entry**, asserted by the render test
-- The rank counts only markets whose record passes the publish gate, and M states that count
+- The rank and M count only markets `rankMarkets()` ranks. **No USD figure is displayed** anywhere on the page
 - History lists only real changes and never a pre-gate value
 - **No Valstara price renders with the flag off, or with no entry, or with an entry for another term without the stated basis**
 - The FAQ answers only questions whose answer is in the data, and FAQPage JSON-LD validates and appears only with a visible FAQ
 - Related links point only at generated pages
-- The copy rules hold: "≈" on every conversion, "below list price", provider names unaltered
+- The copy rules hold: "below list price", provider names unaltered, no converted price
 
-**Tests:** The number-trace render test extended to every block · the rank with excluded markets · history absent and present · the flag-off, no-entry and term-basis cases · FAQ and JSON-LD presence and validation · related links resolving to generated pages only.
+**Tests:** The number-trace render test extended to every block · the rank with excluded and unranked markets · the no-USD assertion · history absent and present · the flag-off, no-entry and term-basis cases · FAQ and JSON-LD presence and validation · related links resolving to generated pages only.
 **Docs:** `docs/features/price-index.md#pages` · `docs/brand/copy-rules.md#claims-that-must-stay-true`
 
-### E11.6-13 — The service hub, the market hub and `/prices`
+### E11.6-12 — The service hub, the market hub and `/prices`
 **Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** `prices.pages` · **Area:** frontend
 
 **Build:**
-- **`/prices/{service}`** shows every enabled market with a publishable price for each plan, ranked with E11.6-12's function and linked to each page.
+- **`/prices/{service}`** shows every enabled market with a publishable price for each plan, ordered with `rankMarkets()`, with local prices, linked to each page. Unranked markets are listed after the ranked ones, alphabetically.
 - **`/prices/countries/{country}`** shows every tracked service in that market with a published page, by category.
 - **`/prices`** is the top-level index of services and markets.
 - **The rest:**
@@ -3585,41 +3603,45 @@ Also in this ticket:
 - A hub lists only generated pages, and a service or market with none has no hub and no sitemap entry
 - Every link on a hub resolves to a generated page
 - Every service × market page links to both of its hubs
-- The ranking on the service hub agrees with each page's own rank sentence, asserted across the fixture dataset
+- The order on the service hub agrees with each page's own rank sentence, asserted across the fixture dataset
+- No hub shows a USD or converted figure
 - **A retired URL answers 301 to its recorded target**, and retirement without `--actor` is refused
 - Adding a market or service produces its hub entries with no code change
 
-**Tests:** Hub generation and omission · link resolution · rank agreement · retire-url and its refusal · the footer link · catalogue and market add and remove.
+**Tests:** Hub generation and omission · link resolution · rank agreement · unranked ordering · the no-USD assertion · retire-url and its refusal · the footer link · catalogue and market add and remove.
 **Docs:** `docs/features/price-index.md#pages` · `docs/features/seo.md`
 
-### E11.6-14 — `/price-index`, the methodology and the monthly report pages
+### E11.6-13 — `/price-index`, the methodology and the monthly report pages
 **Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** `prices.pages` · **Area:** frontend
 
 **Build:**
-- **`/price-index`** is the landing page and methodology, from `src/content/price-index-methodology.md` through the content pipeline, with its port target declared. It carries `Dataset` JSON-LD describing the index: name, description, `temporalCoverage`, `spatialCoverage` (the enabled markets), the credited source, and `dateModified` from the newest verification.
+- **`/price-index`** is the landing page and methodology, from `src/content/price-index-methodology.md` through the content pipeline, with its port target declared.
+  - It describes the process in general terms (founder, 2026-11-17): monthly checks, and verification by hand where needed. **It does not name the data source.**
+  - It carries `Dataset` JSON-LD describing the index: name, description, `temporalCoverage`, `spatialCoverage` (the enabled markets) and `dateModified` from the newest verification.
 - **`/price-index/{yyyy-mm}`** renders from `data/price-index/monthly/YYYY-MM.json` and links to every page it mentions.
 - Monthly pages get their own child sitemap.
 - The service × market page gains its methodology link to `/price-index`.
-- **BLOCKED until D4 is decided.** The methodology describes the built system, and the founder approves it in this ticket's pull request.
+- **BLOCKED until D4 is decided.** The founder approves the methodology wording in this ticket's pull request.
 
 **Acceptance criteria:**
-- **Every methodology statement is traceable to code or config**: the cadence, the source, the gate, the FX provider, the thresholds. A changed setting with an unchanged statement fails a reconciliation test
+- **Every methodology statement is literally true of the built system and traceable to code or config**: the cadence, the gate, the hand verification, the staleness limits. A changed setting with an unchanged statement fails a reconciliation test
+- No statement claims the prices are read from official pages unless the data actually is
 - `Dataset` JSON-LD validates and states no figure the data does not hold
 - Every page a monthly report mentions is linked if it is generated, and named without a link if it is not
 - A month with no report file has no page
 - Zero client JavaScript beyond the shell islands
 
 **Tests:** Methodology–config reconciliation · Dataset JSON-LD validation · monthly page links · the absent-month case.
-**Docs:** `docs/features/price-index.md` · `docs/architecture/adr/017-content-files.md`
+**Docs:** `docs/features/price-index.md` · `docs/architecture/adr/017-content-files.md` · `docs/brand/copy-rules.md#claims-that-must-stay-true`
 
-### E11.6-15 — Social cards for the price pages
+### E11.6-14 — Social cards for the price pages
 **Model:** Opus 5.5 — Medium · **Priority:** Low · **Flag:** — · **Area:** frontend
 
 **Build:** Extend E9-07's build-time generator to every price page kind. The card holds the page's own title and, for a service × market page, its headline local price set in the monospace token. Cards are cached by a content hash, so an unchanged page is not re-rendered, and the CI build stays within its budget.
 
 **Acceptance criteria:**
 - Every generated price page has its own card, and a missing card falls back to the typed `prices` card
-- The price on a card equals the page's published price
+- The price on a card equals the page's published local price
 - A rebuild with unchanged data renders no card
 - The CI build time stays within the E1-05 budget, with the measurement recorded
 - No third-party request is made
@@ -3627,39 +3649,44 @@ Also in this ticket:
 **Tests:** Per-page presence and fallback · price equality · cache hit on unchanged data · build-time measurement.
 **Docs:** `docs/features/seo.md#social-card-contract-e9-07`
 
-### E11.6-16 — The first monthly run, the data release path and the scheduled-run design
+### E11.6-15 — The first monthly run and the monthly runbook
 **Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** — · **Area:** docs
 **Why this model:** a guided operational run against a clear runbook. Mode is `manual` because only the founder runs the tool against the source (rule 2).
 
 **Build:**
-- **The runbook**, `docs/ops/runbook.md#price-index-monthly-run`: scrape, build-data, read the coverage report, override and review, rebuild, monthly report, then commit on `data/price-index-YYYY-MM` with `data(price-index): <month> run [PRICE-YYYY-MM]`, open a pull request, CI, merge, deploy. This includes:
+- **`docs/price-index-runbook.md`**, a short runbook of the founder's monthly routine (founder, 2026-11-17):
+  1. run `scrape`;
+  2. read the coverage report;
+  3. resolve `needs_review` and `conflict`, and add manual overrides and `not_offered` entries;
+  4. run `build-data` and `monthly-report`;
+  5. commit the data on `data/price-index-YYYY-MM` with `data(price-index): <month> run [PRICE-YYYY-MM]` and open a pull request;
+  6. CI, merge, and the normal build and deploy publish the pages.
+
+  It also says:
   - **what to do when the source blocks the tool (stop and decide; never work around)**;
+  - how long a run takes;
+  - how to resume one;
   - the `prices.pages` lever for a wrong price that has gone live.
 - **Git workflow.** Add the data branch and commit convention to `docs/engineering/git-workflow.md`.
-- **ADR-034** compares, without building any of them:
-  - the accepted manual monthly run;
-  - (a) a cron run on the VPS committing through a bot;
-  - (b) a scheduled GitHub Actions run.
-
-  It sets the rule any scheduled option must keep: **a `needs_review` or `conflict` record is never published, and the founder is notified with the coverage report attached.** It also records why that notification is not built now: no live Resend key may reach a developer machine.
 - **The first real run.** The founder performs it with the agent following along. Every flag in its coverage report is resolved or deliberately left out by the gate, and its data pull request merges.
+- **No cron, no scheduled workflow and no notification is built or designed** (founder, 2026-11-17).
 
 **Acceptance criteria:**
 - The first real run completes, and its run log, coverage report and snapshot are committed
 - **Every `needs_review` and `conflict` is approved or rejected with an actor, or left unpublished**, as listed in the report
 - The founder has spot-checked the sampled records against the official pages, and any disagreement is recorded as an override or a conflict
 - The runbook takes a cold reader from a clean clone to a merged data pull request
-- ADR-034 is Accepted for the manual path and records the scheduled options as not built
 - CI on the data pull request ran `price-index validate` and the append-only checks
+- No scheduled job exists for the tool in any workflow, crontab or Compose file, which the E11.6-02 isolation scan asserts
 
 **Tests:** The run and its committed evidence are the test.
-**Docs:** `docs/ops/runbook.md` · `docs/engineering/ci-cd.md` · `docs/engineering/git-workflow.md`
+**Docs:** `docs/price-index-runbook.md` · `docs/engineering/ci-cd.md` · `docs/engineering/git-workflow.md`
 
-### E11.6-17 — Price-page audit and founder sign-off
+### E11.6-16 — Price-page audit and founder sign-off
 **Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
 **Why this model:** the last check before hundreds of price claims go public. It reads every route against real data, not a fixture.
 
-**Build:** Audit every price route generated from the real `latest.json` of E11.6-16, and record the evidence in `docs/testing/e11-6-price-pages-audit.md`. The audit covers:
+**Build:** Audit every price route generated from the real `latest.json` of E11.6-15, and record the evidence in `docs/testing/e11-6-price-pages-audit.md`. The audit covers:
 - **the internal-link graph:**
   - service hub ↔ service × market pages;
   - category neighbours;
@@ -3670,7 +3697,7 @@ Also in this ticket:
 - **the privacy gates over a crawl of every price route**: no cookie, no storage identifier, no third-party request beyond Turnstile;
 - **the accessibility gate** at every test width in both themes;
 - **the performance targets** in the existing lab harness: LCP < 2.5 s, CLS < 0.1 and INP < 200 ms on a representative page of each kind;
-- **the copy and claims rules** over every rendered page;
+- **the copy and claims rules** over every rendered page, including the absence of any source credit and any USD or converted figure;
 - **a number-trace sweep** asserting that every price on every route equals its published record;
 - a contact sheet of each page kind, in both themes, for the founder's sign-off.
 
@@ -3678,7 +3705,7 @@ Also in this ticket:
 - **Every finding is fixed in this ticket or recorded as a founder decision**, and none is waived silently
 - The privacy, accessibility and forbidden-copy gates pass over every price route
 - The performance targets hold on each page kind, with the figures recorded
-- **The number-trace sweep finds no unpublished or mismatched figure**
+- **The number-trace sweep finds no unpublished, mismatched or converted figure**
 - The founder signs off the contact sheet, recorded in the audit file
 
 **Tests:** The link-graph test · structured-data validation on every route · the price-route privacy crawl · accessibility · the lab performance run · the number-trace sweep.
@@ -3775,7 +3802,7 @@ Also in this ticket:
 - **The anonymous/default landing page and static assets are served from Cloudflare's cache** — cache-status and cache-key assertions cover two flag generations and prove the key does not vary by country; `?ref=` and a non-default flag state are confirmed misses with `private, no-store`
 - Cloudflare Web Analytics reports, and **still sets no cookie** — the privacy gate re-run against the live site
 
-**Founder-authorised 2026-11-17:** the same cache contract covers the price routes of E11.6-11 to E11.6-14 — a ref-less, default-flag price page is served from Cloudflare's cache, and a `?ref=` or non-default flag state is a confirmed miss with `private, no-store`, asserted on one route of each price page kind.
+**Founder-authorised 2026-11-17:** the same cache contract covers the price routes of E11.6-10 to E11.6-13 — a ref-less, default-flag price page is served from Cloudflare's cache, and a `?ref=` or non-default flag state is a confirmed miss with `private, no-store`, asserted on one route of each price page kind.
 
 **Tests:** Direct-origin attempt; cache-status assertions; the rendered-page privacy check against production.
 **Docs:** `docs/architecture/adr/003-self-hosted-vps.md` · `docs/architecture/adr/006-turnstile.md` · `docs/architecture/adr/007-cookieless-analytics.md`
@@ -3842,9 +3869,9 @@ Also in this ticket:
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
 | E11.5 Frontend design | 32 | Foundations, survey v2, shell, **provider showcase**, landing, **mobile sticky signup bar**, verify, `/me` and leaderboard, content pages, task and error pages, email layout, **the eight wireframe tickets**, **the twelve final-design tickets and the motion system**, design QA and re-audits |
-| E11.6 Price index and price pages | 17 | Discovery spike, config and schemas, exact money, **the polite fetcher**, the source adapter, FX, **merge and the publish gate**, the run and its isolation from the site, coverage and overrides, change log and monthly report, the price pages and hubs, the index and monthly pages, social cards, the first real run, the audit |
+| E11.6 Price index and price pages | 16 | Discovery spike, config and schemas, exact money, **the polite fetcher**, the source adapter, **merge and the publish gate**, the run and its isolation from the site, coverage and overrides, change log and monthly report, the price pages and hubs, the index and monthly pages, social cards, the first real run and its runbook, the audit |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
-| **Total** | **146** | |
+| **Total** | **145** | |
 
 **Models (founder-authorised 2026-11-11):** every ticket not yet merged runs on Opus 5.5 at the level on its Model line (§3). The Codex distribution recorded on 2026-09-28 and the tier distribution below are history.
 
@@ -3858,7 +3885,7 @@ Under the tier policy, **Tier B carried the personal data, the privacy propertie
 
 ## Effort reconciliation
 
-The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each, plus E11.5's 32 design tickets (founder-authorised 2026-10-19, 2026-10-26 and 2026-10-30), which are heavier per ticket and are not in the stack-decisions estimate. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **E11.6's 17 tickets (founder-authorised 2026-11-17) are estimated separately below** and are not in the stack-decisions estimate either. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
+The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each, plus E11.5's 32 design tickets (founder-authorised 2026-10-19, 2026-10-26 and 2026-10-30), which are heavier per ticket and are not in the stack-decisions estimate. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **E11.6's 16 tickets (founder-authorised 2026-11-17) are estimated separately below** and are not in the stack-decisions estimate either. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
 
 | Cut | Removes | Saves |
 |---|---|---|
@@ -3872,23 +3899,22 @@ The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan i
 
 | Ticket | Depends on | Estimate |
 |---|---|---:|
-| E11.6-01 Discovery spike | P9 Q1 answered; the founder's captures | 3 h |
-| E11.6-02 Markets, catalogue, schemas | 01; P9 Q2–Q4 | 4 h |
-| E11.6-03 Exact money, record, storage | 02 | 5 h |
-| E11.6-04 The polite fetcher | 01, 03; P9 Q1 confirmed | 6 h |
-| E11.6-05 Source adapter | 01, 04; P9 D3 | 6 h |
-| E11.6-06 FX rates | 03, 04; P9 Q7 | 3 h |
-| E11.6-07 Merge and the publish gate | 03, 05, 06 | 8 h |
-| E11.6-08 The run, dry run, isolation | 04–07 | 5 h |
-| E11.6-09 Coverage and overrides | 07, 08 | 5 h |
-| E11.6-10 Change log, monthly report | 07, 08 | 5 h |
-| E11.6-11 Service × market page | 07, 08; P9 D1, Q6 | 8 h |
-| E11.6-12 Page content and Valstara price | 10, 11 | 6 h |
-| E11.6-13 Hubs and `/prices` | 12; P9 D2, D5 | 5 h |
-| E11.6-14 Index, methodology, monthly pages | 10, 13; P9 D4 | 5 h |
-| E11.6-15 Social cards | 13, 14 | 4 h |
-| E11.6-16 First run, release path, ADR-034 | 01–10 merged; the founder at the keyboard | 3 h |
-| E11.6-17 Audit and sign-off | 11–16 | 6 h |
+| E11.6-01 Discovery spike | The founder's capture (P9) | 4 h |
+| E11.6-02 Markets, catalogue, schemas | 01; the founder's confirmed name mappings | 4 h |
+| E11.6-03 Exact money, record, storage | 01, 02 | 5 h |
+| E11.6-04 The polite fetcher | 01, 03 | 6 h |
+| E11.6-05 Source adapter | 01, 04; P9 D3 | 7 h |
+| E11.6-06 Merge and the publish gate | 03, 05 | 8 h |
+| E11.6-07 The run, dry run, isolation | 04–06 | 5 h |
+| E11.6-08 Coverage and overrides | 06, 07 | 5 h |
+| E11.6-09 Change log, monthly report | 06, 07 | 6 h |
+| E11.6-10 Service × market page | 06, 07; P9 D1 | 8 h |
+| E11.6-11 Page content and Valstara price | 09, 10 | 6 h |
+| E11.6-12 Hubs and `/prices` | 11; P9 D2, D5 | 5 h |
+| E11.6-13 Index, methodology, monthly pages | 09, 12; P9 D4 | 5 h |
+| E11.6-14 Social cards | 12, 13 | 4 h |
+| E11.6-15 First run and the runbook | 01–09 merged; the founder at the keyboard | 3 h |
+| E11.6-16 Audit and sign-off | 10–15 | 6 h |
 | **E11.6 total** | | **87 h** |
 
 The estimate excludes the founder's own time on the monthly run and on the P9 answers.

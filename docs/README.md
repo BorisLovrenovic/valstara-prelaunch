@@ -68,6 +68,7 @@ docs/
     p4-research-brief.md           the P4 research prompt (historical — superseded by ADR-026)
     p8-provider-list.md            the founder-confirmed launch providers E11.5-04 shows
     p8-logos/                      the founder-supplied logo source files, as received
+    p9-source-capture.md           how the founder captures the source pages E11.6-01 analyses
 ```
 
 ## What this site is not
