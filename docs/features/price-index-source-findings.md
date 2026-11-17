@@ -9,14 +9,14 @@ The E11.6-01 discovery spike, written on 2026-11-17 **from the founder's capture
 | Capture | When (UTC, 2026-11-17) | What |
 |---|---|---|
 | Plain scripted requests (first capture) | 13:13–13:16 | `raw/robots.txt`, `raw/sitemap.xml` (both `200`), and `/`, `/countries` and `/services`, each a `429` bot checkpoint. Each response's headers are beside it in `raw/*.headers` |
-| Headless Chromium (P9 capture) | 13:57–14:14 | 76 pages, each saved twice: as the browser rendered it (`pages/<name>.html`) and as the server sent it (`pages/<name>.server.html`). Five full-page screenshots and two HAR files in `browser/` |
+| Headless Chromium (P9 capture) | 13:57–14:14 | 57 pages, each saved twice: as the browser rendered it (`pages/<name>.html`) and as the server sent it (`pages/<name>.server.html`). Five full-page screenshots and two HAR files in `browser/` |
 
-The 76 pages are the home page, `/countries`, `/services`, `/services/netflix`, `/services/spotify`, the 38 country pages, the twelve country × service pages, `/price-moves` and `/terms`. **All 38 countries answered `200`** with their own page, so none is missing or substituted. No saved page is the checkpoint.
+The 57 pages are the home page, `/countries`, `/services`, `/services/netflix`, `/services/spotify`, the 38 country pages, the twelve country × service pages, `/price-moves` and `/terms`. **All 38 countries answered `200`** with their own page, so none is missing or substituted. No saved page is the checkpoint.
 
 Gaps against the ticket's list:
 
 - The screenshots cover five page types: `/countries`, a country page, a service page, a country × service page and "Price moves". The capture script (`docs/prerequisites/p9-source-capture.md`) does not screenshot `/services` or `/terms`.
-- The five `raw/*.headers` files have no row in `manifest.tsv`, because the first, plain capture wrote them without one. The headless capture's rows are all present.
+- The five `raw/*.headers` files were written by the first, plain capture without a `manifest.tsv` row. Their rows were added under founder decision D-019 Q2, each with its body file's URL and capture time, its own status line and its own SHA-256, and the fixture manifest test now asserts that every file in the capture except `manifest.tsv` is listed.
 
 ## `robots.txt`, verbatim
 
@@ -255,7 +255,7 @@ The table below has one row per captured country (⍽ marks the no-break space).
   - it launched with `--disable-blink-features=AutomationControlled`;
   - it hid `navigator.webdriver`.
 
-  It sent the browser's ordinary navigation headers, with `sec-ch-ua: "Chromium";v="151"` and the platform `Linux`. **All 76 pages answered `200`**, with no checkpoint row in the manifest. The HAR contexts were fresh, and their first document request answered `200` directly, so the checkpoint never showed. Whether it would clear if it did show is not observable from this capture.
+  It sent the browser's ordinary navigation headers, with `sec-ch-ua: "Chromium";v="151"` and the platform `Linux`. **All 57 pages answered `200`**, with no checkpoint row in the manifest. The HAR contexts were fresh, and their first document request answered `200` directly, so the checkpoint never showed. Whether it would clear if it did show is not observable from this capture.
 - **Detecting it** (for E11.6-04): a `403` or `429` status, or `x-vercel-mitigated: challenge`, or the title "Vercel Security Checkpoint".
 
 ## Name mappings between the source and the catalogue
