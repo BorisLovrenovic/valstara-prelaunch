@@ -69,6 +69,7 @@ docs/
     p8-provider-list.md            the founder-confirmed launch providers E11.5-04 shows
     p8-logos/                      the founder-supplied logo source files, as received
     p9-source-capture.md           how the founder captures the source pages E11.6-01 analyses
+    valstara-prelaunch-growth-decisions.md  the founder's growth and partner-programme decisions (17 Nov 2026); later answers recorded in features/price-index.md and features/partner-programme.md win
 ```
 
 ## What this site is not

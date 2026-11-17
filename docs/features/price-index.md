@@ -1,6 +1,6 @@
 # Feature: Price index and price pages
 
-Founder-authorised 2026-11-17, and amended by the founder's answers the same day (the verbatim text is under "Founder amendments" at the end; it overrides the original brief wherever the two conflict). Built by Epic E11.6 (`docs/plan/development-plan.md`). **This spec is the in-repository record of the founder's brief.** The brief has no other source, so every E11.6 ticket reads this file.
+Founder-authorised 2026-11-17, and amended by the founder's answers the same day (the verbatim text is under "Founder amendments" at the end; it overrides the original brief wherever the two conflict). Built by Epic E11.6 (`docs/plan/development-plan.md`). The founder's wider growth decisions are in `docs/prerequisites/valstara-prelaunch-growth-decisions.md`. **This spec is the in-repository record of the founder's brief.** The brief has no other source, so every E11.6 ticket reads this file.
 
 ## Summary
 

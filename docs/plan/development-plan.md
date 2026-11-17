@@ -59,6 +59,7 @@ Items no agent can complete. Each gates something, and the gate is stated so it 
 | **P7** | **Create the four seed mailboxes** — one each at Gmail, Outlook.com, GMX and Web.de, IMAP access enabled, used for seed tests and nothing else. Outlook.com allows IMAP only through OAuth, not a password. Credentials go to the production secret manager; none is committed (founder-authorised 2026-09-29) | Account setup, free | **E12-07:** the first live seed run and the rendering check | Before E12 |
 | **P8** | **Launch provider list and logo files** — for each provider shown on the landing page: display name, category (E11.5-02's v2 taxonomy), confirmation that its goods are on the launch catalogue, the official SVG logo (plus a dark-theme variant where the provider supplies one) from the provider's published brand resources with its source URL, and its brand colour (founder-authorised 2026-10-19). **SUPPLIED 2026-10-25** for 34 providers across four categories (AI tools, Streaming and subscriptions, Software, In-game currency), recorded in `docs/prerequisites/p8-provider-list.md`. Founder-authorised amendments 2026-10-25: a logo without a source URL records its source as `founder-supplied` with the supply date, and a brand colour may be derived from the supplied logo by the rule in that record. AION2's logo is a WebP raster, the only non-SVG logo, by founder exception (no SVG exists) | Founder input | **E11.5-04** only. A showcase with placeholder logos is not a deliverable | Done |
 | **P9** | **Price-index answers and source capture.** The brief's open questions and D1–D6 were **answered 2026-11-17** (the brief amendments are verbatim in `docs/features/price-index.md#founder-amendments-17-november-2026-verbatim`; D1–D6 are recorded on E11.6-04, E11.6-05, E11.6-10, E11.6-12 and E11.6-13). **Still to do: the founder captures the source pages for E11.6-01** by `docs/prerequisites/p9-source-capture.md` | A founder capture | E11.6-01 | Before E11.6-01 |
+| **P10** | **Partner asset kit files** — the images and PDFs partners download (committed under `public/partners/kit/`), and the links to any videos, each with the right to share it (founder-authorised 2026-11-17) | Founder input | **E11.7-11** only. A kit with placeholder files is not a deliverable | Before E11.7-11 |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
 
@@ -133,12 +134,15 @@ flowchart TD
   E10 --> E11
   E11 --> E115[E11.5 Frontend design]
   E115 --> E116[E11.6 Price index and price pages]
-  E116 --> E12[E12 Production bring-up]
+  E116 --> E117[E11.7 Pre-launch partner programme]
+  E117 --> E12[E12 Production bring-up]
 ```
 
 **E11.5 runs after E11 and before E12 (founder-authorised 2026-10-19).** It redesigns every surface a visitor sees without changing behaviour, then re-runs E11's accessibility, claims and privacy audits on the new surfaces, so E12 deploys and measures the final build.
 
 **E11.6 runs after E11.5 and before E12 (founder-authorised 2026-11-17).** It adds the price index — a separate tool the founder runs by hand once a month — and the price pages built from its data, in local currency only, so E12 deploys, load-tests and gates the site with them.
+
+**E11.7 runs after E11.6 and before E12 (founder-authorised 2026-11-17).** It adds the temporary partner programme and replaces the campaign's reward rules with wave 1 and the coupon ladder, so E12 deploys and gates the site with them.
 
 **Everything through E11 is built and verified locally.** The VPS is provisioned once, at the end, and **E12 collects every piece of evidence that needs real infrastructure** — the rollback RTO, a restore from R2, capacity on the actual box (founder decision, 2026-08-27).
 
@@ -164,8 +168,9 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 | 6 | E9 + E10 | Opus 5.5 — High |
 | 7 | E11 + E11.5 | Opus 5.5 — Extra High |
 | 8 | E11.6 | Opus 5.5 — Extra High |
+| 9 | E11.7 | Opus 5.5 — Extra High |
 
-**Gates 2, 3, 4, 5, 7 and 8 run at Extra High because each covers something unrecoverable**: the privacy properties, the fraud invariants, the prize draw, the sending reputation, the launch surface with its privacy re-audit, and hundreds of new public pages carrying the signup island and published price claims (gate 8, founder-authorised 2026-11-17). A gate added with new epics names its model here, at Extra High when it covers personal data, privacy, security, money or email, and at High otherwise.
+**Gates 2, 3, 4, 5, 7, 8 and 9 run at Extra High because each covers something unrecoverable**: the privacy properties, the fraud invariants, the prize draw, the sending reputation, the launch surface with its privacy re-audit, hundreds of new public pages carrying the signup island and published price claims (gate 8), and partners' personal data with the rewritten reward rules under the reward-gating invariant (gate 9) (both founder-authorised 2026-11-17). A gate added with new epics names its model here, at Extra High when it covers personal data, privacy, security, money or email, and at High otherwise.
 
 ---
 
@@ -3727,6 +3732,441 @@ Also in this ticket:
 
 ---
 
+## Epic E11.7 — Pre-launch partner programme
+
+**Founder-authorised 2026-11-17.** Added after E11.6 and before E12. Branches follow the usual pattern, e.g. `feat/E11.7-03-coupon-ladder-and-wave-one`; commits carry `[E11.7-03]`. **The brief and the founder's answers are recorded in `docs/features/partner-programme.md`, which every ticket here reads first.** Where an answer and the brief conflict, the answer wins.
+
+**Goal:** a lightweight, temporary partner layer on the existing waitlist and referral system, plus the campaign's new reward rules for every member. It covers:
+- **for partners:** apply, founder review, a contract signed outside the system, activation, a permanent `/r/{CODE}` link, a private dashboard and a monthly digest;
+- **for every member:** wave 1 and the coupon ladder replace the 3-referral milestone, and `/me` says plainly whether they get early access;
+- **for the main platform:** an attribution export it can import at launch.
+
+It ends at early access, when the main platform's affiliate system takes over. *15 tickets.*
+
+**Why this epic exists.** Partners reach audiences the waitlist cannot reach alone. Commission is the main platform's job, so this repository only records who referred whom, cleanly enough to import. The founder also replaced the campaign's reward rules (2026-11-17). Rather than a single 3-referral milestone, members now get wave 1 at 3 referrals and a ladder of up to three coupons. It is built here because the referral engine is here.
+
+**This epic changes behaviour that earlier tickets built** (founder-authorised 2026-11-17):
+- E4-05's milestone ladder;
+- E4-06's reward classifications;
+- E4-07's wave assignment;
+- E4-08's and E6-05's status presentation;
+- E11.5's landing and verification copy;
+- E9-03's privacy policy.
+
+Those tickets' entries stay as history. **The reward-gating invariant does not change:** coupons are `held` here and never `settled` (ADR-012, `AGENTS.md` rule 3).
+
+**Exit criteria:**
+
+- A partner can go from application to activation entirely through the public form and the founder's commands, with every command audited.
+- `/r/{CODE}` works and is documented as a hand-over contract.
+- The ladder, wave 1 and the welcome discount behave as specified and recalculate on voids, with no coupon ever `settled`.
+- The partner dashboard works through a private link that a new link cancels.
+- `export:attribution` matches its documented schema.
+- No cookie, session, password or new interactive component was added.
+- The privacy, accessibility and copy gates pass on every new route.
+- The founder has signed off the contact sheet.
+
+**Order.** The tickets run in register order, and each builds only on the ones before it:
+
+- E11.7-01 to E11.7-04 give every member the shared code registry, voiding, and the new rewards;
+- E11.7-05 to E11.7-08 cover the partner application, its review and activation, and the signup changes;
+- E11.7-09 to E11.7-13 build the partner's own surfaces and emails;
+- E11.7-14 builds the export and hand-over;
+- E11.7-15 is the audit.
+
+**Founder inputs.** P10 (the asset kit files) gates E11.7-11. D1 was answered on 2026-11-17 and is recorded on E11.7-03. **The founder's growth decisions record is `docs/prerequisites/valstara-prelaunch-growth-decisions.md`.** Where it and the answers recorded in `docs/features/partner-programme.md` disagree, the later answers recorded there win.
+
+### Rules for every E11.7 ticket
+
+1. **Keep it simple and temporary.** Server-rendered pages, plain forms and SQL. **Nothing in the brief's "never build" list is scaffolded**: no commission, earnings, payouts, orders, multi-level structures, deep links, click analytics, public API, webhooks or contract signing.
+2. **No cookie, session, password or new interactive component.** Partner access is a signed link, as `/me` works. Admin is the existing E5-03a API, used through founder commands. **The cookie inventory stays at two entries, and the islands stay at three.**
+3. **Nothing counts an unconfirmed signup, and nothing counts a voided one.** That covers dashboards, the leaderboard, the ladder, wave 1, the digest and the export's active set.
+4. **Attribution stays server-side, one referrer per signup, write-once** (ADR-008, as amended by E11.7-08). A typed code is read on the server from the submitted form. No cookie and no client-side path.
+5. **No coupon is ever `settled` in this repository.** Coupons and welcome discounts are entitlements: coupons are `held` until the main platform sees a referred friend's first order (ADR-012).
+6. **Founders decide, and every decision is audited.** Every founder command writes the audit log with the actor and the before and after values. Fraud signals still only flag.
+7. **Personal data stays covered.** Every new table or column holding personal data is added, in the same ticket, to `docs/data/model.md` and the privacy policy, and to the E9-05 export and erasure, which reconcile against the model by test. Partners never see who they referred.
+8. **Every sweep is batch-capped and every waiting state has an expiry or a stated fallback** (standing rules 12 and 13).
+9. **Copy lives in the copy layer**, and partner-facing copy follows the brief's rules: sentence case, no exclamation marks, and never "passive income", "unlimited", "financial freedom", "team" or "downline". Those words are added to the forbidden-copy scan by E11.7-05.
+10. **No literal design values.** New pages use the existing tokens and primitives. Codes and numbers are set in the monospace token.
+
+### E11.7-01 — The shared code registry and the partner code rules
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this model:** member and partner codes must share one namespace, so a uniqueness gap here breaks attribution for both.
+
+**Build:**
+- Create `referral_code` as the one namespace for every code: `code` (upper case, primary key), `owner_kind` (`member` | `partner`), owner id, `active`, `created_at`.
+  - Backfill every existing member code.
+  - Make member code generation (E4-01) insert into it in the same transaction.
+  - Add the permissions, checks and indexes (standing rule 19).
+- Add `src/server/referral/partner-code.ts`:
+  - format: 4–16 of A–Z and 0–9, case-insensitive, stored upper case;
+  - the blocklist in `config/partner-code-blocklist.json` (brand and provider names, including every provider in `src/content/provider-showcase.json`; reserved words; a profanity list);
+  - availability against the registry;
+  - up to three alternatives for a taken or refused code.
+- Lookup by code, case-insensitive, returns the owner.
+
+**Acceptance criteria:**
+- **Two codes differing only in case can never both exist**, enforced by the database and asserted under genuine concurrency
+- **A partner code can never equal a member code, or the reverse**, including a member code generated after the partner code
+- Every existing member code is in the registry, and its referral links resolve exactly as before
+- Format, blocklist and availability each refuse with a distinct reason, and alternatives are available codes that pass every rule
+- A blocklist entry matches regardless of case
+
+**Tests:** Format cases · blocklist cases with case variants · concurrent duplicate insert · member-after-partner collision · backfill and unchanged member-link resolution · alternatives always valid.
+**Docs:** `docs/features/partner-programme.md#links-and-codes` · `docs/modules/referral.md` · `docs/data/model.md`
+
+### E11.7-02 — Voiding a referral, and the founder command line
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this model:** a void changes counts, rank and giveaway entries at once, and an un-void must restore them exactly.
+
+**Build:**
+- **Voids on the edge.** Add `voided_at`, `void_reason` and `voided_by` to `referral_edge`, with the checks that a void has a reason and an actor.
+- **Admin routes.** `POST /api/admin/referrals/void` and `/unvoid`, registered in the E5-03a route registry. Each requires a reason and is audited with before and after values.
+- **The founder command line.** `src/server/admin/cli.ts` (`npm run admin -- <command>`) calls the admin API with the secret key and an authenticator code prompt, starting with `referrals void <subscriber-id> --reason` and `unvoid`. Later tickets add their commands to it. It never connects to the database directly.
+- **What a void removes.** A voided edge leaves the referrer's confirmed count, the public leaderboard snapshot and the export's active set.
+- **Giveaway entries.** Before the draw snapshot is committed, a void also voids that edge's giveaway referral entry through the existing entry-void path, and an un-void restores it. After commitment, the draw is never touched (E9-05's precedent).
+
+**Acceptance criteria:**
+- **A voided referral counts nowhere**, asserted over every consumer of the confirmed count (counter repair included). It is kept with its reason, actor and time
+- An un-void restores every count exactly, and a void or un-void with no reason is refused
+- **Every void and un-void writes the audit log with before and after values**
+- The command line refuses to run without the authenticator code, and holds no credential on disk
+- After snapshot commitment, a void changes nothing in the draw and still reproduces it
+
+**Tests:** Void and un-void round-trip across every count · reason and actor enforcement · audit records · the giveaway entry before and after commitment · the admin route registry reconciliation · the command line against a test server.
+**Docs:** `docs/features/admin.md` · `docs/modules/referral.md` · `docs/features/giveaway.md`
+
+### E11.7-03 — The coupon ladder and wave 1 replace the milestone tiers
+**Model:** Opus 5.5 — Extra High · **Priority:** Highest · **Flag:** `referral.enabled` · **Area:** backend
+**Why this model:** this rewrites the campaign's reward rules under its central anti-fraud invariant. A path that settles a coupon, or a recalculation that drifts from the edges, undoes the campaign's economics.
+
+**Build:**
+- **The ladder replaces the tiers.** Replace ADR-025's milestone tiers with the coupon ladder of `docs/features/partner-programme.md#the-referrer-coupon-ladder-members-and-partners`, as configuration:
+  - coupons unlock at 3, 21 and 39;
+  - each coupon steps by 5% every 3 referrals, up to 30%;
+  - there are three coupons;
+  - the expiry is five years after the configured public-launch date, which defaults to 2027-09-01.
+- **The coupon table.** Create `referral_coupon` (owner, coupon number, percent, state, expiry basis) as **derived state**. It is recomputed from non-voided confirmed edges inside the same transaction as every confirmation, void and un-void, and by the daily repair job. **Its only states here are `held` and `void`.**
+- **Retire the old reward.** Retire the tier-1 15% discount and the wave upgrade. Existing `milestone_award` rows are voided with the reason `ladder_replaced` and are never deleted.
+- **Wave 1.** A member with 3 or more confirmed, non-voided referrals is in wave 1, recalculated on every change up to handoff. Partner-based wave 1 is added by E11.7-07.
+- **Amend ADR-012 and ADR-025.**
+  - ADR-012: coupons are held until any one of the holder's confirmed referred friends places a first order, and the five-year expiry replaces the 90-day deadline.
+  - ADR-025: the ladder replaces the tiers.
+
+**Acceptance criteria:**
+- **No code path moves a coupon to `settled`**, asserted by enumerating every transition, as E4-06's test does
+- **A seeded property test over generated sequences of confirmations, voids and un-voids** asserts that the coupon state always equals the ladder computed from the current non-voided count
+- The table cases match the founder's figures exactly: 3 = 5%, 18 = 30%, 21 = coupon 2 at 5%, 36 = 30%, 39 = coupon 3 at 5%, 54 = 30%, and 60 changes nothing
+- **Dropping below a threshold through voids lowers the coupon or voids it, and drops wave 1 below 3**. Un-voiding restores both
+- No `milestone_award` row is deleted, and the retired ones carry `ladder_replaced`
+- Changing a threshold or the step in configuration needs no migration
+- The handoff export (E11-06) carries every coupon as `held`, with its percent and computed expiry
+
+**Tests:** The transition enumeration · the seeded property test · the founder's table cases · void-driven decrease and restore · wave 1 at the threshold · retired awards · configuration change without migration · the export fields.
+**Founder decisions (2026-11-17):**
+1. **D1: the first 1,000 verified members stay in wave 1.** In the founder's words: "Yes keep this. First 1000 users gets into wave 1, with early access in July 2027 no matter if they have reached the other reward for it. All other users after 1000 needs to reach the other referral reward to get early access in July 2027." Keep ADR-025's first signup-order band (verification order 1–1,000 → wave 1) unchanged. A member is in wave 1 when any one of these holds:
+   - they are among the first 1,000 by verification order, which never changes;
+   - they have 3 or more confirmed, non-voided referrals;
+   - they are an active partner (E11.7-07);
+   - they signed up through an active partner (E11.7-07).
+
+   Every member after the first 1,000 reaches wave 1 only through one of the other three. The first-1,000 place is recorded as its own reason, so a later void never removes it. *(Founder decision.)*
+
+**Docs:** `docs/features/partner-programme.md#early-access-and-rewards-founder-2026-11-17` · `docs/architecture/adr/012-reward-gating.md` · `docs/architecture/adr/025-campaign-configuration.md` · `docs/modules/referral.md`
+
+### E11.7-04 — Showing the ladder: `/me`, verification, the landing page, emails and the privacy policy
+**Model:** Opus 5.5 — Medium · **Priority:** Highest · **Flag:** `referral.enabled` · **Area:** frontend
+
+**Build:**
+- **Copy.** Replace every statement of the old reward with ladder copy filled from configuration. That covers:
+  - the landing page's "What you get" referral card;
+  - the verification success card;
+  - `/me`'s referral status;
+  - the referral status and milestone emails;
+  - the weekly update;
+  - the privacy policy's description of rewards.
+- **Progress line.** `/me` shows progress in the founder's form: "Coupon 1: 30% · Coupon 2: 10% · 2 more confirmed referrals to 15%."
+- **Honesty about held coupons.** Every surface states plainly that coupons are usable once one of the member's friends places a first order (ADR-012's messaging rule), and how long they last.
+- The founder approves the wording in this ticket's pull request.
+
+**Acceptance criteria:**
+- **No surface still states "15% off at 3 referrals" or a wave upgrade**, asserted by a scan of the copy layer, the content files and the rendered pages
+- Every figure in the ladder copy comes from configuration, and changing the configuration changes the copy
+- **Every coupon mention carries its first-order condition**
+- The E11-04 claims checks and the forbidden-copy scan pass, and the final-design layout checks still pass on the changed surfaces
+
+**Tests:** The old-reward scan · configuration-driven copy · the held-condition assertion on every surface · layout checks on the landing, verification and `/me` pages · email rendering for the changed templates.
+**Founder decisions (2026-11-17):**
+1. **Every member's `/me` page says plainly whether they get early access in July 2027, and if not, exactly what earns it.**
+   - A member in wave 1 sees that they are in wave 1 with early access from July 2027, and why: one of the first 1,000, 3 confirmed referrals, a partner, or joined through a partner.
+   - A member not in wave 1 sees that they do not yet have early access, and how many more confirmed referrals they need. For example: "2 more confirmed referrals and you get early access in July 2027."
+   - The partner dashboard (E11.7-09) shows the same line.
+   - The only scarcity wording allowed is the founder-approved line in `docs/prerequisites/valstara-prelaunch-growth-decisions.md`, and only while it stays true: "Some high-demand products have limited supply. Early access members get first pick."
+   - **No stock counts, no countdowns, and no implication that the public launch will be empty** (ADR-024, `AGENTS.md`).
+
+   The figures come from the member's own state and the configuration. *(Founder decision.)*
+
+**Docs:** `docs/brand/copy-rules.md#claims-that-must-stay-true` · `docs/features/member-status.md` · `docs/features/referral.md`
+
+### E11.7-05 — The programme page and the partner application
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `partners.enabled` · **Area:** backend
+**Why this model:** a public write route that creates personal data, and possibly a member, for an unverified email address.
+
+**Build:**
+- **Register `partners.enabled`** (default on).
+- **`/partners`** is the programme page, from a content file covering the brief's §3.11 points.
+- **`/partners/apply`** is the application form with exactly the brief's §3.2 fields. Its country of residence is a plain dropdown.
+  - Create `partner` with the application fields and the statuses of the lifecycle, with its checks, permissions and indexes.
+  - The route verifies Turnstile first and is rate-limited.
+  - The code is checked on submit (E11.7-01). A refused code returns the form with the reason and alternatives.
+- **Confirmation.** Submitting emails a confirmation link (token purpose `partner_application`). Confirming it is the double opt-in for someone not yet on the waitlist, and creates or links the member record for that email. **Only confirmed applications reach `applied`.**
+- **Email.** The "application received" email.
+- **Country.** Amend ADR-026: country of residence is collected from partner applicants only, for the partner contract.
+- **Retention.** Rejected and unconfirmed applications have their personal fields purged after 90 days (configurable) by the existing purge-job pattern.
+- **Docs and scans.** Disclose the fields, the purpose and the retention in the privacy policy and `docs/data/model.md`. Add `partner` to the E9-05 export and erasure. Add the brief's banned words to the forbidden-copy scan.
+
+**Acceptance criteria:**
+- **Turnstile is verified before anything else, and the route is rate-limited.** An unconfirmed application is never listed for review and never creates a confirmed member
+- **Exactly the brief's fields are collected**, with no address, phone, payout or tax field, asserted against the schema
+- A refused code returns the form with the entered values kept and the alternatives shown, with no JavaScript
+- **A student ambassador needs a university; a business name stays optional**
+- The country is stored for the partner only and appears in no analytics event
+- The DSR export and erasure reconcile with the new table, and the retention purge runs batch-capped
+- A planted banned word in partner copy fails the forbidden-copy scan
+- Flag off shows an honest "applications are paused" message and accepts nothing
+
+**Tests:** Turnstile-first and rate limit · the field schema · each conditional rule · the refused-code round trip without JavaScript · confirmation creating or linking a member · unconfirmed expiry · DSR reconciliation · the purge · the forbidden-copy red path · flag off.
+**Docs:** `docs/features/partner-programme.md` · `docs/architecture/adr/006-turnstile.md` · `docs/architecture/adr/026-global-giveaway-hong-kong-law.md` · `docs/legal/compliance.md`
+
+### E11.7-06 — Founder review, contract tracking and lifecycle commands
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this model:** every state change here is a human decision about a person, and each must be audited and reversible where the lifecycle allows.
+
+**Build:** Admin routes in the E5-03a registry, plus founder commands:
+- `partners list [--status --type --since] [--stale]` (stale: more than 14 days in `applied`, `approved` or `contract_sent`, configurable);
+- `partners show <id>`, including flagged referrals and last activity;
+- `approve <id> [--code]`, `reject <id> [--template]`;
+- `contract-sent <id>`;
+- `contract-signed <id> --date --version [--reference]`, which moves the partner to `active`;
+- `pause`, `terminate`, `reactivate`;
+- `set-type`;
+- `note`;
+- `partners export` (CSV of partners and referrals, streamed and batch-capped, which is also the quarterly Brevo import file).
+
+Also the "approved" and "rejected" emails, and a database check that only the documented lifecycle transitions are allowed.
+
+**Acceptance criteria:**
+- **Only the documented transitions succeed**, enforced by the database and asserted for every pair
+- **Every command writes the audit log with the actor and the before and after values**
+- `approve --code` re-runs the code rules, and a refused code changes nothing
+- `contract-signed` records the date, version and reference, and sets `active`
+- The export is streamed in pages of at most 500 rows and is audited with its row count. It contains the columns the founder imports into Brevo, and no referred person's email
+- Every command refuses without the authenticator code
+
+**Tests:** The full transition matrix · the audit records · the code re-check · contract fields · the stale filter · the export's columns, paging and audit · authentication refusal.
+**Docs:** `docs/features/admin.md` · `docs/features/partner-programme.md#partner-lifecycle`
+
+### E11.7-07 — Activation: `/r/{CODE}`, partner attribution and retroactive attribution
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `partners.enabled` · **Area:** backend
+**Why this model:** activation changes past attribution and grants entitlements in bulk, and the URL it creates is permanent.
+
+**Build:**
+- **Activation.** On `active`, the partner code goes live in the registry, the partner's member code resolves to the same partner identity, and the welcome email is sent. The welcome email holds the dashboard link, the code, the link, the asset kit and the three-step checklist.
+- **`/r/{CODE}`.** An active code redirects (302) to `/?ref={CODE}`. An inactive, unknown or flag-off code redirects to `/` with no referrer.
+- **The edge.** Extend `referral_edge` with `partner_id`, `attribution_method` (`link` | `code` | `retroactive`), and the welcome discount (`welcome_discount_pct`, fixed at signup, null for non-partner edges), with their checks. A signup through an active partner's code is a partner edge.
+- **The welcome discount** is 10%, 15% or 20% from the partner's confirmed count at that moment, with the 15% floor for a `student_ambassador`.
+- **Wave 1** goes to the partner while active, and to every friend of a partner edge unless that edge is voided.
+- **Retroactive attribution.** At activation, a batch-capped job marks every confirmed edge the member referred before approval as `retroactive`. It sets each friend's welcome discount from the partner's confirmed count at that friend's original signup, and gives those friends wave 1.
+- **Paused or terminated partners.** Their partner code and `/r/` stop attributing. Their member code keeps working as a plain member referral, with no partner perks.
+
+**Acceptance criteria:**
+- **`/r/{CODE}` never records a referrer for an inactive code**, and an active one reaches the existing signed capture unchanged
+- **The welcome discount is fixed at signup and never changes afterwards**, except that voiding the friend's own edge removes it. Asserted across later ladder changes
+- The 10/15/20 boundaries at 20/21 and 38/39 and the ambassador floor match the founder's rules exactly
+- **No non-partner edge ever carries a welcome discount**
+- Retroactive attribution is idempotent and batch-capped, and reproduces each friend's discount from the historic count
+- Pausing changes no past attribution and no fixed discount
+
+**Tests:** `/r/` for active, paused, terminated, unknown and flag-off · the discount boundaries and floor · fixed-at-signup across later changes · void removal · the no-discount-for-members assertion · retroactive idempotency and history · paused member-code behaviour · the welcome email.
+**Docs:** `docs/features/partner-programme.md` · `docs/architecture/adr/008-server-side-referral-attribution.md` · `docs/modules/referral.md`
+
+### E11.7-08 — The typed referral code, and partner perks at signup
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** `referral.enabled` · **Area:** frontend
+**Why this model:** it changes the signup path, the site's most important conversion point, and amends the attribution ADR.
+
+**Build:**
+- **The toggle.** A collapsed "Have a referral code?" toggle in the hero form only, using native disclosure with no JavaScript, pre-filled from the signed `?ref=` capture. The sticky bar is unchanged.
+- **Precedence.** The server reads the typed code. **A typed code beats the link's code.** An unknown typed code is ignored with a neutral note, and the signup still completes.
+- **Perks shown.** The verification success page and the confirmation email state a partner-referred person's perks in the founder's form, e.g. "You joined through MAYA: early access from July 2027 and 15% off your first order."
+- **Amend ADR-008.** A typed code is first-party form input read on the server. No cookie and no client-side attribution path.
+
+**Acceptance criteria:**
+- **Typed beats link, one referrer per signup, write-once**, all asserted
+- An unknown or inactive typed code never costs a signup
+- The toggle works with JavaScript disabled, adds no island, and passes the accessibility gate and the final-design layout checks at every width
+- The perk line appears only for partner-referred signups, with the fixed discount
+- The cookie and storage gate and the client-attribution scan still pass
+
+**Tests:** Precedence cases · unknown and inactive codes · no-JavaScript submission · layout and accessibility · the perk line on the page and in the email · the attribution scans.
+**Docs:** `docs/architecture/adr/008-server-side-referral-attribution.md` · `docs/features/signup.md` · `docs/brand/page-design.md`
+
+### E11.7-09 — The partner dashboard: private link, stats and settings
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `partners.enabled` · **Area:** security
+**Why this model:** it renders one person's data with no session behind it, and its link must be revocable.
+
+**Build:**
+- **The page.** `/partners/dashboard?t=` with a `partner_dashboard` token that lasts 30 days.
+- **One live link per partner.** **Issuing a link cancels every earlier one.**
+- **"Send me a new link".** On the page, and as a public form taking an email address that verifies Turnstile first and is rate-limited. An unknown address gets the same response as a known one.
+- **What it shows:**
+  - link and code as large, selectable monospace text;
+  - counts: confirmed, pending, voided;
+  - signups per week, as a table;
+  - a breakdown by survey category (survey v2);
+  - the ladder and the current welcome discount in the founder's form;
+  - the terms summary: 10%, 12 months, one level, the founding rate lock, the contract date and version, and "Earnings start with early access in July 2027.", with no earnings figure.
+- **Settings.** Display name, show-on-leaderboard (off by default) and non-essential email preferences, saved with the dashboard token under the precedent of `/me`'s actions (ADR-006).
+- **Page hygiene.** `noindex` and `no-store`, no page-view emitter, excluded from the sitemap and disallowed in `robots.txt`.
+
+**Acceptance criteria:**
+- **A cancelled, tampered or expired link produces the identical response**, and a new link cancels the old one, asserted
+- **No cookie, session or storage write is created**
+- **The page shows only the bearer's own data, and never a referred person's email or identity**, asserted
+- Counts exclude unconfirmed and voided signups, except in the labelled "pending" and "voided" figures
+- The send-new-link form is Turnstile-first and rate-limited, with no enumeration oracle
+- The accessibility gate passes, and the page loads no JavaScript beyond the shell islands
+
+**Tests:** Link cancellation · tampered and expired equivalence · no cookie · own-data-only · the counts · the settings write · Turnstile, rate limit and enumeration equivalence · accessibility.
+**Docs:** `docs/features/member-status.md` · `docs/features/partner-programme.md#pages-and-surfaces` · `docs/architecture/adr/006-turnstile.md`
+
+### E11.7-10 — The partner leaderboard
+**Model:** Opus 5.5 — Medium · **Priority:** Medium · **Flag:** `partners.enabled` · **Area:** backend
+
+**Build:** An hourly, batch-capped snapshot of active partners ranked by confirmed, non-voided signups, using the E6-01 snapshot pattern. It is shown only inside the dashboard: the top 20 and the viewer's own rank. Every other partner appears by initials unless they opted in to their display name.
+
+**Acceptance criteria:**
+- **It is reachable only through a valid dashboard link**, with no public route
+- Ranking excludes unconfirmed and voided signups
+- A partner who has not opted in is never shown by name
+- The snapshot is recomputed on schedule and served from cache
+
+**Tests:** No public route · ranking with voids · the name opt-in · the snapshot schedule and cache.
+**Docs:** `docs/features/leaderboard.md` · `docs/features/partner-programme.md`
+
+### E11.7-11 — The asset kit: QR codes, message templates and the print flyer
+**Model:** Opus 5.5 — Medium · **Priority:** Medium · **Flag:** `partners.enabled` · **Area:** frontend
+
+**Build:**
+- **QR codes.** Server-generated PNG and SVG QR codes of the partner's `/r/{CODE}` link. Record the dependency (name, licence, why), which is server-side only.
+- **Message templates** in content files, filled with the partner's code and link.
+- **The flyer.** `/partners/dashboard/flyer?t=`, a print stylesheet for A4 and US Letter with the QR code, the code and the welcome perk.
+- **Files.** The kit files committed under `public/partners/kit/` (P10), plus video links from a content file.
+- **BLOCKED until P10 is supplied.**
+
+**Acceptance criteria:**
+- **Every QR code decodes to exactly the partner's `/r/{CODE}` URL**, asserted by decoding in the test
+- Templates contain the partner's own code and link and pass the copy rules
+- The flyer prints on one page at both paper sizes, evidenced
+- **No third-party request is made**, and the video links are plain links
+
+**Tests:** QR decoding · template filling · print layout at both sizes · the third-party gate.
+**Docs:** `docs/features/partner-programme.md` · `docs/brand/page-design.md`
+
+### E11.7-12 — The auto-invite and the first-signup email
+**Model:** Opus 5.5 — Medium · **Priority:** Medium · **Flag:** `partners.enabled` · **Area:** backend
+
+**Build:**
+- **The auto-invite.** One email to a member when they reach 10 confirmed, non-voided referrals, **sent only to members who opted in to marketing** (ADR-027). Its link pre-fills the email on `/partners/apply`.
+- **The first-signup email** to a partner on their first confirmed partner signup.
+- Each email is one per business key, and suppression is re-checked at dispatch.
+
+**Acceptance criteria:**
+- **No auto-invite reaches a member without marketing consent**, and none is sent twice
+- A void that drops a member below 10 neither re-sends the invite nor needs to retract it
+- The first-signup email is sent once per partner
+- Both render correctly in the E8-04 seed checks
+
+**Tests:** The consent gate · once per business key · suppression at dispatch · rendering.
+**Docs:** `docs/features/email-campaign.md` · `docs/architecture/adr/027-entry-separate-from-marketing-consent.md`
+
+### E11.7-13 — The partner digest
+**Model:** Opus 5.5 — Medium · **Priority:** Low · **Flag:** `partners.digest` · **Area:** backend
+
+**Build:**
+- **Register `partners.digest`** (default off).
+- **The send.** A scheduled, batch-capped digest to active partners, monthly on the 1st, with the cadence configurable to weekly. It holds:
+  - their confirmed signups this period and in total;
+  - their rank;
+  - their category breakdown;
+  - total waitlist growth;
+  - one founder note from a content file.
+- It respects each partner's email preference, using the E8-07 run-integrity pattern.
+
+**Acceptance criteria:**
+- **One digest per partner per period**, even across a restart
+- A partner who opted out receives none
+- Flag off sends nothing, and switching to weekly is a configuration change
+- No referred person's identity appears
+
+**Tests:** Once per period across a restart · opt-out · flag off · the cadence change · rendering.
+**Docs:** `docs/features/email-campaign.md` · E8-07
+
+### E11.7-14 — The attribution export and the hand-over document
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this model:** the main platform imports this once, and anything it gets wrong is a commission or a coupon the main platform cannot reconstruct.
+
+**Build:**
+- **`npm run export:attribution`**, an idempotent export in JSON and CSV of:
+  - partners, with the brief's §5 fields and `founding_partner = true`;
+  - every referral edge, partner and member alike, with its attribution method, void state, wave and welcome discount;
+  - every member's coupons, with percent, `held` state and computed expiry.
+
+  It is streamed, batch-capped and audited.
+- **The schema** is documented in `docs/data/attribution-export.md`, and a test validates the output against it.
+- **The hand-over document** goes into `docs/ops/launch-cutover.md`. It covers:
+  - the `/r/{CODE}` URL contract the main platform must serve identically;
+  - the code rules;
+  - the field definitions;
+  - the coupon and welcome-discount rules, including ADR-012's first-order condition and the five-year expiry from the configured launch date;
+  - the cutover steps: freeze writes → export → import → switch `/r/` routing → keep this database read-only for 90 days (ADR-022).
+
+**Acceptance criteria:**
+- **Two exports of an unchanged database are byte-identical**
+- The output validates against the documented schema, and **every field in the schema is present**
+- The export holds one complete attribution graph: every partner and member edge, with voided edges flagged rather than dropped
+- Coupons are exported `held` with their expiry, and welcome discounts only on partner edges
+- The hand-over document is reviewed against the export by a test that every documented field exists
+
+**Tests:** Idempotency · schema validation · graph completeness with voids · coupon and discount fields · the document–export reconciliation.
+**Founder decisions (2026-11-17):**
+1. **The hand-over document also states the $5 store credit, which only the main platform pays.** In the founder's words: "The $5 store credit per referrer is ONLY for referrals that completes a purchase once we have launched. The store credit should ONLY be available to normal users that refers friends, NOT to partnered users that are part of the partner programme. Parntered users does NOT receive $5 store credit for each purchase-confirmed referral, instead they receive 10% cash comission on each order placed by the referrals for the first year." This repository records no credit and calculates nothing. The export already marks each edge as a member or a partner edge, which is what the main platform needs to apply the rule. *(Founder decision.)*
+
+**Docs:** `docs/ops/launch-cutover.md` · `docs/architecture/adr/021-launch-cutover.md` · `docs/architecture/adr/022-waitlist-db-read-only.md` · E11-06
+
+### E11.7-15 — Seed data, the partner-programme audit and founder sign-off
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** frontend
+
+**Build:**
+- A seed script with sample partners of each type and status, and member and partner referrals with voids, ladder stages and welcome discounts. It is for local use only.
+- An audit of every new route and changed surface, with the evidence recorded in `docs/testing/e11-7-partner-programme-audit.md`. It covers:
+  - the privacy gates, including the cookie inventory still at two entries and no new island;
+  - accessibility at every width in both themes;
+  - the copy rules and the brief's banned words;
+  - email rendering for every new and changed template;
+  - the reward-gating enumeration re-run;
+  - a contact sheet for the founder's sign-off.
+
+**Acceptance criteria:**
+- **Every finding is fixed in this ticket or recorded as a founder decision**, and none is waived silently
+- The cookie inventory has two entries, and the islands are three
+- The privacy, accessibility and forbidden-copy gates pass on every new route
+- The founder signs off the contact sheet, recorded in the audit file
+
+**Tests:** The audits are the tests; the seed script runs in CI against a scratch database.
+**Docs:** `docs/testing/strategy.md` · E11-03 · E11-04 · E11-05
+
+---
+
 ## Epic E12 — Production bring-up
 
 **Goal:** provision the VPS, put the whole system on it, and collect every piece of evidence that could not be gathered locally. *7 tickets.*
@@ -3737,7 +4177,7 @@ Also in this ticket:
 
 **Exit criteria:** the site serves from the VPS behind Cloudflare, a rollback has been timed under five minutes, a restore from R2 has been verified, the drills have run against real limits, and the launch gate passes on the real host.
 
-**Prerequisite: the VPS is provisioned and reachable, and E11.5 and E11.6 are merged.** No ticket here starts before both hold, so E12 deploys, load-tests and gates the final build (founder-authorised 2026-10-19; E11.6 added 2026-11-17).
+**Prerequisite: the VPS is provisioned and reachable, and E11.5, E11.6 and E11.7 are merged.** No ticket here starts before both hold, so E12 deploys, load-tests and gates the final build (founder-authorised 2026-10-19; E11.6 and E11.7 added 2026-11-17).
 
 ### E12-01 — Provision the host and run the production stack on it
 **Model:** Opus 5.5 — Low · **Priority:** Highest · **Flag:** — · **Area:** infra
@@ -3884,8 +4324,9 @@ Also in this ticket:
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
 | E11.5 Frontend design | 32 | Foundations, survey v2, shell, **provider showcase**, landing, **mobile sticky signup bar**, verify, `/me` and leaderboard, content pages, task and error pages, email layout, **the eight wireframe tickets**, **the twelve final-design tickets and the motion system**, design QA and re-audits |
 | E11.6 Price index and price pages | 16 | Discovery spike, config and schemas, exact money, **the browser fetcher**, the source adapter, **merge and the publish gate**, the run and its isolation from the site, coverage and overrides, change log and monthly report, the price pages and hubs, the index and monthly pages, social cards, the first real run and its runbook, the audit |
+| E11.7 Pre-launch partner programme | 15 | Shared code registry, voids, **the coupon ladder and wave 1 under the reward-gating invariant**, ladder copy, the application, founder commands, activation and `/r/{CODE}`, the typed code, the private dashboard, the partner leaderboard, the asset kit, the invite and first-signup emails, the digest, **the attribution export and hand-over**, the audit |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
-| **Total** | **145** | |
+| **Total** | **160** | |
 
 **Models (founder-authorised 2026-11-11):** every ticket not yet merged runs on Opus 5.5 at the level on its Model line (§3). The Codex distribution recorded on 2026-09-28 and the tier distribution below are history.
 
@@ -3899,7 +4340,7 @@ Under the tier policy, **Tier B carried the personal data, the privacy propertie
 
 ## Effort reconciliation
 
-The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each, plus E11.5's 32 design tickets (founder-authorised 2026-10-19, 2026-10-26 and 2026-10-30), which are heavier per ticket and are not in the stack-decisions estimate. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **E11.6's 16 tickets (founder-authorised 2026-11-17) are estimated separately below** and are not in the stack-decisions estimate either. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
+The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each, plus E11.5's 32 design tickets (founder-authorised 2026-10-19, 2026-10-26 and 2026-10-30), which are heavier per ticket and are not in the stack-decisions estimate. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **E11.6's 16 tickets and E11.7's 15 tickets (founder-authorised 2026-11-17) are estimated separately below** and are not in the stack-decisions estimate either. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
 
 | Cut | Removes | Saves |
 |---|---|---|
@@ -3932,6 +4373,31 @@ The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan i
 | **E11.6 total** | | **87 h** |
 
 The estimate excludes the founder's own time on the monthly run and on the P9 answers.
+
+### E11.7 estimate and dependencies
+
+The founder's brief targeted 40–60 hours for the partner programme. The founder's answers (2026-11-17) cut the Brevo sync and all milestone emails but the first, kept the leaderboard, and added the coupon ladder as new scope, estimated separately here.
+
+| Ticket | Depends on | Partner programme | Coupon ladder |
+|---|---|---:|---:|
+| E11.7-01 Shared code registry, code rules | — | 4 h | |
+| E11.7-02 Voiding, founder command line | 01 | 4 h | |
+| E11.7-03 Coupon ladder and wave 1 | 02 | | 8 h |
+| E11.7-04 Showing the ladder | 03 | | 6 h |
+| E11.7-05 Programme page and application | 01 | 7 h | |
+| E11.7-06 Review, contract, lifecycle commands | 02, 05 | 6 h | |
+| E11.7-07 Activation, `/r/{CODE}`, retroactive | 03, 06 | 5 h | 1 h |
+| E11.7-08 Typed code, perks at signup | 07 | 5 h | |
+| E11.7-09 Partner dashboard | 07 | 7 h | |
+| E11.7-10 Partner leaderboard | 09 | 3 h | |
+| E11.7-11 Asset kit | 09; P10 | 5 h | |
+| E11.7-12 Auto-invite, first-signup email | 07 | 3 h | |
+| E11.7-13 Partner digest | 09, 10 | 4 h | |
+| E11.7-14 Attribution export, hand-over | 07, 03 | 5 h | |
+| E11.7-15 Seed data, audit, sign-off | 01–14 | 5 h | |
+| **E11.7 total: 78 h** | | **63 h** | **15 h** |
+
+**The partner programme lands at 63 h, 3 h over the brief's 60-hour ceiling.** The overrun is the repository's standing rules: personal-data export and erasure for every new table, the audit, and the flag-off paths. If it must come down, the next cut is the digest (E11.7-13, 4 h): the founder sends a quarterly update from the partners CSV instead.
 
 **A cut requires founder authorisation and is recorded here before it is implemented.** Cutting is a legitimate response to schedule pressure; cutting silently is not.
 
