@@ -58,7 +58,7 @@ Items no agent can complete. Each gates something, and the gate is stated so it 
 | **P5** | **Upgrade Resend and Brevo past the free tiers** | Purchase — Resend free is 100/day, Brevo 300/day | **Turning `giveaway.open` on.** Upgrade *before* the giveaway opens, not when the limits hit | Before E7 exit |
 | **P7** | **Create the four seed mailboxes** — one each at Gmail, Outlook.com, GMX and Web.de, IMAP access enabled, used for seed tests and nothing else. Outlook.com allows IMAP only through OAuth, not a password. Credentials go to the production secret manager; none is committed (founder-authorised 2026-09-29) | Account setup, free | **E12-07:** the first live seed run and the rendering check | Before E12 |
 | **P8** | **Launch provider list and logo files** — for each provider shown on the landing page: display name, category (E11.5-02's v2 taxonomy), confirmation that its goods are on the launch catalogue, the official SVG logo (plus a dark-theme variant where the provider supplies one) from the provider's published brand resources with its source URL, and its brand colour (founder-authorised 2026-10-19). **SUPPLIED 2026-10-25** for 34 providers across four categories (AI tools, Streaming and subscriptions, Software, In-game currency), recorded in `docs/prerequisites/p8-provider-list.md`. Founder-authorised amendments 2026-10-25: a logo without a source URL records its source as `founder-supplied` with the supply date, and a brand colour may be derived from the supplied logo by the rule in that record. AION2's logo is a WebP raster, the only non-SVG logo, by founder exception (no SVG exists) | Founder input | **E11.5-04** only. A showcase with placeholder logos is not a deliverable | Done |
-| **P9** | **Price-index answers and source capture.** The brief's open questions and D1–D5 were **answered 2026-11-17** (the brief amendments are verbatim in `docs/features/price-index.md#founder-amendments-17-november-2026-verbatim`; D1–D5 are recorded on E11.6-05, E11.6-10, E11.6-12 and E11.6-13). **Still open: D6, the tool's user-agent name.** The founder then captures the source pages for E11.6-01 by `docs/prerequisites/p9-source-capture.md` | Founder decision; a founder capture | E11.6-04, and the capture E11.6-01 waits for | Before E11.6-01 |
+| **P9** | **Price-index answers and source capture.** The brief's open questions and D1–D6 were **answered 2026-11-17** (the brief amendments are verbatim in `docs/features/price-index.md#founder-amendments-17-november-2026-verbatim`; D1–D6 are recorded on E11.6-04, E11.6-05, E11.6-10, E11.6-12 and E11.6-13). **Still to do: the founder captures the source pages for E11.6-01** by `docs/prerequisites/p9-source-capture.md` | A founder capture | E11.6-01 | Before E11.6-01 |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
 
@@ -3206,7 +3206,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 
 **E11.6-01 is a discovery spike whose findings may change E11.6-04 to E11.6-07.** Any such change is a founder decision, recorded on the affected ticket by the decision procedure before that ticket starts.
 
-**Founder inputs.** The brief's open questions, and D1–D5 raised while planning, were all answered on 2026-11-17. Each answer is recorded on its ticket. **D6, the tool's user-agent name, is still open** (`docs/features/price-index.md#open-questions-for-the-founder`). It blocks E11.6-04 and the founder's capture for E11.6-01. A blocked ticket reports `BLOCKED:` and does not adopt the recommended default on its own (§2, P9).
+**Founder inputs.** The brief's open questions, and D1–D6 raised while planning, were all answered on 2026-11-17. Each answer is recorded on its ticket (§2, P9).
 
 ### Rules for every E11.6 ticket
 
@@ -3341,7 +3341,6 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the
 - **Timeouts** on every request.
 - **Conditional requests.** `If-None-Match` and `If-Modified-Since`, using the validators of the previous run.
 - **User agent.** A truthful bot `User-Agent`, as decided in D6. It never imitates a browser or another known crawler.
-- **BLOCKED until D6 is decided.**
 - **Host allowlist.** `www.youfundceo.com` only. Anything else, and any path `robots.txt` disallows, is refused before a request is made.
 - **Raw store.** `data/raw/<run_id>/`, gitignored and rotated to the last six runs (configurable).
 - **Checkpoints.** A checkpoint after each market lets an interrupted run resume where it stopped.
@@ -3357,6 +3356,9 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the
 - **A scan finds no proxy configuration, no rotating user agent and no CAPTCHA or challenge-solving code** in the package
 
 **Tests:** All of the above against a local fake server with an injected clock and a seeded source · the no-evasion scan and its red path.
+**Founder decisions (2026-11-17):**
+1. **D6: the tool uses a neutral bot name, `PriceIndexBot/1.0`, with no URL.** "Neutral bot name." The `User-Agent` is exactly `PriceIndexBot/1.0`, set in `config/price-index.json`. It is truthful about being a bot without naming the operator. It never names Valstara or SubSlush, never imitates a browser or another known crawler, and the tool obeys the `robots.txt` group for `PriceIndexBot`, otherwise `*`. *(Founder decision.)*
+
 **Docs:** `docs/features/price-index.md#the-source-youfundceocom` · `docs/features/price-index-source-findings.md`
 
 ### E11.6-05 — The source-adapter interface and the youfundceo adapter
@@ -3909,10 +3911,10 @@ The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan i
 
 | Ticket | Depends on | Estimate |
 |---|---|---:|
-| E11.6-01 Discovery spike | The founder's capture (P9, after D6) | 4 h |
+| E11.6-01 Discovery spike | The founder's capture (P9) | 4 h |
 | E11.6-02 Markets, catalogue, schemas | 01; the founder's confirmed name mappings | 4 h |
 | E11.6-03 Exact money, record, storage | 01, 02 | 5 h |
-| E11.6-04 The polite fetcher | 01, 03; P9 D6 | 6 h |
+| E11.6-04 The polite fetcher | 01, 03 | 6 h |
 | E11.6-05 Source adapter | 01, 04 | 7 h |
 | E11.6-06 Merge and the publish gate | 03, 05 | 8 h |
 | E11.6-07 The run, dry run, isolation | 04–06 | 5 h |

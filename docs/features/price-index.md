@@ -145,7 +145,7 @@ Prices are shown in local currency with an approximate USD figure, plus a "last 
 **What the 2026-11-17 check of `robots.txt` found (one request, before the spike):** the `*` group allows `/` and disallows only `/api/` and `/go/`. A separate group disallows the whole site to named AI agents, including `ClaudeBot`, `anthropic-ai`, `Claude-Web`, `GPTBot`, `CCBot` and `Scrapy`. The responses carry `ETag` and `Last-Modified`, and the site is served by Vercel. So:
 
 - **No AI agent session fetches the site.** The founder captures E11.6-01's fixtures following `docs/prerequisites/p9-source-capture.md`, and agents work on them offline.
-- **The tool sends a truthful bot user agent** (its name is D6) and obeys the `robots.txt` group that applies to that name, otherwise `*`. It never sends a browser user agent, and never one from the disallowed list or of any other known crawler.
+- **The tool sends a truthful, neutral bot user agent, `PriceIndexBot/1.0`** (D6), and obeys the `robots.txt` group that applies to that name, otherwise `*`. It never sends a browser user agent, and never one from the disallowed list or of any other known crawler.
 - **Nothing under `/api/` or `/go/` is requested**, however stable a JSON endpoint there looks.
 
 **Fetching rules.** One request at a time. A randomised delay between requests (default 8–20 s, configurable), or the source's `Crawl-delay` if longer. It never crawls the whole site. It backs off exponentially on 429, 403 and 5xx, honouring `Retry-After`, and stops the run cleanly after repeated failures. **There is no proxy rotation, no CAPTCHA solving and no fingerprint evasion. If the source blocks us, that is a signal for the founder, never something to work around.** It makes conditional requests (`If-None-Match`, `If-Modified-Since`). It checkpoints after each market and resumes an interrupted run.
@@ -290,16 +290,16 @@ docs/price-index-runbook.md   the founder's monthly routine
 
 ## Open questions for the founder
 
-The brief's six questions were answered on 2026-11-17 (see "Founder amendments"). So were D1–D5, raised while planning; each answer is recorded on its ticket in the plan. One question remains. The ticket it blocks reports `BLOCKED:` until the answer is recorded on it by the decision procedure (`docs/engineering/prompts/00-USAGE.md#decisions`). A recommended default is a recommendation, not a decision.
+The brief's six questions were answered on 2026-11-17 (see "Founder amendments"). So were D1–D6, raised while planning; each answer is recorded on its ticket in the plan. **None remains open.**
 
-| # | Question | Answer or recommended default | Ticket |
+| # | Question | Answer | Ticket |
 |---|---|---|---|
 | D1 | How price pages render | **Answered 2026-11-17:** server-rendered on request from build-bundled data, with the landing page's cache contract, so `?ref=` capture works | E11.6-10 |
 | D2 | A service or market removed from config | **Answered 2026-11-17:** "temporarily unavailable" and `noindex` until `price-index retire-url` records a 301 to the nearest hub | E11.6-12 |
 | D3 | The legal basis for republishing the source's data | **Answered 2026-11-17:** the founder accepts the risk. The source itself republishes the providers' own public prices. Not a gate | E11.6-05 |
 | D4 | The methodology wording | **Answered 2026-11-17:** "We collect official list prices once a month from public price listings, and check them by hand against providers' own pricing pages where needed." | E11.6-13 |
 | D5 | Where the site links to the price pages | **Answered 2026-11-17:** a "Price index" link in the footer, added with the hubs | E11.6-12 |
-| D6 | The name the tool gives in its `User-Agent` | **Open.** Recommended: a neutral, unbranded bot name such as `PriceIndexBot/1.0`, with no URL. It is truthful about being a bot without naming the operator. Rejected options: SubSlush, which ties that brand to Valstara's tool on a third party's logs; and any browser or known-crawler string, which is evasion. Naming Valstara with a contact URL remains possible if the founder prefers openness | E11.6-04 and the P9 capture |
+| D6 | The name the tool gives in its `User-Agent` | **Answered 2026-11-17:** a neutral bot name, exactly `PriceIndexBot/1.0`, with no URL. It is truthful about being a bot without naming the operator. Never Valstara, never SubSlush, never a browser or known-crawler string | E11.6-04 and the P9 capture |
 
 ## Founder amendments, 17 November 2026 (verbatim)
 
