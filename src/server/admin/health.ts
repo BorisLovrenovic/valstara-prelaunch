@@ -1,5 +1,9 @@
 import type { AppConfig } from '../config.ts';
 import {
+  createMaintenanceHeartbeatRepository,
+  type MaintenanceHeartbeatRow,
+} from '../db/maintenance-heartbeat.ts';
+import {
   createAdminHealthRepository,
   type AdminHealthCounts,
 } from '../db/admin-health.ts';
@@ -17,6 +21,7 @@ import { quotaHealth, type EmailQuotaHealth } from '../email/quota.ts';
 import { seedTestHealth, type SeedTestHealth } from '../email/seed-test.ts';
 import type { ReferralAttributionHealth } from '../referral/attribution-health.ts';
 import { createReferralService } from '../referral/service.ts';
+import { maintenanceHeartbeatHealth } from '../subscriber/heartbeat.ts';
 import {
   createVerificationRateMonitor,
   type VerificationRateHealth,
@@ -42,6 +47,7 @@ export function createAdminHealthService(
   const counts = createAdminHealthRepository(database);
   const purgeRuns = createPurgeJobRunRepository(database);
   const seeds = createSeedTestRepository(database);
+  const heartbeats = createMaintenanceHeartbeatRepository(database);
   return createAdminHealthServiceWithSources(
     (fixedClock) => ({
       verification: () =>
@@ -62,6 +68,7 @@ export function createAdminHealthService(
       seedTest: () => seedTestHealth(seeds, fixedClock),
       quota: () => quotaHealth(database, configuration.emailQuota, fixedClock),
       purges: () => purgeRuns.list(),
+      heartbeats: () => heartbeats.list(),
     }),
     clock,
   );
@@ -75,6 +82,7 @@ export interface AdminHealthSources {
   readonly seedTest: () => Promise<SeedTestHealth>;
   readonly quota: () => Promise<EmailQuotaHealth>;
   readonly purges: () => Promise<readonly PurgeJobRunRow[]>;
+  readonly heartbeats: () => Promise<readonly MaintenanceHeartbeatRow[]>;
 }
 
 export function createAdminHealthServiceWithSources(
@@ -94,6 +102,7 @@ export function createAdminHealthServiceWithSources(
         seedTest,
         quota,
         purgeRows,
+        heartbeatRows,
       ] = await Promise.all([
         source.verification(),
         source.attribution(),
@@ -102,6 +111,7 @@ export function createAdminHealthServiceWithSources(
         source.seedTest(),
         source.quota(),
         source.purges(),
+        source.heartbeats(),
       ]);
       const snapshotAt = databaseCounts.latestSnapshotAt;
       return {
@@ -195,6 +205,11 @@ export function createAdminHealthServiceWithSources(
           })),
         },
         purges: purgeJobHealth(purgeRows, measuredAt),
+        // The maintenance worker's loops (QA gate 7, G7-1-I2).
+        maintenanceHeartbeat: maintenanceHeartbeatHealth(
+          heartbeatRows,
+          measuredAt,
+        ),
         openFlags: databaseCounts.openFlags,
       };
     },

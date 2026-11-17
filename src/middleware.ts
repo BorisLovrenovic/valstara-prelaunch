@@ -3,7 +3,9 @@ import { defineMiddleware } from 'astro:middleware';
 import { securityCopy } from './copy/security.ts';
 import { createAdminAuthenticator } from './server/admin-auth/authenticate.ts';
 import { createAdminAuthMiddleware } from './server/admin-auth/middleware.ts';
+import { serveRender } from './server/cache/render-runtime.ts';
 import { getConfig } from './server/config.ts';
+import { ensureMaintenanceWatchdog } from './server/subscriber/heartbeat-runtime.ts';
 
 let middleware: ReturnType<typeof createAdminAuthMiddleware> | undefined;
 
@@ -38,6 +40,7 @@ function sameOrigin(
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  if (!context.isPrerendered) ensureMaintenanceWatchdog();
   const method = context.request.method;
   const staticPath = context.url.pathname.replace(/\/$/u, '');
   if (
@@ -84,5 +87,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
   ) {
     return next();
   }
-  return configuredMiddleware()(context, next);
+  return configuredMiddleware()(context, () =>
+    serveRender(
+      {
+        method: context.request.method,
+        url: context.url,
+        locals: context.locals,
+      },
+      next,
+    ),
+  );
 });

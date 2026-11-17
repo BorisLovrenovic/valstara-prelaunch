@@ -154,6 +154,7 @@ Jobs only ever **materialise, remind, expire and repair.** Nothing a customer is
 | Giveaway entry reconciliation | hourly and when `giveaway.open` turns on | 1,000 per transaction | Missing entries remain recoverable from verification and confirmed-edge timestamps; a failed run raises P2 and retries |
 | IP-prefix retention purge | daily | yes | **Retention breach — this is a compliance alert, not a hygiene one** |
 | Bounce/complaint reconciliation | hourly | yes | Suppression lags; a suppressed address could receive one more send |
+| Maintenance heartbeat (G7-1-I2) | after each scheduler cycle and each email dispatch pass; the app's watchdog reads it every 30 s | n/a (one row per loop) | A stale loop raises one deduplicated P1; the work itself waits on durable rows and catches up |
 
 ---
 

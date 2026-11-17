@@ -1,35 +1,17 @@
-import { getConfig, getP1AlertConfiguration } from '../../src/server/config.ts';
 import { createPool } from '../../src/server/db/pool.ts';
-import { createResendDispatcher } from '../../src/server/email/resend-dispatch.ts';
 import { createFlagService } from '../../src/server/flags/service.ts';
-import { createReferralCounterRepairJob } from '../../src/server/referral/counter-repair.ts';
-import { createAlertWebhookTransport } from '../../src/server/verification-rate/p1-webhook.ts';
 
+// Drills 2, 4 and 5 run through the maintenance container (QA gate 7,
+// G7-1-I3); the one remaining one-shot action flips the leaderboard flag for
+// drill 6.
 const action = process.argv[2];
 const clock = () => new Date(process.env.CHAOS_CLOCK);
 if (Number.isNaN(clock().getTime())) throw new Error('Set CHAOS_CLOCK.');
 const database = createPool(process.env.DATABASE_URL);
-const alerts = createAlertWebhookTransport(getP1AlertConfiguration());
 
 try {
   let result;
   switch (action) {
-    case 'dispatch': {
-      const config = getConfig();
-      result = await createResendDispatcher(
-        database,
-        config,
-        alerts,
-        clock,
-      ).dispatch(100);
-      break;
-    }
-    case 'repair':
-      result = await createReferralCounterRepairJob(database, {
-        alert: (alert) => alerts.send(alert),
-        clock,
-      }).run(100);
-      break;
     case 'flag':
       await createFlagService(database).set(
         'leaderboard.public',

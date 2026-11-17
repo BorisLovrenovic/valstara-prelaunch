@@ -5,6 +5,7 @@ import {
   hostileIdentity,
   phaseCount,
   readProfile,
+  referralCodeFor,
   retryAfterMatchesWindow,
   signupIdentity,
 } from '../scripts/load/profile.mjs';
@@ -18,6 +19,31 @@ test('E11-01 profile makes the authorised rates configurable', async () => {
   assert.equal(
     phaseCount(profile.leaderboardRate, profile.leaderboardSeconds),
     24000,
+  );
+  // QA gate 7 (G7-1-I4/T4): both uncacheable page renders at the leaderboard
+  // spike rate for two minutes, across 200 valid referral codes.
+  assert.equal(
+    phaseCount(profile.referralLandingRate, profile.pageSeconds),
+    24000,
+  );
+  assert.equal(
+    phaseCount(profile.leaderboardPageRate, profile.pageSeconds),
+    24000,
+  );
+  assert.equal(profile.referralCodes, 200);
+});
+
+test('E11-01 referral landings cycle through distinct valid referral codes', () => {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const codes = Array.from({ length: 400 }, (_, index) =>
+    referralCodeFor(index, 'a1b2c3d4', 200, alphabet),
+  );
+  assert.equal(new Set(codes).size, 200);
+  assert.equal(codes[0], codes[200]);
+  for (const code of codes) assert.match(code, /^[A-HJKMNP-Z2-9]{12}$/u);
+  assert.notEqual(
+    referralCodeFor(0, 'a1b2c3d4', 200, alphabet),
+    referralCodeFor(0, 'a1b2c3d5', 200, alphabet),
   );
 });
 

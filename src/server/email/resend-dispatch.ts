@@ -5,6 +5,7 @@ import type { DatabasePool } from '../db/pool.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 import { createSharedLeaderboardSnapshotStore } from '../leaderboard/persisted.ts';
 import { createRankingIntegrityService } from '../referral/ranking.ts';
+import { maintenanceLoopIntervalMs } from '../subscriber/heartbeat-file.ts';
 
 import { dsrRenderers } from '../dsr/templates.ts';
 import { createResendProvider } from './providers/resend.ts';
@@ -17,8 +18,6 @@ import {
   maxDispatchBatch,
   type TemplateRenderer,
 } from './service.ts';
-
-const dispatchIntervalMs = 60_000;
 
 export function createResendDispatcher(
   database: DatabasePool,
@@ -89,6 +88,7 @@ export async function runResendDispatch(
   alerts: AlertTransport,
   clock: () => Date,
   signal: AbortSignal,
+  onPass?: () => Promise<void>,
 ): Promise<void> {
   while (!signal.aborted) {
     try {
@@ -108,7 +108,15 @@ export async function runResendDispatch(
       }
     }
     try {
-      await sleep(dispatchIntervalMs, undefined, { signal });
+      // The worker's heartbeat (G7-1-I2), after each completed pass.
+      await onPass?.();
+    } catch {
+      // A heartbeat failure never fails the pass.
+    }
+    try {
+      await sleep(maintenanceLoopIntervalMs.email_dispatch, undefined, {
+        signal,
+      });
     } catch {
       return;
     }

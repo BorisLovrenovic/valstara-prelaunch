@@ -12,6 +12,7 @@ import {
   getWeeklySendConfiguration,
   getEmailQuotaConfiguration,
 } from '../config.ts';
+import { createMaintenanceHeartbeatRepository } from '../db/maintenance-heartbeat.ts';
 import { createPool } from '../db/pool.ts';
 import { createSeedTestRepository } from '../db/seed-test.ts';
 import { createPurgeJobRunRepository } from '../db/purge-job-run.ts';
@@ -65,6 +66,7 @@ import { createEmailQuotaService } from '../email/quota.ts';
 import { createRecordedPurgeJob } from './purge-run.ts';
 
 import { createUnverifiedExpiryJob } from './expiry.ts';
+import { createMaintenanceHeartbeat } from './heartbeat.ts';
 import {
   createMaintenanceFailureReporter,
   createReferralAttributionMaintenanceScheduler,
@@ -75,6 +77,10 @@ const database = createPool(getDatabaseUrl());
 const clock = (): Date => new Date();
 const alerts = createAlertWebhookTransport(getP1AlertConfiguration());
 const reportFailure = createMaintenanceFailureReporter(alerts, { clock });
+const heartbeat = createMaintenanceHeartbeat(
+  createMaintenanceHeartbeatRepository(database),
+  { clock },
+);
 const resendConfiguration = getResendDispatchConfiguration();
 const brevoConfiguration = getBrevoConfiguration();
 const webhookConfiguration = getEmailWebhookConfiguration();
@@ -249,6 +255,7 @@ const scheduler = createReferralAttributionMaintenanceScheduler(
     alerts,
     clock,
     reportFailure,
+    onCycleComplete: () => heartbeat.beat('scheduler_cycle'),
   },
 );
 
@@ -310,6 +317,7 @@ const running = [
     alerts,
     clock,
     shutdown.signal,
+    () => heartbeat.beat('email_dispatch'),
   ),
   runBrevoContactSync(
     createBrevoContactSyncJob(database, broadcastFlags, brevoProvider, clock),

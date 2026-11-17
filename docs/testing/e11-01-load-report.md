@@ -19,6 +19,8 @@ LOAD_ADMIN_TOTP_SECRET="$DISPOSABLE_ADMIN_TOTP_SECRET" \
 node scripts/load/e11-01-run.mjs scripts/load/e11-01-profile.json docs/testing/e11-01-results.json
 ```
 
+Since QA gate 7 the profile also carries `referralLandingRate`, `leaderboardPageRate`, `pageSeconds` and `referralCodes` for the uncacheable page renders described [below](#qa-gate-7-the-uncacheable-page-renders). E12-06 reuses the same script and profile on the host (founder decision 2026-11-13).
+
 The runner accepts only a loopback HTTP target. It sets `Host` and `Origin` to `valstara.com` so Astro trusts the simulated client prefix supplied in `X-Forwarded-For`. It seeds and warms the leaderboard snapshot before timed traffic, then resets `pg_stat_statements` immediately before the leaderboard phase. It streams the admin CSV during signup traffic, samples the app, PostgreSQL and Umami containers throughout, drains verification mail through the fake sink, and asserts row, business-key, response, and cache invariants. The result JSON holds every memory sample; it contains no credentials, real addresses, or raw client IPs.
 
 For hostile 429s, the runner reads the current run's rate-limit bucket `window_start` after the traffic phase and checks every `Retry-After` against that recorded start plus the signup route's 15-minute window. It bounds the expected header by each request's start and response end times. The bucket count must equal the hostile request count, proving the phase stayed within one window; a fixed 900-second header fails as the window ages.
@@ -77,3 +79,45 @@ The large CSV is a repeatable-read snapshot with an audited scalar row count, th
 An initial full attempt was invalid because the test stack omitted Umami, although the production app sends best-effort signup events to `umami:3000`. That attempt had 99 signup 5xx, 13,421 `challenge_timeout` flags, and rising app memory. A fresh process in the same container could verify 200 Turnstile test tokens at 20/s; instrumenting the running app showed Turnstile timeout errors. The missing collector is the inferred cause of the failed app-process behaviour. The overlay now requires a healthy Umami container before app startup. A corrected short probe passed, followed by the fresh-database full pass above. No live email was sent in either attempt.
 
 **Reset-time verification probe, 2026-10-07 UTC.** With the same local stack, run `eb52b8a2` used a short profile: 20 signups/s for 10 seconds, 50/s for one second, hostile traffic at 20/s for 10 seconds, 10 leaderboard requests/s for one second, and 1,000 additional export rows. It returned 250/250 ordinary HTTP 200s, 5 hostile HTTP 200s, and 195 hostile HTTP 429s. The runner read hostile bucket `window_start = 2026-10-07T19:37:29.844Z`, confirmed its count was 200, and matched **195/195** `Retry-After` headers to that window's reset; `invalidWait = 0`. The queue drained, the export streamed 51,001 lines including the prior run's 50,000 rows, and the leaderboard's 10 responses used the snapshot cache with no `subscriber` query. The probe's result is in `/tmp/valstara-e1101-wait-result.json` on the local machine; the command above reproduces it by supplying a shorter copy of the profile. The full-profile figures above remain the original measured run.
+
+## QA gate 7: the uncacheable page renders
+
+QA gate 7 (finding G7-1-I4) found that the two page renders a viral spike reaches the origin through had never been load-tested: referral-link landings (`/?ref=<code>`) and the `/leaderboard` page. Both are served `private, no-store` on every view (`src/pages/index.astro`, `src/pages/leaderboard.astro`), so Cloudflare cannot absorb them. The runner now adds three phases after the burst, once the hostile phase and the export have finished:
+
+1. **Referral landings alone** at `referralLandingRate` for `pageSeconds`, cycling through `referralCodes` valid 12-character codes seeded onto the verified fixture rows. Each response must be HTTP 200 with `Cache-Control: private, no-store` and the landing heading. `pg_stat_statements` is reset before the phase and read after it.
+2. **The `/leaderboard` page alone** at `leaderboardPageRate` for `pageSeconds`, with the same checks plus the leaderboard section, and **zero `subscriber` queries** asserted from `pg_stat_statements`.
+3. **Both together with signups** at `signupRate` for `pageSeconds` — the combined profile E12-06 runs on the host. These signups join the row, business-key and drained-queue invariants, and every one must be HTTP 200.
+
+A page request that has no response within 30 seconds counts as a transport error, and any transport error or 5xx fails the run. The authorised profile sets 200/s for each page for 120 seconds, the leaderboard spike rate the founder authorised for E11-01 on 2026-10-07, across 200 referral codes.
+
+**The origin render cache (founder decision 2026-11-14 on E11-01).** Both renders now go through a bounded in-process cache (`src/server/cache/render.ts`, wired in `src/middleware.ts`). The landing is rendered once per flag generation, with and without the signed referral field, and the `/leaderboard` page once per flag generation. Each request gets the stored body with its own freshly signed referral field substituted, so a referral spike costs the box a cache lookup and an HMAC, not a page render. Responses and headers are unchanged: `?ref=` and any non-default flag state stay `private, no-store`, and E12-05's landing-cache contract is untouched. A flag change changes the generation, so the `leaderboard.public` kill switch still takes effect within the flag cache's five seconds (ADR-023). The cache holds no visitor data, keys on route, field presence, the `ref` parameter's presence and the flag generation, and is capped at 16 entries; it never grows with distinct referral codes.
+
+**Any non-default flag state leaves every landing uncached at Cloudflare**, including the state the campaign reaches once `giveaway.open` or `email.broadcast` is turned on. From then on even a plain `/` reaches the origin on every view. The render cache carries that case too, because its key is the flag generation, not the default state.
+
+**Result, 2026-11-13 UTC (2026-11-14 local): passed.** Run `bf3d83cc` used the unchanged authorised profile `scripts/load/e11-01-profile.json` against an isolated production-Compose project with image ID `sha256:ea65519908345109f501b5437cb7ed8c83be01b55030f147f64ca60e109d430c`, built from the QA gate 7 branch with the render cache and the maintenance heartbeat. The machine-readable result, including 243 memory samples, is [`e11-01-gate-7-results.json`](e11-01-gate-7-results.json). Every phase ran, including the original leaderboard-API phase, and the 5xx count was **0**.
+
+| Phase | Requests | Outcome | p95 |
+|---|---:|---|---:|
+| Sustained and burst signups (20/s for 600 s, then 50/s for 60 s) | 15,000 | 15,000 HTTP 200 | 590 ms sustained, 605 ms burst |
+| Hostile prefix | 200 | 5 HTTP 200, then 195 HTTP 429; all 195 `Retry-After` headers match the recorded window | — |
+| Large export during signup | 50,000 rows | 50,001 CSV lines, 4,680,391 bytes | — |
+| Referral landings alone, 200/s for 120 s | 24,000 | 24,000 HTTP 200, all `private, no-store`; no `subscriber` or `leaderboard_snapshot` query | 27 ms |
+| `/leaderboard` page alone, 200/s for 120 s | 24,000 | 24,000 HTTP 200; **0 `subscriber` queries**, one `leaderboard_snapshot` read by the API's background cache refresh | 9 ms |
+| Combined: referral landings at 200/s | 24,000 | **24,000 HTTP 200**, 0 transport errors | 28 ms |
+| Combined: `/leaderboard` page at 200/s | 24,000 | **24,000 HTTP 200**, 0 transport errors | 28 ms |
+| Combined: signups at 20/s | 2,400 | **2,400 HTTP 200** | 657 ms |
+| Leaderboard API spike, 200/s for 120 s (the original phase) | 24,000 | 24,000 HTTP 200, every response carrying the seeded snapshot; 0 `subscriber` calls and one `leaderboard_snapshot` read by the background refresh | 12 ms |
+
+The row, business-key and drained-queue invariants held across all 17,400 timed signups and the warm-up: 15,665 subscriber rows, all distinct; 15,665 `email_send` rows with 15,665 distinct business keys, all sent by the fake sink in 157 batches; 0 queued and 0 failed.
+
+| Container | Peak sampled memory | Limit |
+|---|---:|---:|
+| App | 134.9 MiB | 768 MiB |
+| PostgreSQL | 168.8 MiB | 512 MiB |
+| Umami | 210.3 MiB | 768 MiB |
+
+An earlier full run the same evening, `7e5b897a`, on a build of the same branch taken before a type-only change to how the cache copies response headers (image `sha256:389b6a9b…`), also passed every phase: combined page p95 8 ms, combined signup p95 545 ms, leaderboard-API p95 4 ms, app peak 145.1 MiB. The run above is the record because its image matches the committed code.
+
+**Before the render cache, the same profile failed (2026-11-13 UTC).** Run `5feacafc` (image `sha256:0db76e52…`) stopped at the combined phase: 895 referral landings and 1,623 `/leaderboard` page requests had no response within 30 seconds, and only 520 of the 2,400 signups succeeded (1,604 HTTP 503, 276 HTTP 500, signup p95 69,384 ms). Two earlier full runs that day, `446a2f00` and `e18d3f8b`, lost 1,163 and 552 signups in their combined phases, with 21–34% of page requests unanswered. Memory was never the limit: one Node process's CPU was. Short probes then held at 100/s per page combined with signups and saturated at 150–200/s. Those figures are kept in git history in the earlier version of `e11-01-gate-7-results.json`.
+
+This laptop's numbers do not predict the host's; E12-06 re-runs these phases there with the same script and profile.

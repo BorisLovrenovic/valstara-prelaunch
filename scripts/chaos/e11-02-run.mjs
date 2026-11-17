@@ -169,9 +169,11 @@ async function time(label, run) {
   try {
     detail = await run();
   } catch (error) {
-    process.stderr.write(
-      `${label} app log:\n${await compose('logs', '--tail', '30', 'app').catch(() => '')}\n`,
-    );
+    for (const service of ['app', 'maintenance']) {
+      process.stderr.write(
+        `${label} ${service} log:\n${await compose('logs', '--tail', '30', service).catch(() => '')}\n`,
+      );
+    }
     throw error;
   }
   timings[label] = { elapsedMs: Math.round(startedAt() - began), ...detail };
@@ -191,6 +193,38 @@ async function waitFor(check, label) {
     await new Promise((resolve) => globalThis.setTimeout(resolve, 200));
   }
   throw new Error(`Timed out waiting for ${label}`);
+}
+async function waitLong(check, label, timeoutMs, intervalMs = 1_000) {
+  const deadline = startedAt() + timeoutMs;
+  while (startedAt() < deadline) {
+    const result = await check();
+    if (result) return result;
+    await new Promise((resolve) => globalThis.setTimeout(resolve, intervalMs));
+  }
+  throw new Error(`Timed out after ${timeoutMs} ms waiting for ${label}`);
+}
+// The maintenance drills (2, 4, 5) must exercise the deployed worker: the
+// production Compose service, its own command, and the image's own src/server
+// tree. A source mount would hide a module the image omits (QA gate 7, B1/I3).
+async function maintenanceContainer() {
+  const id = await compose('ps', '--all', '--quiet', 'maintenance');
+  assert.notEqual(id, '', 'the maintenance service has no container');
+  const [inspection] = JSON.parse(await command('docker', ['inspect', id]));
+  assert.deepEqual(inspection.Config.Cmd, [
+    'node',
+    './src/server/subscriber/run-maintenance.ts',
+  ]);
+  assert.equal(inspection.Config.Image, env.VALSTARA_IMAGE);
+  assert.ok(
+    inspection.Mounts.every(
+      (mount) => !mount.Destination.startsWith('/app/src'),
+    ),
+    'the maintenance container must run the image source, not a mount',
+  );
+  return {
+    running: inspection.State.Running,
+    restarts: inspection.RestartCount,
+  };
 }
 async function connectDatabase() {
   await waitFor(async () => {
@@ -276,7 +310,12 @@ try {
   });
 
   await time('drill2_resend_revoked', async () => {
+    // The production maintenance worker is the only process that dispatches
+    // mail. Start it with the Resend key already revoked: its first dispatch
+    // pass fails, the row stays queued with backoff, and once the key is
+    // restored its own one-minute loop sends it. No one-shot dispatch.
     const email = 'chaos-mail@gmail.com';
+    await setMode('resend', 'revoked');
     const accepted = await signup(email, 'healthy-token', '198.51.102.7');
     assert.equal(accepted.status, 200, JSON.stringify(accepted));
     const before = (
@@ -286,35 +325,46 @@ try {
       )
     )[0];
     assert.equal(before.state, 'queued');
-    await setMode('resend', 'revoked');
-    const failed = await oneShot('dispatch');
-    assert.ok(failed.retried > 0);
-    const deferred = (
-      await sql(
-        'SELECT state,attempts,next_attempt_at FROM email_send WHERE id=$1',
-        [before.id],
-      )
-    )[0];
+    assert.equal(before.attempts, 0);
+    await compose('up', '-d', '--wait', '--no-deps', 'maintenance');
+    const worker = await maintenanceContainer();
+    assert.equal(worker.running, true);
+    const deferred = await waitLong(
+      async () =>
+        (
+          await sql(
+            'SELECT state,attempts,next_attempt_at FROM email_send WHERE id=$1 AND attempts >= 1',
+            [before.id],
+          )
+        )[0],
+      'the failed first dispatch',
+      90_000,
+    );
     assert.equal(deferred.state, 'queued');
     assert.equal(deferred.attempts, 1);
     await setMode('resend', 'healthy');
-    const recovered = await oneShot(
-      'dispatch',
-      [],
-      new Date(deferred.next_attempt_at.getTime() + 1_000),
+    const after = await waitLong(
+      async () =>
+        (
+          await sql(
+            `SELECT state,attempts FROM email_send WHERE id=$1 AND state <> 'queued'`,
+            [before.id],
+          )
+        )[0],
+      'the dispatch after key restoration',
+      240_000,
     );
-    assert.ok(recovered.sent > 0);
-    const after = (
-      await sql('SELECT state,attempts FROM email_send WHERE id=$1', [
-        before.id,
-      ])
-    )[0];
     assert.equal(after.state, 'sent');
     assert.equal(after.attempts, 2);
+    const stillQueued = await sql(
+      `SELECT COUNT(*)::integer AS count FROM email_send WHERE state='queued' AND template='verification_test'`,
+    );
+    assert.equal((await maintenanceContainer()).restarts, 0);
     return {
+      via: 'maintenance container',
       committedRows: await countEmail(email),
       attempts: after.attempts,
-      queuedAfterRecovery: 0,
+      queuedAfterRecovery: stillQueued[0].count,
     };
   });
 
@@ -377,78 +427,75 @@ try {
   });
 
   await time('drill4_snapshot_job_stopped', async () => {
-    const worker = `${project}-snapshot-worker`;
-    const at = new Date();
-    await compose(
-      'run',
-      '-d',
-      '--no-deps',
-      '--name',
-      worker,
-      '-e',
-      `CHAOS_CLOCK=${at.toISOString()}`,
-      'app',
-      'node',
-      '/app/scripts/chaos/snapshot-worker.mjs',
-    );
-    try {
-      await waitFor(
-        async () =>
-          (
-            await sql(
-              'SELECT id FROM leaderboard_snapshot ORDER BY as_of DESC LIMIT 1',
-            )
-          )[0],
-        'snapshot',
-      );
-      const first = await waitFor(async () => {
+    // Stop the deployed maintenance worker, which owns the snapshot refresh.
+    // The last good snapshot keeps serving with its timestamp past the refresh
+    // interval; on restart the worker refreshes again: late, never lost.
+    const first = await waitLong(
+      async () => {
+        const stored = (
+          await sql(
+            'SELECT id FROM leaderboard_snapshot ORDER BY as_of DESC LIMIT 1',
+          )
+        )[0];
+        if (!stored) return null;
         const response = await page('/api/leaderboard');
-        return response.status === 200 ? response : null;
-      }, 'site snapshot cache');
-      const body = await first.json();
-      await command('docker', ['kill', worker]);
-      const stoppedAt = startedAt();
-      await new Promise((resolve) =>
-        globalThis.setTimeout(
-          resolve,
-          leaderboardRefreshIntervalMilliseconds + 1_000,
-        ),
-      );
-      const stoppedForMs = Math.round(startedAt() - stoppedAt);
-      assert.ok(stoppedForMs > leaderboardRefreshIntervalMilliseconds);
-      assert.equal(
-        await command('docker', [
-          'inspect',
-          '--format',
-          '{{.State.Running}}',
-          worker,
-        ]),
-        'false',
-      );
-      const latest = (
-        await sql(
-          'SELECT id, as_of FROM leaderboard_snapshot ORDER BY as_of DESC LIMIT 1',
-        )
-      )[0];
-      assert.equal(latest.id, body.snapshot_id);
-      assert.equal(latest.as_of.toISOString(), body.as_of);
-      const second = await page('/api/leaderboard');
-      assert.equal(second.status, 200);
-      const stale = await second.json();
-      assert.equal(stale.snapshot_id, body.snapshot_id);
-      assert.equal(stale.as_of, body.as_of);
-      return {
-        snapshotId: body.snapshot_id,
-        asOf: body.as_of,
-        stoppedForMs,
-        staleServed: true,
-      };
-    } finally {
-      await command('docker', ['rm', '-f', worker]).catch(() => {});
-    }
+        if (response.status !== 200) return null;
+        const served = await response.json();
+        return served.snapshot_id === stored.id ? served : null;
+      },
+      'the worker snapshot to serve',
+      60_000,
+    );
+    await compose('stop', 'maintenance');
+    const stoppedAt = startedAt();
+    assert.equal((await maintenanceContainer()).running, false);
+    await new Promise((resolve) =>
+      globalThis.setTimeout(
+        resolve,
+        leaderboardRefreshIntervalMilliseconds + 1_000,
+      ),
+    );
+    const stoppedForMs = Math.round(startedAt() - stoppedAt);
+    assert.ok(stoppedForMs > leaderboardRefreshIntervalMilliseconds);
+    assert.equal((await maintenanceContainer()).running, false);
+    const latest = (
+      await sql(
+        'SELECT id, as_of FROM leaderboard_snapshot ORDER BY as_of DESC LIMIT 1',
+      )
+    )[0];
+    assert.equal(latest.id, first.snapshot_id);
+    assert.equal(latest.as_of.toISOString(), first.as_of);
+    const second = await page('/api/leaderboard');
+    assert.equal(second.status, 200);
+    const stale = await second.json();
+    assert.equal(stale.snapshot_id, first.snapshot_id);
+    assert.equal(stale.as_of, first.as_of);
+    await compose('start', 'maintenance');
+    const refreshed = await waitLong(
+      async () =>
+        (
+          await sql(
+            'SELECT id FROM leaderboard_snapshot WHERE as_of > $1 ORDER BY as_of DESC LIMIT 1',
+            [latest.as_of],
+          )
+        )[0],
+      'a fresh snapshot after the worker restarts',
+      60_000,
+    );
+    assert.notEqual(refreshed.id, first.snapshot_id);
+    return {
+      via: 'maintenance container',
+      snapshotId: first.snapshot_id,
+      asOf: first.as_of,
+      stoppedForMs,
+      staleServed: true,
+      refreshedAfterRestart: true,
+    };
   });
 
   await time('drill5_counter_repair', async () => {
+    // The deployed scheduler runs the daily counter repair on its first cycle
+    // after a start, so corrupt the counter and restart the worker.
     const referrer = randomUUID();
     const referred = randomUUID();
     for (const id of [referrer, referred]) {
@@ -464,26 +511,41 @@ try {
     await sql('UPDATE subscriber SET confirmed_referrals=9 WHERE id=$1', [
       referrer,
     ]);
-    const result = await oneShot('repair');
-    assert.ok(result.corrected >= 1);
-    const repaired = (
-      await sql('SELECT confirmed_referrals FROM subscriber WHERE id=$1', [
-        referrer,
-      ])
-    )[0];
+    await compose('restart', 'maintenance');
+    assert.equal((await maintenanceContainer()).running, true);
+    const repaired = await waitLong(
+      async () =>
+        (
+          await sql(
+            'SELECT confirmed_referrals FROM subscriber WHERE id=$1 AND confirmed_referrals <> 9',
+            [referrer],
+          )
+        )[0],
+      'the scheduled counter repair',
+      120_000,
+    );
     assert.equal(repaired.confirmed_referrals, 1);
     const audit = await sql(
       `SELECT detail FROM audit_log WHERE action='referral.counters_repaired' ORDER BY at DESC LIMIT 1`,
     );
     assert.ok(audit.length === 1);
-    const p2 = (await alerts()).filter(
-      (alert) =>
-        alert.event === 'referral_counters_corrected' &&
-        alert.severity === 'P2',
+    const p2 = await waitLong(
+      async () => {
+        const sent = (await alerts()).filter(
+          (alert) =>
+            alert.event === 'referral_counters_corrected' &&
+            alert.severity === 'P2',
+        );
+        return sent.length > 0 ? sent : null;
+      },
+      'the P2 counter alert',
+      30_000,
     );
     assert.equal(p2.length, 1);
+    assert.ok(p2[0].detail.corrected >= 1);
     return {
-      corrected: result.corrected,
+      via: 'maintenance container',
+      corrected: p2[0].detail.corrected,
       restoredCount: 1,
       p2Alerts: p2.length,
       auditRows: audit.length,
@@ -597,6 +659,80 @@ try {
       turnstileReplay: 'rejected',
       webhookEvents: 1,
       suppressionRows: 1,
+    };
+  });
+
+  await time('drill11_maintenance_heartbeat', async () => {
+    // Pause the deployed worker: a hung process cannot report itself, so the
+    // app's watchdog must raise exactly one P1 once the dispatch loop's beat
+    // is older than twice its one-minute interval, and stay quiet while the
+    // episode lasts. Unpausing lets the overdue pass run; its beat clears the
+    // episode (QA gate 7, G7-1-I2).
+    const stale = (sent) =>
+      sent.filter(
+        (alert) =>
+          alert.event === 'maintenance_heartbeat_stale' &&
+          alert.severity === 'P1',
+      );
+    await waitLong(
+      async () =>
+        (
+          await sql(
+            `SELECT 1 FROM maintenance_heartbeat WHERE loop_key='email_dispatch' AND stale_alerted_at IS NULL AND last_beat_at > now() - interval '90 seconds'`,
+          )
+        )[0],
+      'a fresh dispatch heartbeat before the pause',
+      120_000,
+    );
+    const baseline = (await alerts()).length;
+    assert.equal((await maintenanceContainer()).running, true);
+    await compose('pause', 'maintenance');
+    const pausedAt = startedAt();
+    const raised = await waitLong(
+      async () => {
+        const sent = stale((await alerts()).slice(baseline));
+        return sent.length > 0 ? sent : null;
+      },
+      'the stale-heartbeat P1',
+      300_000,
+    );
+    // The last beat landed up to one dispatch interval before the pause, so
+    // the alert's own age, not the time since the pause, must exceed twice
+    // the interval (asserted below).
+    const alertAfterMs = Math.round(startedAt() - pausedAt);
+    // Two more watchdog passes: still exactly one alert for the episode.
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 65_000));
+    const episode = stale((await alerts()).slice(baseline));
+    assert.equal(episode.length, 1, JSON.stringify(episode));
+    assert.deepEqual(Object.keys(episode[0].detail).sort(), [
+      'age_seconds',
+      'loop_key',
+    ]);
+    assert.equal(episode[0].detail.loop_key, 'email_dispatch');
+    assert.ok(episode[0].detail.age_seconds > 120);
+    assert.equal(raised.length, 1);
+    await compose('unpause', 'maintenance');
+    const unpausedAt = startedAt();
+    const cleared = await waitLong(
+      async () =>
+        (
+          await sql(
+            `SELECT last_beat_at FROM maintenance_heartbeat WHERE loop_key='email_dispatch' AND stale_alerted_at IS NULL`,
+          )
+        )[0],
+      'a fresh beat clearing the episode',
+      120_000,
+    );
+    const clearedAfterUnpauseMs = Math.round(startedAt() - unpausedAt);
+    assert.ok(cleared.last_beat_at);
+    assert.equal((await maintenanceContainer()).restarts, 0);
+    assert.equal(stale((await alerts()).slice(baseline)).length, 1);
+    return {
+      via: 'maintenance container',
+      p1Alerts: 1,
+      alertAfterPauseMs: alertAfterMs,
+      clearedAfterUnpauseMs,
+      detailKeys: ['age_seconds', 'loop_key'],
     };
   });
 

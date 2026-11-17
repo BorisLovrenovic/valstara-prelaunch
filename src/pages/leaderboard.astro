@@ -4,10 +4,20 @@ import Container from '../components/container.astro';
 import LeaderboardPaused from '../layouts/leaderboard-paused.astro';
 import Leaderboard from '../islands/Leaderboard.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { landingFlagGeneration } from '../server/cache/landing.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
+import { campaignFlagRegistry } from '../server/flags/registry.ts';
 
+// One flag read gives both the switch and the generation the origin render
+// cache stores this render under (G7-1-I4).
+const flags = await getFlagService().list();
 const leaderboardEnabled =
-  await getFlagService().isEnabled('leaderboard.public');
+  flags.find((flag) => flag.key === 'leaderboard.public')?.enabled ??
+  campaignFlagRegistry['leaderboard.public'];
+Astro.locals.renderCache = {
+  generation: landingFlagGeneration(flags),
+  field: null,
+};
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 ---
 

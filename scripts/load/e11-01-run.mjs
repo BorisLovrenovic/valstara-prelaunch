@@ -9,10 +9,12 @@ import { promisify } from 'node:util';
 import pg from 'pg';
 
 import { generateTotp } from '../../src/server/admin-auth/totp.ts';
+import { referralCodeAlphabet } from '../../src/server/referral/config.ts';
 import {
   hostileIdentity,
   phaseCount,
   readProfile,
+  referralCodeFor,
   retryAfterMatchesWindow,
   signupIdentity,
 } from './profile.mjs';
@@ -75,6 +77,7 @@ function newSummary() {
     invalidWait: 0,
     waitObservations: [],
     wrongSnapshot: 0,
+    wrongPage: 0,
     transportErrors: 0,
   };
 }
@@ -190,6 +193,80 @@ async function getLeaderboard(expectedSnapshot, summary) {
   } catch {
     summary.transportErrors += 1;
   }
+}
+
+// QA gate 7 (G7-1-I4/T4): the two page renders a spike reaches the origin
+// through. Both are served private, no-store, so Cloudflare cannot absorb
+// them: a referral-link landing (/?ref=<code>) and the /leaderboard page.
+async function getPage(path, summary, accept) {
+  const began = monotonicMs();
+  try {
+    const response = await globalThis.fetch(new URL(path, baseUrl), {
+      signal: globalThis.AbortSignal.timeout(30_000),
+    });
+    const body = await response.text();
+    observe(summary, response.status, monotonicMs() - began);
+    if (
+      response.status !== 200 ||
+      response.headers.get('cache-control') !== 'private, no-store' ||
+      !accept(body)
+    )
+      summary.wrongPage += 1;
+  } catch {
+    summary.transportErrors += 1;
+  }
+}
+
+function referralLanding(index, summary) {
+  const code = referralCodeFor(
+    index,
+    runId,
+    profile.referralCodes,
+    referralCodeAlphabet,
+  );
+  return getPage(`/?ref=${code}`, summary, (body) =>
+    body.includes('id="landing-title"'),
+  );
+}
+
+function leaderboardPage(summary) {
+  return getPage('/leaderboard', summary, (body) =>
+    body.includes('data-leaderboard-section'),
+  );
+}
+
+async function seedReferralCodes() {
+  assert.ok(
+    profile.referralCodes <= profile.exportRows,
+    'referral codes are assigned to seeded verified rows',
+  );
+  const codes = Array.from({ length: profile.referralCodes }, (_, index) =>
+    referralCodeFor(index, runId, profile.referralCodes, referralCodeAlphabet),
+  );
+  const { rowCount } = await database.query(
+    `WITH chosen AS (
+       SELECT id, row_number() OVER (ORDER BY email_normalised) AS n
+       FROM subscriber WHERE email_normalised LIKE $1
+       ORDER BY email_normalised LIMIT $2
+     )
+     UPDATE subscriber s SET referral_code = codes.code
+     FROM chosen JOIN unnest($3::text[]) WITH ORDINALITY AS codes(code, n)
+       ON codes.n = chosen.n
+     WHERE s.id = chosen.id`,
+    [`e1101-export-${runId}-%`, profile.referralCodes, codes],
+  );
+  assert.equal(rowCount, profile.referralCodes);
+  return rowCount;
+}
+
+function pageResult(summary) {
+  return {
+    count: summary.count,
+    statuses: summary.statuses,
+    wrongPage: summary.wrongPage,
+    transportErrors: summary.transportErrors,
+    p95Ms: p95(summary.latenciesMs),
+  };
 }
 
 async function runPhase(rate, seconds, operation) {
@@ -476,6 +553,26 @@ async function queryCounts() {
 const signup = newSummary();
 const hostile = newSummary();
 const leaderboard = newSummary();
+const signupWithPages = newSummary();
+const landingAlone = newSummary();
+const pageAlone = newSummary();
+const landingWithSignup = newSummary();
+const pageWithSignup = newSummary();
+const pageSummaries = [
+  landingAlone,
+  pageAlone,
+  landingWithSignup,
+  pageWithSignup,
+];
+let sustainedP95Ms;
+let burstP95Ms;
+let landingPhase;
+let pagePhase;
+let landingQueries;
+let pageQueries;
+let combinedSignup;
+let combinedLanding;
+let combinedPage;
 const startedAt = new Date().toISOString();
 const memoryStart = monotonicMs();
 const memoryTimer = setInterval(() => {
@@ -493,6 +590,7 @@ try {
   const warmup = await warmConnections();
   stage('seed export');
   await seedExport();
+  const seededReferralCodes = await seedReferralCodes();
   await database.query('CHECKPOINT');
   await sampleMemory();
   const exportTask = (async () => {
@@ -512,7 +610,7 @@ try {
     profile.signupSeconds,
     (index) => postSignup(signupIdentity(index, runId), signup),
   );
-  const sustainedP95Ms = p95(signup.latenciesMs);
+  sustainedP95Ms = p95(signup.latenciesMs);
   stage('sustained complete');
   const burst = await runPhase(
     profile.burstRate,
@@ -520,21 +618,64 @@ try {
     (index) =>
       postSignup(signupIdentity(sustained.scheduled + index, runId), signup),
   );
-  const burstP95Ms = p95(signup.latenciesMs.slice(sustained.scheduled));
+  burstP95Ms = p95(signup.latenciesMs.slice(sustained.scheduled));
   stage('burst complete');
+  // Each uncacheable page render alone at spike rate, then both together
+  // with signups. The hostile phase and the export finish first, and no
+  // signup is in flight, so a subscriber query during the leaderboard page
+  // phase would be the page's own.
   const hostilePhase = await hostileTask;
   const exportResult = await exportTask;
   stage('export complete');
+  await database.query('SELECT pg_stat_statements_reset()');
+  landingPhase = await runPhase(
+    profile.referralLandingRate,
+    profile.pageSeconds,
+    (index) => referralLanding(index, landingAlone),
+  );
+  stage('referral landings complete');
+  landingQueries = await queryCounts();
+  await database.query('SELECT pg_stat_statements_reset()');
+  pagePhase = await runPhase(
+    profile.leaderboardPageRate,
+    profile.pageSeconds,
+    () => leaderboardPage(pageAlone),
+  );
+  stage('leaderboard page complete');
+  pageQueries = await queryCounts();
+  // Both uncacheable page renders at spike rate, concurrently with signups
+  // at the sustained rate (the E12-06 combined profile, founder decision
+  // 2026-11-13). The signups join the row and mail invariants below.
+  [combinedSignup, combinedLanding, combinedPage] = await Promise.all([
+    runPhase(profile.signupRate, profile.pageSeconds, (index) =>
+      postSignup(
+        signupIdentity(sustained.scheduled + burst.scheduled + index, runId),
+        signupWithPages,
+      ),
+    ),
+    runPhase(profile.referralLandingRate, profile.pageSeconds, (index) =>
+      referralLanding(index, landingWithSignup),
+    ),
+    runPhase(profile.leaderboardPageRate, profile.pageSeconds, () =>
+      leaderboardPage(pageWithSignup),
+    ),
+  ]);
+  stage('pages with signups complete');
   if ('error' in exportResult) throw exportResult.error;
   const largeExport = exportResult.value;
   assert.equal(
-    signup.statuses[429] ?? 0,
+    (signup.statuses[429] ?? 0) + (signupWithPages.statuses[429] ?? 0),
     0,
     'ordinary traffic must not be rate limited',
   );
   assert.equal(
     signup.statuses[200] ?? 0,
     sustained.scheduled + burst.scheduled,
+  );
+  assert.equal(
+    signupWithPages.statuses[200] ?? 0,
+    combinedSignup.scheduled,
+    'signups alongside the page spike must all succeed',
   );
   assert.ok(
     (hostile.statuses[429] ?? 0) > 0,
@@ -547,7 +688,7 @@ try {
     'hostile 429s must carry an honest Retry-After',
   );
   const expectedRows =
-    (sustained.scheduled + burst.scheduled) * 0.9 +
+    (sustained.scheduled + burst.scheduled + combinedSignup.scheduled) * 0.9 +
     Math.min(5, hostilePhase.scheduled);
   const { stdout: drained } = await exec('docker', [
     'exec',
@@ -577,6 +718,20 @@ try {
     0,
     'leaderboard load must not query subscriber',
   );
+  assert.equal(
+    pageQueries.filter(({ query }) => /\bsubscriber\b/i.test(query)).length,
+    0,
+    'leaderboard page renders must not query subscriber',
+  );
+  for (const [summary, phase] of [
+    [landingAlone, landingPhase],
+    [pageAlone, pagePhase],
+    [landingWithSignup, combinedLanding],
+    [pageWithSignup, combinedPage],
+  ]) {
+    assert.equal(summary.statuses[200] ?? 0, phase.scheduled);
+    assert.equal(summary.wrongPage, 0, 'page renders must be correct');
+  }
   const snapshotReads = boardQueries
     .filter(({ query }) => /\bleaderboard_snapshot\b/i.test(query))
     .reduce((total, entry) => total + Number(entry.calls), 0);
@@ -584,7 +739,13 @@ try {
     snapshotReads <= 5,
     'leaderboard reads exceeded the bounded background cache refresh',
   );
-  const fiveHundreds = [signup, hostile, leaderboard].reduce(
+  const fiveHundreds = [
+    signup,
+    signupWithPages,
+    hostile,
+    leaderboard,
+    ...pageSummaries,
+  ].reduce(
     (total, phase) =>
       total +
       Object.entries(phase.statuses).reduce(
@@ -596,8 +757,10 @@ try {
   assert.ok(fiveHundreds <= profile.maxFiveHundreds, '5xx tolerance exceeded');
   assert.equal(
     signup.transportErrors +
+      signupWithPages.transportErrors +
       hostile.transportErrors +
-      leaderboard.transportErrors,
+      leaderboard.transportErrors +
+      pageSummaries.reduce((total, page) => total + page.transportErrors, 0),
     0,
   );
   await sampleMemory();
@@ -629,12 +792,26 @@ try {
     burst,
     hostilePhase,
     boardPhase,
+    seededReferralCodes,
+    landingPhase,
+    pagePhase,
+    combinedPhase: {
+      signup: combinedSignup,
+      referralLanding: combinedLanding,
+      leaderboardPage: combinedPage,
+    },
     signup: {
       count: signup.count,
       statuses: signup.statuses,
       p95Ms: p95(signup.latenciesMs),
       sustainedP95Ms,
       burstP95Ms,
+    },
+    signupWithPages: {
+      count: signupWithPages.count,
+      statuses: signupWithPages.statuses,
+      transportErrors: signupWithPages.transportErrors,
+      p95Ms: p95(signupWithPages.latenciesMs),
     },
     hostile: {
       count: hostile.count,
@@ -647,10 +824,16 @@ try {
       statuses: leaderboard.statuses,
       p95Ms: p95(leaderboard.latenciesMs),
     },
+    referralLanding: pageResult(landingAlone),
+    leaderboardPage: pageResult(pageAlone),
+    referralLandingWithSignup: pageResult(landingWithSignup),
+    leaderboardPageWithSignup: pageResult(pageWithSignup),
     largeExport,
     drained: JSON.parse(drained.trim()),
     signupDatabase,
     boardQueries,
+    landingQueries,
+    pageQueries,
     memory,
   };
 } catch (error) {
@@ -663,7 +846,16 @@ try {
     signup: {
       count: signup.count,
       statuses: signup.statuses,
+      transportErrors: signup.transportErrors,
       p95Ms: p95(signup.latenciesMs),
+      sustainedP95Ms,
+      burstP95Ms,
+    },
+    signupWithPages: {
+      count: signupWithPages.count,
+      statuses: signupWithPages.statuses,
+      transportErrors: signupWithPages.transportErrors,
+      p95Ms: p95(signupWithPages.latenciesMs),
     },
     hostile: {
       count: hostile.count,
@@ -675,6 +867,19 @@ try {
       statuses: leaderboard.statuses,
       wrongSnapshot: leaderboard.wrongSnapshot,
     },
+    landingPhase,
+    pagePhase,
+    combinedPhase: {
+      signup: combinedSignup,
+      referralLanding: combinedLanding,
+      leaderboardPage: combinedPage,
+    },
+    referralLanding: pageResult(landingAlone),
+    leaderboardPage: pageResult(pageAlone),
+    referralLandingWithSignup: pageResult(landingWithSignup),
+    leaderboardPageWithSignup: pageResult(pageWithSignup),
+    landingQueries,
+    pageQueries,
     memory,
   };
 } finally {

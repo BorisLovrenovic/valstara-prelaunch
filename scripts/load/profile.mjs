@@ -7,6 +7,10 @@ const fields = [
   'burstSeconds',
   'leaderboardRate',
   'leaderboardSeconds',
+  'referralLandingRate',
+  'leaderboardPageRate',
+  'pageSeconds',
+  'referralCodes',
   'hostileRate',
   'hostileSeconds',
   'exportRows',
@@ -37,6 +41,20 @@ export function signupIdentity(index, runId) {
     65536
   ).toString(16)}:${(index % 65536).toString(16)}::1`;
   return { email, prefix, unique };
+}
+
+// QA gate 7 (G7-1-I4/T4): referral-link landings spread across this many
+// seeded referral codes, cycling in request order. Each code is a valid
+// 12-character code from the production alphabet, unique per run.
+export function referralCodeFor(index, runId, codes, alphabet) {
+  const slot = index % codes;
+  let value = Number.parseInt(runId, 16) * codes + slot;
+  let code = '';
+  for (let position = 0; position < 12; position += 1) {
+    code += alphabet.charAt(value % alphabet.length);
+    value = Math.floor(value / alphabet.length);
+  }
+  return code;
 }
 
 export function hostileIdentity(index, runId) {

@@ -43,6 +43,14 @@ UTC day. Each invocation is explicitly capped. The reminder offsets are exactly
 constraint is the final deduplication guard. The expiry horizon defaults to 30
 days and changes only `pending` rows strictly past it.
 
+After each completed scheduler cycle and each email dispatch pass, the worker
+records a heartbeat (`src/server/subscriber/heartbeat.ts`, QA gate 7,
+G7-1-I2): it touches the heartbeat file the production health check reads
+(`heartbeat-check.ts`) and upserts its loop's `maintenance_heartbeat` row. A
+failed write logs a sanitized code and never fails the pass. The app process
+runs the watchdog in the same file every 30 seconds, with an injected clock,
+and raises one deduplicated P1 per stale episode (`docs/architecture/fallbacks.md`).
+
 ## Rules
 - **`normaliseEmail()` runs before any uniqueness check.** Lowercase, strip `+tag` (all domains), remove dots for **Gmail-family domains only** — `gmail.com` and `googlemail.com`; every other provider keeps its dots. The family is not cross-canonicalised (a `googlemail.com` address is not rewritten to `gmail.com`). The normalised form is the unique key; the raw form is what is displayed and mailed. A malformed address, or one whose local part is emptied by tag/dot removal, is rejected (the function returns `null`); Unicode and internationalised domains never throw. This one step removes the cheapest referral attack entirely.
 - After normalisation and before the subscriber upsert, `signup()` invokes the
