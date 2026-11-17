@@ -104,7 +104,7 @@ async function requestStatus(network, hostname, sourceIp) {
   if (sourceIp) {
     args.push('--ip', sourceIp);
   }
-  args.push('node:22.22.3-bookworm-slim', 'node', '-e', script, hostname);
+  args.push('node:22.23.5-bookworm-slim', 'node', '-e', script, hostname);
   return Number(await run('docker', args));
 }
 

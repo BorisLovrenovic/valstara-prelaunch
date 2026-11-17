@@ -50,10 +50,10 @@ test('developer, CI, and local Compose Node versions satisfy lint plugin engines
     ),
   ]);
 
-  assert.equal(nvmVersion.trim(), '22.22.3');
-  assert.equal(packageJson.engines.node, '>=22.22.3 <23');
+  assert.equal(nvmVersion.trim(), '22.23.5');
+  assert.equal(packageJson.engines.node, '>=22.23.5 <23');
   assert.equal(
-    (compose.match(/image: node:22\.22\.3-bookworm-slim/g) ?? []).length,
+    (compose.match(/image: node:22\.23\.5-bookworm-slim/g) ?? []).length,
     3,
   );
 });
