@@ -1,0 +1,12 @@
+HTTP/2 429 
+cache-control: private, no-store, max-age=0
+content-encoding: gzip
+content-type: text/html; charset=utf-8
+server: Vercel
+vary: Accept-Encoding
+x-vercel-challenge-token: 2.1794921405.60.ZGZhN2IzY2ZlY2JmZWViZjI5ZmJkZWU5NzEwNTE3ZDY7MjViZDE0ODM7ZmJhYjBiZjVhMjg2Mjc2NGNjMjZjYzE2ZGYxMGNjMWI4NWQzZjhmNTszOyrcvxHNgvcJO7OVTaKVAhobHh4wSryDiZSM2VFRnmE4JkI6azuiuVgd81yQV0E=.088305496577089a817dfac239cd7960
+x-vercel-id: sin1::1794921405-wUs9ZQpJ60kia9iBNEjhHS9isuzI8qeF
+x-vercel-mitigated: challenge
+content-length: 10658
+date: Tue, 17 Nov 2026 13:16:45 GMT
+
