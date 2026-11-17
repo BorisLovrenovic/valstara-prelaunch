@@ -138,6 +138,15 @@ test('main pushes produce an immutable SHA image and retain three versions', asy
   );
   assert.match(workflow, /min-versions-to-keep: 3/);
   assert.match(workflow, /package-type: container/);
+  // The job holds packages: write, so every action it runs is pinned to a
+  // commit SHA rather than a mutable tag (pre-PR review R1-N1).
+  const actions = [...workflow.matchAll(/^\s*(?:- )?uses: (\S+)/gm)].map(
+    (match) => match[1],
+  );
+  assert.ok(actions.length > 0, 'no actions found in the workflow');
+  for (const action of actions) {
+    assert.match(action, /^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/, action);
+  }
 });
 
 test('the production image is multi-stage, health-checked, and non-root', async () => {
