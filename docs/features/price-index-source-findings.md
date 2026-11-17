@@ -283,13 +283,13 @@ The table below has one row per captured country (⍽ marks the no-break space).
 - Duolingo — Super, Max
 - Figma — Professional
 - LinkedIn Premium — Career, Business
-- **Lovable — the paid plan.** Lovable is not on the source, so the plan ambiguity the brief raised does not arise there
+- Lovable — Pro (the founder, 2026-11-18)
 - MyFitnessPal — Premium
 - n8n — Starter
 - Notion — Plus
 - Perplexity — Pro
 
-That is 11 of the 19 products, and 13 of the 24 plans.
+That is 11 of the 19 products, and 13 of the 23 plans.
 
 ## Terms of use
 
