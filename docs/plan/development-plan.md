@@ -3211,7 +3211,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 ### Rules for every E11.6 ticket
 
 1. **The tool is a separate process that runs to completion (founder requirement, 2026-11-17).** It runs only when the founder types `npm run price-index -- <command>`. It writes its files, then exits. **It has no daemon, timer, watcher, server, cron, scheduled workflow or automatic notification.** Nothing in `npm run dev`, `npm start`, `npm run build`, either Compose file, the Dockerfile or a CI workflow starts it, imports it or copies it. **The site reads only the committed `data/price-index/` files, and only at build time**, so nothing the tool does, fails at or leaves half-written can reach a running site. `src/` may import only `packages/price-index/src/publish` and `packages/price-index/src/schema`, and a scan enforces it.
-2. **No AI agent session requests the source site.** Its `robots.txt` disallows named AI agents, including Anthropic's, outright (checked 2026-11-17). Agents work on the founder-captured fixtures. Tests never touch the network: transports are injected, and HTTP behaviour is tested against a local fake server. **The tool follows its politeness rules without exception**: one request at a time, jitter, `Crawl-delay`, backoff, a clean stop, a truthful bot user agent that imitates no browser and no other crawler (D6), the source host only. It never uses a proxy, solves a CAPTCHA or evades fingerprinting.
+2. **No AI agent session requests the source site.** Its `robots.txt` disallows named AI agents, including Anthropic's, outright (checked 2026-11-17). Agents work on the founder-captured fixtures. Tests never touch the network: transports are injected, and HTTP behaviour is tested against a local fake server. **The tool follows its politeness rules without exception**: one page at a time, jitter, `Crawl-delay`, backoff, a clean stop, the source host only, and the `*` group of `robots.txt`. **The source answers scripted requests with a Vercel bot checkpoint (found 2026-11-17), so the tool fetches through a headless browser that presents itself as an ordinary browser, with fingerprint evasion as needed (founder decision, 2026-11-17, recorded on E11.6-04).** It never solves a CAPTCHA and never rotates proxies or IP addresses. A page that still refuses after backoff stops the run for the founder.
 3. **Money is exact, and never converted (founder, 2026-11-17).** A price is stored exactly as the source shows it: a decimal string at the currency's exponent, computed in integer minor units, with the source's text kept beside it. A float never holds a price. **There is no FX provider and no conversion anywhere.** `price_usd_source` is used only internally to rank markets, and it never appears on a page.
 4. **There is one publish gate, and everything published goes through it.** Only `ok` records and approved `manual_override` records reach a page, hub, sitemap, FAQ, ranking or published report figure.
 5. **A catalogue change is data, not code.** Every ticket that consumes `config/catalogue.json` or `config/markets.json` tests an added and a removed service, plan and market against its own layer.
@@ -3229,9 +3229,10 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 - `/robots.txt`, `/sitemap.xml`, `/countries`, `/services`, the "Price moves" page and the terms of use;
 - **one country page for each of these 38 countries** (founder, 2026-11-17), covering every currency and number format the parser must handle: Sweden, Germany, United Kingdom, Poland, Romania, Norway, Denmark, Switzerland, Canada, Australia, Austria, Belgium, Bosnia and Herzegovina, Croatia, Cyprus, Czech Republic, Estonia, Finland, France, Greece, Hungary, Iceland, Ireland, Italy, Latvia, Liechtenstein, Lithuania, Luxembourg, Malta, Netherlands, New Zealand, North Macedonia, Portugal, Serbia, Slovakia, Slovenia, Spain and the United States. **The countries outside the 20 markets of `docs/features/price-index.md#markets-configmarketsjson` are parser fixtures, not markets**;
 - the service pages for Netflix and Spotify;
-- **the country × service pages** for every tracked service the source lists, in Sweden, Germany, the United Kingdom, Switzerland and the United States;
-- the response headers of every capture;
-- full-page screenshots of each page type, and a sanitised HAR export of one country page and one country × service page.
+- **a sample of country × service pages**: the tracked services that have a per-service sitemap on the source (Adobe, Apple Music, ChatGPT, Netflix, Spotify, YouTube Premium), in Sweden and the United States;
+- full-page screenshots of each page type, and a sanitised HAR export of one country page and one country × service page, which also carry the response headers.
+
+**Every page is saved from Chrome** (founder-authorised 2026-11-17), because the source serves scripted requests a Vercel bot checkpoint (`x-vercel-mitigated: challenge`, HTTP 429). The founder's scripted capture of 2026-11-17 got `robots.txt` and `sitemap.xml` and three checkpoint responses, which stay in the fixtures as evidence.
 
 The agent then writes `docs/features/price-index-source-findings.md` from the saved files only, covering:
 - the structure and slug scheme of each page type, confirming or correcting the founder's known structure;
@@ -3248,7 +3249,7 @@ The agent then writes `docs/features/price-index-source-findings.md` from the sa
 - **the minimum set of requests a monthly run needs** for the 20 markets, with an estimated count and duration;
 - how the "Price moves" page lists changes, and over what period;
 - local number and currency formats, one row per captured country;
-- whether `ETag` and `Last-Modified` support conditional requests;
+- whether `ETag` and `Last-Modified` support conditional requests, and **what the bot checkpoint does**: which requests it challenges, what a challenged response looks like, and what a headless browser must do to load a page normally;
 - **every name mapping between the source and the catalogue**, marked confirmed or uncertain. The uncertain ones (e.g. Adobe Creative Cloud's individual plan, Lovable's paid plan, Netflix's tiers) go to the founder to confirm, together with every tracked product the source does not list;
 - the terms-of-use clauses on automated access and reuse, quoted with the capture date;
 - the parser dependency the extraction needs, if any, with name, licence and why. It is a dev dependency only, because the tool never ships in the image.
@@ -3256,8 +3257,8 @@ The agent then writes `docs/features/price-index-source-findings.md` from the sa
 It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the founder as decisions; the agent does not edit the plan.
 
 **Acceptance criteria:**
-- **No agent session requests the source site.** Every fixture is a founder capture, unmodified, listed in `fixtures/youfundceo/manifest.tsv` with its URL, HTTP status, capture time and SHA-256
-- All 38 country pages are present. A country the source does not list is recorded as such, not substituted
+- **No agent session requests the source site.** Every fixture is a founder capture, unmodified, listed in `fixtures/youfundceo/manifest.tsv` with its URL, capture time, save method and SHA-256 (HTTP status where the script recorded one)
+- All 38 country pages are present. A country the source does not list is recorded as such, not substituted. Every saved page shows real content, not the checkpoint
 - The findings name one extraction source per page type and say why it is the most stable
 - **Every uncertain name mapping and every tracked product missing from the source is listed for the founder**, and none is guessed
 - The terms-of-use clauses on automated access and reuse are quoted in the findings. **Under D3 (founder, 2026-11-17, recorded on E11.6-05) the founder has accepted the legal risk, so they inform the founder and do not block the later tickets**
@@ -3328,36 +3329,37 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the
 **Tests:** Per-currency parse tables · ambiguity rejection · round-trip formatting and source text · the float scan · the no-conversion schema case · the injected-crash write · snapshot immutability · byte-stable serialisation.
 **Docs:** `docs/features/price-index.md#the-price-record` · `docs/modules/price-index.md`
 
-### E11.6-04 — The polite fetcher: robots, one request at a time, backoff and checkpoints
+### E11.6-04 — The browser fetcher: one page at a time, backoff and checkpoints
 **Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** backend
-**Why this model:** not being blocked is the whole requirement, and a fetcher that misbehaves once can lose the source for good.
+**Why this model:** the source sits behind a bot checkpoint, and a fetcher that misbehaves once can lose the source for good.
 
-**Build:** `src/http/`, with an injected transport, clock and seeded randomness:
-- **Robots.** Fetch and parse `robots.txt` and apply the group for the tool's own token (D6), otherwise `*`.
+**Build:** `src/http/`, with an injected browser driver, clock and seeded randomness:
+- **A headless browser.** Pages load through headless Chromium driven by Playwright, already a dev dependency, presenting itself as an ordinary browser, with the fingerprint evasion the source's checkpoint needs (founder decision below). Any extra dependency is recorded with its name, licence and why. It is a dev dependency only, because the tool never ships in the image. The runbook covers the one-time Chromium install.
+- **Robots.** Fetch and parse `robots.txt` and apply its `*` group.
 - **Crawl delay.** Honour `Crawl-delay` when it is longer than the jitter.
-- **One request at a time, by construction.**
+- **One page at a time, by construction**, in one browser context per run.
 - **Jitter.** A randomised delay of 8–20 s by default, set in `config/price-index.json` (created here with only the fetcher's keys).
-- **Backoff.** Exponential backoff on 429, 403 and 5xx, honouring `Retry-After`. **After three consecutive failures (configurable), stop the run cleanly** with a non-zero exit and a report.
-- **Timeouts** on every request.
-- **Conditional requests.** `If-None-Match` and `If-Modified-Since`, using the validators of the previous run.
-- **User agent.** A truthful bot `User-Agent`, as decided in D6. It never imitates a browser or another known crawler.
-- **Host allowlist.** `www.youfundceo.com` only. Anything else, and any path `robots.txt` disallows, is refused before a request is made.
-- **Raw store.** `data/raw/<run_id>/`, gitignored and rotated to the last six runs (configurable).
+- **Backoff.** Exponential backoff when a page answers 429, 403 or 5xx, or **still shows the checkpoint after it has had time to complete**, honouring `Retry-After`. **After three consecutive failures (configurable), stop the run cleanly** with a non-zero exit and a report.
+- **Timeouts** on every page.
+- **Host allowlist.** `www.youfundceo.com` only. Anything else, and any path `robots.txt` disallows, is refused before a page is opened.
+- **Raw store.** `data/raw/<run_id>/` holds each page's rendered HTML. It is gitignored and rotated to the last six runs (configurable).
 - **Checkpoints.** A checkpoint after each market lets an interrupted run resume where it stopped.
 
 **Acceptance criteria:**
-- **At most one request is ever in flight**, asserted against the fake server under a queue of 50
-- A path disallowed for the tool's group is never requested, and nothing under `/api/` or `/go/` is ever requested
-- The delay between requests is always at least the larger of the jitter floor and `Crawl-delay`, asserted with the injected clock
-- The backoff sequence and the `Retry-After` handling match the configuration, and the run stops after the configured number of consecutive failures, **leaving the checkpoint for a resume**
+- **At most one page is ever loading**, asserted against the fake server under a queue of 50
+- A path disallowed for the `*` group is never opened, and nothing under `/api/` or `/go/` is ever opened
+- The delay between pages is always at least the larger of the jitter floor and `Crawl-delay`, asserted with the injected clock
+- The backoff sequence and the `Retry-After` handling match the configuration. **A page that still shows the checkpoint counts as a failure.** The run stops after the configured number of consecutive failures, **leaving the checkpoint for a resume**
 - A resumed run fetches only what is not yet checkpointed
-- A 304 reuses the stored raw page and counts as "not modified"
 - Rotation keeps exactly the configured number of runs
-- **A scan finds no proxy configuration, no rotating user agent and no CAPTCHA or challenge-solving code** in the package
+- **A scan finds no CAPTCHA-solving code or service, and no proxy or IP rotation**, in the package
+- **The tool passes every security gate unchanged** (epic rule 9). If an evasion measure needs code a gate rejects, the ticket reports `BLOCKED:` instead of weakening the gate
 
-**Tests:** All of the above against a local fake server with an injected clock and a seeded source · the no-evasion scan and its red path.
+**Tests:** All of the above against a local fake server, which also serves a fake checkpoint page that clears and one that never clears, with an injected clock and a seeded source · the no-CAPTCHA and no-proxy scan and its red path. No test reaches the real source.
 **Founder decisions (2026-11-17):**
-1. **D6: the tool uses a neutral bot name, `PriceIndexBot/1.0`, with no URL.** "Neutral bot name." The `User-Agent` is exactly `PriceIndexBot/1.0`, set in `config/price-index.json`. It is truthful about being a bot without naming the operator. It never names Valstara or SubSlush, never imitates a browser or another known crawler, and the tool obeys the `robots.txt` group for `PriceIndexBot`, otherwise `*`. *(Founder decision.)*
+1. **D6: the tool uses a neutral bot name, `PriceIndexBot/1.0`, with no URL.** *(Superseded for the fetcher by decision 2.)* "Neutral bot name." The `User-Agent` is exactly `PriceIndexBot/1.0`, set in `config/price-index.json`. It is truthful about being a bot without naming the operator. It never names Valstara or SubSlush, never imitates a browser or another known crawler, and the tool obeys the `robots.txt` group for `PriceIndexBot`, otherwise `*`. *(Founder decision.)*
+
+2. **The fetcher is a headless browser with fingerprint evasion, and no CAPTCHA solving.** In the founder's words: "You're saying that the crawler would need like a disguised headless browser, but that my brief forbids both. I'm giving a founder decision here that it shouldn't forbid either of them. However, I don't think that CAPTCHA solving is required. Only, you know, running a sort of fingerprint evasion or headless browser is enough. So this is the most simple way to get this done, and that's what we will do." The founder's scripted capture of 2026-11-17 met a Vercel bot checkpoint (`x-vercel-mitigated: challenge`, HTTP 429) on every page, while `robots.txt` and `sitemap.xml` loaded. The fetcher therefore loads pages in headless Chromium presenting as an ordinary browser, with the fingerprint evasion the checkpoint needs. Everything else in the politeness rules stands: one page at a time, the 8–20 s jitter, `Crawl-delay`, backoff, a clean stop after three failures, the `*` group of `robots.txt`, the source host only. **No CAPTCHA is solved and no proxy or IP rotation is used.** If the checkpoint ever demands either, the run stops for the founder. The founder runs the tool; no AI agent session runs it (epic rule 2). *(Founder decision.)*
 
 **Docs:** `docs/features/price-index.md#the-source-youfundceocom` · `docs/features/price-index-source-findings.md`
 
@@ -3881,7 +3883,7 @@ Also in this ticket:
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
 | E11.5 Frontend design | 32 | Foundations, survey v2, shell, **provider showcase**, landing, **mobile sticky signup bar**, verify, `/me` and leaderboard, content pages, task and error pages, email layout, **the eight wireframe tickets**, **the twelve final-design tickets and the motion system**, design QA and re-audits |
-| E11.6 Price index and price pages | 16 | Discovery spike, config and schemas, exact money, **the polite fetcher**, the source adapter, **merge and the publish gate**, the run and its isolation from the site, coverage and overrides, change log and monthly report, the price pages and hubs, the index and monthly pages, social cards, the first real run and its runbook, the audit |
+| E11.6 Price index and price pages | 16 | Discovery spike, config and schemas, exact money, **the browser fetcher**, the source adapter, **merge and the publish gate**, the run and its isolation from the site, coverage and overrides, change log and monthly report, the price pages and hubs, the index and monthly pages, social cards, the first real run and its runbook, the audit |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
 | **Total** | **145** | |
 
@@ -3914,7 +3916,7 @@ The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan i
 | E11.6-01 Discovery spike | The founder's capture (P9) | 4 h |
 | E11.6-02 Markets, catalogue, schemas | 01; the founder's confirmed name mappings | 4 h |
 | E11.6-03 Exact money, record, storage | 01, 02 | 5 h |
-| E11.6-04 The polite fetcher | 01, 03 | 6 h |
+| E11.6-04 The browser fetcher | 01, 03 | 6 h |
 | E11.6-05 Source adapter | 01, 04 | 7 h |
 | E11.6-06 Merge and the publish gate | 03, 05 | 8 h |
 | E11.6-07 The run, dry run, isolation | 04–06 | 5 h |

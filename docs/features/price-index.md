@@ -145,10 +145,11 @@ Prices are shown in local currency with an approximate USD figure, plus a "last 
 **What the 2026-11-17 check of `robots.txt` found (one request, before the spike):** the `*` group allows `/` and disallows only `/api/` and `/go/`. A separate group disallows the whole site to named AI agents, including `ClaudeBot`, `anthropic-ai`, `Claude-Web`, `GPTBot`, `CCBot` and `Scrapy`. The responses carry `ETag` and `Last-Modified`, and the site is served by Vercel. So:
 
 - **No AI agent session fetches the site.** The founder captures E11.6-01's fixtures following `docs/prerequisites/p9-source-capture.md`, and agents work on them offline.
-- **The tool sends a truthful, neutral bot user agent, `PriceIndexBot/1.0`** (D6), and obeys the `robots.txt` group that applies to that name, otherwise `*`. It never sends a browser user agent, and never one from the disallowed list or of any other known crawler.
+- **The source answers scripted requests with a Vercel bot checkpoint** (`x-vercel-mitigated: challenge`, HTTP 429), found by the founder's capture on 2026-11-17. `robots.txt` and `sitemap.xml` load without it.
+- **The tool therefore fetches through headless Chromium presenting as an ordinary browser, with fingerprint evasion as needed, and never solves a CAPTCHA** (founder decision, 2026-11-17, recorded on E11.6-04; it supersedes D6 for the fetcher). It obeys the `*` group of `robots.txt`.
 - **Nothing under `/api/` or `/go/` is requested**, however stable a JSON endpoint there looks.
 
-**Fetching rules.** One request at a time. A randomised delay between requests (default 8–20 s, configurable), or the source's `Crawl-delay` if longer. It never crawls the whole site. It backs off exponentially on 429, 403 and 5xx, honouring `Retry-After`, and stops the run cleanly after repeated failures. **There is no proxy rotation, no CAPTCHA solving and no fingerprint evasion. If the source blocks us, that is a signal for the founder, never something to work around.** It makes conditional requests (`If-None-Match`, `If-Modified-Since`). It checkpoints after each market and resumes an interrupted run.
+**Fetching rules.** One page at a time. A randomised delay between requests (default 8–20 s, configurable), or the source's `Crawl-delay` if longer. It never crawls the whole site. It backs off exponentially on 429, 403 and 5xx, honouring `Retry-After`, and stops the run cleanly after repeated failures. **There is no proxy or IP rotation and no CAPTCHA solving.** A page that still refuses after backoff stops the run, and that is a signal for the founder. Fingerprint evasion is permitted by founder decision (2026-11-17). It checkpoints after each market and resumes an interrupted run.
 
 **Matching.** The source's service and plan names are matched to the catalogue through `source_aliases` only, after normalising case, whitespace, punctuation and diacritics. A source entry that matches nothing is listed in the run report as "untracked on source". A fuzzy matcher may *suggest* an alias, and **never accepts one**.
 
@@ -245,7 +246,7 @@ A **real change** is a published value replaced by a different published value f
 
 - [ ] The tool runs only on an explicit command and exits when done. Nothing in `npm run dev`, `npm start`, Compose, the production image or a CI schedule starts or contains it, which is asserted.
 - [ ] A failed, blocked or interrupted run leaves `data/price-index/latest.json` byte-identical.
-- [ ] The tool requests only the source host, obeys `robots.txt` for its own truthful bot user agent (D6), makes one request at a time, and backs off and stops on repeated trouble.
+- [ ] The tool requests only the source host, obeys the `*` group of `robots.txt`, loads one page at a time through a headless browser, solves no CAPTCHA, and backs off and stops on repeated trouble.
 - [ ] Every currency in `config/markets.json`, and every currency with a captured fixture, has parser tests against founder-captured fixtures.
 - [ ] Prices are exact decimals end to end, no float holds a price, and no conversion is computed or displayed anywhere.
 - [ ] Override precedence, `not_offered`, conflict detection, staleness, disappearance and the ±40% threshold behave as specified. **Only `ok` and approved `manual_override` records reach any page.**
@@ -269,7 +270,7 @@ packages/price-index/            framework-agnostic TypeScript; imports nothing 
   src/
     schema/       Zod schemas for every config and data file
     money/        exact decimals, minor units, local number formats
-    http/         the polite fetcher: robots, single flight, jitter, backoff, conditional requests, raw store
+    http/         the browser fetcher: robots, one page at a time, jitter, backoff, raw store
     sources/      the SourceAdapter interface; youfundceo/ (the first adapter); direct:<provider> later
     storage/      the PriceStore interface; the JSON-file implementation (atomic writes)
     pipeline/     matching, merge, validation, staleness, the publish gate, change detection
@@ -299,7 +300,7 @@ The brief's six questions were answered on 2026-11-17 (see "Founder amendments")
 | D3 | The legal basis for republishing the source's data | **Answered 2026-11-17:** the founder accepts the risk. The source itself republishes the providers' own public prices. Not a gate | E11.6-05 |
 | D4 | The methodology wording | **Answered 2026-11-17:** "We collect official list prices once a month from public price listings, and check them by hand against providers' own pricing pages where needed." | E11.6-13 |
 | D5 | Where the site links to the price pages | **Answered 2026-11-17:** a "Price index" link in the footer, added with the hubs | E11.6-12 |
-| D6 | The name the tool gives in its `User-Agent` | **Answered 2026-11-17:** a neutral bot name, exactly `PriceIndexBot/1.0`, with no URL. It is truthful about being a bot without naming the operator. Never Valstara, never SubSlush, never a browser or known-crawler string | E11.6-04 and the P9 capture |
+| D6 | The name the tool gives in its `User-Agent` | **Answered 2026-11-17:** a neutral bot name, exactly `PriceIndexBot/1.0`, with no URL. **Superseded for the fetcher the same day**, after the source's bot checkpoint refused scripted requests: the fetcher is a headless browser presenting as an ordinary browser (recorded on E11.6-04) | E11.6-04 and the P9 capture |
 
 ## Founder amendments, 17 November 2026 (verbatim)
 
