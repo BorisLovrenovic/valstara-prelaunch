@@ -250,8 +250,8 @@
       "status": "launch",
       "plans": [
         {
-          "plan_id": "paid",
-          "name": "Paid plan",
+          "plan_id": "pro",
+          "name": "Pro",
           "billing_period": "month",
           "is_student": false,
           "is_family": false

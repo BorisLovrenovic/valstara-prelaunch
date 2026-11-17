@@ -65,7 +65,7 @@ Each service has a `service_id` (slug), display name, category (`ai`, `streaming
 | Duolingo | Super, Max |
 | Figma | Professional |
 | LinkedIn Premium | Career, Business |
-| Lovable | The paid plan. Flag it if ambiguous |
+| Lovable | Pro (the founder, 2026-11-18) |
 | MyFitnessPal | Premium |
 | n8n | Starter |
 | Netflix | Basic, Standard, Premium (4K) |

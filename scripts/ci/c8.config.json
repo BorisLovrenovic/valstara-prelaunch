@@ -5,6 +5,7 @@
   "extension": [".js", ".cjs", ".mjs", ".ts", ".tsx", ".jsx", ".astro"],
   "include": [
     "src/**/*.{ts,astro}",
+    "packages/price-index/src/**/*.ts",
     "dist/server/**/*.mjs",
     ".astro/interface-primitives-fixture/server/**/*.mjs",
     ".astro/provider-showcase-fixture/server/**/*.mjs"

@@ -77,7 +77,7 @@ test('config/catalogue.json tracks exactly the founder’s products and monthly 
       ['Duolingo', ['Super', 'Max']],
       ['Figma', ['Professional']],
       ['LinkedIn Premium', ['Career', 'Business']],
-      ['Lovable', ['Paid plan']],
+      ['Lovable', ['Pro']],
       ['MyFitnessPal', ['Premium']],
       ['n8n', ['Starter']],
       ['Netflix', ['Basic', 'Standard', 'Premium (4K)']],

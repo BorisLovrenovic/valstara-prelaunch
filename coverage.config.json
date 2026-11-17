@@ -1,6 +1,6 @@
 {
   "changedLinesMinimum": 80,
-  "includedRoots": ["src/"],
+  "includedRoots": ["src/", "packages/price-index/src/"],
   "includedExtensions": [".ts", ".astro"],
   "criticalModules": {
     "minimum": 90,
