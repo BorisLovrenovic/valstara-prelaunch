@@ -53,6 +53,11 @@
     "contentParts": ["export const entropy = performance", ".now();\\n"],
     "diagnostic": "\\[fingerprinting\\]"
   },
+  "fingerprinting-price-index": {
+    "path": "packages/price-index/test/ci-timing-fixture.mjs",
+    "contentParts": ["export const entropy = performance", ".now();\\n"],
+    "diagnostic": "\\[fingerprinting\\] packages/price-index/test/ci-timing-fixture\\.mjs"
+  },
   "third-party": {
     "path": "src/pages/ci-third-party-fixture.astro",
     "content": "<script src=\"https://example.invalid/fixture.js\"></script>\n",

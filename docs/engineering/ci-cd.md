@@ -72,6 +72,8 @@ Seven scans, each with a **planted red-path fixture committed in-repo** so a sca
 
 **The cookie, fingerprinting and third-party rules are what make "no consent banner" a verified property rather than an intention.** They are the reason it is safe to have no banner at all.
 
+**One path is excepted from the fingerprinting rule and from Prettier: `packages/price-index/test/fixtures/`** (E11.6-01, founder decision D-019 Q1, 2026-11-17). It holds the founder's verbatim capture of the price index's source site, third-party pages whose inline React code reads the high-resolution timer, a timing-entropy API the rule matches. Each file's SHA-256 is pinned in `fixtures/youfundceo/manifest.tsv`, so it cannot be edited or reformatted to pass. Those pages are test inputs: nothing in them is served, bundled or loaded by a rendered page. The exception covers that directory only. The fingerprinting rule still reads the rest of `packages/price-index/`, including the tool's own `src/` and the rest of its `test/`, and every other scan still reads the fixtures. The `fingerprinting-price-index` red path in `test/fixtures/security/gates.json` plants that timer call in `packages/price-index/test/` and proves the scan still fails there. `.prettierignore` lists the same directory.
+
 `npm run security` runs the eight scans. `npm run ci:security-red-paths` materialises the committed fixture definitions and proves each scan fails; it is mandatory beside the production scan. The policy files live in `scripts/ci/`, while `scripts/forbidden-copy.json` is seeded from the LOCKED never-use table.
 
 ## Main pipeline
