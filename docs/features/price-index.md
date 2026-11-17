@@ -130,7 +130,7 @@ One record per market × service × plan × billing period:
 
 The founder picked this source after comparing several. It was the only one that caught Spotify Sweden rising from 129 to 149 SEK (October 2026). It also correctly shows YouTube Premium Individual in Sweden at 169 SEK, where other sites and Google's AI answer still showed 149 SEK.
 
-**The known structure (founder, 2026-11-17; E11.6-01 confirms it):**
+**The known structure (founder, 2026-11-17; confirmed by E11.6-01, whose findings are in `docs/features/price-index-source-findings.md`):**
 
 | Page | Path | Use |
 |---|---|---|
@@ -138,7 +138,7 @@ The founder picked this source after comparing several. It was the only one that
 | Country page | `/countries/{country}` | **The top section** lists every service with its current price. **"No price shown for <country>"** at the bottom lists services without a price, which become `missing` (`source_no_price`). **"What you get in <country>"** is not read |
 | Service page | `/services/{service}` | Resolves service slugs |
 | **Country × service page** | `/services/{service}/{country}` (e.g. `/services/netflix/sweden`) | **The preferred source of a tracked price.** Fetch only the pairs we track |
-| Price moves | Path confirmed by E11.6-01 | Dated price changes on the source. **Used only to cross-check the changes our runs detect, in the founder's report. It never overrides our data** |
+| Price moves | `/price-moves` (confirmed by E11.6-01) | Dated price changes on the source. **Used only to cross-check the changes our runs detect, in the founder's report. It never overrides our data** |
 
 Prices are shown in local currency with an approximate USD figure, plus a "last checked" date for each service, which is stored as `source_verified_at`. **E11.6-01 decides from the captured pages which page type carries each fact.** That covers plan-level prices, the "last checked" date, and the "No price shown" list. A run then fetches nothing it does not need: `/robots.txt`, the indexes, the enabled markets' country pages, and the country × service pages only for tracked services the source lists in that country. That is roughly 460 requests a month, or about two hours at the default delay. Speed does not matter.
 
