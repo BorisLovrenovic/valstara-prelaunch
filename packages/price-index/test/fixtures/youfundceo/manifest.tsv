@@ -125,3 +125,8 @@ https://www.youfundceo.com/price-moves	pages/price-moves.server.html	200	2026-11
 https://www.youfundceo.com/price-moves	browser/price-moves.png	200	2026-11-17T14:13:39.608Z	3dd95f702a11138aacf492d1c6281388ba943403aec4a58f4e846e54867c24d0
 https://www.youfundceo.com/terms	pages/terms.html	200	2026-11-17T14:13:55.398Z	880e529bfa9876a3dcc2c535377f94a62d63af62d5f7913eb44ca274615a5522
 https://www.youfundceo.com/terms	pages/terms.server.html	200	2026-11-17T14:13:55.403Z	fade401c772689767a751c0bc920728a82a3af8e7714ee385d8bf2f55d62a4ac
+https://www.youfundceo.com/robots.txt	raw/robots.txt.headers	200	2026-11-17T13:13:39Z	a073e71373451d2133914ce9108b3b2818344cab702ac2b64871354b891f7a14
+https://www.youfundceo.com/sitemap.xml	raw/sitemap.xml.headers	200	2026-11-17T13:13:55Z	753a32112194385ceaa38f204cba79504da9b16b533ee00296b0a8370e352aed
+https://www.youfundceo.com/	raw/home.html.headers	429	2026-11-17T13:14:14Z	20950cc6ea878df93bc5df71c07183ea3c9517ee8e4fb342c835efc405e0c7a9
+https://www.youfundceo.com/countries	raw/countries.html.headers	429	2026-11-17T13:15:34Z	7504a83ddbc5668e59e663c0e7d7f2e888fa8bee0c3caca48342c05348a99059
+https://www.youfundceo.com/services	raw/services.html.headers	429	2026-11-17T13:16:45Z	9383a60ab8af0857d24e3afefe992afb9cdb75485f5cd71c3d3f7074383db5fb

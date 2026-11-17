@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile, stat } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { readFile, readdir, stat } from 'node:fs/promises';
+import { relative, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -83,6 +83,27 @@ async function manifest() {
   );
 }
 
+// Every fixture file except the manifest itself, as a path relative to the
+// fixture root (founder decision D-019 Q2: no fixture goes unlisted).
+async function fixtureFiles() {
+  const entries = await readdir(fixtureRoot, {
+    recursive: true,
+    withFileTypes: true,
+  });
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) =>
+      relative(fixtureRoot, resolve(entry.parentPath, entry.name)),
+    )
+    .filter((file) => file !== 'manifest.tsv')
+    .sort();
+}
+
+function unlistedFiles(files, rows) {
+  const listed = new Set(rows.map((row) => row.file));
+  return files.filter((file) => !listed.has(file));
+}
+
 function sha256(content) {
   return createHash('sha256').update(content).digest('hex');
 }
@@ -129,6 +150,41 @@ test('every listed file exists and matches its SHA-256', async () => {
       sha256(await readFile(path)),
       row.sha256,
       `${row.file} is unmodified since the capture`,
+    );
+  }
+});
+
+test('every fixture file except the manifest is listed in it', async () => {
+  const files = await fixtureFiles();
+  assert.ok(files.length > 0, 'the fixture directory holds the capture');
+  assert.deepEqual(unlistedFiles(files, await manifest()), []);
+});
+
+test("each raw headers file is listed with its body file's URL, time and status", async () => {
+  const rows = await manifest();
+  const headerRows = rows.filter((row) => row.file.endsWith('.headers'));
+  assert.equal(headerRows.length, 5, 'the plain capture saved five headers');
+  for (const row of headerRows) {
+    const body = rows.find(
+      (candidate) => candidate.file === row.file.slice(0, -'.headers'.length),
+    );
+    assert.ok(body, `${row.file} has a listed body file`);
+    assert.equal(row.url, body.url, `${row.file} carries its body's URL`);
+    assert.equal(
+      row.capturedAt,
+      body.capturedAt,
+      `${row.file} was captured with its body`,
+    );
+    const text = await readFile(resolve(fixtureRoot, row.file), 'utf8');
+    const statusLine = /^HTTP\/\S+ (\d{3})/u.exec(text);
+    assert.ok(statusLine, `${row.file} starts with a status line`);
+    assert.equal(row.status, statusLine[1], `${row.file} status`);
+    const date = /^date: (.+?)\r?$/imu.exec(text);
+    assert.ok(date, `${row.file} has a date header`);
+    assert.equal(
+      new Date(date[1]).toISOString().replace('.000Z', 'Z'),
+      row.capturedAt,
+      `${row.file} capture time is its own date header`,
     );
   }
 });
@@ -214,6 +270,11 @@ test('a tampered or missing fixture fails the manifest check', () => {
   );
   assert.notEqual(sha256('User-Agent: *\nDisallow: /\n'), rows[0].sha256);
   assert.throws(() => parseManifest('url\tfile\n'), /header/u);
+  // A file on disk that no row lists is reported, so none goes unlisted.
+  assert.deepEqual(
+    unlistedFiles(['raw/robots.txt', 'raw/robots.txt.headers'], rows),
+    ['raw/robots.txt.headers'],
+  );
   assert.throws(
     () => parseManifest(`${header.join('\t')}\nonly\tthree\tfields\n`),
     /fields/u,
