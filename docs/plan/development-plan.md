@@ -3736,7 +3736,7 @@ Also in this ticket:
 
 **Goal:** a lightweight, temporary partner layer on the existing waitlist and referral system, plus the campaign's new reward rules for every member. It covers:
 - **for partners:** apply, founder review, a contract signed outside the system, activation, a permanent `/r/{CODE}` link, a private dashboard and a monthly digest;
-- **for every member:** wave 1 and the coupon ladder replace the 3-referral milestone;
+- **for every member:** wave 1 and the coupon ladder replace the 3-referral milestone, and `/me` says plainly whether they get early access;
 - **for the main platform:** an attribution export it can import at launch.
 
 It ends at early access, when the main platform's affiliate system takes over. *15 tickets.*
@@ -3772,7 +3772,7 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 - E11.7-14 builds the export and hand-over;
 - E11.7-15 is the audit.
 
-**Founder inputs.** P10 (the asset kit files) gates E11.7-11. One question is open, D1 in `docs/features/partner-programme.md#open-questions-for-the-founder`, and it blocks E11.7-03.
+**Founder inputs.** P10 (the asset kit files) gates E11.7-11. D1 was answered on 2026-11-17 and is recorded on E11.7-03. **The founder's growth decisions record is `docs/prerequisites/valstara-prelaunch-growth-decisions.md`.** Where it and the answers recorded in `docs/features/partner-programme.md` disagree, the later answers recorded there win.
 
 ### Rules for every E11.7 ticket
 
@@ -3850,7 +3850,6 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 - **Amend ADR-012 and ADR-025.**
   - ADR-012: coupons are held until any one of the holder's confirmed referred friends places a first order, and the five-year expiry replaces the 90-day deadline.
   - ADR-025: the ladder replaces the tiers.
-- **BLOCKED until D1 is decided** (whether the signup-order band that puts the first 1,000 verified members in wave 1 stays).
 
 **Acceptance criteria:**
 - **No code path moves a coupon to `settled`**, asserted by enumerating every transition, as E4-06's test does
@@ -3862,6 +3861,15 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 - The handoff export (E11-06) carries every coupon as `held`, with its percent and computed expiry
 
 **Tests:** The transition enumeration · the seeded property test · the founder's table cases · void-driven decrease and restore · wave 1 at the threshold · retired awards · configuration change without migration · the export fields.
+**Founder decisions (2026-11-17):**
+1. **D1: the first 1,000 verified members stay in wave 1.** In the founder's words: "Yes keep this. First 1000 users gets into wave 1, with early access in July 2027 no matter if they have reached the other reward for it. All other users after 1000 needs to reach the other referral reward to get early access in July 2027." Keep ADR-025's first signup-order band (verification order 1–1,000 → wave 1) unchanged. A member is in wave 1 when any one of these holds:
+   - they are among the first 1,000 by verification order, which never changes;
+   - they have 3 or more confirmed, non-voided referrals;
+   - they are an active partner (E11.7-07);
+   - they signed up through an active partner (E11.7-07).
+
+   Every member after the first 1,000 reaches wave 1 only through one of the other three. The first-1,000 place is recorded as its own reason, so a later void never removes it. *(Founder decision.)*
+
 **Docs:** `docs/features/partner-programme.md#early-access-and-rewards-founder-2026-11-17` · `docs/architecture/adr/012-reward-gating.md` · `docs/architecture/adr/025-campaign-configuration.md` · `docs/modules/referral.md`
 
 ### E11.7-04 — Showing the ladder: `/me`, verification, the landing page, emails and the privacy policy
@@ -3886,6 +3894,16 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 - The E11-04 claims checks and the forbidden-copy scan pass, and the final-design layout checks still pass on the changed surfaces
 
 **Tests:** The old-reward scan · configuration-driven copy · the held-condition assertion on every surface · layout checks on the landing, verification and `/me` pages · email rendering for the changed templates.
+**Founder decisions (2026-11-17):**
+1. **Every member's `/me` page says plainly whether they get early access in July 2027, and if not, exactly what earns it.**
+   - A member in wave 1 sees that they are in wave 1 with early access from July 2027, and why: one of the first 1,000, 3 confirmed referrals, a partner, or joined through a partner.
+   - A member not in wave 1 sees that they do not yet have early access, and how many more confirmed referrals they need. For example: "2 more confirmed referrals and you get early access in July 2027."
+   - The partner dashboard (E11.7-09) shows the same line.
+   - The only scarcity wording allowed is the founder-approved line in `docs/prerequisites/valstara-prelaunch-growth-decisions.md`, and only while it stays true: "Some high-demand products have limited supply. Early access members get first pick."
+   - **No stock counts, no countdowns, and no implication that the public launch will be empty** (ADR-024, `AGENTS.md`).
+
+   The figures come from the member's own state and the configuration. *(Founder decision.)*
+
 **Docs:** `docs/brand/copy-rules.md#claims-that-must-stay-true` · `docs/features/member-status.md` · `docs/features/referral.md`
 
 ### E11.7-05 — The programme page and the partner application
@@ -4359,7 +4377,7 @@ The founder's brief targeted 40–60 hours for the partner programme. The founde
 |---|---|---:|---:|
 | E11.7-01 Shared code registry, code rules | — | 4 h | |
 | E11.7-02 Voiding, founder command line | 01 | 4 h | |
-| E11.7-03 Coupon ladder and wave 1 | 02; D1 | | 8 h |
+| E11.7-03 Coupon ladder and wave 1 | 02 | | 8 h |
 | E11.7-04 Showing the ladder | 03 | | 6 h |
 | E11.7-05 Programme page and application | 01 | 7 h | |
 | E11.7-06 Review, contract, lifecycle commands | 02, 05 | 6 h | |

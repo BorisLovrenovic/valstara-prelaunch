@@ -1,6 +1,6 @@
 # Feature: Pre-launch partner programme
 
-Founder-authorised 2026-11-17. Built by Epic E11.7 (`docs/plan/development-plan.md`). **This spec is the in-repository record of the founder's brief and answers.** The brief has no other source. The brief (with superseded parts condensed) and the founder's two sets of answers are recorded verbatim at the end. **Where an answer and the brief conflict, the answer wins.**
+Founder-authorised 2026-11-17. The founder's wider growth decisions are in `docs/prerequisites/valstara-prelaunch-growth-decisions.md`; where they disagree with the answers recorded here, the answers here are later and win. Built by Epic E11.7 (`docs/plan/development-plan.md`). **This spec is the in-repository record of the founder's brief and answers.** The brief has no other source. The brief (with superseded parts condensed) and the founder's two sets of answers are recorded verbatim at the end. **Where an answer and the brief conflict, the answer wins.**
 
 ## Summary
 
@@ -85,11 +85,12 @@ These replace the brief's perks and the repository's current reward rules (ADR-0
 
 ### Waves
 
-- **Wave 1 is early access, early July 2027.** The following go straight into wave 1:
+- **Wave 1 is early access, early July 2027.** **The first 1,000 verified members are in wave 1 by signup order, whatever their referrals** (founder, 2026-11-17, D1). That place is never lost. After the first 1,000, the following go straight into wave 1:
   - any member with **3 or more confirmed, non-voided referrals**;
   - **every active partner**;
   - **everyone who signed up through an active partner's link or code**, including retroactive attribution.
-- Everyone else keeps the existing signup-order logic for waves 2–4, unchanged.
+- Everyone else keeps the existing signup-order logic for waves 2–4, unchanged, and does not get early access in July 2027.
+- **Every member's `/me` page, and every partner's dashboard, says plainly whether they get early access in July 2027.** If not, it says how many more confirmed referrals earn it. The only scarcity wording allowed is the founder-approved line, used while it stays true: "Some high-demand products have limited supply. Early access members get first pick." There are no counts and no countdowns, and nothing implies the public launch will be empty.
 - **Wave 1 is recalculated in the same way as the coupons, up to handoff.** A member who drops below 3 confirmed referrals leaves wave 1. A friend whose own referral is voided loses a wave-1 place they got through a partner.
 
 ### The referrer coupon ladder (members and partners)
@@ -178,9 +179,7 @@ Applications by type and status, activations, partner-attributed confirmations b
 
 ## Open questions for the founder
 
-| # | Question | Recommended default | Blocks |
-|---|---|---|---|
-| D1 | Today the first 1,000 verified members get wave 1 by signup order (ADR-025's first band). Answer 4.1 lists who goes "straight into wave 1" and says waves 2–4 keep the signup-order logic, but does not say whether that first-1,000 band stays | **Keep it.** The landing page and `/me` already tell early signups about their wave, and removing the band would take a place away from people who were told they had it | E11.7-03 |
+None. **D1 was answered on 2026-11-17:** the first 1,000 verified members stay in wave 1 (recorded on E11.7-03), and `/me` shows every member's early-access status (recorded on E11.7-04).
 
 ## Planning defaults
 
