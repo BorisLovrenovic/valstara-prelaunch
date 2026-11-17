@@ -20,9 +20,11 @@ SubSlush is **completely separate** from Valstara: no shared emails, no mentions
 
 ## Early access (locked)
 
-- Any member who refers **3 confirmed signups** gets early access in July. This applies to everyone, not just partners.
+- **The first 1,000 verified members** get early access in July (wave 1) by signup order, whatever their referrals. They never lose that place.
+- After the first 1,000, any member who refers **3 confirmed signups** gets early access in July. This applies to everyone, not just partners. Everyone else after the first 1,000 does not get early access in July.
 - Anyone who signs up through an **active partner's link or code** gets early access without needing 3 referrals. Partners themselves get early access automatically.
-- Only signups that confirm their email (double opt-in) count toward the 3.
+- Only signups that confirm their email (double opt-in) count toward the 3. A voided referral doesn't count.
+- Every member's page says plainly whether they get early access in July and, if not, how many more confirmed referrals they need.
 - **Scarcity wording must be honest.** Some high-demand products genuinely have limited supplier stock. Approved framing: *"Some high-demand products have limited supply. Early access members get first pick."* Never imply the public launch will be empty.
 
 ## Partner (affiliate) programme — commercial terms (locked)
@@ -47,10 +49,12 @@ SubSlush is **completely separate** from Valstara: no shared emails, no mentions
 - **Codes:** every partner gets a link plus a **custom code they choose** (for example MAYA). The founder can edit it at approval. The system checks it's unique and runs it against a blocklist.
 - **Welcome perk** for people who sign up through a partner's link or code:
   - early access;
-  - **10% off their first order**, or **15% through a student ambassador's link**.
-  - The perk is recorded now and redeemed on the main platform.
+  - **a first-order discount set by the partner's referral count when the friend signs up**, and fixed from then on: **10%** below 21 confirmed referrals, **15%** from 21, **20%** from 39;
+  - through a student ambassador, at least **15%**;
+  - single-use, expires five years after public launch.
+  - The perk is recorded now and redeemed on the main platform. Friends of normal members (not partners) get no welcome discount.
 - **Leaderboard:** visible to partners only. Other partners appear anonymously (initials or a nickname) unless they choose to show their name.
-- **Login:** magic link by email. No passwords.
+- **Dashboard access:** a private link emailed to the partner, with no password and no login cookie. The link lasts 30 days, and asking for a new one cancels the old one.
 - **Partner types:** standard, student ambassador, creator.
 - **Links are permanent.** Partner links and QR codes must keep working after the switch to the main platform, because flyers will have been printed with them.
 - **Code-agent prompt** written 17 Nov 2026.
@@ -130,15 +134,17 @@ Trust Ledger and building in public, monthly price index, programmatic pages, ov
 - Double opt-in at signup. Only confirmed emails are counted or emailed.
 - **Partner list:** an automated monthly digest (the partner's stats, rank, waitlist growth) plus quarterly founder updates. Ramp up from about April 2027, three months before early access.
 
-## Member referral rewards (open: recommendation pending founder approval)
+## Member referral rewards (locked 17 Nov 2026)
 
-- **Signup rewards:** non-monetary only (early access at 3 referrals).
-- **Referred friend:** 10% off their first order, single-use.
-- **Referrer:** $5 store credit once the friend's first order is completed. Credits stack, because each one is backed by a real purchase.
-- **Partners:** their referred friends get the welcome discount (10%, or 15% through students). The partner earns 10% commission instead of the $5 credit.
+- **Early access:** see "Early access" above (the first 1,000, or 3 confirmed referrals).
+- **Coupon ladder** (members and partners): coupon 1 unlocks at 3 confirmed referrals at 5%, then +5% every 3 referrals up to 30% at 18. Coupon 2 runs 21–36, and coupon 3 runs 39–54, the same way. Each coupon is single-use, no discounts stack, and coupons expire five years after public launch. Coupons are held until one of the member's referred friends places a first order.
+- **$5 store credit — normal members only:** a member who is not a partner earns **$5 store credit for each referred friend who completes a purchase after launch.** No credit is earned for a signup alone. Credits stack, because each one is backed by a real purchase. It is paid on the main platform.
+- **Partners do not get the $5 credit.** Instead they earn **10% cash commission on every order their referred customers place in the first 12 months** from each customer's first order, paid on the main platform.
+- **Referred friend's discount:** only friends of partners get a welcome discount (see "Pre-launch partner system"). Friends of normal members get none.
 
 ## Open decisions
 
 1. Window for the post-launch partner competition (Jul–Dec vs Sep–Dec).
-2. Member referral reward structure (above).
-3. Final $5k budget split.
+2. Final $5k budget split.
+
+*(The member referral reward structure was decided on 17 Nov 2026; see above.)*

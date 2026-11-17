@@ -4136,6 +4136,9 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - The hand-over document is reviewed against the export by a test that every documented field exists
 
 **Tests:** Idempotency · schema validation · graph completeness with voids · coupon and discount fields · the document–export reconciliation.
+**Founder decisions (2026-11-17):**
+1. **The hand-over document also states the $5 store credit, which only the main platform pays.** In the founder's words: "The $5 store credit per referrer is ONLY for referrals that completes a purchase once we have launched. The store credit should ONLY be available to normal users that refers friends, NOT to partnered users that are part of the partner programme. Parntered users does NOT receive $5 store credit for each purchase-confirmed referral, instead they receive 10% cash comission on each order placed by the referrals for the first year." This repository records no credit and calculates nothing. The export already marks each edge as a member or a partner edge, which is what the main platform needs to apply the rule. *(Founder decision.)*
+
 **Docs:** `docs/ops/launch-cutover.md` · `docs/architecture/adr/021-launch-cutover.md` · `docs/architecture/adr/022-waitlist-db-read-only.md` · E11-06
 
 ### E11.7-15 — Seed data, the partner-programme audit and founder sign-off

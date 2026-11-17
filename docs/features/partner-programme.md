@@ -136,6 +136,10 @@ The count is confirmed, non-voided referrals, including retroactive partner attr
 - No stacking: someone who holds several discounts chooses one per order.
 - It is the friend's own first-order discount, so it can only ever be redeemed by an order, and it creates no reward for the partner.
 
+### The $5 store credit (normal members only; main platform)
+
+**A member who is not a partner earns $5 store credit for each referred friend who completes a purchase after launch** (founder, 2026-11-17). No credit is earned for a signup alone. Partners never get it: they earn 10% cash commission on their referred customers' orders for 12 months from each customer's first order. **Both are paid only by the main platform.** This repository records neither. It exports each referral edge marked as a member or partner edge, and the hand-over document (E11.7-14) states the rule.
+
 ### Where progress shows
 
 Progress shows on `/me`, on the partner dashboard and in the relevant emails. For example: "Coupon 1: 30% · Coupon 2: 10% · 2 more confirmed referrals to 15%. Friends you refer now get 15% off their first order." The friend's line appears only for partners. **All ladder state and every welcome discount go into the attribution export and the hand-over document.**
