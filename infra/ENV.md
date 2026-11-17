@@ -339,7 +339,7 @@ tighter one.
 
 ## Why the containers are Debian rather than Alpine
 
-`app`, `migrate`, and `maintenance` run `node:22.22.3-bookworm-slim`, not `node:22-alpine`. The
+`app`, `migrate`, and `maintenance` run `node:22.23.5-bookworm-slim`, not `node:22-alpine`. The
 lockfile pins platform-specific native binaries built for glibc —
 `@astrojs/compiler-binding-linux-x64-gnu`, `@rolldown/binding-linux-x64-gnu`,
 `@esbuild/linux-x64` and `sharp`. Alpine is musl and cannot load them, which is

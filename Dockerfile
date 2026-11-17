@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:22.22.3-bookworm-slim AS dependencies
+FROM node:22.23.5-bookworm-slim AS dependencies
 
 WORKDIR /app
 ENV ASTRO_TELEMETRY_DISABLED=1 \
@@ -24,7 +24,7 @@ FROM dependencies AS production-dependencies
 
 RUN npm prune --omit=dev && npm cache clean --force
 
-FROM node:22.22.3-bookworm-slim AS runtime
+FROM node:22.23.5-bookworm-slim AS runtime
 
 WORKDIR /app
 ENV ASTRO_TELEMETRY_DISABLED=1 \

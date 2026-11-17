@@ -19,6 +19,26 @@ function configuredMiddleware(): ReturnType<typeof createAdminAuthMiddleware> {
   return middleware;
 }
 
+// A form write is same-origin only when its Origin is exactly the request's
+// scheme plus its own Host header. Since Astro 7.4, context.url keeps the Host
+// only when it matches security.allowedDomains and otherwise reads
+// localhost:<port>, so it cannot stand for the request's origin (D-010). A
+// missing or unparseable Host or Origin is never same-origin.
+function sameOrigin(
+  origin: string | null,
+  protocol: string,
+  host: string | null,
+): boolean {
+  if (origin === null || host === null || host === '') return false;
+  let expected: string;
+  try {
+    expected = new URL(`${protocol}//${host}`).origin;
+  } catch {
+    return false;
+  }
+  return origin === expected;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
   if (!context.isPrerendered) ensureMaintenanceWatchdog();
   const method = context.request.method;
@@ -41,7 +61,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
       ].some((type) => contentType.toLowerCase().includes(type));
     if (
       (formLike || contentType === null) &&
-      context.request.headers.get('origin') !== context.url.origin
+      !sameOrigin(
+        context.request.headers.get('origin'),
+        context.url.protocol,
+        context.request.headers.get('host'),
+      )
     ) {
       return new Response(securityCopy.crossSiteForm, {
         status: 403,
