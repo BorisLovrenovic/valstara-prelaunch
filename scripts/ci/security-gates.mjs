@@ -338,9 +338,14 @@ function scanFingerprinting(files) {
 
   // Rendered probes may inspect these APIs to verify the contract. Everything
   // except test-only code remains scanned, including scripts and dependencies
-  // that could later be wired into a page.
+  // that could later be wired into a page. The price index's verbatim source
+  // captures are third-party pages kept byte for byte, whose inline React
+  // code reads the high-resolution timer; only their directory is skipped,
+  // never the tool's own code (E11.6-01, founder decision D-019 Q1).
   for (const file of files.filter(
-    (candidate) => !candidate.path.startsWith('test/'),
+    (candidate) =>
+      !candidate.path.startsWith('test/') &&
+      !candidate.path.startsWith('packages/price-index/test/fixtures/'),
   )) {
     for (const pattern of patterns) {
       if (pattern.test(file.content)) {

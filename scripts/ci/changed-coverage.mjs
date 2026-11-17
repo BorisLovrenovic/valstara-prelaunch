@@ -124,6 +124,24 @@ export function assertCoverage(result, minimum) {
   }
 }
 
+// The diff is limited to the roots the gate measures, so a large change
+// elsewhere (such as a committed fixture capture) cannot overflow the child
+// process buffer. Files outside those roots are never counted anyway.
+export function readChangedDiff(base, includedRoots, cwd = projectRoot) {
+  return execFileSync(
+    'git',
+    [
+      'diff',
+      '--unified=0',
+      '--diff-filter=ACMR',
+      `${base}...HEAD`,
+      '--',
+      ...includedRoots,
+    ],
+    { cwd, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 },
+  );
+}
+
 function readArgument(name) {
   const index = process.argv.indexOf(name);
   return index === -1 ? undefined : process.argv[index + 1];
@@ -139,11 +157,7 @@ async function main() {
     resolve(projectRoot, 'coverage/lcov.info'),
     'utf8',
   );
-  const diff = execFileSync(
-    'git',
-    ['diff', '--unified=0', '--diff-filter=ACMR', `${base}...HEAD`],
-    { cwd: projectRoot, encoding: 'utf8' },
-  );
+  const diff = readChangedDiff(base, config.includedRoots);
   const result = changedCoverage(
     parseChangedLines(diff),
     parseLcov(lcov),

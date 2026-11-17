@@ -3271,6 +3271,10 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the
 - Every proposed change to a later ticket is listed for a founder decision, and none is applied
 
 **Tests:** The fixture manifest test: every listed file exists, its SHA-256 matches, and all 38 countries are accounted for.
+**Founder decisions (2026-11-17):**
+1. **The verbatim fixtures pass the gates by a narrow, open exception at their own path (D-019 Q1, option A).** Once tracked, the captured pages fail the `[fingerprinting]` scan (React's inline call to the browser's high-resolution timer) and Prettier, and reformatting them would break their SHA-256s. So the fingerprinting scan in `scripts/ci/security-gates.mjs` skips `packages/price-index/test/fixtures/` only, beside its existing `test/` exemption, and `.prettierignore` lists that same directory. Every other scan still reads the fixtures, and `packages/price-index/src/` and the rest of the package's `test/` stay scanned. A red-path fixture proves a planted high-resolution timer call elsewhere in `packages/price-index/` still fails the scan. `docs/engineering/ci-cd.md` states the exception and why. This is the only exception: epic rule 9 still binds the tool's own code, which passes every gate unchanged. *(Founder decision, accepted under the founder's standing rule for high-confidence recommendations.)*
+2. **The five `raw/*.headers` files of the first, plain capture get manifest rows (D-019 Q2, option A).** They are appended to `manifest.tsv` in a separate commit, each with its body file's URL, the capture time from its own `date` header (equal to the body row's), the HTTP status from its status line and its own SHA-256. The fixture manifest test also asserts that every file in `fixtures/youfundceo/` except `manifest.tsv` is listed, so no fixture can go unlisted. *(Founder decision, accepted under the founder's standing rule for high-confidence recommendations.)*
+
 **Docs:** `docs/features/price-index.md` · `docs/prerequisites/p9-source-capture.md` · `AGENTS.md#stop-and-ask`
 
 ### E11.6-02 — Markets, the catalogue and their schemas
@@ -3303,6 +3307,15 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the
 - The scan's red path is a planted fixture
 
 **Tests:** Schema accept and reject cases for every field rule · the alias-collision case · add and remove fixtures · the isolation scan and its red path · `npm run check` failing on a planted invalid file.
+**Founder decisions (2026-11-17):**
+1. **The founder confirms four of the five uncertain name mappings in E11.6-01's findings, and Adobe stays unmapped (D-019 Q4, option B).** `source_aliases` are seeded from these, and from the five mappings the findings already mark confirmed, and from nothing else (`docs/features/price-index-source-findings.md#name-mappings-between-the-source-and-the-catalogue`):
+   - **Netflix — Basic** maps to the source's Netflix plan "Basic" (`basic`) only. "Standard with ads" (`standard-ads`) is never an alias for Basic. Where the source lists no Basic, as in the United States, the plan stays `missing` until the founder records a `not_offered` entry.
+   - **Netflix — Premium (4K)** maps to the source's Netflix plan "Premium" (`premium`).
+   - **Apple TV — Individual** maps to the source's Apple TV (`apple-tv-plus`) plan "Apple TV".
+   - **Amazon Prime / Prime Video — Prime** maps to the source's Amazon Prime (`amazon-prime`) plan "Prime" only. Prime Video (`prime-video`) is not an alias.
+   - **Adobe Creative Cloud — the individual plan** gets no alias and stays `missing` until the founder decides, because the source's "Creative Cloud Pro" carries Adobe's annual-commitment price.
+   *(Founder decision.)*
+
 **Docs:** `docs/features/price-index.md` · `docs/features/price-index-source-findings.md` · `docs/architecture/modules.md` · `docs/architecture/adr/000-template.md`
 
 ### E11.6-03 — Exact money, the price record and JSON storage
@@ -3364,6 +3377,8 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the
 1. **D6: the tool uses a neutral bot name, `PriceIndexBot/1.0`, with no URL.** *(Superseded for the fetcher by decision 2.)* "Neutral bot name." The `User-Agent` is exactly `PriceIndexBot/1.0`, set in `config/price-index.json`. It is truthful about being a bot without naming the operator. It never names Valstara or SubSlush, never imitates a browser or another known crawler, and the tool obeys the `robots.txt` group for `PriceIndexBot`, otherwise `*`. *(Founder decision.)*
 
 2. **The fetcher is a headless browser with fingerprint evasion, and no CAPTCHA solving.** In the founder's words: "You're saying that the crawler would need like a disguised headless browser, but that my brief forbids both. I'm giving a founder decision here that it shouldn't forbid either of them. However, I don't think that CAPTCHA solving is required. Only, you know, running a sort of fingerprint evasion or headless browser is enough. So this is the most simple way to get this done, and that's what we will do." The founder's scripted capture of 2026-11-17 met a Vercel bot checkpoint (`x-vercel-mitigated: challenge`, HTTP 429) on every page, while `robots.txt` and `sitemap.xml` loaded. The fetcher therefore loads pages in headless Chromium presenting as an ordinary browser, with the fingerprint evasion the checkpoint needs. Everything else in the politeness rules stands: one page at a time, the 8–20 s jitter, `Crawl-delay`, backoff, a clean stop after three failures, the `*` group of `robots.txt`, the source host only. **No CAPTCHA is solved and no proxy or IP rotation is used.** If the checkpoint ever demands either, the run stops for the founder. The founder runs the tool; no AI agent session runs it (epic rule 2). *(Founder decision.)*
+
+3. **The founder has read the source's terms on automated access and accepts their risk; decision 2 stands unchanged (D-019 Q3, option A).** The terms captured on 2026-11-17 ban collection by "headless browsers" and getting "around rate limits, blocks or other measures that protect the site", and say "We may block anyone who breaks these rules, without notice." (quoted in `docs/features/price-index-source-findings.md#terms-of-use`). D3's acceptance of the legal risk covers these clauses too. The fetcher is built as decision 2 says, and a block stops the run for the founder like any other refusal. *(Founder decision, accepted under the founder's standing rule for high-confidence recommendations.)*
 
 **Docs:** `docs/features/price-index.md#the-source-youfundceocom` · `docs/features/price-index-source-findings.md`
 
