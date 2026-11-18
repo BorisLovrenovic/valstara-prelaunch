@@ -160,9 +160,23 @@ function page(title: string, second: string): string {
 <img src="/static/logo.png" alt=""><img src="${second}/pixel.png" alt="">
 <video src="/static/clip.mp4" preload="auto"></video>
 <iframe src="/countries/framed"></iframe>
+<iframe src="/countries/framed-2"></iframe>
+<iframe src="${second}/framed"></iframe>
 <a href="/countries/linked">linked</a>
 <script src="${second}/tracker.js"></script>
 <script src="/api/widget.js"></script>
+<script>
+// Requests that can outlive their page, fired as the fetcher reads it and
+// leaves, and a worker, whose script the rule refuses, so it never runs.
+document.addEventListener('DOMContentLoaded', () => {
+  navigator.sendBeacon('/countries/beacon');
+  const late = document.createElement('link');
+  late.rel = 'prefetch';
+  late.href = '/countries/late-prefetch';
+  document.head.append(late);
+  new Worker('/static/worker.js');
+});
+</script>
 `;
 }
 
@@ -234,6 +248,11 @@ before(async () => {
         etag: '"js-1"',
       });
       response.end(appScript(elsewhere.origin));
+    } else if (path === '/static/worker.js') {
+      response.writeHead(200, { 'content-type': 'text/javascript' });
+      response.end(
+        `fetch('/api/worker'); fetch('/countries/worker?_rsc=1'); fetch('${elsewhere.origin}/worker');`,
+      );
     } else if (path === '/static/data.json' || path === '/report') {
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end('{}');
@@ -427,7 +446,9 @@ const neverReached = [
   /^\/api\//,
   /^\/static\/(logo\.png|bg\.png|font\.woff2|clip\.mp4)$/,
   /^\/favicon\.ico$/,
-  /^\/countries\/(prefetched|framed|linked)$/,
+  /^\/countries\/(prefetched|framed|framed-2|linked|beacon|late-prefetch)$/,
+  /^\/countries\/worker/,
+  /^\/static\/worker\.js$/,
 ];
 
 test('a queue of 50: at most one page-level request is ever in flight, over every request the browser makes, and the refused requests never reach either server', async () => {

@@ -4,10 +4,10 @@ import {
   chromium,
   errors,
   type Browser,
+  type CDPSession,
   type Page,
   type Request,
   type Response,
-  type Route,
 } from 'playwright';
 
 import type {
@@ -94,6 +94,31 @@ function requestFacts(request: Request): RequestFacts {
     isNavigation: request.isNavigationRequest(),
     isMainFrame,
     isRedirect: request.redirectedFrom() !== null,
+  };
+}
+
+/** A paused request as the DevTools protocol reports it. */
+interface PausedRequest {
+  requestId: string;
+  request: { url: string; headers: Record<string, string> };
+  resourceType: string;
+  frameId: string;
+  redirectedRequestId?: string;
+}
+
+function pausedFacts(event: PausedRequest, mainFrameId: string): RequestFacts {
+  const headers: Record<string, string> = {};
+  for (const [name, value] of Object.entries(event.request.headers)) {
+    headers[name.toLowerCase()] = value;
+  }
+  return {
+    url: event.request.url,
+    // The protocol's names (`Document`, `XHR`, …) in Playwright's spelling.
+    resourceType: event.resourceType.toLowerCase(),
+    headers,
+    isNavigation: event.resourceType === 'Document',
+    isMainFrame: event.frameId === mainFrameId,
+    isRedirect: event.redirectedRequestId !== undefined,
   };
 }
 
@@ -185,29 +210,71 @@ export async function createPlaywrightDriver(
   let loading = false;
   const pendingRoutes = new Set<Promise<void>>();
 
-  async function decide(route: Route, request: Request): Promise<void> {
+  function track(decision: Promise<void>): Promise<void> {
+    pendingRoutes.add(decision);
+    void decision.finally(() => pendingRoutes.delete(decision));
+    return decision;
+  }
+
+  // The rule is applied twice, and a request leaves only if both allow it.
+  // Playwright's routing covers the whole context, but it lets a request
+  // through unasked when it does not yet know the request's frame (an
+  // iframe's first navigation) and for every later hop of a redirect. The
+  // tab's own DevTools session (below) holds each of those, and every other
+  // request of the tab, until the rule decides. Refusals are recorded once,
+  // by that session.
+  await context.route('**/*', (route, request) => {
     const decision = classifyRequest(
       requestFacts(request),
       current?.page ?? null,
     );
-    if (decision.allow) {
-      await route.continue().catch(() => undefined);
-      return;
-    }
-    current?.refused.push({
-      url: request.url(),
-      resourceType: request.resourceType(),
-      reason: decision.reason,
-    });
-    await route.abort('blockedbyclient').catch(() => undefined);
-  }
-
-  await context.route('**/*', (route, request) => {
-    const decision = decide(route, request);
-    pendingRoutes.add(decision);
-    void decision.finally(() => pendingRoutes.delete(decision));
-    return decision;
+    return track(
+      decision.allow
+        ? route.continue().catch(() => undefined)
+        : route.abort('blockedbyclient').catch(() => undefined),
+    );
   });
+
+  async function interceptTab(page: Page): Promise<CDPSession> {
+    const session = await context.newCDPSession(page);
+    const { frameTree } = await session.send('Page.getFrameTree');
+    const mainFrameId = frameTree.frame.id;
+    session.on('Fetch.requestPaused', (event: PausedRequest) => {
+      const facts = pausedFacts(event, mainFrameId);
+      const decision = classifyRequest(facts, current?.page ?? null);
+      if (decision.allow) {
+        void track(
+          session
+            .send('Fetch.continueRequest', { requestId: event.requestId })
+            .then(
+              () => undefined,
+              () => undefined,
+            ),
+        );
+        return;
+      }
+      current?.refused.push({
+        url: facts.url,
+        resourceType: facts.resourceType,
+        reason: decision.reason,
+      });
+      void track(
+        session
+          .send('Fetch.failRequest', {
+            requestId: event.requestId,
+            errorReason: 'BlockedByClient',
+          })
+          .then(
+            () => undefined,
+            () => undefined,
+          ),
+      );
+    });
+    await session.send('Fetch.enable', {
+      patterns: [{ urlPattern: '*', requestStage: 'Request' }],
+    });
+    return session;
+  }
 
   const timeout = options.pageTimeoutMilliseconds;
 
@@ -217,10 +284,12 @@ export async function createPlaywrightDriver(
     onCleared: (() => void) | null;
   } | null = null;
   let tab: Page | null = null;
+  let tabSession: CDPSession | null = null;
 
   async function openTab(): Promise<Page> {
     const opened = await context.newPage();
     opened.setDefaultTimeout(timeout);
+    tabSession = await interceptTab(opened);
     const mainFrame = opened.mainFrame();
     opened.on('response', (response) => {
       if (
@@ -238,11 +307,17 @@ export async function createPlaywrightDriver(
     return opened;
   }
 
-  /** Every request already routed is decided before this resolves. */
+  /** Every request already held for the rule is decided before this resolves. */
   async function drainRoutes(page: Page): Promise<void> {
-    // A round trip on the tab's own channel: every request the browser held
-    // for the rule before it has reached the handler by the time it returns.
+    // A round trip on each channel: every request the browser held for the
+    // rule before it has reached its handler by the time it returns.
     await within(page.evaluate('0'), timeout).catch(() => undefined);
+    if (tabSession !== null) {
+      await within(
+        tabSession.send('Runtime.evaluate', { expression: '0' }),
+        timeout,
+      ).catch(() => undefined);
+    }
     await Promise.allSettled([...pendingRoutes]);
   }
 
@@ -252,8 +327,9 @@ export async function createPlaywrightDriver(
       await within(page.goto('about:blank'), timeout);
       await drainRoutes(page);
     } catch {
-      tab = null;
       await drainRoutes(page);
+      tab = null;
+      tabSession = null;
       await within(page.close(), timeout).catch(() => undefined);
     }
   }
@@ -373,10 +449,11 @@ export async function createPlaywrightDriver(
     load,
     async close() {
       const page = tab;
-      tab = null;
       if (page !== null) {
         await drainRoutes(page);
       }
+      tab = null;
+      tabSession = null;
       await context.close();
     },
   };
