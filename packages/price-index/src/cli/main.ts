@@ -1,36 +1,62 @@
 import { systemClock } from '../http/clock.ts';
+import { runBuildData } from './build-data.ts';
 import { runReview } from './review.ts';
-import { formatIssues, validateConfig } from './validate.ts';
+import { runScrape, type ScrapeEnvironment } from './scrape.ts';
+import { formatIssues, validateConfig, validateDataFiles } from './validate.ts';
 
 // `npm run price-index -- <command>`. The tool runs only when the founder (or
 // `npm run check`, for `validate`) types this, does its work and exits. It has
-// no daemon, timer, watcher or server (ADR-033).
+// no daemon, timer, watcher or server (ADR-033). Nothing here calls
+// process.exit: the process ends because nothing is left open, which
+// test/price-index/cli-exit.test.ts proves for every command.
 
 export const exitCodes = {
   done: 0,
+  /** A usage error, or a request refused before anything was written. */
   usage: 1,
+  /** The source refused the run: backoff ran out, or it asked too long a wait. */
+  stoppedBySource: 2,
+  /** A configuration or data file fails its schema, or the merge refuses it. */
   validationFailure: 3,
+  /** SIGINT or SIGTERM stopped the run; it can be resumed. */
+  interrupted: 4,
 } as const;
 
 const usage = `Usage: npm run price-index -- <command>
 
 Commands:
-  validate   Check config/markets.json, config/catalogue.json,
-             config/valstara-prices.json and config/price-index.json
-             against their schemas.
+  validate   Check the configuration (config/markets.json,
+             config/catalogue.json, config/valstara-prices.json,
+             config/price-index.json) and every data file
+             (data/price-index/ and reports/runs/) against their schemas.
+  scrape [--market <code>] [--resume <run_id>]
+             Fetch the source politely, store the raw pages, and write the
+             run's observations and a preview merge to data/raw/<run_id>/.
+             Never writes data/price-index/latest.json.
+  scrape --dry-run [--from-fixtures] [--market <code>]
+             Replay the latest raw run (or the captured fixtures) and print
+             what a build would change. Fetches nothing, writes nothing.
   review approve|reject --market <code> --service <service_id>
              --plan <plan_id> --actor <name>
-             Decide on the value a needs_review or conflict record in
-             data/price-index/latest.json shows, and record the decision
-             in data/price-index/approvals.json.
+             Decide on the value a needs_review or conflict record in the
+             preview of the latest run shows, and record the decision in
+             data/price-index/approvals.json.
+  build-data Merge the latest run's observations with the overrides and
+             approvals, and on full validation write latest.json, a
+             snapshot and reports/runs/<run_id>.json.
+
+Exit codes: 0 done, 1 usage or refused, 2 stopped by the source,
+3 validation failure, 4 interrupted.
 `;
 
 export interface CliIo {
   root: string;
   stdout: (text: string) => void;
   stderr: (text: string) => void;
-  /** The time decisions are stamped with. Tests inject a fixed one. */
+  /** The time decisions and builds are stamped with. Tests inject a fixed one. */
   clock?: { now(): Date };
+  /** What a real scrape needs from outside. Tests inject a fake browser. */
+  scrape?: ScrapeEnvironment;
 }
 
 export async function runCli(
@@ -40,15 +66,33 @@ export async function runCli(
   const [command, ...rest] = argv;
 
   if (command === 'validate' && rest.length === 0) {
-    const issues = await validateConfig(io.root);
+    const issues = [
+      ...(await validateConfig(io.root)),
+      ...(await validateDataFiles(io.root)),
+    ];
     if (issues.length > 0) {
       io.stderr(
         `price-index validate: ${issues.length} problem(s)\n${formatIssues(issues)}\n`,
       );
       return exitCodes.validationFailure;
     }
-    io.stdout('price-index validate: configuration is valid.\n');
+    io.stdout(
+      'price-index validate: configuration is valid, and so is every data file.\n',
+    );
     return exitCodes.done;
+  }
+
+  if (command === 'scrape') {
+    return runScrape(rest, {
+      root: io.root,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      ...(io.scrape === undefined ? {} : { environment: io.scrape }),
+    });
+  }
+
+  if (command === 'build-data') {
+    return runBuildData(rest, { ...io, clock: io.clock ?? systemClock });
   }
 
   if (command === 'review') {

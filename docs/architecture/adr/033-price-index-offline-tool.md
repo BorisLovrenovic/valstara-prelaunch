@@ -30,6 +30,8 @@ Collecting the prices means fetching pages from a third-party source, through a 
 
 Its red path is a planted fixture in `test/fixtures/security/gates.json`, and `test/price-index/isolation-scan.test.mjs` plants one fixture for each rule.
 
+**The isolation proof** (E11.6-07) shows the decision holds in the built artefacts, not only in the sources. `test/price-index/isolation-proof.test.ts` scans the site's build output for code from the tool's `src/http`, `src/sources`, `src/cli` and `src/reports`, and builds and serves a copy of the repository without the tool. `scrape` writes only to the gitignored raw store, and `build-data` writes `data/price-index/` only after every input and its result validate, so the tests require every file the site reads to stay byte-identical through each failure mode: a run stopped by the source, killed mid-market or interrupted, a dry run, and a failed build. `test/price-index/cli-exit.test.ts` runs every command as its own process and requires it to end on its own, with its documented exit code (`0` done, `1` refused, `2` stopped by the source, `3` validation failure, `4` interrupted).
+
 The package adds **one direct runtime dependency, `zod` 4.6.7 (MIT)**, at the version Astro already installs, so it adds no code to the tree. Nothing in the package reaches the browser.
 
 ## Alternatives rejected

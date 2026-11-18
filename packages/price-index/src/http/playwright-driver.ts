@@ -57,6 +57,11 @@ const checkpointTitle = /vercel security checkpoint/iu;
 export function launchChromium(origin: string): Promise<Browser> {
   return chromium.launch({
     headless: true,
+    // The scrape command handles SIGINT and SIGTERM itself: it stops the run
+    // cleanly as interrupted, then closes the browser (E11.6-07). Playwright's
+    // own handlers would kill the browser under a page still loading.
+    handleSIGINT: false,
+    handleSIGTERM: false,
     args: [...evasionLaunchArguments, ...sourceOnlyLaunchArguments(origin)],
   });
 }
