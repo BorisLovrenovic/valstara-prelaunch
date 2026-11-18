@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
-// `config/price-index.json`: the tool's own settings (E11.6-04 creates it with
-// the fetcher's keys only; later tickets add theirs beside `fetcher`).
+// `config/price-index.json`: the tool's own settings. E11.6-04 creates it with
+// the fetcher's keys under `fetcher`; E11.6-06 adds the merge's under
+// `merge`; later tickets add theirs beside them.
 
 /** The one host the fetcher may request (E11.6-04, host allowlist). */
 export const sourceOrigin = 'https://www.youfundceo.com';
@@ -55,8 +56,27 @@ export const fetcherSettingsSchema = z
 
 export type FetcherSettings = z.infer<typeof fetcherSettingsSchema>;
 
+const wholeDays = z.int().positive();
+
+// The merge's thresholds (E11.6-06, docs/features/price-index.md#validation-merge-and-the-publish-gate).
+export const mergeSettingsSchema = z.strictObject({
+  // A change of more than this many percent from the last published value
+  // makes the record `needs_review`. Exactly this many percent passes.
+  change_threshold_percent: z.int().min(1).max(1000),
+  stale_after_days: z.strictObject({
+    // A scraped `ok` record goes stale this long after its `observed_at`.
+    scraped: wholeDays,
+    // A manual override or `not_offered` entry goes stale this long after
+    // its `verified_at`.
+    manual: wholeDays,
+  }),
+});
+
+export type MergeSettings = z.infer<typeof mergeSettingsSchema>;
+
 export const priceIndexSettingsFileSchema = z.strictObject({
   fetcher: fetcherSettingsSchema,
+  merge: mergeSettingsSchema,
 });
 
 export type PriceIndexSettingsFile = z.infer<

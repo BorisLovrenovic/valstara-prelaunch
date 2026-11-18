@@ -15,5 +15,12 @@
     },
     "max_consecutive_failures": 3,
     "raw_runs_kept": 6
+  },
+  "merge": {
+    "change_threshold_percent": 40,
+    "stale_after_days": {
+      "scraped": 45,
+      "manual": 90
+    }
   }
 }

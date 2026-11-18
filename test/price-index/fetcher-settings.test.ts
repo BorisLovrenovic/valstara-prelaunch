@@ -12,7 +12,8 @@ import {
 } from '../../packages/price-index/src/schema/price-index-settings.ts';
 import { fetcherSettings } from '../helpers/price-index-fetcher.ts';
 
-// E11.6-04: config/price-index.json holds the fetcher's keys only, and
+// E11.6-04: config/price-index.json holds the fetcher's keys under `fetcher`
+// (E11.6-06 adds the merge's under `merge`, tested in data-files-schema), and
 // `validate` (so `npm run check`) rejects an invalid one.
 
 const projectRoot = new URL('../..', import.meta.url).pathname;
@@ -21,7 +22,7 @@ test('the committed config/price-index.json holds exactly the fetcher defaults',
   const file = JSON.parse(
     await readFile(join(projectRoot, 'config/price-index.json'), 'utf8'),
   );
-  assert.deepEqual(Object.keys(file), ['fetcher']);
+  assert.deepEqual(Object.keys(file), ['fetcher', 'merge']);
   assert.deepEqual(
     priceIndexSettingsFileSchema.parse(file).fetcher,
     fetcherSettings(),
@@ -79,7 +80,11 @@ test('validate reports an invalid or missing config/price-index.json with its pa
     });
     assert.deepEqual(await validateConfig(root), []);
 
+    const committed = JSON.parse(
+      await readFile(join(projectRoot, 'config/price-index.json'), 'utf8'),
+    );
     const settings = {
+      ...committed,
       fetcher: { ...fetcherSettings(), source_origin: 'https://example.com' },
     };
     await writeFile(
