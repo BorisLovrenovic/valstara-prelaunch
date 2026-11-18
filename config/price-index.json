@@ -1,0 +1,19 @@
+{
+  "fetcher": {
+    "source_origin": "https://www.youfundceo.com",
+    "jitter_seconds": {
+      "min": 8,
+      "max": 20
+    },
+    "page_timeout_seconds": 60,
+    "checkpoint_wait_seconds": 30,
+    "backoff": {
+      "initial_seconds": 60,
+      "multiplier": 2,
+      "max_seconds": 900,
+      "retry_after_max_seconds": 3600
+    },
+    "max_consecutive_failures": 3,
+    "raw_runs_kept": 6
+  }
+}
