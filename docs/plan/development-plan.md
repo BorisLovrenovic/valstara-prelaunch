@@ -3436,6 +3436,9 @@ It ends with a list of proposed changes to E11.6-04 to E11.6-07. These go to the
 **Founder decisions (2026-11-17):**
 1. **D3: the founder accepts the legal risk of republishing the source's data.** In the founder's words: "that site republishes the same data from the services own site data (e.g. from Spotify, netflix etc.), so they're already republishing someone elses data. Us doing it doesn't matter. It's publicly available data from the original brand themselve. I accept any risk that comes with it." The adapter is built without a further legal gate. The politeness rules and `robots.txt` still apply in full. Pages republish prices as facts in Valstara's own templates and never copy the source's prose. *(Founder decision.)*
 
+**Founder decisions (2026-11-18):**
+1. **A USD figure that is not an exact two-decimal number fails its page as `parse_failed`; nothing is rounded and no field is dropped (D-027).** The adapter reads `usd` as the number's text and accepts it only in `price_usd_source`'s two-decimal form. A float artefact such as `107.39999999999999` (seen in the captured home page's catalogue data, on no plan row) fails the country × service page, or the price-moves page, like any other structural surprise. The run report names it, and E11.6-06 keeps that market's previous values. A record never silently loses its `price_usd_source`. If the source starts sending such figures on plan rows, the founder decides their handling then. `test/price-index/source-youfundceo-pages.test.ts` ("the USD figure is a float artefact") is the red path. *(Founder decision, accepted under the founder's standing rule for high-confidence recommendations.)*
+
 **Docs:** `docs/features/price-index-source-findings.md` · `docs/modules/price-index.md`
 
 ### E11.6-06 — Merge, validation and the publish gate
