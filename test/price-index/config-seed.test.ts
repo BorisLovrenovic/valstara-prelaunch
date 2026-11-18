@@ -111,6 +111,37 @@ test('config/catalogue.json tracks exactly the founder’s products and monthly 
   }
 });
 
+test('official_hosts is exactly the founder’s seed (D-031 Q1)', async () => {
+  const { services } = catalogueFileSchema.parse(
+    await read('config/catalogue.json'),
+  );
+  assert.deepEqual(
+    Object.fromEntries(
+      services
+        .filter((service) => service.official_hosts !== undefined)
+        .map((service) => [service.service_id, service.official_hosts]),
+    ),
+    {
+      'amazon-prime': [
+        'www.amazon.co.uk',
+        'www.amazon.de',
+        'www.amazon.es',
+        'www.amazon.fr',
+        'www.amazon.it',
+        'www.amazon.pl',
+        'www.amazon.se',
+        'www.amazon.nl',
+        'www.amazon.ca',
+        'www.amazon.com.au',
+      ],
+      'apple-tv': ['www.apple.com'],
+      chatgpt: ['openai.com'],
+      'linkedin-premium': ['www.linkedin.com'],
+      netflix: ['help.netflix.com'],
+    },
+  );
+});
+
 test('source_aliases come only from the confirmed and founder-confirmed mappings', async () => {
   const { services } = catalogueFileSchema.parse(
     await read('config/catalogue.json'),

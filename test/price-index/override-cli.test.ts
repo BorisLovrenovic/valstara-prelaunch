@@ -8,7 +8,9 @@ import * as prettier from 'prettier';
 
 import { runCli } from '../../packages/price-index/src/cli/main.ts';
 import {
+  ambiguousThousands,
   officialHost,
+  officialHosts,
   sourceUrlProblem,
 } from '../../packages/price-index/src/cli/override.ts';
 import {
@@ -421,6 +423,20 @@ const refusals: [string, string[], string[], RegExp][] = [
     addAnswers({ price: '' }),
     /does not parse exactly in SEK/,
   ],
+  // D-031 Q2: one . or , followed by exactly three digits could be a
+  // thousands separator or a mistyped decimal, so it is refused.
+  [
+    'add: a price whose only separator is a . before three digits',
+    ['add'],
+    addAnswers({ price: '149.999' }),
+    /"149\.999" has one \. or , followed by three digits.*without a thousands separator \(1299 or 1 299\)/,
+  ],
+  [
+    'add: a price whose only separator is a , before three digits',
+    ['add'],
+    addAnswers({ price: '149,999' }),
+    /"149,999" has one \. or , followed by three digits.*without a thousands separator \(1299 or 1 299\)/,
+  ],
   ['add: a price of zero', ['add'], addAnswers({ price: '0' }), /above zero/],
   [
     'add: an empty verified_by',
@@ -437,8 +453,16 @@ const refusals: [string, string[], string[], RegExp][] = [
   [
     'not-offered: a source_url on another host',
     ['not-offered'],
-    notOfferedAnswers({ url: 'https://help.netflix.com/en/node/24926' }),
-    /not on www\.netflix\.com, the official host of netflix/,
+    notOfferedAnswers({
+      url: 'https://www.youfundceo.com/services/netflix/united-states',
+    }),
+    /not on www\.netflix\.com or help\.netflix\.com, the official hosts of netflix/,
+  ],
+  [
+    'not-offered: a source_url on an unlisted subdomain of a listed host',
+    ['not-offered'],
+    notOfferedAnswers({ url: 'https://media.help.netflix.com/en/node/24926' }),
+    /not on www\.netflix\.com or help\.netflix\.com/,
   ],
   [
     'not-offered: an empty verified_by',
@@ -508,6 +532,51 @@ const refusals: [string, string[], string[], RegExp][] = [
     /there is no manual entry for SE\/spotify\/individual\/month/,
   ],
 ];
+
+// D-031 Q2: a space or two separators still read under E11.6-03's rules.
+const acceptedPrices: [string, string][] = [
+  ['1 299', '1299.00'],
+  ['1.299,00', '1299.00'],
+];
+
+for (const [text, priceLocal] of acceptedPrices) {
+  test(`override add accepts the price ${JSON.stringify(text)} in SEK as ${priceLocal}`, async () => {
+    await withSpace(async (space) => {
+      const result = await override(
+        space,
+        ['add'],
+        addAnswers({ price: text }),
+      );
+      assert.equal(result.status, 0, result.err);
+      const [entry] = manualOverridesFileSchema.parse(
+        JSON.parse(await overridesText(space)),
+      ).overrides;
+      assert.equal(entry?.kind, 'price');
+      assert.equal(entry?.kind === 'price' && entry.price_local, priceLocal);
+    });
+  });
+}
+
+test('override not-offered accepts a source_url on a listed official host (D-031 Q1)', async () => {
+  await withSpace(async (space) => {
+    const url = 'https://help.netflix.com/en/node/24926';
+    const result = await override(
+      space,
+      ['not-offered'],
+      notOfferedAnswers({ url }),
+    );
+    assert.equal(result.status, 0, result.err);
+    assert.match(
+      result.script!.questions.join('\n'),
+      /Source URL \(on www\.netflix\.com or help\.netflix\.com\)/,
+    );
+    const [entry] = manualOverridesFileSchema.parse(
+      JSON.parse(await overridesText(space)),
+    ).overrides;
+    assert.equal(entry?.source_url, url);
+    assert.equal(entry?.kind, 'not_offered');
+  });
+});
 
 for (const [name, args, answers, message] of refusals) {
   test(`override refuses ${name}, and writes nothing`, async () => {
@@ -596,5 +665,64 @@ test('the official host is the catalogue website_url host, compared exactly', ()
     'https://www.spotify.com@evil.example/',
   ]) {
     assert.notEqual(sourceUrlProblem(url, spotify), null, url);
+  }
+});
+
+test('a listed official host is accepted exactly; its subdomains and look-alikes are not', () => {
+  const netflix = {
+    service_id: 'netflix',
+    website_url: 'https://www.netflix.com/',
+    official_hosts: ['help.netflix.com'],
+  };
+  assert.deepEqual(officialHosts(netflix), [
+    'www.netflix.com',
+    'help.netflix.com',
+  ]);
+  assert.equal(officialHost(netflix), 'www.netflix.com');
+  assert.equal(sourceUrlProblem('https://www.netflix.com/se/', netflix), null);
+  assert.equal(
+    sourceUrlProblem('https://help.netflix.com/en/node/24926', netflix),
+    null,
+  );
+  for (const url of [
+    'https://media.help.netflix.com/en/',
+    'https://netflix.com/',
+    'https://about.netflix.com/',
+    'https://help.netflix.com.evil.example/',
+    'http://help.netflix.com/en/',
+  ]) {
+    assert.notEqual(sourceUrlProblem(url, netflix), null, url);
+  }
+});
+
+test('ambiguousThousands flags only a lone . or , before exactly three digits', () => {
+  for (const text of [
+    '149.999',
+    '149,999',
+    'kr 1.299',
+    '1,299 kr',
+    '$1,299',
+    '1.299 + tax',
+  ]) {
+    assert.equal(ambiguousThousands(text), true, text);
+  }
+  for (const text of [
+    '149',
+    '149 kr',
+    '149,00 kr',
+    '149.99',
+    '1 299',
+    '1\u00a0299',
+    '1\u202f299',
+    "1'299",
+    '1\u2019299',
+    '1.299,00',
+    '1,299.00',
+    '1 299,00',
+    '1.299.000',
+    '1.2999',
+    '',
+  ]) {
+    assert.equal(ambiguousThousands(text), false, text);
   }
 });

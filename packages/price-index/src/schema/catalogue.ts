@@ -47,6 +47,18 @@ export const sourceAliasesSchema = z.strictObject({
   plans: z.record(slugSchema, z.array(aliasSchema)),
 });
 
+/**
+ * A bare lower-case hostname: dot-separated labels of letters, digits and
+ * inner hyphens, at least two labels, with no scheme, path, port or
+ * trailing dot (D-031 Q1).
+ */
+export const hostnamePattern =
+  /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
+
+export const hostnameSchema = z.string().regex(hostnamePattern, {
+  error: 'must be a bare lower-case hostname, with no scheme, path or port',
+});
+
 export const serviceSchema = z
   .strictObject({
     service_id: slugSchema.refine((value) => !reservedServiceIds.has(value), {
@@ -58,11 +70,34 @@ export const serviceSchema = z
       protocol: /^https$/,
       error: 'must be an https URL',
     }),
+    /**
+     * Further hosts an override's `source_url` may be on, beside the
+     * `website_url` host (D-031 Q1). Compared exactly; never a pattern.
+     */
+    official_hosts: z.array(hostnameSchema).optional(),
     status: z.enum(serviceStatuses),
     plans: z.array(planSchema).min(1),
     source_aliases: sourceAliasesSchema,
   })
   .superRefine((service, context) => {
+    if (service.official_hosts !== undefined) {
+      for (const host of duplicates(service.official_hosts)) {
+        context.addIssue({
+          code: 'custom',
+          message: `duplicate official host ${host} in service ${service.service_id}`,
+          path: ['official_hosts'],
+        });
+      }
+      const websiteHost = new URL(service.website_url).hostname;
+      if (service.official_hosts.includes(websiteHost)) {
+        context.addIssue({
+          code: 'custom',
+          message: `official host ${websiteHost} is already the website_url host of ${service.service_id}`,
+          path: ['official_hosts'],
+        });
+      }
+    }
+
     const planIds = service.plans.map((plan) => plan.plan_id);
     for (const planId of duplicates(planIds)) {
       context.addIssue({

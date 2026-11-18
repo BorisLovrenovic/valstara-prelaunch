@@ -37,8 +37,10 @@ import { formatIssues, loadConfig } from './validate.ts';
 // Every answer is checked as it is given, and the first one that fails
 // stops the command with nothing written (exit 1). In particular `add` and
 // `not-offered` refuse a currency other than the market's, a source_url
-// whose host is not the service's official host in the catalogue, a price
-// that does not parse exactly, and an empty verified_by. The file is
+// whose host is not exactly the service's website_url host or one of its
+// catalogue official_hosts, a price that does not parse exactly (or whose
+// only separator is a . or , followed by three digits), and an empty
+// verified_by. The file is
 // validated whole against its schema and written atomically.
 
 export const overrideExitCodes = {
@@ -67,18 +69,35 @@ export interface OverrideIo {
 /** An answer refused: the command stops and writes nothing. */
 class Refusal extends Error {}
 
-/** The official host of a service: its catalogue `website_url`'s host. */
+/** The host of a service's catalogue `website_url`, shown in the reports. */
 export function officialHost(service: Pick<Service, 'website_url'>): string {
   return new URL(service.website_url).hostname;
 }
 
 /**
+ * Every host a manual entry's `source_url` may be on: the `website_url` host,
+ * then the catalogue's `official_hosts` for the service (D-031 Q1).
+ */
+export function officialHosts(
+  service: Pick<Service, 'website_url' | 'official_hosts'>,
+): string[] {
+  return [officialHost(service), ...(service.official_hosts ?? [])];
+}
+
+function hostList(hosts: readonly string[]): string {
+  return hosts.length === 1
+    ? hosts[0]!
+    : `${hosts.slice(0, -1).join(', ')} or ${hosts.at(-1)!}`;
+}
+
+/**
  * The reason `url` cannot be the source of a manual entry for `service`, or
- * null when it can: an https URL on the service's official host.
+ * null when it can: an https URL whose host is exactly one of the service's
+ * official hosts. Another subdomain or a look-alike is refused.
  */
 export function sourceUrlProblem(
   url: string,
-  service: Pick<Service, 'service_id' | 'website_url'>,
+  service: Pick<Service, 'service_id' | 'website_url' | 'official_hosts'>,
 ): string | null {
   let parsed: URL;
   try {
@@ -89,11 +108,39 @@ export function sourceUrlProblem(
   if (parsed.protocol !== 'https:') {
     return `${url} is not an https URL.`;
   }
-  const host = officialHost(service);
-  if (parsed.hostname !== host) {
-    return `${url} is not on ${host}, the official host of ${service.service_id} in config/catalogue.json.`;
+  const hosts = officialHosts(service);
+  if (!hosts.includes(parsed.hostname)) {
+    const which =
+      hosts.length === 1 ? 'the official host' : 'the official hosts';
+    return `${url} is not on ${hostList(hosts)}, ${which} of ${service.service_id} in config/catalogue.json.`;
   }
   return null;
+}
+
+/**
+ * A digit, one separator, then a digit: every separator inside the number.
+ * `\s` covers the space, the no-break space and the narrow no-break space.
+ */
+const separatorBetweenDigits = /(?<=\d)[.,\s'\u2019](?=\d)/gu;
+
+/**
+ * True when a typed price's only separator is a `.` or `,` followed by
+ * exactly three digits, as in `149.999` or `1,299`: a thousands separator
+ * or a mistyped decimal, which `parseMoney` would read as thousands. The
+ * override command refuses it rather than guess (D-031 Q2); `src/money/`
+ * still reads such text from the source.
+ */
+export function ambiguousThousands(text: string): boolean {
+  const separators = [...text.matchAll(separatorBetweenDigits)];
+  if (separators.length !== 1) {
+    return false;
+  }
+  const [separator] = separators;
+  if (separator![0] !== '.' && separator![0] !== ',') {
+    return false;
+  }
+  const after = text.slice(separator!.index + 1);
+  return /^\d{3}(?!\d)/u.test(after);
 }
 
 function today(clock: { now(): Date }): string {
@@ -183,7 +230,7 @@ class Questions {
 
   async verification(target: Target, clock: { now(): Date }) {
     const sourceUrl = await this.answer(
-      `Source URL (on ${officialHost(target.service)}): `,
+      `Source URL (on ${hostList(officialHosts(target.service))}): `,
     );
     const urlProblem = sourceUrlProblem(sourceUrl, target.service);
     if (urlProblem !== null) {
@@ -222,6 +269,11 @@ class Questions {
     if (currency !== market.currency) {
       throw new Refusal(
         `${currency} is not ${market.code}'s currency; ${market.code} uses ${market.currency}.`,
+      );
+    }
+    if (ambiguousThousands(priceText)) {
+      throw new Refusal(
+        `the price ${JSON.stringify(priceText)} has one . or , followed by three digits, which could be a thousands separator or a mistyped decimal. Enter the price without a thousands separator (1299 or 1 299).`,
       );
     }
     let priceLocal: string;

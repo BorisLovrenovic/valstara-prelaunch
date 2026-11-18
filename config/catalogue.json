@@ -25,6 +25,18 @@
       "name": "Amazon Prime / Prime Video",
       "category": "streaming",
       "website_url": "https://www.amazon.com/amazonprime",
+      "official_hosts": [
+        "www.amazon.co.uk",
+        "www.amazon.de",
+        "www.amazon.es",
+        "www.amazon.fr",
+        "www.amazon.it",
+        "www.amazon.pl",
+        "www.amazon.se",
+        "www.amazon.nl",
+        "www.amazon.ca",
+        "www.amazon.com.au"
+      ],
       "status": "launch",
       "plans": [
         {
@@ -47,6 +59,7 @@
       "name": "Apple TV",
       "category": "streaming",
       "website_url": "https://tv.apple.com/",
+      "official_hosts": ["www.apple.com"],
       "status": "launch",
       "plans": [
         {
@@ -131,6 +144,7 @@
       "name": "ChatGPT",
       "category": "ai",
       "website_url": "https://chatgpt.com/",
+      "official_hosts": ["openai.com"],
       "status": "launch",
       "plans": [
         {
@@ -220,6 +234,7 @@
       "name": "LinkedIn Premium",
       "category": "productivity",
       "website_url": "https://premium.linkedin.com/",
+      "official_hosts": ["www.linkedin.com"],
       "status": "launch",
       "plans": [
         {
@@ -307,6 +322,7 @@
       "name": "Netflix",
       "category": "streaming",
       "website_url": "https://www.netflix.com/",
+      "official_hosts": ["help.netflix.com"],
       "status": "launch",
       "plans": [
         {
