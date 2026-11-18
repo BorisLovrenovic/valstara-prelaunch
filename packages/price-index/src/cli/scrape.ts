@@ -241,7 +241,15 @@ async function storedReport(
     }
     throw error;
   }
-  const parsed = storedReportSchema.safeParse(JSON.parse(text));
+  // The report only adds detail to a page that did not load; an unreadable
+  // one (a crash while it was written) leaves that detail out.
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  const parsed = storedReportSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
 }
 

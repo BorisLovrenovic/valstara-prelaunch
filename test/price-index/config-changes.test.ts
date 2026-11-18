@@ -12,6 +12,9 @@ import { runCli } from '../../packages/price-index/src/cli/main.ts';
 // committed configuration, and `price-index validate` accepts it unchanged.
 
 const configDirectory = fileURLToPath(new URL('../../config', import.meta.url));
+const dataDirectory = fileURLToPath(
+  new URL('../../data/price-index', import.meta.url),
+);
 
 type Json = Record<string, unknown> & {
   markets?: Json[];
@@ -26,6 +29,10 @@ async function withConfig(
   const root = await mkdtemp(join(tmpdir(), 'valstara-price-index-config-'));
   try {
     await cp(configDirectory, join(root, 'config'), { recursive: true });
+    // validate also checks the data files (E11.6-07): the committed seeds.
+    await cp(dataDirectory, join(root, 'data/price-index'), {
+      recursive: true,
+    });
     const path = (name: string) => join(root, 'config', name);
     const files = {
       markets: JSON.parse(await readFile(path('markets.json'), 'utf8')),
@@ -198,7 +205,7 @@ test('an unknown command prints the usage and exits 1', async () => {
     stderr: (text: string) => output.push(text),
   };
   assert.equal(await runCli([], io), 1);
-  assert.equal(await runCli(['scrape'], io), 1);
+  assert.equal(await runCli(['unknown-command'], io), 1);
   assert.equal(await runCli(['validate', '--extra'], io), 1);
   assert.match(output.join(''), /Usage: npm run price-index -- <command>/);
 });

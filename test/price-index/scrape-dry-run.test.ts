@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmod, readdir } from 'node:fs/promises';
+import { chmod, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 
@@ -226,6 +226,45 @@ test('a dry run with nothing to replay is refused, and with no change says so', 
       /A build would change no record in latest\.json\./,
     );
     assert.deepEqual(attempts, []);
+  } finally {
+    await space.dispose();
+  }
+});
+
+test('a replayed page that did not load stays failed, with or without a readable fetch report', async () => {
+  const space = await priceIndexWorkspace({ services, markets: ['SE'] });
+  try {
+    const scraped = await space.cli(['scrape'], {
+      environment: testEnvironment(
+        fixtureDriver({
+          status: (path) =>
+            path === '/services/chatgpt/sweden' ? 404 : undefined,
+        }),
+        fakeClock(),
+      ),
+    });
+    assert.equal(scraped.status, 0, scraped.err);
+    assert.match(scraped.out, /Failed markets: SE \(1\)/);
+
+    const { environment } = throwingEnvironment();
+    const replayed = await space.cli(['scrape', '--dry-run'], { environment });
+    assert.equal(replayed.status, 0, replayed.err);
+    assert.match(replayed.out, /Failed markets: SE \(1\)/);
+    assert.match(
+      replayed.out,
+      /\+ SE\/chatgpt\/plus\/month: missing \(market_failed\)/,
+    );
+
+    // A fetch report a crash left unreadable only loses the detail.
+    await writeFile(
+      join(space.rawRoot, '20261118T093000Z', 'fetch-report.json'),
+      '{ "pages": [',
+    );
+    const unreadable = await space.cli(['scrape', '--dry-run'], {
+      environment,
+    });
+    assert.equal(unreadable.status, 0, unreadable.err);
+    assert.match(unreadable.out, /Failed markets: SE \(1\)/);
   } finally {
     await space.dispose();
   }
