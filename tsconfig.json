@@ -4,6 +4,7 @@
     ".astro/types.d.ts",
     "src/**/*.ts",
     "src/**/*.astro",
+    "packages/price-index/src/**/*.ts",
     "test/**/*.ts"
   ]
 }

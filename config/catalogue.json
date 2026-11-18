@@ -1,0 +1,428 @@
+{
+  "services": [
+    {
+      "service_id": "adobe-creative-cloud",
+      "name": "Adobe Creative Cloud",
+      "category": "productivity",
+      "website_url": "https://www.adobe.com/creativecloud.html",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "individual",
+          "name": "Individual",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "amazon-prime",
+      "name": "Amazon Prime / Prime Video",
+      "category": "streaming",
+      "website_url": "https://www.amazon.com/amazonprime",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "prime",
+          "name": "Prime",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": ["Amazon Prime", "amazon-prime"],
+        "plans": {
+          "prime": ["Prime"]
+        }
+      }
+    },
+    {
+      "service_id": "apple-tv",
+      "name": "Apple TV",
+      "category": "streaming",
+      "website_url": "https://tv.apple.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "individual",
+          "name": "Individual",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": ["Apple TV", "apple-tv-plus"],
+        "plans": {
+          "individual": ["Apple TV"]
+        }
+      }
+    },
+    {
+      "service_id": "apple-music",
+      "name": "Apple Music",
+      "category": "music",
+      "website_url": "https://www.apple.com/apple-music/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "individual",
+          "name": "Individual",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": ["Apple Music", "apple-music"],
+        "plans": {
+          "individual": ["Individual", "individual"]
+        }
+      }
+    },
+    {
+      "service_id": "bolt-new",
+      "name": "Bolt.new",
+      "category": "ai",
+      "website_url": "https://bolt.new/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "pro",
+          "name": "Pro",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "canva",
+      "name": "Canva",
+      "category": "productivity",
+      "website_url": "https://www.canva.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "pro",
+          "name": "Pro",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "chatgpt",
+      "name": "ChatGPT",
+      "category": "ai",
+      "website_url": "https://chatgpt.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "plus",
+          "name": "Plus",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": ["ChatGPT", "chatgpt"],
+        "plans": {
+          "plus": ["ChatGPT Plus", "plus"]
+        }
+      }
+    },
+    {
+      "service_id": "crunchyroll",
+      "name": "Crunchyroll",
+      "category": "streaming",
+      "website_url": "https://www.crunchyroll.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "mega-fan",
+          "name": "Mega Fan",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "duolingo",
+      "name": "Duolingo",
+      "category": "learning",
+      "website_url": "https://www.duolingo.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "super",
+          "name": "Super",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        },
+        {
+          "plan_id": "max",
+          "name": "Max",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "figma",
+      "name": "Figma",
+      "category": "productivity",
+      "website_url": "https://www.figma.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "professional",
+          "name": "Professional",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "linkedin-premium",
+      "name": "LinkedIn Premium",
+      "category": "productivity",
+      "website_url": "https://premium.linkedin.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "career",
+          "name": "Career",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        },
+        {
+          "plan_id": "business",
+          "name": "Business",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "lovable",
+      "name": "Lovable",
+      "category": "ai",
+      "website_url": "https://lovable.dev/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "pro",
+          "name": "Pro",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "myfitnesspal",
+      "name": "MyFitnessPal",
+      "category": "fitness",
+      "website_url": "https://www.myfitnesspal.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "premium",
+          "name": "Premium",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "n8n",
+      "name": "n8n",
+      "category": "ai",
+      "website_url": "https://n8n.io/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "starter",
+          "name": "Starter",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "netflix",
+      "name": "Netflix",
+      "category": "streaming",
+      "website_url": "https://www.netflix.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "basic",
+          "name": "Basic",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        },
+        {
+          "plan_id": "standard",
+          "name": "Standard",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        },
+        {
+          "plan_id": "premium",
+          "name": "Premium (4K)",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": ["Netflix", "netflix"],
+        "plans": {
+          "basic": ["Basic", "basic"],
+          "standard": ["Standard", "standard"],
+          "premium": ["Premium", "premium"]
+        }
+      }
+    },
+    {
+      "service_id": "notion",
+      "name": "Notion",
+      "category": "productivity",
+      "website_url": "https://www.notion.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "plus",
+          "name": "Plus",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "perplexity",
+      "name": "Perplexity",
+      "category": "ai",
+      "website_url": "https://www.perplexity.ai/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "pro",
+          "name": "Pro",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "spotify",
+      "name": "Spotify Premium",
+      "category": "music",
+      "website_url": "https://www.spotify.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "individual",
+          "name": "Individual",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": ["Spotify Premium", "spotify"],
+        "plans": {
+          "individual": ["Premium Individual", "individual"]
+        }
+      }
+    },
+    {
+      "service_id": "youtube-premium",
+      "name": "YouTube Premium",
+      "category": "streaming",
+      "website_url": "https://www.youtube.com/premium",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "individual",
+          "name": "Individual",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": ["YouTube Premium", "youtube-premium"],
+        "plans": {
+          "individual": ["Individual", "individual"]
+        }
+      }
+    }
+  ]
+}

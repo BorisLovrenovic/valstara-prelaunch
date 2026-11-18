@@ -8,6 +8,7 @@ import {
   scanStylesheetLiteralValues,
 } from './literal-values.mjs';
 import { scanMotionProperties as scanMotionSource } from './motion-properties.mjs';
+import { scanPriceIndexIsolation } from './price-index-isolation.mjs';
 
 const projectRoot = resolve(new URL('../..', import.meta.url).pathname);
 const codeExtensions = new Set([
@@ -757,6 +758,9 @@ export async function runSecurityGates(
     scanInlineProse(files),
     scanLiteralValues(files),
     scanMotionProperties(files),
+    readJson('package.json').then((packageJson) =>
+      scanPriceIndexIsolation(files, packageJson),
+    ),
   ]);
   return scans.flat();
 }

@@ -74,6 +74,9 @@ valstara-prelaunch/
     styles/
       tokens.css                   ★ the portable token file — no framework coupling
       motion.css                   the motion utilities, page transitions and smooth scrolling (E11.5-11i); waitlist presentation, not ported verbatim
+  packages/
+    price-index/                   the price-index tool: a separate offline process the founder runs by hand (ADR-033)
+  config/                          the price index's markets, catalogue and Valstara prices, validated by `price-index validate`
   infra/
     compose/                       docker-compose, local + production, hard memory limits
     deploy/                        deploy.sh, rollback.sh, migration audit
@@ -122,6 +125,12 @@ valstara-prelaunch/
 | **email/providers/brevo** | Brevo | Broadcast · `mail.valstara.com` · list sync · priced per send |
 
 Both implement the same interface and **declare their capabilities** rather than having them assumed: `supports_broadcast`, `supports_contact_sync`, `sending_domain`, `daily_free_cap`, `webhook_events`. The acceptance test for the abstraction is the same one the storefront uses: **swapping a provider touches its own module and a config entry, and nothing else.**
+
+### Separate tools — outside the site
+
+| Module | Responsibility | Note |
+|---|---|---|
+| **price-index** (`packages/price-index/`) | Collects official list prices once a month on the founder's command, and writes the committed JSON the price pages build from | **`src/` may import only its `src/publish` and `src/schema`, and it imports nothing from `src/`.** Nothing that builds, starts or deploys the site starts, imports or copies it, which the isolation scan enforces → ADR-033, `docs/modules/price-index.md` |
 
 ---
 

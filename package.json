@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "astro build",
-    "check": "npm run lint && npm run format && npm run typecheck && npm run security && node scripts/ci/app-build.mjs",
+    "check": "npm run price-index -- validate && npm run lint && npm run format && npm run typecheck && npm run security && node scripts/ci/app-build.mjs",
     "prebuild": "tsx scripts/ci/provider-showcase-check.ts && tsx scripts/ci/seo-build-check.ts --sitemap",
     "postbuild": "tsx scripts/ci/seo-build-check.ts --check",
     "backup:drill": "sh infra/backups/restore-drill.sh",
@@ -23,6 +23,7 @@
     "test:a11y": "RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test --test-force-exit test/accessibility.test.mjs",
     "test:privacy": "node scripts/ci/security-gates.mjs && RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --test --test-force-exit --test-concurrency=1 test/e1-11-rendered-page.test.mjs test/signup-form-rendered-page.test.mjs",
     "preview": "astro preview",
+    "price-index": "tsx packages/price-index/src/cli/main.ts",
     "test": "RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node --expose-gc --import tsx --test --test-force-exit --test-concurrency=1",
     "test:production-stack": "node infra/compose/assert-production-stack.mjs",
     "test:stack": "node infra/compose/assert-stack.mjs",
@@ -37,7 +38,8 @@
     "drand-client": "1.4.2",
     "imapflow": "2.1.2",
     "mailparser": "3.12.4",
-    "pg": "8.23.0"
+    "pg": "8.23.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",

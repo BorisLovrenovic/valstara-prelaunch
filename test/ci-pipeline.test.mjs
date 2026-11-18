@@ -264,6 +264,24 @@ test('an uncovered Astro change fails closed without LCOV entries', async () => 
   );
 });
 
+test('an uncovered changed line under packages/price-index/src/ fails the gate', async () => {
+  const config = JSON.parse(await readFile(configUrl, 'utf8'));
+  const changed = parseChangedLines(
+    '+++ b/packages/price-index/src/schema/example.ts\n@@ -0,0 +1,2 @@\n',
+  );
+  const coverage = parseLcov(
+    'SF:packages/price-index/src/schema/example.ts\nDA:1,1\nDA:2,0\nend_of_record\n',
+    process.cwd(),
+  );
+  const result = changedCoverage(changed, coverage, config);
+
+  assert.equal(result.percentage, 50);
+  assert.throws(
+    () => assertCoverage(result, config.changedLinesMinimum),
+    /below 80%/,
+  );
+});
+
 test('coverage includes every executable source format used under src', async () => {
   const config = JSON.parse(await readFile(configUrl, 'utf8'));
   const runner = await readFile(

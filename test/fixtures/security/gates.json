@@ -102,5 +102,10 @@
     "path": "src/pages/ci-inline-prose-fixture.astro",
     "content": "<p>Welcome to the Valstara waitlist.</p>\n",
     "diagnostic": "move this string into src/copy"
+  },
+  "price-index-isolation": {
+    "path": "src/server/ci-price-index-isolation-fixture.ts",
+    "content": "import { runCli } from '../../packages/price-index/src/cli/main.ts';\nexport const tool = runCli;\n",
+    "diagnostic": "\\[price-index-isolation\\] src/server/ci-price-index-isolation-fixture\\.ts: imports \\.\\./\\.\\./packages/price-index/src/cli/main\\.ts"
   }
 }

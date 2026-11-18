@@ -48,7 +48,7 @@ E11.6-01 also captures country pages for 18 further countries (Belgium, Bosnia a
 
 ### Catalogue (`config/catalogue.json`)
 
-Each service has a `service_id` (slug), display name, category (`ai`, `streaming`, `music`, `productivity`, `learning`, `fitness`), official website URL, `status` (`selling_now` | `launch` | `planned`), `plans[]` and `source_aliases`. Each plan has a `plan_id`, display name, `billing_period` (`month` | `year`), and `is_student` and `is_family` flags. `source_aliases` lists the names the source uses for the service and for each plan. They are used for matching, and nothing else.
+Each service has a `service_id` (slug), display name, category (`ai`, `streaming`, `music`, `productivity`, `learning`, `fitness`), official website URL, `status` (`selling_now` | `launch` | `planned`), `plans[]` and `source_aliases`. Each plan has a `plan_id`, display name, `billing_period` (`month` | `year`), and `is_student` and `is_family` flags. `source_aliases` lists the names the source uses for the service and for each plan. They are used for matching, and nothing else. The file shapes, the alias layout and every rule `price-index validate` enforces are in `docs/modules/price-index.md` (E11.6-02).
 
 **Track exactly these products and plans, at the monthly price the source shows (founder, 2026-11-17):**
 
@@ -65,7 +65,7 @@ Each service has a `service_id` (slug), display name, category (`ai`, `streaming
 | Duolingo | Super, Max |
 | Figma | Professional |
 | LinkedIn Premium | Career, Business |
-| Lovable | The paid plan. Flag it if ambiguous |
+| Lovable | Pro (the founder, 2026-11-18) |
 | MyFitnessPal | Premium |
 | n8n | Starter |
 | Netflix | Basic, Standard, Premium (4K) |

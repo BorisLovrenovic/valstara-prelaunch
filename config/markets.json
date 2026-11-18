@@ -1,0 +1,144 @@
+{
+  "markets": [
+    {
+      "code": "GB",
+      "name": "United Kingdom",
+      "slug": "united-kingdom",
+      "currency": "GBP",
+      "enabled": true
+    },
+    {
+      "code": "DE",
+      "name": "Germany",
+      "slug": "germany",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "ES",
+      "name": "Spain",
+      "slug": "spain",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "FR",
+      "name": "France",
+      "slug": "france",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "IT",
+      "name": "Italy",
+      "slug": "italy",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "PL",
+      "name": "Poland",
+      "slug": "poland",
+      "currency": "PLN",
+      "enabled": true
+    },
+    {
+      "code": "RO",
+      "name": "Romania",
+      "slug": "romania",
+      "currency": "RON",
+      "enabled": true
+    },
+    {
+      "code": "SE",
+      "name": "Sweden",
+      "slug": "sweden",
+      "currency": "SEK",
+      "enabled": true
+    },
+    {
+      "code": "NO",
+      "name": "Norway",
+      "slug": "norway",
+      "currency": "NOK",
+      "enabled": true
+    },
+    {
+      "code": "DK",
+      "name": "Denmark",
+      "slug": "denmark",
+      "currency": "DKK",
+      "enabled": true
+    },
+    {
+      "code": "FI",
+      "name": "Finland",
+      "slug": "finland",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "CH",
+      "name": "Switzerland",
+      "slug": "switzerland",
+      "currency": "CHF",
+      "enabled": true
+    },
+    {
+      "code": "NL",
+      "name": "Netherlands",
+      "slug": "netherlands",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "HR",
+      "name": "Croatia",
+      "slug": "croatia",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "IE",
+      "name": "Ireland",
+      "slug": "ireland",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "AT",
+      "name": "Austria",
+      "slug": "austria",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "PT",
+      "name": "Portugal",
+      "slug": "portugal",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "CA",
+      "name": "Canada",
+      "slug": "canada",
+      "currency": "CAD",
+      "enabled": true
+    },
+    {
+      "code": "US",
+      "name": "United States",
+      "slug": "united-states",
+      "currency": "USD",
+      "enabled": true
+    },
+    {
+      "code": "AU",
+      "name": "Australia",
+      "slug": "australia",
+      "currency": "AUD",
+      "enabled": true
+    }
+  ]
+}
