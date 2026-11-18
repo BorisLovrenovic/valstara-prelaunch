@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 
+import { MergeError } from '../pipeline/index.ts';
 import { valueText } from '../pipeline/notes.ts';
 import {
   approvalsFile,
@@ -7,12 +8,20 @@ import {
   type ApprovalEntry,
   type ReviewDecision,
 } from '../schema/approvals.ts';
+import type { LatestFile } from '../schema/price-index-files.ts';
 import { recordIdentity, type PriceRecord } from '../schema/price-record.ts';
 import {
   appendApproval,
   createJsonFileStore,
   PriceStoreError,
 } from '../storage/index.ts';
+import {
+  DataFileError,
+  latestRun,
+  mergeRun,
+  rawRootOf,
+  readDataInputs,
+} from './run-files.ts';
 import { formatIssues, loadConfig } from './validate.ts';
 
 // `price-index review approve|reject --market --service --plan --actor`
@@ -21,9 +30,14 @@ import { formatIssues, loadConfig } from './validate.ts';
 // exact value and its source, and changes nothing else: the next merge
 // applies it.
 //
-// In this ticket the flagged record is read from data/price-index/latest.json
-// (D-028 Q4). E11.6-07 switches it to the preview merge of the latest run;
-// approvals.json does not change when it does.
+// The flagged record is read from the preview merge of the latest run
+// (D-028 Q4, built by E11.6-07): the latest.json that `build-data` would
+// write now from that run's observations, the founder's manual entries and
+// the decisions already recorded. So the monthly routine reviews before it
+// builds. With no run in the raw store at all (a fresh clone), the record is
+// read from data/price-index/latest.json, as E11.6-06 built it. A newest run
+// without observations was stopped before it wrote them, and must be
+// resumed first. approvals.json is the same either way.
 
 export const reviewExitCodes = {
   done: 0,
@@ -124,8 +138,8 @@ export async function runReview(
     return reviewExitCodes.refused;
   }
 
-  const { config, issues } = await loadConfig(io.root);
-  if (config === undefined || issues.length > 0) {
+  const { config, settings, issues } = await loadConfig(io.root);
+  if (config === undefined || settings === undefined || issues.length > 0) {
     io.stderr(
       `price-index review: the configuration is invalid\n${formatIssues(issues)}\n`,
     );
@@ -161,13 +175,34 @@ export async function runReview(
     billing_period: plan.billing_period,
   });
 
-  let latest;
+  let latest: LatestFile | null;
+  let shown: string;
   try {
-    latest = await createJsonFileStore({
-      directory: resolve(io.root, 'data/price-index'),
-    }).readLatest();
+    const run = await latestRun(rawRootOf(io.root));
+    if (run === null) {
+      shown = 'latest.json';
+      latest = await createJsonFileStore({
+        directory: resolve(io.root, 'data/price-index'),
+      }).readLatest();
+    } else if (run.observations === null) {
+      return refuse(
+        `run ${run.runId} has no observations yet; it was stopped before it could write them. Finish it with scrape --resume ${run.runId}, then review.`,
+      );
+    } else {
+      shown = `the preview of run ${run.runId}`;
+      latest = mergeRun({
+        observations: run.observations,
+        data: await readDataInputs(io.root),
+        config,
+        settings: settings.merge,
+        clock: io.clock,
+      });
+    }
   } catch (error) {
-    const problem = storeProblem(error);
+    const problem =
+      error instanceof DataFileError || error instanceof MergeError
+        ? error.message
+        : storeProblem(error);
     if (problem === null) {
       throw error;
     }
@@ -183,7 +218,7 @@ export async function runReview(
     (candidate) => recordIdentity(candidate) === identity,
   );
   if (record === undefined) {
-    return refuse(`latest.json has no record for ${identity}.`);
+    return refuse(`${shown} has no record for ${identity}.`);
   }
   if (!flaggedStatuses.has(record.status)) {
     return refuse(
@@ -228,7 +263,7 @@ export async function runReview(
 
   const verb = request.decision === 'approve' ? 'approved' : 'rejected';
   io.stdout(
-    `price-index review: ${verb} ${valueText(record)} (${record.source}) for ${identity}, which was ${record.status}.\n` +
+    `price-index review: ${verb} ${valueText(record)} (${record.source}) for ${identity}, which was ${record.status} in ${shown}.\n` +
       (record.notes === null ? '' : `${record.notes}\n`) +
       `Recorded in ${approvalsFile} by ${request.actor}. The next merge applies it.\n`,
   );

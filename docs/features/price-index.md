@@ -27,6 +27,8 @@ The **price index** records the official list prices of the subscriptions we tra
 
 **The tool cannot affect the running site (founder requirement, 2026-11-17).** It is not started by `npm run dev`, `npm start`, Docker Compose or the production image. The site never reads the tool's working files. The pages read only the committed `data/price-index/` files, and only at build time. New prices go live only through the ordinary path: a pull request, CI, merge and deploy. A scraper crash, a block by the source, or bad data can therefore at worst leave the founder without a new data commit. Even then, the site keeps serving the last merged prices until they go stale.
 
+**How this is proven (E11.6-07).** `scrape` never writes `latest.json`: it writes its observations and a preview merge to the gitignored raw store. Only `build-data` writes `data/price-index/`, and only after every input and its result validate. Tests run every failure mode (a run stopped by the source, a run killed mid-market, an interrupted run, a dry run, a build that fails validation) and require every file under `data/price-index/` and `config/` to stay byte-identical. Each command runs as a child process and must exit on its own. The built site is scanned for code from the tool's `src/http`, `src/sources`, `src/cli` and `src/reports`, and a copy of the repository without the tool must build and serve (`test/price-index/isolation-proof.test.ts`).
+
 **There is no automation (founder, 2026-11-17).** No cron, no scheduled GitHub Actions workflow and no automatic email notification. The monthly routine is in `docs/price-index-runbook.md` (E11.6-15).
 
 ## Feature flag
@@ -123,7 +125,7 @@ Every record carries all of these keys, with `null` where a value is absent, and
 | `data/price-index/approvals.json` | yes | **Append-only** founder approvals of `needs_review` and `conflict` values, each with an actor |
 | `data/price-index/monthly/YYYY-MM.json` | yes | The monthly report data that feeds `/price-index/{yyyy-mm}` |
 | `data/price-index/published-urls.json` | yes | **Append-only** ledger of every price URL ever published |
-| `data/raw/<run_id>/…` | **no** (gitignored) | Raw fetched pages, normalised observations, checkpoint. Rotated (keep the last N runs) |
+| `data/raw/<run_id>/…` | **no** (gitignored) | Raw fetched pages, the fetcher's report and checkpoint, the run's normalised observations (`observations.json`) and its preview merge (`preview.json`). Rotated (keep the last N runs) |
 | `reports/coverage-YYYY-MM-DD.{md,json}`, `reports/monthly/YYYY-MM.md`, `reports/runs/<run_id>.json` | yes | Gap reports, outreach summaries, one structured log per run |
 
 **The JSON feed is a repository file, not a served endpoint.** A public API is permanently out of scope (`AGENTS.md`). The storefront imports the files.
@@ -182,7 +184,7 @@ Prices are shown in local currency with an approximate USD figure, plus a "last 
 - **A value that breaks the currency or price > 0 check is `needs_review`**, with the broken rule in `notes`. No approval can publish it, and a manual override fills the gap as usual. An observation or override for a tracked plan in another billing period than the catalogue's, or an override in another currency than its market's, stops the merge: nothing is built until the input is fixed.
 - **Only `ok`, `manual_override` and `not_offered` go `stale`:** scraped values 45 days after `observed_at`, manual entries 90 days after `verified_at`. A stale record keeps its value, which stays the ±40% baseline. `needs_review`, `conflict` and `missing` keep their status, so an open flag stays visible.
 - **A failed page keeps the previous scraped value with its old `observed_at`, and any open flag**, so a conflict stays a conflict and an override never wins because a market failed. A retired override's value is not kept.
-- **`price-index review approve|reject --market --service --plan --actor`** records the decision. In E11.6-06 it reads the flagged record from `latest.json`; E11.6-07 switches it to the preview merge of the latest run, so the monthly routine above (review before `build-data`) works as written. `approvals.json` does not change when it does.
+- **`price-index review approve|reject --market --service --plan --actor`** records the decision. It reads the flagged record from the preview merge of the latest run (E11.6-07; D-028 Q4), so the monthly routine above (review before `build-data`) works as written. With no run in the raw store at all, it reads `latest.json`, as E11.6-06 built it. `approvals.json` is the same either way.
 - **The settings** are in `config/price-index.json` under `merge`: `change_threshold_percent` (40) and `stale_after_days` `{ scraped, manual }` (45, 90).
 
 ## Change log and monthly report
@@ -240,7 +242,7 @@ A **real change** is a published value replaced by a different published value f
 ## User flows
 
 1. **Monthly run (founder, by hand).** The steps are in `docs/price-index-runbook.md`.
-   1. `npm run price-index -- scrape` fetches enabled markets politely and saves the raw pages. It writes the observations and a **preview** coverage report. It does not touch `latest.json`, and it exits.
+   1. `npm run price-index -- scrape` fetches enabled markets politely and saves the raw pages. It writes the observations and a **preview** merge to `data/raw/<run_id>/`, and prints its coverage and counts. It does not touch `latest.json`, and it exits. `scrape --dry-run` replays the latest raw run (or `--from-fixtures`, the captured pages) and prints what a build would change, fetching and writing nothing. A run the source stopped, or that was interrupted, resumes with `scrape --resume <run_id>`.
    2. The founder reads the coverage report.
    3. The founder resolves `needs_review` and `conflict` records with `review approve|reject`, and adds manual overrides with `override add` and `override not-offered`.
    4. `npm run price-index -- build-data` merges and validates everything, then writes `latest.json`, a snapshot, the changes, the final coverage report and the run log.
@@ -277,7 +279,7 @@ A **real change** is a published value replaced by a different published value f
 
 ## Telemetry
 
-Organic entries and signups by price-page type (from Umami's page views and the existing server-side funnel events: no new event, and no property carrying personal data). Each run's counts are logged to `reports/runs/<run_id>.json`: fetched, not-modified, matched, unmatched, changed, flagged by status, and failed markets.
+Organic entries and signups by price-page type (from Umami's page views and the existing server-side funnel events: no new event, and no property carrying personal data). Each run's counts are logged to `reports/runs/<run_id>.json` by `build-data`: fetched, matched, unmatched, changed, records by status (which includes every flagged status), and failed markets, with the coverage %. **There is no "not modified" count** (E11.6-07, founder decision 1 of 2026-11-18): the fetcher makes no conditional request, so no page can answer "not modified". The changed count is zero until E11.6-09 adds change detection.
 
 ## Repository layout
 

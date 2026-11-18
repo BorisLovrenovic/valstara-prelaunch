@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { z } from 'zod';
 
+import { runIdPattern } from '../schema/run-files.ts';
 import { writeFileAtomic } from '../storage/atomic-write.ts';
 
 // The raw store (E11.6-04): `data/raw/<run_id>/` holds what one run fetched.
@@ -17,7 +18,7 @@ import { writeFileAtomic } from '../storage/atomic-write.ts';
 export const rawDirectory = 'data/raw';
 
 /** `20261118T093000Z`, with `-2`, `-3`, … for a second run in that second. */
-export const runIdPattern = /^\d{8}T\d{6}Z(?:-\d{1,3})?$/u;
+export { runIdPattern };
 
 export class RawStoreError extends Error {
   readonly code: 'invalid_run_id' | 'run_not_found' | 'invalid_checkpoint';

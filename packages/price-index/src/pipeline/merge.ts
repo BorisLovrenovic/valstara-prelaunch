@@ -30,12 +30,12 @@ import {
   type MergeSettings,
 } from '../schema/price-index-settings.ts';
 import {
-  missingReasons,
   priceRecordObjectSchema,
   recordIdentity,
   type MissingReason,
   type PriceRecord,
 } from '../schema/price-record.ts';
+import { observationSchema, sourceGapSchema } from '../schema/run-files.ts';
 import type { Observation, SourceGap } from '../sources/source-adapter.ts';
 import { compareRecords } from '../storage/serialise.ts';
 import { joinNotes, notes, valueText } from './notes.ts';
@@ -126,39 +126,11 @@ export class MergeError extends Error {
 
 const millisecondsPerDay = 86_400_000;
 
-const observationSchema = priceRecordObjectSchema
-  .pick({
-    market: true,
-    service_id: true,
-    plan_id: true,
-    billing_period: true,
-    price_source_text: true,
-    price_usd_source: true,
-    source_url: true,
-    source_verified_at: true,
-  })
-  .extend({
-    price_local: z.string(),
-    currency: z.string(),
-    source: priceRecordObjectSchema.shape.source,
-    observed_at: z.iso.datetime(),
-  });
-
-const gapSchema = priceRecordObjectSchema
-  .pick({
-    market: true,
-    service_id: true,
-    plan_id: true,
-    billing_period: true,
-    source_url: true,
-  })
-  .extend({ reason: z.enum(missingReasons), note: z.string().nullable() });
-
 const runSchema = z.object({
   source: priceRecordObjectSchema.shape.source,
   observedAt: z.iso.datetime(),
   observations: z.array(observationSchema),
-  gaps: z.array(gapSchema),
+  gaps: z.array(sourceGapSchema),
 });
 
 function checked<T>(schema: z.ZodType<T>, value: unknown, what: string): T {

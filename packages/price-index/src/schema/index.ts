@@ -11,4 +11,5 @@ export * from './markets.ts';
 export * from './price-index-files.ts';
 export * from './price-index-settings.ts';
 export * from './price-record.ts';
+export * from './run-files.ts';
 export * from './valstara-prices.ts';
