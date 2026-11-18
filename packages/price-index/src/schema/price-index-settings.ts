@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 // `config/price-index.json`: the tool's own settings. E11.6-04 creates it with
 // the fetcher's keys under `fetcher`; E11.6-06 adds the merge's under
-// `merge`; later tickets add theirs beside them.
+// `merge`; E11.6-08 adds the coverage report's under `reports`; later tickets
+// add theirs beside them.
 
 /** The one host the fetcher may request (E11.6-04, host allowlist). */
 export const sourceOrigin = 'https://www.youfundceo.com';
@@ -74,9 +75,20 @@ export const mergeSettingsSchema = z.strictObject({
 
 export type MergeSettings = z.infer<typeof mergeSettingsSchema>;
 
+// The coverage report's settings (E11.6-08).
+export const reportSettingsSchema = z.strictObject({
+  // How many `ok` records the spot-check list samples for the founder to
+  // check by hand against the provider's own page. Fewer when there are
+  // fewer `ok` records.
+  spot_checks: z.int().positive().max(1000),
+});
+
+export type ReportSettings = z.infer<typeof reportSettingsSchema>;
+
 export const priceIndexSettingsFileSchema = z.strictObject({
   fetcher: fetcherSettingsSchema,
   merge: mergeSettingsSchema,
+  reports: reportSettingsSchema,
 });
 
 export type PriceIndexSettingsFile = z.infer<

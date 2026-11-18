@@ -22,5 +22,8 @@
       "scraped": 45,
       "manual": 90
     }
+  },
+  "reports": {
+    "spot_checks": 5
   }
 }

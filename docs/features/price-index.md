@@ -187,6 +187,25 @@ Prices are shown in local currency with an approximate USD figure, plus a "last 
 - **`price-index review approve|reject --market --service --plan --actor`** records the decision. It reads the flagged record from the preview merge of the latest run (E11.6-07; D-028 Q4), so the monthly routine above (review before `build-data`) works as written. With no run in the raw store at all, it reads `latest.json`, as E11.6-06 built it. `approvals.json` is the same either way.
 - **The settings** are in `config/price-index.json` under `merge`: `change_threshold_percent` (40) and `stale_after_days` `{ scraped, manual }` (45, 90).
 
+## The coverage report and manual entries
+
+Built by E11.6-08; the full rules are in `docs/modules/price-index.md` under "The coverage report" and "Manual entries".
+
+`reports/coverage-YYYY-MM-DD.md` and `.json` are the founder's working list for a run. `scrape` writes them as a **preview**, `build-data` as the **final** report of its build (replacing that day's preview), and `price-index report` on demand, as the preview of the newest run against the data as it now stands. The Markdown is rendered from the JSON's own object, so the two always carry the same figures. They hold:
+
+- the full matrix of enabled markets × catalogue plans, each cell's status and, for `missing`, its reason;
+- coverage overall, per market and per service: publishable records as a share of all records, floored to one decimal;
+- the `missing` combinations grouped by service, `not_on_source` first, each with the market's currency and the service's official site, ready for manual entry;
+- every `needs_review`, `conflict` and `stale` record, with the value it shows and, for a conflict, the founder's manual entry beside it;
+- the overrides the scraper now agrees with, which may be retired;
+- the publishable records without a USD figure, which are published but never ranked;
+- the "untracked on source" list with its suggestions, none applied;
+- **a spot-check list of N `ok` records** (`reports.spot_checks` in `config/price-index.json`, 5 by default), drawn by a source seeded from the run id, so the same run always lists the same records, each with the service's official URL.
+
+The report carries no USD figure. It is a committed file for the founder, never read by a page.
+
+**Manual entries.** `price-index override add` asks, one line at a time, for the market, service, plan, billing period, local price, currency, an optional USD figure, `source_url`, `verified_at`, `verified_by` and a note. `override not-offered` asks the same without the price, currency and USD figure, and records a confirmed `not_offered`. `override retire` removes the entry for one market, service, plan and billing period. Every answer is checked as it is given and the first refused one writes nothing. **They refuse a currency other than the market's, a `source_url` whose host is not the service's official host (the host of its catalogue `website_url`), a price that does not parse exactly, and an empty `verified_by`.** `manual-overrides.json` is validated whole and written atomically.
+
 ## Change log and monthly report
 
 A **real change** is a published value replaced by a different published value for the same record and currency. It is not a first observation, a status change or a formatting difference. A `needs_review` change is logged only when approved, dated by its observation. `changes.json` is append-only, and CI fails a change that edits or removes an existing entry.
@@ -242,9 +261,9 @@ A **real change** is a published value replaced by a different published value f
 ## User flows
 
 1. **Monthly run (founder, by hand).** The steps are in `docs/price-index-runbook.md`.
-   1. `npm run price-index -- scrape` fetches enabled markets politely and saves the raw pages. It writes the observations and a **preview** merge to `data/raw/<run_id>/`, and prints its coverage and counts. It does not touch `latest.json`, and it exits. `scrape --dry-run` replays the latest raw run (or `--from-fixtures`, the captured pages) and prints what a build would change, fetching and writing nothing. A run the source stopped, or that was interrupted, resumes with `scrape --resume <run_id>`.
+   1. `npm run price-index -- scrape` fetches enabled markets politely and saves the raw pages. It writes the observations and a **preview** merge to `data/raw/<run_id>/`, writes the preview's coverage report to `reports/coverage-YYYY-MM-DD.{md,json}`, and prints its coverage and counts. It does not touch `latest.json`, and it exits. `scrape --dry-run` replays the latest raw run (or `--from-fixtures`, the captured pages) and prints what a build would change, fetching and writing nothing. A run the source stopped, or that was interrupted, resumes with `scrape --resume <run_id>`.
    2. The founder reads the coverage report.
-   3. The founder resolves `needs_review` and `conflict` records with `review approve|reject`, and adds manual overrides with `override add` and `override not-offered`.
+   3. The founder resolves `needs_review` and `conflict` records with `review approve|reject`, and adds manual overrides with `override add` and `override not-offered` (and removes one with `override retire`). `npm run price-index -- report` rewrites the preview's coverage report against the data as it now stands, so the founder sees each decision's effect before building.
    4. `npm run price-index -- build-data` merges and validates everything, then writes `latest.json`, a snapshot, the changes, the final coverage report and the run log.
    5. `npm run price-index -- monthly-report --month YYYY-MM` writes the month's report.
    6. The founder commits the data on a data branch and opens a pull request. CI validates it, and the founder merges it. The normal GitHub Actions build and deploy then publishes the pages.

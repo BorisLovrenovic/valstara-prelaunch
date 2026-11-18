@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { z } from 'zod';
@@ -62,13 +62,15 @@ import {
   writeRunObservations,
   type PageLoader,
 } from './run-files.ts';
+import { writeCoverageReport } from './report.ts';
 import { formatIssues, loadConfig } from './validate.ts';
 
 // `price-index scrape [--market SE] [--dry-run [--from-fixtures]] [--resume <run_id>]`
 // (E11.6-07). A real run fetches the pages the source adapter asks for
 // through the browser fetcher (E11.6-04), one at a time, storing each in the
 // raw store; reads them (E11.6-05); and writes the run's observations and a
-// preview merge (E11.6-06) to data/raw/<run_id>/. **It never writes under
+// preview merge (E11.6-06) to data/raw/<run_id>/, and the preview's
+// coverage report to reports/ (E11.6-08). **It never writes under
 // data/price-index/**: only `build-data` does. A dry run fetches nothing and
 // writes nothing at all: it replays the latest raw run, or the founder's
 // captured fixtures, and prints what a build would change.
@@ -647,6 +649,18 @@ async function realRun(
   const reports = [observationsPath];
   if (merged !== null) {
     reports.push(await writePreview(rawRoot, runId, merged));
+    // The coverage report of the preview (E11.6-08), under reports/; it
+    // writes nothing under data/price-index/.
+    const coverage = await writeCoverageReport(io.root, {
+      kind: 'preview',
+      observations,
+      latest: merged,
+      overrides: (await readDataInputs(io.root)).overrides,
+      catalogue: prepared.config.catalogue,
+      markets: prepared.config.markets,
+      spotChecks: prepared.settings.reports.spot_checks,
+    });
+    reports.push(...coverage.map((path) => resolve(io.root, path)));
   }
   reports.push(join(runDirectory(rawRoot, runId), 'fetch-report.json'));
 

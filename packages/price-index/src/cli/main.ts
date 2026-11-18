@@ -1,5 +1,8 @@
 import { systemClock } from '../http/clock.ts';
 import { runBuildData } from './build-data.ts';
+import { runOverride } from './override.ts';
+import { linePrompt, type Prompt } from './prompt.ts';
+import { runReport } from './report.ts';
 import { runReview } from './review.ts';
 import { runScrape, type ScrapeEnvironment } from './scrape.ts';
 import { formatIssues, validateConfig, validateDataFiles } from './validate.ts';
@@ -43,7 +46,14 @@ Commands:
              data/price-index/approvals.json.
   build-data Merge the latest run's observations with the overrides and
              approvals, and on full validation write latest.json, a
-             snapshot and reports/runs/<run_id>.json.
+             snapshot, reports/runs/<run_id>.json and the final coverage
+             report.
+  report     Write the coverage report of the latest run, as build-data
+             would build it now, to reports/coverage-YYYY-MM-DD.md and .json.
+  override add|not-offered|retire
+             Add a manual price, record a confirmed not_offered, or retire
+             a manual entry in data/price-index/manual-overrides.json,
+             answering one question per line.
 
 Exit codes: 0 done, 1 usage or refused, 2 stopped by the source,
 3 validation failure, 4 interrupted.
@@ -57,6 +67,8 @@ export interface CliIo {
   clock?: { now(): Date };
   /** What a real scrape needs from outside. Tests inject a fake browser. */
   scrape?: ScrapeEnvironment;
+  /** Where `override` reads its answers. Defaults to standard input. */
+  prompt?: Prompt;
 }
 
 export async function runCli(
@@ -97,6 +109,19 @@ export async function runCli(
 
   if (command === 'review') {
     return runReview(rest, { ...io, clock: io.clock ?? systemClock });
+  }
+
+  if (command === 'report') {
+    return runReport(rest, { ...io, clock: io.clock ?? systemClock });
+  }
+
+  if (command === 'override') {
+    // Standard input is opened only here, so no other command holds it.
+    return runOverride(rest, {
+      ...io,
+      clock: io.clock ?? systemClock,
+      prompt: io.prompt ?? linePrompt(process.stdin, io.stdout),
+    });
   }
 
   io.stderr(usage);
