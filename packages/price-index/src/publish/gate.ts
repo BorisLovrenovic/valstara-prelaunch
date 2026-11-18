@@ -22,6 +22,9 @@ export type PublishableStatus = (typeof publishableStatuses)[number];
 /**
  * A record as the site sees it. `price_usd_source` is left out: it ranks
  * markets and is never displayed (epic rule 3), so the view cannot show it.
+ * `notes` is left out too: they are the merge's working notes for the
+ * founder, and can name a value the gate refused, such as a scraped price
+ * set aside or rejected.
  */
 export interface PublishedRecord {
   readonly market: string;
@@ -36,7 +39,6 @@ export interface PublishedRecord {
   readonly observed_at: string | null;
   readonly source_verified_at: string | null;
   readonly status: PublishableStatus;
-  readonly notes: string | null;
 }
 
 export interface PublishedView {
@@ -114,13 +116,12 @@ function published(record: PriceRecord): PublishedRecord {
     observed_at: record.observed_at,
     source_verified_at: record.source_verified_at,
     status: record.status as PublishableStatus,
-    notes: record.notes,
   };
 }
 
 /**
- * The publishable records of a latest.json, without their USD figures, in
- * the file's order. An invalid file throws `PublishGateError`: it publishes
+ * The publishable records of a latest.json, without their USD figures or
+ * notes, in the file's order. An invalid file throws `PublishGateError`: it publishes
  * nothing rather than something unchecked.
  */
 export function publishedView(latest: LatestFile): PublishedView {

@@ -99,7 +99,12 @@ test('publishedView holds only publishable records, in file order, without their
         price_source_text: '€9.99',
         currency: 'EUR',
       },
-      { ...statuses.manual_override, market: 'SE' },
+      {
+        ...statuses.manual_override,
+        market: 'SE',
+        notes:
+          'The scraped 16.78 USD was set aside, so the manual entry fills the gap.',
+      },
       {
         ...statuses.stale,
         market: 'US',
@@ -121,6 +126,9 @@ test('publishedView holds only publishable records, in file order, without their
   for (const entry of view.records) {
     assert.equal('price_usd_source' in entry, false);
     assert.equal(JSON.stringify(entry).includes('13.67'), false);
+    // The merge's working notes can name a value the gate refused.
+    assert.equal('notes' in entry, false);
+    assert.equal(JSON.stringify(entry).includes('16.78'), false);
   }
   assert.deepEqual(view.records[0], {
     market: 'DE',
@@ -135,7 +143,6 @@ test('publishedView holds only publishable records, in file order, without their
     observed_at: '2026-11-01T09:30:00.000Z',
     source_verified_at: '2026-10-28',
     status: 'ok',
-    notes: null,
   });
 });
 
@@ -172,6 +179,8 @@ test('rankMarkets ranks publishable records by their USD figure, most expensive 
         status: 'manual_override',
         source: 'manual',
         price_source_text: null,
+        notes:
+          'The scraped 25.90 CHF was rejected on 2026-12-01, so the manual entry stands.',
       }),
     ],
   };
@@ -186,6 +195,8 @@ test('rankMarkets ranks publishable records by their USD figure, most expensive 
   );
   for (const entry of rankMarkets(latest, plan)) {
     assert.equal('price_usd_source' in entry.record, false);
+    assert.equal('notes' in entry.record, false);
+    assert.equal(JSON.stringify(entry.record).includes('25.90'), false);
   }
 });
 
