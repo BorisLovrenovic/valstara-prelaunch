@@ -69,6 +69,8 @@ interface FakeServer {
   seen: Seen[];
   pageLevelInFlight: number;
   maxPageLevelInFlight: number;
+  /** Page-level requests opening and closing, in order, for diagnosis. */
+  timeline: string[];
   /** When false, the never-clearing checkpoint page serves its content. */
   checkpointStuck: boolean;
 }
@@ -100,6 +102,7 @@ async function listen(
 ): Promise<FakeServer> {
   const fake = {
     seen: [],
+    timeline: [],
     pageLevelInFlight: 0,
     maxPageLevelInFlight: 0,
     checkpointStuck: true,
@@ -112,6 +115,8 @@ async function listen(
       headers: request.headers,
     });
     if (isPageLevel(request, url)) {
+      const label = `${request.method} ${url.pathname}${url.search}`;
+      fake.timeline.push(`open ${label}`);
       fake.pageLevelInFlight += 1;
       fake.maxPageLevelInFlight = Math.max(
         fake.maxPageLevelInFlight,
@@ -122,6 +127,7 @@ async function listen(
         if (counted) {
           counted = false;
           fake.pageLevelInFlight -= 1;
+          fake.timeline.push(`close ${label}`);
         }
       };
       response.once('finish', done);
@@ -287,7 +293,7 @@ before(async () => {
   // arguments; run-server would drop them, so launchServer is used.
   const launch = `
 const { chromium } = require('/work/node_modules/playwright');
-chromium.launchServer({ headless: true, args: JSON.parse(process.env.LAUNCH_ARGS), host: '0.0.0.0', port: 3000, wsPath: '/fetcher' })
+chromium.launchServer({ headless: true, args: JSON.parse(process.argv[1]), host: '0.0.0.0', port: 3000, wsPath: '/fetcher' })
   .then(() => console.log('Listening'));`;
   browserServer = spawn(
     'docker',
@@ -302,11 +308,6 @@ chromium.launchServer({ headless: true, args: JSON.parse(process.env.LAUNCH_ARGS
       `${otherHost}:host-gateway`,
       '--publish',
       '127.0.0.1::3000',
-      '--env',
-      `LAUNCH_ARGS=${JSON.stringify([
-        ...evasionLaunchArguments,
-        ...sourceOnlyLaunchArguments(source.origin),
-      ])}`,
       '--volume',
       `${root}:/work:ro`,
       '--workdir',
@@ -315,6 +316,10 @@ chromium.launchServer({ headless: true, args: JSON.parse(process.env.LAUNCH_ARGS
       'node',
       '-e',
       launch,
+      JSON.stringify([
+        ...evasionLaunchArguments,
+        ...sourceOnlyLaunchArguments(source.origin),
+      ]),
     ],
     { stdio: ['ignore', 'pipe', 'pipe'] },
   );
@@ -412,6 +417,7 @@ function reset() {
   source.seen.length = 0;
   elsewhere.seen.length = 0;
   source.maxPageLevelInFlight = 0;
+  source.timeline.length = 0;
   source.checkpointStuck = true;
 }
 
@@ -441,7 +447,7 @@ test('a queue of 50: at most one page-level request is ever in flight, over ever
       51,
     );
 
-    assert.equal(source.maxPageLevelInFlight, 1);
+    assert.equal(source.maxPageLevelInFlight, 1, source.timeline.join('\n'));
     const pageLevel = source.seen.filter(
       (request) =>
         isDocument(request.headers) ||
@@ -576,7 +582,7 @@ test('a checkpoint that clears does so through a same-host script and fetch, and
         'GET /checkpoint/clears',
       ],
     );
-    assert.equal(source.maxPageLevelInFlight, 1);
+    assert.equal(source.maxPageLevelInFlight, 1, source.timeline.join('\n'));
   });
 });
 

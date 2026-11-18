@@ -49,14 +49,14 @@ test('the price-index package, as it stands on disk, passes the scan', async () 
 const red = [
   ["import { Solver } from '2captcha';", 'CAPTCHA'],
   ['await page.solveRecaptchas();', 'CAPTCHA'],
-  ['const key = process.env.CAPSOLVER_KEY; // hCaptcha', 'CAPTCHA'],
+  ['const key = settings.capsolverKey; // hCaptcha', 'CAPTCHA'],
   [
     "await chromium.launch({ proxy: { server: 'http://10.0.0.1:3128' } });",
     'proxy',
   ],
   ["const args = ['--proxy-server=http://10.0.0.1:3128'];", 'proxy'],
   ['const pool = loadProxies();', 'proxy'],
-  ['const agent = process.env.HTTPS_PROXY;', 'proxy'],
+  ['const agent = env.HTTPS_PROXY;', 'proxy'],
   ["const upstream = 'socks5://127.0.0.1:9050';", 'SOCKS address'],
   ["headers['X-Forwarded-For'] = nextAddress();", 'client-address header'],
   [
