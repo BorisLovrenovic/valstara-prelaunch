@@ -154,7 +154,7 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 132 | E11.6-02 | Markets, the catalogue and their schemas | Epic E11.6 — Price index and price pages | done | auto |
 | 133 | E11.6-03 | Exact money, the price record and JSON storage | Epic E11.6 — Price index and price pages | done | auto |
 | 134 | E11.6-04 | The browser fetcher: one page at a time, backoff and checkpoints | Epic E11.6 — Price index and price pages | done | auto |
-| 135 | E11.6-05 | The source-adapter interface and the youfundceo adapter | Epic E11.6 — Price index and price pages | todo | auto |
+| 135 | E11.6-05 | The source-adapter interface and the youfundceo adapter | Epic E11.6 — Price index and price pages | done | auto |
 | 136 | E11.6-06 | Merge, validation and the publish gate | Epic E11.6 — Price index and price pages | todo | auto |
 | 137 | E11.6-07 | The scrape run: commands, run log, dry run and isolation from the site | Epic E11.6 — Price index and price pages | todo | auto |
 | 138 | E11.6-08 | The coverage report, spot checks and the override commands | Epic E11.6 — Price index and price pages | todo | auto |
