@@ -1,3 +1,10 @@
 {
-  "allowlist": []
+  "allowlist": [
+    {
+      "package": "picomatch",
+      "advisory": 1247710,
+      "justification": "GHSA-fc5q-39xc-vjpf: ReDoS in picomatch <=4.0.7 (4.0.7 and the 2.3.2 copy under anymatch) through repeated extglobs; no patched npm release as of 2026-11-18. picomatch ships in the production image as a dependency of astro and @astrojs/node, but the built server never imports it; it runs only in build, lint and typecheck tooling, on glob patterns written in this repository, none of which uses extglobs. test/security-gates.test.mjs verifies the built server does not reach it. Remove this entry when patched releases cover both the 4.x and 2.x lines.",
+      "expiresAt": "2026-12-18"
+    }
+  ]
 }
