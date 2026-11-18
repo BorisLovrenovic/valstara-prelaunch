@@ -172,7 +172,7 @@ Every "No price shown" entry for these services in the 20 markets is "Not verifi
 e.g. `["netflix","basic","HR","m","EUR",5.99,6.99,"2026-11-04",null,"https://help.netflix.com/en/node/24926/hr",0,6.61,7.71]`.
 
 - "After" dates are, in the page's words, "the last archived copy that still showed the old price". Those rows link to `web.archive.org`.
-- The page does not explain the flag. Nine Apple Music United States rows carry `1`.
+- The page does not explain the flag. Nine United States rows carry `1`: three Apple Music and six Netflix (corrected by E11.6-05, whose parser test reads all nine; this line first said all nine were Apple Music).
 - Amounts are JSON numbers, as above. Only three services appear, so the E11.6-09 cross-check can cover only Apple Music, Netflix and Spotify.
 
 ## Local number and currency formats
