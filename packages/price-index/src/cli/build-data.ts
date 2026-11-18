@@ -18,6 +18,7 @@ import {
   rawRootOf,
   readDataInputs,
 } from './run-files.ts';
+import { writeCoverageReport } from './report.ts';
 import {
   formatIssues,
   latestFile,
@@ -34,6 +35,9 @@ import {
 //   data/price-index/latest.json              replaced atomically
 //   data/price-index/snapshots/<date>.json    a new, immutable snapshot
 //   reports/runs/<run_id>.json                the run log
+//   reports/coverage-<date>.md and .json      the final coverage report
+//                                             (E11.6-08), replacing that
+//                                             day's preview
 //
 // A build that fails validation writes nothing, so latest.json and every
 // snapshot stay byte-identical. A partial run (stopped by the source or
@@ -84,6 +88,7 @@ export async function runBuildData(
 
   let merged;
   let observations;
+  let data;
   try {
     const run = await latestRun(rawRootOf(io.root));
     if (run === null) {
@@ -99,9 +104,10 @@ export async function runBuildData(
       return buildDataExitCodes.refused;
     }
     observations = run.observations;
+    data = await readDataInputs(io.root);
     merged = mergeRun({
       observations,
-      data: await readDataInputs(io.root),
+      data,
       config,
       settings: settings.merge,
       clock: io.clock,
@@ -131,6 +137,15 @@ export async function runBuildData(
   const runLogPath = resolve(io.root, runLogDirectory, `${log.run_id}.json`);
   await mkdir(resolve(io.root, runLogDirectory), { recursive: true });
   await writeFileAtomic(runLogPath, serialiseRunLog(log), { mode: 'replace' });
+  const coverageReport = await writeCoverageReport(io.root, {
+    kind: 'final',
+    observations,
+    latest: merged,
+    overrides: data.overrides,
+    catalogue: config.catalogue,
+    markets: config.markets,
+    spotChecks: settings.reports.spot_checks,
+  });
 
   const partial =
     observations.fetch_status === 'completed'
@@ -145,6 +160,7 @@ export async function runBuildData(
         latestFile,
         join(snapshotsDirectory, snapshot.name),
         relative(io.root, runLogPath),
+        ...coverageReport,
       ],
     }) + partial,
   );

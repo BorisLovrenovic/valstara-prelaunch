@@ -504,6 +504,61 @@ test('other field rules: codes, names, flags, URLs, plans and unknown keys', () 
   );
 });
 
+test('official_hosts lists bare lower-case hostnames, distinct and not the website_url host', () => {
+  // D-031 Q1: optional, and compared exactly by override add and not-offered.
+  assertValid(config({ services: [service({ official_hosts: [] })] }));
+  assertValid(
+    config({
+      services: [
+        service({
+          official_hosts: ['open.spotify.com', 'support.spotify.com'],
+        }),
+      ],
+    }),
+  );
+  for (const host of [
+    'Open.Spotify.com',
+    'spotify',
+    'open..spotify.com',
+    '-open.spotify.com',
+    'open.spotify.com.',
+    'open_spotify.com',
+    '',
+  ]) {
+    assertRejected(
+      config({ services: [service({ official_hosts: [host] })] }),
+      /services\.0\.official_hosts\.0: must be a bare lower-case hostname/,
+    );
+  }
+  for (const host of [
+    'https://open.spotify.com',
+    'open.spotify.com/premium',
+    'open.spotify.com:443',
+    '//open.spotify.com',
+  ]) {
+    assertRejected(
+      config({ services: [service({ official_hosts: [host] })] }),
+      /services\.0\.official_hosts\.0: must be a bare lower-case hostname/,
+    );
+  }
+  assertRejected(
+    config({ services: [service({ official_hosts: 'open.spotify.com' })] }),
+    /services\.0\.official_hosts: /,
+  );
+  assertRejected(
+    config({
+      services: [
+        service({ official_hosts: ['open.spotify.com', 'open.spotify.com'] }),
+      ],
+    }),
+    /services\.0\.official_hosts: duplicate official host open\.spotify\.com in service spotify/,
+  );
+  assertRejected(
+    config({ services: [service({ official_hosts: ['www.spotify.com'] })] }),
+    /services\.0\.official_hosts: official host www\.spotify\.com is already the website_url host of spotify/,
+  );
+});
+
 test('the alias normalisation folds case, whitespace, punctuation and diacritics', () => {
   assert.equal(normaliseAlias('Apple TV'), 'apple tv');
   assert.equal(normaliseAlias('apple-tv-plus'), 'apple tv plus');

@@ -12,6 +12,10 @@ import {
   type ConfigSet,
 } from '../schema/config.ts';
 import {
+  coverageReportDirectory,
+  coverageReportFileSchema,
+} from '../schema/coverage-report.ts';
+import {
   manualOverridesFile,
   manualOverridesFileSchema,
 } from '../schema/manual-overrides.ts';
@@ -181,8 +185,8 @@ async function directoryNames(root: string, directory: string) {
 
 /**
  * Every problem in the data files under `root` (E11.6-07): latest.json and
- * each snapshot, manual-overrides.json, approvals.json, and each run log
- * under reports/runs/. latest.json, the snapshots and the run logs may not
+ * each snapshot, manual-overrides.json, approvals.json, each run log under
+ * reports/runs/, and each coverage report's JSON under reports/ (E11.6-08). latest.json, the snapshots and the run logs may not
  * exist yet; the two seeded files must. Files are read one at a time. A
  * temporary file a crashed write left behind (`.<name>.tmp`) is ignored, as
  * git ignores it.
@@ -247,6 +251,34 @@ export async function validateDataFiles(root: string): Promise<ConfigIssue[]> {
         file,
         path: 'run_id',
         message: `must be ${runId}, the file's name`,
+      });
+    }
+  }
+  for (const name of await directoryNames(root, coverageReportDirectory)) {
+    const match = /^coverage-(\d{4}-\d{2}-\d{2})\.json$/u.exec(name);
+    if (match === null) {
+      continue;
+    }
+    const file = `${coverageReportDirectory}/${name}`;
+    const result = await readJsonFile(root, file);
+    if ('issue' in result) {
+      issues.push(result.issue);
+      continue;
+    }
+    const reportIssues = schemaIssues(
+      file,
+      coverageReportFileSchema,
+      result.value,
+    );
+    issues.push(...reportIssues);
+    if (
+      reportIssues.length === 0 &&
+      !(result.value as { built_at: string }).built_at.startsWith(match[1]!)
+    ) {
+      issues.push({
+        file,
+        path: 'built_at',
+        message: `must fall on ${match[1]}, the file's date`,
       });
     }
   }

@@ -243,7 +243,12 @@ interface Exit {
  */
 function run(
   args: readonly string[],
-  options: { child?: boolean; started?: (process: ChildProcess) => void } = {},
+  options: {
+    child?: boolean;
+    started?: (process: ChildProcess) => void;
+    /** Piped to standard input, which is then closed. Ignored otherwise. */
+    input?: string;
+  } = {},
 ): Promise<Exit> {
   const script = options.child ? childScript : mainScript;
   const child = spawn(
@@ -260,9 +265,12 @@ function run(
             }
           : {}),
       },
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [options.input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
     },
   );
+  if (options.input !== undefined) {
+    child.stdin!.end(options.input);
+  }
   options.started?.(child);
   let out = '';
   let err = '';
@@ -363,6 +371,34 @@ test('build-data exits 0', async () => {
   const result = await run(['build-data']);
   assertExited(result, 0);
   assert.match(result.out, /built run/);
+});
+
+test('report exits 0', async () => {
+  const before = await treeDigest(space.root, siteReadDirectories);
+  const result = await run(['report']);
+  assertExited(result, 0);
+  assert.match(result.out, /reports\/coverage-\d{4}-\d{2}-\d{2}\.md/);
+  assert.deepEqual(await treeDigest(space.root, siteReadDirectories), before);
+});
+
+test('override reads piped standard input and exits, and exits 1 when the input is empty', async () => {
+  const path = join(space.root, 'data/price-index/manual-overrides.json');
+  const before = await readFile(path, 'utf8');
+  const added = await run(['override', 'not-offered'], {
+    input:
+      'US\nnetflix\nbasic\n\nhttps://www.netflix.com/signup/planform\n2026-11-17\nFounder\n\n',
+  });
+  assertExited(added, 0);
+  assert.match(added.out, /recorded US\/netflix\/basic\/month: not offered/);
+  const retired = await run(['override', 'retire'], {
+    input: 'US\nnetflix\nbasic\nmonth\n',
+  });
+  assertExited(retired, 0);
+  assert.equal(await readFile(path, 'utf8'), before);
+  const empty = await run(['override', 'add']);
+  assertExited(empty, 1);
+  assert.match(empty.err, /the input ended/);
+  assert.equal(await readFile(path, 'utf8'), before);
 });
 
 test('a run stopped by the source exits 2, and leaves the site data byte-identical', async () => {
