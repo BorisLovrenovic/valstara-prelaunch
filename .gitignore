@@ -22,3 +22,6 @@ coverage/
 
 # WSL alternate-data-stream artifacts
 *:Zone.Identifier
+
+# Price-index atomic writes: a temporary file a crash left behind (E11.6-03)
+/data/price-index/**/*.tmp

@@ -164,3 +164,52 @@ export const iso4217Currencies: ReadonlySet<string> = new Set([
   'ZMW',
   'ZWG',
 ]);
+
+// ISO 4217 minor units: the number of decimal digits a price in each currency
+// is stated to (E11.6-03). Every code above uses two, except those listed
+// here, as published in List One as at 2026-11-17. The table is the ISO
+// figure, not common practice: HUF keeps its two, so `Ft 2,790` is stored as
+// `"2790.00"`.
+const zeroDecimalCurrencies: ReadonlySet<string> = new Set([
+  'BIF',
+  'CLP',
+  'DJF',
+  'GNF',
+  'ISK',
+  'JPY',
+  'KMF',
+  'KRW',
+  'PYG',
+  'RWF',
+  'UGX',
+  'VND',
+  'VUV',
+  'XAF',
+  'XOF',
+  'XPF',
+]);
+
+const threeDecimalCurrencies: ReadonlySet<string> = new Set([
+  'BHD',
+  'IQD',
+  'JOD',
+  'KWD',
+  'LYD',
+  'OMR',
+  'TND',
+]);
+
+/**
+ * The minor-unit exponent of a currency in the table: 0, 2 or 3. Throws for a
+ * code outside the table, so an unknown currency can never be given a guessed
+ * exponent.
+ */
+export function minorUnitExponent(currency: string): number {
+  if (!iso4217Currencies.has(currency)) {
+    throw new RangeError(`${currency} is not a currency in the ISO 4217 table`);
+  }
+  if (zeroDecimalCurrencies.has(currency)) {
+    return 0;
+  }
+  return threeDecimalCurrencies.has(currency) ? 3 : 2;
+}
