@@ -6,10 +6,12 @@ import {
   configIssues,
   type ConfigFileKey,
   type ConfigIssue,
+  type ConfigSet,
 } from '../schema/config.ts';
 import {
   priceIndexSettingsFile,
   priceIndexSettingsFileSchema,
+  type PriceIndexSettingsFile,
 } from '../schema/price-index-settings.ts';
 
 type ReadResult = { value: unknown } | { issue: ConfigIssue };
@@ -42,13 +44,21 @@ async function readJsonFile(root: string, file: string): Promise<ReadResult> {
   }
 }
 
+export interface LoadedConfig {
+  /** The three catalogue files, when they are all valid. */
+  config?: ConfigSet;
+  /** The tool's settings, when they are valid. */
+  settings?: PriceIndexSettingsFile;
+  issues: ConfigIssue[];
+}
+
 /**
  * Reads the configuration files under `root` and checks them against their
  * schemas: the three catalogue files against each other, and the tool's
  * settings (`config/price-index.json`, E11.6-04) on their own. A file that is
  * missing or is not JSON is reported as an issue, never thrown.
  */
-export async function validateConfig(root: string): Promise<ConfigIssue[]> {
+export async function loadConfig(root: string): Promise<LoadedConfig> {
   const input: Partial<Record<ConfigFileKey, unknown>> = {};
   const readIssues: ConfigIssue[] = [];
 
@@ -66,11 +76,14 @@ export async function validateConfig(root: string): Promise<ConfigIssue[]> {
 
   const settings = await readJsonFile(root, priceIndexSettingsFile);
   const settingsIssues: ConfigIssue[] = [];
+  let parsedSettings: PriceIndexSettingsFile | undefined;
   if ('issue' in settings) {
     readIssues.push(settings.issue);
   } else {
     const parsed = priceIndexSettingsFileSchema.safeParse(settings.value);
-    if (!parsed.success) {
+    if (parsed.success) {
+      parsedSettings = parsed.data;
+    } else {
       settingsIssues.push(
         ...parsed.error.issues.map((issue) => ({
           file: priceIndexSettingsFile,
@@ -82,12 +95,21 @@ export async function validateConfig(root: string): Promise<ConfigIssue[]> {
   }
 
   if (readIssues.length > 0) {
-    return readIssues;
+    return { issues: readIssues };
   }
-  return [
-    ...configIssues(input as Record<ConfigFileKey, unknown>).issues,
-    ...settingsIssues,
-  ];
+  const { config, issues } = configIssues(
+    input as Record<ConfigFileKey, unknown>,
+  );
+  return {
+    config,
+    settings: parsedSettings,
+    issues: [...issues, ...settingsIssues],
+  };
+}
+
+/** Every problem in the configuration files under `root`. */
+export async function validateConfig(root: string): Promise<ConfigIssue[]> {
+  return (await loadConfig(root)).issues;
 }
 
 export function formatIssues(issues: readonly ConfigIssue[]): string {

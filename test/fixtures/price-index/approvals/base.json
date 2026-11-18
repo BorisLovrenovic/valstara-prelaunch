@@ -1,0 +1,28 @@
+{
+  "approvals": [
+    {
+      "decision": "approve",
+      "market": "SE",
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "price_local": "149.00",
+      "currency": "SEK",
+      "source": "scraper:youfundceo.com",
+      "actor": "Founder",
+      "decided_at": "2026-12-01T10:00:00.000Z"
+    },
+    {
+      "decision": "reject",
+      "market": "SE",
+      "service_id": "netflix",
+      "plan_id": "standard",
+      "billing_period": "month",
+      "price_local": "199.00",
+      "currency": "SEK",
+      "source": "scraper:youfundceo.com",
+      "actor": "Founder",
+      "decided_at": "2026-12-01T10:05:00.000Z"
+    }
+  ]
+}

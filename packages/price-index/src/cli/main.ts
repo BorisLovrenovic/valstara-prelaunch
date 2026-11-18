@@ -1,3 +1,5 @@
+import { systemClock } from '../http/clock.ts';
+import { runReview } from './review.ts';
 import { formatIssues, validateConfig } from './validate.ts';
 
 // `npm run price-index -- <command>`. The tool runs only when the founder (or
@@ -16,12 +18,19 @@ Commands:
   validate   Check config/markets.json, config/catalogue.json,
              config/valstara-prices.json and config/price-index.json
              against their schemas.
+  review approve|reject --market <code> --service <service_id>
+             --plan <plan_id> --actor <name>
+             Decide on the value a needs_review or conflict record in
+             data/price-index/latest.json shows, and record the decision
+             in data/price-index/approvals.json.
 `;
 
 export interface CliIo {
   root: string;
   stdout: (text: string) => void;
   stderr: (text: string) => void;
+  /** The time decisions are stamped with. Tests inject a fixed one. */
+  clock?: { now(): Date };
 }
 
 export async function runCli(
@@ -40,6 +49,10 @@ export async function runCli(
     }
     io.stdout('price-index validate: configuration is valid.\n');
     return exitCodes.done;
+  }
+
+  if (command === 'review') {
+    return runReview(rest, { ...io, clock: io.clock ?? systemClock });
   }
 
   io.stderr(usage);
