@@ -7,6 +7,7 @@ import {
   type Page,
   type Request,
   type Response,
+  type Route,
 } from 'playwright';
 
 import type {
@@ -155,9 +156,16 @@ export interface PlaywrightDriverOptions {
 }
 
 /**
- * One browser context for the whole run, with the request rule on every
- * request it makes, and one page at a time: a second `load` while one is in
- * progress throws.
+ * One browser context and one tab for the whole run, with the request rule on
+ * every request they make, and one page at a time: a second `load` while one
+ * is in progress throws.
+ *
+ * The tab is kept, not closed, between pages. Chromium lets some requests
+ * outlive their page (a `<link rel=prefetch>`, a keep-alive fetch, a beacon);
+ * if the tab closed while one waited for the rule, Chromium would send it on.
+ * So after each page the tab moves to `about:blank`, where nothing more can
+ * start and every request still waiting meets the rule, which refuses it. The
+ * tab closes only once every routed request has been decided.
  */
 export async function createPlaywrightDriver(
   options: PlaywrightDriverOptions,
@@ -174,8 +182,10 @@ export async function createPlaywrightDriver(
 
   let current: { page: PageInProgress; refused: RefusedRequest[] } | null =
     null;
+  let loading = false;
+  const pendingRoutes = new Set<Promise<void>>();
 
-  await context.route('**/*', async (route, request) => {
+  async function decide(route: Route, request: Request): Promise<void> {
     const decision = classifyRequest(
       requestFacts(request),
       current?.page ?? null,
@@ -190,16 +200,71 @@ export async function createPlaywrightDriver(
       reason: decision.reason,
     });
     await route.abort('blockedbyclient').catch(() => undefined);
+  }
+
+  await context.route('**/*', (route, request) => {
+    const decision = decide(route, request);
+    pendingRoutes.add(decision);
+    void decision.finally(() => pendingRoutes.delete(decision));
+    return decision;
   });
 
   const timeout = options.pageTimeoutMilliseconds;
 
+  // The main-frame responses of the load in progress.
+  let navigation: {
+    latest: Response | null;
+    onCleared: (() => void) | null;
+  } | null = null;
+  let tab: Page | null = null;
+
+  async function openTab(): Promise<Page> {
+    const opened = await context.newPage();
+    opened.setDefaultTimeout(timeout);
+    const mainFrame = opened.mainFrame();
+    opened.on('response', (response) => {
+      if (
+        navigation === null ||
+        !response.request().isNavigationRequest() ||
+        response.frame() !== mainFrame
+      ) {
+        return;
+      }
+      navigation.latest = response;
+      if (!isRefusal(response)) {
+        navigation.onCleared?.();
+      }
+    });
+    return opened;
+  }
+
+  /** Every request already routed is decided before this resolves. */
+  async function drainRoutes(page: Page): Promise<void> {
+    // A round trip on the tab's own channel: every request the browser held
+    // for the rule before it has reached the handler by the time it returns.
+    await within(page.evaluate('0'), timeout).catch(() => undefined);
+    await Promise.allSettled([...pendingRoutes]);
+  }
+
+  /** Leaves the source's page; a tab that cannot is closed, once drained. */
+  async function leavePage(page: Page): Promise<void> {
+    try {
+      await within(page.goto('about:blank'), timeout);
+      await drainRoutes(page);
+    } catch {
+      tab = null;
+      await drainRoutes(page);
+      await within(page.close(), timeout).catch(() => undefined);
+    }
+  }
+
   async function load(request: LoadRequest): Promise<LoadResult> {
-    if (current !== null) {
+    if (loading) {
       throw new Error(
         'A page is already loading; the fetcher opens one at a time.',
       );
     }
+    loading = true;
     const refused: RefusedRequest[] = [];
     current = {
       page: {
@@ -209,38 +274,27 @@ export async function createPlaywrightDriver(
       },
       refused,
     };
-    let page: Page | null = null;
+    const state: NonNullable<typeof navigation> = {
+      latest: null,
+      onCleared: null,
+    };
+    navigation = state;
     const checkpointTimer = new AbortController();
+    let page: Page | null = null;
     try {
-      page = await context.newPage();
-      page.setDefaultTimeout(timeout);
-      const mainFrame = page.mainFrame();
-
-      let latest: Response | null = null;
-      let onCleared: (() => void) | null = null;
-      page.on('response', (response) => {
-        if (
-          !response.request().isNavigationRequest() ||
-          response.frame() !== mainFrame
-        ) {
-          return;
-        }
-        latest = response;
-        if (!isRefusal(response)) {
-          onCleared?.();
-        }
-      });
+      tab ??= await openTab();
+      page = tab;
 
       try {
         const first = await page.goto(request.url, {
           waitUntil: 'domcontentloaded',
           timeout,
         });
-        latest ??= first;
+        state.latest ??= first;
       } catch (error) {
         return failure(error, refused);
       }
-      const initial: Response | null = latest;
+      const initial: Response | null = state.latest;
       if (initial === null) {
         return { kind: 'error', message: 'no response', refused };
       }
@@ -253,11 +307,11 @@ export async function createPlaywrightDriver(
         checkpointTitle.test(await pageTitle(page, timeout))
       ) {
         const cleared = new Promise<'cleared'>((resolve) => {
-          const now: Response | null = latest;
+          const now: Response | null = state.latest;
           if (now !== null && now !== initial && !isRefusal(now)) {
             resolve('cleared');
           } else {
-            onCleared = () => resolve('cleared');
+            state.onCleared = () => resolve('cleared');
           }
         });
         const outcome = await Promise.race([
@@ -273,7 +327,7 @@ export async function createPlaywrightDriver(
         }
       }
 
-      const final = latest as Response;
+      const final = state.latest as Response;
       const checkpoint =
         final.headers()['x-vercel-mitigated'] === 'challenge' ||
         checkpointTitle.test(await pageTitle(page, timeout));
@@ -305,15 +359,25 @@ export async function createPlaywrightDriver(
       };
     } finally {
       checkpointTimer.abort();
-      if (page !== null) {
-        await within(page.close(), timeout).catch(() => undefined);
-      }
+      // From here every request is refused, the page's own included.
       current = null;
+      navigation = null;
+      if (page !== null) {
+        await leavePage(page);
+      }
+      loading = false;
     }
   }
 
   return {
     load,
-    close: () => context.close(),
+    async close() {
+      const page = tab;
+      tab = null;
+      if (page !== null) {
+        await drainRoutes(page);
+      }
+      await context.close();
+    },
   };
 }
