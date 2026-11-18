@@ -330,10 +330,10 @@ Elsewhere the page says the source's own prices "come from each service's offici
 
 The JSON-LD and the push strings are then plain `JSON.parse` of strings. Prices are never parsed this way. The `official` objects need a small tokenizer that keeps each number's text, which is code, not a dependency. Nothing in the extraction needs Playwright, so the adapter's tests run on the fixtures without a browser.
 
-## Proposed changes to later tickets (for founder decisions; none applied)
+## Proposed changes to later tickets (for founder decisions; the spike applied none)
 
-1. **E11.6-04 — block the browser's own extra requests.** Make the fetcher abort every request except the top-level document and what the checkpoint needs. That means Next.js prefetches (`?_rsc=`, `next-router-prefetch`), images and fonts. Otherwise one page load makes 10–13 more page-level requests, in parallel, and "at most one page is ever loading" fails against the real source. Its acceptance criterion should count the requests the browser makes, not only the pages the tool opens.
-2. **E11.6-04 — no conditional requests.** The pages change at least weekly, and a fresh context has nothing to revalidate. Drop any `ETag`/`Last-Modified` work. E11.6-07's run log would then record "not modified" as always 0, or drop that count.
+1. **E11.6-04 — block the browser's own extra requests.** *Decided 2026-11-18 (D-025 Q1, option A), recorded on E11.6-04 and built there.* Make the fetcher abort every request except the top-level document and what the checkpoint needs. That means Next.js prefetches (`?_rsc=`, `next-router-prefetch`), images and fonts. Otherwise one page load makes 10–13 more page-level requests, in parallel, and "at most one page is ever loading" fails against the real source. Its acceptance criterion should count the requests the browser makes, not only the pages the tool opens.
+2. **E11.6-04 — no conditional requests.** *Decided 2026-11-18 (D-025 Q2): no conditional requests, and E11.6-07's run log drops the "not modified" count. Recorded on E11.6-04.* The pages change at least weekly, and a fresh context has nothing to revalidate. Drop any `ETag`/`Last-Modified` work. E11.6-07's run log would then record "not modified" as always 0, or drop that count.
 3. **E11.6-05 — the extraction sources above.**
    - Country page: the HTML lists, cross-checked against the JSON-LD `ItemList`.
    - Country × service page: the embedded `official`/`usd` props and row keys, `Dataset.dateModified` and the visible text.

@@ -8,6 +8,7 @@ import {
   scanStylesheetLiteralValues,
 } from './literal-values.mjs';
 import { scanMotionProperties as scanMotionSource } from './motion-properties.mjs';
+import { scanPriceIndexEvasion } from './price-index-evasion-scan.mjs';
 import { scanPriceIndexFloats } from './price-index-float-scan.mjs';
 import { scanPriceIndexIsolation } from './price-index-isolation.mjs';
 
@@ -763,6 +764,9 @@ export async function runSecurityGates(
       scanPriceIndexIsolation(files, packageJson),
     ),
     scanPriceIndexFloats(files),
+    readJson('package.json').then((packageJson) =>
+      scanPriceIndexEvasion(files, packageJson),
+    ),
   ]);
   return scans.flat();
 }

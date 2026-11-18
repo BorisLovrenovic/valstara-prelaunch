@@ -13,8 +13,9 @@ export const exitCodes = {
 const usage = `Usage: npm run price-index -- <command>
 
 Commands:
-  validate   Check config/markets.json, config/catalogue.json and
-             config/valstara-prices.json against their schemas.
+  validate   Check config/markets.json, config/catalogue.json,
+             config/valstara-prices.json and config/price-index.json
+             against their schemas.
 `;
 
 export interface CliIo {
