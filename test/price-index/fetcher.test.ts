@@ -347,6 +347,34 @@ test('a Retry-After longer than the configured maximum stops the run instead of 
   });
 });
 
+test('a too-long Retry-After on the failure that reaches the limit still stops as retry_after_too_long', async () => {
+  await withRawRoot(async (rawRoot) => {
+    const clock = fakeClock();
+    const target = `${origin}/countries/sweden`;
+    const fake = fakeDriver(clock, {
+      [target]: [
+        { status: 429, retryAfter: '5' },
+        { status: 429, retryAfter: '5' },
+        { status: 429, retryAfter: '86400' },
+      ],
+    });
+    const settings = fetcherSettings({ max_consecutive_failures: 3 });
+    const session = await openFetchSession(
+      options(rawRoot, clock, fake.driver, { settings }),
+    );
+    const report = await fetchUnits(session, units);
+    assert.equal(report.status, 'stopped_by_source');
+    assert.deepEqual(report.stop, {
+      reason: 'retry_after_too_long',
+      url: target,
+      consecutive_failures: 3,
+      detail:
+        'the source asked for a 86400 s wait, more than the configured 3600 s',
+    });
+    assert.equal(fake.loads.filter((load) => load.url === target).length, 3);
+  });
+});
+
 test('a page still showing the checkpoint counts as a failure, and three in a row stop the run, leaving the checkpoint', async () => {
   await withRawRoot(async (rawRoot) => {
     const clock = fakeClock();

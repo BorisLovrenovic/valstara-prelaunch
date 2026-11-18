@@ -249,13 +249,6 @@ export async function openFetchSession(
         };
       }
       consecutiveFailures += 1;
-      if (consecutiveFailures >= settings.max_consecutive_failures) {
-        halt(
-          'source_refused',
-          url,
-          `${consecutiveFailures} consecutive failures; the last was ${describe(result)}`,
-        );
-      }
       const retryAfter =
         result.kind === 'loaded'
           ? retryAfterMilliseconds(result.retryAfter, clock.now())
@@ -268,6 +261,15 @@ export async function openFetchSession(
           'retry_after_too_long',
           url,
           `the source asked for a ${Math.ceil(retryAfter / 1000)} s wait, more than the configured ${settings.backoff.retry_after_max_seconds} s`,
+        );
+      }
+      // The ceiling is checked first, so a failure that both reaches the
+      // limit and asks for too long a wait records the wait it asked for.
+      if (consecutiveFailures >= settings.max_consecutive_failures) {
+        halt(
+          'source_refused',
+          url,
+          `${consecutiveFailures} consecutive failures; the last was ${describe(result)}`,
         );
       }
       backoff = Math.max(
