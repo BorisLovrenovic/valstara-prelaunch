@@ -157,7 +157,7 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 135 | E11.6-05 | The source-adapter interface and the youfundceo adapter | Epic E11.6 — Price index and price pages | done | auto |
 | 136 | E11.6-06 | Merge, validation and the publish gate | Epic E11.6 — Price index and price pages | done | auto |
 | 137 | E11.6-07 | The scrape run: commands, run log, dry run and isolation from the site | Epic E11.6 — Price index and price pages | done | auto |
-| 138 | E11.6-08 | The coverage report, spot checks and the override commands | Epic E11.6 — Price index and price pages | todo | auto |
+| 138 | E11.6-08 | The coverage report, spot checks and the override commands | Epic E11.6 — Price index and price pages | done | auto |
 | 139 | E11.6-09 | The change log and the monthly report | Epic E11.6 — Price index and price pages | todo | auto |
 | 140 | E11.6-10 | The service × market page: route, flag, published-URL ledger and sitemap index | Epic E11.6 — Price index and price pages | todo | auto |
 | 141 | E11.6-11 | Service × market page content: history, comparison, related services, FAQ and the Valstara price | Epic E11.6 — Price index and price pages | todo | auto |
