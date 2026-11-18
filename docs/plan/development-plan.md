@@ -3481,6 +3481,21 @@ Also in this ticket:
 - **Editing or deleting an existing `approvals.json` entry fails CI**, proven by a planted fixture
 
 **Tests:** The status-rule cases · the seeded property test over the publish gate and ranking · the unranked-without-USD case · the `not_offered` cases · approval binding · the actor requirement · catalogue add and remove · the append-only check and its red path.
+**Founder decisions (2026-11-18):**
+1. **`review approve` and `review reject` are a yes or no on the one value the record shows; the command keeps exactly the flags above (D-028 Q1).** Each decision binds to market, service, plan, billing period, `price_local`, currency and source. The last decision for that exact value counts, and any other value needs a new decision.
+   - **Conflict:** the record shows the scraper's value, with the manual entry in `notes`. `approve` publishes the scraper's value as `ok`. `reject` refuses it, so the manual entry stands: an override publishes as `manual_override` (passing the ±40% check of item 2 like any override), and a `not_offered` entry stays `not_offered`.
+   - **A ±40% `needs_review`:** the record shows the new value. `approve` publishes it. `reject` keeps it unpublished, and the old value is not put back.
+   - **A disappearance:** the record shows no price, with the last value in `notes`. It is resolved by a manual entry or by the plan coming back, and `approve` turns it into `missing`.
+   *(Founder decision, accepted under the founder's standing rule for high-confidence recommendations.)*
+2. **The ±40% rule compares only with a previously published value, and it covers the founder's overrides (D-028 Q2).** A new value is compared with the previous record's value only when that record was `ok`, `manual_override` or `stale`. After a `needs_review` or `conflict` record, every new scraped value stays `needs_review` until approved, so a flagged rise can never publish itself a month later. An override within 40% of the last published value, or with nothing to compare with, publishes as `manual_override` with no `approvals.json` entry: its `verified_by` is the founder's approval, and this is what "approved `manual_override`" means in rule 4 and in this ticket's acceptance criteria. An override more than 40% away is `needs_review` and needs `review approve`. The record keeps E11.6-03's 15 fields; no field is added. *(Founder decision.)*
+3. **Four merge rules (D-028 Q3).**
+   - (a) An observation that breaks the market-currency or price > 0 check becomes `needs_review`, with the broken rule in `notes`. No approval can publish it, and an override fills the gap as usual.
+   - (b) Only `ok`, `manual_override` and `not_offered` go `stale`: scraped values 45 days after `observed_at`, manual entries 90 days after `verified_at`. A stale record keeps its value, which stays the ±40% baseline. `needs_review`, `conflict` and `missing` keep their status, so an open flag stays visible.
+   - (c) A failed page keeps the previous scraped value with its old `observed_at`, and any open flag, so a conflict stays a conflict and an override never wins because a market failed. A retired override's value is not kept.
+   - (d) `latest.json` holds exactly one record per enabled market × catalogue plan. A disabled market's records leave it, the same as a removed market's.
+   *(Founder decision, accepted under the founder's standing rule for high-confidence recommendations.)*
+4. **In this ticket, `review` reads the flagged record from `latest.json`; E11.6-07 switches it to the preview merge of the latest run's observations (D-028 Q4).** The founder's monthly routine in `docs/features/price-index.md` stays as written: review before `build-data`. Decisions bind by value (item 1), so `approvals.json` and its schema do not change when E11.6-07 makes the switch, and E11.6-07 builds that switch as part of its preview merge. *(Founder decision, accepted under the founder's standing rule for high-confidence recommendations.)*
+
 **Docs:** `docs/features/price-index.md#validation-merge-and-the-publish-gate` · `docs/architecture/adr/033-price-index-offline-tool.md`
 
 ### E11.6-07 — The scrape run: commands, run log, dry run and isolation from the site
