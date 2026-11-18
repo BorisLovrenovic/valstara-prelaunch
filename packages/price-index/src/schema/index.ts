@@ -4,6 +4,8 @@
 export * from './catalogue.ts';
 export * from './common.ts';
 export * from './config.ts';
-export { iso4217Currencies } from './iso4217.ts';
+export { iso4217Currencies, minorUnitExponent } from './iso4217.ts';
 export * from './markets.ts';
+export * from './price-index-files.ts';
+export * from './price-record.ts';
 export * from './valstara-prices.ts';

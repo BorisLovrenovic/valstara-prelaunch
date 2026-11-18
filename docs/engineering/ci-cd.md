@@ -57,7 +57,7 @@ node scripts/ci/changed-coverage.mjs
 
 ### The security and privacy stage
 
-Nine scans, each with a **planted red-path fixture committed in-repo** so a scan that silently stops working is caught:
+Ten scans, each with a **planted red-path fixture committed in-repo** so a scan that silently stops working is caught:
 
 | Scan | Fails on |
 |---|---|
@@ -70,6 +70,7 @@ Nine scans, each with a **planted red-path fixture committed in-repo** so a scan
 | **Forbidden-copy scan** | A never-use string in `src/copy/`, `src/content/` or any `.astro` file |
 | **Inline-prose scan** | Customer-visible prose inline in an `src/**/*.astro` component instead of in the copy layer |
 | **Price-index isolation scan** | A file under `src/` importing any part of `packages/price-index/` other than `src/publish` and `src/schema`; a package file importing from `src/`; a Dockerfile, Compose file, CI workflow or crontab naming the tool or running `npm run price-index`; a Dockerfile copying the whole context or `packages/`; the `dev`, `start`, `build` or `preview` script, their hooks or a script they run naming the tool (E11.6-02, ADR-033) |
+| **Price-index float scan** | A `parseFloat` (bare or `Number.parseFloat`), a `Number(` call or a `new Number(` anywhere in `packages/price-index/src/`, comments included: a float never holds a price, and the tool reads prices into bigint minor units through `src/money/` (E11.6-03, epic rule 3). Its red paths are planted by `test/price-index/float-scan.test.mjs`, which also runs the whole gate over the repository |
 
 **The cookie, fingerprinting and third-party rules are what make "no consent banner" a verified property rather than an intention.** They are the reason it is safe to have no banner at all.
 

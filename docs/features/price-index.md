@@ -97,13 +97,15 @@ One record per market × service × plan × billing period:
 | `price_local` | **The local price exactly as the source shows it**, held as an exact decimal string at the currency's minor-unit exponent (`"149.00"`). Arithmetic is done in integer minor units. **A float never holds a price** |
 | `price_source_text` | The price text exactly as displayed (`"149 kr"`), kept for audit |
 | `currency` | As the source shows it. It must equal the market's currency, and a mismatch is flagged |
-| `price_usd_source` | The source's approximate USD figure, an exact decimal string. **Used only internally to rank markets. It is never displayed, and no conversion is ever computed from it.** Empty for a manual override without one; such a record is left out of cross-market rankings |
+| `price_usd_source` | The source's approximate USD figure, an exact decimal string with two decimals (`"16.78"`). **Used only internally to rank markets. It is never displayed, and no conversion is ever computed from it.** Empty for a manual override without one; such a record is left out of cross-market rankings |
 | `source` | `scraper:youfundceo.com` · `manual` · later `direct:<provider>` |
 | `source_url`, `observed_at` | Where and when we read it |
 | `source_verified_at` | The source's own "last checked" date for that service |
 | `status` | `ok` · `missing` · `not_offered` · `needs_review` · `manual_override` · `stale` · `conflict` |
 | `missing_reason` | When `missing`: `source_no_price` (in the source's "No price shown" section) · `not_on_source` (the source does not list the service, or does not list it in that country) · `parse_failed` · `market_failed` |
 | `notes` | Free text |
+
+Every record carries all of these keys, with `null` where a value is absent, and nothing else: the schema rejects an `fx` field or any converted price. `price_local` is written at the currency's ISO 4217 minor-unit exponent (`"149.00"` SEK, `"1190"` ISK). The full schema rules, and the money module that reads displayed prices into exact decimals, are in `docs/modules/price-index.md` (E11.6-03).
 
 **There is no currency conversion anywhere, and no FX provider (founder, 2026-11-17).** Pages display the local currency only.
 
@@ -115,7 +117,7 @@ One record per market × service × plan × billing period:
 |---|---|---|
 | `config/markets.json`, `config/catalogue.json`, `config/valstara-prices.json`, `config/price-index.json` | yes | Configuration, plus the tool settings (delays, thresholds, staleness, sample size, retention) |
 | `data/price-index/latest.json` | yes | **The merged current view the pages build from** |
-| `data/price-index/snapshots/YYYY-MM-DD.json` | yes | One per build, immutable. A second build on the same date takes a numeric suffix and never overwrites |
+| `data/price-index/snapshots/YYYY-MM-DD.json` | yes | One per build, immutable. A second build on the same date takes a numeric suffix (`YYYY-MM-DD-2.json`, then `-3`, …) and never overwrites |
 | `data/price-index/changes.json` | yes | **Append-only** log of real price changes |
 | `data/price-index/manual-overrides.json` | yes | Hand-entered prices and `not_offered` confirmations |
 | `data/price-index/approvals.json` | yes | **Append-only** founder approvals of `needs_review` and `conflict` values, each with an actor |
