@@ -782,6 +782,256 @@ test("a removed service's entries become untracked, and nothing of it is observe
   );
 });
 
+test('an ambiguous alias fails as parse_failed and is never resolved by picking one match', () => {
+  const baseline = parse(
+    contextWithMarkets(['SE', 'US']),
+    capturedPages(swedenAndUs),
+  );
+  // Every failure but the planted one is a failure the baseline already has.
+  const assertFailures = (
+    result: SourceParseResult,
+    before: SourceParseResult,
+    planted: SourceParseResult['failures'][number],
+    what: string,
+  ) => {
+    assert.deepEqual(
+      result.failures.filter((failure) => failure.reason === 'parse_failed'),
+      [planted],
+      what,
+    );
+    assert.deepEqual(
+      result.failures.filter((failure) => failure.reason !== 'parse_failed'),
+      before.failures,
+      what,
+    );
+  };
+  assert.ok(
+    baseline.failures.every((failure) => failure.reason === 'market_failed'),
+  );
+  const netflix = committedCatalogue().services.find(
+    (service) => service.service_id === 'netflix',
+  );
+  assert.ok(netflix);
+  const outside = (serviceIds: readonly string[]) => ({
+    observations: (entries: readonly Observation[]) =>
+      entries.filter((entry) => !serviceIds.includes(entry.service_id)),
+    gaps: (entries: SourceParseResult['gaps']) =>
+      entries.filter((entry) => !serviceIds.includes(entry.service_id)),
+  });
+  const failedGaps = (
+    result: SourceParseResult,
+    serviceIds: readonly string[],
+  ) =>
+    result.gaps
+      .filter((gap) => serviceIds.includes(gap.service_id))
+      .map((gap) => [
+        gap.market,
+        gap.service_id,
+        gap.plan_id,
+        gap.reason,
+        gap.source_url,
+        gap.note,
+      ]);
+
+  // A service's aliases match two source services: neither is chosen.
+  {
+    const context = contextWithMarkets(
+      ['SE', 'US'],
+      withAliases(committedCatalogue(), 'netflix', {
+        ...netflix.source_aliases,
+        service: ['Netflix', 'netflix', 'adobe'],
+      }),
+    );
+    const result = parse(context, capturedPages(swedenAndUs));
+    const detail =
+      'the aliases of netflix match 2 source services: netflix, adobe';
+    assert.deepEqual(
+      result.observations,
+      outside(['netflix']).observations(capturedObservations),
+    );
+    assert.deepEqual(
+      outside(['netflix']).gaps(result.gaps),
+      outside(['netflix']).gaps(baseline.gaps),
+    );
+    assert.deepEqual(failedGaps(result, ['netflix']), [
+      ['SE', 'netflix', 'basic', 'parse_failed', `${origin}/services`, detail],
+      ['US', 'netflix', 'basic', 'parse_failed', `${origin}/services`, detail],
+      [
+        'SE',
+        'netflix',
+        'premium',
+        'parse_failed',
+        `${origin}/services`,
+        detail,
+      ],
+      [
+        'US',
+        'netflix',
+        'premium',
+        'parse_failed',
+        `${origin}/services`,
+        detail,
+      ],
+      [
+        'SE',
+        'netflix',
+        'standard',
+        'parse_failed',
+        `${origin}/services`,
+        detail,
+      ],
+      [
+        'US',
+        'netflix',
+        'standard',
+        'parse_failed',
+        `${origin}/services`,
+        detail,
+      ],
+    ]);
+    assertFailures(
+      result,
+      baseline,
+      {
+        url: `${origin}/services`,
+        market: null,
+        reason: 'parse_failed',
+        detail,
+      },
+      'two source services',
+    );
+    assertCoversEveryPlan(result, context);
+  }
+
+  // One source service is claimed by two catalogue services: neither gets it.
+  {
+    const context = contextWithMarkets(
+      ['SE', 'US'],
+      withAliases(committedCatalogue(), 'adobe-creative-cloud', {
+        service: ['netflix'],
+        plans: {},
+      }),
+    );
+    const result = parse(context, capturedPages(swedenAndUs));
+    const detail =
+      'the source service netflix matches adobe-creative-cloud and netflix';
+    const claimants = ['adobe-creative-cloud', 'netflix'];
+    assert.deepEqual(
+      result.observations,
+      outside(claimants).observations(capturedObservations),
+    );
+    assert.deepEqual(
+      outside(claimants).gaps(result.gaps),
+      outside(claimants).gaps(baseline.gaps),
+    );
+    const services = `${origin}/services`;
+    assert.deepEqual(failedGaps(result, claimants), [
+      [
+        'SE',
+        'adobe-creative-cloud',
+        'individual',
+        'parse_failed',
+        services,
+        detail,
+      ],
+      [
+        'US',
+        'adobe-creative-cloud',
+        'individual',
+        'parse_failed',
+        services,
+        detail,
+      ],
+      ['SE', 'netflix', 'basic', 'parse_failed', services, detail],
+      ['US', 'netflix', 'basic', 'parse_failed', services, detail],
+      ['SE', 'netflix', 'premium', 'parse_failed', services, detail],
+      ['US', 'netflix', 'premium', 'parse_failed', services, detail],
+      ['SE', 'netflix', 'standard', 'parse_failed', services, detail],
+      ['US', 'netflix', 'standard', 'parse_failed', services, detail],
+    ]);
+    assertFailures(
+      result,
+      baseline,
+      { url: services, market: null, reason: 'parse_failed', detail },
+      'claimed twice',
+    );
+    assertCoversEveryPlan(result, context);
+  }
+
+  // A plan row matches two plans, or two plan rows match one plan: the
+  // country × service page fails, and no row is assigned to either plan.
+  const sweden = `${origin}/services/netflix/sweden`;
+  const planCases: [string, Record<string, string[]>, string][] = [
+    [
+      'one row matches two plans',
+      {
+        basic: ['Basic', 'basic'],
+        standard: ['Standard', 'standard', 'basic'],
+        premium: ['Premium', 'premium'],
+      },
+      'the plan row basic matches basic and standard',
+    ],
+    [
+      'two rows match one plan',
+      {
+        basic: ['Basic', 'basic', 'Standard', 'standard'],
+        standard: [],
+        premium: ['Premium', 'premium'],
+      },
+      // The Sweden page lists standard before basic.
+      '2 plan rows match netflix basic: standard, basic',
+    ],
+  ];
+  for (const [what, plans, detail] of planCases) {
+    const context = contextWithMarkets(
+      ['SE'],
+      withAliases(committedCatalogue(), 'netflix', {
+        service: netflix.source_aliases.service,
+        plans,
+      }),
+    );
+    const result = parse(context, capturedPages(swedenAndUs));
+    const seBaseline = parse(
+      contextWithMarkets(['SE']),
+      capturedPages(swedenAndUs),
+    );
+    assert.deepEqual(
+      result.observations,
+      outside(['netflix']).observations(
+        capturedObservations.filter((entry) => entry.market === 'SE'),
+      ),
+      what,
+    );
+    assert.deepEqual(
+      outside(['netflix']).gaps(result.gaps),
+      outside(['netflix']).gaps(seBaseline.gaps),
+      what,
+    );
+    assert.deepEqual(
+      failedGaps(result, ['netflix']),
+      [
+        ['SE', 'netflix', 'basic', 'parse_failed', sweden, detail],
+        ['SE', 'netflix', 'premium', 'parse_failed', sweden, detail],
+        ['SE', 'netflix', 'standard', 'parse_failed', sweden, detail],
+      ],
+      what,
+    );
+    assertFailures(
+      result,
+      seBaseline,
+      { url: sweden, market: 'SE', reason: 'parse_failed', detail },
+      what,
+    );
+    assert.ok(
+      !result.untracked.some(
+        (entry) => entry.kind === 'plan' && entry.service_id === 'netflix',
+      ),
+      what,
+    );
+    assertCoversEveryPlan(result, context);
+  }
+});
+
 test('no suggestion is ever written to the catalogue or applied to a match', () => {
   const catalogueFile = readFileSync('config/catalogue.json');
   const context = deepFrozen(contextWithMarkets(['SE', 'US']));

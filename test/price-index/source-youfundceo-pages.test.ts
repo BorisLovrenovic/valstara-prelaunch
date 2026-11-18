@@ -975,4 +975,22 @@ test('the indexes and "Price moves" refuse a changed structure', () => {
     /price move 1 is not a 13-field row/,
     'a row with a field missing',
   );
+  // D-027: a USD figure that is not an exact two-decimal number fails the
+  // page, as it does a country × service page; nothing is rounded.
+  assertRefused(
+    () =>
+      readPriceMoves(
+        plant(moves, ',0,6.61,7.71]', ',0,6.6099999999999994,7.71]'),
+      ),
+    /the old USD figure of price move 1 "6\.6099999999999994"/,
+    'the old USD figure is a float artefact',
+  );
+  assertRefused(
+    () =>
+      readPriceMoves(
+        plant(moves, ',0,6.61,7.71]', ',0,6.61,7.710000000000001]'),
+      ),
+    /the new USD figure of price move 1 "7\.710000000000001"/,
+    'the new USD figure is a float artefact',
+  );
 });
