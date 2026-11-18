@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const isChildRun = process.env.CI_SECURITY_RED_PATH_CHILD === '1';
@@ -214,6 +215,118 @@ test('Astro remote-image caching uses only the expected policy methods', async (
   assert.match(source, /policy\.storable\(\)/u);
   assert.match(source, /policy\.timeToLive\(\)/u);
   assert.doesNotMatch(source, /satisfiesWithoutRevalidation|max-stale/u);
+});
+
+// picomatch advisory 1247710 is allowlisted on the basis that the built server
+// never imports it (D-022). The walk follows every static import, re-export,
+// require() and string-literal dynamic import, comments excluded, from the
+// server entry, resolving each specifier against the module that names it.
+// Two-argument import.meta.resolve needs the flag, so the walk runs in a child.
+const unreachablePackages = ['picomatch', 'anymatch', 'tinyglobby', 'fdir'];
+const unreachableFiles = ['@astrojs/internal-helpers/dist/create-filter.js'];
+
+const serverImportWalker = `
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import ts from 'typescript';
+
+const reached = new Set();
+const unresolved = new Set();
+const queue = [pathToFileURL(process.argv[1]).href];
+while (queue.length > 0) {
+  const url = queue.pop();
+  if (reached.has(url)) continue;
+  reached.add(url);
+  if (!url.startsWith('file:') || !/\\.[cm]?js$/u.test(url)) continue;
+  const source = await readFile(fileURLToPath(url), 'utf8');
+  for (const { fileName } of ts.preProcessFile(source, true, true).importedFiles) {
+    if (fileName.startsWith('node:')) continue;
+    try {
+      queue.push(import.meta.resolve(fileName, url));
+    } catch {
+      unresolved.add(fileName);
+    }
+  }
+}
+process.stdout.write(JSON.stringify({ reached: [...reached], unresolved: [...unresolved] }));
+`;
+
+function walkServerImports(entryPath) {
+  const result = run(projectRoot, process.execPath, [
+    '--experimental-import-meta-resolve',
+    '--no-warnings',
+    '--input-type=module',
+    '--eval',
+    serverImportWalker,
+    entryPath,
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+function unreachableModulesReached({ reached, unresolved }) {
+  const packagePattern = new RegExp(
+    `/node_modules/(?:${unreachablePackages.join('|')})/`,
+    'u',
+  );
+  const specifierPattern = new RegExp(
+    `^(?:${unreachablePackages.join('|')})(?:/|$)`,
+    'u',
+  );
+  return [
+    ...reached.filter(
+      (url) =>
+        packagePattern.test(url) ||
+        unreachableFiles.some((file) => url.endsWith(`/node_modules/${file}`)),
+    ),
+    ...unresolved.filter((specifier) => specifierPattern.test(specifier)),
+  ];
+}
+
+test(
+  'the built server never reaches picomatch or the packages that load it',
+  { timeout: 150_000 },
+  async () => {
+    await ensureAppBuild();
+    const walk = walkServerImports(join(projectRoot, 'dist/server/entry.mjs'));
+
+    // The walk must actually leave the entry: the server's own database
+    // driver is reached through a chunk, so an empty walk cannot pass.
+    assert.ok(
+      walk.reached.some((url) => url.includes('/node_modules/pg/')),
+      'the import walk did not reach the pg driver',
+    );
+    assert.deepEqual(unreachableModulesReached(walk), []);
+  },
+);
+
+test('the server import guard fails when a chunk reaches picomatch', async () => {
+  const temporaryRoot = await mkdtemp(
+    join(tmpdir(), 'valstara-security-picomatch-'),
+  );
+  try {
+    await symlink(
+      join(projectRoot, 'node_modules'),
+      join(temporaryRoot, 'node_modules'),
+    );
+    await mkdir(join(temporaryRoot, 'chunks'));
+    await writeFile(
+      join(temporaryRoot, 'entry.mjs'),
+      "// import 'fdir'; a comment is not an import.\nconst page = () => import('./chunks/page.mjs');\nexport { page };\n",
+    );
+    await writeFile(
+      join(temporaryRoot, 'chunks/page.mjs'),
+      "import picomatch from 'picomatch';\nexport const match = picomatch('*.md');\n",
+    );
+
+    const reached = unreachableModulesReached(
+      walkServerImports(join(temporaryRoot, 'entry.mjs')),
+    );
+    assert.ok(reached.length > 0, 'a reached picomatch import passed');
+    assert.ok(reached.every((url) => url.includes('/node_modules/picomatch/')));
+  } finally {
+    await rm(temporaryRoot, { force: true, recursive: true });
+  }
 });
 
 test(
