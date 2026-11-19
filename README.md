@@ -16,7 +16,9 @@ npm run test:changed -- <the test files your change needs>
 ```
 
 `npm run check` runs lint, format, typecheck, the security scans and the build.
-`npm run test:changed` runs the tests your branch affects and prints why it
-picked each one. The full suite runs in CI on every pull request, split across
-four parallel runners; `npm test` still runs it all locally when you need it.
-See `docs/engineering/ci-cd.md#local-checks`.
+`npm run test:changed` runs exactly the test files you name and the test files
+your branch adds or changes, and prints why it picked each one; add `--wide` to
+see and run every test your change reaches, as CI will. The full suite runs in
+CI on every pull request, split across eight parallel runners; `npm test` still
+runs it all locally when you need it. See
+`docs/engineering/ci-cd.md#local-checks`.

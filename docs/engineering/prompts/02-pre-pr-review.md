@@ -78,7 +78,7 @@ npm run check
 npm run test:changed -- <each test file on the ticket's Tests line>
 ```
 
-These are the quick local checks. The full suite runs in CI once the pull request opens, and it must be green before merge (`docs/engineering/ci-cd.md#local-checks`). **Do not run the full `npm test` locally, even when the diff upgrades a dependency:** `test:changed` already selects the tests that load the upgraded packages.
+These are the quick local checks. `test:changed` runs exactly the named files and the test files the branch adds or changes; it adds no other test and no privacy or accessibility suite. The full suite runs in CI once the pull request opens, catches any other test the change breaks, and must be green before merge (`docs/engineering/ci-cd.md#local-checks`). **Do not run the full `npm test` locally, even when the diff upgrades a dependency.** To see what CI will cover, `npm run test:changed -- --wide --dry-run <files>`; it is not part of the gate, and a test it lists that the ticket does not name is not a blocker unless it fails.
 
 Read the diff completely. Where it lacks context, read the full file.
 

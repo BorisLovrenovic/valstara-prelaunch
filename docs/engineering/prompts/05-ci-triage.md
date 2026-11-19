@@ -14,7 +14,7 @@ The branch is already checked out in this working directory. Confirm it with `gi
 
 ## Step 1 — Identify the failing stage
 
-**PR pipeline:** install → lint → typecheck → tests against a disposable PostgreSQL, run under coverage in four `test (n/4)` shards → **build** → coverage gate on the merged shard reports, which also proves every test file ran exactly once → `red-paths` → **security and privacy gates** (secret scan · dependency scan with an expiring allowlist · cookie and storage rule · fingerprinting rule · third-party request rule · vendor-boundary rule · forbidden-copy scan · inline-prose scan) → **migration check** (ledger checksums and schema reproducibility) → **accessibility pass**.
+**PR pipeline:** install → lint → typecheck → tests against a disposable PostgreSQL, run under coverage in eight `test (n/8)` shards → **build** → coverage gate on the merged shard reports, which also proves every test file ran exactly once and warns, without failing, when the shard plan has gone stale → `red-paths` → **security and privacy gates** (secret scan · dependency scan with an expiring allowlist · cookie and storage rule · fingerprinting rule · third-party request rule · vendor-boundary rule · forbidden-copy scan · inline-prose scan) → **migration check** (ledger checksums and schema reproducibility) → **accessibility pass**.
 
 **Main pipeline adds:** image build and GHCR push (path-filtered). It does not deploy.
 
@@ -27,7 +27,7 @@ Reproduce the failing check only, not the whole suite (`docs/engineering/ci-cd.m
 ```
 docker compose -f infra/compose/docker-compose.yml up -d
 npm ci                                                       # only if package-lock.json changed on this branch
-COVERAGE_SOURCE_MAPS=1 npm test -- <the failing test file>   # a test (n/4) failure
+COVERAGE_SOURCE_MAPS=1 npm test -- <the failing test file>   # a test (n/8) failure
 npm run check                                                # lint, format, typecheck, security or build
 ```
 

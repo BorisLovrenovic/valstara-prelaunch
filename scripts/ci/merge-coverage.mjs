@@ -135,8 +135,57 @@ export function summarise(records) {
   return `src/ lines ${total((file) => file.startsWith('src/'))} · all reported lines ${total(() => true)}`;
 }
 
-async function main() {
-  const directory = resolve(process.argv[2] ?? 'coverage-shards');
+// The procedure that refreshes scripts/ci/shard-timings.json.
+export const refreshProcedure =
+  'docs/engineering/ci-cd.md#refreshing-the-shard-plan';
+export const timingsPath = 'scripts/ci/shard-timings.json';
+// More than this share of the discovered files with no recorded time, or the
+// slowest shard this far above the mean shard time, means the plan is stale.
+const unrecordedShareLimit = 0.1;
+const imbalanceLimit = 0.25;
+
+const percent = (fraction) => `${Math.round(fraction * 100)}%`;
+
+/**
+ * Why the shard plan looks stale, if it does: too many discovered test files
+ * with no recorded time, or the slowest shard's measured time too far above
+ * the mean. Balance never affects which files run, so these are warnings only.
+ * `shards` holds each shard's index, total and measured seconds.
+ */
+export function shardPlanDrift({ discovered, recorded, shards }) {
+  const warnings = [];
+  const unrecorded = discovered.filter(
+    (file) => !Number.isFinite(recorded[file]),
+  );
+  if (unrecorded.length > discovered.length * unrecordedShareLimit) {
+    warnings.push(
+      `${unrecorded.length} of the ${discovered.length} discovered test files (${percent(unrecorded.length / discovered.length)}) have no recorded time in ${timingsPath}; the limit is ${percent(unrecordedShareLimit)}`,
+    );
+  }
+  if (shards.length > 0) {
+    const mean =
+      shards.reduce((sum, shard) => sum + shard.seconds, 0) / shards.length;
+    const slowest = shards.reduce((a, b) => (b.seconds > a.seconds ? b : a));
+    if (mean > 0 && slowest.seconds > mean * (1 + imbalanceLimit)) {
+      warnings.push(
+        `the slowest shard, ${slowest.index}/${slowest.total}, ran ${Math.round(slowest.seconds)}s, ${percent(slowest.seconds / mean - 1)} above the mean shard time of ${Math.round(mean)}s; the limit is ${percent(imbalanceLimit)}`,
+      );
+    }
+  }
+  return warnings;
+}
+
+/**
+ * Merges the shard reports in `directory` into `root`/coverage, after proving
+ * that the shards ran each discovered file exactly once, and prints each
+ * shard's measured and planned time. A stale shard plan adds a GitHub warning
+ * annotation; nothing about the plan can fail the merge.
+ */
+export async function mergeShardReports({
+  directory,
+  root = projectRoot,
+  log = console.log,
+}) {
   const shardDirectories = (await readdir(directory, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory())
     .map((entry) => join(directory, entry.name));
@@ -159,13 +208,14 @@ async function main() {
       .flatMap(({ timings: shardTimings }) => Object.entries(shardTimings))
       .sort(([a], [b]) => a.localeCompare(b)),
   );
-  await mkdir(join(projectRoot, 'coverage'), { recursive: true });
-  await writeFile(join(projectRoot, 'coverage/lcov.info'), formatLcov(merged));
+  await mkdir(join(root, 'coverage'), { recursive: true });
+  await writeFile(join(root, 'coverage/lcov.info'), formatLcov(merged));
   await writeFile(
-    join(projectRoot, 'coverage/test-timings.json'),
+    join(root, 'coverage/test-timings.json'),
     `${JSON.stringify(timings, null, 2)}\n`,
   );
-  console.log(`Every one of the ${fileCount} test files ran exactly once.`);
+  log(`Every one of the ${fileCount} test files ran exactly once.`);
+  const measured = [];
   for (const { manifest, timings: shardTimings } of shards.sort(
     (a, b) => a.manifest.index - b.manifest.index,
   )) {
@@ -173,11 +223,34 @@ async function main() {
       (sum, value) => sum + value,
       0,
     );
-    console.log(
+    measured.push({ index: manifest.index, total: manifest.total, seconds });
+    log(
       `shard ${manifest.index}/${manifest.total}: ${manifest.files.length} files, ${Math.round(seconds)}s run, ${manifest.plannedSeconds}s planned`,
     );
   }
-  console.log(`Merged line coverage: ${summarise(merged)}`);
+  log(`Merged line coverage: ${summarise(merged)}`);
+  let warnings;
+  try {
+    warnings = shardPlanDrift({
+      discovered: shards[0].manifest.discovered,
+      recorded: JSON.parse(await readFile(join(root, timingsPath), 'utf8')),
+      shards: measured,
+    });
+  } catch (error) {
+    warnings = [`the shard plan could not be checked: ${error.message}`];
+  }
+  for (const warning of warnings) {
+    log(
+      `::warning title=Shard plan drift::The shard plan is stale: ${warning}. Refresh ${timingsPath} by the procedure in ${refreshProcedure}.`,
+    );
+  }
+  return { fileCount, warnings };
+}
+
+async function main() {
+  await mergeShardReports({
+    directory: resolve(process.argv[2] ?? 'coverage-shards'),
+  });
 }
 
 if (

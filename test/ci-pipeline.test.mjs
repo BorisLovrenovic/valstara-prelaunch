@@ -118,14 +118,17 @@ test('the suite runs once, sharded, against disposable PostgreSQL services', asy
 
   assert.equal((workflow.match(/image: postgres:17-alpine/g) ?? []).length, 1);
   assert.equal((workflow.match(/TEST_DATABASE_URL:/g) ?? []).length, 1);
+  // Eight shards since E11.6-11a. The job name and the shard argument take
+  // the total from the matrix, so nothing else names a shard count.
   assert.match(
     workflow,
-    /strategy:\n {6}fail-fast: false\n {6}matrix:\n {8}shard: \[1, 2, 3, 4\]/,
+    /strategy:\n {6}fail-fast: false\n {6}matrix:\n {8}shard: \[1, 2, 3, 4, 5, 6, 7, 8\]\n/,
   );
   assert.match(
     workflow,
     /name: test \(\$\{\{ matrix\.shard \}\}\/\$\{\{ strategy\.job-total \}\}\)/,
   );
+  assert.doesNotMatch(workflow, /--shard \d|\/[48]\b|--total/u);
   // Each shard runs its planned files under coverage; nothing runs the whole
   // suite a second time outside coverage.
   assert.match(

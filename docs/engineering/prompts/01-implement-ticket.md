@@ -109,7 +109,7 @@ The QA gate later is an **audit, not the safety net.** Implement, minimum:
 
 - **Stay on the branch you created or switched to at the start.** Never work on `main`, and never create a second branch for this ticket.
 - Start the stack if integration tests need it: `docker compose -f infra/compose/docker-compose.yml up -d`
-- Run the quick local checks: `npm run check`, then `npm run test:changed -- <each test file on the Tests line>`. It also picks every test your change affects and prints why. **The full suite runs in CI on the pull request** (`docs/engineering/ci-cd.md#local-checks`), so do not run the whole `npm test` locally, even for a dependency upgrade.
+- Run the quick local checks: `npm run check`, then `npm run test:changed -- <each test file on the Tests line>`. It runs exactly those files and the test files your branch adds or changes, and prints why it picked each one; it adds no other test and no privacy or accessibility suite. **The full suite runs in CI on the pull request** (`docs/engineering/ci-cd.md#local-checks`), and catches any other test your change breaks, so do not run the whole `npm test` locally, even for a dependency upgrade. `npm run test:changed -- --wide --dry-run <files>` shows what CI will cover, if you want to look; it is not part of the gate.
 - Schema changed? Add a **new forward-only migration file** — additive first — and **never edit one that has already run.** Review it in the diff.
 - **Fix every failure. Never skip, delete or weaken a test or gate to get green.**
 - **Docs duty:** behaviour, contract, env or decision changes update the matching `docs/**` file and ADR **now, in this ticket.** New environment variables go in `infra/ENV.md`. Doc drift is a review blocker.

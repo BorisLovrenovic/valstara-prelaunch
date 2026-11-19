@@ -98,10 +98,76 @@ A ticket is done when **all** of the following hold:
 
 1. Every acceptance criterion is met and **demonstrated by a named test or a reproducible command**
 2. Every test on the ticket's **Tests** line exists and passes
-3. `npm run check` and `npm run test:changed`, naming the Tests-line files, clean locally, and every CI check green on the pull request, where the full suite runs (`docs/engineering/ci-cd.md#local-checks`)
+3. `npm run check` and `npm run test:changed`, naming the Tests-line files (it also runs the test files the branch adds or changes, and nothing else), clean locally, and every CI check green on the pull request, where the full suite runs across eight shards (`docs/engineering/ci-cd.md#local-checks`)
 4. Coverage bars hold
 5. Security and privacy gates green
 6. The ticket's flag is wired with a code-level fail-safe default, **and the flag-off path is tested**
 7. **Docs and ADRs updated in the same PR**
 8. No forbidden copy string, no placeholder value, no TODO in in-scope work
 9. Deviations reported explicitly — **honest incompleteness is acceptable, silent gaps are not**
+
+## Known flakes
+
+Recorded by E11.6-11a on 2026-11-20 (founder-authorised 2026-11-19). **A flake is fixed only at a cause shown with evidence**: a reproduction, a log or an injected fault, then a change at that cause and, where the cause reproduces, a test that fails before the fix. A retry, a longer timeout, a sleep or fixed wait, a skip, `--test-force-exit`-style masking, a weakened assertion or a gate exception is never a fix. **A flake whose cause cannot be shown gets no change**: it is recorded here, with what was tried, for a founder decision. The evidence below was gathered on the development host: WSL 2 with Docker Desktop 29.5.3.
+
+| Flake | Status |
+|---|---|
+| a. "refused 300 connection attempts" | **Cause not proven** — founder decision |
+| b. "Unable to capture screenshot" | **Cause not proven** — founder decision |
+| c. The browser container cannot reach the app | **Fixed at its cause**, `test/helpers/listen-port.mjs` |
+| d1. `test/e1-11-rendered-page.test.mjs` cancelled in CI | **Already fixed**; no change |
+| d2. `EADDRINUSE` on 127.0.0.1:62001 | **Fixed at its cause**, `test/helpers/landing-render.mjs` |
+
+### a. "refused 300 connection attempts"
+
+**Seen.** Every test in a Playwright-backed file fails because `publishedPort()` finds the container's published port refused for 300 attempts. On 2026-11-19, in E11.6-10's pre-push run of 135 files, it hit `test/member-leaderboard-final-design-rendered.test.mjs` (container `valstara-member-final-playwright-4074468`, published on 127.0.0.1:50122); the file passed 15/15 alone. On 2026-11-07 it hit `test/landing-rewards-rendered.test.mjs` and `test:a11y` while an orphaned `valstara-member-design-*` container from a stopped run was still up; both passed once it was removed.
+
+**What was tried, 2026-11-20.**
+
+- **An orphaned container.** A Node parent that had started an attached `docker run --rm` Playwright container, as every browser suite does, was killed with SIGKILL. The container and its `docker run` client stayed up until removed by hand: the leak is real. A SIGTERM to the client does not stop the container either, because the container's PID 1 ignores it, which is why each suite's `after()` removes its container with `docker rm`. Three new Playwright containers started beside the orphan. Each published port accepted on its first attempt.
+- **A port collision.** Docker Desktop publishes host ports in sequence from a random start: ports from 4062 to 59241 in these runs. 150 tiny containers published in a row all accepted from WSL, and Docker skipped the ports it could not expose (33027, 16473). A fixed host port already held by a WSL listener, or inside a Windows excluded port range, fails `docker run` at once with "ports are not available", never with a silent refusal. An outgoing WSL connection that holds the port number does not block the forward.
+
+**Not proven.** Neither an orphan's presence nor a port collision reproduced the refusal, so **no change was made for it**. Whether to label each browser container with its owning process and remove containers whose owner is gone, which the leak alone would justify but which no evidence yet ties to the refusal, is a founder decision. Until then, after stopping a test run, remove leftover `valstara-*-playwright-*` containers (`docker ps --format '{{.Names}}'`).
+
+### b. "Unable to capture screenshot"
+
+**Seen.** CI `test (2/4)` of run 44509384078, 2026-11-19: `page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot`, from `captureContactSheet` (`scripts/design/contact-sheet.mjs`, the full-page capture) called by `test/member-leaderboard-redesign.test.mjs`. The call log shows the fonts had loaded. The job passed when re-run.
+
+**What was tried.** The CI log names neither the state nor the page size being captured, and no artifact holds the page. On 2026-11-20 the file ran three times locally, with the screenshots taken at every state, width and theme each time, and passed 3/3 (about 100 seconds per run). The failure did not reproduce, and no fault that would produce it could be injected without guessing its condition.
+
+**Not proven.** Chromium refuses a capture it cannot composite, but no evidence shows which condition held on the runner. **No change was made**; it is recorded for a founder decision.
+
+### c. The browser container cannot reach the app
+
+**Seen.** On 2026-10-29 the browser container in `test/signup-states-rendered.test.mjs` got `ERR_CONNECTION_REFUSED` from `host.docker.internal:<appPort>` for 30 seconds while the app had logged that it was listening. In the same family: 30-second `page.goto` timeouts in `test/verification-redesign.test.mjs`, including when it ran alone; `Cannot read properties of null (reading 'clientWidth')` in `checkLayout` (`scripts/design/layout-checks.mjs`), a read of a document that never loaded; and the six `page.goto` failures recorded in `docs/testing/e11-5-design-qa.md` on 2026-11-13.
+
+**Cause.** On a WSL host with Docker Desktop, a browser container reaches a test server through Windows. `host.docker.internal` is the Windows host, and WSL relays each WSL listener to Windows localhost. `reserveListenPort()` checked only that a port was free in WSL. A port that Windows has reserved cannot be relayed. Windows re-draws its excluded port ranges at each boot inside its dynamic port range, which on this host is 1024–65535. A port a Windows process already listens on cannot be relayed either. The container is then refused, or reaches the Windows process instead.
+
+**Evidence, 2026-11-20.** HTTP servers in WSL on three ports, each fetched from a container through `host.docker.internal`:
+
+| Port | On the Windows side | From the container |
+|---|---|---|
+| 23456 | Free | Answered |
+| 48800 | Inside the excluded range 48791–48890 | Refused after 2 ms |
+| 15292 | A Windows process listening | Reached that process; no bytes in 5 s |
+
+The refusal is the signup-states symptom, and the hang is the `page.goto` timeouts.
+
+**Fix.** On WSL, `reserveListenPort()` reads Windows' excluded port ranges (`netsh interface ipv4 show excludedportrange protocol=tcp`) and its listening ports (`netstat -ano`, IPv4 and IPv6) once per reservation, in about 0.1 s, and never hands out a port Windows holds. If Windows' port use cannot be read on WSL, the reservation fails with that reason rather than guess. Off WSL, as on CI's Linux runners, nothing changes. Every server started through `startAppServer()` or `reserveListenPort()` gets it. **Test:** "a port Windows reserves or listens on is never reserved for a server the browser reaches" in `test/listen-port.test.mjs`; with the check removed, it fails by returning the Windows-held port.
+
+**Not changed, and why.**
+
+- **The null `clientWidth`** was not reproduced separately. It follows a navigation that never loaded a document, so it is expected to stop with the cause above. If it recurs on a port the Windows check cleared, it has a new cause.
+- **The 2026-11-13 failures** happened while another checkout's suite ran on the same host, which is the environmental cause below. They are consistent with this cause too, but not proven to be it.
+- **The relay delay.** WSL relays a new listener to Windows about 0.5–1 s after it starts listening. Measured from a container, a new server was refused in that window. The browser suites start their browser container, which takes over a second, between starting the app and their first navigation, and the suites that start a server after the browser poll it from the browser first (`test/layout-checks.test.mjs`, `test/signup-states-rendered.test.mjs`). No recorded failure traces to the delay, so nothing was built for it.
+- **Fixture servers that listen on port 0** and that the browser reaches (`test/interface-primitives.test.mjs`, `test/provider-showcase-rendered.test.mjs`, `scripts/design/full-contact-sheet.mjs`) take a port from the ephemeral range, where Windows' excluded ranges on this host currently lie. No failure has been recorded for them. They are noted for a founder decision.
+
+### d. Older flakes, confirmed
+
+**d1. The `test/e1-11-rendered-page.test.mjs` cancellation in CI (2026-09-06)** — **already fixed; no change.** The cause was cleanup that awaited the server's exit event unconditionally, so a server that had already exited left the file waiting until the runner cancelled it. In the current code, `stopServer()` returns at once when the server has exited or has no PID. The file starts its server through `startAppServer()`, whose `stop()` awaits an exit promise taken when the server was spawned, so an exit cannot be missed.
+
+**d2. `EADDRINUSE` on 127.0.0.1:62001 in `test/landing-hero-rendered.test.mjs` (2026-11-02)** — **not fixed until E11.6-11a; now fixed at its cause.** `test/helpers/landing-render.mjs` started its server on a fixed port, counting up from 62001 in every test process, and never checked that the port was free. Any other listener there failed every test that rendered the landing page. That could be an orphaned server from a stopped run, a port Docker Desktop published, or the same helper in a concurrent run: `skinwhale-prelaunch` carries an identical copy. With 127.0.0.1:62001 held, `renderLanding()` failed with "Landing test server exited (code 1, signal null): Error: listen EADDRINUSE: address already in use 127.0.0.1:62001". With a holder that accepted connections without answering, it hung, because its `fetch` has no timeout. **Fix:** the helper starts its server through `startAppServer()`, on a reserved port that is confirmed free (and on WSL also free on the Windows side), with a lost bind race retried on a fresh port. It reads `/robots.txt` for readiness, so readiness never renders the landing page. **Test:** "the landing render server starts while another process holds the fixed port it once used" in `test/landing-rendered-page.test.mjs`, which failed before the fix with the message above.
+
+### Known environmental causes, out of scope
+
+Interference from another project's test run on the same Docker host is a known environmental cause, not a flake of this suite. Examples are `skinwhale-prelaunch`'s Playwright containers and app servers (eleven of its servers from 17–18 November were still listening, orphaned, on 2026-11-20), and the Docker daemon that stopped answering on 2026-11-12 while both projects' browser suites ran. It belongs to the local-concurrency question, which the founder has deferred, and E11.6-11a builds nothing for it.

@@ -29,7 +29,7 @@ npm run check                                                # lint, format, typ
 npm run test:changed -- <each Tests-line file, plus every test file this branch added or changed>
 ```
 
-- `npm run test:changed -- --dry-run <files>` prints what it will run and why. It already selects every test the branch affects, and adds the privacy and accessibility suites whenever the change can reach the browser.
+- `npm run test:changed -- --dry-run <files>` prints what it will run and why. It runs exactly the named files and the test files the branch adds or changes, and adds no other test and no privacy or accessibility suite: CI's full suite covers the rest (`docs/engineering/ci-cd.md#local-checks`). `--wide` shows that wider selection; it is not part of this gate.
 - **Skip a check only when it already passed in this session after the last change to the branch** — say when it ran. A merge from `main` counts as a change.
 - **A diff that touches only `docs/**`** runs nothing in CI. Run `npm run format` only.
 - **Never run the full `npm test`** (`docs/engineering/ci-cd.md#local-checks`). CI runs it on the pull request.

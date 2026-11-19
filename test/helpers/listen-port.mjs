@@ -1,5 +1,6 @@
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { connect, createServer } from 'node:net';
 import { promisify } from 'node:util';
@@ -59,16 +60,109 @@ async function bindable(port) {
   return true;
 }
 
+// On a WSL host with Docker Desktop, a browser container reaches a server in
+// WSL through Windows: host.docker.internal is the Windows host, and WSL relays
+// each WSL listener to Windows localhost. A port that is free in WSL but that
+// Windows has reserved (an excluded port range, which Windows re-draws at each
+// boot) or already listens on cannot be relayed. Measured 2026-11-20: a WSL
+// server on a reserved port was refused from the container (the signup-states
+// symptom of 2026-10-29), and one on a port a Windows process held reached
+// that process instead and hung (the 30-second page.goto timeouts).
+export function isWsl() {
+  return (
+    existsSync('/proc/sys/fs/binfmt_misc/WSLInterop') ||
+    process.env.WSL_DISTRO_NAME !== undefined
+  );
+}
+
+/** The ranges in `netsh interface ipv4 show excludedportrange` output. */
+export function parseExcludedPortRanges(text) {
+  const ranges = [];
+  for (const line of text.split(/\r?\n/u)) {
+    const match = /^\s*(\d+)\s+(\d+)\s*\*?\s*$/u.exec(line);
+    if (match) ranges.push([Number(match[1]), Number(match[2])]);
+  }
+  return ranges;
+}
+
+/**
+ * The TCP ports with a listening socket in `netstat -ano` output, IPv4 or
+ * IPv6. A listener's foreign address has port 0; the state column is not
+ * read, because Windows translates it.
+ */
+export function parseListeningPorts(text) {
+  const ports = new Set();
+  for (const line of text.split(/\r?\n/u)) {
+    const match = /^\s*TCP\s+\S*:(\d+)\s+\S*:0\s/u.exec(line);
+    if (match) ports.add(Number(match[1]));
+  }
+  return ports;
+}
+
+async function runWindows(command, args) {
+  // Through WSL interop: on PATH by default, else at Windows' usual location.
+  for (const executable of [command, `/mnt/c/Windows/System32/${command}`]) {
+    try {
+      const { stdout } = await execFileAsync(executable, args, {
+        maxBuffer: 16 * 1024 * 1024,
+        timeout: 15_000,
+      });
+      return stdout;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
+  throw new Error(`${command} is not reachable through WSL interop.`);
+}
+
+/**
+ * On WSL, a test of whether Windows has reserved or bound a port; elsewhere,
+ * null. On WSL it fails loudly rather than guess, because a port Windows holds
+ * leaves the browser container unable to reach the server.
+ */
+export async function windowsPortView() {
+  if (!isWsl()) return null;
+  try {
+    const [excluded, listening] = await Promise.all([
+      runWindows('netsh.exe', [
+        'interface',
+        'ipv4',
+        'show',
+        'excludedportrange',
+        'protocol=tcp',
+      ]),
+      runWindows('netstat.exe', ['-ano']),
+    ]);
+    const ranges = parseExcludedPortRanges(excluded);
+    const ports = parseListeningPorts(listening);
+    return (port) =>
+      ports.has(port) ||
+      ranges.some(([start, end]) => port >= start && port <= end);
+  } catch (error) {
+    throw new Error(
+      `On WSL a test server's port must also be free on the Windows side, which the browser container reaches it through, but Windows' port use could not be read: ${error.message}`,
+      { cause: error },
+    );
+  }
+}
+
 // A port for a child server that must be given an explicit PORT (the app's
 // validated configuration rejects 0). It lies below the ephemeral range, so no
-// outgoing connection can occupy it, and it is confirmed free by binding it.
-// A caller still retries on EADDRINUSE, because another explicit listener could
-// bind it between this probe and the child's own bind.
-export async function reserveListenPort() {
+// outgoing connection can occupy it, and it is confirmed free by binding it,
+// and on WSL also free on the Windows side. A caller still retries on
+// EADDRINUSE, because another explicit listener could bind it between this
+// probe and the child's own bind. `random` and `windowsPorts` are injectable
+// for tests.
+export async function reserveListenPort({
+  random = Math.random,
+  windowsPorts = windowsPortView,
+} = {}) {
   const ceiling = await ephemeralPortStart();
+  const heldByWindows = await windowsPorts();
   for (let probe = 0; probe < maximumProbes; probe += 1) {
     const port =
-      lowestCandidate + Math.floor(Math.random() * (ceiling - lowestCandidate));
+      lowestCandidate + Math.floor(random() * (ceiling - lowestCandidate));
+    if (heldByWindows?.(port)) continue;
     if (await bindable(port)) return port;
   }
   throw new Error(

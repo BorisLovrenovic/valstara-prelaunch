@@ -16,7 +16,10 @@ import { promisify } from 'node:util';
 import {
   formatLcov,
   mergeLcovRecords,
+  mergeShardReports,
   parseLcovRecords,
+  refreshProcedure,
+  shardPlanDrift,
   summarise,
   verifyShards,
 } from '../scripts/ci/merge-coverage.mjs';
@@ -344,4 +347,280 @@ test('the timing reporter records each file once, from its file-level result', a
   for await (const chunk of testTimingReporter(events())) output += chunk;
 
   assert.deepEqual(JSON.parse(output), { 'test/example.test.mjs': 1.2 });
+});
+
+// E11.6-11a: CI runs eight shards. The merge proves every discovered file ran
+// exactly once across all eight, and warns, without failing, when the
+// recorded timings the plan uses have gone stale.
+
+const eightFiles = Array.from(
+  { length: 20 },
+  (_, index) => `test/f${String(index).padStart(2, '0')}.test.mjs`,
+);
+
+test('eight shards place every file exactly once and balance recorded time', () => {
+  const timings = Object.fromEntries(
+    eightFiles.map((file, index) => [file, 10 + index]),
+  );
+  const plan = planShards(eightFiles, timings, 8);
+
+  assert.equal(plan.length, 8);
+  assert.deepEqual(plan.flatMap((shard) => shard.files).sort(), eightFiles);
+  assert.ok(plan.every((shard) => shard.files.length > 0));
+  const seconds = plan.map((shard) => shard.seconds);
+  // 390s over eight shards: the longest-first plan keeps every shard within
+  // one file's time of the others.
+  assert.equal(
+    seconds.reduce((sum, value) => sum + value, 0),
+    390,
+  );
+  assert.ok(Math.max(...seconds) - Math.min(...seconds) <= 29, seconds);
+  assert.deepEqual(parseShard('8/8'), { index: 8, total: 8 });
+  assert.throws(() => parseShard('9/8'), /--shard must look like 2\/4/u);
+});
+
+const eightManifests = (files = eightFiles) =>
+  planShards(files, {}, 8).map((shard, index) => ({
+    index: index + 1,
+    total: 8,
+    discovered: files,
+    files: shard.files,
+  }));
+
+test('the merge accepts eight shard reports only when each discovered file ran exactly once', () => {
+  assert.equal(verifyShards(eightManifests()), 20);
+
+  const moved = eightManifests();
+  moved[7].files = [...moved[7].files, moved[0].files[0]];
+  assert.throws(
+    () => verifyShards(moved),
+    new RegExp(`${moved[0].files[0]} ran in shards 1, 8`, 'u'),
+  );
+  const dropped = eightManifests();
+  const lost = dropped[3].files.pop();
+  assert.throws(
+    () => verifyShards(dropped),
+    new RegExp(`${lost} ran in no shard`, 'u'),
+  );
+});
+
+test('the merge fails when any of the eight shard reports is missing', () => {
+  for (const missing of [1, 5, 8]) {
+    const reports = eightManifests().filter(
+      (manifest) => manifest.index !== missing,
+    );
+    const present = [1, 2, 3, 4, 5, 6, 7, 8].filter(
+      (index) => index !== missing,
+    );
+    assert.throws(
+      () => verifyShards(reports),
+      new RegExp(
+        `Expected shard reports 1 to 8 once each; got ${present.join(', ')}\\.`,
+        'u',
+      ),
+    );
+  }
+  // A shard reporting twice cannot stand in for a missing one.
+  const repeated = eightManifests();
+  repeated[7] = { ...repeated[6] };
+  assert.throws(
+    () => verifyShards(repeated),
+    /Expected shard reports 1 to 8 once each; got 1, 2, 3, 4, 5, 6, 7, 7\./u,
+  );
+});
+
+const shardTimes = (seconds) =>
+  seconds.map((value, index) => ({
+    index: index + 1,
+    total: seconds.length,
+    seconds: value,
+  }));
+const recordedFor = (files) =>
+  Object.fromEntries(files.map((file) => [file, 5]));
+
+test('the drift check stays silent on a balanced plan with every file recorded', () => {
+  assert.deepEqual(
+    shardPlanDrift({
+      discovered: eightFiles,
+      recorded: recordedFor(eightFiles),
+      // The slowest shard, 500s, is exactly 25% above the 400s mean.
+      shards: shardTimes([500, 300, 400, 400, 400, 400, 400, 400]),
+    }),
+    [],
+  );
+  // Two of twenty unrecorded is exactly the 10% limit, not above it.
+  assert.deepEqual(
+    shardPlanDrift({
+      discovered: eightFiles,
+      recorded: recordedFor(eightFiles.slice(2)),
+      shards: shardTimes([400, 400, 400, 400, 400, 400, 400, 400]),
+    }),
+    [],
+  );
+});
+
+test('the drift check warns when too many files have no recorded time or one shard runs long', () => {
+  assert.deepEqual(
+    shardPlanDrift({
+      discovered: eightFiles,
+      recorded: recordedFor(eightFiles.slice(3)),
+      shards: shardTimes([400, 400, 400, 400, 400, 400, 400, 400]),
+    }),
+    [
+      '3 of the 20 discovered test files (15%) have no recorded time in scripts/ci/shard-timings.json; the limit is 10%',
+    ],
+  );
+  assert.deepEqual(
+    shardPlanDrift({
+      discovered: eightFiles,
+      recorded: recordedFor(eightFiles),
+      // 1,190s against a 470s mean: what test (3/4) looked like on PR #165.
+      shards: shardTimes([1190, 370, 370, 370, 370, 370, 370, 350]),
+    }),
+    [
+      'the slowest shard, 1/8, ran 1190s, 153% above the mean shard time of 470s; the limit is 25%',
+    ],
+  );
+});
+
+// Plants a checked-out repository with `recorded` as its shard timings, and
+// the eight shard reports CI would download, each file measured at `measured`
+// seconds (by default 5).
+async function plantedMerge({ recorded, measured = () => 5, drop = [] }) {
+  const root = await mkdtemp(join(tmpdir(), 'valstara-merge-drift-'));
+  await mkdir(join(root, 'scripts/ci'), { recursive: true });
+  if (recorded !== undefined) {
+    await writeFile(
+      join(root, 'scripts/ci/shard-timings.json'),
+      typeof recorded === 'string' ? recorded : JSON.stringify(recorded),
+    );
+  }
+  const directory = join(root, 'coverage-shards');
+  for (const manifest of eightManifests()) {
+    if (drop.includes(manifest.index)) continue;
+    const shard = join(directory, `coverage-shard-${manifest.index}`);
+    await mkdir(shard, { recursive: true });
+    await writeFile(
+      join(shard, 'shard.json'),
+      JSON.stringify({ ...manifest, root: '/runner/repo', plannedSeconds: 10 }),
+    );
+    await writeFile(
+      join(shard, 'lcov.info'),
+      `SF:/runner/repo/src/shard-${manifest.index}.ts\nDA:1,1\nend_of_record\n`,
+    );
+    await writeFile(
+      join(shard, 'test-timings.json'),
+      JSON.stringify(
+        Object.fromEntries(
+          manifest.files.map((file) => [file, measured(manifest.index)]),
+        ),
+      ),
+    );
+  }
+  const lines = [];
+  return {
+    root,
+    lines,
+    merge: () =>
+      mergeShardReports({ directory, root, log: (line) => lines.push(line) }),
+  };
+}
+
+const annotations = (lines) =>
+  lines.filter((line) => line.startsWith('::warning'));
+
+test('merging eight current reports prints the shard table and no drift warning', async () => {
+  const planted = await plantedMerge({ recorded: recordedFor(eightFiles) });
+  try {
+    const result = await planted.merge();
+
+    assert.deepEqual(result, { fileCount: 20, warnings: [] });
+    assert.deepEqual(annotations(planted.lines), []);
+    assert.equal(
+      planted.lines.filter((line) => /^shard \d\/8: /u.test(line)).length,
+      8,
+    );
+    assert.match(
+      await readFile(join(planted.root, 'coverage/lcov.info'), 'utf8'),
+      /SF:src\/shard-8\.ts/u,
+    );
+  } finally {
+    await rm(planted.root, { recursive: true, force: true });
+  }
+});
+
+test('a planted stale plan adds a warning annotation naming the refresh procedure, and the merge still succeeds', async () => {
+  // Most files unrecorded, as when the suite outgrew a months-old plan, and
+  // shard 3 measured far longer than the rest.
+  const planted = await plantedMerge({
+    recorded: recordedFor(eightFiles.slice(0, 4)),
+    measured: (index) => (index === 3 ? 60 : 5),
+  });
+  try {
+    const result = await planted.merge();
+
+    assert.equal(result.fileCount, 20);
+    assert.equal(result.warnings.length, 2);
+    const warnings = annotations(planted.lines);
+    assert.equal(warnings.length, 2);
+    for (const warning of warnings) {
+      assert.match(
+        warning,
+        /^::warning title=Shard plan drift::The shard plan is stale: /u,
+      );
+      assert.ok(warning.endsWith(`${refreshProcedure}.`), warning);
+      assert.doesNotMatch(warning, /\n/u);
+    }
+    assert.match(warnings[0], /16 of the 20 discovered test files \(80%\)/u);
+    assert.match(warnings[1], /the slowest shard, 3\/8/u);
+  } finally {
+    await rm(planted.root, { recursive: true, force: true });
+  }
+});
+
+test('an unreadable shard plan is a warning, never a failed merge', async () => {
+  for (const recorded of [undefined, '{ not json']) {
+    const planted = await plantedMerge({ recorded });
+    try {
+      const result = await planted.merge();
+
+      assert.equal(result.fileCount, 20);
+      assert.equal(result.warnings.length, 1);
+      assert.match(
+        annotations(planted.lines)[0],
+        /The shard plan is stale: the shard plan could not be checked: /u,
+      );
+    } finally {
+      await rm(planted.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('a missing shard report still fails the merge, whatever the plan', async () => {
+  const planted = await plantedMerge({
+    recorded: recordedFor(eightFiles),
+    drop: [6],
+  });
+  try {
+    await assert.rejects(
+      planted.merge(),
+      /Expected shard reports 1 to 8 once each; got 1, 2, 3, 4, 5, 7, 8\./u,
+    );
+  } finally {
+    await rm(planted.root, { recursive: true, force: true });
+  }
+});
+
+test('the committed shard plan records a time for every discovered test file', async () => {
+  const recorded = JSON.parse(
+    await readFile(
+      new URL('../scripts/ci/shard-timings.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const discovered = await discoverTestFiles();
+  assert.deepEqual(
+    discovered.filter((file) => !Number.isFinite(recorded[file])),
+    [],
+  );
 });
