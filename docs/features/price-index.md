@@ -246,7 +246,7 @@ A **real change** is a published value replaced by a different published value f
 - Price history from `changes.json`, hidden when there is none.
 - The rank across markets ("Sweden is the 3rd most expensive of our 20 markets for Spotify Premium — Individual"). It is ranked internally by `price_usd_source` among markets with a publishable record and a USD figure, and M is that count. A mini-table lists the cheapest and most expensive markets with their local prices.
 - Related services in the same category in that market.
-- The Valstara comparison, or before launch the waitlist call to action through the existing signup island with server-side `?ref=` capture intact.
+- The waitlist call to action through the existing signup island with server-side `?ref=` capture intact, on every page, and the Valstara comparison beside it where one exists.
 - An FAQ built only from data.
 - A methodology link and a "Prices verified on …" line.
 - A plain statement that Valstara is not affiliated with the services listed.
