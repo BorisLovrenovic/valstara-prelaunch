@@ -39,6 +39,19 @@ async function buildFixture(changeContent) {
       join(projectRoot, 'astro.config.mjs'),
       join(root, 'astro.config.mjs'),
     );
+    // E11.6-10: the build bundles the price data and the price-index
+    // package's site-importable parts (scripts/ci/app-build.mjs).
+    for (const input of [
+      'config/catalogue.json',
+      'config/markets.json',
+      'data/price-index',
+      'packages/price-index/src/publish',
+      'packages/price-index/src/schema',
+    ]) {
+      await cp(join(projectRoot, input), join(root, input), {
+        recursive: true,
+      });
+    }
     await writeFile(join(root, 'package.json'), '{"type":"module"}\n');
     await symlink(
       join(projectRoot, 'node_modules'),
