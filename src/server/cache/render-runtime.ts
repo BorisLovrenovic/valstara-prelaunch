@@ -4,6 +4,7 @@ import { createReferralCaptureService } from '../referral/capture.ts';
 
 import {
   createRenderCache,
+  priceRenderCacheMaxEntries,
   serveCachedRender,
   type RenderCacheDependencies,
   type RenderCacheRequest,
@@ -18,6 +19,7 @@ export function serveRender(
 ): Promise<Response> {
   dependencies ??= {
     cache: createRenderCache(),
+    priceCache: createRenderCache(priceRenderCacheMaxEntries),
     flags: () => getFlagService().list(),
     referral: createReferralCaptureService(getConfig().referralSigningSecret),
   };

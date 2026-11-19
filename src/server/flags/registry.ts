@@ -6,6 +6,8 @@ export const campaignFlagRegistry = Object.freeze({
   'survey.enabled': true,
   'member.dashboard': true,
   'email.broadcast': false,
+  // E11.6-10: every price route; off answers 503 (docs/features/price-index.md).
+  'prices.pages': true,
 } as const);
 
 export type FlagKey = keyof typeof campaignFlagRegistry;

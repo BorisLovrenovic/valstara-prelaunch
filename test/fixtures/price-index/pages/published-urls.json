@@ -1,0 +1,36 @@
+{
+  "urls": [
+    {
+      "path": "/prices/chatgpt/united-kingdom",
+      "service_id": "chatgpt",
+      "market": "GB",
+      "service_name": "ChatGPT",
+      "market_name": "the United Kingdom",
+      "first_published_on": "2026-11-01"
+    },
+    {
+      "path": "/prices/crunchyroll/sweden",
+      "service_id": "crunchyroll",
+      "market": "SE",
+      "service_name": "Crunchyroll",
+      "market_name": "Sweden",
+      "first_published_on": "2026-11-01"
+    },
+    {
+      "path": "/prices/spotify/finland",
+      "service_id": "spotify",
+      "market": "FI",
+      "service_name": "Spotify Premium",
+      "market_name": "Finland",
+      "first_published_on": "2026-11-01"
+    },
+    {
+      "path": "/prices/spotify/sweden",
+      "service_id": "spotify",
+      "market": "SE",
+      "service_name": "Spotify Premium",
+      "market_name": "Sweden",
+      "first_published_on": "2026-11-01"
+    }
+  ]
+}

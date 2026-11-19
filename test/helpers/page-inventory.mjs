@@ -8,6 +8,16 @@ const root = fileURLToPath(new URL('../..', import.meta.url));
 // with the rules-revision route expanded to every published revision. The
 // privacy audit crawls it, and E11.5-12 asserts the enforced layout-check set
 // equals it, so both read the one derivation.
+//
+// E11.6-10: a data route is a page file whose pages come from the price
+// data, not from the file tree. The repository's data has none before the
+// founder's first run and hundreds after it, so it is listed apart, as its
+// route pattern, in `dataRoutes`; the E11-05 audit crawls each data route's
+// page kinds on the price fixture site (test/helpers/price-fixture-site.mjs).
+export const dataRouteFiles = new Map([
+  ['prices/[service]/[country].astro', '/prices/[service]/[country]'],
+]);
+
 export async function sourcePagePaths() {
   const pages = await readdir(`${root}/src/pages`, { recursive: true });
   const astro = pages.filter((path) => path.endsWith('.astro')).sort();
@@ -17,7 +27,11 @@ export async function sourcePagePaths() {
     .map((path) => path.slice(0, -3))
     .sort();
   assert.ok(revisions.length > 0, 'rules revisions must be inventoried');
+  const dataRoutes = astro
+    .filter((path) => dataRouteFiles.has(path))
+    .map((path) => dataRouteFiles.get(path));
   const routes = astro.flatMap((path) => {
+    if (dataRouteFiles.has(path)) return [];
     const route =
       `/${path.replace(/\.astro$/u, '').replace(/(?:^|\/)index$/u, '')}`.replace(
         /\/$/u,
@@ -29,5 +43,5 @@ export async function sourcePagePaths() {
     assert.ok(!route.includes('['), `unexpanded page route: ${route}`);
     return [route];
   });
-  return { astro, routes: [...new Set(routes)].sort() };
+  return { astro, routes: [...new Set(routes)].sort(), dataRoutes };
 }

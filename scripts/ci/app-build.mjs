@@ -20,6 +20,14 @@ const inputPaths = [
   'tsconfig.json',
   'scripts/ci/seo-build-check.ts',
   'scripts/ci/provider-showcase-check.ts',
+  // E11.6-10: the price pages bundle the price data and the price-index
+  // package's two site-importable parts (ADR-033).
+  'config/catalogue.json',
+  'config/markets.json',
+  'data/price-index/latest.json',
+  'data/price-index/published-urls.json',
+  'packages/price-index/src/publish',
+  'packages/price-index/src/schema',
 ];
 
 export const stampName = '.valstara-build-stamp.json';

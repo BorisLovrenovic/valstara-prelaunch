@@ -1,0 +1,28 @@
+{
+  "urls": [
+    {
+      "path": "/prices/netflix/sweden",
+      "service_id": "netflix",
+      "market": "SE",
+      "service_name": "Netflix",
+      "market_name": "Sweden",
+      "first_published_on": "2026-12-01"
+    },
+    {
+      "path": "/prices/spotify/sweden",
+      "service_id": "spotify",
+      "market": "SE",
+      "service_name": "Spotify Premium",
+      "market_name": "Sweden",
+      "first_published_on": "2026-12-01"
+    },
+    {
+      "path": "/prices/spotify/norway",
+      "service_id": "spotify",
+      "market": "NO",
+      "service_name": "Spotify Premium",
+      "market_name": "Norway",
+      "first_published_on": "2027-01-02"
+    }
+  ]
+}

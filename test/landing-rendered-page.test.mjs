@@ -152,7 +152,16 @@ test(
       .digest('hex');
     const root = await mkdtemp(join(tmpdir(), 'valstara-landing-'));
     try {
-      for (const path of ['src', 'public']) {
+      // E11.6-10: the price pages bundle the price data and the price-index
+      // package's site-importable parts, so the build reads them too.
+      for (const path of [
+        'src',
+        'public',
+        'config',
+        'data/price-index',
+        'packages/price-index/src/publish',
+        'packages/price-index/src/schema',
+      ]) {
         await cp(join(projectRoot, path), join(root, path), {
           recursive: true,
         });

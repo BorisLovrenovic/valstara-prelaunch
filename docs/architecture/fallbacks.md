@@ -94,6 +94,14 @@ Everything else announces itself. These two look exactly like ordinary underperf
 
 ---
 
+## Price pages (E11.6-10)
+
+| Failure | Detection | Fallback | Visitor sees | Alert |
+|---|---|---|---|---|
+| **A wrong price has gone live** | Founder review, a report | **Flag `prices.pages` off** — every price route answers `503` with `Retry-After` and `noindex`, without a deploy, and keeps its index status. The fix ships as a data pull request | A plain "prices are temporarily unavailable" card | **P1** decision |
+| A published page loses all its publishable data, or its service or market leaves the configuration | The build's generation rule | **The page never answers 404.** Its ledger URL renders "temporarily unavailable" with no price and `noindex`, and leaves the sitemap until data returns or the founder retires it (D2) | The page's heading and an honest unavailable note, and the waitlist form | — |
+| A price data file is invalid at build | The prebuild sitemap step validates every file the pages read | **The build fails and nothing is deployed**; the last good build keeps serving | The last deployed prices | — (CI red) |
+
 ## Chaos drills
 
 Executed and recorded before the campaign opens (E11). **A drill that does not behave as this matrix claims is a blocking finding — fix the system or fix the matrix, never neither.** E11-02 local results: [chaos report](../testing/e11-02-chaos-report.md) and [machine-readable timings](../testing/e11-02-results.json).

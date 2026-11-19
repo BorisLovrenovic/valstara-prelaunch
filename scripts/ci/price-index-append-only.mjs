@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // The price-index append-only check (E11.6-06, epic rule 7; changes.json
-// from E11.6-09). History is never
+// from E11.6-09; published-urls.json from E11.6-10). History is never
 // rewritten: every entry a data file holds at the merge base must still be
 // there, unchanged and in the same place, so a change may only add entries at
 // the end. CI runs it inside `npm run security` with the pull request's base
@@ -17,6 +17,8 @@ export const appendOnlyFiles = [
   { path: 'data/price-index/approvals.json', key: 'approvals' },
   // E11.6-09: the change log of real price changes.
   { path: 'data/price-index/changes.json', key: 'changes' },
+  // E11.6-10: the ledger of every price URL ever published.
+  { path: 'data/price-index/published-urls.json', key: 'urls' },
 ];
 
 function issue(path, message) {

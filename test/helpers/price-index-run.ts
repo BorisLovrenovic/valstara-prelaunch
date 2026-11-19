@@ -173,6 +173,7 @@ export async function priceIndexWorkspace(
     'approvals.json',
     'changes.json',
     'manual-overrides.json',
+    'published-urls.json',
   ]) {
     await cp(
       join(projectRoot, 'data/price-index', name),

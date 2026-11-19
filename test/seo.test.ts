@@ -15,13 +15,17 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import {
+  checkRenderedHead,
   checkSeoBuild,
   collectSeoPages,
   generateOpenGraphImages,
+  generateSitemap,
   socialCardSvg,
 } from '../scripts/ci/seo-build-check.ts';
 import {
   canonicalUrl,
+  childSitemaps,
+  sitemapIndexXml,
   jsonLd,
   organisationData,
   organisationId,
@@ -39,6 +43,42 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const digest = (image: Buffer) =>
   createHash('sha256').update(image).digest('hex');
 
+// E11.6-10: the price route's pages come from the price data, so a fixture
+// copy of the pages carries the data files the route reads: the repository's
+// own, or the price-page fixture dataset.
+async function copyPriceData(
+  fixture: string,
+  source: 'repository' | 'price-fixture' = 'repository',
+): Promise<void> {
+  await mkdir(join(fixture, 'config'), { recursive: true });
+  await mkdir(join(fixture, 'data/price-index'), { recursive: true });
+  const fixtures = join(root, 'test/fixtures/price-index/pages');
+  const files: [string, string, string][] =
+    source === 'repository'
+      ? [
+          ['config/catalogue.json', root, 'config/catalogue.json'],
+          ['config/markets.json', root, 'config/markets.json'],
+          [
+            'data/price-index/published-urls.json',
+            root,
+            'data/price-index/published-urls.json',
+          ],
+        ]
+      : [
+          ['config/catalogue.json', fixtures, 'catalogue.json'],
+          ['config/markets.json', fixtures, 'markets.json'],
+          ['data/price-index/latest.json', fixtures, 'latest.json'],
+          [
+            'data/price-index/published-urls.json',
+            fixtures,
+            'published-urls.json',
+          ],
+        ];
+  for (const [target, from, name] of files) {
+    await cp(join(from, name), join(fixture, target));
+  }
+}
+
 test('the build fixture rejects missing metadata, duplicate metadata and a new uncovered page', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'valstara-seo-'));
   try {
@@ -48,6 +88,7 @@ test('the build fixture rejects missing metadata, duplicate metadata and a new u
     await cp(join(root, 'src/content'), join(fixture, 'src/content'), {
       recursive: true,
     });
+    await copyPriceData(fixture);
     await checkSeoBuild(fixture);
     const renderedAbout = join(fixture, 'dist/client/about/index.html');
     await mkdir(join(fixture, 'dist/client/about'), { recursive: true });
@@ -133,7 +174,11 @@ test('sitemap routes reconcile with page files and include only the current rule
   assert.ok(routes.includes(`/giveaway/rules/${currentVersion}`));
   for (const version of revisions.filter((value) => value !== currentVersion))
     assert.ok(!routes.includes(`/giveaway/rules/${version}`));
-  const sitemap = await readFile(join(root, 'public/sitemap.xml'), 'utf8');
+  // E11.6-10: the site's own routes moved, unchanged, to pages.xml.
+  const sitemap = await readFile(
+    join(root, 'public/sitemaps/pages.xml'),
+    'utf8',
+  );
   const generatedUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/gu)].map(
     (match) => match[1],
   );
@@ -321,6 +366,7 @@ test('build generates page-specific PNGs and typed fallback crops from brand tok
       join(root, 'public/fonts/instrument-sans-latin-wght-normal.woff'),
       join(fixture, 'public/fonts/instrument-sans-latin-wght-normal.woff'),
     );
+    await copyPriceData(fixture);
     const { pages } = await collectSeoPages(fixture);
     await generateOpenGraphImages(fixture);
 
@@ -498,4 +544,185 @@ test('social card SVG escapes the page title and uses supplied token values', ()
   assert.match(svg, /fill="#e8654a"/u);
   assert.match(svg, /font-family="Instrument Sans, sans-serif"/u);
   assert.doesNotMatch(svg, /<clear>/u);
+});
+
+// E11.6-10: the sitemap index, the price sitemap and the price pages in the
+// E9-06 and E9-07 checks.
+
+test('the committed /sitemap.xml is an index over pages.xml and the price sitemap', async () => {
+  const index = await readFile(join(root, 'public/sitemap.xml'), 'utf8');
+  assert.equal(index, sitemapIndexXml());
+  assert.deepEqual(
+    [...index.matchAll(/<sitemap><loc>([^<]+)<\/loc><\/sitemap>/gu)].map(
+      (match) => match[1],
+    ),
+    [
+      'https://valstara.com/sitemaps/pages.xml',
+      'https://valstara.com/sitemaps/prices-service-market.xml',
+    ],
+  );
+  assert.deepEqual(Object.values(childSitemaps), [
+    '/sitemaps/pages.xml',
+    '/sitemaps/prices-service-market.xml',
+  ]);
+});
+
+async function priceFixture(): Promise<string> {
+  const fixture = await mkdtemp(join(tmpdir(), 'valstara-seo-prices-'));
+  await cp(join(root, 'src/pages'), join(fixture, 'src/pages'), {
+    recursive: true,
+  });
+  await cp(join(root, 'src/content'), join(fixture, 'src/content'), {
+    recursive: true,
+  });
+  await copyPriceData(fixture, 'price-fixture');
+  return fixture;
+}
+
+test('the build writes the price sitemap from the data: generated pages only, each with its verification date', async () => {
+  const fixture = await priceFixture();
+  try {
+    await generateSitemap(fixture);
+    const prices = await readFile(
+      join(fixture, 'public', childSitemaps.pricesServiceMarket),
+      'utf8',
+    );
+    assert.deepEqual(
+      [
+        ...prices.matchAll(
+          /<url><loc>([^<]+)<\/loc><lastmod>([^<]+)<\/lastmod><\/url>/gu,
+        ),
+      ].map(([, loc, lastmod]) => [loc, lastmod]),
+      [
+        ['https://valstara.com/prices/duolingo/france', '2026-11-26'],
+        ['https://valstara.com/prices/netflix/sweden', '2026-11-25'],
+        ['https://valstara.com/prices/netflix/united-states', '2026-11-27'],
+        ['https://valstara.com/prices/spotify/sweden', '2026-11-28'],
+      ],
+    );
+    // The unavailable ledger URLs are noindex, and absent.
+    assert.doesNotMatch(prices, /chatgpt|crunchyroll|finland/u);
+    // The site's own routes keep exactly the committed pages.xml.
+    assert.equal(
+      await readFile(join(fixture, 'public', childSitemaps.pages), 'utf8'),
+      await readFile(join(root, 'public', childSitemaps.pages), 'utf8'),
+    );
+    assert.equal(
+      await readFile(join(fixture, 'public/sitemap.xml'), 'utf8'),
+      sitemapIndexXml(),
+    );
+    // With the repository's data (no latest.json yet), the price sitemap is
+    // an empty set.
+    await copyPriceData(fixture);
+    await rm(join(fixture, 'data/price-index/latest.json'));
+    await generateSitemap(fixture);
+    assert.doesNotMatch(
+      await readFile(
+        join(fixture, 'public', childSitemaps.pricesServiceMarket),
+        'utf8',
+      ),
+      /<url>/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test('price pages join the E9-06 metadata check and take the typed prices card until E11.6-14', async () => {
+  const fixture = await priceFixture();
+  try {
+    const { pages } = await collectSeoPages(fixture);
+    const prices = pages.filter((page) => page.pathname.startsWith('/prices/'));
+    assert.deepEqual(
+      prices.map((page) => page.pathname),
+      [
+        '/prices/chatgpt/united-kingdom',
+        '/prices/crunchyroll/sweden',
+        '/prices/duolingo/france',
+        '/prices/netflix/sweden',
+        '/prices/netflix/united-states',
+        '/prices/spotify/finland',
+        '/prices/spotify/sweden',
+      ],
+    );
+    assert.ok(
+      prices.every((page) => socialPageKind(page.pathname) === 'prices'),
+    );
+    assert.ok(socialPageKinds.includes('prices'));
+    await checkSeoBuild(fixture);
+
+    await cp(
+      join(root, 'src/styles/tokens.css'),
+      join(fixture, 'src/styles/tokens.css'),
+    );
+    await mkdir(join(fixture, 'public/fonts'), { recursive: true });
+    await cp(
+      join(root, 'public/fonts/instrument-sans-latin-wght-normal.woff'),
+      join(fixture, 'public/fonts/instrument-sans-latin-wght-normal.woff'),
+    );
+    await generateOpenGraphImages(fixture);
+    const fallback = await sharp(
+      join(fixture, 'public/images/og/fallback/prices.png'),
+    ).metadata();
+    assert.deepEqual([fallback.width, fallback.height], [1200, 630]);
+    for (const page of prices) {
+      await assert.rejects(
+        readFile(
+          join(
+            fixture,
+            'public',
+            new URL(socialImageUrl(page.pathname)).pathname.slice(1),
+          ),
+        ),
+        { code: 'ENOENT' },
+        `${page.pathname} has no card of its own yet`,
+      );
+    }
+
+    // A second data route without its expansion fails the build check.
+    await mkdir(join(fixture, 'src/pages/prices/[service]'), {
+      recursive: true,
+    });
+    await writeFile(
+      join(fixture, 'src/pages/prices/[service]/index.astro'),
+      '<main></main>',
+    );
+    await assert.rejects(checkSeoBuild(fixture), /route expansion is missing/u);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test('the rendered-head check refuses a duplicate price title and a missing prices fallback', () => {
+  const head = (path: string, title: string, fallback: string) =>
+    `<html><head><title>${title}</title><meta name="description" content="${title} description"><link rel="canonical" href="${canonicalUrl(path)}"><meta property="og:image" content="${socialImageUrl(path)}"><meta property="og:image" content="${fallback}"><meta name="twitter:card" content="summary_large_image"></head></html>`;
+  const seen = { titles: new Set<string>(), descriptions: new Set<string>() };
+  const prices = socialFallbackImageUrl('prices');
+  checkRenderedHead(
+    head('/prices/spotify/sweden', 'Spotify', prices),
+    '/prices/spotify/sweden',
+    seen,
+  );
+  assert.throws(
+    () =>
+      checkRenderedHead(
+        head('/prices/spotify/norway', 'Spotify', prices),
+        '/prices/spotify/norway',
+        seen,
+      ),
+    /title is missing or duplicated/u,
+  );
+  assert.throws(
+    () =>
+      checkRenderedHead(
+        head(
+          '/prices/netflix/sweden',
+          'Netflix',
+          socialFallbackImageUrl('campaign'),
+        ),
+        '/prices/netflix/sweden',
+        seen,
+      ),
+    /social card metadata is missing/u,
+  );
 });
