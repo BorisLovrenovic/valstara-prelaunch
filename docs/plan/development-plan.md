@@ -35,7 +35,7 @@ This plan is written against a **12-week campaign**, and three of its constraint
 
 **Per-ticket cycle:** implement (fresh session, the ticket's model) → **pre-PR review in a fresh session that has not seen the implementation** → fix the findings, at most four review rounds → pre-push checks → push, PR, CI, squash-merge to `main`. Prompts, the review cap and the decision procedure are in `docs/engineering/prompts/00-USAGE.md`.
 
-**Local checks, full suite in CI (founder-authorised 2026-10-23).** Before committing, a session runs only the quick local checks: `npm run check`, and `npm run test:changed` naming the ticket's Tests-line files. The full suite runs once per pull request in CI, under coverage, split across four parallel runners by recorded file timings, and every check must be green before merge (`docs/engineering/ci-cd.md#how-the-suite-runs`).
+**Local checks, full suite in CI (founder-authorised 2026-10-23, narrowed 2026-11-19).** Before committing, a session runs only the quick local checks: `npm run check`, and `npm run test:changed` naming the ticket's Tests-line files. From E11.6-11a, `test:changed` runs exactly the named files and the test files the branch adds or changes; tests reached only by import, file read, dependency or browser reach run in CI, not locally. The full suite runs once per pull request in CI, under coverage, split across parallel runners by recorded file timings (four, and eight from E11.6-11a), and every check must be green before merge (`docs/engineering/ci-cd.md#how-the-suite-runs`).
 
 **`main` is the only long-lived branch.** **Merged is not deployed:** before the campaign opens, deploying is a deliberate command; from campaign open, a **release tag** deploys.
 
@@ -3191,7 +3191,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 
 **Founder-authorised 2026-11-17**, and amended by the founder's answers the same day. Added after E11.5 and before E12. Branches follow the usual pattern, e.g. `feat/E11.6-06-merge-and-publish-gate`; commits carry `[E11.6-06]`. **The brief and the founder's amendments are recorded in `docs/features/price-index.md`, which every ticket here reads first.** Where the amendments and the original brief conflict, the amendments win.
 
-**Goal:** a monthly index of the official list prices of the subscriptions Valstara tracks, in every market it serves. It is collected by a separate, polite tool that the founder runs by hand and that exits when done, every gap and doubtful value is flagged for the founder, and it is published as permanent, data-rich price pages in local currency that bring in waitlist signups and survive into the storefront. *16 tickets.*
+**Goal:** a monthly index of the official list prices of the subscriptions Valstara tracks, in every market it serves. It is collected by a separate, polite tool that the founder runs by hand and that exits when done, every gap and doubtful value is flagged for the founder, and it is published as permanent, data-rich price pages in local currency that bring in waitlist signups and survive into the storefront. *17 tickets*, one of them (E11.6-11a) test and CI tooling.
 
 **Why this epic exists.** The price pages rank for long-tail searches before launch, which no other page on the site can do. The change log gives the founder a monthly story for outreach. The same data later feeds the storefront's "official price vs Valstara price" comparison. For a brand whose whole proposition is trust, **a wrong price on our own page is worse than no page**, so most of this epic is the machinery that keeps unverified numbers off the site.
 
@@ -3207,7 +3207,7 @@ Read and analyse them before starting (final-design rule 1). The canvas is the d
 **Order.** The tickets run in register order, and each builds only on the ones before it:
 
 - E11.6-01 to E11.6-09 build the tool;
-- E11.6-10 to E11.6-14 build the pages;
+- E11.6-10 to E11.6-14 build the pages, with E11.6-11a, the faster local checks, eight CI shards and the known test flakes, between E11.6-11 and E11.6-12 (founder-authorised 2026-11-19);
 - E11.6-15 is the founder's first real run and the monthly runbook;
 - E11.6-16 audits the pages against that real data.
 
@@ -3663,6 +3663,101 @@ Also in this ticket:
 3. **Every `config/valstara-prices.json` entry's `price_local` must be at its currency's minor-unit exponent, checked by the cross-file config rules (D-034 Q2, option C).** `configIssues` in `packages/price-index/src/schema/config.ts` adds the rule with `isDecimalAtExponent`, beside the market-currency check, so `price-index validate`, CI and `createPriceSite` (which already runs those rules) all reject such an entry whether or not its plan publishes today. `docs/features/price-index.md#pages` and `docs/modules/price-index.md` say so. *(Founder decision.)*
 
 **Docs:** `docs/features/price-index.md#pages` · `docs/brand/copy-rules.md#claims-that-must-stay-true`
+
+### E11.6-11a — Faster local checks, eight CI shards and the known test flakes
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** ci
+**Why this model:** it changes the gate every later ticket passes through. A selection rule that drops a test silently, or a flake "fixed" by hiding it, would cost every ticket after it.
+**Founder-authorised 2026-11-19.** This ticket is test and CI tooling, not price-index work. It sits in Epic E11.6 only so that it runs straight after E11.6-11, and the epic's rules for the tool and the pages do not apply to it. AGENTS.md's rules all still apply, including: never skip, delete or weaken a test or gate to get green; inject the clock; seed anything generated.
+
+**Why this ticket exists.** E11.6-10 took about 5.6 hours from start to merge, with little agent work in it. Most of that time was spent waiting on local test runs. `npm run test:changed` selected **135 of 237 test files (1,262 tests)**, because the ticket touched `src/server/flags/registry.ts` and `src/server/cache/render.ts`, which almost every test imports. `npm test` runs one file at a time (`--test-concurrency=1`), so each local check took 35–45 minutes. The implement, review, fix and pre-push stages each ran one. Separately, CI's `test (3/4)` shard took 19.9 minutes against 8.9 for `test (1/4)`. The reason is that `scripts/ci/shard-timings.json` was last refreshed on 2026-10-23 with 138 files, and the suite now has 237. The measured times are in the `shard-timings` artifact of PR-checks run 44521703536. The serial total is 3,094s, and the 18 files over 60s account for 71% of it.
+
+**Founder authorisation for documents.** This ticket updates `AGENTS.md`, `docs/engineering/ci-cd.md`, `README.md`, `docs/engineering/git-workflow.md`, `docs/testing/strategy.md` and the prompts `docs/engineering/prompts/01-implement-ticket.md`, `02-pre-pr-review.md`, `04-fix-and-verify.md`, `05-ci-triage.md` and `07-pre-push-checks.md`, so that each says exactly what the new local gate and the eight shards do. The founder authorised these edits on 2026-11-19. Plan §1 already states the new rule. The ticket does not edit the plan.
+
+**Build:**
+
+1. **The local gate runs the ticket's own tests (change 1).**
+   - `npm run test:changed` runs, by default, exactly:
+     - the files named on its command line, which are the ticket's Tests-line files plus any test a finding names;
+     - the test files the branch adds or changes since the merge base with `origin/main` (committed, uncommitted or untracked).
+   - Nothing else runs by default:
+     - no import-graph reach;
+     - no `new URL(…, import.meta.url)` or string-literal file reads;
+     - no lockfile-dependency reach;
+     - no automatic `test:privacy` or `test:a11y`.
+   - Those wider rules move behind an explicit opt-in flag (`--wide`). It keeps today's selection, with each file's reason, and every existing selection test, for a session that wants to see what CI will cover. It is not part of any gate.
+   - `--dry-run` keeps printing the selection and the reason for each file, and works with or without `--wide`.
+   - The full suite in CI is the safety net for everything the narrower gate no longer runs. No CI job changes for this item.
+   - A browser-reaching change still says in its PR what it loads (AGENTS.md rule 1). CI's privacy and accessibility gates still enforce it.
+   - **Documents.** Update `AGENTS.md#before-you-commit` and `docs/engineering/ci-cd.md#local-checks`:
+     - the selection rule, and that it applies to dependency upgrades too;
+     - when to use `--wide`;
+     - the trade-off: a test outside the Tests line that breaks is caught in CI, not locally, and goes to CI triage (prompt 05) like any CI failure.
+   - Update the listed prompts and docs wherever they say `test:changed` "also picks every test your change affects" or adds the browser suites.
+2. **Refresh the shard plan, and keep it from going stale (change 2).**
+   - Replace `scripts/ci/shard-timings.json` with the merged `shard-timings` artifact of the latest green PR-checks run on `main`'s newest merged pull request (`gh run download` is read-only and allowed).
+   - The `coverage` job adds a **non-blocking** warning annotation, alongside the table it already prints, when either:
+     - more than 10% of the discovered test files have no recorded time; or
+     - the slowest shard's measured time is more than 25% above the mean shard time.
+   - The warning names the refresh procedure in `docs/engineering/ci-cd.md`. It never fails a run, because balance never affects correctness.
+3. **Eight CI shards instead of four (change 3).**
+   - `.github/workflows/pr.yml` runs `test (n/8)` with `shard: [1..8]`.
+   - Every place that assumes four follows the matrix or reads the shard total from its input, never a hard-coded 4. That includes `scripts/ci/shard-plan.mjs` and `scripts/ci/merge-coverage.mjs`, which today fails "unless all four are present".
+   - The merge still proves that every discovered file ran exactly once.
+   - The repository is public, so GitHub-hosted runner minutes are free. **No paid service is added.**
+   - Update the docs that say four:
+     - `docs/engineering/ci-cd.md#how-the-suite-runs` and its pipeline list;
+     - `docs/engineering/git-workflow.md`'s check table;
+     - `README.md`;
+     - prompt 05's pipeline line.
+4. **Fix the known test flakes at their cause (change 6).** Each fix must be stable and production-ready:
+   - **Root cause first.** Find the cause with evidence: a reproduction, a log or an injected fault. Then change the code at that cause.
+   - **Never mask a flake.** None of these counts as a fix:
+     - a retry;
+     - a longer timeout;
+     - a sleep or fixed wait;
+     - a skip;
+     - `--test-force-exit`-style masking;
+     - a weakened assertion;
+     - an exception in a gate.
+   - **Prove each fix.** Where the cause can be reproduced, add a test that fails before the fix and passes after it.
+   - **Unproven causes go to the founder.** A flake whose cause cannot be shown with evidence gets no change. It is recorded, with what was tried, for a founder decision (AGENTS.md#stop-and-ask).
+   - The known flakes:
+     - **a. "refused 300 connection attempts".** Every test in a Playwright-backed file fails because its container's published port is refused.
+       - Seen in `test/member-leaderboard-final-design-rendered.test.mjs` in E11.6-10's pre-push run, 2026-11-19. It passed 15/15 alone.
+       - Seen in `test/landing-rewards-rendered.test.mjs` and `test:a11y` on 2026-11-07, while an orphaned `valstara-*-playwright-*` container from a stopped run was still up.
+       - Stopping a run skips each suite's `after()` cleanup. Find why the port is refused, and make a suite immune to containers left behind by a dead run. For example, label containers with their owning process and remove only those whose owner is gone.
+     - **b. "Unable to capture screenshot".** A Chromium `Protocol error (Page.captureScreenshot)` in `test/member-leaderboard-redesign.test.mjs`, seen in CI `test (2/4)` of run 44509384078 on 2026-11-19. The file passed when re-run.
+     - **c. The browser container cannot reach the app.** The container got `ERR_CONNECTION_REFUSED` to `host.docker.internal:<appPort>` for 30s while the app had logged that it was listening.
+       - Seen in `test/signup-states-rendered.test.mjs` on 2026-10-29.
+       - Related symptoms, likely in the same family:
+         - 30s `page.goto` timeouts in `test/verification-redesign.test.mjs`, including when it ran alone;
+         - `Cannot read properties of null (reading 'clientWidth')` in `checkLayout` (`scripts/design/layout-checks.mjs`), which means the document was not loaded when it was read;
+         - the six `page.goto` failures recorded in `docs/testing/e11-5-design-qa.md` on 2026-11-13.
+     - **d. Older flakes to confirm fixed.**
+       - The `test/e1-11-rendered-page.test.mjs` cancellation in CI (2026-09-06).
+       - `EADDRINUSE` on 127.0.0.1:62001 in `test/landing-hero-rendered.test.mjs` (2026-11-02).
+       - Confirm from the current code, and from `test/helpers/listen-port.mjs`, that each one's cause is gone. Record the evidence. Change nothing that is already fixed.
+   - **Out of scope here.** Interference from another project's test run on the same Docker host (skinwhale-prelaunch's Playwright containers, the 2026-11-12 Docker daemon wedge) belongs to the local-concurrency question, which the founder has deferred. Record it as a known environmental cause and build nothing for it.
+   - Each flake's cause, its fix and its evidence go in a "Known flakes" section of `docs/testing/strategy.md`.
+
+**Out of scope (founder, 2026-11-19):**
+- running local tests in parallel, or detecting other projects' runs (change 5);
+- narrowing which shared modules widen the selection (change 1b);
+- slimming the slow browser tests (change 4).
+
+None of these is built or scaffolded.
+
+**Acceptance criteria:**
+- `npm run test:changed -- <files>` runs exactly the named files plus the branch's added and changed test files, and prints a reason for each. On a branch that changes only `src/server/flags/registry.ts` and names one test, it runs that one test
+- `--wide` reproduces today's selection exactly, file for file and reason for reason, on the existing selection fixtures
+- `AGENTS.md`, `docs/engineering/ci-cd.md`, `README.md`, `docs/engineering/git-workflow.md`, `docs/testing/strategy.md` and the five prompts describe the new gate and eight shards consistently, and none still says the local run adds affected tests or the browser suites by default
+- CI runs eight `test (n/8)` shards. `coverage` merges eight reports, fails if any is missing, and proves every discovered file ran exactly once
+- `scripts/ci/shard-timings.json` covers every discovered test file. The drift warning fires on a planted stale plan and stays silent on a balanced one, and it never fails the job
+- Each flake in Build item 4 has either a root-cause fix with its evidence and, where reproducible, a test that failed before the fix, or a recorded "cause not proven" entry for the founder. No flake is handled by a retry, timeout, sleep, skip or weakened assertion
+- No gate, test or assertion is removed or weakened
+
+**Tests:** `test/changed-tests.test.mjs` (the default selection, `--wide` parity, `--dry-run`) · `test/ci-sharding.test.mjs` (eight shards, merge exactness, the missing-shard failure, the drift warning and its silent case) · `test/ci-pipeline.test.mjs` (the workflow matrix) · a regression test for each flake whose cause is reproduced, in the test file or helper that owns it (`test/listen-port.test.mjs` for a harness-level cause).
+**Docs:** `docs/engineering/ci-cd.md` · `AGENTS.md#before-you-commit` · `docs/testing/strategy.md` · `docs/engineering/prompts/00-USAGE.md`
 
 ### E11.6-12 — The service hub, the market hub and `/prices`
 **Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** `prices.pages` · **Area:** frontend
@@ -4391,10 +4486,10 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 | E10 Analytics and admin | 5 | Umami, event registry, funnel events, export, health view |
 | E11 Hardening and launch | 8 | Load, chaos, a11y, claims, **privacy audit**, **handoff rehearsal**, cutover, launch gate |
 | E11.5 Frontend design | 32 | Foundations, survey v2, shell, **provider showcase**, landing, **mobile sticky signup bar**, verify, `/me` and leaderboard, content pages, task and error pages, email layout, **the eight wireframe tickets**, **the twelve final-design tickets and the motion system**, design QA and re-audits |
-| E11.6 Price index and price pages | 16 | Discovery spike, config and schemas, exact money, **the browser fetcher**, the source adapter, **merge and the publish gate**, the run and its isolation from the site, coverage and overrides, change log and monthly report, the price pages and hubs, the index and monthly pages, social cards, the first real run and its runbook, the audit |
+| E11.6 Price index and price pages | 17 | Discovery spike, config and schemas, exact money, **the browser fetcher**, the source adapter, **merge and the publish gate**, the run and its isolation from the site, coverage and overrides, change log and monthly report, the price pages and hubs, the index and monthly pages, social cards, the first real run and its runbook, the audit, and **faster local checks, eight CI shards and the known test flakes** |
 | E11.7 Pre-launch partner programme | 15 | Shared code registry, voids, **the coupon ladder and wave 1 under the reward-gating invariant**, ladder copy, the application, founder commands, activation and `/r/{CODE}`, the typed code, the private dashboard, the partner leaderboard, the asset kit, the invite and first-signup emails, the digest, **the attribution export and hand-over**, the audit |
 | E12 Production bring-up | 7 | Provision, deploy, **timed rollback**, **restore from R2**, Cloudflare, drills, readiness gate |
-| **Total** | **160** | |
+| **Total** | **161** | |
 
 **Models (founder-authorised 2026-11-11):** every ticket not yet merged runs on Opus 5.5 at the level on its Model line (§3). The Codex distribution recorded on 2026-09-28 and the tier distribution below are history.
 
@@ -4408,7 +4503,7 @@ Under the tier policy, **Tier B carried the personal data, the privacy propertie
 
 ## Effort reconciliation
 
-The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each, plus E11.5's 32 design tickets (founder-authorised 2026-10-19, 2026-10-26 and 2026-10-30), which are heavier per ticket and are not in the stack-decisions estimate. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **E11.6's 16 tickets and E11.7's 15 tickets (founder-authorised 2026-11-17) are estimated separately below** and are not in the stack-decisions estimate either. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
+The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan is the full scope: 97 tickets at roughly 1.4 hours each, plus E11.5's 32 design tickets (founder-authorised 2026-10-19, 2026-10-26 and 2026-10-30), which are heavier per ticket and are not in the stack-decisions estimate. E5-03a extracts security work previously held inside E10-05, so it does not add to the estimate. **E11.6's 17 tickets and E11.7's 15 tickets (founder-authorised 2026-11-17) are estimated separately below** and are not in the stack-decisions estimate either. **The lean path is the cut list**, not a different plan — each cut removes named tickets:
 
 | Cut | Removes | Saves |
 |---|---|---|
@@ -4433,12 +4528,13 @@ The stack decisions estimate is **~119–139 hours full, ~76 lean**. This plan i
 | E11.6-09 Change log, monthly report | 06, 07 | 6 h |
 | E11.6-10 Service × market page | 06, 07 | 8 h |
 | E11.6-11 Page content and Valstara price | 09, 10 | 6 h |
+| E11.6-11a Local checks, CI shards, flakes | — | 6 h |
 | E11.6-12 Hubs and `/prices` | 11 | 5 h |
 | E11.6-13 Index, methodology, monthly pages | 09, 12 | 5 h |
 | E11.6-14 Social cards | 12, 13 | 4 h |
 | E11.6-15 First run and the runbook | 01–09 merged; the founder at the keyboard | 3 h |
 | E11.6-16 Audit and sign-off | 10–15 | 6 h |
-| **E11.6 total** | | **87 h** |
+| **E11.6 total** | | **93 h** |
 
 The estimate excludes the founder's own time on the monthly run and on the P9 answers.
 
