@@ -28,7 +28,13 @@ function run(cwd, command, args) {
 
 async function projectCopy() {
   const root = await mkdtemp(join(tmpdir(), 'valstara-price-index-check-'));
-  for (const path of ['package.json', 'config', 'packages/price-index/src']) {
+  for (const path of [
+    'package.json',
+    'config',
+    'packages/price-index/src',
+    // E11.6-09: the report templates the tool imports.
+    'packages/price-index/copy',
+  ]) {
     await cp(join(projectRoot, path), join(root, path), { recursive: true });
   }
   await symlink(join(projectRoot, 'node_modules'), join(root, 'node_modules'));

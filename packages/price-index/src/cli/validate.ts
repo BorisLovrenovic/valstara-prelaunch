@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import type { z } from 'zod';
 
 import { approvalsFile, approvalsFileSchema } from '../schema/approvals.ts';
+import { changesFile, changesFileSchema } from '../schema/changes.ts';
 import {
   configFiles,
   configIssues,
@@ -19,6 +20,10 @@ import {
   manualOverridesFile,
   manualOverridesFileSchema,
 } from '../schema/manual-overrides.ts';
+import {
+  monthlyDataDirectory,
+  monthlyReportFileSchema,
+} from '../schema/monthly-report.ts';
 import {
   latestFileSchema,
   snapshotFileSchema,
@@ -185,9 +190,11 @@ async function directoryNames(root: string, directory: string) {
 
 /**
  * Every problem in the data files under `root` (E11.6-07): latest.json and
- * each snapshot, manual-overrides.json, approvals.json, each run log under
- * reports/runs/, and each coverage report's JSON under reports/ (E11.6-08). latest.json, the snapshots and the run logs may not
- * exist yet; the two seeded files must. Files are read one at a time. A
+ * each snapshot, manual-overrides.json, approvals.json, changes.json and each
+ * monthly report under data/price-index/monthly/ (E11.6-09), each run log
+ * under reports/runs/, and each coverage report's JSON under reports/
+ * (E11.6-08). latest.json, the snapshots, the monthly reports and the run
+ * logs may not exist yet; the three seeded files must. Files are read one at a time. A
  * temporary file a crashed write left behind (`.<name>.tmp`) is ignored, as
  * git ignores it.
  */
@@ -224,7 +231,46 @@ export async function validateDataFiles(root: string): Promise<ConfigIssue[]> {
     ...(await fileIssues(root, approvalsFile, approvalsFileSchema, {
       optional: false,
     })),
+    ...(await fileIssues(root, changesFile, changesFileSchema, {
+      optional: false,
+    })),
   );
+  for (const name of await directoryNames(root, monthlyDataDirectory)) {
+    const file = `${monthlyDataDirectory}/${name}`;
+    if (name.startsWith('.') && name.endsWith('.tmp')) {
+      continue;
+    }
+    const match = /^(\d{4}-(?:0[1-9]|1[0-2]))\.json$/u.exec(name);
+    if (match === null) {
+      issues.push({
+        file,
+        path: '',
+        message: 'is not named like a monthly report (YYYY-MM.json)',
+      });
+      continue;
+    }
+    const result = await readJsonFile(root, file);
+    if ('issue' in result) {
+      issues.push(result.issue);
+      continue;
+    }
+    const monthIssues = schemaIssues(
+      file,
+      monthlyReportFileSchema,
+      result.value,
+    );
+    issues.push(...monthIssues);
+    if (
+      monthIssues.length === 0 &&
+      (result.value as { month: string }).month !== match[1]
+    ) {
+      issues.push({
+        file,
+        path: 'month',
+        message: `must be ${match[1]}, the file's name`,
+      });
+    }
+  }
   for (const name of await directoryNames(root, runLogDirectory)) {
     const file = `${runLogDirectory}/${name}`;
     const runId = name.replace(/\.json$/u, '');

@@ -363,7 +363,7 @@ function isPlain(value: unknown): boolean {
  * expanded, and a list of plain values on one line when that line fits
  * within 80 columns, one value a line otherwise.
  */
-function prettierJson(
+export function prettierJson(
   value: unknown,
   indent: string,
   prefix: string,
@@ -461,7 +461,10 @@ function link(url: string): string {
 }
 
 /** A table padded the way Prettier pads one: every column to its widest cell, at least 3. */
-function table(header: readonly string[], rows: readonly string[][]): string {
+export function table(
+  header: readonly string[],
+  rows: readonly string[][],
+): string {
   const widths = header.map((title, column) =>
     Math.max(3, title.length, ...rows.map((row) => row[column]!.length)),
   );
@@ -488,7 +491,7 @@ function section(title: string, body: readonly string[]): string[] {
 }
 
 /** One blank line between blocks, never two, as Prettier writes Markdown. */
-function tidy(lines: readonly string[]): string {
+export function tidy(lines: readonly string[]): string {
   return `${lines
     .join('\n')
     .replace(/\n{3,}/gu, '\n\n')

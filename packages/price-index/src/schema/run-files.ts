@@ -172,7 +172,7 @@ export const runLogFileSchema = z.strictObject({
     records_by_status: recordsByStatusSchema,
     /** Markets with at least one record whose page failed. */
     failed_markets: count,
-    /** Real price changes. Zero until E11.6-09 adds detection. */
+    /** Real price changes the build appended to changes.json (E11.6-09). */
     changed: count,
   }),
   failed_markets: z.array(

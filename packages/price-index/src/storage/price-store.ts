@@ -28,6 +28,8 @@ export interface PriceStore {
   writeSnapshot(snapshot: SnapshotFile, date: string): Promise<SnapshotRef>;
   /** Every snapshot, oldest first. */
   listSnapshots(): Promise<SnapshotRef[]>;
+  /** One snapshot `listSnapshots` listed, validated (E11.6-09). */
+  readSnapshot(ref: SnapshotRef): Promise<SnapshotFile>;
 }
 
 export const priceStoreErrorCodes = [

@@ -8,13 +8,16 @@ import {
   runFigures,
   serialiseRunLog,
 } from '../reports/index.ts';
+import { changesFile, type ChangeEntry } from '../schema/changes.ts';
 import { runLogDirectory } from '../schema/run-files.ts';
 import { writeFileAtomic } from '../storage/atomic-write.ts';
+import { appendChanges } from '../storage/changes-file.ts';
 import { createJsonFileStore } from '../storage/json-file-store.ts';
 import {
   DataFileError,
   latestRun,
   mergeRun,
+  pendingChanges,
   rawRootOf,
   readDataInputs,
 } from './run-files.ts';
@@ -32,6 +35,8 @@ import {
 // with the founder's overrides and decisions into the next latest.json
 // (E11.6-06), and only when every input and the result validate, writes:
 //
+//   data/price-index/changes.json             the build's real price
+//                                             changes, appended (E11.6-09)
 //   data/price-index/latest.json              replaced atomically
 //   data/price-index/snapshots/<date>.json    a new, immutable snapshot
 //   reports/runs/<run_id>.json                the run log
@@ -42,8 +47,13 @@ import {
 // A build that fails validation writes nothing, so latest.json and every
 // snapshot stay byte-identical. A partial run (stopped by the source or
 // interrupted) builds: the markets it did not read keep their previous
-// values, and the run log names the markets whose pages failed. The changed
-// count is zero until E11.6-09 adds change detection.
+// values, and the run log names the markets whose pages failed.
+//
+// Change detection (E11.6-09) compares each value the new latest.json
+// publishes with the value its record last published, and appends every
+// real change to changes.json, before latest.json is replaced: a build cut
+// short after the append is rebuilt to the same entries, which the log
+// already holds and does not repeat. The run log counts them as `changed`.
 
 export const buildDataExitCodes = {
   done: 0,
@@ -89,6 +99,7 @@ export async function runBuildData(
   let merged;
   let observations;
   let data;
+  let changes: ChangeEntry[];
   try {
     const run = await latestRun(rawRootOf(io.root));
     if (run === null) {
@@ -112,6 +123,7 @@ export async function runBuildData(
       settings: settings.merge,
       clock: io.clock,
     });
+    changes = await pendingChanges(io.root, merged);
   } catch (error) {
     if (error instanceof DataFileError || error instanceof MergeError) {
       return fail(`the merge was refused: ${error.message}`);
@@ -119,8 +131,10 @@ export async function runBuildData(
     throw error;
   }
 
-  // Everything is valid; only now is anything written. latest.json first,
-  // then its snapshot, then the run log that names the snapshot.
+  // Everything is valid; only now is anything written. The changes first,
+  // then latest.json, then its snapshot, then the run log that names the
+  // snapshot.
+  await appendChanges(resolve(io.root, changesFile), changes);
   const store = createJsonFileStore({
     directory: resolve(io.root, priceIndexDataDirectory),
   });
@@ -133,6 +147,7 @@ export async function runBuildData(
     observations,
     latest: merged,
     snapshot: snapshot.name,
+    changed: changes.length,
   });
   const runLogPath = resolve(io.root, runLogDirectory, `${log.run_id}.json`);
   await mkdir(resolve(io.root, runLogDirectory), { recursive: true });
@@ -155,8 +170,9 @@ export async function runBuildData(
     formatSummary({
       heading: `price-index build-data: built run ${log.run_id}.`,
       marketScope: observations.market_scope,
-      figures: runFigures(observations, merged),
+      figures: runFigures(observations, merged, changes.length),
       reports: [
+        ...(changes.length === 0 ? [] : [changesFile]),
         latestFile,
         join(snapshotsDirectory, snapshot.name),
         relative(io.root, runLogPath),

@@ -1,0 +1,28 @@
+{
+  "changes": [
+    {
+      "market": "SE",
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "old_price_local": "129.00",
+      "new_price_local": "149.00",
+      "currency": "SEK",
+      "change_percent": "15.5",
+      "detected_on": "2026-11-03",
+      "source": "scraper:youfundceo.com"
+    },
+    {
+      "market": "NO",
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "old_price_local": "129.00",
+      "new_price_local": "139.00",
+      "currency": "NOK",
+      "change_percent": "7.8",
+      "detected_on": "2026-11-03",
+      "source": "scraper:youfundceo.com"
+    }
+  ]
+}

@@ -91,24 +91,52 @@ export function createJsonFileStore(options: JsonFileStoreOptions): PriceStore {
       );
   }
 
+  /** A validated JSON file, or null when it does not exist. */
+  async function readValidated<T>(
+    schema: z.ZodType<T>,
+    path: string,
+  ): Promise<T | null> {
+    let text: string;
+    try {
+      text = await readFile(path, 'utf8');
+    } catch (error) {
+      if (errorCode(error) === 'ENOENT') {
+        return null;
+      }
+      throw error;
+    }
+    let data: unknown;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new PriceStoreError('not_json', `${path} is not JSON`);
+    }
+    return validated(schema, data, path);
+  }
+
   return {
     async readLatest() {
-      let text: string;
-      try {
-        text = await readFile(latestPath, 'utf8');
-      } catch (error) {
-        if (errorCode(error) === 'ENOENT') {
-          return null;
-        }
-        throw error;
+      return readValidated(latestFileSchema, latestPath);
+    },
+
+    async readSnapshot(ref: SnapshotRef) {
+      if (!snapshotNamePattern.test(ref.name)) {
+        throw new PriceStoreError(
+          'invalid_data',
+          `${JSON.stringify(ref.name)} is not a snapshot name`,
+        );
       }
-      let data: unknown;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new PriceStoreError('not_json', `${latestPath} is not JSON`);
+      const snapshot = await readValidated(
+        snapshotFileSchema,
+        join(snapshotDirectory, ref.name),
+      );
+      if (snapshot === null) {
+        throw new PriceStoreError(
+          'invalid_data',
+          `snapshot ${ref.name} does not exist`,
+        );
       }
-      return validated(latestFileSchema, data, latestPath);
+      return snapshot;
     },
 
     async writeLatest(latest: LatestFile) {

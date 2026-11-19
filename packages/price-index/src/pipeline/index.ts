@@ -2,3 +2,4 @@
 // entries and decisions, and the previous latest.json into the next one.
 
 export * from './merge.ts';
+export * from './changes.ts';

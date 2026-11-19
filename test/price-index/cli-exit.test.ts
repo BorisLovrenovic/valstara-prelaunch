@@ -381,6 +381,15 @@ test('report exits 0', async () => {
   assert.deepEqual(await treeDigest(space.root, siteReadDirectories), before);
 });
 
+test('monthly-report exits 0, and 1 for a month without a build', async () => {
+  const [snapshot] = await readdir(join(space.dataDirectory, 'snapshots'));
+  const month = snapshot!.slice(0, 7);
+  const result = await run(['monthly-report', '--month', month]);
+  assertExited(result, 0);
+  assert.match(result.out, new RegExp(`reports/monthly/${month}\\.md`));
+  assertExited(await run(['monthly-report', '--month', '1999-01']), 1);
+});
+
 test('override reads piped standard input and exits, and exits 1 when the input is empty', async () => {
   const path = join(space.root, 'data/price-index/manual-overrides.json');
   const before = await readFile(path, 'utf8');
