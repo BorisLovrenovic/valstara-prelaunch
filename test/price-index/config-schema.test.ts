@@ -396,7 +396,7 @@ test('a Valstara price must name a known service, plan and market, in its curren
     config({
       prices: [
         valstaraPrice(),
-        valstaraPrice({ term_months: 1, price_local: '99' }),
+        valstaraPrice({ term_months: 1, price_local: '99.00' }),
       ],
     }),
   );
@@ -422,6 +422,31 @@ test('a Valstara price must name a known service, plan and market, in its curren
       prices: [valstaraPrice(), valstaraPrice({ price_local: '1099.00' })],
     }),
     /duplicate Valstara price for spotify\/individual\/SE\/12 months/,
+  );
+});
+
+test("a Valstara price is written at its currency's minor-unit exponent (D-034)", () => {
+  assertValid(
+    config({
+      prices: [
+        valstaraPrice({ price_local: '149.00' }),
+        valstaraPrice({
+          market: 'US',
+          currency: 'USD',
+          price_local: '11.99',
+        }),
+      ],
+    }),
+  );
+  // More decimals than SEK has, or fewer: refused by the cross-file rules,
+  // whether or not the plan publishes a page today.
+  assertRejected(
+    config({ prices: [valstaraPrice({ price_local: '149.001' })] }),
+    /valstara-prices\.json prices\.0: Valstara price 149\.001 must be written at the minor-unit exponent of SEK \(2 decimals\)/,
+  );
+  assertRejected(
+    config({ prices: [valstaraPrice({ price_local: '149' })] }),
+    /Valstara price 149 must be written at the minor-unit exponent of SEK \(2 decimals\)/,
   );
 });
 

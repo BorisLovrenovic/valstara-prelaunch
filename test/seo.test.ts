@@ -63,6 +63,12 @@ async function copyPriceData(
             root,
             'data/price-index/published-urls.json',
           ],
+          [
+            'data/price-index/changes.json',
+            root,
+            'data/price-index/changes.json',
+          ],
+          ['config/valstara-prices.json', root, 'config/valstara-prices.json'],
         ]
       : [
           ['config/catalogue.json', fixtures, 'catalogue.json'],
@@ -73,6 +79,8 @@ async function copyPriceData(
             fixtures,
             'published-urls.json',
           ],
+          ['data/price-index/changes.json', fixtures, 'changes.json'],
+          ['config/valstara-prices.json', fixtures, 'valstara-prices.json'],
         ];
   for (const [target, from, name] of files) {
     await cp(join(from, name), join(fixture, target));
@@ -594,14 +602,21 @@ test('the build writes the price sitemap from the data: generated pages only, ea
         ),
       ].map(([, loc, lastmod]) => [loc, lastmod]),
       [
+        ['https://valstara.com/prices/apple-music/sweden', '2026-11-21'],
         ['https://valstara.com/prices/duolingo/france', '2026-11-26'],
         ['https://valstara.com/prices/netflix/sweden', '2026-11-25'],
         ['https://valstara.com/prices/netflix/united-states', '2026-11-27'],
+        ['https://valstara.com/prices/spotify/france', '2026-11-22'],
         ['https://valstara.com/prices/spotify/sweden', '2026-11-28'],
+        ['https://valstara.com/prices/spotify/united-kingdom', '2026-11-28'],
+        ['https://valstara.com/prices/spotify/united-states', '2026-11-27'],
       ],
     );
     // The unavailable ledger URLs are noindex, and absent.
-    assert.doesNotMatch(prices, /chatgpt|crunchyroll|finland/u);
+    assert.doesNotMatch(
+      prices,
+      /chatgpt|crunchyroll|finland|apple-music\/united-states/u,
+    );
     // The site's own routes keep exactly the committed pages.xml.
     assert.equal(
       await readFile(join(fixture, 'public', childSitemaps.pages), 'utf8'),
@@ -636,13 +651,18 @@ test('price pages join the E9-06 metadata check and take the typed prices card u
     assert.deepEqual(
       prices.map((page) => page.pathname),
       [
+        '/prices/apple-music/sweden',
+        '/prices/apple-music/united-states',
         '/prices/chatgpt/united-kingdom',
         '/prices/crunchyroll/sweden',
         '/prices/duolingo/france',
         '/prices/netflix/sweden',
         '/prices/netflix/united-states',
         '/prices/spotify/finland',
+        '/prices/spotify/france',
         '/prices/spotify/sweden',
+        '/prices/spotify/united-kingdom',
+        '/prices/spotify/united-states',
       ],
     );
     assert.ok(

@@ -1,0 +1,52 @@
+{
+  "prices": [
+    {
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "market": "SE",
+      "term_months": 1,
+      "price_local": "119.00",
+      "currency": "SEK"
+    },
+    {
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "market": "SE",
+      "term_months": 12,
+      "price_local": "1490.00",
+      "currency": "SEK"
+    },
+    {
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "market": "GB",
+      "term_months": 3,
+      "price_local": "33.00",
+      "currency": "GBP"
+    },
+    {
+      "service_id": "netflix",
+      "plan_id": "premium",
+      "market": "SE",
+      "term_months": 1,
+      "price_local": "199.00",
+      "currency": "SEK"
+    },
+    {
+      "service_id": "netflix",
+      "plan_id": "standard",
+      "market": "SE",
+      "term_months": 1,
+      "price_local": "119.00",
+      "currency": "SEK"
+    },
+    {
+      "service_id": "duolingo",
+      "plan_id": "super",
+      "market": "FR",
+      "term_months": 1,
+      "price_local": "8.99",
+      "currency": "EUR"
+    }
+  ]
+}

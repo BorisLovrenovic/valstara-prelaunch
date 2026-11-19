@@ -31,9 +31,54 @@ function monthText(date: string): string {
   return `${monthNames[Number(month) - 1]} ${year}`;
 }
 
+/** 1 → "1st", 2 → "2nd", 3 → "3rd", 11 → "11th", 22 → "22nd". */
+function ordinal(value: number): string {
+  const lastTwo = value % 100;
+  const last = value % 10;
+  const suffix =
+    lastTwo >= 11 && lastTwo <= 13
+      ? 'th'
+      : last === 1
+        ? 'st'
+        : last === 2
+          ? 'nd'
+          : last === 3
+            ? 'rd'
+            : 'th';
+  return `${value}${suffix}`;
+}
+
+/** A name that begins a sentence: "the United States" → "The United States". */
+function sentenceStart(name: string): string {
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+}
+
+/** One price: the exact decimal and its ISO 4217 code ("149.00 SEK"). */
+function price(amount: string, currency: string): string {
+  return `${amount} ${currency}`;
+}
+
+/** A plan named as the provider names it: "Spotify Premium — Individual". */
+function planLabel(service: string, plan: string): string {
+  return `${service} — ${plan}`;
+}
+
+/** How far down the ranking a market sits, for the rank sentence. */
+function rankPhrase(rank: number, tied: boolean): string {
+  const place =
+    rank === 1 ? 'most expensive' : `${ordinal(rank)} most expensive`;
+  return tied ? `the joint ${place}` : `the ${place}`;
+}
+
+function termText(months: number): string {
+  return months === 1 ? '1 month' : `${months} months`;
+}
+
 export const pricesCopy = {
   dayText,
   monthText,
+  ordinal,
+  planLabel,
   breadcrumbLabel: 'Breadcrumb',
   home: 'Valstara',
   page: {
@@ -54,7 +99,7 @@ export const pricesCopy = {
       verified: 'Last verified',
     },
     /** One plan's price: the exact decimal and its ISO 4217 code. */
-    price: (amount: string, currency: string) => `${amount} ${currency}`,
+    price,
     period: {
       month: 'per month',
       year: 'per year',
@@ -64,6 +109,99 @@ export const pricesCopy = {
       `Prices verified between ${dayText(oldest)} and ${dayText(newest)}.`,
     notAffiliated: (service: string) =>
       `Valstara is an independent seller. It is not affiliated with or endorsed by ${service}, and the names of the services belong to their owners.`,
+    /**
+     * Price history (E11.6-11): the real changes `changes.json` logged for
+     * the plans the page shows, newest first. Hidden when there is none.
+     */
+    history: {
+      heading: 'Price history',
+      raised: (oldPrice: string, newPrice: string, detectedOn: string) =>
+        `Raised from ${oldPrice} to ${newPrice} in ${monthText(detectedOn)}.`,
+      lowered: (oldPrice: string, newPrice: string, detectedOn: string) =>
+        `Lowered from ${oldPrice} to ${newPrice} in ${monthText(detectedOn)}.`,
+    },
+    /**
+     * The cross-market comparison (E11.6-11). M counts only the markets
+     * `rankMarkets()` ranks; each price is shown in its own market's
+     * currency. Hidden for a plan this market has no rank for.
+     */
+    comparison: {
+      heading: 'Compared with our other markets',
+      rank: (
+        market: string,
+        rank: number,
+        tied: boolean,
+        markets: number,
+        plan: string,
+      ) =>
+        `${sentenceStart(market)} is ${rankPhrase(rank, tied)} of our ${markets} markets for ${plan}.`,
+      tableCaption: (markets: number, plan: string) =>
+        `The most expensive and the cheapest of our ${markets} markets for ${plan}`,
+      columns: {
+        position: 'Position',
+        market: 'Market',
+        price: 'List price',
+      },
+      mostExpensive: 'Most expensive',
+      cheapest: 'Cheapest',
+    },
+    /** Related services (E11.6-11): same category, same market, generated pages only. */
+    related: {
+      heading: (market: string) => `Related services in ${market}`,
+    },
+    /**
+     * The FAQ (E11.6-11). A question is asked only when the data answers it,
+     * and every answer is filled from the page's own published figures.
+     */
+    faq: {
+      heading: 'Questions about these prices',
+      priceQuestion: (service: string, market: string) =>
+        `How much does ${service} cost in ${market}?`,
+      priceAnswer: (plan: string, amount: string, period: string) =>
+        `${plan} costs ${amount} ${period}.`,
+      comparisonQuestion: (service: string, market: string) =>
+        `How does the ${service} price in ${market} compare with other markets?`,
+      historyQuestion: (service: string, market: string) =>
+        `Has the ${service} price in ${market} changed?`,
+      historyAnswer: {
+        raised: (
+          plan: string,
+          oldPrice: string,
+          newPrice: string,
+          detectedOn: string,
+        ) =>
+          `${plan} rose from ${oldPrice} to ${newPrice} in ${monthText(detectedOn)}.`,
+        lowered: (
+          plan: string,
+          oldPrice: string,
+          newPrice: string,
+          detectedOn: string,
+        ) =>
+          `${plan} fell from ${oldPrice} to ${newPrice} in ${monthText(detectedOn)}.`,
+      },
+    },
+    /**
+     * The Valstara comparison (E11.6-11). Shown only with
+     * `prices.valstara_comparison` on and an entry in
+     * config/valstara-prices.json, in the market's currency, like for like.
+     */
+    valstara: {
+      heading: 'The Valstara price',
+      tableCaption: (service: string, market: string) =>
+        `${service} list prices and Valstara prices in ${market}`,
+      columns: {
+        plan: 'Plan',
+        term: 'Term',
+        list: 'List price',
+        valstara: 'Valstara price',
+        below: 'Below list price',
+      },
+      term: termText,
+      below: (percent: string) => `${percent}% below list price`,
+      /** The stated basis when the term is not the plan's billing period. */
+      basis: (plan: string, months: number, monthly: string) =>
+        `For ${termText(months)} of ${plan}, the list price shown is the monthly list price, ${monthly}, multiplied by ${months}.`,
+    },
     cta: {
       heading: 'Join the Valstara waitlist',
       body: 'Join the waitlist for earlier access to Valstara, a direct seller of digital goods backed by the Triple Guarantee.',

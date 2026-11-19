@@ -1,5 +1,7 @@
 import catalogue from '../../../config/catalogue.json';
 import markets from '../../../config/markets.json';
+import valstaraPrices from '../../../config/valstara-prices.json';
+import changes from '../../../data/price-index/changes.json';
 import ledger from '../../../data/price-index/published-urls.json';
 
 import { createPriceSite, type PriceSite } from './site.ts';
@@ -23,6 +25,8 @@ export function bundledPriceSite(): PriceSite {
     catalogue,
     markets,
     ledger,
+    changes,
+    valstaraPrices,
   });
   return site;
 }

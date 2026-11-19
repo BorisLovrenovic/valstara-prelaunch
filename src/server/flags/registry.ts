@@ -8,6 +8,9 @@ export const campaignFlagRegistry = Object.freeze({
   'email.broadcast': false,
   // E11.6-10: every price route; off answers 503 (docs/features/price-index.md).
   'prices.pages': true,
+  // E11.6-11: the Valstara price on the price pages. Off until the founder
+  // turns it on, because a Valstara price shown is a public price commitment.
+  'prices.valstara_comparison': false,
 } as const);
 
 export type FlagKey = keyof typeof campaignFlagRegistry;
