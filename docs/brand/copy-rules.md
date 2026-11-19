@@ -23,7 +23,7 @@ Every hosted waitlist tool sells these as features. LaunchList sells **ranking i
 
 ## Never use — CI-scanned
 
-Transcribed from **`docs/brand/identity-guidelines.md` §3.2 — LOCKED**. **E1-05 seeds `scripts/forbidden-copy.json` from this table**, and the scan runs over `src/copy/`, `src/content/` and every `.astro` file.
+Transcribed from **`docs/brand/identity-guidelines.md` §3.2 — LOCKED**. **E1-05 seeds `scripts/forbidden-copy.json` from this table**, and the scan runs over `src/copy/`, `src/content/`, `packages/price-index/copy/` (the price-index report templates, from E11.6-09) and every `.astro` file.
 
 Two CI scans keep copy honest, both in `scripts/ci/security-gates.mjs`:
 

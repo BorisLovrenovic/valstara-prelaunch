@@ -54,6 +54,7 @@ import {
   listRunIds,
   maxRequestRounds,
   mergeRun,
+  pendingChanges,
   rawRootOf,
   readDataInputs,
   replayUnit,
@@ -443,13 +444,18 @@ async function preview(
   clock: Clock,
 ) {
   try {
-    return mergeRun({
+    const merged = mergeRun({
       observations,
       data: await readDataInputs(io.root),
       config: prepared.config,
       settings: prepared.settings.merge,
       clock,
     });
+    // The real changes a build would log (E11.6-09), counted only.
+    return {
+      merged,
+      changed: (await pendingChanges(io.root, merged)).length,
+    };
   } catch (error) {
     if (error instanceof DataFileError || error instanceof MergeError) {
       io.stderr(
@@ -524,10 +530,11 @@ async function dryRun(
     marketScope: request.market,
     pages,
   });
-  const merged = await preview(observations, prepared, io, clock);
-  if (merged === null) {
+  const previewed = await preview(observations, prepared, io, clock);
+  if (previewed === null) {
     return scrapeExitCodes.validationFailure;
   }
+  const { merged, changed } = previewed;
   const { previous } = await readDataInputs(io.root);
   const changes = describeChanges(previous, merged);
   io.stdout(
@@ -538,7 +545,7 @@ async function dryRun(
       formatSummary({
         heading: 'Preview of the build:',
         marketScope: request.market,
-        figures: runFigures(observations, merged),
+        figures: runFigures(observations, merged, changed),
         reports: [],
       }),
   );
@@ -645,7 +652,8 @@ async function realRun(
     pages,
   });
   const observationsPath = await writeRunObservations(rawRoot, observations);
-  const merged = await preview(observations, prepared, io, clock);
+  const previewed = await preview(observations, prepared, io, clock);
+  const merged = previewed?.merged ?? null;
   const reports = [observationsPath];
   if (merged !== null) {
     reports.push(await writePreview(rawRoot, runId, merged));
@@ -685,7 +693,7 @@ async function realRun(
       : formatSummary({
           heading: `price-index scrape: run ${runId} ${verb} (exit ${exitCode}). latest.json was not touched.`,
           marketScope: request.market,
-          figures: runFigures(observations, merged),
+          figures: runFigures(observations, merged, previewed!.changed),
           reports: reports.map((path) => relative(io.root, path)),
         })) + `${next}\n`,
   );

@@ -129,7 +129,7 @@ test('failed markets are those with a failed page, counted by record and sorted'
   );
 });
 
-test('the figures count pages, matches, untracked entries and statuses, and nothing changed yet', () => {
+test('the figures count pages, matches, untracked entries, statuses and the changes logged', () => {
   const figures = runFigures(
     observations({
       pages_fetched: 7,
@@ -160,6 +160,7 @@ test('the figures count pages, matches, untracked entries and statuses, and noth
         price_local: '11.99',
       }),
     ]),
+    2,
   );
   assert.deepEqual(figures.counts, {
     fetched: 7,
@@ -175,7 +176,7 @@ test('the figures count pages, matches, untracked entries and statuses, and noth
       conflict: 1,
     },
     failed_markets: 1,
-    changed: 0,
+    changed: 2,
   });
   assert.equal(figures.coverage_percent, 50);
 });

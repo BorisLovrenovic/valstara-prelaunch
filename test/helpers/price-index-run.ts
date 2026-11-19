@@ -169,7 +169,11 @@ export async function priceIndexWorkspace(
   });
   const dataDirectory = join(root, 'data/price-index');
   await mkdir(dataDirectory, { recursive: true });
-  for (const name of ['approvals.json', 'manual-overrides.json']) {
+  for (const name of [
+    'approvals.json',
+    'changes.json',
+    'manual-overrides.json',
+  ]) {
     await cp(
       join(projectRoot, 'data/price-index', name),
       join(dataDirectory, name),

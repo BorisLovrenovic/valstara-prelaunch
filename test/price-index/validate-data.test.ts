@@ -11,7 +11,8 @@ import {
 } from '../helpers/price-index-run.ts';
 
 // E11.6-07: `price-index validate` extends to every data file: latest.json,
-// each snapshot, manual-overrides.json, approvals.json and each run log. It
+// each snapshot, manual-overrides.json, approvals.json and each run log;
+// E11.6-09 adds changes.json and the monthly reports. It
 // runs first in `npm run check`, so a planted invalid data file fails it.
 
 const validLatest = {
@@ -46,6 +47,15 @@ const validLog = {
   },
   failed_markets: [],
   failures: [],
+};
+
+const validMonthly = {
+  month: '2026-11',
+  snapshot: '2026-11-18.json',
+  built_at: '2026-11-18T12:00:00.000Z',
+  markets: 20,
+  changes: [],
+  plans: [],
 };
 
 const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
@@ -145,6 +155,67 @@ test('validate refuses each planted invalid data file, naming it', async (t) => 
       /reports\/runs\/20261118T093000Z\.json \(run_id\): must be 20261118T093000Z/,
     ],
     [
+      'a change with a float price (E11.6-09)',
+      'data/price-index/changes.json',
+      json({
+        changes: [
+          {
+            market: 'SE',
+            service_id: 'spotify',
+            plan_id: 'individual',
+            billing_period: 'month',
+            old_price_local: 129,
+            new_price_local: '149.00',
+            currency: 'SEK',
+            change_percent: '15.5',
+            detected_on: '2026-12-01',
+            source: 'scraper:youfundceo.com',
+          },
+        ],
+      }),
+      /changes\.json \(changes\.0\.old_price_local\)/,
+    ],
+    [
+      'a change carrying a USD figure (E11.6-09)',
+      'data/price-index/changes.json',
+      json({
+        changes: [
+          {
+            market: 'SE',
+            service_id: 'spotify',
+            plan_id: 'individual',
+            billing_period: 'month',
+            old_price_local: '129.00',
+            new_price_local: '149.00',
+            currency: 'SEK',
+            change_percent: '15.5',
+            detected_on: '2026-12-01',
+            source: 'scraper:youfundceo.com',
+            price_usd_source: '15.79',
+          },
+        ],
+      }),
+      /changes\.json \(changes\.0\)/,
+    ],
+    [
+      'a monthly report not named by its month (E11.6-09)',
+      'data/price-index/monthly/november.json',
+      json(validMonthly),
+      /monthly\/november\.json: is not named like a monthly report/,
+    ],
+    [
+      'a monthly report under another month (E11.6-09)',
+      'data/price-index/monthly/2026-12.json',
+      json(validMonthly),
+      /monthly\/2026-12\.json \(month\): must be 2026-12/,
+    ],
+    [
+      'a monthly report holding the cross-check (E11.6-09)',
+      'data/price-index/monthly/2026-11.json',
+      json({ ...validMonthly, cross_check: [] }),
+      /monthly\/2026-11\.json/,
+    ],
+    [
       'a run log not named by its run id',
       'reports/runs/november.json',
       json(validLog),
@@ -167,6 +238,18 @@ test('validate refuses each planted invalid data file, naming it', async (t) => 
       }
     });
   }
+
+  await t.test('a missing changes.json (E11.6-09)', async () => {
+    const space = await priceIndexWorkspace();
+    try {
+      await rm(join(space.dataDirectory, 'changes.json'));
+      const result = await space.cli(['validate']);
+      assert.equal(result.status, 3);
+      assert.match(result.err, /changes\.json: file not found/);
+    } finally {
+      await space.dispose();
+    }
+  });
 
   await t.test('a missing approvals.json', async () => {
     const space = await priceIndexWorkspace();

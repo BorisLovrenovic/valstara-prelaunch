@@ -21,7 +21,8 @@ import {
 //
 // There is no "not modified" count: the fetcher makes no conditional
 // request, so no page can answer "not modified" (E11.6-07 founder decision
-// 1 of 2026-11-18). The changed count is zero until E11.6-09 adds detection.
+// 1 of 2026-11-18). The changed count is the number of real price changes
+// the build logs to changes.json (E11.6-09).
 
 export type RunFigures = Pick<
   RunLogFile,
@@ -86,10 +87,14 @@ export function failedMarkets(
     }));
 }
 
-/** Every figure of a run, against the latest.json it was merged into. */
+/**
+ * Every figure of a run, against the latest.json it was merged into.
+ * `changed` is the number of real changes the build logs (E11.6-09).
+ */
 export function runFigures(
   observations: RunObservationsFile,
   latest: LatestFile,
+  changed: number,
 ): RunFigures {
   const failed = failedMarkets(observations);
   return {
@@ -100,7 +105,7 @@ export function runFigures(
       unmatched: observations.untracked.length,
       records_by_status: recordsByStatus(latest),
       failed_markets: failed.length,
-      changed: 0,
+      changed,
     },
     failed_markets: failed,
     failures: [...observations.failures].sort(
@@ -116,6 +121,8 @@ export function buildRunLog(input: {
   observations: RunObservationsFile;
   latest: LatestFile;
   snapshot: string;
+  /** The real changes the build appended to changes.json. */
+  changed: number;
 }): RunLogFile {
   const { observations, latest } = input;
   return runLogFileSchema.parse({
@@ -126,7 +133,7 @@ export function buildRunLog(input: {
     observed_at: observations.observed_at,
     built_at: latest.built_at,
     snapshot: input.snapshot,
-    ...runFigures(observations, latest),
+    ...runFigures(observations, latest, input.changed),
   });
 }
 

@@ -204,7 +204,8 @@ test('scrape writes the observations and a preview, and never touches latest.jso
     );
     assert.match(
       result.out,
-      /Fetched 15 · matched 13 · unmatched 49 · changed 0/,
+      // E11.6-09: Spotify SE 129 → 149 SEK is the build's one real change.
+      /Fetched 15 · matched 13 · unmatched 49 · changed 1/,
     );
     assert.match(result.out, /ok 13 · missing 3 ·/);
     assert.match(result.out, /Failed markets: none/);
@@ -288,7 +289,7 @@ test('build-data writes latest.json, a snapshot and the run log of the latest ru
           conflict: 0,
         },
         failed_markets: 0,
-        changed: 0,
+        changed: 1,
       },
       failed_markets: [],
       failures: [],

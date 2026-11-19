@@ -329,18 +329,26 @@ test('the server import guard fails when a chunk reaches picomatch', async () =>
   }
 });
 
+const plantedFixtures = JSON.parse(
+  await readFile(
+    new URL('./fixtures/security/gates.json', import.meta.url),
+    'utf8',
+  ),
+);
+
+// Each fixture copies the checkout and runs the gate in it, so the budget
+// grows with the fixture count instead of a fixed figure a loaded runner
+// can outgrow as fixtures are added.
+const plantedFixtureBudgetMs = 15_000;
+
 test(
   'each E1-05 scan rejects its committed planted fixture',
-  { skip: isChildRun, timeout: 120_000 },
+  {
+    skip: isChildRun,
+    timeout: Object.keys(plantedFixtures).length * plantedFixtureBudgetMs,
+  },
   async () => {
-    const fixtures = JSON.parse(
-      await readFile(
-        new URL('./fixtures/security/gates.json', import.meta.url),
-        'utf8',
-      ),
-    );
-
-    for (const [name, fixture] of Object.entries(fixtures)) {
+    for (const [name, fixture] of Object.entries(plantedFixtures)) {
       const { repository, temporaryRoot } = await createFixtureRepository(
         name,
         fixture,

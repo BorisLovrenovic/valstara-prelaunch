@@ -3,6 +3,7 @@
 
 export * from './approvals-file.ts';
 export * from './atomic-write.ts';
+export * from './changes-file.ts';
 export * from './json-file-store.ts';
 export * from './overrides-file.ts';
 export * from './price-store.ts';

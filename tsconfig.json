@@ -5,6 +5,7 @@
     "src/**/*.ts",
     "src/**/*.astro",
     "packages/price-index/src/**/*.ts",
+    "packages/price-index/copy/**/*.ts",
     "test/**/*.ts"
   ]
 }

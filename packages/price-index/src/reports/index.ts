@@ -3,4 +3,5 @@
 // never imports it (ADR-033).
 
 export * from './coverage.ts';
+export * from './monthly.ts';
 export * from './run-log.ts';

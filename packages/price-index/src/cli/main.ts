@@ -1,6 +1,7 @@
 import { systemClock } from '../http/clock.ts';
 import { runBuildData } from './build-data.ts';
 import { runOverride } from './override.ts';
+import { runMonthlyReport } from './monthly-report.ts';
 import { linePrompt, type Prompt } from './prompt.ts';
 import { runReport } from './report.ts';
 import { runReview } from './review.ts';
@@ -45,9 +46,15 @@ Commands:
              preview of the latest run shows, and record the decision in
              data/price-index/approvals.json.
   build-data Merge the latest run's observations with the overrides and
-             approvals, and on full validation write latest.json, a
-             snapshot, reports/runs/<run_id>.json and the final coverage
-             report.
+             approvals, and on full validation append the real price
+             changes to data/price-index/changes.json and write
+             latest.json, a snapshot, reports/runs/<run_id>.json and the
+             final coverage report.
+  monthly-report --month YYYY-MM
+             Write the month's report from its last build and the change
+             log: data/price-index/monthly/YYYY-MM.json for the page, and
+             reports/monthly/YYYY-MM.md for outreach, with the founder-only
+             cross-check against the source's price moves.
   report     Write the coverage report of the latest run, as build-data
              would build it now, to reports/coverage-YYYY-MM-DD.md and .json.
   override add|not-offered|retire
@@ -113,6 +120,10 @@ export async function runCli(
 
   if (command === 'report') {
     return runReport(rest, { ...io, clock: io.clock ?? systemClock });
+  }
+
+  if (command === 'monthly-report') {
+    return runMonthlyReport(rest, io);
   }
 
   if (command === 'override') {

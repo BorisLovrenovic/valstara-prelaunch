@@ -574,6 +574,8 @@ async function scanForbiddenCopy(files) {
     (file) =>
       file.path.startsWith('src/copy/') ||
       file.path.startsWith('src/content/') ||
+      // The price-index report templates (E11.6-09, epic rule 10).
+      file.path.startsWith('packages/price-index/copy/') ||
       file.path.endsWith('.astro'),
   );
   for (const file of targets) {

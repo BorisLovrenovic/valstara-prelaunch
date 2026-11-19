@@ -98,6 +98,11 @@
     "content": "<p>instant delivery</p>\n",
     "diagnostic": "forbidden copy"
   },
+  "price-index-copy-forbidden": {
+    "path": "packages/price-index/copy/ci-forbidden-copy-fixture.ts",
+    "content": "export const line = 'An unbeatable price this month.';\n",
+    "diagnostic": "\\[forbidden-copy\\] packages/price-index/copy/ci-forbidden-copy-fixture\\.ts: forbidden copy \"unbeatable\""
+  },
   "inline-prose": {
     "path": "src/pages/ci-inline-prose-fixture.astro",
     "content": "<p>Welcome to the Valstara waitlist.</p>\n",

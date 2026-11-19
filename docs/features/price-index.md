@@ -218,6 +218,14 @@ A **real change** is a published value replaced by a different published value f
 - counts such as "Spotify Premium — Individual rose in 4 of 20 markets";
 - **a cross-check against the source's "Price moves" page that only the founder sees.** It lists the source's moves we did not detect and our changes the source does not list. It is never published, and it never changes a value.
 
+**How it is built (E11.6-09).** The full rules are in `docs/modules/price-index.md` under "The change log" and "The monthly report".
+
+- **Detection.** `build-data` compares each value the new `latest.json` publishes (the publish gate's `isPublishable()`) with the value its record last published: the record in the previous `latest.json` when the gate passes it, otherwise the newest snapshot in which it does. So a value that waited as `needs_review`, `stale` or `missing` is compared with the last value the pages showed, and a first observation has nothing to compare with. Values are compared in exact minor units and the same currency, so a formatting difference or a status change logs nothing, and a change of currency is not a price change. An approved `needs_review` value is logged by the build that publishes it, dated by its observation (`observed_at`; a manual entry's verification date). An entry already in the log is not repeated, so a rebuild logs a change once. The changes are appended before `latest.json` is written.
+- **An entry** holds market, service, plan, billing period, old and new local price, currency, `change_percent` (signed text with one decimal, e.g. `"15.5"`, `"-7.8"`, computed exactly), `detected_on` and source. No USD figure.
+- **The month's figures** come from the month's last snapshot and `changes.json`, through the publish gate. A change counts only while its record still passes the gate in that snapshot; the extremes rank with `rankMarkets()` (rank 1, and the last rank, first by market code on a tie) and show local prices; the spread is the most expensive market's USD figure over the cheapest's, one decimal, and needs two ranked markets; the counts are of markets where the plan is published, and a market whose month of changes ends above (below) where it began rose (fell). "Largest % first" is by size, rises and falls together.
+- **The cross-check** reads the price moves of the runs built that month from the gitignored raw store. A move and a change agree when market, plan, billing period, currency and both prices match; dates may differ. When the raw store no longer holds them, the Markdown says so. It is written to the Markdown only.
+- **A month with no build** has no report: the command refuses. A month with no changes gets a report that says so.
+
 ## Pages
 
 | Route | What |
@@ -298,7 +306,7 @@ A **real change** is a published value replaced by a different published value f
 
 ## Telemetry
 
-Organic entries and signups by price-page type (from Umami's page views and the existing server-side funnel events: no new event, and no property carrying personal data). Each run's counts are logged to `reports/runs/<run_id>.json` by `build-data`: fetched, matched, unmatched, changed, records by status (which includes every flagged status), and failed markets, with the coverage %. **There is no "not modified" count** (E11.6-07, founder decision 1 of 2026-11-18): the fetcher makes no conditional request, so no page can answer "not modified". The changed count is zero until E11.6-09 adds change detection.
+Organic entries and signups by price-page type (from Umami's page views and the existing server-side funnel events: no new event, and no property carrying personal data). Each run's counts are logged to `reports/runs/<run_id>.json` by `build-data`: fetched, matched, unmatched, changed (the real price changes the build appended to `changes.json`, E11.6-09), records by status (which includes every flagged status), and failed markets, with the coverage %. **There is no "not modified" count** (E11.6-07, founder decision 1 of 2026-11-18): the fetcher makes no conditional request, so no page can answer "not modified".
 
 ## Repository layout
 

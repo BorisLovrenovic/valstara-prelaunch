@@ -4,8 +4,17 @@ import { join, resolve } from 'node:path';
 import type { z } from 'zod';
 
 import { rawDirectory, pageFileName, runDirectory } from '../http/raw-store.ts';
-import { mergePriceIndex } from '../pipeline/index.ts';
+import {
+  detectChanges,
+  lastPublishedRecords,
+  mergePriceIndex,
+} from '../pipeline/index.ts';
 import { approvalsFile, approvalsFileSchema } from '../schema/approvals.ts';
+import {
+  changesFile,
+  changesFileSchema,
+  type ChangeEntry,
+} from '../schema/changes.ts';
 import type { ConfigSet, ConfigIssue } from '../schema/config.ts';
 import {
   manualOverridesFile,
@@ -333,4 +342,47 @@ export async function replayUnit(input: {
   throw new Error(
     `the source adapter asked for more than ${maxRequestRounds} rounds of pages for ${input.unit.id}`,
   );
+}
+
+/**
+ * The real changes a build of `next` would append to changes.json
+ * (E11.6-09): each published value of `next` compared with the value its
+ * record last published, found in the current latest.json and then, newest
+ * first and one file at a time, in the snapshots. Entries already in the log
+ * are not repeated. Reads only; an invalid file throws `DataFileError`.
+ */
+export async function pendingChanges(
+  root: string,
+  next: LatestFile,
+): Promise<ChangeEntry[]> {
+  const logged = parsed(
+    changesFileSchema,
+    await readJson(resolve(root, changesFile), changesFile),
+    changesFile,
+  );
+  const store = createJsonFileStore({
+    directory: resolve(root, priceIndexDataDirectory),
+  });
+  async function* history(): AsyncGenerator<LatestFile> {
+    const previous = await store.readLatest();
+    if (previous !== null) {
+      yield previous;
+    }
+    const snapshots = await store.listSnapshots();
+    for (let index = snapshots.length - 1; index >= 0; index -= 1) {
+      yield await store.readSnapshot(snapshots[index]!);
+    }
+  }
+  let baselines;
+  try {
+    baselines = await lastPublishedRecords(next, history());
+  } catch (error) {
+    if (error instanceof PriceStoreError) {
+      throw new DataFileError([
+        { file: priceIndexDataDirectory, path: '', message: error.message },
+      ]);
+    }
+    throw error;
+  }
+  return detectChanges({ next, baselines, logged: logged.changes });
 }

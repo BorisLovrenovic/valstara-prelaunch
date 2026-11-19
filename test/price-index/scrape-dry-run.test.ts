@@ -150,7 +150,9 @@ test('a dry run replays the latest raw run with no request and no write', async 
     assert.match(result.out, /Coverage: 75% \(12 of 16 records publishable\)/);
     assert.match(
       result.out,
-      /Fetched 15 · matched 13 · unmatched 49 · changed 0/,
+      // E11.6-09: Spotify SE 129 → 149 SEK is the one real change; the
+      // Netflix rise waits as needs_review and is not counted.
+      /Fetched 15 · matched 13 · unmatched 49 · changed 1/,
     );
   } finally {
     await restore();
