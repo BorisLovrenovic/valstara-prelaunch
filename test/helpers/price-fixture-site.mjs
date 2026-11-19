@@ -20,7 +20,8 @@ import { inputDigest } from '../../scripts/ci/app-build.mjs';
 // (test/fixtures/price-index/pages/). The repository's own data has no
 // latest.json before the founder's first run, so the rendered price-page
 // tests build a copy of the site's build inputs with the fixture catalogue,
-// markets, latest.json and ledger in place of the real ones, and serve that.
+// markets, latest.json, ledger, change log and Valstara prices in place of
+// the real ones, and serve that.
 // The real data files are never touched.
 //
 // The build is keyed by the repository's build inputs and the fixture files,
@@ -57,6 +58,9 @@ export const priceFixtureFiles = {
   'markets.json': 'config/markets.json',
   'latest.json': 'data/price-index/latest.json',
   'published-urls.json': 'data/price-index/published-urls.json',
+  // E11.6-11: the price history and the Valstara prices.
+  'changes.json': 'data/price-index/changes.json',
+  'valstara-prices.json': 'config/valstara-prices.json',
 };
 
 async function exists(path) {
@@ -68,7 +72,7 @@ async function exists(path) {
   }
 }
 
-/** The fixture dataset's four files, parsed. */
+/** The fixture dataset's files, parsed, as `createPriceSite` takes them. */
 export async function priceFixtureInputs() {
   const read = async (name) =>
     JSON.parse(await readFile(join(priceFixtureDirectory, name), 'utf8'));
@@ -77,6 +81,8 @@ export async function priceFixtureInputs() {
     catalogue: await read('catalogue.json'),
     markets: await read('markets.json'),
     ledger: await read('published-urls.json'),
+    changes: await read('changes.json'),
+    valstaraPrices: await read('valstara-prices.json'),
   };
 }
 

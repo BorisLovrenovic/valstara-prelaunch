@@ -18,10 +18,11 @@ Flags exist for one reason: **so a mechanic can be switched off during an incide
 | `member.dashboard` | on | `member-status.md` | Off falls back to the status summary in email only — this is cut-list item 3 |
 | `email.broadcast` | **off** | `email-campaign.md` | **Off until domain authentication is verified end to end.** Transactional mail is unaffected |
 | `prices.pages` | on | `price-index.md` | **The lever for a wrong price that has gone live** (E11.6-10). Off answers every price route with `503`, `Retry-After` and `noindex`, without a deploy |
+| `prices.valstara_comparison` | **off** | `price-index.md` | **A Valstara price shown is a public price commitment** (E11.6-11). Off, no Valstara price renders on any page, whatever `config/valstara-prices.json` holds; the waitlist call to action stays either way. It stays off until the founder turns it on |
 
-**Two flags default off.** The founder retired the pre-launch `trustpilot.widget` flag on 2026-10-10; it is no longer a registered feature.
+**Three flags default off.** The founder retired the pre-launch `trustpilot.widget` flag on 2026-10-10; it is no longer a registered feature.
 
-**Both are hard gates:** `giveaway.open` and `email.broadcast` each depend on something **outside the code** — published rules pages for one, verified DNS authentication and an upgraded ESP tier for the other. ADR-029 removed the representative prerequisite. Neither may be turned on until its remaining prerequisite is complete, and E8-09 enforces the ESP one in code.
+**`giveaway.open` and `email.broadcast` are hard gates:** each depends on something **outside the code** — published rules pages for one, verified DNS authentication and an upgraded ESP tier for the other. ADR-029 removed the representative prerequisite. Neither may be turned on until its remaining prerequisite is complete, and E8-09 enforces the ESP one in code. **`prices.valstara_comparison` is a founder decision, not a technical gate:** turning it on publishes every Valstara price in `config/valstara-prices.json` as a price commitment, so only the founder turns it on.
 
 ## Not flagged, deliberately
 

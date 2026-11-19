@@ -1,0 +1,76 @@
+{
+  "changes": [
+    {
+      "market": "SE",
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "old_price_local": "119.00",
+      "new_price_local": "129.00",
+      "currency": "SEK",
+      "change_percent": "8.4",
+      "detected_on": "2026-03-03",
+      "source": "scraper:youfundceo.com"
+    },
+    {
+      "market": "GB",
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "old_price_local": "10.99",
+      "new_price_local": "11.99",
+      "currency": "GBP",
+      "change_percent": "9.1",
+      "detected_on": "2026-07-03",
+      "source": "scraper:youfundceo.com"
+    },
+    {
+      "market": "SE",
+      "service_id": "netflix",
+      "plan_id": "standard",
+      "billing_period": "month",
+      "old_price_local": "119.00",
+      "new_price_local": "129.00",
+      "currency": "SEK",
+      "change_percent": "8.4",
+      "detected_on": "2026-08-04",
+      "source": "scraper:youfundceo.com"
+    },
+    {
+      "market": "FR",
+      "service_id": "duolingo",
+      "plan_id": "max",
+      "billing_period": "month",
+      "old_price_local": "27.99",
+      "new_price_local": "29.99",
+      "currency": "EUR",
+      "change_percent": "7.1",
+      "detected_on": "2026-08-20",
+      "source": "scraper:youfundceo.com"
+    },
+    {
+      "market": "SE",
+      "service_id": "netflix",
+      "plan_id": "basic",
+      "billing_period": "month",
+      "old_price_local": "109.00",
+      "new_price_local": "99.00",
+      "currency": "SEK",
+      "change_percent": "-9.2",
+      "detected_on": "2026-09-05",
+      "source": "scraper:youfundceo.com"
+    },
+    {
+      "market": "SE",
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "old_price_local": "129.00",
+      "new_price_local": "149.00",
+      "currency": "SEK",
+      "change_percent": "15.5",
+      "detected_on": "2026-10-02",
+      "source": "scraper:youfundceo.com"
+    }
+  ]
+}

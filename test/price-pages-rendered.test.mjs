@@ -12,6 +12,7 @@ import { Pool } from 'pg';
 import {
   generatedPages,
   publishedView,
+  rankMarkets,
 } from '../packages/price-index/src/publish/index.ts';
 import { checkRenderedHead } from '../scripts/ci/seo-build-check.ts';
 import { createPriceSite } from '../src/server/prices/site.ts';
@@ -22,6 +23,7 @@ import {
   socialFallbackImageUrl,
   socialImageUrl,
 } from '../src/server/seo.ts';
+import { faqPageIssues } from './helpers/faq-page-data.mjs';
 import { startAppServer } from './helpers/listen-port.mjs';
 import {
   priceFixtureInputs,
@@ -29,9 +31,11 @@ import {
 } from './helpers/price-fixture-site.mjs';
 
 // E11.6-10: the service × market page, built and served over the fixture
-// dataset in test/fixtures/price-index/pages/ (four generated pages, three
+// dataset in test/fixtures/price-index/pages/ (eight generated pages, four
 // ledger URLs without publishable data, and pairs that generate nothing).
 // Every assertion reads the served HTTP response of the real built app.
+// E11.6-11 adds the content blocks: price history, the cross-market
+// comparison, related services, the FAQ and the Valstara price.
 
 const executeFile = promisify(execFile);
 const projectRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -47,11 +51,12 @@ const site = createPriceSite(inputs);
 const generated = site.routes.filter((route) => route.kind === 'generated');
 const unavailable = site.routes.filter((route) => route.kind === 'unavailable');
 // Pairs the fixture data does not generate and the ledger does not hold:
-// a conflict, a missing record, a market with no record, an unknown service,
-// and a slug in the wrong case.
+// a conflict, a missing record, a needs_review record, a market with no
+// record, an unknown service, and a slug in the wrong case.
 const unknownPaths = [
   '/prices/spotify/norway',
   '/prices/spotify/germany',
+  '/prices/apple-music/united-kingdom',
   '/prices/duolingo/sweden',
   '/prices/not-a-service/sweden',
   '/prices/spotify/Sweden',
@@ -179,19 +184,24 @@ function rows(html) {
 const signedFieldPattern =
   /name="referral_capture"\s+type="hidden"\s+value="([^"]+)"/u;
 
-test('the fixture dataset generates four pages and leaves three ledger URLs unavailable', () => {
+test('the fixture dataset generates eight pages and leaves four ledger URLs unavailable', () => {
   assert.deepEqual(
     generated.map((route) => route.path),
     [
+      '/prices/apple-music/sweden',
       '/prices/duolingo/france',
       '/prices/netflix/sweden',
       '/prices/netflix/united-states',
+      '/prices/spotify/france',
       '/prices/spotify/sweden',
+      '/prices/spotify/united-kingdom',
+      '/prices/spotify/united-states',
     ],
   );
   assert.deepEqual(
     unavailable.map((route) => route.path),
     [
+      '/prices/apple-music/united-states',
       '/prices/chatgpt/united-kingdom',
       '/prices/crunchyroll/sweden',
       '/prices/spotify/finland',
@@ -227,16 +237,115 @@ test('every generated pair renders its page, a ledger URL with lost data renders
   }
 });
 
-test('every number on a page equals the published record it came from, and no USD figure appears', async () => {
+const published = generatedPages(
+  inputs.latest,
+  inputs.catalogue,
+  inputs.markets,
+);
+// Every USD figure in the dataset, of records in another currency.
+const usdFigures = inputs.latest.records
+  .filter((record) => record.currency !== 'USD')
+  .map((record) => record.price_usd_source)
+  .filter((figure) => figure !== null);
+// The US market's published prices: the only amounts a page may show in USD,
+// as a local price, never as a figure for another market.
+const usPrices = new Set(
+  publishedView(inputs.latest)
+    .records.filter((record) => record.market === 'US')
+    .map((record) => record.price_local),
+);
+
+/**
+ * Every figure a generated page may show, each traced from the fixture
+ * files without the view model: its published records' prices and
+ * verification days and years; their changes.json entries (in the record's
+ * currency) and those entries' years; and, where `rankMarkets()` ranks the
+ * page's market for a plan, its rank, M and the ranked records' prices.
+ */
+function tracedFigures(expected) {
+  const allowed = new Set();
+  for (const record of expected.records) {
+    allowed.add(record.price_local);
+    const [year, , day] = record.source_verified_at.split('-');
+    allowed.add(year);
+    allowed.add(String(Number(day)));
+    for (const change of inputs.changes.changes) {
+      if (
+        change.market === record.market &&
+        change.service_id === record.service_id &&
+        change.plan_id === record.plan_id &&
+        change.billing_period === record.billing_period &&
+        change.currency === record.currency
+      ) {
+        allowed.add(change.old_price_local);
+        allowed.add(change.new_price_local);
+        allowed.add(change.detected_on.slice(0, 4));
+      }
+    }
+    const ranking = rankMarkets(inputs.latest, {
+      service_id: record.service_id,
+      plan_id: record.plan_id,
+      billing_period: record.billing_period,
+    });
+    const own = ranking.find((ranked) => ranked.market === record.market);
+    if (own !== undefined) {
+      allowed.add(String(own.rank));
+      allowed.add(String(ranking.length));
+      for (const ranked of ranking) allowed.add(ranked.record.price_local);
+    }
+  }
+  return allowed;
+}
+
+/**
+ * Asserts that every number in a served page's own content (from the
+ * breadcrumbs to the independence line) is in `allowed`. Configured names
+ * are not figures ("Premium (4K)"), so they are removed before the scan.
+ */
+function assertNumbersTrace(path, html, allowed) {
+  let body = visibleText(priceBody(html));
+  for (const service of inputs.catalogue.services) {
+    for (const name of [
+      service.name,
+      ...service.plans.map((plan) => plan.name),
+    ])
+      body = body.replaceAll(name, ' ');
+  }
+  for (const [number] of body.matchAll(/\d+(?:[.,]\d+)*/gu)) {
+    assert.ok(
+      allowed.has(number),
+      `${path} shows ${number}, which no published record or change holds`,
+    );
+  }
+}
+
+/** No USD figure: USD appears only after a US list price, and no "$". */
+function assertNoUsdFigure(path, html) {
+  const visible = visibleText(html);
+  assert.doesNotMatch(visible, /\$|≈/u, path);
+  const amounts = [...visible.matchAll(/(\S+) USD\b/gu)].map(
+    (match) => match[1],
+  );
+  assert.equal(
+    amounts.length,
+    (visible.match(/\bUSD\b/gu) ?? []).length,
+    `${path}: USD appears only after an amount`,
+  );
+  for (const amount of amounts) {
+    assert.ok(usPrices.has(amount), `${path} shows ${amount} USD`);
+  }
+  for (const figure of usdFigures) {
+    assert.ok(
+      !html.includes(figure),
+      `${path} carries the USD figure ${figure}`,
+    );
+  }
+}
+
+test('every number on a page equals the published record or change it came from, in every block, and no USD figure appears', async () => {
   const latest = inputs.latest;
-  const published = generatedPages(latest, inputs.catalogue, inputs.markets);
-  // Every USD figure in the dataset, of records in another currency.
-  const usdFigures = latest.records
-    .filter((record) => record.currency !== 'USD')
-    .map((record) => record.price_usd_source)
-    .filter((figure) => figure !== null);
-  assert.ok(usdFigures.length >= 6);
-  // Values the gate keeps off the pages: a needs_review and a stale price.
+  assert.ok(usdFigures.length >= 9);
+  // Values the gate keeps off the pages: needs_review, stale and conflict.
   const refused = latest.records.filter(
     (record) =>
       record.price_local !== null &&
@@ -247,7 +356,13 @@ test('every number on a page equals the published record it came from, and no US
           shown.plan_id === record.plan_id,
       ),
   );
-  assert.ok(refused.length >= 4);
+  assert.ok(refused.length >= 5);
+  // A change of a plan the gate leaves off its page (Netflix Standard in
+  // Sweden, Duolingo Max in France) is never shown.
+  const hiddenChanges = {
+    '/prices/netflix/sweden': ['119.00', '129.00'],
+    '/prices/duolingo/france': ['27.99'],
+  };
 
   for (const route of generated) {
     const page = await get(route.path);
@@ -274,47 +389,8 @@ test('every number on a page equals the published record it came from, and no US
       `${route.path} shows exactly its published records`,
     );
 
-    // Every number in the page's own content traces to a record: a price,
-    // or a day or year of a verification date.
-    const allowed = new Set();
-    for (const record of expected.records) {
-      allowed.add(record.price_local);
-      const [year, month, day] = record.source_verified_at.split('-');
-      allowed.add(year);
-      allowed.add(String(Number(day)));
-      void month;
-    }
-    // Configured names are not figures ("Premium (4K)"): they are removed
-    // before the scan, so only figures are left to trace.
-    const service = inputs.catalogue.services.find(
-      (item) => item.service_id === expected.service_id,
-    );
-    let body = visibleText(priceBody(page.body));
-    for (const name of [
-      service.name,
-      ...service.plans.map((plan) => plan.name),
-    ]) {
-      body = body.replaceAll(name, ' ');
-    }
-    for (const [number] of body.matchAll(/\d+(?:[.,]\d+)*/gu)) {
-      assert.ok(
-        allowed.has(number),
-        `${route.path} shows ${number}, which no published record holds`,
-      );
-    }
-
-    const market = inputs.markets.markets.find(
-      (item) => item.code === expected.market,
-    );
-    if (market.currency !== 'USD') {
-      assert.doesNotMatch(visibleText(page.body), /USD|US\$|\$/u, route.path);
-    }
-    for (const figure of usdFigures) {
-      assert.ok(
-        !page.body.includes(figure),
-        `${route.path} carries the USD figure ${figure}`,
-      );
-    }
+    assertNumbersTrace(route.path, page.body, tracedFigures(expected));
+    assertNoUsdFigure(route.path, page.body);
     for (const record of refused.filter(
       (item) =>
         item.service_id === expected.service_id &&
@@ -323,6 +399,12 @@ test('every number on a page equals the published record it came from, and no US
       assert.ok(
         !visibleText(page.body).includes(record.price_local),
         `${route.path} shows the unpublished ${record.price_local}`,
+      );
+    }
+    for (const value of hiddenChanges[route.path] ?? []) {
+      assert.ok(
+        !visibleText(priceBody(page.body)).includes(value),
+        `${route.path} shows ${value} from a hidden plan's history`,
       );
     }
     assert.doesNotMatch(
@@ -335,6 +417,192 @@ test('every number on a page equals the published record it came from, and no US
     const page = await get(route.path);
     for (const figure of usdFigures) assert.ok(!page.body.includes(figure));
     assert.doesNotMatch(page.body, /youfundceo/iu);
+    assert.doesNotMatch(
+      page.body,
+      /data-price-history|data-price-comparison|data-price-related|data-price-faq|data-valstara-comparison/u,
+      `${route.path} has no content block`,
+    );
+  }
+});
+
+/** Each item of a list of `data-<name>` elements, with its visible text. */
+function blockItems(html, attribute) {
+  return [
+    ...html.matchAll(
+      new RegExp(
+        `<(\\w+)\\b[^>]*?\\s${attribute}(?:="([^"]*)")?(?=[\\s>])[^>]*>([\\s\\S]*?)</\\1>`,
+        'gu',
+      ),
+    ),
+  ].map(([, , value, inner]) => ({ value, text: visibleText(inner).trim() }));
+}
+
+test('price history renders where changes.json has changes of the shown plans, newest first, and is absent otherwise', async () => {
+  const spotify = await get('/prices/spotify/sweden');
+  assert.match(spotify.body, /data-price-history/u);
+  assert.deepEqual(
+    [
+      ...spotify.body.matchAll(
+        /data-history-plan="([^"]+)" data-history-old="([^"]+)" data-history-new="([^"]+)" data-history-currency="([^"]+)" data-history-date="([^"]+)"/gu,
+      ),
+    ].map((match) => match.slice(1)),
+    [
+      ['individual', '129.00', '149.00', 'SEK', '2026-10-02'],
+      ['individual', '119.00', '129.00', 'SEK', '2026-03-03'],
+    ],
+  );
+  assert.match(
+    visibleText(spotify.body),
+    /Price history Individual Raised from 129\.00 SEK to 149\.00 SEK in October 2026\. Individual Raised from 119\.00 SEK to 129\.00 SEK in March 2026\./u,
+  );
+  const netflix = await get('/prices/netflix/sweden');
+  assert.match(
+    visibleText(netflix.body),
+    /Basic Lowered from 109\.00 SEK to 99\.00 SEK in September 2026\./u,
+  );
+  for (const path of [
+    '/prices/duolingo/france',
+    '/prices/netflix/united-states',
+    '/prices/spotify/france',
+  ]) {
+    const page = await get(path);
+    assert.doesNotMatch(page.body, /data-price-history/u, path);
+    assert.doesNotMatch(visibleText(page.body), /Price history/u, path);
+  }
+});
+
+test('the rank sentence and the cheapest and most expensive markets render only where this market is ranked among two or more', async () => {
+  const sentences = {
+    '/prices/spotify/sweden':
+      'Sweden is the most expensive of our 3 markets for Spotify Premium — Individual.',
+    '/prices/spotify/united-kingdom':
+      'The United Kingdom is the 2nd most expensive of our 3 markets for Spotify Premium — Individual.',
+    '/prices/spotify/united-states':
+      'The United States is the 3rd most expensive of our 3 markets for Spotify Premium — Individual.',
+  };
+  for (const [path, sentence] of Object.entries(sentences)) {
+    const { body } = await get(path);
+    assert.deepEqual(
+      blockItems(body, 'data-rank-sentence').map((item) => item.text),
+      [sentence],
+    );
+    assert.deepEqual(
+      [
+        ...body.matchAll(
+          /<tr data-extreme-market="([A-Z]{2})"[^>]*>[\s\S]*?data-extreme-amount="([^"]+)" data-extreme-currency="([^"]+)"/gu,
+        ),
+      ].map((match) => match.slice(1)),
+      [
+        ['SE', '149.00', 'SEK'],
+        ['US', '12.99', 'USD'],
+      ],
+      path,
+    );
+  }
+  for (const path of [
+    '/prices/spotify/france',
+    '/prices/netflix/sweden',
+    '/prices/apple-music/sweden',
+    '/prices/duolingo/france',
+    '/prices/netflix/united-states',
+  ]) {
+    const { body } = await get(path);
+    assert.doesNotMatch(
+      body,
+      /data-price-comparison|data-rank-sentence/u,
+      path,
+    );
+  }
+});
+
+test('related links point only at generated pages, each of which answers 200 with its page', async () => {
+  const linked = new Map();
+  for (const route of generated) {
+    const { body } = await get(route.path);
+    const links = [
+      ...body.matchAll(/<a href="([^"]+)" data-related-service="([^"]+)"/gu),
+    ].map((match) => match[1]);
+    linked.set(route.path, links);
+    for (const path of links) {
+      const target = await get(path);
+      assert.equal(target.status, 200, path);
+      assert.match(target.body, /data-price-page="generated"/u, path);
+      assert.ok(
+        generated.some((item) => item.path === path),
+        path,
+      );
+    }
+  }
+  assert.deepEqual(linked.get('/prices/spotify/sweden'), [
+    '/prices/apple-music/sweden',
+  ]);
+  assert.deepEqual(linked.get('/prices/apple-music/sweden'), [
+    '/prices/spotify/sweden',
+  ]);
+  // Apple Music in the US is a ledger URL without data: never linked.
+  assert.deepEqual(linked.get('/prices/spotify/united-states'), []);
+  assert.deepEqual(linked.get('/prices/spotify/united-kingdom'), []);
+});
+
+test('the FAQ renders on every generated page with FAQPage data that validates and matches it, and neither is on an unavailable page', async () => {
+  for (const route of generated) {
+    const { body } = await get(route.path);
+    const structured = [
+      ...body.matchAll(
+        /<script type="application\/ld\+json">([\s\S]*?)<\/script>/gu,
+      ),
+    ]
+      .map((match) => JSON.parse(match[1]))
+      .filter((data) => data['@type'] === 'FAQPage');
+    assert.equal(structured.length, 1, route.path);
+    assert.deepEqual(faqPageIssues(structured[0]), [], route.path);
+    const visible = [
+      ...body.matchAll(
+        /<dt[^>]*>([\s\S]*?)<\/dt>\s*<dd[^>]*>([\s\S]*?)<\/dd>/gu,
+      ),
+    ].map(([, question, answer]) => ({
+      question: visibleText(question).trim(),
+      answer: visibleText(answer).trim(),
+    }));
+    assert.deepEqual(
+      structured[0].mainEntity.map((entry) => ({
+        question: entry.name,
+        answer: entry.acceptedAnswer.text,
+      })),
+      visible,
+      `${route.path}: the FAQPage data is the visible FAQ`,
+    );
+    assert.equal(visible[0].question.startsWith('How much does'), true);
+  }
+  const spotify = await get('/prices/spotify/sweden');
+  assert.deepEqual(
+    [...spotify.body.matchAll(/<dt[^>]*>([\s\S]*?)<\/dt>/gu)].map((match) =>
+      visibleText(match[1]).trim(),
+    ),
+    [
+      'How much does Spotify Premium cost in Sweden?',
+      'How does the Spotify Premium price in Sweden compare with other markets?',
+      'Has the Spotify Premium price in Sweden changed?',
+    ],
+  );
+  for (const route of unavailable) {
+    const { body } = await get(route.path);
+    assert.doesNotMatch(body, /FAQPage|data-price-faq/u, route.path);
+  }
+});
+
+test('with prices.valstara_comparison off (the default), no Valstara price renders, though config/valstara-prices.json has entries', async () => {
+  assert.ok(inputs.valstaraPrices.prices.length > 0);
+  for (const route of site.routes) {
+    const { body } = await get(route.path);
+    assert.doesNotMatch(
+      body,
+      /data-valstara-comparison|data-valstara-amount|below list price|The Valstara price/u,
+      route.path,
+    );
+    for (const value of ['1490.00', '1788.00', '199.00', '33.00', '35.97']) {
+      assert.ok(!visibleText(body).includes(value), `${route.path} ${value}`);
+    }
   }
 });
 
@@ -567,9 +835,12 @@ test('a price page loads no script beyond the theme toggle, the signup form, Tur
     assert.equal(signupIsland.length, 1, `${route.path} signup island`);
     assert.equal(turnstile.length, 1, `${route.path} Turnstile loader`);
     assert.equal(pageView.length, 1, `${route.path} page-view emitter`);
+    // E11.6-11: a generated page also carries its FAQ's FAQPage data.
     assert.deepEqual(
       structured.map((script) => JSON.parse(script.content)['@type']).sort(),
-      ['BreadcrumbList', 'Organization'],
+      route.kind === 'generated'
+        ? ['BreadcrumbList', 'FAQPage', 'Organization']
+        : ['BreadcrumbList', 'Organization'],
     );
     assert.equal(
       scripts.length,
@@ -617,28 +888,107 @@ test('the sitemap index lists both child sitemaps, pages.xml keeps the previous 
       ),
     ].map(([, loc, lastmod]) => ({ loc, lastmod })),
     [
-      {
-        loc: 'https://valstara.com/prices/duolingo/france',
-        lastmod: '2026-11-26',
-      },
-      {
-        loc: 'https://valstara.com/prices/netflix/sweden',
-        lastmod: '2026-11-25',
-      },
-      {
-        loc: 'https://valstara.com/prices/netflix/united-states',
-        lastmod: '2026-11-27',
-      },
-      {
-        loc: 'https://valstara.com/prices/spotify/sweden',
-        lastmod: '2026-11-28',
-      },
-    ],
+      ['apple-music/sweden', '2026-11-21'],
+      ['duolingo/france', '2026-11-26'],
+      ['netflix/sweden', '2026-11-25'],
+      ['netflix/united-states', '2026-11-27'],
+      ['spotify/france', '2026-11-22'],
+      ['spotify/sweden', '2026-11-28'],
+      ['spotify/united-kingdom', '2026-11-28'],
+      ['spotify/united-states', '2026-11-27'],
+    ].map(([path, lastmod]) => ({
+      loc: `https://valstara.com/prices/${path}`,
+      lastmod,
+    })),
   );
   // Not the build date: no lastmod is the fixture's built_at day.
   assert.doesNotMatch(prices.body, /2026-12-01/u);
   for (const route of unavailable) {
     assert.ok(!prices.body.includes(route.path), `${route.path} is noindex`);
+  }
+});
+
+test('with prices.valstara_comparison on, the comparison renders where an entry compares like for like or states its basis, and nowhere else', async () => {
+  await server.stop();
+  await database.query(
+    `INSERT INTO campaign_flag (key, enabled, updated_by)
+     VALUES ('prices.valstara_comparison', true, 'price-pages-rendered-test')`,
+  );
+  server = await startServer();
+  try {
+    const valstaraRows = (body) =>
+      [
+        ...body.matchAll(
+          /<tr data-valstara-plan="([^"]+)" data-valstara-term="(\d+)"[^>]*>[\s\S]*?data-list-amount="([^"]+)"[\s\S]*?data-valstara-amount="([^"]+)"[\s\S]*?data-below-percent="([^"]+)"/gu,
+        ),
+      ].map((match) => match.slice(1));
+    // Hand-computed: 149.00 vs 119.00 is 20.13…% below; 12 × 149.00 =
+    // 1788.00 vs 1490.00 is 16.66…%; 3 × 11.99 = 35.97 vs 33.00 is 8.25…%;
+    // 229.00 vs 199.00 is 13.10…%. Each floored to one decimal.
+    const expected = {
+      '/prices/spotify/sweden': [
+        ['individual', '1', '149.00', '119.00', '20.1'],
+        ['individual', '12', '1788.00', '1490.00', '16.6'],
+      ],
+      '/prices/spotify/united-kingdom': [
+        ['individual', '3', '35.97', '33.00', '8.2'],
+      ],
+      '/prices/netflix/sweden': [['premium', '1', '229.00', '199.00', '13.1']],
+    };
+    const bases = {
+      '/prices/spotify/sweden': [
+        'For 12 months of Spotify Premium — Individual, the list price shown is the monthly list price, 149.00 SEK, multiplied by 12.',
+      ],
+      '/prices/spotify/united-kingdom': [
+        'For 3 months of Spotify Premium — Individual, the list price shown is the monthly list price, 11.99 GBP, multiplied by 3.',
+      ],
+      '/prices/netflix/sweden': [],
+    };
+    for (const route of site.routes) {
+      const page = await get(route.path);
+      assert.equal(page.status, 200, route.path);
+      // A non-default flag state is never cached.
+      assert.equal(page.headers.get('cache-control'), 'private, no-store');
+      const rowsShown = valstaraRows(page.body);
+      assert.deepEqual(rowsShown, expected[route.path] ?? [], route.path);
+      // Every term other than the plan's billing period states its basis.
+      assert.deepEqual(
+        blockItems(page.body, 'data-valstara-basis').map((item) => item.text),
+        bases[route.path] ?? [],
+        route.path,
+      );
+      if (rowsShown.length === 0) {
+        assert.doesNotMatch(page.body, /data-valstara-comparison/u, route.path);
+        continue;
+      }
+      for (const [, , , , percent] of rowsShown) {
+        assert.match(
+          visibleText(page.body),
+          new RegExp(`${percent.replace('.', '\\.')}% below list price`, 'u'),
+        );
+      }
+      // The number trace, with the Valstara figures: the entry's price at
+      // the currency's exponent, the compared list price, the term and the
+      // percentage, each hand-computed above.
+      const allowed = tracedFigures(
+        published.find((item) => item.path === route.path),
+      );
+      for (const [, term, list, valstara, percent] of rowsShown) {
+        for (const figure of [term, list, valstara, percent]) {
+          allowed.add(figure);
+        }
+      }
+      assertNumbersTrace(route.path, page.body, allowed);
+      assertNoUsdFigure(route.path, page.body);
+      // The signup form stays beside the comparison.
+      assert.match(page.body, /name="email"/u, route.path);
+    }
+  } finally {
+    await server.stop();
+    await database.query(
+      `DELETE FROM campaign_flag WHERE key = 'prices.valstara_comparison'`,
+    );
+    server = await startServer();
   }
 });
 

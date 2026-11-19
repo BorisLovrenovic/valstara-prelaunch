@@ -14,10 +14,12 @@ import {
   marketsFileSchema,
   publishedUrlsFileSchema,
   type CatalogueFile,
+  type ChangesFile,
   type LatestFile,
   type MarketsFile,
   type PublishedUrlsFile,
   type RunObservationsFile,
+  type ValstaraPricesFile,
 } from '../../packages/price-index/src/schema/index.ts';
 import {
   appendPublishedUrls,
@@ -38,9 +40,10 @@ import {
 } from '../helpers/price-index-run.ts';
 
 // E11.6-10: the generation rule and the published-URL ledger, at the page
-// layer, over the fixture dataset in test/fixtures/price-index/pages/: four
-// generated pages, three ledger URLs without publishable data, and pairs
-// that generate nothing. Catalogue and market additions and removals are
+// layer, over the fixture dataset in test/fixtures/price-index/pages/: eight
+// generated pages, four ledger URLs without publishable data, and pairs
+// that generate nothing (E11.6-11 extended the dataset for the page's
+// content blocks; their tests are in price-page-content.test.ts). Catalogue and market additions and removals are
 // data, so each is a fixture change with no code change (epic rule 5).
 
 const fixtureDirectory = join(projectRoot, 'test/fixtures/price-index/pages');
@@ -54,6 +57,8 @@ interface Dataset {
   catalogue: CatalogueFile;
   markets: MarketsFile;
   ledger: PublishedUrlsFile;
+  changes: ChangesFile;
+  valstaraPrices: ValstaraPricesFile;
 }
 
 async function dataset(): Promise<Dataset> {
@@ -62,6 +67,8 @@ async function dataset(): Promise<Dataset> {
     catalogue: await fixture('catalogue.json'),
     markets: await fixture('markets.json'),
     ledger: await fixture('published-urls.json'),
+    changes: await fixture('changes.json'),
+    valstaraPrices: await fixture('valstara-prices.json'),
   };
 }
 
@@ -70,10 +77,14 @@ function siteOf(data: Dataset) {
 }
 
 const generatedPaths = [
+  '/prices/apple-music/sweden',
   '/prices/duolingo/france',
   '/prices/netflix/sweden',
   '/prices/netflix/united-states',
+  '/prices/spotify/france',
   '/prices/spotify/sweden',
+  '/prices/spotify/united-kingdom',
+  '/prices/spotify/united-states',
 ];
 
 test('a page is generated only where a plan passes the publish gate', async () => {
@@ -106,19 +117,26 @@ test('the site model: generated pages, ledger URLs without data unavailable, eve
   assert.deepEqual(
     site.routes.map((route) => [route.path, route.kind]),
     [
+      ['/prices/apple-music/sweden', 'generated'],
+      ['/prices/apple-music/united-states', 'unavailable'],
       ['/prices/chatgpt/united-kingdom', 'unavailable'],
       ['/prices/crunchyroll/sweden', 'unavailable'],
       ['/prices/duolingo/france', 'generated'],
       ['/prices/netflix/sweden', 'generated'],
       ['/prices/netflix/united-states', 'generated'],
       ['/prices/spotify/finland', 'unavailable'],
+      ['/prices/spotify/france', 'generated'],
       ['/prices/spotify/sweden', 'generated'],
+      ['/prices/spotify/united-kingdom', 'generated'],
+      ['/prices/spotify/united-states', 'generated'],
     ],
   );
-  // Skipped: a conflict (NO), a missing record (DE), no record at all.
+  // Skipped: a conflict (NO), a missing record (DE), a needs_review record
+  // (Apple Music in GB), no record at all.
   for (const path of [
     '/prices/spotify/norway',
     '/prices/spotify/germany',
+    '/prices/apple-music/united-kingdom',
     '/prices/duolingo/sweden',
     '/prices/chatgpt/sweden',
   ]) {
@@ -127,10 +145,14 @@ test('the site model: generated pages, ledger URLs without data unavailable, eve
   // The sitemap lists the generated pages only, each dated by its newest
   // verification, not by the build.
   assert.deepEqual(site.sitemap, [
+    { path: '/prices/apple-music/sweden', lastmod: '2026-11-21' },
     { path: '/prices/duolingo/france', lastmod: '2026-11-26' },
     { path: '/prices/netflix/sweden', lastmod: '2026-11-25' },
     { path: '/prices/netflix/united-states', lastmod: '2026-11-27' },
+    { path: '/prices/spotify/france', lastmod: '2026-11-22' },
     { path: '/prices/spotify/sweden', lastmod: '2026-11-28' },
+    { path: '/prices/spotify/united-kingdom', lastmod: '2026-11-28' },
+    { path: '/prices/spotify/united-states', lastmod: '2026-11-27' },
   ]);
 });
 
@@ -197,7 +219,7 @@ test('the view model holds no USD figure, no unpublished value and no source nam
       );
     }
   }
-  for (const unpublished of ['139.00', '29.99', '20.00']) {
+  for (const unpublished of ['139.00', '29.99', '20.00', '10.49']) {
     assert.ok(!serialised.includes(unpublished), unpublished);
   }
   assert.doesNotMatch(serialised, /youfundceo|price_usd_source|notes/iu);
@@ -231,7 +253,11 @@ test('catalogue add and remove at the page layer: an addition generates nothing 
   // Added: a service, a plan and a market, all without data.
   const added: Dataset = structuredClone(base);
   added.catalogue.services.push({
-    ...structuredClone(added.catalogue.services[0]!),
+    ...structuredClone(
+      added.catalogue.services.find(
+        (service) => service.service_id === 'chatgpt',
+      )!,
+    ),
     service_id: 'notion',
     name: 'Notion',
     source_aliases: { service: [], plans: {} },
@@ -309,12 +335,16 @@ test('catalogue add and remove at the page layer: an addition generates nothing 
     'generated',
   );
   assert.deepEqual(withAddedData.sitemap, [
+    { path: '/prices/apple-music/sweden', lastmod: '2026-11-21' },
     { path: '/prices/duolingo/france', lastmod: '2026-11-26' },
     { path: '/prices/netflix/sweden', lastmod: '2026-11-25' },
     { path: '/prices/netflix/united-states', lastmod: '2026-11-27' },
     { path: '/prices/notion/sweden', lastmod: '2026-11-24' },
+    { path: '/prices/spotify/france', lastmod: '2026-11-22' },
     { path: '/prices/spotify/netherlands', lastmod: '2026-11-23' },
     { path: '/prices/spotify/sweden', lastmod: '2026-11-29' },
+    { path: '/prices/spotify/united-kingdom', lastmod: '2026-11-28' },
+    { path: '/prices/spotify/united-states', lastmod: '2026-11-27' },
   ]);
   assert.deepEqual(
     (
@@ -332,6 +362,11 @@ test('catalogue add and remove at the page layer: an addition generates nothing 
   removedService.catalogue.services = removedService.catalogue.services.filter(
     (service) => service.service_id !== 'netflix',
   );
+  // As `price-index validate` requires, its Valstara prices go with it.
+  removedService.valstaraPrices.prices =
+    removedService.valstaraPrices.prices.filter(
+      (price) => price.service_id !== 'netflix',
+    );
   removedService.ledger.urls.push({
     path: '/prices/netflix/sweden',
     service_id: 'netflix',
@@ -356,6 +391,10 @@ test('catalogue add and remove at the page layer: an addition generates nothing 
   removedMarket.markets.markets = removedMarket.markets.markets.filter(
     (market) => market.code !== 'SE',
   );
+  removedMarket.valstaraPrices.prices =
+    removedMarket.valstaraPrices.prices.filter(
+      (price) => price.market !== 'SE',
+    );
   removedMarket.markets.markets.find(
     (market) => market.code === 'FR',
   )!.enabled = false;
@@ -370,9 +409,14 @@ test('catalogue add and remove at the page layer: an addition generates nothing 
   );
   assert.equal(withoutSweden.route('/prices/netflix/sweden'), null);
   assert.equal(withoutSweden.route('/prices/duolingo/france'), null);
+  assert.equal(withoutSweden.route('/prices/spotify/france'), null);
   assert.deepEqual(
     withoutSweden.sitemap.map((entry) => entry.path),
-    ['/prices/netflix/united-states'],
+    [
+      '/prices/netflix/united-states',
+      '/prices/spotify/united-kingdom',
+      '/prices/spotify/united-states',
+    ],
   );
 });
 
@@ -389,6 +433,9 @@ test('an invalid input publishes nothing: a broken ledger, a page in a foreign c
   const foreign = structuredClone(base);
   foreign.markets.markets.find((market) => market.code === 'SE')!.currency =
     'NOK';
+  // Without the Valstara prices, which the configuration check would refuse
+  // first (price-page-content.test.ts covers that refusal).
+  foreign.valstaraPrices.prices = [];
   assert.throws(() => siteOf(foreign), /not Sweden's currency NOK/u);
 
   const undated = structuredClone(base);
@@ -409,9 +456,13 @@ test('the ledger takes each generated page once, in path order, with the names i
   assert.deepEqual(
     fresh.map((entry) => [entry.path, entry.market_name]),
     [
+      ['/prices/apple-music/sweden', 'Sweden'],
       ['/prices/duolingo/france', 'France'],
       ['/prices/netflix/sweden', 'Sweden'],
       ['/prices/netflix/united-states', 'the United States'],
+      ['/prices/spotify/france', 'France'],
+      ['/prices/spotify/united-kingdom', 'the United Kingdom'],
+      ['/prices/spotify/united-states', 'the United States'],
     ],
   );
   assert.ok(fresh.every((entry) => entry.first_published_on === '2026-12-01'));

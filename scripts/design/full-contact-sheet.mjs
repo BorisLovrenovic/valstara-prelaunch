@@ -118,6 +118,8 @@ export const flagAnalysis = Object.freeze({
   'email.broadcast': 'not read by any page; server-side email jobs only',
   'prices.pages':
     'not read by the landing; the price pages only (the 503 paused card), a data route whose sheet E11.6-16 captures from real data',
+  'prices.valstara_comparison':
+    'not read by the landing; the price pages only (the Valstara price block, E11.6-11), a data route whose sheet E11.6-16 captures from real data',
 });
 
 const on = (value) => (value ? 'on' : 'off');

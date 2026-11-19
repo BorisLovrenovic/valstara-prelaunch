@@ -1,6 +1,14 @@
 {
   "urls": [
     {
+      "path": "/prices/apple-music/united-states",
+      "service_id": "apple-music",
+      "market": "US",
+      "service_name": "Apple Music",
+      "market_name": "the United States",
+      "first_published_on": "2026-11-01"
+    },
+    {
       "path": "/prices/chatgpt/united-kingdom",
       "service_id": "chatgpt",
       "market": "GB",

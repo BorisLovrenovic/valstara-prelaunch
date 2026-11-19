@@ -24,7 +24,9 @@ import { jsonLd } from '../../../server/seo.ts';
 // the price data bundled at build (D1), through the origin render cache, with
 // the landing page's cache contract and its server-signed referral field
 // (E4-02). The view model is `src/server/prices/site.ts`; this page only
-// renders it.
+// renders it. E11.6-11 adds the price history, the cross-market comparison,
+// the Valstara comparison (behind `prices.valstara_comparison`), related
+// services and the FAQ, each rendered only when the data holds it.
 
 const flags = await getFlagService().list();
 const enabled = (key: keyof typeof campaignFlagRegistry) =>
@@ -58,6 +60,9 @@ if (pagesEnabled && view === null) {
 }
 
 const signupEnabled = enabled('signup.enabled');
+// E11.6-11: no Valstara price renders while this is off, whatever
+// config/valstara-prices.json holds.
+const valstaraEnabled = enabled('prices.valstara_comparison');
 const giveawayEnabled = enabled('giveaway.open');
 const signedReferralCapture = landingReferralField(
   createReferralCaptureService(getConfig().referralSigningSecret),
@@ -114,6 +119,14 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
         type="application/ld+json"
         set:html={jsonLd(view.structuredData)}
       />
+      {view.kind === 'generated' && view.faqStructuredData !== null && (
+        <script
+          is:inline
+          slot="head"
+          type="application/ld+json"
+          set:html={jsonLd(view.faqStructuredData)}
+        />
+      )}
       <article
         class="price-page"
         data-price-page={view.kind}
@@ -188,6 +201,215 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
               <Icon name="info" size="base" />
               <span>{view.note}</span>
             </p>
+          )}
+          {view.kind === 'generated' && view.history.length > 0 && (
+            <section
+              class="price-block"
+              aria-labelledby="price-history-title"
+              data-price-history
+            >
+              <h2 id="price-history-title">
+                {pricesCopy.page.history.heading}
+              </h2>
+              <ul class="price-history">
+                {view.history.map((item) => (
+                  <li
+                    data-history-plan={item.planId}
+                    data-history-old={item.oldAmount}
+                    data-history-new={item.newAmount}
+                    data-history-currency={item.currency}
+                    data-history-date={item.detectedOn}
+                  >
+                    <span class="price-history__plan">{item.planName}</span>
+                    <span class="price-history__change">{item.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {view.kind === 'generated' && view.comparisons.length > 0 && (
+            <section
+              class="price-block"
+              aria-labelledby="price-comparison-title"
+              data-price-comparison
+            >
+              <h2 id="price-comparison-title">
+                {pricesCopy.page.comparison.heading}
+              </h2>
+              {view.comparisons.map((comparison) => (
+                <div
+                  class="price-comparison"
+                  data-comparison-plan={comparison.planId}
+                  data-comparison-rank={comparison.rank}
+                  data-comparison-markets={comparison.rankedMarkets}
+                >
+                  <p data-rank-sentence>{comparison.sentence}</p>
+                  {comparison.extremes !== null && (
+                    <table class="price-table" data-extremes-table>
+                      <caption>{comparison.tableCaption}</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">
+                            {pricesCopy.page.comparison.columns.position}
+                          </th>
+                          <th scope="col">
+                            {pricesCopy.page.comparison.columns.market}
+                          </th>
+                          <th scope="col">
+                            {pricesCopy.page.comparison.columns.price}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(
+                          [
+                            [
+                              pricesCopy.page.comparison.mostExpensive,
+                              comparison.extremes.mostExpensive,
+                            ],
+                            [
+                              pricesCopy.page.comparison.cheapest,
+                              comparison.extremes.cheapest,
+                            ],
+                          ] as const
+                        ).map(([position, extreme]) => (
+                          <tr data-extreme-market={extreme.market}>
+                            <th scope="row">{position}</th>
+                            <td>{extreme.marketName}</td>
+                            <td>
+                              <span
+                                class="price-table__amount"
+                                data-extreme-amount={extreme.amount}
+                                data-extreme-currency={extreme.currency}
+                              >
+                                {extreme.priceText}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              ))}
+            </section>
+          )}
+          {view.kind === 'generated' &&
+            valstaraEnabled &&
+            view.valstara !== null && (
+              <section
+                class="price-block"
+                aria-labelledby="price-valstara-title"
+                data-valstara-comparison
+              >
+                <h2 id="price-valstara-title">
+                  {pricesCopy.page.valstara.heading}
+                </h2>
+                <table class="price-table">
+                  <caption>{view.valstara.tableCaption}</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">
+                        {pricesCopy.page.valstara.columns.plan}
+                      </th>
+                      <th scope="col">
+                        {pricesCopy.page.valstara.columns.term}
+                      </th>
+                      <th scope="col">
+                        {pricesCopy.page.valstara.columns.list}
+                      </th>
+                      <th scope="col">
+                        {pricesCopy.page.valstara.columns.valstara}
+                      </th>
+                      <th scope="col">
+                        {pricesCopy.page.valstara.columns.below}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {view.valstara.rows.map((row) => (
+                      <tr
+                        data-valstara-plan={row.planId}
+                        data-valstara-term={row.termMonths}
+                      >
+                        <th scope="row">{row.planName}</th>
+                        <td>{row.termText}</td>
+                        <td>
+                          <span
+                            class="price-table__amount"
+                            data-list-amount={row.listAmount}
+                          >
+                            {row.listText}
+                          </span>
+                        </td>
+                        <td>
+                          <span
+                            class="price-table__amount"
+                            data-valstara-amount={row.valstaraAmount}
+                          >
+                            {row.valstaraText}
+                          </span>
+                        </td>
+                        <td>
+                          <span
+                            class="price-table__amount"
+                            data-below-percent={row.belowPercent}
+                          >
+                            {row.belowText}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {view.valstara.rows
+                  .filter((row) => row.basis !== null)
+                  .map((row) => (
+                    <p
+                      class="price-block__note"
+                      data-valstara-basis={`${row.planId}/${row.termMonths}`}
+                    >
+                      {row.basis}
+                    </p>
+                  ))}
+              </section>
+            )}
+          {view.kind === 'generated' && view.related.length > 0 && (
+            <nav
+              class="price-block"
+              aria-labelledby="price-related-title"
+              data-price-related
+            >
+              <h2 id="price-related-title">
+                {pricesCopy.page.related.heading(view.marketName)}
+              </h2>
+              <ul class="price-related">
+                {view.related.map((link) => (
+                  <li>
+                    <a href={link.path} data-related-service={link.serviceId}>
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
+          {view.kind === 'generated' && view.faq.length > 0 && (
+            <section
+              class="price-block"
+              aria-labelledby="price-faq-title"
+              data-price-faq
+            >
+              <h2 id="price-faq-title">{pricesCopy.page.faq.heading}</h2>
+              <dl class="price-faq">
+                {view.faq.map((entry) => (
+                  <div class="price-faq__entry">
+                    <dt>{entry.question}</dt>
+                    <dd>{entry.answer}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
           )}
           <p class="price-page__independent">{view.notAffiliated}</p>
         </Container>
@@ -320,6 +542,68 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
     border-radius: var(--radius-card);
     background: var(--well);
     max-inline-size: var(--measure);
+  }
+
+  .price-block {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  .price-block h2 {
+    margin: 0;
+    font-size: var(--step-3);
+    line-height: var(--leading-3);
+  }
+
+  .price-block p,
+  .price-block ul,
+  .price-faq,
+  .price-faq dd {
+    margin: 0;
+  }
+
+  .price-block__note {
+    color: var(--ink-600);
+  }
+
+  .price-history,
+  .price-related {
+    display: grid;
+    gap: var(--space-1);
+    padding: 0;
+    list-style: none;
+  }
+
+  .price-history li {
+    display: grid;
+    gap: var(--space-0-5);
+  }
+
+  .price-history__plan {
+    font-weight: var(--weight-semibold);
+  }
+
+  .price-comparison {
+    display: grid;
+    gap: var(--space-1-5);
+  }
+
+  .price-related a {
+    text-underline-offset: var(--underline-offset);
+  }
+
+  .price-faq {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .price-faq dt {
+    font-weight: var(--weight-semibold);
+  }
+
+  .price-faq dd {
+    color: var(--ink-600);
   }
 
   .price-cta {
