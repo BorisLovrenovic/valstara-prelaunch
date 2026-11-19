@@ -225,7 +225,7 @@ test('an unavailable ledger URL names itself from the configuration, or from the
   }
 });
 
-test('catalogue add and remove at the page layer: an addition generates nothing until it has data, a removal leaves only its ledger URLs, unavailable', async () => {
+test('catalogue add and remove at the page layer: an addition generates nothing until it has data, then its page, row and sitemap entry; a removal leaves only its ledger URLs, unavailable', async () => {
   const base = await dataset();
 
   // Added: a service, a plan and a market, all without data.
@@ -264,6 +264,66 @@ test('catalogue add and remove at the page layer: an addition generates nothing 
     (withAdditions.route('/prices/spotify/sweden') as GeneratedPriceRoute).rows
       .length,
     1,
+  );
+
+  // The same additions, each given one ok record: the new service and the
+  // new market generate their pages and sitemap entries, and the new plan
+  // adds its row to an existing page.
+  const spotifySweden = added.latest.records.find(
+    (record) =>
+      record.service_id === 'spotify' &&
+      record.market === 'SE' &&
+      record.plan_id === 'individual',
+  )!;
+  added.latest.records.push(
+    {
+      ...structuredClone(spotifySweden),
+      service_id: 'notion',
+      plan_id: 'plus',
+      price_local: '110.00',
+      price_source_text: '110 kr',
+      source_url: 'https://www.youfundceo.com/services/notion/sweden',
+      source_verified_at: '2026-11-24',
+    },
+    {
+      ...structuredClone(spotifySweden),
+      plan_id: 'family',
+      price_local: '269.00',
+      price_source_text: '269 kr',
+      source_verified_at: '2026-11-29',
+    },
+    {
+      ...structuredClone(spotifySweden),
+      market: 'NL',
+      price_local: '11.99',
+      price_source_text: '€11,99',
+      currency: 'EUR',
+      source_url: 'https://www.youfundceo.com/services/spotify/netherlands',
+      source_verified_at: '2026-11-23',
+    },
+  );
+  const withAddedData = siteOf(added);
+  assert.equal(withAddedData.route('/prices/notion/sweden')?.kind, 'generated');
+  assert.equal(
+    withAddedData.route('/prices/spotify/netherlands')?.kind,
+    'generated',
+  );
+  assert.deepEqual(withAddedData.sitemap, [
+    { path: '/prices/duolingo/france', lastmod: '2026-11-26' },
+    { path: '/prices/netflix/sweden', lastmod: '2026-11-25' },
+    { path: '/prices/netflix/united-states', lastmod: '2026-11-27' },
+    { path: '/prices/notion/sweden', lastmod: '2026-11-24' },
+    { path: '/prices/spotify/netherlands', lastmod: '2026-11-23' },
+    { path: '/prices/spotify/sweden', lastmod: '2026-11-29' },
+  ]);
+  assert.deepEqual(
+    (
+      withAddedData.route('/prices/spotify/sweden') as GeneratedPriceRoute
+    ).rows.map((row) => [row.planName, row.priceText]),
+    [
+      ['Individual', '149.00 SEK'],
+      ['Family', '269.00 SEK'],
+    ],
   );
 
   // Removed: Netflix leaves the catalogue. Its Swedish URL is in the ledger
