@@ -40,10 +40,12 @@ async function buildFixture(changeContent) {
       join(root, 'astro.config.mjs'),
     );
     // E11.6-10: the build bundles the price data and the price-index
-    // package's site-importable parts (scripts/ci/app-build.mjs).
+    // package's site-importable parts (scripts/ci/app-build.mjs), and since
+    // E11.6-11 the Valstara prices.
     for (const input of [
       'config/catalogue.json',
       'config/markets.json',
+      'config/valstara-prices.json',
       'data/price-index',
       'packages/price-index/src/publish',
       'packages/price-index/src/schema',

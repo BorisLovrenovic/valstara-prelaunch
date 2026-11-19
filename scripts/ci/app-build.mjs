@@ -26,6 +26,9 @@ const inputPaths = [
   'config/markets.json',
   'data/price-index/latest.json',
   'data/price-index/published-urls.json',
+  // E11.6-11: the price history and the Valstara prices.
+  'data/price-index/changes.json',
+  'config/valstara-prices.json',
   'packages/price-index/src/publish',
   'packages/price-index/src/schema',
 ];
