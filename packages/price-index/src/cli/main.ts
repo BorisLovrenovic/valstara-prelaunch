@@ -6,7 +6,7 @@ import { linePrompt, type Prompt } from './prompt.ts';
 import { runReport } from './report.ts';
 import { runReview } from './review.ts';
 import { runScrape, type ScrapeEnvironment } from './scrape.ts';
-import { formatIssues, validateConfig, validateDataFiles } from './validate.ts';
+import { formatIssues, loadConfig, validateDataFiles } from './validate.ts';
 
 // `npm run price-index -- <command>`. The tool runs only when the founder (or
 // `npm run check`, for `validate`) types this, does its work and exits. It has
@@ -85,9 +85,10 @@ export async function runCli(
   const [command, ...rest] = argv;
 
   if (command === 'validate' && rest.length === 0) {
+    const loaded = await loadConfig(io.root);
     const issues = [
-      ...(await validateConfig(io.root)),
-      ...(await validateDataFiles(io.root)),
+      ...loaded.issues,
+      ...(await validateDataFiles(io.root, loaded.config)),
     ];
     if (issues.length > 0) {
       io.stderr(

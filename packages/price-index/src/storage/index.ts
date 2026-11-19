@@ -7,4 +7,5 @@ export * from './changes-file.ts';
 export * from './json-file-store.ts';
 export * from './overrides-file.ts';
 export * from './price-store.ts';
+export * from './published-urls-file.ts';
 export * from './serialise.ts';

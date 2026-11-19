@@ -18,6 +18,13 @@ COPY src ./src
 COPY public ./public
 COPY scripts/ci/provider-showcase-check.ts ./scripts/ci/provider-showcase-check.ts
 COPY scripts/ci/seo-build-check.ts ./scripts/ci/seo-build-check.ts
+# E11.6-10: the price pages bundle the price data and the price-index
+# package's two site-importable parts (ADR-033); scripts/ci/app-build.mjs
+# lists the same inputs.
+COPY config/catalogue.json config/markets.json ./config/
+COPY data/price-index ./data/price-index
+COPY packages/price-index/src/publish ./packages/price-index/src/publish
+COPY packages/price-index/src/schema ./packages/price-index/src/schema
 RUN npm run build
 
 FROM dependencies AS production-dependencies

@@ -12,6 +12,8 @@ Referral attribution conventionally uses a cookie: read `?ref=`, store it, read 
 
 There is no cookie, no `localStorage`, and **no client-side attribution path anywhere in the codebase.**
 
+The service × market price pages (E11.6-10, founder decision D1 of 2026-11-17) are server-rendered on request for exactly this reason: each signs the same field from its own `?ref=` and UTM parameters, through the landing's own function, and a signup from one is attributed exactly as from `/`.
+
 ## Alternatives rejected
 - **A first-party cookie** — brings Article 5(3) into scope and is arguably not "strictly necessary".
 - **`localStorage`** — the same analysis, plus it fails when storage is blocked.

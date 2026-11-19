@@ -56,6 +56,22 @@ test('config/markets.json holds the 20 markets, all enabled, each in its currenc
   );
 });
 
+test('the markets whose names need an article in a sentence carry it (E11.6-10)', async () => {
+  const { markets } = marketsFileSchema.parse(
+    await read('config/markets.json'),
+  );
+  assert.deepEqual(
+    markets
+      .filter((market) => market.name_in_sentence !== undefined)
+      .map((market) => [market.code, market.name_in_sentence]),
+    [
+      ['GB', 'the United Kingdom'],
+      ['NL', 'the Netherlands'],
+      ['US', 'the United States'],
+    ],
+  );
+});
+
 test('config/catalogue.json tracks exactly the founder’s products and monthly plans', async () => {
   const { services } = catalogueFileSchema.parse(
     await read('config/catalogue.json'),

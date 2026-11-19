@@ -14,6 +14,8 @@ A fourth island requires an ADR. This is not ceremony — the payload discipline
 
 E11.5-06 adds a mobile signup bar inside the existing signup island. It shares the hero form and Turnstile widget; the three-island limit is unchanged.
 
+E11.6-10's service × market price pages are server-rendered with the existing signup form and theme toggle islands only; they add no island and no client script, and the three-island limit is unchanged.
+
 ## Alternatives rejected
 - **Next.js App Router** — led only on reuse, which no longer exists. Larger payload, heavier model for a page that is mostly prose.
 - **A static generator with a separate API** — two deploy units and a CORS boundary for a site with one write path.

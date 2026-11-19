@@ -3,6 +3,7 @@
     {
       "code": "GB",
       "name": "United Kingdom",
+      "name_in_sentence": "the United Kingdom",
       "slug": "united-kingdom",
       "currency": "GBP",
       "enabled": true
@@ -87,6 +88,7 @@
     {
       "code": "NL",
       "name": "Netherlands",
+      "name_in_sentence": "the Netherlands",
       "slug": "netherlands",
       "currency": "EUR",
       "enabled": true
@@ -129,6 +131,7 @@
     {
       "code": "US",
       "name": "United States",
+      "name_in_sentence": "the United States",
       "slug": "united-states",
       "currency": "USD",
       "enabled": true

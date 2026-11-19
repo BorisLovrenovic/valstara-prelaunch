@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 import type { z } from 'zod';
 
+import { ledgerPathConflicts } from '../publish/pages.ts';
 import { approvalsFile, approvalsFileSchema } from '../schema/approvals.ts';
 import { changesFile, changesFileSchema } from '../schema/changes.ts';
 import {
@@ -33,6 +34,11 @@ import {
   priceIndexSettingsFileSchema,
   type PriceIndexSettingsFile,
 } from '../schema/price-index-settings.ts';
+import {
+  publishedUrlsFile,
+  publishedUrlsFileSchema,
+  type PublishedUrlsFile,
+} from '../schema/published-urls.ts';
 import {
   runIdPattern,
   runLogDirectory,
@@ -190,15 +196,22 @@ async function directoryNames(root: string, directory: string) {
 
 /**
  * Every problem in the data files under `root` (E11.6-07): latest.json and
- * each snapshot, manual-overrides.json, approvals.json, changes.json and each
- * monthly report under data/price-index/monthly/ (E11.6-09), each run log
- * under reports/runs/, and each coverage report's JSON under reports/
- * (E11.6-08). latest.json, the snapshots, the monthly reports and the run
- * logs may not exist yet; the three seeded files must. Files are read one at a time. A
- * temporary file a crashed write left behind (`.<name>.tmp`) is ignored, as
- * git ignores it.
+ * each snapshot, manual-overrides.json, approvals.json, changes.json, the
+ * published-URL ledger (E11.6-10) and each monthly report under
+ * data/price-index/monthly/ (E11.6-09), each run log under reports/runs/,
+ * and each coverage report's JSON under reports/ (E11.6-08). latest.json,
+ * the snapshots, the monthly reports and the run logs may not exist yet; the
+ * four seeded files must. Files are read one at a time. A temporary file a
+ * crashed write left behind (`.<name>.tmp`) is ignored, as git ignores it.
+ *
+ * With a valid `config`, the ledger is also checked against it: a published
+ * URL whose service and market are still configured must still be the path
+ * the configuration gives them, because a published slug never changes.
  */
-export async function validateDataFiles(root: string): Promise<ConfigIssue[]> {
+export async function validateDataFiles(
+  root: string,
+  config?: ConfigSet,
+): Promise<ConfigIssue[]> {
   const issues: ConfigIssue[] = [
     ...(await fileIssues(root, latestFile, latestFileSchema, {
       optional: true,
@@ -235,6 +248,7 @@ export async function validateDataFiles(root: string): Promise<ConfigIssue[]> {
       optional: false,
     })),
   );
+  issues.push(...(await ledgerIssues(root, config)));
   for (const name of await directoryNames(root, monthlyDataDirectory)) {
     const file = `${monthlyDataDirectory}/${name}`;
     if (name.startsWith('.') && name.endsWith('.tmp')) {
@@ -329,6 +343,34 @@ export async function validateDataFiles(root: string): Promise<ConfigIssue[]> {
     }
   }
   return issues;
+}
+
+/** The ledger against its schema and, with `config`, its slugs. */
+async function ledgerIssues(
+  root: string,
+  config: ConfigSet | undefined,
+): Promise<ConfigIssue[]> {
+  const result = await readJsonFile(root, publishedUrlsFile);
+  if ('issue' in result) {
+    return [result.issue];
+  }
+  const issues = schemaIssues(
+    publishedUrlsFile,
+    publishedUrlsFileSchema,
+    result.value,
+  );
+  if (issues.length > 0 || config === undefined) {
+    return issues;
+  }
+  return ledgerPathConflicts(
+    result.value as PublishedUrlsFile,
+    config.catalogue,
+    config.markets,
+  ).map(({ entry, expected }) => ({
+    file: publishedUrlsFile,
+    path: `urls.${(result.value as PublishedUrlsFile).urls.indexOf(entry)}.path`,
+    message: `${entry.path} was published, but the configuration now gives ${entry.service_id} in ${entry.market} the path ${expected}; a published slug never changes`,
+  }));
 }
 
 export function formatIssues(issues: readonly ConfigIssue[]): string {

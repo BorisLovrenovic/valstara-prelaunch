@@ -116,6 +116,8 @@ export const flagAnalysis = Object.freeze({
   'member.dashboard':
     'not read by the landing; /me (the dashboard is unavailable)',
   'email.broadcast': 'not read by any page; server-side email jobs only',
+  'prices.pages':
+    'not read by the landing; the price pages only (the 503 paused card), a data route whose sheet E11.6-16 captures from real data',
 });
 
 const on = (value) => (value ? 'on' : 'off');

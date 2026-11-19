@@ -111,7 +111,17 @@ test('built pages emit unique metadata, permanent canonicals and valid organisat
   for (const version of versions)
     assert.ok(structured.has(`/giveaway/rules/${version}`));
 
-  const sitemap = await readFile(join(root, 'dist/client/sitemap.xml'), 'utf8');
+  // E11.6-10: /sitemap.xml is an index; the site's own routes are in
+  // pages.xml, unchanged.
+  const index = await readFile(join(root, 'dist/client/sitemap.xml'), 'utf8');
+  assert.match(
+    index,
+    /<sitemap><loc>https:\/\/valstara\.com\/sitemaps\/pages\.xml<\/loc><\/sitemap>/u,
+  );
+  const sitemap = await readFile(
+    join(root, 'dist/client/sitemaps/pages.xml'),
+    'utf8',
+  );
   for (const path of paths) {
     const listed = sitemap.includes(`<loc>https://valstara.com${path}</loc>`);
     const archived =

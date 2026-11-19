@@ -16,7 +16,7 @@ A twelve-week campaign with a public leaderboard, a prize draw and a mail progra
 - **A lookup failure returns the code default** — fail-safe, never fail-open.
 - Reads are cached in-process for five seconds; `set()` invalidates the local process immediately. Other processes observe the override no later than their next read after cache expiry, so **the worst-case propagation delay is five seconds**. A lever whose effect is invisible for an unknown period is not a lever.
 
-Seven flags, listed in `docs/features/README.md#flag-registry`. **Two default off** — `giveaway.open` and `email.broadcast`. Both are hard gates, each depending on something outside the code. The founder retired `trustpilot.widget` on 2026-10-10 when the pre-launch widget was removed; a persisted override for that key is ignored by the registry and the service rejects new reads and writes to it.
+Eight flags, listed in `docs/features/README.md#flag-registry`; E11.6-10 added `prices.pages` (default on), the price pages' kill switch (founder-authorised 2026-11-17). **Two default off** — `giveaway.open` and `email.broadcast`. Both are hard gates, each depending on something outside the code. The founder retired `trustpilot.widget` on 2026-10-10 when the pre-launch widget was removed; a persisted override for that key is ignored by the registry and the service rejects new reads and writes to it.
 
 ## Alternatives rejected
 - **Environment variables** — changing one means a deploy, which is the thing this exists to avoid.

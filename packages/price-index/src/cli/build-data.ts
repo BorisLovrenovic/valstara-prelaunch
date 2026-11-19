@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 
 import { MergeError } from '../pipeline/index.ts';
+import { generatedPages, publishedUrlsFor } from '../publish/pages.ts';
 import {
   buildRunLog,
   formatSummary,
@@ -9,10 +10,19 @@ import {
   serialiseRunLog,
 } from '../reports/index.ts';
 import { changesFile, type ChangeEntry } from '../schema/changes.ts';
+import {
+  publishedUrlsFile,
+  type PublishedUrl,
+} from '../schema/published-urls.ts';
 import { runLogDirectory } from '../schema/run-files.ts';
 import { writeFileAtomic } from '../storage/atomic-write.ts';
 import { appendChanges } from '../storage/changes-file.ts';
 import { createJsonFileStore } from '../storage/json-file-store.ts';
+import {
+  appendPublishedUrls,
+  newPublishedUrls,
+  readPublishedUrls,
+} from '../storage/published-urls-file.ts';
 import {
   DataFileError,
   latestRun,
@@ -37,6 +47,10 @@ import {
 //
 //   data/price-index/changes.json             the build's real price
 //                                             changes, appended (E11.6-09)
+//   data/price-index/published-urls.json      the URL of every page the
+//                                             new latest.json generates for
+//                                             the first time, appended
+//                                             (E11.6-10)
 //   data/price-index/latest.json              replaced atomically
 //   data/price-index/snapshots/<date>.json    a new, immutable snapshot
 //   reports/runs/<run_id>.json                the run log
@@ -54,6 +68,11 @@ import {
 // real change to changes.json, before latest.json is replaced: a build cut
 // short after the append is rebuilt to the same entries, which the log
 // already holds and does not repeat. The run log counts them as `changed`.
+//
+// The published-URL ledger (E11.6-10) is appended the same way, after the
+// changes and before latest.json: a page the new latest.json generates is in
+// the ledger before it can be built and served, so a URL that was ever live
+// never answers 404 (docs/features/price-index.md#edge-cases-and-error-states).
 
 export const buildDataExitCodes = {
   done: 0,
@@ -91,7 +110,7 @@ export async function runBuildData(
   if (config === undefined || settings === undefined || issues.length > 0) {
     return fail(`the configuration is invalid\n${formatIssues(issues)}`);
   }
-  const dataIssues = await validateDataFiles(io.root);
+  const dataIssues = await validateDataFiles(io.root, config);
   if (dataIssues.length > 0) {
     return fail(`a data file is invalid\n${formatIssues(dataIssues)}`);
   }
@@ -100,6 +119,7 @@ export async function runBuildData(
   let observations;
   let data;
   let changes: ChangeEntry[];
+  let publishedUrls: PublishedUrl[];
   try {
     const run = await latestRun(rawRootOf(io.root));
     if (run === null) {
@@ -124,6 +144,14 @@ export async function runBuildData(
       clock: io.clock,
     });
     changes = await pendingChanges(io.root, merged);
+    const ledger = await readPublishedUrls(resolve(io.root, publishedUrlsFile));
+    publishedUrls = newPublishedUrls(
+      ledger ?? { urls: [] },
+      publishedUrlsFor(
+        generatedPages(merged, config.catalogue, config.markets),
+        merged.built_at.slice(0, 10),
+      ),
+    );
   } catch (error) {
     if (error instanceof DataFileError || error instanceof MergeError) {
       return fail(`the merge was refused: ${error.message}`);
@@ -132,9 +160,10 @@ export async function runBuildData(
   }
 
   // Everything is valid; only now is anything written. The changes first,
-  // then latest.json, then its snapshot, then the run log that names the
-  // snapshot.
+  // then the newly published URLs, then latest.json, then its snapshot, then
+  // the run log that names the snapshot.
   await appendChanges(resolve(io.root, changesFile), changes);
+  await appendPublishedUrls(resolve(io.root, publishedUrlsFile), publishedUrls);
   const store = createJsonFileStore({
     directory: resolve(io.root, priceIndexDataDirectory),
   });
@@ -173,6 +202,7 @@ export async function runBuildData(
       figures: runFigures(observations, merged, changes.length),
       reports: [
         ...(changes.length === 0 ? [] : [changesFile]),
+        ...(publishedUrls.length === 0 ? [] : [publishedUrlsFile]),
         latestFile,
         join(snapshotsDirectory, snapshot.name),
         relative(io.root, runLogPath),

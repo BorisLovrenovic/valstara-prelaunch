@@ -9,5 +9,6 @@ export const seoCopy = {
     legal: 'Valstara legal information',
     campaign: 'Valstara campaign information',
     rules: 'Valstara giveaway rules',
+    prices: 'Valstara price index',
   },
 } as const;

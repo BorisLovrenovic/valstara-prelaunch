@@ -10,7 +10,12 @@ import { chromium } from 'playwright';
 import { Pool } from 'pg';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { sourcePagePaths } from './helpers/page-inventory.mjs';
+import {
+  priceFixtureInputs,
+  priceFixtureSite,
+} from './helpers/price-fixture-site.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import { createPriceSite } from '../src/server/prices/site.ts';
 
 const executeFile = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -33,7 +38,13 @@ const notFoundPaths = new Set([
   '/404',
   '/not-a-page',
   '/giveaway/rules/not-a-version',
+  // E11.6-10: a service × market pair the data does not generate.
+  '/prices/not-a-service/sweden',
 ]);
+// E11.6-10: the price pages of the site being crawled (the price fixture
+// site's, in the price crawl). Each carries the signup form, so each is a
+// protected page with one protected form.
+const pricePagePaths = new Set();
 const inducedServerErrorPath = '/me?t=induced-render-error';
 const unreachableDatabaseUrl =
   'postgresql://valstara_app:unreachable@127.0.0.1:1/valstara_unreachable';
@@ -47,6 +58,7 @@ const protectedPages = new Set([
 
 function expectedProtectedFormCount(url) {
   if (url.pathname === '/') return 1;
+  if (pricePagePaths.has(url.pathname)) return 1;
   if (url.pathname === '/dsr') return url.searchParams.has('t') ? 0 : 1;
   if (url.pathname === '/verify') return url.searchParams.has('token') ? 0 : 1;
   if (url.pathname === '/me') {
@@ -266,12 +278,13 @@ async function seedEmailLinkedPages(database) {
   return { ...tokens, awardId };
 }
 
-async function withServer(databaseUrl, run) {
+async function withServer(databaseUrl, run, cwd = undefined) {
   // A reserved port below the kernel's ephemeral range (see
   // test/helpers/listen-port.mjs).
   const app = await startAppServer({
     label: 'Privacy-audit',
     readyPath: '/privacy',
+    cwd,
     env: (port) => ({
       ADMIN_CREDENTIAL: 'privacy-test-admin-credential-32-chars',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
@@ -497,6 +510,8 @@ async function crawl(
         [],
         '/ loads every provider logo from its own origin',
       );
+    }
+    if (pageUrl.pathname === '/' || pricePagePaths.has(pageUrl.pathname)) {
       await page.waitForFunction(
         () =>
           globalThis.document.querySelector('valstara-signup-form form')
@@ -668,14 +683,16 @@ async function crawl(
         `${path} requested unapproved host ${host}`,
       );
     }
+    const isProtectedPage =
+      protectedPages.has(pathname) || pricePagePaths.has(pathname);
     if (hosts.has(turnstileHost)) {
       assert.ok(
-        protectedPages.has(pathname),
+        isProtectedPage,
         `${path} loaded Turnstile outside a protected page`,
       );
       assert.match(html, /turnstile_token/u, `${path} needs a Turnstile form`);
     }
-    if (!protectedPages.has(pathname)) {
+    if (!isProtectedPage) {
       assert.ok(!hosts.has(turnstileHost), `${path} loaded Turnstile`);
     }
     if (pathname === '/legit') {
@@ -833,6 +850,64 @@ test(
         });
       });
     } finally {
+      await remote.browser.close();
+      await executeFile('docker', ['rm', '--force', browserContainer]).catch(
+        () => {},
+      );
+      if (remote.child.exitCode === null) {
+        const exited = once(remote.child, 'exit');
+        remote.child.kill();
+        await exited;
+      }
+    }
+  },
+);
+
+test(
+  'E11-05 crawls every price page kind on the price fixture site: no cookie, no storage beyond the theme, no third party beyond Turnstile',
+  { timeout: 300_000 },
+  async () => {
+    // E11.6-10: the price route is a data route. The repository's data has
+    // no page yet, so its page kinds are crawled on the site built over the
+    // price-page fixture dataset: a generated page, the same with ?ref=, a
+    // ledger URL whose data is lost, and a pair that generates nothing.
+    const inventory = await sourcePagePaths();
+    assert.deepEqual(inventory.dataRoutes, ['/prices/[service]/[country]']);
+    const { root: fixtureRoot } = await priceFixtureSite();
+    const site = createPriceSite(await priceFixtureInputs());
+    const generated = site.routes.find((route) => route.kind === 'generated');
+    const unavailable = site.routes.find(
+      (route) => route.kind === 'unavailable',
+    );
+    assert.ok(generated && unavailable);
+    for (const route of site.routes) pricePagePaths.add(route.path);
+    const paths = [
+      generated.path,
+      `${generated.path}?ref=ABCDEFGHJKMN&utm_source=newsletter`,
+      unavailable.path,
+      '/prices/not-a-service/sweden',
+    ];
+    const remote = await startBrowser();
+    try {
+      await withDatabase(async (_database, databaseUrl) => {
+        await withServer(
+          databaseUrl,
+          async (origin) => {
+            for (const path of paths) {
+              const observed = await crawl(remote.browser, origin, path);
+              assert.ok(
+                observed.offOrigin.every(
+                  (url) => new URL(url).hostname === turnstileHost,
+                ),
+                `${path} made a third-party request beyond Turnstile`,
+              );
+            }
+          },
+          fixtureRoot,
+        );
+      });
+    } finally {
+      pricePagePaths.clear();
       await remote.browser.close();
       await executeFile('docker', ['rm', '--force', browserContainer]).catch(
         () => {},

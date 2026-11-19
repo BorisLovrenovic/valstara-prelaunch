@@ -10,6 +10,9 @@ export const socialPageKinds = [
   'legal',
   'campaign',
   'rules',
+  // E11.6-10: the price pages. Until E11.6-14 gives each its own card, every
+  // price page takes this typed fallback.
+  'prices',
 ] as const;
 export type SocialPageKind = (typeof socialPageKinds)[number];
 
@@ -25,6 +28,7 @@ export function socialPageKind(pathname: string): SocialPageKind {
   if (path === '/giveaway/rules' || path.startsWith('/giveaway/rules/')) {
     return 'rules';
   }
+  if (path === '/prices' || path.startsWith('/prices/')) return 'prices';
   return 'campaign';
 }
 
@@ -139,6 +143,49 @@ export function routeFromPageFile(file: string): string | null {
   const segments = relative.slice(0, -'.astro'.length).split('/');
   if (segments.at(-1) === 'index') segments.pop();
   return `/${segments.join('/')}`;
+}
+
+/**
+ * The sitemap index (E11.6-10): `/sitemap.xml` lists these child sitemaps.
+ * `pages` holds the site's own routes, exactly as `/sitemap.xml` did before;
+ * `pricesServiceMarket` the generated service × market price pages.
+ */
+export const childSitemaps = {
+  pages: '/sitemaps/pages.xml',
+  pricesServiceMarket: '/sitemaps/prices-service-market.xml',
+} as const;
+
+function xmlText(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
+/** A `<urlset>` of permanent URLs, each with its `lastmod` when it has one. */
+export function urlsetXml(
+  entries: readonly { path: string; lastmod?: string }[],
+): string {
+  const urls = entries
+    .map(
+      ({ path, lastmod }) =>
+        `  <url><loc>${xmlText(canonicalUrl(path))}</loc>${
+          lastmod === undefined ? '' : `<lastmod>${xmlText(lastmod)}</lastmod>`
+        }</url>`,
+    )
+    .join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}${urls === '' ? '' : '\n'}</urlset>\n`;
+}
+
+/** The `<sitemapindex>` over every child sitemap. */
+export function sitemapIndexXml(): string {
+  const children = Object.values(childSitemaps)
+    .map(
+      (path) =>
+        `  <sitemap><loc>${xmlText(canonicalUrl(path))}</loc></sitemap>`,
+    )
+    .join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${children}\n</sitemapindex>\n`;
 }
 
 export function sitemapPaths(

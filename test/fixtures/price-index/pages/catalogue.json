@@ -1,0 +1,115 @@
+{
+  "services": [
+    {
+      "service_id": "chatgpt",
+      "name": "ChatGPT",
+      "category": "ai",
+      "website_url": "https://chatgpt.com/",
+      "official_hosts": ["openai.com"],
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "plus",
+          "name": "Plus",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": ["ChatGPT", "chatgpt"],
+        "plans": {
+          "plus": ["ChatGPT Plus", "plus"]
+        }
+      }
+    },
+    {
+      "service_id": "duolingo",
+      "name": "Duolingo",
+      "category": "learning",
+      "website_url": "https://www.duolingo.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "super",
+          "name": "Super",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        },
+        {
+          "plan_id": "max",
+          "name": "Max",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": [],
+        "plans": {}
+      }
+    },
+    {
+      "service_id": "netflix",
+      "name": "Netflix",
+      "category": "streaming",
+      "website_url": "https://www.netflix.com/",
+      "official_hosts": ["help.netflix.com"],
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "basic",
+          "name": "Basic",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        },
+        {
+          "plan_id": "standard",
+          "name": "Standard",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        },
+        {
+          "plan_id": "premium",
+          "name": "Premium (4K)",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": ["Netflix", "netflix"],
+        "plans": {
+          "basic": ["Basic", "basic"],
+          "standard": ["Standard", "standard"],
+          "premium": ["Premium", "premium"]
+        }
+      }
+    },
+    {
+      "service_id": "spotify",
+      "name": "Spotify Premium",
+      "category": "music",
+      "website_url": "https://www.spotify.com/",
+      "status": "launch",
+      "plans": [
+        {
+          "plan_id": "individual",
+          "name": "Individual",
+          "billing_period": "month",
+          "is_student": false,
+          "is_family": false
+        }
+      ],
+      "source_aliases": {
+        "service": ["Spotify Premium", "spotify"],
+        "plans": {
+          "individual": ["Premium Individual", "individual"]
+        }
+      }
+    }
+  ]
+}

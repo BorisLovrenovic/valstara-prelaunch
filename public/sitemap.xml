@@ -1,16 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://valstara.com/</loc></url>
-  <url><loc>https://valstara.com/about</loc></url>
-  <url><loc>https://valstara.com/dsr</loc></url>
-  <url><loc>https://valstara.com/giveaway/award</loc></url>
-  <url><loc>https://valstara.com/giveaway/rules</loc></url>
-  <url><loc>https://valstara.com/giveaway/rules/VAL-GW-LAUNCH-20261009-r1</loc></url>
-  <url><loc>https://valstara.com/guarantee</loc></url>
-  <url><loc>https://valstara.com/leaderboard</loc></url>
-  <url><loc>https://valstara.com/legit</loc></url>
-  <url><loc>https://valstara.com/privacy</loc></url>
-  <url><loc>https://valstara.com/privacy/storage</loc></url>
-  <url><loc>https://valstara.com/terms</loc></url>
-  <url><loc>https://valstara.com/unsubscribe</loc></url>
-</urlset>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>https://valstara.com/sitemaps/pages.xml</loc></sitemap>
+  <sitemap><loc>https://valstara.com/sitemaps/prices-service-market.xml</loc></sitemap>
+</sitemapindex>

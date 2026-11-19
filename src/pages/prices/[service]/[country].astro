@@ -1,0 +1,366 @@
+---
+import Button from '../../../components/button.astro';
+import Container from '../../../components/container.astro';
+import Icon from '../../../components/icon.astro';
+import { pricesCopy } from '../../../copy/prices.ts';
+import SignupForm from '../../../islands/SignupForm.astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import TaskCard from '../../../layouts/task-card.astro';
+import {
+  hasNonDefaultFlagState,
+  landingCacheVary,
+  landingFlagGeneration,
+} from '../../../server/cache/landing.ts';
+import { landingReferralField } from '../../../server/cache/render.ts';
+import { getConfig } from '../../../server/config.ts';
+import { getFlagService } from '../../../server/flags/app-service.ts';
+import { campaignFlagRegistry } from '../../../server/flags/registry.ts';
+import { bundledPriceSite } from '../../../server/prices/bundled.ts';
+import { pricesPausedRetryAfterSeconds } from '../../../server/prices/route.ts';
+import { createReferralCaptureService } from '../../../server/referral/capture.ts';
+import { jsonLd } from '../../../server/seo.ts';
+
+// The service × market price page (E11.6-10). Server-rendered on request from
+// the price data bundled at build (D1), through the origin render cache, with
+// the landing page's cache contract and its server-signed referral field
+// (E4-02). The view model is `src/server/prices/site.ts`; this page only
+// renders it.
+
+const flags = await getFlagService().list();
+const enabled = (key: keyof typeof campaignFlagRegistry) =>
+  flags.find((flag) => flag.key === key)?.enabled ?? campaignFlagRegistry[key];
+const pagesEnabled = enabled('prices.pages');
+const flagGeneration = landingFlagGeneration(flags);
+Astro.response.headers.set('Vary', landingCacheVary);
+Astro.response.headers.set('X-Valstara-Flag-Generation', flagGeneration);
+
+// `prices.pages` off pulls every price route at once, before any lookup: a
+// 503 that asks crawlers to come back, never a 404 (docs/features/
+// price-index.md#feature-flag).
+if (!pagesEnabled) {
+  Astro.response.status = 503;
+  Astro.response.headers.set(
+    'Retry-After',
+    String(pricesPausedRetryAfterSeconds),
+  );
+  Astro.response.headers.set('Cache-Control', 'private, no-store');
+  Astro.response.headers.set('X-Robots-Tag', 'noindex');
+}
+
+const view = pagesEnabled
+  ? bundledPriceSite().route(
+      `/prices/${Astro.params.service ?? ''}/${Astro.params.country ?? ''}`,
+    )
+  : null;
+// A pair that is neither generated nor in the ledger answers the branded 404.
+if (pagesEnabled && view === null) {
+  return new Response(null, { status: 404 });
+}
+
+const signupEnabled = enabled('signup.enabled');
+const giveawayEnabled = enabled('giveaway.open');
+const signedReferralCapture = landingReferralField(
+  createReferralCaptureService(getConfig().referralSigningSecret),
+  Astro.url,
+  flags,
+);
+if (view !== null) {
+  // The origin render cache stores this render under its flag generation and
+  // substitutes each request's own signed field (G7-1-I4).
+  Astro.locals.renderCache = {
+    generation: flagGeneration,
+    field: signedReferralCapture,
+  };
+  const bypassCache =
+    Astro.url.searchParams.has('ref') || hasNonDefaultFlagState(flags);
+  Astro.response.headers.set(
+    'Cache-Control',
+    bypassCache ? 'private, no-store' : 'public, max-age=0, s-maxage=300',
+  );
+  if (view.kind === 'unavailable') {
+    Astro.response.headers.set('X-Robots-Tag', 'noindex');
+  }
+}
+const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
+---
+
+{
+  view === null ? (
+    <BaseLayout
+      title={pricesCopy.paused.meta.title}
+      description={pricesCopy.paused.meta.description}
+    >
+      <meta slot="head" name="robots" content="noindex" />
+      <TaskCard
+        heading={pricesCopy.paused.heading}
+        icon="pause"
+        tone="neutral"
+        state="prices-paused"
+        line={pricesCopy.paused.body}
+      >
+        <div class="task-card__actions">
+          <Button href="/">{pricesCopy.paused.home}</Button>
+        </div>
+      </TaskCard>
+    </BaseLayout>
+  ) : (
+    <BaseLayout title={view.meta.title} description={view.meta.description}>
+      {view.kind === 'unavailable' && (
+        <meta slot="head" name="robots" content="noindex" />
+      )}
+      <script
+        is:inline
+        slot="head"
+        type="application/ld+json"
+        set:html={jsonLd(view.structuredData)}
+      />
+      <article
+        class="price-page"
+        data-price-page={view.kind}
+        data-service={view.serviceId}
+        data-market={view.market}
+      >
+        <Container class="price-page__body">
+          <nav
+            class="price-breadcrumbs"
+            aria-label={pricesCopy.breadcrumbLabel}
+          >
+            <ol>
+              {view.breadcrumbs.map((crumb, index) =>
+                index === lastCrumb ? (
+                  <li>
+                    <span aria-current="page">{crumb.name}</span>
+                  </li>
+                ) : (
+                  <li>
+                    <a href={new URL(crumb.url).pathname}>{crumb.name}</a>
+                  </li>
+                ),
+              )}
+            </ol>
+          </nav>
+          <h1>{view.heading}</h1>
+          {view.kind === 'generated' ? (
+            <div class="price-page__plans">
+              <table class="price-table" data-price-table>
+                <caption>{view.tableCaption}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">{pricesCopy.page.columns.plan}</th>
+                    <th scope="col">{pricesCopy.page.columns.price}</th>
+                    <th scope="col">{pricesCopy.page.columns.verified}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {view.rows.map((row) => (
+                    <tr
+                      data-plan={row.planId}
+                      data-billing-period={row.billingPeriod}
+                    >
+                      <th scope="row">{row.planName}</th>
+                      <td>
+                        <span
+                          class="price-table__amount"
+                          data-price-amount={row.amount}
+                          data-price-currency={row.currency}
+                        >
+                          {row.priceText}
+                        </span>
+                        <span class="price-table__period">
+                          {row.periodText}
+                        </span>
+                      </td>
+                      <td>
+                        <time datetime={row.verifiedOn}>
+                          {row.verifiedText}
+                        </time>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p class="price-page__verified" data-verified-line>
+                {view.verifiedLine}
+              </p>
+            </div>
+          ) : (
+            <p class="price-page__unavailable" role="status" data-unavailable>
+              <Icon name="info" size="base" />
+              <span>{view.note}</span>
+            </p>
+          )}
+          <p class="price-page__independent">{view.notAffiliated}</p>
+        </Container>
+        <section id="join" class="price-cta" aria-labelledby="price-cta-title">
+          <Container class="price-cta__inner">
+            <h2 id="price-cta-title">{pricesCopy.page.cta.heading}</h2>
+            <p class="price-cta__body">{pricesCopy.page.cta.body}</p>
+            {signupEnabled ? (
+              <SignupForm
+                signedReferralCapture={signedReferralCapture}
+                giveawayEnabled={giveawayEnabled}
+              />
+            ) : (
+              <div class="price-cta__paused" role="status">
+                <h3>{pricesCopy.page.signupPaused.heading}</h3>
+                <p>{pricesCopy.page.signupPaused.body}</p>
+              </div>
+            )}
+          </Container>
+        </section>
+      </article>
+    </BaseLayout>
+  )
+}
+
+<style>
+  .price-page {
+    display: grid;
+    gap: var(--section-gap);
+  }
+
+  :global(.price-page__body) {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .price-breadcrumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--ink-600);
+    font-size: var(--step-0);
+  }
+
+  .price-breadcrumbs li + li::before {
+    content: '/';
+    margin-inline-end: var(--space-1);
+    color: var(--ink-300);
+  }
+
+  .price-breadcrumbs a {
+    color: inherit;
+    text-underline-offset: var(--underline-offset);
+  }
+
+  .price-page h1 {
+    margin: 0;
+    max-inline-size: var(--measure);
+    font-size: var(--step-4);
+    line-height: var(--leading-1);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .price-page__plans {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .price-table {
+    inline-size: 100%;
+    border-collapse: collapse;
+    font-size: var(--step-0);
+  }
+
+  .price-table caption {
+    padding-block-end: var(--space-1-5);
+    color: var(--ink-600);
+    text-align: start;
+  }
+
+  .price-table th,
+  .price-table td {
+    padding: var(--space-1-5) var(--space-1);
+    border-block-end: var(--border-thin) solid var(--line);
+    text-align: start;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  .price-table thead th {
+    color: var(--ink-600);
+    font-weight: var(--weight-medium);
+  }
+
+  .price-table tbody th {
+    font-weight: var(--weight-semibold);
+  }
+
+  /* Every published number is set in the monospace token. */
+  .price-table__amount,
+  .price-table time {
+    font-family: var(--font-mono);
+  }
+
+  .price-table__amount {
+    display: block;
+    font-weight: var(--weight-semibold);
+  }
+
+  .price-table__period {
+    color: var(--ink-600);
+  }
+
+  .price-page__verified,
+  .price-page__independent {
+    margin: 0;
+    max-inline-size: var(--measure);
+    color: var(--ink-600);
+  }
+
+  .price-page__unavailable {
+    display: flex;
+    gap: var(--space-1);
+    align-items: flex-start;
+    margin: 0;
+    padding: var(--space-2);
+    border-radius: var(--radius-card);
+    background: var(--well);
+    max-inline-size: var(--measure);
+  }
+
+  .price-cta {
+    padding-block: var(--section-gap);
+    background: var(--wash);
+  }
+
+  :global(.price-cta__inner) {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  .price-cta h2 {
+    margin: 0;
+    font-size: var(--step-3);
+    line-height: var(--leading-2);
+  }
+
+  .price-cta__body {
+    margin: 0;
+    color: var(--ink-600);
+  }
+
+  .price-cta__paused h3 {
+    margin: 0;
+    font-size: var(--step-1);
+  }
+
+  .price-cta__paused p {
+    margin: 0;
+  }
+
+  @media (min-width: 48rem) {
+    .price-table th,
+    .price-table td {
+      padding-inline: var(--space-2);
+    }
+
+    .price-page h1 {
+      font-size: var(--step-5);
+    }
+  }
+</style>

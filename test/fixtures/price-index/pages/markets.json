@@ -1,0 +1,48 @@
+{
+  "markets": [
+    {
+      "code": "GB",
+      "name": "United Kingdom",
+      "name_in_sentence": "the United Kingdom",
+      "slug": "united-kingdom",
+      "currency": "GBP",
+      "enabled": true
+    },
+    {
+      "code": "DE",
+      "name": "Germany",
+      "slug": "germany",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "FR",
+      "name": "France",
+      "slug": "france",
+      "currency": "EUR",
+      "enabled": true
+    },
+    {
+      "code": "SE",
+      "name": "Sweden",
+      "slug": "sweden",
+      "currency": "SEK",
+      "enabled": true
+    },
+    {
+      "code": "NO",
+      "name": "Norway",
+      "slug": "norway",
+      "currency": "NOK",
+      "enabled": true
+    },
+    {
+      "code": "US",
+      "name": "United States",
+      "name_in_sentence": "the United States",
+      "slug": "united-states",
+      "currency": "USD",
+      "enabled": true
+    }
+  ]
+}

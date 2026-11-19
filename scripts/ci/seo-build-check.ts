@@ -23,10 +23,15 @@ import { memberStatusCopy } from '../../src/copy/member-status.ts';
 import { seoCopy } from '../../src/copy/seo.ts';
 import { unsubscribeCopy } from '../../src/copy/unsubscribe.ts';
 import { verificationCopy } from '../../src/copy/verification.ts';
+import { readPriceSiteInputs } from '../../src/server/prices/files.ts';
+import { createPriceSite } from '../../src/server/prices/site.ts';
 import {
+  childSitemaps,
   routeFromPageFile,
   canonicalUrl,
   rulesPageMetadata,
+  sitemapIndexXml,
+  urlsetXml,
   socialFallbackImageUrl,
   socialImageUrl,
   socialPageKind,
@@ -53,7 +58,24 @@ const pageBindings: Record<string, string> = {
   '/terms': 'legalPageCopy.terms',
   '/unsubscribe': 'unsubscribeCopy.meta',
   '/verify': 'verificationCopy.meta',
+  // E11.6-10: one binding for every service × market page, generated or
+  // unavailable; its metadata comes from the price site's view model.
+  '/prices/[service]/[country]': 'view.meta',
 };
+
+// The page files whose routes are expanded from data rather than the file
+// tree: each published rules revision, and each price page the bundled data
+// generates or the published-URL ledger holds (E11.6-10).
+const expandedRouteFiles = new Set([
+  'giveaway/rules/[rulesVersion].astro',
+  'prices/[service]/[country].astro',
+]);
+
+/** Every price route of the data under `root`, with its metadata. */
+export async function priceSeoPages(root: string): Promise<PageMetadata[]> {
+  const site = createPriceSite(await readPriceSiteInputs(root));
+  return site.routes.map((route) => ({ pathname: route.path, ...route.meta }));
+}
 
 function frontmatterField(source: string, name: string): string {
   const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/u.exec(source)?.[1] ?? '';
@@ -137,9 +159,15 @@ export async function collectSeoPages(
       ),
     ),
   ];
-  const publishedRoutes = revisions.map(
-    (revision) => `/giveaway/rules/${revision.rulesVersion}`,
-  );
+  // The price route's pages, from the data the build bundles (E11.6-10).
+  const prices = files.includes('prices/[service]/[country].astro')
+    ? await priceSeoPages(root)
+    : [];
+  pages.push(...prices);
+  const publishedRoutes = [
+    ...revisions.map((revision) => `/giveaway/rules/${revision.rulesVersion}`),
+    ...prices.map((price) => price.pathname),
+  ];
   validatePageMetadata(
     requireAllRoutes
       ? [...routes, ...publishedRoutes]
@@ -294,6 +322,9 @@ export async function generateOpenGraphImages(
     await loadSocialCardFont(root, tokenSource, tokens.font, fontDirectory);
     const generatedKinds = new Set<string>();
     for (const page of pages) {
+      // The price pages take their typed fallback, copied to each page's card
+      // URL at postbuild, until E11.6-14 renders their own cards.
+      if (socialPageKind(page.pathname) === 'prices') continue;
       const imagePath = new URL(socialImageUrl(page.pathname)).pathname;
       const outputPath = join(root, 'public', imagePath.slice(1));
       await sharp(Buffer.from(socialCardSvg(page.title, tokens)))
@@ -310,12 +341,77 @@ export async function generateOpenGraphImages(
         .png({ compressionLevel: 9 })
         .toFile(outputPath);
     }
-    if (generatedKinds.size !== socialPageKinds.length) {
+    if (
+      socialPageKinds.some(
+        (kind) => kind !== 'prices' && !generatedKinds.has(kind),
+      )
+    ) {
       throw new Error('Social card generation is missing a page kind');
     }
   } finally {
     await rm(fontDirectory, { recursive: true, force: true });
   }
+}
+
+/**
+ * The E9-06 and E9-07 checks on one rendered page's head: exactly one
+ * non-empty title and description, each unique among the pages already
+ * checked into `seen`; a self-canonical permanent URL; and the page's own
+ * social card first, its page kind's typed fallback second, as a large
+ * summary card. The postbuild check runs it on every prerendered page;
+ * server-rendered pages (the price pages, E11.6-10) run it on their served
+ * HTML.
+ */
+export function checkRenderedHead(
+  html: string,
+  pathname: string,
+  seen: { titles: Set<string>; descriptions: Set<string> },
+): void {
+  const head = /<head\b[^>]*>([\s\S]*?)<\/head>/u.exec(html)?.[1] ?? '';
+  const titles = [...head.matchAll(/<title>([^<]*)<\/title>/gu)];
+  const descriptions = [
+    ...head.matchAll(/<meta\s+name="description"\s+content="([^"]*)"\s*\/?>/gu),
+  ];
+  const canonicals = [
+    ...head.matchAll(/<link\s+rel="canonical"\s+href="([^"]*)"\s*\/?>/gu),
+  ];
+  const title = titles[0]?.[1].trim();
+  const description = descriptions[0]?.[1].trim();
+  if (titles.length !== 1 || !title || seen.titles.has(title)) {
+    throw new Error(
+      `SEO rendered title is missing or duplicated for ${pathname}`,
+    );
+  }
+  if (
+    descriptions.length !== 1 ||
+    !description ||
+    seen.descriptions.has(description)
+  ) {
+    throw new Error(
+      `SEO rendered description is missing or duplicated for ${pathname}`,
+    );
+  }
+  if (canonicals.length !== 1 || canonicals[0][1] !== canonicalUrl(pathname)) {
+    throw new Error(
+      `SEO rendered canonical is missing or invalid for ${pathname}`,
+    );
+  }
+  const socialImages = [
+    ...head.matchAll(
+      /<meta\s+property="og:image"\s+content="([^"]+)"\s*\/?>/gu,
+    ),
+  ].map((match) => match[1]);
+  const twitterCard =
+    /<meta\s+name="twitter:card"\s+content="([^"]+)"\s*\/?>/u.exec(head)?.[1];
+  if (
+    socialImages[0] !== socialImageUrl(pathname) ||
+    socialImages[1] !== socialFallbackImageUrl(socialPageKind(pathname)) ||
+    twitterCard !== 'summary_large_image'
+  ) {
+    throw new Error(`SEO social card metadata is missing for ${pathname}`);
+  }
+  seen.titles.add(title);
+  seen.descriptions.add(description);
 }
 
 export async function checkSeoBuild(
@@ -329,7 +425,7 @@ export async function checkSeoBuild(
   );
 
   for (const file of files) {
-    if (file.includes('[') && file !== 'giveaway/rules/[rulesVersion].astro') {
+    if (file.includes('[') && !expandedRouteFiles.has(file)) {
       throw new Error(`SEO route expansion is missing for ${file}`);
     }
     if (file.startsWith('api/') || file.startsWith('giveaway/rules/')) continue;
@@ -361,58 +457,10 @@ export async function checkSeoBuild(
         throw new Error(`SEO rendered route is unknown: ${pathname}`);
       }
       const html = await readFile(join(renderedDirectory, file), 'utf8');
-      const head = /<head\b[^>]*>([\s\S]*?)<\/head>/u.exec(html)?.[1] ?? '';
-      const titles = [...head.matchAll(/<title>([^<]*)<\/title>/gu)];
-      const descriptions = [
-        ...head.matchAll(
-          /<meta\s+name="description"\s+content="([^"]*)"\s*\/?>/gu,
-        ),
-      ];
-      const canonicals = [
-        ...head.matchAll(/<link\s+rel="canonical"\s+href="([^"]*)"\s*\/?>/gu),
-      ];
-      const title = titles[0]?.[1].trim();
-      const description = descriptions[0]?.[1].trim();
-      if (titles.length !== 1 || !title || renderedTitles.has(title)) {
-        throw new Error(
-          `SEO rendered title is missing or duplicated for ${pathname}`,
-        );
-      }
-      if (
-        descriptions.length !== 1 ||
-        !description ||
-        renderedDescriptions.has(description)
-      ) {
-        throw new Error(
-          `SEO rendered description is missing or duplicated for ${pathname}`,
-        );
-      }
-      if (
-        canonicals.length !== 1 ||
-        canonicals[0][1] !== canonicalUrl(pathname)
-      ) {
-        throw new Error(
-          `SEO rendered canonical is missing or invalid for ${pathname}`,
-        );
-      }
-      const socialImages = [
-        ...head.matchAll(
-          /<meta\s+property="og:image"\s+content="([^"]+)"\s*\/?>/gu,
-        ),
-      ].map((match) => match[1]);
-      const twitterCard =
-        /<meta\s+name="twitter:card"\s+content="([^"]+)"\s*\/?>/u.exec(
-          head,
-        )?.[1];
-      if (
-        socialImages[0] !== socialImageUrl(pathname) ||
-        socialImages[1] !== socialFallbackImageUrl(socialPageKind(pathname)) ||
-        twitterCard !== 'summary_large_image'
-      ) {
-        throw new Error(`SEO social card metadata is missing for ${pathname}`);
-      }
-      renderedTitles.add(title);
-      renderedDescriptions.add(description);
+      checkRenderedHead(html, pathname, {
+        titles: renderedTitles,
+        descriptions: renderedDescriptions,
+      });
     }
     for (const page of pages) {
       const imagePath = join(
@@ -464,13 +512,22 @@ export async function generateSitemap(root = projectRoot): Promise<void> {
   const versions = (await readdir(join(root, 'src/content/giveaway-rules')))
     .filter((file) => file.endsWith('.md'))
     .map((file) => file.slice(0, -3));
-  const urls = sitemapPaths(files, versions)
-    .map((path) => `  <url><loc>${canonicalUrl(path)}</loc></url>`)
-    .join('\n');
+  // E11.6-10: /sitemap.xml is an index over the child sitemaps. The site's
+  // own routes keep exactly their previous entries, now in pages.xml. The
+  // price sitemap lists the generated service × market pages only, each with
+  // its verification date as lastmod: an unavailable ledger URL is noindex
+  // and absent.
+  const prices = createPriceSite(await readPriceSiteInputs(root));
+  await mkdir(join(root, 'public/sitemaps'), { recursive: true });
   await writeFile(
-    join(root, 'public/sitemap.xml'),
-    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`,
+    join(root, 'public', childSitemaps.pages),
+    urlsetXml(sitemapPaths(files, versions).map((path) => ({ path }))),
   );
+  await writeFile(
+    join(root, 'public', childSitemaps.pricesServiceMarket),
+    urlsetXml(prices.sitemap),
+  );
+  await writeFile(join(root, 'public/sitemap.xml'), sitemapIndexXml());
 }
 
 if (

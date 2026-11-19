@@ -6,6 +6,7 @@ import { landingFlagGeneration } from '../src/server/cache/landing.ts';
 import {
   createRenderCache,
   landingReferralField,
+  priceRenderCacheMaxEntries,
   renderCacheMaxEntries,
   serveCachedRender,
   type RenderCacheLocals,
@@ -65,6 +66,7 @@ function fakeSite(initialFlags: readonly Flag[]) {
     clock: () => new Date(at.getTime() + (tick += 1_000)),
   });
   const cache = createRenderCache();
+  const priceCache = createRenderCache(priceRenderCacheMaxEntries);
   let renders = 0;
   async function request(path: string) {
     const url = new URL(path, 'https://valstara.com');
@@ -82,7 +84,7 @@ function fakeSite(initialFlags: readonly Flag[]) {
           (flag) => flag.key === 'leaderboard.public',
         )?.enabled;
         return new Response(
-          `<main data-render="${renders}" data-leaderboard="${String(leaderboard)}">${
+          `<main data-path="${url.pathname}" data-render="${renders}" data-leaderboard="${String(leaderboard)}">${
             field === null
               ? ''
               : `<input name="referral_capture" type="hidden" value="${field}" />`
@@ -95,11 +97,12 @@ function fakeSite(initialFlags: readonly Flag[]) {
           },
         );
       },
-      { cache, flags: async () => flags, referral },
+      { cache, priceCache, flags: async () => flags, referral },
     );
   }
   return {
     cache,
+    priceCache,
     request,
     referral,
     get renders() {
@@ -294,4 +297,61 @@ test('the cache does not grow with referral codes', async () => {
     }
   }
   assert.ok(site.cache.size <= renderCacheMaxEntries);
+});
+
+// E11.6-10: the service × market price pages render through the same cache,
+// with the landing's signed field, keyed by their path, in their own bound.
+
+test('a price page is cached per path, and each ?ref= visit gets its own fresh field', async () => {
+  const site = fakeSite(defaults);
+  const sweden = await site.request('/prices/spotify/sweden');
+  const again = await site.request('/prices/spotify/sweden');
+  const norway = await site.request('/prices/spotify/norway');
+  assert.equal(site.renders, 2, 'one render per path');
+  assert.equal(await again.text(), await sweden.text());
+  assert.match(await norway.text(), /data-path="\/prices\/spotify\/norway"/u);
+
+  const first = await site.request('/prices/spotify/sweden?ref=ABCDEFGHJKMN');
+  const second = await site.request('/prices/spotify/sweden?ref=PQRSTUVWXYZ2');
+  assert.equal(site.renders, 3, 'the referred render is cached once');
+  const firstField = fieldPattern.exec(await first.text())?.[1];
+  const secondField = fieldPattern.exec(await second.text())?.[1];
+  assert.equal(site.referral.verifyRef(firstField ?? '')?.ref, 'ABCDEFGHJKMN');
+  assert.equal(site.referral.verifyRef(secondField ?? '')?.ref, 'PQRSTUVWXYZ2');
+  assert.equal(site.cache.size, 0, 'price pages never use the landing cache');
+  assert.equal(site.priceCache.size, 3);
+});
+
+test('a crawl of every price page stays inside its own bound and never evicts the landing', async () => {
+  const site = fakeSite(defaults);
+  await site.request('/');
+  await site.request('/?ref=ABCDEFGHJKMN');
+  await site.request('/leaderboard');
+  assert.equal(site.renders, 3);
+  for (let index = 0; index < 400; index += 1) {
+    await site.request(`/prices/service-${index}/market-${index % 20}`);
+  }
+  assert.ok(site.priceCache.size <= priceRenderCacheMaxEntries);
+  assert.equal(site.cache.size, 3);
+  const rendersBefore = site.renders;
+  await site.request('/');
+  await site.request('/?ref=PQRSTUVWXYZ2');
+  await site.request('/leaderboard');
+  assert.equal(site.renders, rendersBefore, 'the landing is still cached');
+});
+
+test('a path outside the service × market shape is never cached', async () => {
+  const site = fakeSite(defaults);
+  for (const path of [
+    '/prices',
+    '/prices/spotify',
+    '/prices/Spotify/sweden',
+    '/prices/spotify/sweden/extra',
+    '/prices/spotify/sweden/',
+  ]) {
+    await site.request(path);
+    await site.request(path);
+  }
+  assert.equal(site.renders, 10);
+  assert.equal(site.priceCache.size, 0);
 });

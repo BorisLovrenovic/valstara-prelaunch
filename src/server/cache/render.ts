@@ -16,6 +16,13 @@ import { landingFlagGeneration } from './landing.ts';
  * route, whether the page carries a signed field, whether the URL has a `ref`
  * parameter (which decides the landing's Cache-Control), and the flag
  * generation. It never grows with distinct referral codes.
+ *
+ * The service × market price pages (E11.6-10, D1) render through it too, with
+ * the landing's signed field, keyed by their path as well. They are hundreds
+ * of routes, so they have their own bounded cache: a crawl of every price
+ * page can never evict the landing's or the leaderboard's entries. Only a
+ * 200 is stored, so an unknown pair (404) or the `prices.pages` off state
+ * (503) never takes a slot.
  */
 
 /** What a cacheable page reports about its own render, through locals. */
@@ -38,6 +45,13 @@ interface CachedRender {
 
 /** A bound well above the five variants one flag generation can produce. */
 export const renderCacheMaxEntries = 16;
+
+/**
+ * The price pages' own bound (E11.6-10): the hot pages of a referral spike
+ * and their variants, at a few tens of kilobytes each, so a few megabytes at
+ * most of the app's memory.
+ */
+export const priceRenderCacheMaxEntries = 64;
 
 export interface RenderCache {
   get(key: string): CachedRender | undefined;
@@ -112,6 +126,8 @@ export interface RenderCacheRequest {
 
 export interface RenderCacheDependencies {
   readonly cache: RenderCache;
+  /** The service × market price pages' own cache (E11.6-10). */
+  readonly priceCache: RenderCache;
   readonly flags: () => Promise<readonly Flag[]>;
   readonly referral: Pick<ReferralCaptureService, 'capture' | 'signRef'>;
 }
@@ -122,15 +138,22 @@ function toHeaders(entries: readonly (readonly [string, string])[]): Headers {
   return headers;
 }
 
-function cacheRoute(url: URL): 'landing' | 'leaderboard' | null {
+// `/prices/{service}/{country}`: two lower-case kebab-case segments, exactly
+// the paths the price route can answer with a page.
+const servicePricePath =
+  /^\/prices\/[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+
+function cacheRoute(url: URL): 'landing' | 'leaderboard' | 'prices' | null {
   if (url.pathname === '/') return 'landing';
   if (url.pathname === '/leaderboard') return 'leaderboard';
+  if (servicePricePath.test(url.pathname)) return 'prices';
   return null;
 }
 
 /**
- * Serves a GET for `/` or `/leaderboard` from the cache, or renders it with
- * `next` and stores the result. Anything else passes straight to `next`.
+ * Serves a GET for `/`, `/leaderboard` or a service × market price page from
+ * the cache, or renders it with `next` and stores the result. Anything else
+ * passes straight to `next`.
  */
 export async function serveCachedRender(
   request: RenderCacheRequest,
@@ -142,19 +165,22 @@ export async function serveCachedRender(
 
   const flags = await dependencies.flags();
   const generation = landingFlagGeneration(flags);
+  // A price page carries the landing's signed referral field (D1, E4-02).
   const field =
-    route === 'landing'
-      ? landingReferralField(dependencies.referral, request.url, flags)
-      : null;
+    route === 'leaderboard'
+      ? null
+      : landingReferralField(dependencies.referral, request.url, flags);
   if (field !== null && !signedFieldPattern.test(field)) return next();
   const key = [
-    route,
+    route === 'prices' ? `prices:${request.url.pathname}` : route,
     field === null ? 'plain' : 'field',
     request.url.searchParams.has('ref') ? 'ref' : 'no-ref',
     generation,
   ].join('|');
+  const cache =
+    route === 'prices' ? dependencies.priceCache : dependencies.cache;
 
-  const cached = dependencies.cache.get(key);
+  const cached = cache.get(key);
   if (cached !== undefined) {
     const body =
       cached.parts.length === 1
@@ -196,6 +222,6 @@ export async function serveCachedRender(
     if (split.length !== 2) return rendered;
     parts = [split[0] ?? '', split[1] ?? ''];
   }
-  dependencies.cache.set(key, { status: response.status, headers, parts });
+  cache.set(key, { status: response.status, headers, parts });
   return rendered;
 }
