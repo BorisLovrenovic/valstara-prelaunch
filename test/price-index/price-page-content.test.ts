@@ -640,7 +640,7 @@ test('the Valstara comparison: no entry anywhere shows nothing; a yearly plan co
   );
 });
 
-test('the Valstara comparison: a price less than 0.1% below list is not shown, so the figure is never 0.0% (D-034 Q1)', async () => {
+test('the Valstara comparison: a price above list, or less than 0.1% below it, is not shown, so the figure is never negative or 0.0% (D-033 Q2)', async () => {
   const data = await dataset();
   const only = (price_local: string) => {
     const one = structuredClone(data);
@@ -656,6 +656,9 @@ test('the Valstara comparison: a price less than 0.1% below list is not shown, s
     ];
     return page(createPriceSite(one), '/prices/spotify/sweden').valstara;
   };
+  // Above the list price, (149.00 − 165.00) / 149.00 = −10.7…%: no row, and
+  // with no row left, no comparison block; never a negative figure.
+  assert.equal(only('165.00'), null);
   // (149.00 − 148.90) / 149.00 = 0.067…%, floored to 0.0: no row, and with
   // no row left, no comparison block.
   assert.equal(only('148.90'), null);

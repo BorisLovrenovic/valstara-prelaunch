@@ -661,7 +661,7 @@ function valstaraComparison(
       }
       const tenths = ((list - valstara) * 1000n) / list;
       // Floored, a price less than 0.1% below list would read "0.0% below
-      // list price": not shown, as a price not below list is not (D-034 Q1).
+      // list price": not shown, as a price not below list is not (D-033 Q2).
       if (tenths === 0n) {
         return [];
       }
