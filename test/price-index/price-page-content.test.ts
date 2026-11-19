@@ -600,11 +600,32 @@ test('the Valstara comparison: no entry anywhere shows nothing; a yearly plan co
     [['12 months', '149.00 SEK', '129.50 SEK', null]],
   );
 
+  // An entry with more decimals than its currency has is refused by the
+  // cross-file configuration rules before any page is built (D-034 Q2) ...
   const inexact = structuredClone(data);
   inexact.valstaraPrices.prices[0]!.price_local = '119.005';
   assert.throws(
     () => createPriceSite(inexact),
-    /A Valstara price 119\.005 is not an exact SEK amount/u,
+    (error) =>
+      error instanceof PriceDataError &&
+      /config\/valstara-prices\.json \(prices\.0\): Valstara price 119\.005 must be written at the minor-unit exponent of SEK \(2 decimals\)/u.test(
+        error.message,
+      ),
+  );
+  // ... even for a plan that publishes no page today (Netflix Standard is
+  // needs_review), so it cannot break a later build when the plan publishes.
+  const unpublished = structuredClone(data);
+  const standard = unpublished.valstaraPrices.prices.find(
+    (entry) => entry.service_id === 'netflix' && entry.plan_id === 'standard',
+  )!;
+  standard.price_local = '119.001';
+  assert.throws(
+    () => createPriceSite(unpublished),
+    (error) =>
+      error instanceof PriceDataError &&
+      /config\/valstara-prices\.json \(prices\.4\): Valstara price 119\.001 must be written at the minor-unit exponent of SEK \(2 decimals\)/u.test(
+        error.message,
+      ),
   );
 
   const foreign = structuredClone(data);
@@ -616,6 +637,36 @@ test('the Valstara comparison: no entry anywhere shows nothing; a yearly plan co
       /config\/valstara-prices\.json \(prices\.0\): Valstara price in EUR, but market SE uses SEK/u.test(
         error.message,
       ),
+  );
+});
+
+test('the Valstara comparison: a price less than 0.1% below list is not shown, so the figure is never 0.0% (D-034 Q1)', async () => {
+  const data = await dataset();
+  const only = (price_local: string) => {
+    const one = structuredClone(data);
+    one.valstaraPrices.prices = [
+      {
+        service_id: 'spotify',
+        plan_id: 'individual',
+        market: 'SE',
+        term_months: 1,
+        price_local,
+        currency: 'SEK',
+      },
+    ];
+    return page(createPriceSite(one), '/prices/spotify/sweden').valstara;
+  };
+  // (149.00 − 148.90) / 149.00 = 0.067…%, floored to 0.0: no row, and with
+  // no row left, no comparison block.
+  assert.equal(only('148.90'), null);
+  // (149.00 − 148.85) / 149.00 = 0.100…%: shown, floored to 0.1.
+  assert.deepEqual(
+    only('148.85')?.rows.map((row) => [
+      row.listText,
+      row.valstaraText,
+      row.belowText,
+    ]),
+    [['149.00 SEK', '148.85 SEK', '0.1% below list price']],
   );
 });
 

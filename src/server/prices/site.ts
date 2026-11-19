@@ -660,6 +660,11 @@ function valstaraComparison(
         return [];
       }
       const tenths = ((list - valstara) * 1000n) / list;
+      // Floored, a price less than 0.1% below list would read "0.0% below
+      // list price": not shown, as a price not below list is not (D-034 Q1).
+      if (tenths === 0n) {
+        return [];
+      }
       const belowPercent = `${tenths / 10n}.${tenths % 10n}`;
       const listAmount = decimalText(list, row.currency);
       const valstaraAmount = decimalText(valstara, row.currency);
@@ -868,8 +873,9 @@ export function createPriceSite(inputs: PriceSiteInputs): PriceSite {
     'data/price-index/changes.json',
   );
   // The Valstara prices with the cross-file rules `price-index validate`
-  // applies: a known service, plan and market, the market's currency, and
-  // one entry per service, plan, market and term.
+  // applies: a known service, plan and market, the market's currency, a
+  // price at that currency's exponent, and one entry per service, plan,
+  // market and term.
   const config = configIssues({
     markets: inputs.markets,
     catalogue: inputs.catalogue,
