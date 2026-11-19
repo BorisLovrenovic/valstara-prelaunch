@@ -3628,6 +3628,9 @@ Also in this ticket:
 **Founder decisions (2026-11-17):**
 1. **D1: price pages are server-rendered on request from build-bundled data.** "This is ok." The route renders from the `latest.json` bundled at build, through the existing origin render cache, with the landing page's cache contract: a ref-less, default-flag render is cacheable, and `?ref=` and non-default flag states are `private, no-store`. This keeps the server-side signed referral capture of E4-02 on every price page. *(Founder decision.)*
 
+**Founder decisions (2026-11-19):**
+1. **A market whose name takes an article in a sentence carries an optional `name_in_sentence` in `config/markets.json` (D-032 Q1, option A).** It is the name as it reads inside a sentence ("the United States"), it must contain the market's `name`, and it is set for the United Kingdom, the Netherlands and the United States only. Every price-page template that places a market name in a sentence uses `name_in_sentence` where present, else `name`, so a market that needs an article is a config change, not a code change (epic rule 5). A template that begins a sentence with it capitalises its first letter ("The United States is…", E11.6-11); no further field is added. The ledger's `market_name` keeps the in-sentence form. `docs/features/price-index.md#markets-configmarketsjson` records the field. *(Founder decision, accepted under the founder's standing rule for high-confidence recommendations.)*
+
 **Docs:** `docs/features/price-index.md#pages` · `docs/features/seo.md` · `docs/architecture/adr/008-server-side-referral-attribution.md` · `docs/architecture/adr/001-astro-node-adapter.md`
 
 ### E11.6-11 — Service × market page content: history, comparison, related services, FAQ and the Valstara price
@@ -3682,6 +3685,9 @@ Also in this ticket:
 **Founder decisions (2026-11-17):**
 1. **D2: a removed service's or market's URLs stay "temporarily unavailable" until retired.** "Ok." Such a URL renders the unavailable state with `noindex` until the founder runs `price-index retire-url <url> --to <hub> --actor`, which records a 301 to the nearest hub in the ledger. *(Founder decision.)*
 2. **D5: a "Price index" link goes in the site footer.** "Ok, add it." It links to `/prices`, so every price page is crawlable from every page of the site. Its label lives in the copy layer. It ships in this ticket, when the hubs it points at exist, so the footer never links to a page that is not there. *(Founder decision.)*
+
+**Founder decisions (2026-11-19):**
+1. **A retirement is a second entry appended to the ledger, never an edit (D-032 Q2, option A).** `price-index retire-url <url> --to <hub> --actor` appends to the `urls` list of `data/price-index/published-urls.json` an entry `{ kind: "retired", path, to, actor, retired_on }`: `path` is a URL already published in the ledger, `to` is a hub path (`/prices/{service}` or `/prices/countries/{country}`), `actor` is required, and `retired_on` comes from the injected clock. This ticket extends the schema in `packages/price-index/src/schema/published-urls.ts`: publication entries keep their E11.6-10 shape unchanged, and a path may have one publication entry and at most one retirement entry after it. The existing append-only check covers it unchanged (epic rule 7). A path with a retirement entry answers 301 to its `to` and is in no sitemap. *(Founder decision, accepted under the founder's standing rule for high-confidence recommendations.)*
 
 **Docs:** `docs/features/price-index.md#pages` · `docs/features/seo.md`
 
