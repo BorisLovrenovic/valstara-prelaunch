@@ -6,7 +6,10 @@ import { currencySchema, slugSchema } from './common.ts';
 // (docs/features/price-index.md#valstara-prices-configvalstara-pricesjson).
 // Entered by hand by the founder; never invented, estimated or derived.
 
-/** A positive exact decimal, as a string: `"9.99"`, `"149"`. Never a float. */
+/**
+ * A positive exact decimal, as a string: `"9.99"`. Never a float. The
+ * cross-file rules (`config.ts`) require it at its currency's exponent.
+ */
 const decimalPattern = /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
 
 export const valstaraPriceSchema = z.strictObject({

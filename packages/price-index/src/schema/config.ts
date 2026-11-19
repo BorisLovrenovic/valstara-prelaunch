@@ -2,7 +2,9 @@ import { z } from 'zod';
 
 import { duplicates } from './common.ts';
 import { catalogueFileSchema } from './catalogue.ts';
+import { iso4217Currencies, minorUnitExponent } from './iso4217.ts';
 import { marketsFileSchema } from './markets.ts';
+import { isDecimalAtExponent } from './price-record.ts';
 import { valstaraPricesFileSchema } from './valstara-prices.ts';
 
 // The three configuration files together, with the rules that span them.
@@ -60,6 +62,20 @@ export const configSetSchema = z
         context.addIssue({
           code: 'custom',
           message: `Valstara price in ${price.currency}, but market ${price.market} uses ${market.currency}`,
+          path,
+        });
+      }
+
+      // Written at its currency's exponent ("149.00" SEK), checked here so
+      // an entry is refused whether or not its plan publishes today (D-034).
+      // An unknown currency is the currency field's own issue.
+      if (
+        iso4217Currencies.has(price.currency) &&
+        !isDecimalAtExponent(price.price_local, price.currency)
+      ) {
+        context.addIssue({
+          code: 'custom',
+          message: `Valstara price ${price.price_local} must be written at the minor-unit exponent of ${price.currency} (${minorUnitExponent(price.currency)} decimals)`,
           path,
         });
       }
