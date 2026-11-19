@@ -112,9 +112,9 @@ Recorded by E11.6-11a on 2026-11-20 (founder-authorised 2026-11-19). **A flake i
 
 | Flake | Status |
 |---|---|
-| a. "refused 300 connection attempts" | **Cause not proven** — founder decision |
-| b. "Unable to capture screenshot" | **Cause not proven** — founder decision |
-| c. The browser container cannot reach the app | **Fixed at its cause**, `test/helpers/listen-port.mjs` |
+| a. "refused 300 connection attempts" | **Cause not proven.** Containers a dead run leaves behind are removed by owner label, as leak hygiene, not as its fix (D-035 Q1), `test/helpers/container-owner.mjs` |
+| b. "Unable to capture screenshot" | **Cause not proven.** A failed capture now names what it was capturing (D-035 Q2), `scripts/design/contact-sheet.mjs` |
+| c. The browser container cannot reach the app | **Fixed at its cause**, `test/helpers/listen-port.mjs`, and every server the browser container reaches uses it (D-035 Q3) |
 | d1. `test/e1-11-rendered-page.test.mjs` cancelled in CI | **Already fixed**; no change |
 | d2. `EADDRINUSE` on 127.0.0.1:62001 | **Fixed at its cause**, `test/helpers/landing-render.mjs` |
 
@@ -127,7 +127,11 @@ Recorded by E11.6-11a on 2026-11-20 (founder-authorised 2026-11-19). **A flake i
 - **An orphaned container.** A Node parent that had started an attached `docker run --rm` Playwright container, as every browser suite does, was killed with SIGKILL. The container and its `docker run` client stayed up until removed by hand: the leak is real. A SIGTERM to the client does not stop the container either, because the container's PID 1 ignores it, which is why each suite's `after()` removes its container with `docker rm`. Three new Playwright containers started beside the orphan. Each published port accepted on its first attempt.
 - **A port collision.** Docker Desktop publishes host ports in sequence from a random start: ports from 4062 to 59241 in these runs. 150 tiny containers published in a row all accepted from WSL, and Docker skipped the ports it could not expose (33027, 16473). A fixed host port already held by a WSL listener, or inside a Windows excluded port range, fails `docker run` at once with "ports are not available", never with a silent refusal. An outgoing WSL connection that holds the port number does not block the forward.
 
-**Not proven.** Neither an orphan's presence nor a port collision reproduced the refusal, so **no change was made for it**. Whether to label each browser container with its owning process and remove containers whose owner is gone, which the leak alone would justify but which no evidence yet ties to the refusal, is a founder decision. Until then, after stopping a test run, remove leftover `valstara-*-playwright-*` containers (`docker ps --format '{{.Names}}'`).
+**Not proven.** Neither an orphan's presence nor a port collision reproduced the refusal, so **no change was made for the refusal itself**, and none is claimed.
+
+**Leak hygiene (founder decision D-035 Q1, 2026-11-20).** The leak is proven, so containers a dead run leaves behind are removed, **as hygiene, not as this flake's fix**. Every per-process container a test or script starts with `docker run` (each `valstara-…-<pid>` container, in 35 files, whatever its name) carries owner labels from `containerOwnerArguments()` in `test/helpers/container-owner.mjs`: `com.valstara.test-owner.host`, `.boot-id` (`/proc/sys/kernel/random/boot_id`), `.pid-namespace` and `.pid`. Each of those files calls `removeOrphanedContainers()` before its own `docker run`. It force-removes only a labelled container whose host name is this host's and whose boot ID differs, or whose owning process no longer runs in this PID namespace. It never removes an unlabelled container, another host's or a live owner's. The PID namespace is read because WSL distributions share a host name, a boot ID and one Docker daemon, but not process IDs, so a process ID from another distribution cannot be judged and its container is kept. Removing a dead run's container also ends that run's orphaned `docker run` client. The three Compose-project runners (`infra/compose/assert-production-stack.mjs`, `infra/compose/assert-maintenance-start.mjs`, `scripts/chaos/e11-02-run.mjs`) start no container with `docker run`, and are not labelled. **Test:** `test/container-owner.test.mjs`, against real Docker: a dead owner's container and a previous boot's are removed, and a live owner's, an unlabelled one and another host's are kept.
+
+**Manual cleanup**, for a container started before the labels existed or one the removal step has not yet reached: list the labelled containers with `docker ps --all --filter label=com.valstara.test-owner.pid --format '{{.Names}} {{.Label "com.valstara.test-owner.pid"}}'`, and remove only those whose owning process is gone. Match by label, never by a name pattern: `valstara-*-playwright-*` misses most of them, including the 2026-11-07 `valstara-member-design-*` orphan.
 
 ### b. "Unable to capture screenshot"
 
@@ -135,7 +139,9 @@ Recorded by E11.6-11a on 2026-11-20 (founder-authorised 2026-11-19). **A flake i
 
 **What was tried.** The CI log names neither the state nor the page size being captured, and no artifact holds the page. On 2026-11-20 the file ran three times locally, with the screenshots taken at every state, width and theme each time, and passed 3/3 (about 100 seconds per run). The failure did not reproduce, and no fault that would produce it could be injected without guessing its condition.
 
-**Not proven.** Chromium refuses a capture it cannot composite, but no evidence shows which condition held on the runner. **No change was made**; it is recorded for a founder decision.
+**Not proven.** Chromium refuses a capture it cannot composite, but no evidence shows which condition held on the runner. **No fix is claimed.**
+
+**Context for the next occurrence (founder decision D-035 Q2, 2026-11-20).** `captureContactSheet()` throws a failed `page.screenshot()` again, with a message naming the state, the width, the theme, the full-page flag and the page's scroll height, and with Chromium's own error as `cause`. The height read is limited to 2 seconds, and if it fails or times out the height reads "unknown"; it never replaces the original error. There is no retry and no catch-and-continue, and a capture that succeeds is unchanged. **Test:** "a failed capture names its state, width, theme, full-page flag and page height, with the original error as cause" in `test/layout-checks.test.mjs`, which injects the fault through the entry's `run` hook, including a page that never answers the height read.
 
 ### c. The browser container cannot reach the app
 
@@ -153,14 +159,13 @@ Recorded by E11.6-11a on 2026-11-20 (founder-authorised 2026-11-19). **A flake i
 
 The refusal is the signup-states symptom, and the hang is the `page.goto` timeouts.
 
-**Fix.** On WSL, `reserveListenPort()` reads Windows' excluded port ranges (`netsh interface ipv4 show excludedportrange protocol=tcp`) and its listening ports (`netstat -ano`, IPv4 and IPv6) once per reservation, in about 0.1 s, and never hands out a port Windows holds. If Windows' port use cannot be read on WSL, the reservation fails with that reason rather than guess. Off WSL, as on CI's Linux runners, nothing changes. Every server started through `startAppServer()` or `reserveListenPort()` gets it. **Test:** "a port Windows reserves or listens on is never reserved for a server the browser reaches" in `test/listen-port.test.mjs`; with the check removed, it fails by returning the Windows-held port.
+**Fix.** On WSL, `reserveListenPort()` reads Windows' excluded port ranges (`netsh interface ipv4 show excludedportrange protocol=tcp`) and its listening ports (`netstat -ano`, IPv4 and IPv6) once per reservation, in about 0.1 s, and never hands out a port Windows holds. If Windows' port use cannot be read on WSL, the reservation fails with that reason rather than guess. Off WSL, as on CI's Linux runners, nothing changes. Every server started through `startAppServer()` or `reserveListenPort()` gets it. Since D-035 Q3 (2026-11-20), every server the browser container reaches is started that way, including the five that listened on port 0 and so took a port from the ephemeral range, where Windows' excluded ranges on this host lie: the Astro fixture servers of `test/interface-primitives.test.mjs` and `test/provider-showcase-rendered.test.mjs` (now `startAppServer()`), and the in-process servers of `scripts/design/full-contact-sheet.mjs` (its email previews), `test/price-index/fetcher-browser.test.ts` and `test/price-index/cli-exit.test.ts` (now `reserveListenPort()`). Servers bound only to 127.0.0.1, which the browser container does not reach, are unchanged. **Test:** "a port Windows reserves or listens on is never reserved for a server the browser reaches" in `test/listen-port.test.mjs`; with the check removed, it fails by returning the Windows-held port.
 
 **Not changed, and why.**
 
 - **The null `clientWidth`** was not reproduced separately. It follows a navigation that never loaded a document, so it is expected to stop with the cause above. If it recurs on a port the Windows check cleared, it has a new cause.
 - **The 2026-11-13 failures** happened while another checkout's suite ran on the same host, which is the environmental cause below. They are consistent with this cause too, but not proven to be it.
 - **The relay delay.** WSL relays a new listener to Windows about 0.5–1 s after it starts listening. Measured from a container, a new server was refused in that window. The browser suites start their browser container, which takes over a second, between starting the app and their first navigation, and the suites that start a server after the browser poll it from the browser first (`test/layout-checks.test.mjs`, `test/signup-states-rendered.test.mjs`). No recorded failure traces to the delay, so nothing was built for it.
-- **Fixture servers that listen on port 0** and that the browser reaches (`test/interface-primitives.test.mjs`, `test/provider-showcase-rendered.test.mjs`, `scripts/design/full-contact-sheet.mjs`) take a port from the ephemeral range, where Windows' excluded ranges on this host currently lie. No failure has been recorded for them. They are noted for a founder decision.
 
 ### d. Older flakes, confirmed
 

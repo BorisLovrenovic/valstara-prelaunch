@@ -17,6 +17,10 @@ import {
 } from '../scripts/design/layout-checks.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const execFileAsync = promisify(execFile);
 const browserContainer = `valstara-landing-playwright-${process.pid}`;
@@ -33,10 +37,12 @@ let hostOrigin;
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

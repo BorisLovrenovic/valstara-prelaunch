@@ -16,6 +16,10 @@ import {
 } from './helpers/price-fixture-site.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { createPriceSite } from '../src/server/prices/site.ts';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const executeFile = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -76,10 +80,12 @@ function expectedProtectedFormCount(url) {
 }
 
 async function startBrowser() {
+  await removeOrphanedContainers();
   const child = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

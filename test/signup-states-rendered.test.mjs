@@ -23,6 +23,10 @@ import {
 } from './helpers/motion.mjs';
 import { renderLanding } from './helpers/landing-render.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 // E11.5-11g: the 17 signup form states of StatesDesktop.dc.html (on the
 // 1440 × 900 hero) and StatesPhone.dc.html (on the 390 × 844 hero). Every
@@ -581,10 +585,12 @@ let signupsPausedPage;
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

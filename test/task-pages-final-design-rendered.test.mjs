@@ -29,6 +29,10 @@ import {
 import { entranceEnded, focusMotionIssues } from './helpers/motion.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const executeFile = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -244,10 +248,12 @@ function appEnvironment(databaseUrlForApp, alertPort) {
 }
 
 async function startBrowser() {
+  await removeOrphanedContainers();
   const server = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

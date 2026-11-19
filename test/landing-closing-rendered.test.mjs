@@ -18,6 +18,10 @@ import {
   checkRegionLayout,
   designWidths,
 } from '../scripts/design/layout-checks.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 // E11.5-11f built the guarantee band, "Get to know Valstara", the FAQ and the
 // final call to action from the wireframes; E11.5-11p restyles them to the
@@ -123,10 +127,12 @@ function near(actual, expected, label) {
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

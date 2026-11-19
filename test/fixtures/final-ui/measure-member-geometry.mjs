@@ -28,6 +28,10 @@ import { format, resolveConfig } from 'prettier';
 
 import { publishedPort } from '../../helpers/listen-port.mjs';
 import { canvasSelectors, measureMember } from './member-measure.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from '../../helpers/container-owner.mjs';
 
 const execFileAsync = promisify(execFile);
 const root = fileURLToPath(new URL('../../..', import.meta.url));
@@ -131,10 +135,12 @@ ${main}
 
 async function main() {
   const container = `valstara-canvas-member-${process.pid}`;
+  await removeOrphanedContainers();
   const server = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       container,

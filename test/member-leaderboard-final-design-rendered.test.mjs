@@ -33,6 +33,10 @@ import {
   buildSelectors,
   measureMember,
 } from './fixtures/final-ui/member-measure.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 // E11.5-08 built /me and /leaderboard; E11.5-11r restyles every state to the
 // final-design canvas (Me.dc.html as Me1440, Me768 and Me390 place it, and
@@ -251,10 +255,12 @@ function startApp() {
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

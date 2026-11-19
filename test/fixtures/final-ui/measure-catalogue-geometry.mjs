@@ -23,6 +23,10 @@ import { chromium } from 'playwright';
 import { format, resolveConfig } from 'prettier';
 
 import { publishedPort } from '../../helpers/listen-port.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from '../../helpers/container-owner.mjs';
 
 const execFileAsync = promisify(execFile);
 const root = fileURLToPath(new URL('../../..', import.meta.url));
@@ -158,10 +162,12 @@ function measureCanvas() {
 
 async function main() {
   const container = `valstara-canvas-geometry-${process.pid}`;
+  await removeOrphanedContainers();
   const server = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       container,

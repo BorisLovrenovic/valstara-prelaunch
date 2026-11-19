@@ -20,6 +20,10 @@ import {
   checkRegionLayout,
   designWidths,
 } from '../scripts/design/layout-checks.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 // E11.5-11c: the #join hero from Main.dc.html, Tablet.dc.html, Phone.dc.html
 // and Fold.dc.html. Every number below is the frame's, with a 1px tolerance.
@@ -64,10 +68,12 @@ let signupsPausedPage;
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

@@ -31,7 +31,11 @@ import { seededRandom } from '../../packages/price-index/src/http/random.ts';
 import { readCheckpoint } from '../../packages/price-index/src/http/raw-store.ts';
 import type { FetcherSettings } from '../../packages/price-index/src/schema/price-index-settings.ts';
 import { fakeClock, fetcherSettings } from '../helpers/price-index-fetcher.ts';
-import { publishedPort } from '../helpers/listen-port.mjs';
+import { publishedPort, reserveListenPort } from '../helpers/listen-port.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from '../helpers/container-owner.mjs';
 
 // E11.6-04 against a local fake server, in real headless Chromium (the
 // repository's pinned Playwright container), with an injected clock and a
@@ -135,7 +139,10 @@ async function listen(
     }
     handler(fake, request, response, url);
   });
-  fake.server.listen(0, '0.0.0.0');
+  // On a reserved port, below the ephemeral range and on WSL also free on the
+  // Windows side, because the browser container reaches it through the host
+  // (docs/testing/strategy.md#c-the-browser-container-cannot-reach-the-app).
+  fake.server.listen(await reserveListenPort(), '0.0.0.0');
   await once(fake.server, 'listening');
   const { port } = fake.server.address() as AddressInfo;
   fake.origin = `http://${host}:${port}`;
@@ -314,10 +321,12 @@ before(async () => {
 const { chromium } = require('/work/node_modules/playwright');
 chromium.launchServer({ headless: true, args: JSON.parse(process.argv[1]), host: '0.0.0.0', port: 3000, wsPath: '/fetcher' })
   .then(() => console.log('Listening'));`;
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

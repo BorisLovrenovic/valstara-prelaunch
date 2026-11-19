@@ -12,7 +12,11 @@ import { chromium } from 'playwright';
 
 import { primitivesCopy } from '../src/copy/primitives.ts';
 import { themeToggleCopy } from '../src/copy/theme-toggle.ts';
-import { publishedPort } from './helpers/listen-port.mjs';
+import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const executeFile = promisify(execFile);
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -21,8 +25,6 @@ const fixtureRoot = join(projectRoot, 'test/fixtures/interface-primitives');
 const fixtureConfig =
   '../../../scripts/fixtures/interface-primitives.astro.config.mjs';
 const browserContainer = `valstara-primitives-playwright-${process.pid}`;
-const fixtureServerStartupTimeoutMilliseconds = 30_000;
-const serverOutputLimit = 16_384;
 const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
 
@@ -32,8 +34,6 @@ let fixtureOrigin;
 let browserServer;
 let browserServerError;
 let server;
-let serverError;
-let serverOutput = '';
 
 function relativeLuminance(color) {
   const channels = color
@@ -89,10 +89,12 @@ async function componentSources() {
 }
 
 async function startBrowserServer() {
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,
@@ -152,46 +154,6 @@ async function startBrowserServer() {
   );
 }
 
-async function waitForFixtureServer() {
-  const deadline =
-    globalThis.performance.now() + fixtureServerStartupTimeoutMilliseconds;
-
-  while (globalThis.performance.now() < deadline) {
-    if (serverError !== undefined) {
-      throw new Error(
-        `Could not start the interface primitive fixture server: ${serverError.message}`,
-        { cause: serverError },
-      );
-    }
-    if (server.exitCode !== null) {
-      throw new Error(
-        `Interface primitive fixture server exited before startup.\n${serverOutput || '(no server output)'}`,
-      );
-    }
-    const port = /local: http:\/\/localhost:(\d+)/u.exec(serverOutput)?.[1];
-    if (port !== undefined) {
-      try {
-        const response = await globalThis.fetch(`http://127.0.0.1:${port}`, {
-          signal: globalThis.AbortSignal.timeout(1_000),
-        });
-        if (response.ok) {
-          browserOrigin = `http://host.docker.internal:${port}`;
-          fixtureOrigin = `http://127.0.0.1:${port}`;
-          return;
-        }
-      } catch {
-        // The fixture server may still be finishing startup.
-      }
-    }
-    await new Promise((resolvePromise) =>
-      globalThis.setTimeout(resolvePromise, 25),
-    );
-  }
-  throw new Error(
-    `Interface primitive fixture server did not start within 30 seconds.\n${serverOutput || '(no server output)'}`,
-  );
-}
-
 before(async () => {
   await executeFile(
     process.execPath,
@@ -206,25 +168,19 @@ before(async () => {
     { cwd: projectRoot },
   );
 
-  server = spawn(
-    process.execPath,
-    [join(projectRoot, 'scripts/fixtures/run-interface-primitives-server.mjs')],
-    {
-      env: { ...process.env, HOST: '0.0.0.0', PORT: '0' },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    },
-  );
-  server.stdout.setEncoding('utf8');
-  server.stderr.setEncoding('utf8');
-  const captureServerOutput = (chunk) => {
-    serverOutput = `${serverOutput}${chunk}`.slice(-serverOutputLimit);
-  };
-  server.stdout.on('data', captureServerOutput);
-  server.stderr.on('data', captureServerOutput);
-  server.once('error', (error) => {
-    serverError = error;
+  // On a reserved port, below the ephemeral range and on WSL also free on the
+  // Windows side, because the browser container reaches it through
+  // host.docker.internal (docs/testing/strategy.md#c-the-browser-container-cannot-reach-the-app).
+  server = await startAppServer({
+    label: 'Interface primitive fixture',
+    entry: join(
+      projectRoot,
+      'scripts/fixtures/run-interface-primitives-server.mjs',
+    ),
+    env: () => ({ HOST: '0.0.0.0' }),
   });
-  await waitForFixtureServer();
+  browserOrigin = `http://host.docker.internal:${server.port}`;
+  fixtureOrigin = `http://127.0.0.1:${server.port}`;
   const browserServerEndpoint = await startBrowserServer();
   browser = await chromium.connect(browserServerEndpoint);
 });
@@ -245,11 +201,7 @@ after(async () => {
     browserServer.kill('SIGTERM');
     await browserServerExited;
   }
-  if (server !== undefined && server.exitCode === null) {
-    const serverExited = once(server, 'exit');
-    server.kill('SIGTERM');
-    await serverExited;
-  }
+  await server?.stop();
 });
 
 test('all primitives and the icon registry are zero-JavaScript Astro components', async () => {

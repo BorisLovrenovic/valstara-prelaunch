@@ -26,6 +26,10 @@ import {
 } from '../scripts/design/contact-sheet.mjs';
 import { publishedPort, reserveListenPort } from './helpers/listen-port.mjs';
 import { sourcePagePaths } from './helpers/page-inventory.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const execFileAsync = promisify(execFile);
 const container = `valstara-design-layout-${process.pid}`;
@@ -37,10 +41,12 @@ let browser;
 let browserEndpoint;
 
 before(async () => {
+  await removeOrphanedContainers();
   server = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       container,
@@ -549,6 +555,96 @@ test('the contact sheet screenshots every width and theme at rest, in a reduced-
       const png = await readFile(join(output, capture.filename));
       assert.equal(png.readUInt32BE(16), capture.width, capture.filename);
     }
+  } finally {
+    fixture.close();
+    await rm(output, { force: true, recursive: true });
+  }
+});
+
+test('a failed capture names its state, width, theme, full-page flag and page height, with the original error as cause', async () => {
+  // E11.6-11a (founder decision D-035 Q2, 2026-11-20). The fault is injected
+  // through the `run` hook, which receives the page just before its capture.
+  const pageHeight = 2345;
+  const fixture = createServer((request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    response.end(
+      `<!doctype html><html lang="en"><title>Tall</title><body style="margin:0"><main class="container" style="height:${pageHeight}px"></main></body></html>`,
+    );
+  });
+  fixture.listen(await reserveListenPort(), '0.0.0.0');
+  await once(fixture, 'listening');
+  const origin = `http://host.docker.internal:${fixture.address().port}`;
+  // On a WSL host a new listener is reachable from the container only once
+  // the host's port forwarding has picked it up, so wait for it, bounded.
+  const probe = await browser.newPage();
+  try {
+    for (let attempt = 0; ; attempt += 1) {
+      const reached = await probe
+        .goto(origin)
+        .then((response) => response?.ok())
+        .catch(() => false);
+      if (reached) break;
+      assert.ok(attempt < 120, 'the fixture server is reachable');
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 250));
+    }
+  } finally {
+    await probe.close();
+  }
+  const output = await mkdtemp(join(tmpdir(), 'valstara-contact-sheet-'));
+  const [width] = designWidths;
+  const [theme] = designThemes;
+  const capture = (state, fault, fullPage) =>
+    captureContactSheet({
+      origin,
+      entries: [
+        {
+          route: '/',
+          state,
+          widths: [width],
+          ...(fullPage === undefined ? {} : { fullPage }),
+          run: (page) => {
+            page.screenshot = async () => fault(page);
+          },
+        },
+      ],
+      output,
+      browserEndpoint,
+    });
+  try {
+    const unableToCapture = new Error(
+      'page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot',
+    );
+    const failure = await capture('capture-fault', () => {
+      throw unableToCapture;
+    }).then(
+      () => assert.fail('the capture failure is thrown'),
+      (error) => error,
+    );
+    assert.equal(failure.cause, unableToCapture);
+    assert.equal(
+      failure.message,
+      `Screenshot of capture-fault at ${width}px in the ${theme} theme failed (fullPage: true, page scroll height: ${pageHeight}px): ${unableToCapture.message}`,
+    );
+
+    // A page that cannot answer the height read is reported as "unknown",
+    // within the read's time limit, and the original error is still thrown.
+    const stillUnable = new Error('Unable to capture screenshot');
+    const unanswered = await capture(
+      'capture-fault-unanswered',
+      (page) => {
+        page.evaluate = () => new Promise(() => {});
+        throw stillUnable;
+      },
+      false,
+    ).then(
+      () => assert.fail('the capture failure is thrown'),
+      (error) => error,
+    );
+    assert.equal(unanswered.cause, stillUnable);
+    assert.equal(
+      unanswered.message,
+      `Screenshot of capture-fault-unanswered at ${width}px in the ${theme} theme failed (fullPage: false, page scroll height: unknown): ${stillUnable.message}`,
+    );
   } finally {
     fixture.close();
     await rm(output, { force: true, recursive: true });

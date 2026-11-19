@@ -12,6 +12,10 @@ import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { scrollSettled } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { atRest } from '../scripts/design/layout-checks.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const execFileAsync = promisify(execFile);
 // No fixed ports: the app server gets a reserved port below the kernel's
@@ -30,10 +34,12 @@ let browserServerEndpoint;
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

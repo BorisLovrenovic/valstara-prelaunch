@@ -11,6 +11,10 @@ import { designWidths } from '../scripts/design/layout-checks.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { focusMotionIssues } from './helpers/motion.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 // E11.5-11i: the motion system of design rule 12, proven on a fixture page
 // built from the shipping tokens.css and motion.css (no production page
@@ -91,10 +95,12 @@ before(async () => {
   });
   browserOrigin = `http://host.docker.internal:${app.port}`;
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

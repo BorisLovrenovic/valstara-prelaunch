@@ -23,6 +23,10 @@ import {
   transitionsEnded,
 } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 // E11.5-11h: the mobile sticky signup bar of Sticky.dc.html (seven frames)
 // and its placement in Phone.dc.html, at 390 × 844 in both themes. The boxes
@@ -120,10 +124,12 @@ let signupsPausedPage;
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

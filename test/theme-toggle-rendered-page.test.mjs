@@ -7,6 +7,10 @@ import test, { after, before } from 'node:test';
 
 import { chromium } from 'playwright';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const execFileAsync = promisify(execFile);
 // No fixed ports: the app server gets a reserved port below the kernel's
@@ -30,10 +34,12 @@ let browserServerEndpoint;
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,
