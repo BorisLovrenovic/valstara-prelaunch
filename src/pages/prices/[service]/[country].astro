@@ -2,6 +2,7 @@
 import Button from '../../../components/button.astro';
 import Container from '../../../components/container.astro';
 import Icon from '../../../components/icon.astro';
+import TextLink from '../../../components/text-link.astro';
 import { pricesCopy } from '../../../copy/prices.ts';
 import SignupForm from '../../../islands/SignupForm.astro';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
@@ -153,7 +154,12 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
                   </li>
                 ) : (
                   <li>
-                    <a href={new URL(crumb.url).pathname}>{crumb.name}</a>
+                    <TextLink
+                      href={new URL(crumb.url).pathname}
+                      class="price-link"
+                    >
+                      {crumb.name}
+                    </TextLink>
                   </li>
                 ),
               )}
@@ -210,9 +216,13 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
             </p>
           )}
           <p class="price-page__verified">
-            <a href={view.methodologyLink.path} data-methodology-link>
+            <TextLink
+              href={view.methodologyLink.path}
+              class="price-link"
+              data-methodology-link
+            >
               {view.methodologyLink.label}
-            </a>
+            </TextLink>
           </p>
           {view.kind === 'generated' && view.history.length > 0 && (
             <section
@@ -398,9 +408,13 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
               <ul class="price-related">
                 {view.related.map((link) => (
                   <li>
-                    <a href={link.path} data-related-service={link.serviceId}>
+                    <TextLink
+                      href={link.path}
+                      class="price-link"
+                      data-related-service={link.serviceId}
+                    >
                       {link.label}
-                    </a>
+                    </TextLink>
                   </li>
                 ))}
               </ul>
@@ -433,9 +447,13 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
               <ul class="price-related">
                 {view.hubLinks.map((link) => (
                   <li>
-                    <a href={link.path} data-hub-link={link.path}>
+                    <TextLink
+                      href={link.path}
+                      class="price-link"
+                      data-hub-link={link.path}
+                    >
                       {link.label}
-                    </a>
+                    </TextLink>
                   </li>
                 ))}
               </ul>
@@ -493,16 +511,11 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
     color: var(--ink-300);
   }
 
-  .price-breadcrumbs a {
-    color: inherit;
-    text-underline-offset: var(--underline-offset);
-  }
-
   .price-page h1 {
     margin: 0;
     max-inline-size: var(--measure);
     font-size: var(--step-4);
-    line-height: var(--leading-1);
+    line-height: var(--leading-4);
     letter-spacing: var(--tracking-tight);
   }
 
@@ -523,13 +536,23 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
     text-align: start;
   }
 
+  /* D-041 (finding V2): below 48rem a cell's inline padding is
+     --space-0-5, and none at the table's outer edges, so every table fits
+     a 320px screen with its prices whole. */
   .price-table th,
   .price-table td {
-    padding: var(--space-1-5) var(--space-1);
+    padding: var(--space-1-5) var(--space-0-5);
     border-block-end: var(--border-thin) solid var(--line);
     text-align: start;
     vertical-align: top;
-    overflow-wrap: anywhere;
+  }
+
+  .price-table :is(th, td):first-child {
+    padding-inline-start: var(--space-0);
+  }
+
+  .price-table :is(th, td):last-child {
+    padding-inline-end: var(--space-0);
   }
 
   .price-table thead th {
@@ -547,9 +570,25 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
     font-family: var(--font-mono);
   }
 
+  /* D-040 item 5 (finding V2): a price never leaves its currency, and a
+     name wraps only between words. */
   .price-table__amount {
     display: block;
     font-weight: var(--weight-semibold);
+    white-space: nowrap;
+  }
+
+  /* D-041: the Valstara comparison's five columns cannot fit a narrow
+     screen whole, so its words and amounts wrap anywhere, as before D-040.
+     It has no narrow-screen layout: prices.valstara_comparison stays off
+     until one is built in its own ticket. */
+  [data-valstara-comparison] .price-table th,
+  [data-valstara-comparison] .price-table td {
+    overflow-wrap: anywhere;
+  }
+
+  [data-valstara-comparison] .price-table__amount {
+    white-space: normal;
   }
 
   .price-table__period {
@@ -561,10 +600,6 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
     margin: 0;
     max-inline-size: var(--measure);
     color: var(--ink-600);
-  }
-
-  .price-page__verified a {
-    text-underline-offset: var(--underline-offset);
   }
 
   .price-page__unavailable {
@@ -609,6 +644,16 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
     list-style: none;
   }
 
+  /* D-040 item 3 (finding L2): every price link is the site's text link
+     (text-link.astro). Below 48rem it is a --tap-min target, its 12px
+     vertical padding on a box at least --tap-min each way. */
+  .price-page :global(.price-link) {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+    min-inline-size: var(--tap-min);
+  }
+
   .price-history li {
     display: grid;
     gap: var(--space-0-5);
@@ -621,10 +666,6 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
   .price-comparison {
     display: grid;
     gap: var(--space-1-5);
-  }
-
-  .price-related a {
-    text-underline-offset: var(--underline-offset);
   }
 
   .price-faq {
@@ -673,12 +714,20 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
 
   @media (min-width: 48rem) {
     .price-table th,
-    .price-table td {
+    .price-table td,
+    .price-table :is(th, td):is(:first-child, :last-child) {
       padding-inline: var(--space-2);
+    }
+
+    .price-page :global(.price-link) {
+      display: inline;
+      min-block-size: auto;
+      min-inline-size: auto;
     }
 
     .price-page h1 {
       font-size: var(--step-5);
+      line-height: var(--leading-5);
     }
   }
 </style>

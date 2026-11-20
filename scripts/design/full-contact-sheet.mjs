@@ -1502,7 +1502,7 @@ function startApp(fixture, alertPort) {
   });
 }
 
-async function startBrowserServer(container) {
+export async function startBrowserServer(container) {
   await removeOrphanedContainers();
   const child = spawn(
     'docker',
@@ -1565,7 +1565,7 @@ async function startBrowserServer(container) {
 
 // The browser runs in a container, which reaches a server on the host only
 // after a short delay: wait, bounded, until each origin answers there.
-async function waitForBrowserReach(endpoint, url) {
+export async function waitForBrowserReach(endpoint, url) {
   const browser = await chromium.connect(endpoint);
   try {
     const context = await browser.newContext();

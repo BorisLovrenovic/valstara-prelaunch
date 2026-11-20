@@ -1,5 +1,6 @@
 ---
 import Container from '../components/container.astro';
+import TextLink from '../components/text-link.astro';
 import { pricesCopy } from '../copy/prices.ts';
 import type {
   MonthlyReportPage,
@@ -36,7 +37,9 @@ const monthly = pricesCopy.monthly;
               </li>
             ) : (
               <li>
-                <a href={new URL(crumb.url).pathname}>{crumb.name}</a>
+                <TextLink href={new URL(crumb.url).pathname} class="price-link">
+                  {crumb.name}
+                </TextLink>
               </li>
             ),
           )
@@ -70,18 +73,22 @@ const monthly = pricesCopy.monthly;
               <ul class="price-report__links">
                 {view.reports.map((link) => (
                   <li>
-                    <a href={link.path} data-report-link={link.path}>
+                    <TextLink
+                      href={link.path}
+                      class="price-link"
+                      data-report-link={link.path}
+                    >
                       {link.label}
-                    </a>
+                    </TextLink>
                   </li>
                 ))}
               </ul>
             )}
           </section>
           <p class="price-report__note">
-            <a href="/prices" data-prices-link>
+            <TextLink href="/prices" class="price-link" data-prices-link>
               {pricesCopy.priceIndex.pricesLink}
-            </a>
+            </TextLink>
           </p>
         </>
       ) : (
@@ -116,15 +123,19 @@ const monthly = pricesCopy.monthly;
                       data-change-market={row.market}
                     >
                       <th scope="row">{row.planLabel}</th>
-                      <td>
+                      <td class="price-table__link-cell">
                         {row.marketPart.href === null ? (
                           <span data-mention-unlinked>
                             {row.marketPart.text}
                           </span>
                         ) : (
-                          <a href={row.marketPart.href} data-mention-link>
+                          <TextLink
+                            href={row.marketPart.href}
+                            class="price-table__link"
+                            data-mention-link
+                          >
                             {row.marketPart.text}
-                          </a>
+                          </TextLink>
                         )}
                       </td>
                       <td>
@@ -175,9 +186,13 @@ const monthly = pricesCopy.monthly;
                       part.href === null ? (
                         part.text
                       ) : (
-                        <a href={part.href} data-mention-link>
+                        <TextLink
+                          href={part.href}
+                          class="price-link"
+                          data-mention-link
+                        >
                           {part.text}
-                        </a>
+                        </TextLink>
                       ),
                     )}
                   </li>
@@ -203,9 +218,13 @@ const monthly = pricesCopy.monthly;
                         part.href === null ? (
                           part.text
                         ) : (
-                          <a href={part.href} data-mention-link>
+                          <TextLink
+                            href={part.href}
+                            class="price-link"
+                            data-mention-link
+                          >
                             {part.text}
-                          </a>
+                          </TextLink>
                         ),
                       )}
                     </li>
@@ -218,9 +237,13 @@ const monthly = pricesCopy.monthly;
             )}
           </section>
           <p class="price-report__note">
-            <a href="/price-index" data-methodology-link>
+            <TextLink
+              href="/price-index"
+              class="price-link"
+              data-methodology-link
+            >
               {pricesCopy.page.methodologyLink}
-            </a>
+            </TextLink>
           </p>
         </>
       )
@@ -252,17 +275,12 @@ const monthly = pricesCopy.monthly;
     color: var(--ink-300);
   }
 
-  .price-breadcrumbs a {
-    color: inherit;
-    text-underline-offset: var(--underline-offset);
-  }
-
   .price-report h1,
   .price-report__prose :global(h1) {
     margin: 0;
     max-inline-size: var(--measure);
     font-size: var(--step-4);
-    line-height: var(--leading-1);
+    line-height: var(--leading-4);
     letter-spacing: var(--tracking-tight);
   }
 
@@ -312,8 +330,31 @@ const monthly = pricesCopy.monthly;
     list-style: none;
   }
 
-  .price-report a {
-    text-underline-offset: var(--underline-offset);
+  /* D-040 item 3 (finding L2): every price link is the site's text link
+     (text-link.astro). Below 48rem it is a --tap-min target, its 12px
+     vertical padding on a box at least --tap-min each way. A table link
+     fills its cell, so the cell is the target. */
+  .price-report :global(.price-link) {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+    min-inline-size: var(--tap-min);
+  }
+
+  .price-table__link-cell {
+    position: relative;
+  }
+
+  .price-table :global(.price-table__link) {
+    display: block;
+    margin-block: calc(-1 * var(--space-1-5));
+    min-block-size: var(--tap-min);
+  }
+
+  .price-table :global(.price-table__link)::after {
+    content: '';
+    position: absolute;
+    inset: var(--space-0);
   }
 
   .price-table {
@@ -328,13 +369,23 @@ const monthly = pricesCopy.monthly;
     text-align: start;
   }
 
+  /* D-041 (finding V2): below 48rem a cell's inline padding is
+     --space-0-5, and none at the table's outer edges, so every table fits
+     a 320px screen with its prices whole. */
   .price-table th,
   .price-table td {
-    padding: var(--space-1-5) var(--space-1);
+    padding: var(--space-1-5) var(--space-0-5);
     border-block-end: var(--border-thin) solid var(--line);
     text-align: start;
     vertical-align: top;
-    overflow-wrap: anywhere;
+  }
+
+  .price-table :is(th, td):first-child {
+    padding-inline-start: var(--space-0);
+  }
+
+  .price-table :is(th, td):last-child {
+    padding-inline-end: var(--space-0);
   }
 
   .price-table thead th {
@@ -347,21 +398,37 @@ const monthly = pricesCopy.monthly;
   }
 
   /* Every published number is set in the monospace token. */
+  /* D-040 item 5 (finding V2): a price never leaves its currency, and a
+     name wraps only between words. */
   .price-table__amount {
     display: block;
     font-family: var(--font-mono);
     font-weight: var(--weight-semibold);
+    white-space: nowrap;
   }
 
   @media (min-width: 48rem) {
     .price-table th,
-    .price-table td {
+    .price-table td,
+    .price-table :is(th, td):is(:first-child, :last-child) {
       padding-inline: var(--space-2);
+    }
+
+    .price-report :global(.price-link) {
+      display: inline;
+      min-block-size: auto;
+      min-inline-size: auto;
+    }
+
+    .price-table :global(.price-table__link) {
+      margin-block: var(--space-0);
+      min-block-size: auto;
     }
 
     .price-report h1,
     .price-report__prose :global(h1) {
       font-size: var(--step-5);
+      line-height: var(--leading-5);
     }
   }
 </style>

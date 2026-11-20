@@ -37,3 +37,15 @@ The revised rules pages load the same first-party layout assets as before. The a
 ## Re-run on the final design (E11.5-12, 2026-11-12)
 
 Recorded in [`e11-5-design-qa.md`](e11-5-design-qa.md#e11-04-claims-on-the-new-copy). `test/e11-04-claims-audit.test.mjs` now also compares every showcase entry with its P8 confirmation and the rendered catalogue with the P8 list, and every rendered reward figure with the referral configuration and its documented source (ADR-025 tiers, the 90-day held window). All checks pass; no finding.
+
+## The price routes (E11.6-16, 2026-11-20)
+
+`test/e11-6-16-price-routes.test.mjs` checks the copy of every rendered price route of the committed data:
+
+- no forbidden or placeholder copy;
+- no credit of the data source anywhere in the HTML;
+- the independence statement on every route;
+- provider and plan names as the catalogue writes them;
+- no Valstara price with its flag off.
+
+Its number-trace sweep holds every figure to the published record, ranking, change or report entry it came from. The monthly report's spread ratio, the one figure computed from the source's USD figures, was finding P1. The report page no longer shows it (D-040), and the sweep asserts that no report page contains it, as recorded in [`e11-6-price-pages-audit.md`](e11-6-price-pages-audit.md#9-findings).

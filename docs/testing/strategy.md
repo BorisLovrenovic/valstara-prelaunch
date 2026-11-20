@@ -31,6 +31,24 @@ design and measures the landing page's performance
 index and the founder's sign-off are recorded in
 [`e11-5-design-qa.md`](e11-5-design-qa.md).
 
+E11.6-16 audits every price route of the committed price data, as the
+repository's own build serves it, not a fixture. It covers the internal-link
+graph, structured data, copy and claims, and a number-trace sweep that holds
+every price to its published record (`test/e11-6-16-price-routes.test.mjs`).
+It runs the E11-05 privacy crawl over every price route
+(`test/e11-05-page-inventory.test.mjs`), and axe at every design width in
+both themes plus the lab performance run (LCP < 2.5 s, CLS < 0.1, INP
+< 200 ms) on each page kind (`test/e11-6-16-price-browser.test.mjs`). The
+same file holds every price link to the site's 44px text link below 48rem,
+and every price table at 320 and 390px to whole prices, unbroken words and
+no overflow (D-040). The Valstara comparison, served from the price fixture
+site with `prices.valstara_comparison` on, is held to fitting only: it has no
+narrow-screen layout, and its words and prices may break (D-041). Each
+check fails on a planted defect. `test/helpers/price-audit.mjs` lists the
+routes the data makes, so a monthly data pull request re-audits its own
+pages. Its evidence, the price contact sheet and the founder's sign-off are
+recorded in [`e11-6-price-pages-audit.md`](e11-6-price-pages-audit.md).
+
 ## Coverage bars
 
 ≥80% changed code. **≥90% in `subscriber`, `verification`, `referral`, `giveaway`, `email`** — the five modules where a defect is either unrecoverable or discredits the campaign.

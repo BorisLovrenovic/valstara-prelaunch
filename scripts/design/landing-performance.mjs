@@ -192,3 +192,143 @@ export async function measureLandingPerformance(
     await context.close();
   }
 }
+
+// E11.6-16: the price pages' performance targets, in the same harness: the
+// same 390px mobile context with the CPU slowed four times, for any path.
+// Interaction to next paint is read from the browser's Event Timing entries
+// for the interactions the caller performs after the page has settled: the
+// worst interaction's duration, which is INP when a page has fewer than 50
+// interactions. Event Timing reports only interactions of 16ms or longer, so
+// a page whose every interaction is faster has no entry, and its INP is
+// recorded as below 16ms; `performance.interactionCount` proves the
+// interactions happened.
+
+export const cumulativeLayoutShiftBudget = 0.1;
+export const interactionToNextPaintBudgetMilliseconds = 200;
+export const eventTimingThresholdMilliseconds = 16;
+
+function observeInteractions(threshold) {
+  globalThis.__interactionAudit = { events: [] };
+  new globalThis.PerformanceObserver((list) => {
+    for (const entry of list.getEntries())
+      if (entry.interactionId > 0)
+        globalThis.__interactionAudit.events.push({
+          name: entry.name,
+          interactionId: entry.interactionId,
+          duration: entry.duration,
+        });
+  }).observe({ type: 'event', durationThreshold: threshold, buffered: true });
+}
+
+/**
+ * Measures the page at `path` of `origin` in a fresh 390px context of
+ * `browser` (Chromium), with the CPU throttled before the page is requested:
+ * layout shift and the largest contentful paint at load, then each of
+ * `interactions` (functions of the page, run in order once it has settled)
+ * and the interaction to next paint they produce, and the layout shift
+ * after them. `prepareContext` may route requests first.
+ */
+export async function measurePagePerformance(
+  browser,
+  origin,
+  path,
+  { prepareContext, interactions = [] } = {},
+) {
+  const context = await browser.newContext({
+    viewport: performanceViewport,
+    deviceScaleFactor: 3,
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    await prepareContext?.(context);
+    await context.addInitScript(observePaints);
+    await context.addInitScript(
+      observeInteractions,
+      eventTimingThresholdMilliseconds,
+    );
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', {
+      rate: cpuThrottlingRate,
+    });
+    const origins = new Set([new URL(origin).origin]);
+    const scripts = [];
+    const pending = [];
+    page.on('response', (response) => {
+      const url = new URL(response.url());
+      if (
+        origins.has(url.origin) &&
+        response.request().resourceType() === 'script'
+      )
+        pending.push(
+          response
+            .body()
+            .then((body) =>
+              scripts.push({ path: url.pathname, bytes: body.length }),
+            ),
+        );
+    });
+    const response = await page.goto(new URL(path, origin).href, {
+      waitUntil: 'load',
+    });
+    if (!response?.ok())
+      throw new Error(`${path} answered ${response?.status()}.`);
+    // As for the landing page: let the paint entries settle before reading
+    // them, and read them before any input, which ends LCP.
+    await page.waitForTimeout(3_000);
+    await frames(page, 2);
+    const atLoad = await page.evaluate(() => ({
+      layoutShift: globalThis.__performanceAudit.shifts.reduce(
+        (total, value) => total + value,
+        0,
+      ),
+      paints: globalThis.__performanceAudit.paints,
+    }));
+    for (const interact of interactions) {
+      await interact(page);
+      await frames(page, 2);
+    }
+    // An Event Timing entry is dispatched after the next paint; give the
+    // last interaction's entry time to arrive.
+    await page.waitForTimeout(1_000);
+    await frames(page, 2);
+    const afterInteraction = await page.evaluate(() => ({
+      layoutShift: globalThis.__performanceAudit.shifts.reduce(
+        (total, value) => total + value,
+        0,
+      ),
+      events: globalThis.__interactionAudit.events,
+      interactionCount: globalThis.performance.interactionCount,
+    }));
+    await page.waitForLoadState('networkidle');
+    await Promise.all(pending);
+    const worst = new Map();
+    for (const event of afterInteraction.events)
+      worst.set(
+        event.interactionId,
+        Math.max(worst.get(event.interactionId) ?? 0, event.duration),
+      );
+    const largest = atLoad.paints.at(-1) ?? null;
+    const uniqueScripts = [
+      ...new Map(scripts.map((script) => [script.path, script])).values(),
+    ].sort((a, b) => a.path.localeCompare(b.path));
+    return {
+      path,
+      cumulativeLayoutShift: atLoad.layoutShift,
+      cumulativeLayoutShiftAfterInteraction: afterInteraction.layoutShift,
+      largestContentfulPaintMilliseconds: largest?.startTime ?? null,
+      largestContentfulPaintElement: largest,
+      interactionCount: afterInteraction.interactionCount,
+      // Null: every interaction was under the Event Timing threshold.
+      interactionToNextPaintMilliseconds:
+        worst.size === 0 ? null : Math.max(...worst.values()),
+      firstPartyJavaScriptBytes: uniqueScripts.reduce(
+        (total, { bytes }) => total + bytes,
+        0,
+      ),
+    };
+  } finally {
+    await context.close();
+  }
+}

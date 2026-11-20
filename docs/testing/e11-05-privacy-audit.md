@@ -69,3 +69,13 @@ The founder authorised the own-bearer wording correction on 2026-10-18. It chang
 ## Re-run on the final design (E11.5-12, 2026-11-12)
 
 Recorded in [`e11-5-design-qa.md`](e11-5-design-qa.md#e11-05-page-inventory-and-rendered-privacy-probe). The rendered-page inventory is now derived in `test/helpers/page-inventory.mjs`, which the layout-check suite also reads, to assert that the enforced layout-check set equals it. On `/`, the probe now brings every provider logo into view and requires the logo requests to be exactly the showcase's 34 files, all same-origin. The crawl, including 404 and 500, passes with the allowlist still exactly Turnstile.
+
+## The price routes over the committed data (E11.6-16, 2026-11-20)
+
+From the founder's first monthly run (E11.6-15) the repository's data generates the price pages. "E11.6-16 crawls every price route of the committed data" in `test/e11-05-page-inventory.test.mjs` runs the same `crawl()` over all 158 price routes of the repository's own build (`test/helpers/price-audit.mjs` lists them), eight at a time:
+
+- each of the 128 service × market pages, with its signup form's Turnstile token awaited;
+- every hub, `/prices` and `/price-index`;
+- the monthly report.
+
+No cookie, no storage beyond the theme preference and Turnstile's own key, and no host but Turnstile's, which loads on exactly the pages with the form. A caller may now tell `crawl()` that a path the fixture crawl expects to answer 404 is a real page here (`/price-index/2026-11`). The allowlist is unchanged. Recorded in [`e11-6-price-pages-audit.md`](e11-6-price-pages-audit.md#4-the-privacy-gates-over-a-crawl-of-every-price-route).

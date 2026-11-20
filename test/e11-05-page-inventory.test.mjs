@@ -16,6 +16,7 @@ import {
 } from './helpers/price-fixture-site.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { createPriceSite } from '../src/server/prices/site.ts';
+import { committedPriceData, inPool } from './helpers/price-audit.mjs';
 import {
   containerOwnerArguments,
   removeOrphanedContainers,
@@ -329,7 +330,7 @@ async function crawl(
   origin,
   path,
   storageMutation,
-  { serverError = false } = {},
+  { serverError = false, notFound = notFoundPaths.has(path) } = {},
 ) {
   const pageUrl = new URL(`http://valstara.test${path}`);
   const expectedForms = serverError ? 0 : expectedProtectedFormCount(pageUrl);
@@ -606,7 +607,7 @@ async function crawl(
     if (serverError) {
       assert.equal(response.status(), 500, `${path} induced render error`);
       assert.match(html, /data-task-state="server-error"/u);
-    } else if (notFoundPaths.has(path)) {
+    } else if (notFound) {
       assert.equal(response.status(), 404, `${path} unknown route`);
       assert.match(html, /data-task-state="not-found"/u);
     } else {
@@ -941,6 +942,66 @@ test(
           },
           fixtureRoot,
         );
+      });
+    } finally {
+      pricePagePaths.clear();
+      await remote.browser.close();
+      await executeFile('docker', ['rm', '--force', browserContainer]).catch(
+        () => {},
+      );
+      if (remote.child.exitCode === null) {
+        const exited = once(remote.child, 'exit');
+        remote.child.kill();
+        await exited;
+      }
+    }
+  },
+);
+
+test(
+  'E11.6-16 crawls every price route of the committed data: no cookie, no storage beyond the theme and Turnstile, no third party beyond Turnstile',
+  { timeout: 900_000 },
+  async () => {
+    // The founder's first monthly run (E11.6-15) is committed, so the price
+    // routes are crawled as the repository's own build serves them, every
+    // one: each service × market page (a protected page whose signup form
+    // must get its Turnstile token), each hub, `/prices`, `/price-index` and
+    // each monthly report. The same crawl as every route above.
+    await ensureAppBuild();
+    const { routes } = await committedPriceData();
+    assert.ok(routes.length > 0, `${routes.length} price routes`);
+    for (const route of routes)
+      if (route.kind === 'service-market' || route.kind === 'unavailable')
+        pricePagePaths.add(route.path);
+    const remote = await startBrowser();
+    try {
+      await withDatabase(async (_database, databaseUrl) => {
+        await withServer(databaseUrl, async (origin) => {
+          // Eight at a time: each protected page waits on Turnstile, and the
+          // crawl's checks are per page, so order does not matter.
+          const observed = await inPool(routes, 8, (route) =>
+            crawl(remote.browser, origin, route.path, undefined, {
+              notFound: false,
+            }),
+          );
+          assert.equal(observed.length, routes.length);
+          for (const [index, result] of observed.entries()) {
+            assert.equal(result.status, 200, `${routes[index].path} answers`);
+            assert.ok(
+              result.offOrigin.every(
+                (url) => new URL(url).hostname === turnstileHost,
+              ),
+              `${routes[index].path} made a third-party request beyond Turnstile`,
+            );
+          }
+          // A protected page loads Turnstile; no hub or report does.
+          for (const [index, result] of observed.entries())
+            assert.equal(
+              result.offOrigin.length > 0,
+              pricePagePaths.has(routes[index].path),
+              `${routes[index].path} loads Turnstile exactly when it has the form`,
+            );
+        });
       });
     } finally {
       pricePagePaths.clear();
