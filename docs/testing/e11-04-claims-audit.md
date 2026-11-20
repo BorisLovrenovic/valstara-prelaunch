@@ -48,4 +48,4 @@ Recorded in [`e11-5-design-qa.md`](e11-5-design-qa.md#e11-04-claims-on-the-new-c
 - provider and plan names as the catalogue writes them;
 - no Valstara price with its flag off.
 
-Its number-trace sweep holds every figure to the published record, ranking, change or report entry it came from. The monthly report's spread ratio, the one figure computed from the source's USD figures, is finding P1, recorded in [`e11-6-price-pages-audit.md`](e11-6-price-pages-audit.md#9-findings).
+Its number-trace sweep holds every figure to the published record, ranking, change or report entry it came from. The monthly report's spread ratio, the one figure computed from the source's USD figures, was finding P1. The report page no longer shows it (D-040), and the sweep asserts that no report page contains it, as recorded in [`e11-6-price-pages-audit.md`](e11-6-price-pages-audit.md#9-findings).

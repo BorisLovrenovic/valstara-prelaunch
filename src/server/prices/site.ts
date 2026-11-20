@@ -1613,9 +1613,7 @@ function monthlyReportPage(
       text(
         `${copy.extremes.price(
           pricesCopy.page.price(least.price_local, least.currency),
-        )}${copy.extremes.end}${
-          plan.spread_ratio === null ? '' : copy.spread(plan.spread_ratio)
-        }`,
+        )}${copy.extremes.end}`,
       ),
     ];
   });

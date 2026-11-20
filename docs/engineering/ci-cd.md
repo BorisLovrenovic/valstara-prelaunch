@@ -91,7 +91,7 @@ A `data/price-index-YYYY-MM` pull request (E11.6-15, `docs/price-index-runbook.m
 - **Every page is audited (E11.6-16).** The price-page audit reads the routes from the committed data (`test/helpers/price-audit.mjs`), so the full suite audits the new month's pages:
   - the link graph, structured data, copy and claims, and the number-trace sweep (`test/e11-6-16-price-routes.test.mjs`);
   - the privacy crawl of every price route (`test/e11-05-page-inventory.test.mjs`);
-  - axe at every design width in both themes, and the lab performance run (`test/e11-6-16-price-browser.test.mjs`).
+  - axe at every design width in both themes, the lab performance run, and the text-link and narrow-table checks (`test/e11-6-16-price-browser.test.mjs`).
 
 There is no scheduled job for the tool in any workflow, crontab or Compose file; the isolation scan fails one.
 

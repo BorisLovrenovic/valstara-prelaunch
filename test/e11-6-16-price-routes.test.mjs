@@ -1196,9 +1196,10 @@ test('number trace: every monthly report figure is its file’s, and each traces
         permitted.numbers.add(ranked.record.price_local);
       }
       // The spread is the one figure derived from the source's USD figures
-      // (E11.6-09, docs/features/price-index.md): recomputed here from the
-      // two records the report names, so it can be nothing else. Its
-      // standing as a "converted figure" is finding P1 in the audit record.
+      // (E11.6-09, docs/features/price-index.md). It stays in the feed,
+      // recomputed here from the two records the report names, but the page
+      // never shows it (D-040 item 2, finding P1): it is not a number the
+      // page may show.
       const expectedRatio = ratio(
         usdCents(
           snapshotRecords.get(recordKey({ ...plan, market: top.market }))
@@ -1214,7 +1215,6 @@ test('number trace: every monthly report figure is its file’s, and each traces
         expectedRatio,
         `${report.path}: ${planKey(plan)} spread`,
       );
-      permitted.numbers.add(plan.spread_ratio);
     }
     const shown = assertTraced(
       report.path,
@@ -1222,6 +1222,12 @@ test('number trace: every monthly report figure is its file’s, and each traces
       permitted,
     );
     assert.ok(shown > 0, `${report.path} shows its extremes`);
+    // The spread ratio is in the feed and the Markdown report only (P1).
+    assert.doesNotMatch(
+      served.get(report.path).body,
+      /times the cheapest/iu,
+      `${report.path} shows a spread ratio`,
+    );
     // No USD figure of the source reaches the report, except where a US list
     // price is itself in USD.
     const text = mainText(page(report.path));

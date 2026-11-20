@@ -38,7 +38,10 @@ every price to its published record (`test/e11-6-16-price-routes.test.mjs`).
 It runs the E11-05 privacy crawl over every price route
 (`test/e11-05-page-inventory.test.mjs`), and axe at every design width in
 both themes plus the lab performance run (LCP < 2.5 s, CLS < 0.1, INP
-< 200 ms) on each page kind (`test/e11-6-16-price-browser.test.mjs`). Each
+< 200 ms) on each page kind (`test/e11-6-16-price-browser.test.mjs`). The
+same file holds every price link to the site's 44px text link below 48rem,
+and every price table at 320 and 390px to whole prices, unbroken words and
+no overflow (D-040). Each
 check fails on a planted defect. `test/helpers/price-audit.mjs` lists the
 routes the data makes, so a monthly data pull request re-audits its own
 pages. Its evidence, the price contact sheet and the founder's sign-off are

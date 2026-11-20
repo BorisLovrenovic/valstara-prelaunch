@@ -267,6 +267,247 @@ test('L1: no price page heading overflows its line box, at every design width in
   assert.deepEqual(found, []);
 });
 
+/** A context at rest in one theme, Turnstile's loader answered empty. */
+async function restingPage(colorScheme, width) {
+  const context = await browser.newContext({
+    ...atRestContext,
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  await context.route('https://challenges.cloudflare.com/**', (route) =>
+    route.fulfill({ contentType: 'text/javascript', body: '' }),
+  );
+  return { context, page: await context.newPage() };
+}
+
+/** Fails with the count and the first issues: a full diff of thousands is slow. */
+function assertNoIssues(issues) {
+  assert.equal(
+    issues.length,
+    0,
+    `${issues.length} issues, the first 20:\n${issues.slice(0, 20).join('\n')}`,
+  );
+}
+
+// The design widths below 48rem, where a link must be a --tap-min target.
+const narrowWidths = designWidths.filter((width) => width < 768);
+
+// Finding L2, D-040 item 3 (docs/testing/e11-6-price-pages-audit.md): every
+// link in a price page's own content (the signup form's links are the
+// island's) is the site's text link (src/components/text-link.astro): ink at
+// 500 weight with the 2px coral underline offset 3px. Below 48rem it is at
+// least 44px tall, and a link in a table cell fills its cell, so every point
+// of the cell is the link. The ink and coral are read from the page's own
+// tokens in each theme.
+async function linkIssues(page) {
+  return page.evaluate(() => {
+    const document = globalThis.document;
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--ink)';
+    probe.style.textDecorationColor = 'var(--coral)';
+    document.body.append(probe);
+    const ink = globalThis.getComputedStyle(probe).color;
+    const coral = globalThis.getComputedStyle(probe).textDecorationColor;
+    probe.remove();
+    const links = [
+      ...document.querySelectorAll(
+        '[data-price-page] a[href], [data-price-hub] a[href], [data-price-report] a[href]',
+      ),
+    ].filter((link) => link.closest('#join') === null);
+    const issues = [];
+    let tableLinks = 0;
+    for (const link of links) {
+      const name = `${link.getAttribute('href')} "${link.textContent.trim()}"`;
+      const style = globalThis.getComputedStyle(link);
+      const box = link.getBoundingClientRect();
+      if (box.height < 44)
+        issues.push(`${name} is ${Math.round(box.height)}px tall`);
+      if (style.color !== ink) issues.push(`${name} colour ${style.color}`);
+      if (style.fontWeight !== '500')
+        issues.push(`${name} weight ${style.fontWeight}`);
+      if (!style.textDecorationLine.includes('underline'))
+        issues.push(`${name} is not underlined`);
+      if (style.textDecorationColor !== coral)
+        issues.push(`${name} underline ${style.textDecorationColor}`);
+      if (style.textDecorationThickness !== '2px')
+        issues.push(`${name} underline ${style.textDecorationThickness}`);
+      if (style.textUnderlineOffset !== '3px')
+        issues.push(`${name} offset ${style.textUnderlineOffset}`);
+      const cell = link.closest('td, th');
+      if (cell === null) continue;
+      tableLinks += 1;
+      cell.scrollIntoView({ block: 'center' });
+      const edges = cell.getBoundingClientRect();
+      for (const [x, y] of [
+        [edges.left + 2, edges.top + 2],
+        [edges.right - 2, edges.top + 2],
+        [edges.left + 2, edges.bottom - 2],
+        [edges.right - 2, edges.bottom - 2],
+      ]) {
+        const hit = document.elementFromPoint(x, y);
+        if (hit !== link && !link.contains(hit))
+          issues.push(`${name} does not fill its cell at ${x},${y}`);
+      }
+    }
+    return { links: links.length, tableLinks, issues };
+  });
+}
+
+test('L2: every price page link is a 44px text link below 48rem, in both themes', async () => {
+  const runs = data.routes.flatMap(({ path, kind }) =>
+    designThemes.map((colorScheme) => ({ path, kind, colorScheme })),
+  );
+  const results = await inPool(runs, 4, async ({ path, kind, colorScheme }) => {
+    const { context, page } = await restingPage(colorScheme, narrowWidths[0]);
+    try {
+      const response = await page.goto(`${origin}${path}`, {
+        waitUntil: 'load',
+      });
+      assert.equal(response?.status(), 200, `${path} answers`);
+      const found = [];
+      for (const width of narrowWidths) {
+        await page.setViewportSize({ width, height: 900 });
+        await settlePage(page);
+        found.push({
+          path,
+          kind,
+          colorScheme,
+          width,
+          ...(await linkIssues(page)),
+        });
+      }
+      return found;
+    } finally {
+      await context.close();
+    }
+  });
+  const flat = results.flat();
+  // Every kind has links to check, including a table link and a link in a
+  // report's sentences, so the test cannot pass on pages with nothing to see.
+  for (const kind of new Set(data.routes.map((route) => route.kind)))
+    assert.ok(
+      flat.filter((result) => result.kind === kind && result.links > 0).length >
+        0,
+      `${kind} pages have links`,
+    );
+  assert.ok(
+    flat.some((result) => result.tableLinks > 0),
+    'table links',
+  );
+  assertNoIssues(
+    flat.flatMap(({ path, colorScheme, width, issues }) =>
+      issues.map((issue) => `${path} at ${width}px, ${colorScheme}: ${issue}`),
+    ),
+  );
+});
+
+// Finding V2, D-040 item 5: at 320 and 390px a price table keeps each price
+// on one line with its currency, breaks no word of a cell (names wrap only
+// between words), and fits its column with no scroll container: neither the
+// table nor any cell's content overflows, and the page does not scroll
+// sideways. Lines are told apart by their boxes' tops.
+async function tableIssues(page) {
+  return page.evaluate(() => {
+    const document = globalThis.document;
+    const lineCount = (range) => {
+      const tops = [...range.getClientRects()]
+        .filter((rect) => rect.width > 0)
+        .map((rect) => ({ top: rect.top, height: rect.height }))
+        .sort((a, b) => a.top - b.top);
+      let lines = 0;
+      let last = -Infinity;
+      for (const { top, height } of tops)
+        if (top > last + height / 2) {
+          lines += 1;
+          last = top;
+        }
+      return lines;
+    };
+    const issues = [];
+    const tables = [...document.querySelectorAll('.price-table')];
+    let prices = 0;
+    for (const table of tables) {
+      const caption = table.caption?.textContent.trim() ?? 'a table';
+      // A grid item grows to the table's minimum width, so the table fits
+      // its parent while the parent overflows the page column: no box from
+      // the table up to the page's main may be wider than its own content.
+      const main = table.closest('main');
+      for (
+        let box = table;
+        box !== null && box !== main.parentElement;
+        box = box.parentElement
+      )
+        if (box.scrollWidth > box.clientWidth + 1)
+          issues.push(
+            `${caption}: ${box.tagName.toLowerCase()} is ${box.scrollWidth}px wide in ${box.clientWidth}px`,
+          );
+      for (const cell of table.querySelectorAll('tbody th, tbody td')) {
+        if (cell.scrollWidth > cell.clientWidth + 1)
+          issues.push(`${caption}: "${cell.textContent.trim()}" overflows`);
+        // A price is an amount and its currency code, "15.99 EUR".
+        for (const amount of [
+          ...cell.querySelectorAll('.price-table__amount'),
+        ].filter((span) => /^\S+ [A-Z]{3}$/u.test(span.textContent.trim()))) {
+          prices += 1;
+          const range = document.createRange();
+          range.selectNodeContents(amount);
+          if (lineCount(range) !== 1)
+            issues.push(
+              `${caption}: "${amount.textContent.trim()}" is split across lines`,
+            );
+        }
+        const walker = document.createTreeWalker(cell, 4);
+        for (let node = walker.nextNode(); node; node = walker.nextNode())
+          for (const word of node.data.matchAll(/\S+/gu)) {
+            const range = document.createRange();
+            range.setStart(node, word.index);
+            range.setEnd(node, word.index + word[0].length);
+            if (lineCount(range) > 1)
+              issues.push(`${caption}: "${word[0]}" is broken`);
+          }
+      }
+    }
+    if (
+      document.documentElement.scrollWidth >
+      document.documentElement.clientWidth + 1
+    )
+      issues.push('the page scrolls sideways');
+    return { tables: tables.length, prices, issues };
+  });
+}
+
+test('V2: at 320 and 390px every price table keeps prices whole, breaks no word and fits', async () => {
+  const results = await inPool(data.routes, 4, async ({ path }) => {
+    const { context, page } = await restingPage('light', 320);
+    try {
+      const response = await page.goto(`${origin}${path}`, {
+        waitUntil: 'load',
+      });
+      assert.equal(response?.status(), 200, `${path} answers`);
+      const found = [];
+      for (const width of [320, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        await settlePage(page);
+        found.push({ path, width, ...(await tableIssues(page)) });
+      }
+      return found;
+    } finally {
+      await context.close();
+    }
+  });
+  const flat = results.flat();
+  assert.ok(
+    flat.filter((result) => result.tables > 0).length > 0 &&
+      flat.reduce((sum, result) => sum + result.prices, 0) > 0,
+    'price tables were measured',
+  );
+  assertNoIssues(
+    flat.flatMap(({ path, width, issues }) =>
+      issues.map((issue) => `${path} at ${width}px: ${issue}`),
+    ),
+  );
+});
+
 // ---------------------------------------------------------------------------
 // The lab performance run.
 

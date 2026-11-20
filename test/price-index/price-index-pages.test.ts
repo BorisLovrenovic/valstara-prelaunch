@@ -239,11 +239,11 @@ test('every page a monthly report mentions is linked if it is generated, and nam
     {
       // No ChatGPT page is generated (GB is stale, US has no record), so
       // there is no hub and no page to link.
-      text: 'ChatGPT — Plus: most expensive in the United Kingdom (20.00 GBP), least expensive in the United States (20.00 USD). The most expensive market costs 1.3 times the cheapest.',
+      text: 'ChatGPT — Plus: most expensive in the United Kingdom (20.00 GBP), least expensive in the United States (20.00 USD).',
       links: [],
     },
     {
-      text: 'Spotify Premium — Individual: most expensive in Sweden (149.00 SEK), least expensive in the United States (12.99 USD). The most expensive market costs 1.3 times the cheapest.',
+      text: 'Spotify Premium — Individual: most expensive in Sweden (149.00 SEK), least expensive in the United States (12.99 USD).',
       links: [
         ['Spotify Premium — Individual', '/prices/spotify'],
         ['Sweden', '/prices/spotify/sweden'],

@@ -379,8 +379,6 @@ export const pricesCopy = {
       price: (price: string) => ` (${price})`,
       end: '.',
     },
-    spread: (ratio: string) =>
-      ` The most expensive market costs ${ratio} times the cheapest.`,
     noExtremes:
       'No plan has a published price in two or more markets to compare.',
     unranked: (plans: number) =>
