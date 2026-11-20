@@ -36,8 +36,10 @@ import {
 // before anything is read), a URL that is not a service × market page, a
 // URL the ledger never published or has already retired, a URL that still
 // publishes a page, since a retirement never takes down a live page (D-037
-// Q1), and a `to` that is not a hub the current data makes, so a retired
-// URL never redirects to a page that is not there.
+// Q1), and a `to` that is not a hub the current data makes. The hub is
+// checked here, at retirement time, only: if the hub later disappears with
+// its last live page, the retired URL still answers 301 to it, which then
+// answers 404, and neither validate nor the build checks it.
 
 export const retireUrlExitCodes = {
   done: 0,
@@ -205,8 +207,9 @@ export async function runRetireUrl(
     );
   }
   // The URL being retired is never a generated page, so the hubs the
-  // current data makes are the hubs the site serves: the target must be one
-  // of them, or the redirect would lead nowhere.
+  // current data makes are the hubs the site serves now: the target must be
+  // one of them. This holds at retirement time only; a hub the data later
+  // stops making is not re-checked.
   const hubs = hubPaths(pages);
   if (!hubs.includes(request.to)) {
     return refuse(
