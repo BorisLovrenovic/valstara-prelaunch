@@ -45,7 +45,7 @@
   "test/e11-07-port-checklist.test.ts": 0.6,
   "test/e11-5-12-contact-sheet-manifest.test.mjs": 2,
   "test/e11-5-12-landing-performance.test.mjs": 29.6,
-  "test/e11-6-16-price-browser.test.mjs": 252.0,
+  "test/e11-6-16-price-browser.test.mjs": 290.0,
   "test/e11-6-16-price-routes.test.mjs": 3.0,
   "test/email-layout.test.ts": 0.4,
   "test/email-quota.test.ts": 1,

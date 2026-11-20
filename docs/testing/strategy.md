@@ -41,7 +41,9 @@ both themes plus the lab performance run (LCP < 2.5 s, CLS < 0.1, INP
 < 200 ms) on each page kind (`test/e11-6-16-price-browser.test.mjs`). The
 same file holds every price link to the site's 44px text link below 48rem,
 and every price table at 320 and 390px to whole prices, unbroken words and
-no overflow (D-040). Each
+no overflow (D-040). The Valstara comparison, served from the price fixture
+site with `prices.valstara_comparison` on, is held to fitting only: it has no
+narrow-screen layout, and its words and prices may break (D-041). Each
 check fails on a planted defect. `test/helpers/price-audit.mjs` lists the
 routes the data makes, so a monthly data pull request re-audits its own
 pages. Its evidence, the price contact sheet and the founder's sign-off are

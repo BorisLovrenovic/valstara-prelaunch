@@ -374,7 +374,7 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
                         </td>
                         <td>
                           <span
-                            class="price-table__amount price-table__amount--phrase"
+                            class="price-table__amount"
                             data-below-percent={row.belowPercent}
                           >
                             {row.belowText}
@@ -536,12 +536,23 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
     text-align: start;
   }
 
+  /* D-041 (finding V2): below 48rem a cell's inline padding is
+     --space-0-5, and none at the table's outer edges, so every table fits
+     a 320px screen with its prices whole. */
   .price-table th,
   .price-table td {
-    padding: var(--space-1-5) var(--space-1);
+    padding: var(--space-1-5) var(--space-0-5);
     border-block-end: var(--border-thin) solid var(--line);
     text-align: start;
     vertical-align: top;
+  }
+
+  .price-table :is(th, td):first-child {
+    padding-inline-start: var(--space-0);
+  }
+
+  .price-table :is(th, td):last-child {
+    padding-inline-end: var(--space-0);
   }
 
   .price-table thead th {
@@ -567,8 +578,16 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
     white-space: nowrap;
   }
 
-  /* "13.1% below list price" is a phrase, not a price: it wraps. */
-  .price-table__amount--phrase {
+  /* D-041: the Valstara comparison's five columns cannot fit a narrow
+     screen whole, so its words and amounts wrap anywhere, as before D-040.
+     It has no narrow-screen layout: prices.valstara_comparison stays off
+     until one is built in its own ticket. */
+  [data-valstara-comparison] .price-table th,
+  [data-valstara-comparison] .price-table td {
+    overflow-wrap: anywhere;
+  }
+
+  [data-valstara-comparison] .price-table__amount {
     white-space: normal;
   }
 
@@ -695,7 +714,8 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
 
   @media (min-width: 48rem) {
     .price-table th,
-    .price-table td {
+    .price-table td,
+    .price-table :is(th, td):is(:first-child, :last-child) {
       padding-inline: var(--space-2);
     }
 

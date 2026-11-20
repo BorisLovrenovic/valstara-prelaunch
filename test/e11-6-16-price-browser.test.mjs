@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
 
 import axe from 'axe-core';
+import { Pool } from 'pg';
 import { chromium } from 'playwright';
 
 import {
@@ -21,6 +22,8 @@ import {
   designWidths,
   settlePage,
 } from '../scripts/design/layout-checks.mjs';
+import { flagCacheTtlMilliseconds } from '../src/server/flags/service.ts';
+import { createPriceSite } from '../src/server/prices/site.ts';
 import {
   containerOwnerArguments,
   removeOrphanedContainers,
@@ -33,6 +36,10 @@ import {
   inPool,
   startPriceAuditServer,
 } from './helpers/price-audit.mjs';
+import {
+  priceFixtureInputs,
+  priceFixtureSite,
+} from './helpers/price-fixture-site.mjs';
 
 // E11.6-16: the accessibility gate and the lab performance run over the
 // price routes of the committed data (the founder's first monthly run,
@@ -401,11 +408,14 @@ test('L2: every price page link is a 44px text link below 48rem, in both themes'
   );
 });
 
-// Finding V2, D-040 item 5: at 320 and 390px a price table keeps each price
-// on one line with its currency, breaks no word of a cell (names wrap only
-// between words), and fits its column with no scroll container: neither the
-// table nor any cell's content overflows, and the page does not scroll
-// sideways. Lines are told apart by their boxes' tops.
+// Finding V2, D-040 item 5 and D-041: at 320 and 390px a price table keeps
+// each price on one line with its currency, breaks no word of a cell (names
+// wrap only between words), and fits its column with no scroll container:
+// neither the table nor any cell's content overflows, and the page does not
+// scroll sideways. The Valstara comparison ([data-valstara-comparison],
+// behind prices.valstara_comparison) is the one exception D-041 makes: its
+// five columns cannot fit whole, so its words and amounts may wrap anywhere,
+// but it must still fit. Lines are told apart by their boxes' tops.
 async function tableIssues(page) {
   return page.evaluate(() => {
     const document = globalThis.document;
@@ -426,8 +436,11 @@ async function tableIssues(page) {
     const issues = [];
     const tables = [...document.querySelectorAll('.price-table')];
     let prices = 0;
+    let valstaraTables = 0;
     for (const table of tables) {
       const caption = table.caption?.textContent.trim() ?? 'a table';
+      const valstara = table.closest('[data-valstara-comparison]') !== null;
+      if (valstara) valstaraTables += 1;
       // A grid item grows to the table's minimum width, so the table fits
       // its parent while the parent overflows the page column: no box from
       // the table up to the page's main may be wider than its own content.
@@ -444,6 +457,7 @@ async function tableIssues(page) {
       for (const cell of table.querySelectorAll('tbody th, tbody td')) {
         if (cell.scrollWidth > cell.clientWidth + 1)
           issues.push(`${caption}: "${cell.textContent.trim()}" overflows`);
+        if (valstara) continue;
         // A price is an amount and its currency code, "15.99 EUR".
         for (const amount of [
           ...cell.querySelectorAll('.price-table__amount'),
@@ -472,15 +486,16 @@ async function tableIssues(page) {
       document.documentElement.clientWidth + 1
     )
       issues.push('the page scrolls sideways');
-    return { tables: tables.length, prices, issues };
+    return { tables: tables.length, valstaraTables, prices, issues };
   });
 }
 
-test('V2: at 320 and 390px every price table keeps prices whole, breaks no word and fits', async () => {
-  const results = await inPool(data.routes, 4, async ({ path }) => {
+/** Every table of each path at 320 and 390px, on the server at `at`. */
+function narrowTables(at, paths) {
+  return inPool(paths, 4, async (path) => {
     const { context, page } = await restingPage('light', 320);
     try {
-      const response = await page.goto(`${origin}${path}`, {
+      const response = await page.goto(`${at}${path}`, {
         waitUntil: 'load',
       });
       assert.equal(response?.status(), 200, `${path} answers`);
@@ -495,18 +510,79 @@ test('V2: at 320 and 390px every price table keeps prices whole, breaks no word 
       await context.close();
     }
   });
-  const flat = results.flat();
-  assert.ok(
-    flat.filter((result) => result.tables > 0).length > 0 &&
-      flat.reduce((sum, result) => sum + result.prices, 0) > 0,
-    'price tables were measured',
-  );
-  assertNoIssues(
-    flat.flatMap(({ path, width, issues }) =>
-      issues.map((issue) => `${path} at ${width}px: ${issue}`),
-    ),
-  );
-});
+}
+
+/**
+ * The price fixture site served with `prices.valstara_comparison` on: the
+ * committed data has no Valstara entry, so its pages never show the table.
+ */
+async function withValstaraComparison(work) {
+  const { root: fixtureRoot } = await priceFixtureSite();
+  const fixture = await startPriceAuditServer({
+    label: 'E11.6-16 browser audit (fixture data, Valstara comparison on)',
+    host: '0.0.0.0',
+    root: fixtureRoot,
+  });
+  try {
+    const database = new Pool({ connectionString: fixture.ownerDatabaseUrl });
+    try {
+      await database.query(
+        "INSERT INTO campaign_flag (key, enabled, updated_by) VALUES ('prices.valstara_comparison', true, 'e11-6-16-price-browser-test')",
+      );
+    } finally {
+      await database.end();
+    }
+    // The server may have read the flags already: let its cache expire.
+    await new Promise((resolve) =>
+      globalThis.setTimeout(resolve, flagCacheTtlMilliseconds + 250),
+    );
+    return await work(`http://host.docker.internal:${fixture.port}`);
+  } finally {
+    await fixture.dispose();
+  }
+}
+
+test(
+  'V2: at 320 and 390px every price table keeps prices whole, breaks no word and fits, and the Valstara comparison fits',
+  { timeout: 600_000 },
+  async () => {
+    const flat = (
+      await narrowTables(
+        origin,
+        data.routes.map(({ path }) => path),
+      )
+    ).flat();
+    assert.ok(
+      flat.filter((result) => result.tables > 0).length > 0 &&
+        flat.reduce((sum, result) => sum + result.prices, 0) > 0,
+      'price tables were measured',
+    );
+    // The Valstara comparison, on every fixture page that has one.
+    const valstaraPaths = createPriceSite(await priceFixtureInputs())
+      .routes.filter(
+        (route) => route.kind === 'generated' && route.valstara !== null,
+      )
+      .map((route) => route.path);
+    assert.ok(valstaraPaths.length > 0, 'the fixture has Valstara pages');
+    const valstara = (
+      await withValstaraComparison((at) => narrowTables(at, valstaraPaths))
+    ).flat();
+    for (const path of valstaraPaths)
+      for (const width of [320, 390])
+        assert.equal(
+          valstara.find(
+            (result) => result.path === path && result.width === width,
+          )?.valstaraTables,
+          1,
+          `${path} at ${width}px shows the Valstara comparison`,
+        );
+    assertNoIssues(
+      [...flat, ...valstara].flatMap(({ path, width, issues }) =>
+        issues.map((issue) => `${path} at ${width}px: ${issue}`),
+      ),
+    );
+  },
+);
 
 // ---------------------------------------------------------------------------
 // The lab performance run.

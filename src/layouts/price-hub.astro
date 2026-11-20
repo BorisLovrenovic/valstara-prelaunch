@@ -335,12 +335,23 @@ const columns = pricesCopy.hubs.columns;
     text-align: start;
   }
 
+  /* D-041 (finding V2): below 48rem a cell's inline padding is
+     --space-0-5, and none at the table's outer edges, so every table fits
+     a 320px screen with its prices whole. */
   .price-table th,
   .price-table td {
-    padding: var(--space-1-5) var(--space-1);
+    padding: var(--space-1-5) var(--space-0-5);
     border-block-end: var(--border-thin) solid var(--line);
     text-align: start;
     vertical-align: top;
+  }
+
+  .price-table :is(th, td):first-child {
+    padding-inline-start: var(--space-0);
+  }
+
+  .price-table :is(th, td):last-child {
+    padding-inline-end: var(--space-0);
   }
 
   .price-table thead th {
@@ -372,7 +383,8 @@ const columns = pricesCopy.hubs.columns;
 
   @media (min-width: 48rem) {
     .price-table th,
-    .price-table td {
+    .price-table td,
+    .price-table :is(th, td):is(:first-child, :last-child) {
       padding-inline: var(--space-2);
     }
 
