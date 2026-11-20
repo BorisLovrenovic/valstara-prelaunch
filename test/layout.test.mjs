@@ -164,6 +164,8 @@ test('the footer copy groups the permanent URLs into Company and Legal, with the
       ['company', '/about'],
       ['company', '/legit'],
       ['company', '/guarantee'],
+      // E11.6-12 (D5): the "Price index" link to `/prices`.
+      ['company', '/prices'],
       ['legal', '/terms'],
       ['legal', '/privacy'],
       ['legal', '/privacy/storage'],

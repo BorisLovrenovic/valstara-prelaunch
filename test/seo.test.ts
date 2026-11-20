@@ -165,7 +165,9 @@ test('sitemap routes reconcile with page files and include only the current rule
       file.endsWith('/me.astro') ||
       file.endsWith('/verify.astro') ||
       file.endsWith('/404.astro') ||
-      file.endsWith('/500.astro')
+      file.endsWith('/500.astro') ||
+      // The price routes have their own child sitemaps (E11.6-10, E11.6-12).
+      file.startsWith('src/pages/prices/')
     )
       continue;
     if (file.includes('[')) continue;
@@ -459,7 +461,10 @@ test('build generates page-specific PNGs and typed fallback crops from brand tok
       digest(originalLanding),
       'changing the local font and font token changes the rendered pixels',
     );
-    for (const page of pages) {
+    // Price routes take the typed prices card until E11.6-14.
+    for (const page of pages.filter(
+      ({ pathname }) => socialPageKind(pathname) !== 'prices',
+    )) {
       const imagePath = new URL(socialImageUrl(page.pathname)).pathname;
       const metadata = await sharp(
         join(fixture, 'public', imagePath.slice(1)),
@@ -567,11 +572,18 @@ test('the committed /sitemap.xml is an index over pages.xml and the price sitema
     [
       'https://valstara.com/sitemaps/pages.xml',
       'https://valstara.com/sitemaps/prices-service-market.xml',
+      // E11.6-12: `/prices`, the service hubs and the market hubs.
+      'https://valstara.com/sitemaps/prices-index.xml',
+      'https://valstara.com/sitemaps/prices-service-hubs.xml',
+      'https://valstara.com/sitemaps/prices-market-hubs.xml',
     ],
   );
   assert.deepEqual(Object.values(childSitemaps), [
     '/sitemaps/pages.xml',
     '/sitemaps/prices-service-market.xml',
+    '/sitemaps/prices-index.xml',
+    '/sitemaps/prices-service-hubs.xml',
+    '/sitemaps/prices-market-hubs.xml',
   ]);
 });
 
@@ -663,6 +675,15 @@ test('price pages join the E9-06 metadata check and take the typed prices card u
         '/prices/spotify/sweden',
         '/prices/spotify/united-kingdom',
         '/prices/spotify/united-states',
+        // E11.6-12: the service and market hubs the data makes.
+        '/prices/apple-music',
+        '/prices/countries/france',
+        '/prices/countries/sweden',
+        '/prices/countries/united-kingdom',
+        '/prices/countries/united-states',
+        '/prices/duolingo',
+        '/prices/netflix',
+        '/prices/spotify',
       ],
     );
     assert.ok(
@@ -699,12 +720,14 @@ test('price pages join the E9-06 metadata check and take the typed prices card u
       );
     }
 
-    // A second data route without its expansion fails the build check.
-    await mkdir(join(fixture, 'src/pages/prices/[service]'), {
+    // A further data route without its expansion fails the build check.
+    // E11.6-12's hubs took `prices/[service]/index.astro`, so the planted
+    // route is one no ticket builds.
+    await mkdir(join(fixture, 'src/pages/prices/regions'), {
       recursive: true,
     });
     await writeFile(
-      join(fixture, 'src/pages/prices/[service]/index.astro'),
+      join(fixture, 'src/pages/prices/regions/[region].astro'),
       '<main></main>',
     );
     await assert.rejects(checkSeoBuild(fixture), /route expansion is missing/u);
