@@ -99,7 +99,7 @@ Everything else announces itself. These two look exactly like ordinary underperf
 | Failure | Detection | Fallback | Visitor sees | Alert |
 |---|---|---|---|---|
 | **A wrong price has gone live** | Founder review, a report | **Flag `prices.pages` off** — every price route answers `503` with `Retry-After` and `noindex`, without a deploy, and keeps its index status. The fix ships as a data pull request | A plain "prices are temporarily unavailable" card | **P1** decision |
-| A published page loses all its publishable data, or its service or market leaves the configuration | The build's generation rule | **The page never answers 404.** Its ledger URL renders "temporarily unavailable" with no price and `noindex`, and leaves the sitemap until data returns or the founder retires it (D2) | The page's heading and an honest unavailable note, and the waitlist form | — |
+| A published page loses all its publishable data, or its service or market leaves the configuration | The build's generation rule | **The page never answers 404.** Its ledger URL renders "temporarily unavailable" with no price and `noindex`, and leaves the sitemap until data returns or the founder retires it with `price-index retire-url`, after which it answers `301` to the recorded hub (D2, E11.6-12) for as long as it generates no page; if its data returns, its page is served again (D-037 Q2). A hub with no live page left answers 404, because it lists nothing | The page's heading and an honest unavailable note, and the waitlist form | — |
 | A price data file is invalid at build | The prebuild sitemap step validates every file the pages read | **The build fails and nothing is deployed**; the last good build keeps serving | The last deployed prices | — (CI red) |
 
 ## Chaos drills

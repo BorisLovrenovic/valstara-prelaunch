@@ -12,11 +12,13 @@ import {
 } from '../../packages/price-index/src/publish/index.ts';
 import {
   marketsFileSchema,
+  isRetirement,
   publishedUrlsFileSchema,
   type CatalogueFile,
   type ChangesFile,
   type LatestFile,
   type MarketsFile,
+  type PublishedUrl,
   type PublishedUrlsFile,
   type RunObservationsFile,
   type ValstaraPricesFile,
@@ -660,12 +662,21 @@ test('appendPublishedUrls adds at the end and refuses a URL the ledger already h
   t.after(() => space.dispose());
   const ledgerPath = join(space.dataDirectory, 'published-urls.json');
   const data = await dataset();
-  await appendPublishedUrls(ledgerPath, data.ledger.urls.slice(0, 2));
-  await appendPublishedUrls(ledgerPath, data.ledger.urls.slice(2));
-  assert.deepEqual(await readPublishedUrls(ledgerPath), data.ledger);
+  // The publication entries only: a retirement is appended by
+  // appendRetirement (E11.6-12, test/price-index/retire-url.test.ts).
+  const publications = data.ledger.urls.filter(
+    (entry): entry is PublishedUrl => !isRetirement(entry),
+  );
+  await appendPublishedUrls(ledgerPath, publications.slice(0, 2));
+  await appendPublishedUrls(ledgerPath, publications.slice(2));
+  assert.deepEqual(await readPublishedUrls(ledgerPath), {
+    urls: publications,
+  });
   await assert.rejects(
-    appendPublishedUrls(ledgerPath, [data.ledger.urls[0]!]),
+    appendPublishedUrls(ledgerPath, [publications[0]!]),
     /duplicate URL/u,
   );
-  assert.deepEqual(await readPublishedUrls(ledgerPath), data.ledger);
+  assert.deepEqual(await readPublishedUrls(ledgerPath), {
+    urls: publications,
+  });
 });

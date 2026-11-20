@@ -14,8 +14,13 @@ const root = fileURLToPath(new URL('../..', import.meta.url));
 // founder's first run and hundreds after it, so it is listed apart, as its
 // route pattern, in `dataRoutes`; the E11-05 audit crawls each data route's
 // page kinds on the price fixture site (test/helpers/price-fixture-site.mjs).
+// E11.6-12: `/prices` and the hubs are price routes too: their content and
+// whether they exist come from the price data.
 export const dataRouteFiles = new Map([
   ['prices/[service]/[country].astro', '/prices/[service]/[country]'],
+  ['prices/index.astro', '/prices'],
+  ['prices/[service]/index.astro', '/prices/[service]'],
+  ['prices/countries/[country].astro', '/prices/countries/[country]'],
 ]);
 
 export async function sourcePagePaths() {

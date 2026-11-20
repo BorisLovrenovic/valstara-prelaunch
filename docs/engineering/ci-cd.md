@@ -46,7 +46,7 @@ The annotation names this procedure. **It never fails the job**: an unreadable p
 3. Replace `scripts/ci/shard-timings.json` with the downloaded `test-timings.json`, unchanged.
 4. Commit it in a small pull request. `test/ci-sharding.test.mjs` fails if any discovered test file has no recorded time.
 
-E11.6-11a last refreshed it on 2026-11-20, from run 44581334724 of pull request #166: 239 files, 3,143 seconds in all. The three files E11.6-11a then added (`test/container-owner.test.mjs` and its helper `test/helpers/container-owner.mjs` with its `.d.mts`) carry times measured locally on 2026-11-20 (6.6, 0.2 and 0.3 seconds), until the next refresh replaces them with CI's.
+E11.6-11a last refreshed it on 2026-11-20, from run 44581334724 of pull request #166: 239 files, 3,143 seconds in all. The three files E11.6-11a then added (`test/container-owner.test.mjs` and its helper `test/helpers/container-owner.mjs` with its `.d.mts`) carry times measured locally on 2026-11-20 (6.6, 0.2 and 0.3 seconds), until the next refresh replaces them with CI's. E11.6-12's three test files carry 8.1 seconds for `test/price-hubs-rendered.test.mjs`, measured by CI in run 44708422358, and 0.8 and 1.6 seconds for `test/price-index/price-hubs.test.ts` and `test/price-index/retire-url.test.ts`, measured locally on 2026-11-20, until the same refresh.
 
 ### Local checks
 

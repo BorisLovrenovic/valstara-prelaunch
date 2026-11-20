@@ -148,11 +148,16 @@ export function routeFromPageFile(file: string): string | null {
 /**
  * The sitemap index (E11.6-10): `/sitemap.xml` lists these child sitemaps.
  * `pages` holds the site's own routes, exactly as `/sitemap.xml` did before;
- * `pricesServiceMarket` the generated service × market price pages.
+ * `pricesServiceMarket` the generated service × market price pages. Each
+ * kind of hub has its own (E11.6-12): `/prices`, the service hubs and the
+ * market hubs, each dated from the newest verification it shows.
  */
 export const childSitemaps = {
   pages: '/sitemaps/pages.xml',
   pricesServiceMarket: '/sitemaps/prices-service-market.xml',
+  pricesIndex: '/sitemaps/prices-index.xml',
+  pricesServiceHubs: '/sitemaps/prices-service-hubs.xml',
+  pricesMarketHubs: '/sitemaps/prices-market-hubs.xml',
 } as const;
 
 function xmlText(value: string): string {
@@ -202,6 +207,10 @@ export function sitemapPaths(
       // The branded error pages are noindex (E11.5-10).
       route !== '/404' &&
       route !== '/500' &&
+      // The price routes come from the price data and have their own child
+      // sitemaps (E11.6-10, E11.6-12).
+      route !== '/prices' &&
+      !route.startsWith('/prices/') &&
       !route.startsWith('/api/') &&
       !route.includes('['),
   );

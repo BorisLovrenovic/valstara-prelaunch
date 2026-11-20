@@ -74,6 +74,19 @@ function termText(months: number): string {
   return months === 1 ? '1 month' : `${months} months`;
 }
 
+/**
+ * How a service hub's plan table is ordered (E11.6-12): ranked markets most
+ * expensive first, then the markets the index cannot rank, alphabetically.
+ */
+function hubOrderNote(ranked: number, unranked: number): string {
+  if (ranked === 0) {
+    return 'Listed in alphabetical order, because we cannot compare these markets yet.';
+  }
+  return unranked === 0
+    ? 'Listed from the most expensive market to the cheapest.'
+    : 'Listed from the most expensive market to the cheapest, then the markets we cannot compare yet, in alphabetical order.';
+}
+
 export const pricesCopy = {
   dayText,
   monthText,
@@ -225,6 +238,71 @@ export const pricesCopy = {
     description: (service: string, market: string) =>
       `The ${service} price in ${market} is temporarily unavailable on Valstara.`,
     note: 'This price is temporarily unavailable. We show a price only while we have a verified one, so this page has none right now.',
+  },
+  /**
+   * The hubs (E11.6-12): `/prices`, the service hub `/prices/{service}` and
+   * the market hub `/prices/countries/{country}`. Each lists only generated
+   * pages, in local currency, and is dated from the newest verification it
+   * shows.
+   */
+  hubs: {
+    /** The breadcrumb name of `/prices`. */
+    pricesCrumb: 'Prices',
+    notAffiliated:
+      'Valstara is an independent seller. It is not affiliated with or endorsed by the services listed, and the names of the services belong to their owners.',
+    columns: {
+      market: 'Market',
+      plan: 'Plan',
+      price: 'List price',
+      verified: 'Last verified',
+    },
+    /** The catalogue's categories, as the market hub and `/prices` head them. */
+    categories: {
+      ai: 'AI tools',
+      streaming: 'Streaming',
+      music: 'Music',
+      productivity: 'Productivity',
+      learning: 'Learning',
+      fitness: 'Fitness',
+    },
+    index: {
+      heading: 'Subscription prices by service and country',
+      title: 'Subscription prices by service and country — Valstara',
+      description:
+        'List prices of the subscriptions Valstara tracks, by service and by country, in local currency.',
+      intro:
+        'Each price is a list price in the local currency of its market, with the date we last verified it.',
+      servicesHeading: 'Prices by service',
+      marketsHeading: 'Prices by country',
+      empty:
+        'No prices are published yet. We publish a price only once we have verified it.',
+    },
+    service: {
+      heading: (service: string, newest: string) =>
+        `${service} prices by country (${monthText(newest)})`,
+      title: (service: string, newest: string) =>
+        `${service} prices by country (${monthText(newest)}) — Valstara`,
+      description: (service: string, newest: string) =>
+        `${service} list prices in each of our markets, in local currency, last verified on ${dayText(newest)}.`,
+      /** The hub's name: its breadcrumb, and the link to it from a page. */
+      name: (service: string) => `${service} prices by country`,
+      tableCaption: (plan: string) => `${plan} list prices by market`,
+      orderNote: hubOrderNote,
+    },
+    market: {
+      heading: (market: string, newest: string) =>
+        `Subscription prices in ${market} (${monthText(newest)})`,
+      title: (market: string, newest: string) =>
+        `Subscription prices in ${market} (${monthText(newest)}) — Valstara`,
+      description: (market: string, newest: string) =>
+        `List prices of the subscriptions we track in ${market}, in local currency, last verified on ${dayText(newest)}.`,
+      /** The hub's name: its breadcrumb, and the link to it from a page. */
+      name: (market: string) => `Subscription prices in ${market}`,
+      tableCaption: (category: string, market: string) =>
+        `${category} list prices in ${market}`,
+    },
+    /** The links from a service × market page to its two hubs. */
+    pageLinksHeading: 'More prices',
   },
   /** Every price route while `prices.pages` is off: HTTP 503, `noindex`. */
   paused: {

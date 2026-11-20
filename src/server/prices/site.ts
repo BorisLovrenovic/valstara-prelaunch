@@ -4,6 +4,10 @@ import {
 } from '../../../packages/price-index/src/publish/gate.ts';
 import {
   generatedPages,
+  hubPaths,
+  marketHubPath,
+  retiredUrls,
+  serviceHubPath,
   type GeneratedPage,
 } from '../../../packages/price-index/src/publish/pages.ts';
 // Only the schema modules the pages read, so no other part of the tool's
@@ -27,8 +31,10 @@ import {
   type LatestFile,
 } from '../../../packages/price-index/src/schema/price-index-files.ts';
 import {
+  isRetirement,
   publishedUrlsFileSchema,
-  type PublishedUrlsFile,
+  servicePagePathPattern,
+  type PublishedUrl,
 } from '../../../packages/price-index/src/schema/published-urls.ts';
 import type { ValstaraPricesFile } from '../../../packages/price-index/src/schema/valstara-prices.ts';
 import type { z } from 'zod';
@@ -104,6 +110,17 @@ interface RouteBase {
   readonly breadcrumbs: readonly PriceBreadcrumb[];
   /** BreadcrumbList JSON-LD (schema.org). */
   readonly structuredData: Readonly<Record<string, unknown>>;
+  /**
+   * Links to the page's service hub and market hub (E11.6-12), each only
+   * while that hub exists: always both on a generated page.
+   */
+  readonly hubLinks: readonly HubLink[];
+}
+
+/** A link to a hub or a page, by its path. */
+export interface HubLink {
+  readonly path: string;
+  readonly label: string;
 }
 
 /** One real price change of a plan the page shows, from changes.json. */
@@ -228,6 +245,118 @@ export interface PriceSitemapEntry {
   readonly lastmod: string;
 }
 
+/** One price a hub shows: a published record of a live page. */
+export interface HubPrice {
+  readonly planId: string;
+  readonly billingPeriod: PublishedRecord['billing_period'];
+  /** The published `price_local`, exactly. */
+  readonly amount: string;
+  /** The published currency, which is the market's own. */
+  readonly currency: string;
+  readonly priceText: string;
+  readonly periodText: string;
+  /** `YYYY-MM-DD`. */
+  readonly verifiedOn: string;
+  readonly verifiedText: string;
+}
+
+/** A market on a service hub: one plan's price there, linking to its page. */
+export interface ServiceHubRow extends HubPrice {
+  readonly market: string;
+  /** The market's name, as a table names it ("United States"). */
+  readonly marketName: string;
+  /** The service × market page. */
+  readonly path: string;
+  /** The market's rank from `rankMarkets()`, or null when it is unranked. */
+  readonly rank: number | null;
+}
+
+/** One plan of a service hub, every market with a live page for it. */
+export interface ServiceHubPlan {
+  readonly planId: string;
+  readonly planName: string;
+  readonly billingPeriod: PublishedRecord['billing_period'];
+  readonly tableCaption: string;
+  /** How the rows are ordered; null for a single market. */
+  readonly orderNote: string | null;
+  /** Ranked markets in `rankMarkets()` order, then unranked by name. */
+  readonly rows: readonly ServiceHubRow[];
+}
+
+/** A plan on a market hub, linking to its service × market page. */
+export interface MarketHubRow extends HubPrice {
+  readonly serviceId: string;
+  /** "Spotify Premium — Individual". */
+  readonly planLabel: string;
+  readonly path: string;
+}
+
+/** One catalogue category of a market hub, in catalogue order. */
+export interface MarketHubCategory {
+  readonly category: CatalogueFile['services'][number]['category'];
+  readonly heading: string;
+  readonly tableCaption: string;
+  readonly rows: readonly MarketHubRow[];
+}
+
+interface HubBase {
+  readonly path: string;
+  readonly meta: PriceMeta;
+  readonly heading: string;
+  readonly breadcrumbs: readonly PriceBreadcrumb[];
+  /** BreadcrumbList JSON-LD (schema.org). */
+  readonly structuredData: Readonly<Record<string, unknown>>;
+  readonly verifiedLine: string;
+  /** The newest verification date the hub shows: its sitemap `lastmod`. */
+  readonly lastmod: string;
+  readonly notAffiliated: string;
+}
+
+/** `/prices/{service}`: every live page of one service, plan by plan. */
+export interface ServiceHub extends HubBase {
+  readonly kind: 'service-hub';
+  readonly serviceId: string;
+  readonly serviceName: string;
+  readonly plans: readonly ServiceHubPlan[];
+}
+
+/** `/prices/countries/{country}`: every live page in one market, by category. */
+export interface MarketHub extends HubBase {
+  readonly kind: 'market-hub';
+  readonly market: string;
+  readonly marketName: string;
+  readonly categories: readonly MarketHubCategory[];
+}
+
+export type PriceHub = ServiceHub | MarketHub;
+
+/** A group of hub links on `/prices`. */
+export interface HubLinkGroup {
+  readonly heading: string;
+  readonly links: readonly HubLink[];
+}
+
+/** `/prices`: the top-level index of the service and market hubs. */
+export interface PriceIndex {
+  readonly kind: 'index';
+  readonly path: '/prices';
+  readonly meta: PriceMeta;
+  readonly heading: string;
+  readonly intro: string;
+  readonly breadcrumbs: readonly PriceBreadcrumb[];
+  readonly structuredData: Readonly<Record<string, unknown>>;
+  /** The service hubs, by catalogue category; empty with no live page. */
+  readonly services: readonly HubLinkGroup[];
+  /** The market hubs, alphabetically by name; empty with no live page. */
+  readonly markets: readonly HubLink[];
+  /** Null with no live page: the index is then empty and `noindex`. */
+  readonly verifiedLine: string | null;
+  readonly lastmod: string | null;
+  /** The honest empty state, or null when a page is live. */
+  readonly empty: string | null;
+  readonly notAffiliated: string;
+}
+
 export interface PriceSite {
   /** Every price route, generated and unavailable, in path order. */
   readonly routes: readonly PriceRoute[];
@@ -235,6 +364,23 @@ export interface PriceSite {
   readonly sitemap: readonly PriceSitemapEntry[];
   /** The route at `path`, or null: an unknown pair answers 404. */
   route(path: string): PriceRoute | null;
+  /** Every service and market hub, in path order (E11.6-12). */
+  readonly hubs: readonly PriceHub[];
+  /** The hub at `path`, or null: a service or market with no page has none. */
+  hub(path: string): PriceHub | null;
+  /** `/prices` (E11.6-12). */
+  readonly index: PriceIndex;
+  /** The hubs' own child sitemaps, each entry dated from the data it shows. */
+  readonly hubSitemaps: {
+    readonly index: readonly PriceSitemapEntry[];
+    readonly services: readonly PriceSitemapEntry[];
+    readonly markets: readonly PriceSitemapEntry[];
+  };
+  /**
+   * The hub a retired URL answers 301 to while its pair generates no page,
+   * or null (E11.6-12, D2 and D-037 Q2).
+   */
+  redirect(path: string): string | null;
 }
 
 function parse<T>(schema: z.ZodType<T>, value: unknown, file: string): T {
@@ -290,6 +436,15 @@ function trail(
       name: pricesCopy.page.name(serviceName, marketName),
       url: canonicalUrl(path),
     },
+  ];
+}
+
+/** Valstara → Prices → the hub; `/prices` itself ends at Prices. */
+function hubTrail(path: string, name: string | null): PriceBreadcrumb[] {
+  return [
+    { name: pricesCopy.home, url: canonicalUrl('/') },
+    { name: pricesCopy.hubs.pricesCrumb, url: canonicalUrl('/prices') },
+    ...(name === null ? [] : [{ name, url: canonicalUrl(path) }]),
   ];
 }
 
@@ -790,6 +945,16 @@ function generatedRoute(
     notAffiliated: pricesCopy.page.notAffiliated(service.name),
     breadcrumbs,
     structuredData: breadcrumbData(breadcrumbs),
+    hubLinks: [
+      {
+        path: serviceHubPath(page.service_id),
+        label: pricesCopy.hubs.service.name(service.name),
+      },
+      {
+        path: marketHubPath(page.market_slug),
+        label: pricesCopy.hubs.market.name(marketName),
+      },
+    ],
     lastmod: newest,
     history,
     comparisons,
@@ -807,9 +972,10 @@ function generatedRoute(
 }
 
 function unavailableRoute(
-  entry: PublishedUrlsFile['urls'][number],
+  entry: PublishedUrl,
   catalogue: CatalogueFile,
   markets: MarketsFile,
+  hubs: ReadonlySet<string>,
 ): UnavailablePriceRoute {
   // Today's names where the service and market are still configured, else
   // the names the ledger recorded when the URL was first published.
@@ -822,6 +988,18 @@ function unavailableRoute(
       ? entry.market_name
       : (configured.name_in_sentence ?? configured.name);
   const breadcrumbs = trail(entry.path, serviceName, marketName);
+  // Its hubs, while they exist: a removed service or market has none.
+  const marketSlug = servicePagePathPattern.exec(entry.path)?.[2] ?? '';
+  const hubLinks = [
+    {
+      path: serviceHubPath(entry.service_id),
+      label: pricesCopy.hubs.service.name(serviceName),
+    },
+    {
+      path: marketHubPath(marketSlug),
+      label: pricesCopy.hubs.market.name(marketName),
+    },
+  ].filter((link) => hubs.has(link.path));
   return {
     kind: 'unavailable',
     path: entry.path,
@@ -838,6 +1016,302 @@ function unavailableRoute(
     notAffiliated: pricesCopy.page.notAffiliated(serviceName),
     breadcrumbs,
     structuredData: breadcrumbData(breadcrumbs),
+    hubLinks,
+  };
+}
+
+/** A published record as a hub shows it, in its own currency. */
+function hubPrice(record: PublishedRecord): HubPrice {
+  const verifiedOn = verificationDate(record);
+  return {
+    planId: record.plan_id,
+    billingPeriod: record.billing_period,
+    amount: record.price_local,
+    currency: record.currency,
+    priceText: pricesCopy.page.price(record.price_local, record.currency),
+    periodText: pricesCopy.page.period[record.billing_period],
+    verifiedOn,
+    verifiedText: pricesCopy.dayText(verifiedOn),
+  };
+}
+
+/** The "Prices verified …" line and the newest date of `dates`. */
+function verifiedSpan(dates: readonly string[]): {
+  line: string;
+  newest: string;
+} {
+  const sorted = [...dates].sort();
+  const oldest = sorted[0] as string;
+  const newest = sorted.at(-1) as string;
+  return {
+    line:
+      oldest === newest
+        ? pricesCopy.page.verifiedOn(newest)
+        : pricesCopy.page.verifiedBetween(oldest, newest),
+    newest,
+  };
+}
+
+const marketNameOrder = new Intl.Collator('en');
+
+/** The catalogue's categories, in the order they first appear in it. */
+function categoryOrder(
+  catalogue: CatalogueFile,
+): MarketHubCategory['category'][] {
+  return [...new Set(catalogue.services.map((service) => service.category))];
+}
+
+/**
+ * The service hub (E11.6-12): for each catalogue plan, every market whose
+ * live page publishes it, with its local price, linking to the page. Ranked
+ * markets come in `rankMarkets()` order, so the hub agrees with each page's
+ * rank sentence; markets the ranking leaves out (no USD figure) follow,
+ * alphabetically by name. A plan no live page publishes is left out.
+ */
+function serviceHub(
+  serviceId: string,
+  pages: readonly GeneratedPage[],
+  context: ContentContext,
+): ServiceHub {
+  const service = context.catalogue.services.find(
+    (item) => item.service_id === serviceId,
+  );
+  if (service === undefined) {
+    throw new PriceDataError(`the hub of ${serviceId} has no configured name`);
+  }
+  const own = pages.filter((page) => page.service_id === serviceId);
+  const plans = service.plans.flatMap((plan): ServiceHubPlan[] => {
+    const entries = own.flatMap((page) => {
+      const record = page.records.find(
+        (item) =>
+          item.plan_id === plan.plan_id &&
+          item.billing_period === plan.billing_period,
+      );
+      return record === undefined ? [] : [{ page, record }];
+    });
+    if (entries.length === 0) {
+      return [];
+    }
+    const ranking = rankMarkets(context.latest, {
+      service_id: serviceId,
+      plan_id: plan.plan_id,
+      billing_period: plan.billing_period,
+    });
+    const position = new Map(
+      ranking.map((ranked, index) => [ranked.market, index]),
+    );
+    const rankOf = new Map(
+      ranking.map((ranked) => [ranked.market, ranked.rank]),
+    );
+    const ranked = entries
+      .filter((entry) => position.has(entry.page.market))
+      .sort(
+        (a, b) =>
+          (position.get(a.page.market) as number) -
+          (position.get(b.page.market) as number),
+      );
+    const unranked = entries
+      .filter((entry) => !position.has(entry.page.market))
+      .sort(
+        (a, b) =>
+          marketNameOrder.compare(a.page.market_name, b.page.market_name) ||
+          (a.page.market < b.page.market ? -1 : 1),
+      );
+    return [
+      {
+        planId: plan.plan_id,
+        planName: plan.name,
+        billingPeriod: plan.billing_period,
+        tableCaption: pricesCopy.hubs.service.tableCaption(
+          pricesCopy.planLabel(service.name, plan.name),
+        ),
+        orderNote:
+          entries.length < 2
+            ? null
+            : pricesCopy.hubs.service.orderNote(ranked.length, unranked.length),
+        rows: [...ranked, ...unranked].map(({ page, record }) => ({
+          ...hubPrice(record),
+          market: page.market,
+          marketName: page.market_name,
+          path: page.path,
+          rank: rankOf.get(page.market) ?? null,
+        })),
+      },
+    ];
+  });
+  const span = verifiedSpan(
+    plans.flatMap((plan) => plan.rows.map((row) => row.verifiedOn)),
+  );
+  const path = serviceHubPath(serviceId);
+  const breadcrumbs = hubTrail(
+    path,
+    pricesCopy.hubs.service.name(service.name),
+  );
+  return {
+    kind: 'service-hub',
+    path,
+    serviceId,
+    serviceName: service.name,
+    meta: {
+      title: pricesCopy.hubs.service.title(service.name, span.newest),
+      description: pricesCopy.hubs.service.description(
+        service.name,
+        span.newest,
+      ),
+    },
+    heading: pricesCopy.hubs.service.heading(service.name, span.newest),
+    breadcrumbs,
+    structuredData: breadcrumbData(breadcrumbs),
+    plans,
+    verifiedLine: span.line,
+    lastmod: span.newest,
+    notAffiliated: pricesCopy.hubs.notAffiliated,
+  };
+}
+
+/**
+ * The market hub (E11.6-12): every live page in one market, grouped by the
+ * catalogue's categories in catalogue order, each plan it publishes with its
+ * local price, linking to the page.
+ */
+function marketHub(
+  marketSlug: string,
+  pages: readonly GeneratedPage[],
+  context: ContentContext,
+): MarketHub {
+  const own = pages.filter((page) => page.market_slug === marketSlug);
+  const first = own[0];
+  if (first === undefined) {
+    throw new PriceDataError(`the hub of ${marketSlug} has no page`);
+  }
+  const marketName = first.market_name_in_sentence;
+  const categories = categoryOrder(context.catalogue).flatMap(
+    (category): MarketHubCategory[] => {
+      const rows = context.catalogue.services
+        .filter((service) => service.category === category)
+        .flatMap((service) => {
+          const page = own.find(
+            (item) => item.service_id === service.service_id,
+          );
+          if (page === undefined) {
+            return [];
+          }
+          return page.records.map((record): MarketHubRow => {
+            const plan = service.plans.find(
+              (item) =>
+                item.plan_id === record.plan_id &&
+                item.billing_period === record.billing_period,
+            );
+            if (plan === undefined) {
+              throw new PriceDataError(
+                `${page.path} shows an unconfigured plan`,
+              );
+            }
+            return {
+              ...hubPrice(record),
+              serviceId: service.service_id,
+              planLabel: pricesCopy.planLabel(service.name, plan.name),
+              path: page.path,
+            };
+          });
+        });
+      if (rows.length === 0) {
+        return [];
+      }
+      const heading = pricesCopy.hubs.categories[category];
+      return [
+        {
+          category,
+          heading,
+          tableCaption: pricesCopy.hubs.market.tableCaption(
+            heading,
+            marketName,
+          ),
+          rows,
+        },
+      ];
+    },
+  );
+  const span = verifiedSpan(
+    categories.flatMap((category) =>
+      category.rows.map((row) => row.verifiedOn),
+    ),
+  );
+  const path = marketHubPath(marketSlug);
+  const breadcrumbs = hubTrail(path, pricesCopy.hubs.market.name(marketName));
+  return {
+    kind: 'market-hub',
+    path,
+    market: first.market,
+    marketName,
+    meta: {
+      title: pricesCopy.hubs.market.title(marketName, span.newest),
+      description: pricesCopy.hubs.market.description(marketName, span.newest),
+    },
+    heading: pricesCopy.hubs.market.heading(marketName, span.newest),
+    breadcrumbs,
+    structuredData: breadcrumbData(breadcrumbs),
+    categories,
+    verifiedLine: span.line,
+    lastmod: span.newest,
+    notAffiliated: pricesCopy.hubs.notAffiliated,
+  };
+}
+
+/**
+ * `/prices` (E11.6-12): the service hubs by category and the market hubs by
+ * name. With no live page it says so, and the page is `noindex` and in no
+ * sitemap, so the footer's link always reaches a page that is there.
+ */
+function priceIndex(
+  pages: readonly GeneratedPage[],
+  catalogue: CatalogueFile,
+): PriceIndex {
+  const copy = pricesCopy.hubs.index;
+  const services = categoryOrder(catalogue).flatMap((category) => {
+    const links = catalogue.services
+      .filter(
+        (service) =>
+          service.category === category &&
+          pages.some((page) => page.service_id === service.service_id),
+      )
+      .map((service) => ({
+        path: serviceHubPath(service.service_id),
+        label: service.name,
+      }));
+    return links.length === 0
+      ? []
+      : [{ heading: pricesCopy.hubs.categories[category], links }];
+  });
+  const marketPages = new Map<string, GeneratedPage>();
+  for (const page of pages) {
+    if (!marketPages.has(page.market_slug)) {
+      marketPages.set(page.market_slug, page);
+    }
+  }
+  const markets = [...marketPages.values()]
+    .sort((a, b) => marketNameOrder.compare(a.market_name, b.market_name))
+    .map((page) => ({
+      path: marketHubPath(page.market_slug),
+      label: page.market_name,
+    }));
+  const dates = pages.flatMap((page) => page.records.map(verificationDate));
+  const span = dates.length === 0 ? null : verifiedSpan(dates);
+  const breadcrumbs = hubTrail('/prices', null);
+  return {
+    kind: 'index',
+    path: '/prices',
+    meta: { title: copy.title, description: copy.description },
+    heading: copy.heading,
+    intro: copy.intro,
+    breadcrumbs,
+    structuredData: breadcrumbData(breadcrumbs),
+    services,
+    markets,
+    verifiedLine: span?.line ?? null,
+    lastmod: span?.newest ?? null,
+    empty: span === null ? copy.empty : null,
+    notAffiliated: pricesCopy.hubs.notAffiliated,
   };
 }
 
@@ -892,8 +1366,14 @@ export function createPriceSite(inputs: PriceSiteInputs): PriceSite {
     );
   }
 
-  const byPath = new Map<string, PriceRoute>();
+  // Every generated page is served, retired or not. A retirement applies
+  // only while its pair generates no page: the URL then answers 301 to its
+  // hub in place of the unavailable state (E11.6-12, D2 and D-037 Q2).
   const pages = generatedPages(latest, catalogue, markets);
+  const retired = retiredUrls(ledger, pages);
+  const hubSet = new Set(hubPaths(pages));
+  const byPath = new Map<string, PriceRoute>();
+  const hubs: PriceHub[] = [];
   if (latest !== null) {
     const context: ContentContext = {
       catalogue,
@@ -906,23 +1386,55 @@ export function createPriceSite(inputs: PriceSiteInputs): PriceSite {
     for (const page of pages) {
       byPath.set(page.path, generatedRoute(page, context));
     }
-  }
-  for (const entry of ledger.urls) {
-    if (!byPath.has(entry.path)) {
-      byPath.set(entry.path, unavailableRoute(entry, catalogue, markets));
+    for (const serviceId of new Set(pages.map((page) => page.service_id))) {
+      hubs.push(serviceHub(serviceId, pages, context));
+    }
+    for (const slug of new Set(pages.map((page) => page.market_slug))) {
+      hubs.push(marketHub(slug, pages, context));
     }
   }
-  const routes = [...byPath.values()].sort((a, b) =>
-    a.path < b.path ? -1 : a.path > b.path ? 1 : 0,
-  );
+  for (const entry of ledger.urls) {
+    if (
+      !isRetirement(entry) &&
+      !retired.has(entry.path) &&
+      !byPath.has(entry.path)
+    ) {
+      byPath.set(
+        entry.path,
+        unavailableRoute(entry, catalogue, markets, hubSet),
+      );
+    }
+  }
+  const byPathOrder = <T extends { path: string }>(a: T, b: T) =>
+    a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+  const routes = [...byPath.values()].sort(byPathOrder);
   const sitemap = routes.flatMap((route) =>
     route.kind === 'generated'
       ? [{ path: route.path, lastmod: route.lastmod }]
       : [],
   );
+  hubs.sort(byPathOrder);
+  const hubByPath = new Map(hubs.map((hub) => [hub.path, hub]));
+  const index = priceIndex(pages, catalogue);
+  const hubEntries = (kind: PriceHub['kind']) =>
+    hubs
+      .filter((hub) => hub.kind === kind)
+      .map((hub) => ({ path: hub.path, lastmod: hub.lastmod }));
   return {
     routes,
     sitemap,
     route: (path) => byPath.get(path) ?? null,
+    hubs,
+    hub: (path) => hubByPath.get(path) ?? null,
+    index,
+    hubSitemaps: {
+      index:
+        index.lastmod === null
+          ? []
+          : [{ path: index.path, lastmod: index.lastmod }],
+      services: hubEntries('service-hub'),
+      markets: hubEntries('market-hub'),
+    },
+    redirect: (path) => retired.get(path) ?? null,
   };
 }

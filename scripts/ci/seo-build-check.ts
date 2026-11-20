@@ -61,20 +61,34 @@ const pageBindings: Record<string, string> = {
   // E11.6-10: one binding for every service × market page, generated or
   // unavailable; its metadata comes from the price site's view model.
   '/prices/[service]/[country]': 'view.meta',
+  // E11.6-12: `/prices` and the hubs, from the same view model.
+  '/prices': 'view.meta',
+  '/prices/[service]': 'view.meta',
+  '/prices/countries/[country]': 'view.meta',
 };
 
 // The page files whose routes are expanded from data rather than the file
-// tree: each published rules revision, and each price page the bundled data
-// generates or the published-URL ledger holds (E11.6-10).
+// tree: each published rules revision, each price page the bundled data
+// generates or the published-URL ledger holds (E11.6-10), and each service
+// and market hub the data makes (E11.6-12).
 const expandedRouteFiles = new Set([
   'giveaway/rules/[rulesVersion].astro',
   'prices/[service]/[country].astro',
+  'prices/[service]/index.astro',
+  'prices/countries/[country].astro',
 ]);
 
-/** Every price route of the data under `root`, with its metadata. */
+/**
+ * Every price route of the data under `root`, with its metadata: the pages,
+ * the hubs and `/prices` (E11.6-12). A retired URL that generates no page
+ * answers 301 and has none.
+ */
 export async function priceSeoPages(root: string): Promise<PageMetadata[]> {
   const site = createPriceSite(await readPriceSiteInputs(root));
-  return site.routes.map((route) => ({ pathname: route.path, ...route.meta }));
+  return [...site.routes, ...site.hubs, site.index].map((route) => ({
+    pathname: route.path,
+    ...route.meta,
+  }));
 }
 
 function frontmatterField(source: string, name: string): string {
@@ -159,7 +173,8 @@ export async function collectSeoPages(
       ),
     ),
   ];
-  // The price route's pages, from the data the build bundles (E11.6-10).
+  // The price route's pages, from the data the build bundles (E11.6-10),
+  // with the hubs and `/prices` (E11.6-12).
   const prices = files.includes('prices/[service]/[country].astro')
     ? await priceSeoPages(root)
     : [];
@@ -526,6 +541,21 @@ export async function generateSitemap(root = projectRoot): Promise<void> {
   await writeFile(
     join(root, 'public', childSitemaps.pricesServiceMarket),
     urlsetXml(prices.sitemap),
+  );
+  // E11.6-12: each kind of hub has its own child sitemap, every hub dated
+  // from the newest verification it shows; `/prices` is listed only while a
+  // page is live.
+  await writeFile(
+    join(root, 'public', childSitemaps.pricesIndex),
+    urlsetXml(prices.hubSitemaps.index),
+  );
+  await writeFile(
+    join(root, 'public', childSitemaps.pricesServiceHubs),
+    urlsetXml(prices.hubSitemaps.services),
+  );
+  await writeFile(
+    join(root, 'public', childSitemaps.pricesMarketHubs),
+    urlsetXml(prices.hubSitemaps.markets),
   );
   await writeFile(join(root, 'public/sitemap.xml'), sitemapIndexXml());
 }

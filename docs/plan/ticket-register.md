@@ -162,7 +162,7 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 140 | E11.6-10 | The service × market page: route, flag, published-URL ledger and sitemap index | Epic E11.6 — Price index and price pages | done | auto |
 | 141 | E11.6-11 | Service × market page content: history, comparison, related services, FAQ and the Valstara price | Epic E11.6 — Price index and price pages | done | auto |
 | 142 | E11.6-11a | Faster local checks, eight CI shards and the known test flakes | Epic E11.6 — Price index and price pages | done | auto |
-| 143 | E11.6-12 | The service hub, the market hub and `/prices` | Epic E11.6 — Price index and price pages | todo | auto |
+| 143 | E11.6-12 | The service hub, the market hub and `/prices` | Epic E11.6 — Price index and price pages | done | auto |
 | 144 | E11.6-13 | `/price-index`, the methodology and the monthly report pages | Epic E11.6 — Price index and price pages | todo | auto |
 | 145 | E11.6-14 | Social cards for the price pages | Epic E11.6 — Price index and price pages | todo | auto |
 | 146 | E11.6-15 | The first monthly run and the monthly runbook | Epic E11.6 — Price index and price pages | todo | manual |

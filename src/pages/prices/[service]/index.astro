@@ -1,0 +1,48 @@
+---
+import PriceHub from '../../../layouts/price-hub.astro';
+import PricesPaused from '../../../layouts/prices-paused.astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { getFlagService } from '../../../server/flags/app-service.ts';
+import { bundledPriceSite } from '../../../server/prices/bundled.ts';
+import { hubRoute } from '../../../server/prices/hub-route.ts';
+import { jsonLd } from '../../../server/seo.ts';
+
+// A service hub (E11.6-12), `/prices/[service]`: server-rendered on request from the price
+// data bundled at build, behind `prices.pages`. The view model is
+// src/server/prices/site.ts and the answer src/server/prices/hub-route.ts;
+// this page only renders it.
+
+const result = hubRoute(
+  bundledPriceSite,
+  `/prices/${Astro.params.service ?? ''}`,
+  Astro.url,
+  await getFlagService().list(),
+  Astro.response.headers,
+);
+if (result.kind === 'not-found') {
+  return new Response(null, { status: 404 });
+}
+if (result.kind === 'paused') {
+  Astro.response.status = 503;
+}
+const view = result.kind === 'hub' ? result.view : null;
+---
+
+{
+  view === null ? (
+    <PricesPaused />
+  ) : (
+    <BaseLayout title={view.meta.title} description={view.meta.description}>
+      {view.kind === 'index' && view.empty !== null && (
+        <meta slot="head" name="robots" content="noindex" />
+      )}
+      <script
+        is:inline
+        slot="head"
+        type="application/ld+json"
+        set:html={jsonLd(view.structuredData)}
+      />
+      <PriceHub view={view} />
+    </BaseLayout>
+  )
+}

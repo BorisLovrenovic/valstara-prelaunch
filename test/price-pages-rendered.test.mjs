@@ -863,7 +863,7 @@ test('a price page loads no script beyond the theme toggle, the signup form, Tur
   }
 });
 
-test('the sitemap index lists both child sitemaps, pages.xml keeps the previous entries, and the price sitemap lists generated pages with their verification dates', async () => {
+test('the sitemap index lists every child sitemap, pages.xml keeps the previous entries, and the price sitemap lists generated pages with their verification dates', async () => {
   const index = await get('/sitemap.xml');
   assert.equal(index.status, 200);
   assert.deepEqual(
@@ -873,6 +873,11 @@ test('the sitemap index lists both child sitemaps, pages.xml keeps the previous 
     [
       'https://valstara.com/sitemaps/pages.xml',
       'https://valstara.com/sitemaps/prices-service-market.xml',
+      // E11.6-12: the hubs' own child sitemaps
+      // (test/price-hubs-rendered.test.mjs reads them).
+      'https://valstara.com/sitemaps/prices-index.xml',
+      'https://valstara.com/sitemaps/prices-service-hubs.xml',
+      'https://valstara.com/sitemaps/prices-market-hubs.xml',
     ],
   );
   const pages = await get('/sitemaps/pages.xml');

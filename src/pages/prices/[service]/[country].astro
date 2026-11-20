@@ -27,6 +27,9 @@ import { jsonLd } from '../../../server/seo.ts';
 // renders it. E11.6-11 adds the price history, the cross-market comparison,
 // the Valstara comparison (behind `prices.valstara_comparison`), related
 // services and the FAQ, each rendered only when the data holds it.
+// E11.6-12 adds the links to the page's two hubs, and answers a URL the
+// founder has retired, while it generates no page, with a 301 to its
+// recorded hub (D2 and D-037 Q2).
 
 const flags = await getFlagService().list();
 const enabled = (key: keyof typeof campaignFlagRegistry) =>
@@ -49,11 +52,14 @@ if (!pagesEnabled) {
   Astro.response.headers.set('X-Robots-Tag', 'noindex');
 }
 
-const view = pagesEnabled
-  ? bundledPriceSite().route(
-      `/prices/${Astro.params.service ?? ''}/${Astro.params.country ?? ''}`,
-    )
-  : null;
+const path = `/prices/${Astro.params.service ?? ''}/${Astro.params.country ?? ''}`;
+// A retired URL that generates no page answers 301 to the hub the ledger
+// records (E11.6-12, D2 and D-037 Q2); a generated page is always served.
+const retiredTo = pagesEnabled ? bundledPriceSite().redirect(path) : null;
+if (retiredTo !== null) {
+  return Astro.redirect(retiredTo, 301);
+}
+const view = pagesEnabled ? bundledPriceSite().route(path) : null;
 // A pair that is neither generated nor in the ledger answers the branded 404.
 if (pagesEnabled && view === null) {
   return new Response(null, { status: 404 });
@@ -410,6 +416,24 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
                 ))}
               </dl>
             </section>
+          )}
+          {view.hubLinks.length > 0 && (
+            <nav
+              class="price-block"
+              aria-labelledby="price-hubs-title"
+              data-price-hubs
+            >
+              <h2 id="price-hubs-title">{pricesCopy.hubs.pageLinksHeading}</h2>
+              <ul class="price-related">
+                {view.hubLinks.map((link) => (
+                  <li>
+                    <a href={link.path} data-hub-link={link.path}>
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
           )}
           <p class="price-page__independent">{view.notAffiliated}</p>
         </Container>
