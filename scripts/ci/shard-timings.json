@@ -213,6 +213,7 @@
   "test/signup-route.test.ts": 2.2,
   "test/signup-states-rendered.test.mjs": 120.7,
   "test/signup-sticky-bar-rendered.test.mjs": 177.4,
+  "test/social-cards.test.ts": 25.8,
   "test/status-link-rendered-page.test.mjs": 7.6,
   "test/status-link.test.ts": 3.7,
   "test/storage-inventory.test.mjs": 5.8,

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test, { after, before } from 'node:test';
@@ -14,7 +14,12 @@ import {
   publishedView,
   rankMarkets,
 } from '../packages/price-index/src/publish/index.ts';
-import { checkRenderedHead } from '../scripts/ci/seo-build-check.ts';
+import {
+  checkRenderedHead,
+  priceCardTitle,
+  socialCardCacheDirectory,
+  socialCardManifestFile,
+} from '../scripts/ci/seo-build-check.ts';
 import { createPriceSite } from '../src/server/prices/site.ts';
 import { pricesPausedRetryAfterSeconds } from '../src/server/prices/route.ts';
 import { createReferralCaptureService } from '../src/server/referral/capture.ts';
@@ -139,6 +144,17 @@ after(async () => {
     await admin.end();
   }
 });
+
+/** A served card image's bytes, from its absolute card URL. */
+async function getImage(url) {
+  const response = await globalThis.fetch(
+    `http://127.0.0.1:${server.port}${new URL(url).pathname}`,
+    { signal: globalThis.AbortSignal.timeout(10_000) },
+  );
+  assert.equal(response.status, 200, url);
+  assert.equal(response.headers.get('content-type'), 'image/png', url);
+  return globalThis.Buffer.from(await response.arrayBuffer());
+}
 
 /** The visible text of some HTML: no scripts, styles, tags or entities. */
 function visibleText(html) {
@@ -606,7 +622,7 @@ test('with prices.valstara_comparison off (the default), no Valstara price rende
   }
 });
 
-test('each price page has a unique title and description, a self-canonical, the prices card fallback and BreadcrumbList data', async () => {
+test('each price page has a unique title and description, a self-canonical, its own card or the prices fallback, and BreadcrumbList data', async () => {
   const seen = { titles: new Set(), descriptions: new Set() };
   for (const route of site.routes) {
     const page = await get(route.path);
@@ -644,21 +660,64 @@ test('each price page has a unique title and description, a self-canonical, the 
         },
       ],
     });
-    // The page's card URL serves the typed prices fallback until E11.6-14.
-    const card = await globalThis.fetch(
-      `http://127.0.0.1:${server.port}${new URL(socialImageUrl(route.path)).pathname}`,
-    );
-    assert.equal(card.status, 200, route.path);
-    assert.equal(card.headers.get('content-type'), 'image/png');
-    const fallback = await globalThis.fetch(
-      `http://127.0.0.1:${server.port}${new URL(socialFallbackImageUrl('prices')).pathname}`,
-    );
-    assert.deepEqual(
-      globalThis.Buffer.from(await card.arrayBuffer()),
-      globalThis.Buffer.from(await fallback.arrayBuffer()),
-    );
+    // E11.6-14: a generated page serves its own card; a ledger URL that
+    // publishes no page serves the typed prices card.
+    const card = await getImage(socialImageUrl(route.path));
+    const fallback = await getImage(socialFallbackImageUrl('prices'));
+    if (route.kind === 'generated') {
+      assert.notDeepEqual(card, fallback, route.path);
+    } else {
+      assert.deepEqual(card, fallback, route.path);
+    }
   }
   assert.equal(seen.titles.size, site.routes.length);
+});
+
+test('the price on a card equals the first plan row of the served page, and the served card is that render', async () => {
+  // E11.6-14 (D-038 Q1): the build's card manifest records the text each
+  // card was rendered from, and the sha-256 of the PNG it rendered.
+  const manifest = JSON.parse(
+    await readFile(
+      join(fixtureRoot, socialCardCacheDirectory, socialCardManifestFile),
+      'utf8',
+    ),
+  );
+  for (const route of generated) {
+    const page = await get(route.path);
+    assert.equal(page.status, 200, route.path);
+    const firstRow =
+      /<tr data-plan="[^"]+" data-billing-period="[^"]+"[^>]*>\s*<th scope="row"[^>]*>([^<]*)<\/th>[\s\S]*?<span class="price-table__amount"[^>]*>\s*([^<]*?)\s*<\/span>\s*<span class="price-table__period"[^>]*>\s*([^<]*?)\s*<\/span>/u.exec(
+        page.body,
+      );
+    assert.ok(firstRow, `${route.path} serves a plan row`);
+    const [, plan, price, period] = firstRow.map((text) =>
+      visibleText(text).trim(),
+    );
+    const output = new URL(socialImageUrl(route.path)).pathname.slice(1);
+    const card = manifest.cards[output];
+    assert.ok(card, `${route.path} has a card in the manifest`);
+    assert.equal(card.priceLine, `${plan} · ${price} ${period}`, route.path);
+    // D-039 Q1: the card title is the page's SEO title without its brand
+    // suffix; the card's wordmark carries the brand.
+    assert.ok(route.meta.title.endsWith(' — Valstara'), route.path);
+    assert.equal(card.title, priceCardTitle(route.meta.title), route.path);
+    assert.equal(
+      card.title,
+      route.meta.title.slice(0, -' — Valstara'.length),
+      route.path,
+    );
+    const served = await getImage(socialImageUrl(route.path));
+    assert.equal(
+      createHash('sha256').update(served).digest('hex'),
+      manifest.images[card.key],
+      `${route.path} serves the card rendered from that line`,
+    );
+  }
+  // An unavailable ledger URL has no card of its own, so no price line.
+  for (const route of unavailable) {
+    const output = new URL(socialImageUrl(route.path)).pathname.slice(1);
+    assert.equal(manifest.cards[output], undefined, route.path);
+  }
 });
 
 test('a ref-less default render is cacheable by flag generation; a ?ref= render is private, no-store', async () => {
