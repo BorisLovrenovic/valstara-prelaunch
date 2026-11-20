@@ -5,6 +5,12 @@ import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
 import { clearTimeout, setTimeout } from 'node:timers';
+
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
+
 const deployUrl = new URL('../infra/deploy/deploy.sh', import.meta.url);
 const rollbackUrl = new URL('../infra/deploy/rollback.sh', import.meta.url);
 const productionComposeUrl = new URL(
@@ -384,9 +390,11 @@ test(
         '-addext',
         'subjectAltName=DNS:valstara.com',
       ]);
+      await removeOrphanedContainers();
       await runChecked('docker', [
         'run',
         '--detach',
+        ...containerOwnerArguments(),
         '--rm',
         '--name',
         registry,

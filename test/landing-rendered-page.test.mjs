@@ -398,24 +398,34 @@ test('a landing ?ref= request renders a valid server-signed form field', async (
 // from a stopped run, a container port Docker published, or the same helper
 // in a concurrent run) failed the whole file. The helper now takes a reserved
 // port and retries a lost bind race (test/helpers/listen-port.mjs).
-test('the landing render server starts while another process holds the fixed port it once used', async () => {
-  // A foreign listener that closes every connection, as a server for some
-  // other purpose would answer the helper's requests.
-  const holder = createServer((socket) => socket.destroy());
-  holder.listen(62_001, '127.0.0.1');
-  const [error] = await Promise.race([
-    once(holder, 'listening').then(() => [undefined]),
-    once(holder, 'error'),
-  ]);
-  // Held by someone else already serves the test just as well.
-  if (error !== undefined && error.code !== 'EADDRINUSE') throw error;
+test('the landing render server starts while another process holds the fixed ports it once used', async () => {
+  // The old counter lived for the whole test process, so by the time this test
+  // ran it had already moved past 62001 by one port per earlier render. Hold
+  // every port it could reach in this file (it renders about twenty times, far
+  // below a hundred), so the test fails against the old helper whatever order
+  // the file's tests run in. Each holder closes every connection, as a server
+  // for some other purpose would answer the helper's requests.
+  const holders = [];
   try {
+    for (let port = 62_001; port <= 62_100; port += 1) {
+      const holder = createServer((socket) => socket.destroy());
+      holders.push(holder);
+      holder.listen(port, '127.0.0.1');
+      const [error] = await Promise.race([
+        once(holder, 'listening').then(() => [undefined]),
+        once(holder, 'error'),
+      ]);
+      // Held by someone else already serves the test just as well.
+      if (error !== undefined && error.code !== 'EADDRINUSE') throw error;
+    }
     const { body } = await renderLanding({ flags: [signupOn] });
     assert.match(body, /<main\b/u);
   } finally {
-    if (holder.listening) {
-      holder.close();
-      await once(holder, 'close');
+    for (const holder of holders) {
+      if (holder.listening) {
+        holder.close();
+        await once(holder, 'close');
+      }
     }
   }
 });
