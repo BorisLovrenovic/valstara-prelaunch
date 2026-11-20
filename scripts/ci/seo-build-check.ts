@@ -523,6 +523,8 @@ const sha256 = (value: Buffer | string) =>
 export async function renderSocialCards(
   root: string,
   cards: readonly SocialCard[],
+  // The card template's source; a test passes its own to change only that.
+  templateSource?: Buffer | string,
 ): Promise<SocialCardStats> {
   const tokenSource = await readFile(
     join(root, 'src/styles/tokens.css'),
@@ -541,7 +543,9 @@ export async function renderSocialCards(
     mono === undefined
       ? undefined
       : await socialCardFont(root, tokenSource, mono);
-  const template = sha256(await readFile(fileURLToPath(import.meta.url)));
+  const template = sha256(
+    templateSource ?? (await readFile(fileURLToPath(import.meta.url))),
+  );
   const keyOf = (card: SocialCard) =>
     sha256(
       JSON.stringify({

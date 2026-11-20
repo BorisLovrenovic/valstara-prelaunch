@@ -312,6 +312,49 @@ test('a changed page renders its own card only, and the cache keeps one build', 
       await readdir(join(fixture, socialCardCacheDirectory))
     ).filter((file) => file.endsWith('.png'));
     assert.equal(cached.length, 2);
+
+    // A used font file's bytes are part of the key (D-038 Q3). A trailing
+    // byte changes the file but not the font it decodes to: the monospace
+    // font re-renders the priced card only, the sans font every card.
+    const monoFont = join(
+      fixture,
+      'public/fonts/jetbrains-mono-latin-wght-normal.woff',
+    );
+    const sansFont = join(
+      fixture,
+      'public/fonts/instrument-sans-latin-wght-normal.woff',
+    );
+    await writeFile(
+      monoFont,
+      Buffer.concat([await readFile(monoFont), Buffer.from([0])]),
+    );
+    assert.deepEqual(await renderSocialCards(fixture, changed), {
+      rendered: 1,
+      reused: 1,
+    });
+    await writeFile(
+      sansFont,
+      Buffer.concat([await readFile(sansFont), Buffer.from([0])]),
+    );
+    assert.deepEqual(await renderSocialCards(fixture, changed), {
+      rendered: 2,
+      reused: 0,
+    });
+
+    // So is the card template's source: a changed template re-renders
+    // every card, and the same template reuses them all.
+    const template = `${await readFile(
+      join(root, 'scripts/ci/seo-build-check.ts'),
+      'utf8',
+    )}\n// changed\n`;
+    assert.deepEqual(await renderSocialCards(fixture, changed, template), {
+      rendered: 2,
+      reused: 0,
+    });
+    assert.deepEqual(await renderSocialCards(fixture, changed, template), {
+      rendered: 0,
+      reused: 2,
+    });
   } finally {
     await rm(fixture, { recursive: true, force: true });
   }
@@ -389,13 +432,15 @@ async function fullScaleEntries(
     });
   }
   for (const market of markets) {
+    // The hub's title uses the in-sentence name, as the site's does.
+    const marketName = market.name_in_sentence ?? market.name;
     entries.push({
       card: priceSocialCard(
         outputOf(`/prices/countries/${market.slug}`),
-        pricesCopy.hubs.market.title(market.name, newest),
+        pricesCopy.hubs.market.title(marketName, newest),
         null,
       ),
-      shows: [market.name, month],
+      shows: [marketName, month],
     });
   }
   entries.push(
