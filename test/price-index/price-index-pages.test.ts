@@ -21,7 +21,7 @@ import {
   type PriceSite,
   type TextPart,
 } from '../../src/server/prices/site.ts';
-import { canonicalUrl } from '../../src/server/seo.ts';
+import { datasetIssues } from '../helpers/structured-data.mjs';
 import { projectRoot } from '../helpers/price-index-run.ts';
 
 // E11.6-13: `/price-index` and the monthly reports at the view-model layer,
@@ -75,83 +75,6 @@ function read(parts: readonly TextPart[]) {
       part.href === null ? [] : [[part.text, part.href]],
     ),
   };
-}
-
-const isoDate = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/u;
-
-/**
- * Every way a Dataset JSON-LD object falls short of schema.org's Dataset as
- * search engines read it: the required name and description (50 to 5,000
- * characters), and well-formed optional fields. Only the fields this site
- * writes are allowed, so an added claim must be added here deliberately.
- */
-function datasetIssues(data: unknown): string[] {
-  if (typeof data !== 'object' || data === null) return ['not an object'];
-  const value = data as Record<string, unknown>;
-  const issues: string[] = [];
-  const allowed = new Set([
-    '@context',
-    '@type',
-    'name',
-    'description',
-    'url',
-    'temporalCoverage',
-    'spatialCoverage',
-    'dateModified',
-  ]);
-  for (const key of Object.keys(value)) {
-    if (!allowed.has(key)) issues.push(`unexpected field ${key}`);
-  }
-  if (value['@context'] !== 'https://schema.org') issues.push('@context');
-  if (value['@type'] !== 'Dataset') issues.push('@type');
-  if (typeof value.name !== 'string' || value.name.trim() === '') {
-    issues.push('name');
-  }
-  if (
-    typeof value.description !== 'string' ||
-    value.description.length < 50 ||
-    value.description.length > 5000
-  ) {
-    issues.push('description');
-  }
-  if (value.url !== canonicalUrl('/price-index')) issues.push('url');
-  const coverage = value.temporalCoverage;
-  const [start, end, ...rest] =
-    typeof coverage === 'string' ? coverage.split('/') : [];
-  if (
-    start === undefined ||
-    !isoDate.test(start) ||
-    (end !== undefined && (!isoDate.test(end) || end < start)) ||
-    rest.length > 0
-  ) {
-    issues.push('temporalCoverage');
-  }
-  const places = value.spatialCoverage;
-  if (
-    !Array.isArray(places) ||
-    places.length === 0 ||
-    places.some(
-      (place) =>
-        typeof place !== 'object' ||
-        place === null ||
-        (place as Record<string, unknown>)['@type'] !== 'Country' ||
-        typeof (place as Record<string, unknown>).name !== 'string' ||
-        !/^[A-Z]{2}$/u.test(
-          String((place as Record<string, unknown>).identifier),
-        ) ||
-        Object.keys(place).length !== 3,
-    )
-  ) {
-    issues.push('spatialCoverage');
-  }
-  if (
-    typeof value.dateModified !== 'string' ||
-    !isoDate.test(value.dateModified)
-  ) {
-    issues.push('dateModified');
-  }
-  if (JSON.stringify(value).match(/:\s*-?\d/u)) issues.push('a number');
-  return issues;
 }
 
 /** The verification dates of every published record of the fixture, independently. */
