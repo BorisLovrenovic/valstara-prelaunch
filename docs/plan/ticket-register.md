@@ -165,7 +165,7 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 143 | E11.6-12 | The service hub, the market hub and `/prices` | Epic E11.6 — Price index and price pages | done | auto |
 | 144 | E11.6-13 | `/price-index`, the methodology and the monthly report pages | Epic E11.6 — Price index and price pages | done | auto |
 | 145 | E11.6-14 | Social cards for the price pages | Epic E11.6 — Price index and price pages | done | auto |
-| 146 | E11.6-15 | The first monthly run and the monthly runbook | Epic E11.6 — Price index and price pages | todo | manual |
+| 146 | E11.6-15 | The first monthly run and the monthly runbook | Epic E11.6 — Price index and price pages | done | manual |
 | 147 | E11.6-16 | Price-page audit and founder sign-off | Epic E11.6 — Price index and price pages | todo | auto |
 | 148 | E11.7-01 | The shared code registry and the partner code rules | Epic E11.7 — Pre-launch partner programme | todo | auto |
 | 149 | E11.7-02 | Voiding a referral, and the founder command line | Epic E11.7 — Pre-launch partner programme | todo | auto |
