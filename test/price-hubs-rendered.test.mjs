@@ -387,7 +387,7 @@ test('each hub has a unique title and description, a self-canonical, breadcrumbs
       body.indexOf('<nav class="price-breadcrumbs'),
       body.indexOf('</nav>', body.indexOf('<nav class="price-breadcrumbs')),
     );
-    assert.match(trail, /<a href="\/">Valstara<\/a>/u);
+    assert.match(trail, /<a href="\/"[^>]*>Valstara<\/a>/u);
     assert.match(trail, /aria-current="page"/u);
     // A hub loads no script beyond the theme toggle, the page-view emitter
     // and its structured data.

@@ -17,7 +17,7 @@ Flags exist for one reason: **so a mechanic can be switched off during an incide
 | `survey.enabled` | on | `survey.md` | Off skips the two questions on the verification success page |
 | `member.dashboard` | on | `member-status.md` | Off falls back to the status summary in email only — this is cut-list item 3 |
 | `email.broadcast` | **off** | `email-campaign.md` | **Off until domain authentication is verified end to end.** Transactional mail is unaffected |
-| `prices.pages` | on | `price-index.md` | **The lever for a wrong price that has gone live** (E11.6-10). Off answers every price route with `503`, `Retry-After` and `noindex`, without a deploy |
+| `prices.pages` | on | `price-index.md` | **The lever for a wrong price that has gone live** (E11.6-10). Off answers every price route (the service × market pages, and since E11.6-12 `/prices` and the hubs) with `503`, `Retry-After` and `noindex`, without a deploy |
 | `prices.valstara_comparison` | **off** | `price-index.md` | **A Valstara price shown is a public price commitment** (E11.6-11). Off, no Valstara price renders on any page, whatever `config/valstara-prices.json` holds; the waitlist call to action stays either way. It stays off until the founder turns it on |
 
 **Three flags default off.** The founder retired the pre-launch `trustpilot.widget` flag on 2026-10-10; it is no longer a registered feature.
