@@ -19,6 +19,10 @@ import {
   enforcedPages,
 } from '../scripts/design/layout-checks.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const executeFile = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -165,10 +169,12 @@ before(async () => {
     html.set(route, await response.text());
   }
 
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

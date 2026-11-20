@@ -8,6 +8,10 @@ import test, { after, before } from 'node:test';
 import { chromium } from 'playwright';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const execFileAsync = promisify(execFile);
 const browserContainer = `valstara-layout-playwright-${process.pid}`;
@@ -44,10 +48,12 @@ let browserServerError;
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

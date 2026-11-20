@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     services:
       postgres:
         image: postgres:17-alpine
@@ -136,6 +136,8 @@ jobs:
         with:
           pattern: coverage-shard-*
           path: coverage-shards
+      # Also annotates a non-blocking warning when the shard plan has gone
+      # stale; balance never affects correctness, so it never fails the job.
       - run: node scripts/ci/merge-coverage.mjs coverage-shards
       - run: node scripts/ci/changed-coverage.mjs
       - name: Keep the measured file timings for refreshing the shard plan

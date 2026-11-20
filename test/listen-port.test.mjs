@@ -5,9 +5,13 @@ import test from 'node:test';
 
 import {
   ephemeralPortStart,
+  isWsl,
+  parseExcludedPortRanges,
+  parseListeningPorts,
   reserveListenPort,
   startAppServer,
   waitForConnections,
+  windowsPortView,
 } from './helpers/listen-port.mjs';
 
 // Under scripts/fixtures, like the other spawned server fixtures: `node --test`
@@ -197,4 +201,108 @@ test('a published port that never accepts connections fails after its attempts',
     waitForConnections(port, { attempts: 3, label: 'dead forward' }),
     /dead forward refused 3 connection attempts\./u,
   );
+});
+
+// E11.6-11a, flake (c). On a WSL host the browser container reaches a test
+// server through Windows, so a port Windows has reserved or already listens
+// on is unusable even though it is free in WSL: the container is refused, or
+// reaches the Windows process instead. Reservation must skip such ports.
+
+test('a port Windows reserves or listens on is never reserved for a server the browser reaches', async () => {
+  const ceiling = await ephemeralPortStart();
+  const span = ceiling - 10_000;
+  // Three ports free in WSL, drawn in this order by the injected random
+  // source. Windows has reserved the first (an excluded range) and listens on
+  // the second; before E11.6-11a either would have been handed out.
+  const candidates = [];
+  while (candidates.length < 3) {
+    const port = await reserveListenPort({ windowsPorts: async () => null });
+    if (!candidates.includes(port)) candidates.push(port);
+  }
+  const [reserved, listened, free] = candidates;
+  const draws = candidates.map((port) => (port - 10_000 + 0.5) / span);
+  const ranges = parseExcludedPortRanges(
+    `     ${reserved}       ${reserved}      `,
+  );
+  const listeners = parseListeningPorts(
+    `  TCP    127.0.0.1:${listened}        0.0.0.0:0              LISTENING       5708`,
+  );
+  let consulted = 0;
+  const port = await reserveListenPort({
+    random: () => draws.shift(),
+    windowsPorts: async () => {
+      consulted += 1;
+      return (candidate) =>
+        listeners.has(candidate) ||
+        ranges.some(([start, end]) => candidate >= start && candidate <= end);
+    },
+  });
+  assert.equal(port, free);
+  // Windows is read once per reservation, not once per probe.
+  assert.equal(consulted, 1);
+});
+
+test('with no Windows view, as off WSL, reservation is unchanged', async () => {
+  const ceiling = await ephemeralPortStart();
+  const port = await reserveListenPort({ windowsPorts: async () => null });
+  const again = await reserveListenPort({
+    random: () => (port - 10_000 + 0.5) / (ceiling - 10_000),
+    windowsPorts: async () => null,
+  });
+  assert.equal(again, port);
+});
+
+test('Windows excluded port ranges are read from netsh output', () => {
+  // As `netsh interface ipv4 show excludedportrange protocol=tcp` prints it
+  // on this host on 2026-11-20, with CRLF line ends and the marker for an
+  // administered exclusion.
+  const output = [
+    '',
+    'Protocol tcp Port Exclusion Ranges',
+    '',
+    'Start Port    End Port      ',
+    '----------    --------      ',
+    '     48791       48890      ',
+    '     50000       50059     *',
+    '     60491       60590      ',
+    '',
+    '* - Administered port exclusions.',
+    '',
+  ].join('\r\n');
+  assert.deepEqual(parseExcludedPortRanges(output), [
+    [48791, 48890],
+    [50000, 50059],
+    [60491, 60590],
+  ]);
+});
+
+test('Windows listening ports are read from netstat output in any language', () => {
+  const output = [
+    '',
+    'Active Connections',
+    '',
+    '  Proto  Local Address          Foreign Address        State           PID',
+    '  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       2244',
+    '  TCP    127.0.0.1:15292        0.0.0.0:0              ABHÖREN         5708',
+    '  TCP    127.0.0.1:20241        127.0.0.1:52011        ESTABLISHED     33432',
+    '  TCP    [::]:3306              [::]:0                 LISTENING       8408',
+    '  TCP    [::1]:30989            [::]:0                 LISTENING       36552',
+    '  UDP    0.0.0.0:5353           *:*                                    1980',
+    '',
+  ].join('\r\n');
+  assert.deepEqual(
+    [...parseListeningPorts(output)].sort((a, b) => a - b),
+    [135, 3306, 15292, 30989],
+  );
+});
+
+test('on WSL the Windows view reads Windows itself; elsewhere there is none', async () => {
+  const view = await windowsPortView();
+  if (!isWsl()) {
+    assert.equal(view, null);
+    return;
+  }
+  assert.equal(typeof view, 'function');
+  // Windows' RPC endpoint mapper always listens on 135.
+  assert.equal(view(135), true);
 });

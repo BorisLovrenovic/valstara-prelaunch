@@ -30,6 +30,10 @@ import {
   checkRegionLayout,
   designWidths,
 } from '../scripts/design/layout-checks.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 // E11.5-11e built the #rewards section from the wireframes; E11.5-11o
 // restyles it to the final-design canvas (Rewards.dc.html as the landing
@@ -191,10 +195,12 @@ async function buildChangedFixture(rulesArticle) {
 }
 
 async function startBrowserServer() {
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

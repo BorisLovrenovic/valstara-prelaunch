@@ -210,10 +210,27 @@ export async function localDependencies(root, file, source) {
 }
 
 /**
- * Picks the test files a change needs: changed tests, tests whose import graph
- * reaches a changed file or a package a dependency change affects, named
- * suites, and the browser suites when a change can reach a rendered page.
- * Returns each file with the reason it was picked.
+ * The local gate's selection (E11.6-11a): the named files and the test files
+ * the branch added or changed, and nothing else. Every other test the change
+ * could reach runs in CI's full suite. Returns each file with the reason it
+ * was picked.
+ */
+export function selectBranchTests({ changedFiles, candidates, named = [] }) {
+  const changed = new Set(changedFiles);
+  const selected = new Map();
+  for (const file of named) selected.set(file, 'named');
+  for (const file of candidates) {
+    if (!selected.has(file) && changed.has(file)) selected.set(file, 'changed');
+  }
+  return new Map([...selected].sort(([a], [b]) => a.localeCompare(b)));
+}
+
+/**
+ * The `--wide` selection, which is not part of any gate: changed tests, tests
+ * whose import graph reaches a changed file or a package a dependency change
+ * affects, named suites, and the browser suites when a change can reach a
+ * rendered page. It shows a session what CI's full suite will cover. Returns
+ * each file with the reason it was picked.
  */
 export async function selectTests({
   root,
@@ -321,54 +338,90 @@ function defaultBase(root) {
   }
 }
 
-async function main() {
-  const argumentsList = process.argv.slice(2);
+export function parseArguments(argumentsList) {
   const baseIndex = argumentsList.indexOf('--base');
-  const base =
-    baseIndex === -1 ? defaultBase(projectRoot) : argumentsList[baseIndex + 1];
-  const dryRun = argumentsList.includes('--dry-run');
-  const named = argumentsList.filter(
-    (argument, index) =>
-      !argument.startsWith('--') && argumentsList[index - 1] !== '--base',
+  return {
+    base: baseIndex === -1 ? undefined : argumentsList[baseIndex + 1],
+    dryRun: argumentsList.includes('--dry-run'),
+    wide: argumentsList.includes('--wide'),
+    named: argumentsList.filter(
+      (argument, index) =>
+        !argument.startsWith('--') && argumentsList[index - 1] !== '--base',
+    ),
+  };
+}
+
+async function lockfileDependencies(root, base, changedFiles) {
+  if (!changedFiles.includes('package-lock.json')) return new Map();
+  let baseLock = {};
+  try {
+    baseLock = JSON.parse(
+      git(root, ['show', `${mergeBaseOf(root, base)}:package-lock.json`]),
+    );
+  } catch {
+    // A lockfile new since the base: every installed package is new.
+  }
+  const currentLock = JSON.parse(
+    await readFile(resolve(root, 'package-lock.json'), 'utf8'),
   );
-  const candidates = await discoverTestFiles(projectRoot);
+  const packages = changedPackages(baseLock, currentLock);
+  const dependencies = affectedDependencies([baseLock, currentLock], packages);
+  console.log(
+    `Dependency change: ${[...packages].sort().join(', ') || 'none installed'}; reaches ${[...dependencies.keys()].sort().join(', ') || 'no direct dependency'}.`,
+  );
+  return dependencies;
+}
+
+/**
+ * What `npm run test:changed` would run in `root`: by default the named files
+ * and the branch's added or changed test files; with `wide`, the wider
+ * selection. `candidates` is the list `npm test` discovers.
+ */
+export async function chooseTests({ root, base, wide, named, candidates }) {
   const unknown = named.filter((file) => !candidates.includes(file));
   if (unknown.length > 0) {
     throw new Error(`Not a test file npm test runs: ${unknown.join(', ')}`);
   }
-  const changedFiles = changedFilesSince(projectRoot, base);
-  let dependencies = new Map();
-  if (changedFiles.includes('package-lock.json')) {
-    let baseLock = {};
-    try {
-      baseLock = JSON.parse(
-        git(projectRoot, [
-          'show',
-          `${mergeBaseOf(projectRoot, base)}:package-lock.json`,
-        ]),
-      );
-    } catch {
-      // A lockfile new since the base: every installed package is new.
-    }
-    const currentLock = JSON.parse(
-      await readFile(resolve(projectRoot, 'package-lock.json'), 'utf8'),
-    );
-    const packages = changedPackages(baseLock, currentLock);
-    dependencies = affectedDependencies([baseLock, currentLock], packages);
-    console.log(
-      `Dependency change: ${[...packages].sort().join(', ') || 'none installed'}; reaches ${[...dependencies.keys()].sort().join(', ') || 'no direct dependency'}.`,
-    );
-  }
-  const selected = await selectTests({
-    root: projectRoot,
-    changedFiles,
-    candidates,
+  const changedFiles = changedFilesSince(root, base);
+  const selected = wide
+    ? await selectTests({
+        root,
+        changedFiles,
+        candidates,
+        named,
+        dependencies: await lockfileDependencies(root, base, changedFiles),
+      })
+    : selectBranchTests({ changedFiles, candidates, named });
+  return { changedFiles, selected };
+}
+
+async function main() {
+  const {
+    base = defaultBase(projectRoot),
+    dryRun,
+    wide,
     named,
-    dependencies,
+  } = parseArguments(process.argv.slice(2));
+  const { changedFiles, selected } = await chooseTests({
+    root: projectRoot,
+    base,
+    wide,
+    named,
+    candidates: await discoverTestFiles(projectRoot),
   });
-  console.log(`${changedFiles.length} files changed since ${base}.`);
+  console.log(
+    `${changedFiles.length} files changed since ${base}. ${
+      wide
+        ? "Wide selection (--wide): what CI's full suite covers for this change; not a gate."
+        : 'Selection: the named files and the test files this branch added or changed. CI runs the full suite.'
+    }`,
+  );
   if (selected.size === 0) {
-    console.log('No test file is affected; nothing to run.');
+    console.log(
+      wide
+        ? 'No test file is affected; nothing to run.'
+        : 'No test file is named or changed on this branch; nothing to run.',
+    );
     return;
   }
   for (const [file, reason] of selected) console.log(`  ${file}  (${reason})`);

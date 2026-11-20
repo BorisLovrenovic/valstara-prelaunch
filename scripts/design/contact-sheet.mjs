@@ -75,6 +75,44 @@ export async function writeContactSheetIndex(directory, captures) {
   );
 }
 
+// The longest a failed capture waits to read the page's height for its error
+// message. The read only describes the failure, so a page that cannot answer
+// is reported as "unknown" rather than holding the run.
+const failedCaptureHeightReadMilliseconds = 2_000;
+
+async function scrollHeightOrUnknown(page) {
+  let timer;
+  try {
+    const height = await Promise.race([
+      page.evaluate(() => globalThis.document.documentElement.scrollHeight),
+      new Promise((_resolve, reject) => {
+        timer = globalThis.setTimeout(
+          () => reject(new Error('The height read timed out.')),
+          failedCaptureHeightReadMilliseconds,
+        );
+      }),
+    ]);
+    return Number.isFinite(height) ? `${height}px` : 'unknown';
+  } catch {
+    return 'unknown';
+  } finally {
+    globalThis.clearTimeout(timer);
+  }
+}
+
+// A failed capture names what it was capturing, with Chromium's own error as
+// its cause (E11.6-11a, founder decision D-035 Q2, 2026-11-20). The CI log of
+// "Unable to capture screenshot" on 2026-11-19 named neither the state nor the
+// page size (docs/testing/strategy.md#b-unable-to-capture-screenshot). It is
+// thrown again: never retried, never skipped.
+async function captureFailure(error, page, { state, width, theme, fullPage }) {
+  const height = await scrollHeightOrUnknown(page);
+  return new Error(
+    `Screenshot of ${state} at ${width}px in the ${theme} theme failed (fullPage: ${fullPage}, page scroll height: ${height}): ${error?.message ?? error}`,
+    { cause: error },
+  );
+}
+
 export async function captureContactSheet({
   origin,
   entries,
@@ -160,10 +198,20 @@ export async function captureContactSheet({
             const filename = `${label}-${width}-${theme}.png`;
             // A state drawn over the viewport (a fixed bar) sets `fullPage:
             // false`, so the capture shows the viewport the bar sits in.
-            await page.screenshot({
-              path: join(directory, filename),
-              fullPage: entry.fullPage !== false,
-            });
+            const fullPage = entry.fullPage !== false;
+            try {
+              await page.screenshot({
+                path: join(directory, filename),
+                fullPage,
+              });
+            } catch (error) {
+              throw await captureFailure(error, page, {
+                state: entry.state,
+                width,
+                theme,
+                fullPage,
+              });
+            }
             const layoutIssues = await checkPageLayout(page);
             captures.push({
               state: entry.state,

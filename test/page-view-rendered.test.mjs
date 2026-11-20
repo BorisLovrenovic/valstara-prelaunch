@@ -5,6 +5,10 @@ import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
 
 import { Pool } from 'pg';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const executeFile = promisify(execFile);
 const projectRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -30,10 +34,12 @@ async function compose(args) {
 async function browserProbe(mode) {
   const name = `valstara-pageview-${mode}-${process.pid}`;
   try {
+    await removeOrphanedContainers();
     const { stdout } = await executeFile(
       'docker',
       [
         'run',
+        ...containerOwnerArguments(),
         '--rm',
         '--name',
         name,

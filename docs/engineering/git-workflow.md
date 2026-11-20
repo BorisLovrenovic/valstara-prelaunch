@@ -57,9 +57,9 @@ Reviewed on every non-docs-only PR; they map one-to-one to `docs/engineering/ci-
 |---|---|
 | `lint` | Lint and format |
 | `typecheck` | TypeScript strict |
-| `test (1/4)` … `test (4/4)` | Unit, module-contract and integration tests, run once under coverage and split across four runners by recorded file timings |
+| `test (1/8)` … `test (8/8)` | Unit, module-contract and integration tests, run once under coverage and split across eight runners by recorded file timings |
 | `build` | The Astro production build |
-| `coverage` | Merges the shard reports, proves every test file ran exactly once, and applies the changed-code and critical-module coverage gates; fails when any shard fails |
+| `coverage` | Merges the eight shard reports, proves every test file ran exactly once, and applies the changed-code and critical-module coverage gates; fails when any shard fails or any report is missing. Warns, without failing, when the shard plan has gone stale |
 | `red-paths` | The E1-04 red-path fixtures for the lint, typecheck, test, build and coverage gates |
 | `security` | Secret, dependency, cookie/storage, fingerprinting, third-party request, vendor-boundary and forbidden-copy scans |
 | `migration` | Ledger checksums and schema reproducibility; runs as tests inside the `test` shards |

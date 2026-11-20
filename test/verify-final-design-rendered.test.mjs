@@ -33,6 +33,10 @@ import {
   buildSelectors,
   measureVerify,
 } from './fixtures/final-ui/verify-measure.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 // E11.5-07 built /verify; E11.5-11q restyles every state to the final-design
 // canvas (Verify.dc.html, as Verify1440, Verify768 and Verify390 place it)
@@ -185,10 +189,12 @@ async function restartApp() {
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

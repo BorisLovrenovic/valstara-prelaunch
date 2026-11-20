@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { once } from 'node:events';
 import {
   cp,
   mkdtemp,
@@ -10,6 +11,7 @@ import {
   symlink,
   writeFile,
 } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -386,4 +388,44 @@ test('a landing ?ref= request renders a valid server-signed form field', async (
     ).verifyRef(signed),
     { ref: 'ABCDEFGHJKMN', utm: { source: 'newsletter' } },
   );
+});
+
+// E11.6-11a, flake (d). On 2026-11-02 every test in
+// test/landing-hero-rendered.test.mjs failed at once with "listen EADDRINUSE:
+// address already in use 127.0.0.1:62001": the render helper started its
+// server on a fixed port, counting up from 62001 in each test process, with no
+// check that the port was free. Another listener there (an orphaned server
+// from a stopped run, a container port Docker published, or the same helper
+// in a concurrent run) failed the whole file. The helper now takes a reserved
+// port and retries a lost bind race (test/helpers/listen-port.mjs).
+test('the landing render server starts while another process holds the fixed ports it once used', async () => {
+  // The old counter lived for the whole test process, so by the time this test
+  // ran it had already moved past 62001 by one port per earlier render. Hold
+  // every port it could reach in this file (it renders about twenty times, far
+  // below a hundred), so the test fails against the old helper whatever order
+  // the file's tests run in. Each holder closes every connection, as a server
+  // for some other purpose would answer the helper's requests.
+  const holders = [];
+  try {
+    for (let port = 62_001; port <= 62_100; port += 1) {
+      const holder = createServer((socket) => socket.destroy());
+      holders.push(holder);
+      holder.listen(port, '127.0.0.1');
+      const [error] = await Promise.race([
+        once(holder, 'listening').then(() => [undefined]),
+        once(holder, 'error'),
+      ]);
+      // Held by someone else already serves the test just as well.
+      if (error !== undefined && error.code !== 'EADDRINUSE') throw error;
+    }
+    const { body } = await renderLanding({ flags: [signupOn] });
+    assert.match(body, /<main\b/u);
+  } finally {
+    for (const holder of holders) {
+      if (holder.listening) {
+        holder.close();
+        await once(holder, 'close');
+      }
+    }
+  }
 });

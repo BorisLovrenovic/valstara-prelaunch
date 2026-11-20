@@ -67,7 +67,7 @@ Concurrency is tested under real concurrency against a real database. **Time-dep
 
 ## Before you commit
 
-Run the quick local checks. **The full suite runs in CI on the pull request,** split across parallel runners, and every check must be green before merge (founder-authorised 2026-10-23; `docs/engineering/ci-cd.md#local-checks`).
+Run the quick local checks. **The full suite runs in CI on the pull request,** split across eight parallel runners, and every check must be green before merge (founder-authorised 2026-10-23, narrowed 2026-11-19; `docs/engineering/ci-cd.md#local-checks`).
 
 ```
 docker compose -f infra/compose/docker-compose.yml up -d
@@ -75,7 +75,7 @@ npm run check
 npm run test:changed -- <each test file on your ticket's Tests line>
 ```
 
-`npm run check` runs lint, format, typecheck, the security and privacy scans, and the build. `npm run test:changed` runs every test file your branch changed, every test whose imports reach a changed file, the files you name, and the privacy and accessibility suites whenever a change can reach the browser. It prints why it picked each file. The full `npm test` is not part of the local gate, **including for a dependency upgrade**: `test:changed` also picks the tests that load an upgraded package, and `npm run check` rebuilds and audits. To reproduce a CI failure, run the failing file.
+`npm run check` runs lint, format, typecheck, the security and privacy scans, and the build. `npm run test:changed` runs **exactly** the files you name and the test files your branch adds or changes, and prints why it picked each one. It follows no imports, file reads or dependencies, and adds no privacy or accessibility suite: **the same rule applies to a dependency upgrade**, and `npm run check` still rebuilds and audits. Every other test the change reaches runs in CI's full suite. **The trade-off:** a test outside your Tests line that your change breaks is caught in CI, not locally, and is handled by CI triage like any CI failure. A change that reaches the browser still says in its PR what it loads (rule 1); CI's privacy and accessibility gates enforce it. `npm run test:changed -- --wide` shows, and runs, the wider selection CI will cover (every test whose imports or reads reach your change, and the browser suites for a browser-facing change); use it when you want that view before pushing. It is not part of any gate. `--dry-run` prints the selection without running it, with or without `--wide`. The full `npm test` is not part of the local gate. To reproduce a CI failure, run the failing file.
 
 Fix every failure. **Never skip, delete or weaken a test or gate to get green.** Work on the branch you are given (`feat/<ticket-id>-<slug>`, from `main`); Conventional Commits including the ticket ID. **Do not push or open a PR** — that happens only after the pre-PR review passes and the pre-push checks are green, and never with `--force`.
 

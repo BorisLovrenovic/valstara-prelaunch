@@ -102,8 +102,13 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
+  // The total is the CI matrix's shard count, given each time: no default
+  // can drift from the matrix in .github/workflows/pr.yml.
   const totalIndex = process.argv.indexOf('--total');
-  const total = totalIndex === -1 ? 4 : Number(process.argv[totalIndex + 1]);
+  const total = Number(process.argv[totalIndex + 1]);
+  if (totalIndex === -1 || !Number.isInteger(total) || total < 1) {
+    throw new Error('--total must name the shard count, such as --total 8.');
+  }
   const files = await discoverTestFiles();
   const plan = planShards(files, await readTimings(), total);
   plan.forEach((shard, index) => {

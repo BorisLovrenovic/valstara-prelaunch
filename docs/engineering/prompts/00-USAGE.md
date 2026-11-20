@@ -79,7 +79,7 @@ So a ticket gets at most four reviews; a fourth runs only when the third still f
 
 ## CI failures
 
-**Every CI failure goes to `05-ci-triage.md`, and to no other prompt.** Pass the failed jobs' log (`gh run view <run-id> --log-failed`) as `{FAILURE_LOG}`.
+**Every CI failure goes to `05-ci-triage.md`, and to no other prompt.** Pass the failed jobs' log (`gh run view <run-id> --log-failed`) as `{FAILURE_LOG}`. Since E11.6-11a the local gate runs only the ticket's named tests and the test files the branch changes, so a test the change reaches but does not name fails first here, in CI's full suite, and is triaged like any other CI failure (`docs/engineering/ci-cd.md#local-checks`).
 
 | Triage status | Next step |
 |---|---|

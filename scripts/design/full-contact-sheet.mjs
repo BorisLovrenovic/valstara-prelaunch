@@ -38,6 +38,7 @@ import { deriveEmailToken } from '../../src/server/verification/token-derivation
 import { seedGiveawayEntryRows } from '../../test/helpers/giveaway-entry-rows.ts';
 import {
   publishedPort,
+  reserveListenPort,
   startAppServer,
 } from '../../test/helpers/listen-port.mjs';
 import { ensureAppBuild } from '../ci/app-build.mjs';
@@ -51,6 +52,10 @@ import {
 } from './email-previews.ts';
 import { designThemes, designWidths, openRoute } from './layout-checks.mjs';
 import { sourcePagePaths } from '../../test/helpers/page-inventory.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from '../../test/helpers/container-owner.mjs';
 
 // Wall-clock seconds for the run's own progress lines, from Node's monotonic
 // clock (this script runs in Node, never in a page).
@@ -1498,10 +1503,12 @@ function startApp(fixture, alertPort) {
 }
 
 async function startBrowserServer(container) {
+  await removeOrphanedContainers();
   const child = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       container,
@@ -1758,7 +1765,10 @@ async function captureEmails(endpoint, directory, selected) {
       response.writeHead(404).end();
     }
   });
-  server.listen(0, '0.0.0.0');
+  // On a reserved port, below the ephemeral range and on WSL also free on the
+  // Windows side, because the browser container reaches it through
+  // host.docker.internal (docs/testing/strategy.md#c-the-browser-container-cannot-reach-the-app).
+  server.listen(await reserveListenPort(), '0.0.0.0');
   await once(server, 'listening');
   const origin = `http://host.docker.internal:${server.address().port}`;
   const captures = [];

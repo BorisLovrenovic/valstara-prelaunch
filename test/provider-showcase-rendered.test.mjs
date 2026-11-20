@@ -9,12 +9,16 @@ import { chromium } from 'playwright';
 import axe from 'axe-core';
 import providers from '../src/content/provider-showcase.json' with { type: 'json' };
 import { bannerTone } from '../src/components/provider-banner.ts';
-import { publishedPort } from './helpers/listen-port.mjs';
+import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import {
   checkPageLayout,
   designWidths,
   designThemes,
 } from '../scripts/design/layout-checks.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const execFileAsync = promisify(execFile);
@@ -57,23 +61,22 @@ before(async () => {
     ],
     { cwd: root },
   );
-  server = spawn(
-    process.execPath,
-    [`${root}/scripts/fixtures/run-provider-showcase-server.mjs`],
-    {
-      cwd: root,
-      env: { ...process.env, HOST: '0.0.0.0', PORT: '0' },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    },
-  );
-  const port = (
-    await awaitOutput(server, /local: http:\/\/localhost:(\d+)/u, 'fixture')
-  )[1];
-  origin = `http://host.docker.internal:${port}`;
+  // On a reserved port, below the ephemeral range and on WSL also free on the
+  // Windows side, because the browser container reaches it through
+  // host.docker.internal (docs/testing/strategy.md#c-the-browser-container-cannot-reach-the-app).
+  server = await startAppServer({
+    label: 'Provider showcase fixture',
+    entry: `${root}/scripts/fixtures/run-provider-showcase-server.mjs`,
+    cwd: root,
+    env: () => ({ HOST: '0.0.0.0' }),
+  });
+  origin = `http://host.docker.internal:${server.port}`;
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,
@@ -107,10 +110,7 @@ after(async () => {
     await execFileAsync('docker', ['stop', browserContainer]);
     await once(browserServer, 'exit');
   }
-  if (server && server.exitCode === null) {
-    server.kill('SIGTERM');
-    await once(server, 'exit');
-  }
+  await server?.stop();
 });
 
 test('rail renders real logos, categories, alt text and only same-origin requests', async () => {

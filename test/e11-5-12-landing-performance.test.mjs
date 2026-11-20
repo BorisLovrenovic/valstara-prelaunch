@@ -13,6 +13,10 @@ import {
 } from '../scripts/design/landing-performance.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 // E11.5-12 item 3: the landing page at 390px with the CPU slowed four times
 // in the local harness. Layout shift is zero and the largest contentful
@@ -31,10 +35,12 @@ let browser;
 let browserServer;
 
 async function startBrowserServer() {
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

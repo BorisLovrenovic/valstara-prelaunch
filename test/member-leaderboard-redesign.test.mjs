@@ -34,6 +34,10 @@ import { seedGiveawayEntryRows } from './helpers/giveaway-entry-rows.ts';
 import { entranceEnded } from './helpers/motion.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const executeFile = promisify(execFile);
 const databaseUrl =
@@ -190,10 +194,12 @@ async function fixture() {
 
 async function startBrowser() {
   const root = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   const server = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

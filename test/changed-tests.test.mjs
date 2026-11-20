@@ -1,18 +1,23 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 import {
   affectedDependencies,
   browserSuites,
   changedFilesSince,
   changedPackages,
+  chooseTests,
   packageImports,
+  parseArguments,
   reachesBrowser,
   repositoryReads,
+  selectBranchTests,
   selectTests,
 } from '../scripts/ci/changed-tests.mjs';
 
@@ -461,4 +466,419 @@ test('only test code is read for repository paths, not the modules it imports', 
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+// The local gate from E11.6-11a: by default only the named files and the
+// branch's added or changed test files run. The wider rules above are the
+// `--wide` selection, which is not part of any gate.
+
+const commit = (root, message) =>
+  execFileSync(
+    'git',
+    [
+      '-c',
+      'user.name=Fixture',
+      '-c',
+      'user.email=f@valstara.invalid',
+      'commit',
+      '--quiet',
+      '-m',
+      message,
+    ],
+    { cwd: root },
+  );
+
+// A repository whose `main` holds `base`, checked out on a feature branch with
+// `committed` committed on it and `uncommitted` written to the working tree.
+async function branchRepository(base, { committed = {}, uncommitted = {} }) {
+  const root = await tree(base);
+  const git = (...args) => execFileSync('git', args, { cwd: root });
+  git('init', '--quiet', '--initial-branch=main');
+  git('add', '.');
+  commit(root, 'base');
+  git('switch', '--quiet', '-c', 'feature');
+  const write = async (files) => {
+    for (const [path, content] of Object.entries(files)) {
+      await mkdir(join(root, dirname(path)), { recursive: true });
+      await writeFile(join(root, path), content);
+    }
+  };
+  if (Object.keys(committed).length > 0) {
+    await write(committed);
+    git('add', '.');
+    commit(root, 'feature');
+  }
+  await write(uncommitted);
+  return root;
+}
+
+test('by default only named files and test files the branch changed are selected', () => {
+  const selected = selectBranchTests({
+    changedFiles: [
+      'package-lock.json',
+      'scripts/ci/tool.mjs',
+      'src/copy/landing.ts',
+      'src/server/referral/status.ts',
+      'test/unrelated.test.mjs',
+    ],
+    candidates,
+    named: ['test/cycle-a.test.mjs'],
+  });
+  // No import reach (referral, lazy, landing), no file read through new URL
+  // (tool), no dependency reach and no browser suites.
+  assert.deepEqual(
+    [...selected],
+    [
+      ['test/cycle-a.test.mjs', 'named'],
+      ['test/unrelated.test.mjs', 'changed'],
+    ],
+  );
+  // A file both named and changed is reported once, as named.
+  assert.deepEqual(
+    [
+      ...selectBranchTests({
+        changedFiles: ['test/unrelated.test.mjs'],
+        candidates,
+        named: ['test/unrelated.test.mjs'],
+      }),
+    ],
+    [['test/unrelated.test.mjs', 'named']],
+  );
+  // A changed file that npm test does not run is not a test to select.
+  assert.deepEqual(
+    [
+      ...selectBranchTests({
+        changedFiles: ['test/helpers/new-helper.mjs', 'docs/README.md'],
+        candidates,
+      }),
+    ],
+    [],
+  );
+});
+
+const registryTree = {
+  'src/server/flags/registry.ts': "export const registry = ['signup'];\n",
+  'src/pages/index.astro': '<main />\n',
+  'test/flags.test.ts':
+    "import { registry } from '../src/server/flags/registry.ts';\n",
+  'test/landing.test.ts':
+    "import { registry } from '../src/server/flags/registry.ts';\n",
+  'test/reads.test.mjs': "const pages = readdir('src/pages');\n",
+};
+const registryCandidates = Object.keys(registryTree).filter((file) =>
+  file.startsWith('test/'),
+);
+
+test('a branch that changes only the flag registry and names one test runs that one test', async () => {
+  const root = await branchRepository(registryTree, {
+    committed: {
+      'src/server/flags/registry.ts':
+        "export const registry = ['signup', 'prices'];\n",
+    },
+  });
+  try {
+    const narrow = await chooseTests({
+      root,
+      base: 'main',
+      wide: false,
+      named: ['test/flags.test.ts'],
+      candidates: registryCandidates,
+    });
+    assert.deepEqual(narrow.changedFiles, ['src/server/flags/registry.ts']);
+    assert.deepEqual([...narrow.selected], [['test/flags.test.ts', 'named']]);
+
+    // --wide still sees every test the registry reaches.
+    const wide = await chooseTests({
+      root,
+      base: 'main',
+      wide: true,
+      named: ['test/flags.test.ts'],
+      candidates: registryCandidates,
+    });
+    assert.deepEqual(
+      [...wide.selected],
+      [
+        ['test/flags.test.ts', 'named'],
+        ['test/landing.test.ts', 'imports src/server/flags/registry.ts'],
+      ],
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('committed, uncommitted and untracked test files on the branch are selected without being named', async () => {
+  const root = await branchRepository(registryTree, {
+    committed: { 'test/flags.test.ts': "import './landing.test.ts';\n" },
+    uncommitted: {
+      'test/landing.test.ts': "import assert from 'node:assert/strict';\n",
+      'test/added.test.mjs': "import assert from 'node:assert/strict';\n",
+      'src/pages/new.astro': '<main />\n',
+    },
+  });
+  try {
+    const { selected } = await chooseTests({
+      root,
+      base: 'main',
+      wide: false,
+      named: [],
+      candidates: [...registryCandidates, 'test/added.test.mjs'],
+    });
+    // A browser-facing change adds no browser suite locally; CI runs them.
+    assert.deepEqual(
+      [...selected],
+      [
+        ['test/added.test.mjs', 'changed'],
+        ['test/flags.test.ts', 'changed'],
+        ['test/landing.test.ts', 'changed'],
+      ],
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a named file npm test does not run is refused in both modes', async () => {
+  const root = await branchRepository(registryTree, {});
+  try {
+    for (const wide of [false, true]) {
+      await assert.rejects(
+        chooseTests({
+          root,
+          base: 'main',
+          wide,
+          named: ['test/missing.test.mjs'],
+          candidates: registryCandidates,
+        }),
+        /Not a test file npm test runs: test\/missing\.test\.mjs/u,
+      );
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('--wide reproduces the selection on every existing selection fixture, file for file and reason for reason', async () => {
+  // Each case is a fixture above, now reached through a real branch, with
+  // the selection its own test asserts.
+  const cases = [
+    {
+      base: files,
+      committed: {
+        'src/server/referral/status.ts': "export const status = 'changed';\n",
+      },
+      candidates,
+      expected: [
+        ['test/lazy.test.mjs', 'imports src/server/referral/status.ts'],
+        ['test/referral.test.mjs', 'imports src/server/referral/status.ts'],
+      ],
+    },
+    {
+      base: files,
+      committed: {
+        'scripts/ci/tool.mjs': 'export const tool = 2;\n',
+        'test/unrelated.test.mjs': "import assert from 'node:assert';\n",
+      },
+      named: ['test/cycle-a.test.mjs'],
+      candidates,
+      expected: [
+        ['test/cycle-a.test.mjs', 'named'],
+        ['test/tool.test.mjs', 'imports scripts/ci/tool.mjs'],
+        ['test/unrelated.test.mjs', 'changed'],
+      ],
+    },
+    {
+      base: files,
+      committed: {
+        'src/copy/landing.ts': "export const landing = 'Join now';\n",
+      },
+      candidates,
+      expected: [
+        ...browserSuites.map((suite) => [
+          suite,
+          'browser-facing change: src/copy/landing.ts',
+        ]),
+        ['test/landing.test.ts', 'imports src/copy/landing.ts'],
+      ].sort(([a], [b]) => a.localeCompare(b)),
+    },
+    {
+      base: scanningTree,
+      uncommitted: { 'src/content/landing-hero.json': '{}\n' },
+      candidates: scanningCandidates.filter(
+        (file) => file !== 'test/routes.test.mjs',
+      ),
+      expected: [
+        ...browserSuites.map((suite) => [
+          suite,
+          'browser-facing change: src/content/landing-hero.json',
+        ]),
+        [
+          'test/content.test.ts',
+          'reads src/content/ (src/content/landing-hero.json)',
+        ],
+      ].sort(([a], [b]) => a.localeCompare(b)),
+    },
+    {
+      base: scanningTree,
+      committed: { 'docs/brand/tokens.md': '# Tokens, changed\n' },
+      candidates: scanningCandidates,
+      expected: [['test/checklist.test.ts', 'reads docs/brand/tokens.md']],
+    },
+    {
+      // A dependency upgrade: the lockfile changes and nothing else.
+      base: {
+        'package-lock.json': JSON.stringify(baseLock),
+        'src/server/email/seed.ts':
+          "import { simpleParser } from 'mailparser';\nexport const seed = simpleParser;\n",
+        'test/seed.test.ts':
+          "import { seed } from '../src/server/email/seed.ts';\n",
+        'test/build.test.mjs': "import { build } from 'astro';\n",
+        'test/lint.test.mjs': "import assert from 'node:assert';\n",
+      },
+      committed: { 'package-lock.json': JSON.stringify(currentLock) },
+      candidates: [
+        'test/build.test.mjs',
+        'test/lint.test.mjs',
+        'test/seed.test.ts',
+      ],
+      expected: [
+        ['test/build.test.mjs', 'uses astro, affected by changed undici'],
+        ['test/seed.test.ts', 'uses mailparser, affected by changed libmime'],
+      ],
+      // The default gate runs nothing for a dependency upgrade alone.
+      narrow: [],
+    },
+  ];
+  for (const { base, committed, uncommitted, named = [], ...rest } of cases) {
+    const root = await branchRepository(base, { committed, uncommitted });
+    try {
+      const wide = await chooseTests({
+        root,
+        base: 'main',
+        wide: true,
+        named,
+        candidates: rest.candidates,
+      });
+      assert.deepEqual([...wide.selected], rest.expected);
+      // The same selection selectTests() makes for the same change.
+      if (!wide.changedFiles.includes('package-lock.json')) {
+        assert.deepEqual(
+          [...wide.selected],
+          [
+            ...(await selectTests({
+              root,
+              changedFiles: wide.changedFiles,
+              candidates: rest.candidates,
+              named,
+            })),
+          ],
+        );
+      }
+      const narrow = await chooseTests({
+        root,
+        base: 'main',
+        wide: false,
+        named,
+        candidates: rest.candidates,
+      });
+      assert.deepEqual(
+        [...narrow.selected],
+        rest.narrow ??
+          rest.expected.filter(
+            ([, reason]) => reason === 'named' || reason === 'changed',
+          ),
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('the command line takes --wide, --dry-run and --base beside the named files', () => {
+  assert.deepEqual(parseArguments(['test/a.test.mjs', 'test/b.test.ts']), {
+    base: undefined,
+    dryRun: false,
+    wide: false,
+    named: ['test/a.test.mjs', 'test/b.test.ts'],
+  });
+  assert.deepEqual(
+    parseArguments([
+      '--wide',
+      '--dry-run',
+      '--base',
+      'origin/main',
+      'test/a.test.mjs',
+    ]),
+    {
+      base: 'origin/main',
+      dryRun: true,
+      wide: true,
+      named: ['test/a.test.mjs'],
+    },
+  );
+});
+
+const execFileAsync = promisify(execFile);
+const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+
+// The real command, in this repository, against HEAD: --dry-run prints the
+// selection and a reason for each file, and runs nothing.
+async function dryRun(...extra) {
+  const environment = { ...process.env };
+  delete environment.NODE_TEST_CONTEXT;
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    [
+      'scripts/ci/changed-tests.mjs',
+      '--dry-run',
+      '--base',
+      'HEAD',
+      ...extra,
+      'test/ci-pipeline.test.mjs',
+    ],
+    { cwd: projectRoot, env: environment, maxBuffer: 16 * 1024 * 1024 },
+  );
+  const listed = [...stdout.matchAll(/^ {2}(\S+) {2}\((.+)\)$/gmu)].map(
+    ([, file, reason]) => [file, reason],
+  );
+  return { stdout, listed };
+}
+
+test('--dry-run prints the default selection with a reason for each file and runs nothing', async () => {
+  const { stdout, listed } = await dryRun();
+  const changed = new Set(changedFilesSince(projectRoot, 'HEAD'));
+
+  assert.match(
+    stdout,
+    /files changed since HEAD\. Selection: the named files/u,
+  );
+  assert.ok(
+    listed.some(
+      ([file, reason]) =>
+        file === 'test/ci-pipeline.test.mjs' && reason === 'named',
+    ),
+    stdout,
+  );
+  for (const [file, reason] of listed) {
+    assert.ok(
+      reason === 'named' || (reason === 'changed' && changed.has(file)),
+      `${file} (${reason})`,
+    );
+  }
+  // The node test runner's summary appears only when tests run.
+  assert.doesNotMatch(stdout, /ℹ tests \d+/u);
+});
+
+test('--dry-run works with --wide and prints the wide selection', async () => {
+  const { stdout, listed } = await dryRun('--wide');
+
+  assert.match(stdout, /Wide selection \(--wide\)/u);
+  assert.ok(
+    listed.some(
+      ([file, reason]) =>
+        file === 'test/ci-pipeline.test.mjs' && reason === 'named',
+    ),
+    stdout,
+  );
+  assert.doesNotMatch(stdout, /ℹ tests \d+/u);
 });

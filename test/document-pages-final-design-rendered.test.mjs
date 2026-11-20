@@ -18,6 +18,10 @@ import { chromium } from 'playwright';
 import { designThemes } from '../scripts/design/layout-checks.mjs';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { scrollSettled } from './helpers/motion.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 const executeFile = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -72,10 +76,12 @@ before(async () => {
     await response.arrayBuffer();
   }
 
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

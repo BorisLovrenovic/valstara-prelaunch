@@ -1,8 +1,9 @@
-import { execFile, spawn } from 'node:child_process';
-import { once } from 'node:events';
+import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { Pool } from 'pg';
+
+import { startAppServer } from './listen-port.mjs';
 
 const executeFile = promisify(execFile);
 
@@ -11,15 +12,17 @@ const defaultDatabaseUrl =
 const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 
-// Stay outside Linux's usual ephemeral client-port range during the full suite.
-let nextPort = 62_000;
-
+// A reserved port, confirmed free, with a lost bind race retried on a fresh
+// one (test/helpers/listen-port.mjs). Until E11.6-11a the server took a fixed
+// port counting up from 62001 in every test process, and any other listener
+// there failed every test in the file (2026-11-02). Readiness reads a static
+// file, so it never renders, and so never warms, the landing page.
 function startServer(databaseUrl, root) {
-  const port = (nextPort += 1);
-  const server = spawn(process.execPath, ['dist/server/entry.mjs'], {
+  return startAppServer({
+    label: 'Landing rendered-page test',
     cwd: root,
-    env: {
-      ...process.env,
+    readyPath: '/robots.txt',
+    env: () => ({
       ADMIN_CREDENTIAL: 'landing-rendered-admin-credential-32',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
       DATABASE_URL: databaseUrl,
@@ -33,16 +36,8 @@ function startServer(databaseUrl, root) {
       RESEND_SENDING_DOMAIN: 'send.valstara.com',
       TURNSTILE_SECRET_KEY: 'landing-rendered-page-turnstile-secret',
       HOST: '127.0.0.1',
-      PORT: String(port),
-    },
-    stdio: ['ignore', 'ignore', 'pipe'],
+    }),
   });
-  let standardError = '';
-  server.stderr.setEncoding('utf8');
-  server.stderr.on('data', (chunk) => {
-    standardError = (standardError + chunk).slice(-8_192);
-  });
-  return { port, server, standardError: () => standardError };
 }
 
 async function createDatabaseFixture() {
@@ -126,31 +121,30 @@ export async function renderLanding({ flags = [], paths = ['/'], root } = {}) {
       [key, enabled, 'landing-rendered-page-test'],
     );
   }
-  const { port, server, standardError } = startServer(
-    fixture.databaseUrl,
-    root,
-  );
+  let app;
+  try {
+    app = await startServer(fixture.databaseUrl, root);
+  } catch (error) {
+    await fixture.dispose();
+    throw error;
+  }
   try {
     const responses = [];
     for (const path of paths) {
-      responses.push(await fetchLanding(port, path));
+      responses.push(await fetchLanding(app.port, path));
     }
     return paths.length === 1 ? responses[0] : responses;
   } catch (error) {
-    if (server.exitCode !== null || server.signalCode !== null) {
+    if (app.server.exitCode !== null || app.server.signalCode !== null) {
       throw new Error(
-        `Landing test server exited (code ${server.exitCode}, signal ${server.signalCode}): ${standardError()}`,
+        `Landing test server exited (code ${app.server.exitCode}, signal ${app.server.signalCode}): ${app.output()}`,
         { cause: error },
       );
     }
     throw error;
   } finally {
     try {
-      if (server.exitCode === null && server.signalCode === null) {
-        const exited = once(server, 'exit');
-        server.kill('SIGTERM');
-        await exited;
-      }
+      await app.stop();
     } finally {
       await fixture.dispose();
     }

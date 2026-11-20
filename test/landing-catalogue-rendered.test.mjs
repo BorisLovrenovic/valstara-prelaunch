@@ -21,6 +21,10 @@ import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { designWidths } from '../scripts/design/layout-checks.mjs';
 import { entranceEnded, transitionsEnded } from './helpers/motion.mjs';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from './helpers/container-owner.mjs';
 
 // E11.5-11n: the #catalogue and #how sections from the final-design canvas
 // (Main.dc.html and its 1024, 768, 390 and 320 frames, light and dark, and
@@ -71,10 +75,12 @@ function near(actual, expected, label) {
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,

@@ -14,7 +14,7 @@ import {
 } from '../../packages/price-index/src/http/playwright-driver.ts';
 import { pageFileName } from '../../packages/price-index/src/http/raw-store.ts';
 import { runObservationsFileSchema } from '../../packages/price-index/src/schema/index.ts';
-import { publishedPort } from '../helpers/listen-port.mjs';
+import { publishedPort, reserveListenPort } from '../helpers/listen-port.mjs';
 import { record } from '../helpers/price-index-merge.ts';
 import {
   priceIndexWorkspace,
@@ -23,6 +23,10 @@ import {
   treeDigest,
   type Workspace,
 } from '../helpers/price-index-run.ts';
+import {
+  containerOwnerArguments,
+  removeOrphanedContainers,
+} from '../helpers/container-owner.mjs';
 
 // E11.6-07: every command exits when its work is done. Each command runs
 // here as its own process and must end on its own, with its documented exit
@@ -126,7 +130,10 @@ before(async () => {
       void held.release.then(() => answer(path, response));
     }
   });
-  source.server.listen(0, '0.0.0.0');
+  // On a reserved port, below the ephemeral range and on WSL also free on the
+  // Windows side, because the browser container reaches it through
+  // host.docker.internal (docs/testing/strategy.md#c-the-browser-container-cannot-reach-the-app).
+  source.server.listen(await reserveListenPort(), '0.0.0.0');
   await once(source.server, 'listening');
   source.origin = `http://${dockerHost}:${(source.server.address() as AddressInfo).port}`;
 
@@ -136,10 +143,12 @@ before(async () => {
 const { chromium } = require('/work/node_modules/playwright');
 chromium.launchServer({ headless: true, args: JSON.parse(process.argv[1]), host: '0.0.0.0', port: 3000, wsPath: '/cli' })
   .then(() => console.log('Listening'));`;
+  await removeOrphanedContainers();
   browserServer = spawn(
     'docker',
     [
       'run',
+      ...containerOwnerArguments(),
       '--rm',
       '--name',
       browserContainer,
