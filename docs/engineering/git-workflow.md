@@ -14,8 +14,9 @@ There is no `develop` branch. A `develop` branch protects production from unvett
 | `feat/<ticket-id>-<slug>` | `main` | One ticket, e.g. `feat/E3-06-verification-tokens` |
 | `fix/<ticket-id>-<slug>` | `main` | A fix ticket |
 | `fix/qa-gate-<n>-run-<run>` | `main` | One QA gate run's tests and fixes, e.g. `fix/qa-gate-7-run-1` |
+| `data/price-index-YYYY-MM` | `main` | One monthly price-index run's data, e.g. `data/price-index-2026-11` (E11.6-15, `docs/price-index-runbook.md`) |
 
-**One ticket = one branch = one PR.** Branches are deleted on merge.
+**One ticket = one branch = one PR.** Branches are deleted on merge. **A monthly price-index run is the one branch that is not a ticket:** it carries only the files the tool writes under `data/price-index/` and `reports/`, never code, configuration or docs. A change those need is a ticket of its own.
 
 ## Commits
 
@@ -28,6 +29,14 @@ docs(adr): record the prize limits in ADR-026 [E7-02]
 ```
 
 The ticket ID in square brackets is mandatory — it is how work traces back to the plan.
+
+A monthly price-index run traces back to its month instead, as `[PRICE-YYYY-MM]`, with the type `data` and the scope `price-index`:
+
+```
+data(price-index): November 2026 run [PRICE-2026-11]
+```
+
+Its pull request has the same title. It goes through CI like any other and squash-merges; it has no pre-PR review prompt, because the founder's decisions in it are recorded, with their actor, in `data/price-index/approvals.json` and `manual-overrides.json`.
 
 ## Pull requests
 

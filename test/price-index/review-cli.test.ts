@@ -108,9 +108,11 @@ async function workspace(
   });
   const directory = join(root, 'data/price-index');
   await mkdir(directory, { recursive: true });
-  await cp(
-    join(projectRoot, 'data/price-index/approvals.json'),
+  // The empty seed, not the committed file, which holds the founder's real
+  // decisions from the first monthly run on (E11.6-15).
+  await writeFile(
     join(directory, 'approvals.json'),
+    serialiseApprovals({ approvals: [] }),
   );
   const latest = options.latest === undefined ? flagged : options.latest;
   if (latest !== null) {

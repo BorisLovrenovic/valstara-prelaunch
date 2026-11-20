@@ -81,6 +81,16 @@ node scripts/ci/merge-coverage.mjs coverage-shards
 node scripts/ci/changed-coverage.mjs
 ```
 
+### A monthly price-index data pull request
+
+A `data/price-index-YYYY-MM` pull request (E11.6-15, `docs/price-index-runbook.md`) changes only `data/price-index/` and `reports/`, so it is not docs-only and runs the whole pipeline above, unchanged. Three parts of it are what make the data safe to merge:
+
+- **The data validates.** `test/price-index/validate-data.test.ts` ("the committed data files are valid") runs `price-index validate`'s data check, `validateDataFiles`, over the committed tree on its test shard: `latest.json`, every snapshot, the overrides, approvals, change log, URL ledger, monthly reports, run logs and coverage reports. The configuration's own checks run in the same suite (`test/price-index/config-seed.test.ts`, `config-schema.test.ts`). Locally, `npm run check` runs `price-index validate` itself first.
+- **The append-only files only grow.** `npm run security` runs the price-index append-only check against the pull request's merge base: an edit, removal or reorder of an existing entry in `approvals.json`, `changes.json` or `published-urls.json` fails it.
+- **Every page builds.** The Astro build generates every price route, sitemap and social card from the new `latest.json`, and its build-time checks run on them.
+
+There is no scheduled job for the tool in any workflow, crontab or Compose file; the isolation scan fails one.
+
 ### The security and privacy stage
 
 Twelve scans, each with a **planted red-path fixture committed in-repo** so a scan that silently stops working is caught:
