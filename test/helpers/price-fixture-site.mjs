@@ -61,6 +61,9 @@ export const priceFixtureFiles = {
   // E11.6-11: the price history and the Valstara prices.
   'changes.json': 'data/price-index/changes.json',
   'valstara-prices.json': 'config/valstara-prices.json',
+  // E11.6-13: two monthly reports; 2026-11 has none, so it has no page.
+  'monthly/2026-09.json': 'data/price-index/monthly/2026-09.json',
+  'monthly/2026-10.json': 'data/price-index/monthly/2026-10.json',
 };
 
 async function exists(path) {
@@ -83,6 +86,10 @@ export async function priceFixtureInputs() {
     ledger: await read('published-urls.json'),
     changes: await read('changes.json'),
     valstaraPrices: await read('valstara-prices.json'),
+    monthly: {
+      '2026-09.json': await read('monthly/2026-09.json'),
+      '2026-10.json': await read('monthly/2026-10.json'),
+    },
   };
 }
 

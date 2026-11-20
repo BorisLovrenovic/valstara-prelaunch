@@ -15,8 +15,12 @@ const root = fileURLToPath(new URL('../..', import.meta.url));
 // route pattern, in `dataRoutes`; the E11-05 audit crawls each data route's
 // page kinds on the price fixture site (test/helpers/price-fixture-site.mjs).
 // E11.6-12: `/prices` and the hubs are price routes too: their content and
-// whether they exist come from the price data.
+// whether they exist come from the price data. E11.6-13: so are
+// `/price-index`, whose reports and Dataset data come from it, and the
+// monthly reports, one per report file.
 export const dataRouteFiles = new Map([
+  ['price-index/[month].astro', '/price-index/[month]'],
+  ['price-index/index.astro', '/price-index'],
   ['prices/[service]/[country].astro', '/prices/[service]/[country]'],
   ['prices/index.astro', '/prices'],
   ['prices/[service]/index.astro', '/prices/[service]'],

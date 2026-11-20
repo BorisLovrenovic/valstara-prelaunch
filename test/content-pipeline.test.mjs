@@ -30,6 +30,8 @@ const expectedTargets = new Map([
   ['privacy.md', '/privacy'],
   ['privacy-storage.md', '/privacy/storage'],
   ['VAL-GW-LAUNCH-20260925-r1.md', '/giveaway/rules'],
+  // E11.6-13: the price index's methodology.
+  ['price-index-methodology.md', '/price-index'],
 ]);
 
 async function markdownFiles(directory) {
@@ -121,16 +123,18 @@ test('content collection schemas require a port target in their own route set', 
   assert.deepEqual(Object.keys(collections).sort(), [
     'giveawayRules',
     'legal',
+    'priceIndex',
     'trust',
   ]);
   for (const [collection, valid, invalid] of [
     [collections.trust, '/legit', '/privacy'],
     [collections.legal, '/privacy', '/about'],
+    [collections.priceIndex, '/price-index', '/prices'],
   ]) {
     const metadata =
-      collection === collections.trust
-        ? { title: 'Trust title', description: 'Trust description' }
-        : {};
+      collection === collections.legal
+        ? {}
+        : { title: 'Page title', description: 'Page description' };
     assert.equal(
       collection.schema.safeParse({ portTarget: valid, ...metadata }).success,
       true,

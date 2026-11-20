@@ -216,6 +216,7 @@ Kept current from the first commit, because it is what makes launch day a checkl
 | `src/content/terms.md`, `privacy.md` | `/terms`, `/privacy` — ported and revised in place | E11-07 |
 | `src/content/privacy-storage.md` | `/privacy/storage` — ported with the privacy notice | E11-07 |
 | `src/content/giveaway-rules/*.md` | `/giveaway/rules` and each immutable `/giveaway/rules/<rules_version>` | E11-07 |
+| `src/content/price-index-methodology.md` | The price index's methodology, `/price-index` | E11.6-13 |
 | Font files and `@font-face` declarations | Storefront font layer | E11-07 |
 
 **E11.5-01 port addition:** copy the expanded `tokens.css` verbatim, including `--on-midnight`, the three shadow pairs, layout, type-weight, tracking, sizing and layering tokens. Re-run the contrast and dark-name-set tests after the port. The breakpoint literals above travel with page CSS; they are documented here because media conditions cannot reference custom properties.
@@ -258,6 +259,7 @@ E11-07 source-to-target reconciliation (targets are the storefront routes to bui
 | `src/content/terms.md` | `/terms` | Port and revise for storefront processing |
 | `src/content/privacy.md` | `/privacy` | Port and revise for storefront processing |
 | `src/content/privacy-storage.md` | `/privacy/storage` | Port with the privacy notice |
+| `src/content/price-index-methodology.md` | `/price-index` | Port at the same URL, with the reconciliation test, so each statement stays true of the storefront's own price index |
 | `src/content/giveaway-rules/VAL-GW-LAUNCH-20260925-r1.md` | `/giveaway/rules/VAL-GW-LAUNCH-20260925-r1` | Retain as an archived, hash-preserved revision |
 | `src/content/giveaway-rules/VAL-GW-LAUNCH-20261001-r1.md` | `/giveaway/rules/VAL-GW-LAUNCH-20261001-r1` | Retain as an archived, hash-preserved revision |
 | `src/content/giveaway-rules/VAL-GW-LAUNCH-20261009-r1.md` | `/giveaway/rules/VAL-GW-LAUNCH-20261009-r1` and `/giveaway/rules` | Retain as the current, hash-preserved revision |

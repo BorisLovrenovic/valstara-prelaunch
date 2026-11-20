@@ -13,6 +13,8 @@ dist/
 /public/sitemaps/prices-index.xml
 /public/sitemaps/prices-service-hubs.xml
 /public/sitemaps/prices-market-hubs.xml
+# and the monthly reports' (E11.6-13)
+/public/sitemaps/price-index-monthly.xml
 
 # Environment — never commit a secret (docs/engineering/ci-cd.md#secrets)
 .env

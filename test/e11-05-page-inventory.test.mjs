@@ -47,6 +47,8 @@ const notFoundPaths = new Set([
   // E11.6-12: a service and a market with no page have no hub.
   '/prices/not-a-service',
   '/prices/countries/not-a-market',
+  // E11.6-13: a month with no report file has no page.
+  '/price-index/2026-11',
 ]);
 // E11.6-10: the price pages of the site being crawled (the price fixture
 // site's, in the price crawl). Each carries the signup form, so each is a
@@ -882,8 +884,12 @@ test(
     // ledger URL whose data is lost, and a pair that generates nothing.
     // E11.6-12: and `/prices`, a service hub, a market hub, a retired URL
     // (which redirects to its hub), and a service and a market with no hub.
+    // E11.6-13: and `/price-index`, each monthly report, and a month with no
+    // report.
     const inventory = await sourcePagePaths();
     assert.deepEqual(inventory.dataRoutes, [
+      '/price-index/[month]',
+      '/price-index',
       '/prices/[service]/[country]',
       '/prices/[service]',
       '/prices/countries/[country]',
@@ -912,7 +918,11 @@ test(
       retired,
       '/prices/not-a-service',
       '/prices/countries/not-a-market',
+      '/price-index',
+      ...site.monthlyReports.map((report) => report.path),
+      '/price-index/2026-11',
     ];
+    assert.equal(site.monthlyReports.length, 2);
     const remote = await startBrowser();
     try {
       await withDatabase(async (_database, databaseUrl) => {

@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { PriceSiteInputs } from './site.ts';
@@ -16,7 +16,25 @@ export const priceSiteFiles = {
   ledger: 'data/price-index/published-urls.json',
   changes: 'data/price-index/changes.json',
   valstaraPrices: 'config/valstara-prices.json',
+  /** The monthly report files (E11.6-13), one `YYYY-MM.json` per month. */
+  monthly: 'data/price-index/monthly',
 } as const;
+
+/** The monthly report files under `root`, by name; none before the first. */
+async function readMonthly(root: string): Promise<Record<string, unknown>> {
+  let names: string[];
+  try {
+    names = await readdir(join(root, priceSiteFiles.monthly));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw error;
+  }
+  const reports: Record<string, unknown> = {};
+  for (const name of names.filter((file) => file.endsWith('.json')).sort()) {
+    reports[name] = await readJson(root, join(priceSiteFiles.monthly, name));
+  }
+  return reports;
+}
 
 async function readJson(root: string, file: string): Promise<unknown> {
   return JSON.parse(await readFile(join(root, file), 'utf8'));
@@ -39,5 +57,6 @@ export async function readPriceSiteInputs(
     ledger: await readJson(root, priceSiteFiles.ledger),
     changes: await readJson(root, priceSiteFiles.changes),
     valstaraPrices: await readJson(root, priceSiteFiles.valstaraPrices),
+    monthly: await readMonthly(root),
   };
 }

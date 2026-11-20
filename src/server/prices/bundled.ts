@@ -16,6 +16,12 @@ const latestModules = import.meta.glob<unknown>(
   { eager: true, import: 'default' },
 );
 
+// E11.6-13: the monthly reports, one file per month; none before the first.
+const monthlyModules = import.meta.glob<unknown>(
+  '/data/price-index/monthly/*.json',
+  { eager: true, import: 'default' },
+);
+
 let site: PriceSite | undefined;
 
 /** The build's price site, validated once per process. */
@@ -27,6 +33,12 @@ export function bundledPriceSite(): PriceSite {
     ledger,
     changes,
     valstaraPrices,
+    monthly: Object.fromEntries(
+      Object.entries(monthlyModules).map(([path, report]) => [
+        path.slice(path.lastIndexOf('/') + 1),
+        report,
+      ]),
+    ),
   });
   return site;
 }

@@ -1,0 +1,367 @@
+---
+import Container from '../components/container.astro';
+import { pricesCopy } from '../copy/prices.ts';
+import type {
+  MonthlyReportPage,
+  PriceIndexLanding,
+} from '../server/prices/site.ts';
+
+// The body of `/price-index` and of a monthly report (E11.6-13), rendered
+// from the view model in src/server/prices/site.ts. On `/price-index` the
+// default slot is the methodology's content article, whose own H1 is the
+// page's only H1; the layout frames it with the monthly reports and a link
+// to the prices, and never edits it (ADR-017). A monthly report shows the
+// figures of its data file, every price in its market's own currency set in
+// the monospace token, and links every page it mentions while that page
+// exists.
+
+interface Props {
+  view: PriceIndexLanding | MonthlyReportPage;
+}
+
+const { view } = Astro.props;
+const lastCrumb = view.breadcrumbs.length - 1;
+const monthly = pricesCopy.monthly;
+---
+
+<article class="price-report" data-price-report={view.kind}>
+  <Container class="price-report__body">
+    <nav class="price-breadcrumbs" aria-label={pricesCopy.breadcrumbLabel}>
+      <ol>
+        {
+          view.breadcrumbs.map((crumb, index) =>
+            index === lastCrumb ? (
+              <li>
+                <span aria-current="page">{crumb.name}</span>
+              </li>
+            ) : (
+              <li>
+                <a href={new URL(crumb.url).pathname}>{crumb.name}</a>
+              </li>
+            ),
+          )
+        }
+      </ol>
+    </nav>
+    {
+      view.kind === 'price-index' ? (
+        <>
+          <div class="price-report__prose" data-price-methodology>
+            <slot />
+          </div>
+          {view.verifiedLine !== null && (
+            <p class="price-report__note" data-verified-line>
+              {view.verifiedLine}
+            </p>
+          )}
+          <section
+            class="price-report__block"
+            aria-labelledby="price-index-reports"
+            data-price-index-reports
+          >
+            <h2 id="price-index-reports">
+              {pricesCopy.priceIndex.reportsHeading}
+            </h2>
+            {view.reports.length === 0 ? (
+              <p class="price-report__note" data-no-reports>
+                {pricesCopy.priceIndex.noReports}
+              </p>
+            ) : (
+              <ul class="price-report__links">
+                {view.reports.map((link) => (
+                  <li>
+                    <a href={link.path} data-report-link={link.path}>
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <p class="price-report__note">
+            <a href="/prices" data-prices-link>
+              {pricesCopy.priceIndex.pricesLink}
+            </a>
+          </p>
+        </>
+      ) : (
+        <>
+          <h1>{view.heading}</h1>
+          <p class="price-report__note">{view.intro}</p>
+          <section
+            class="price-report__block"
+            aria-labelledby="price-report-changes"
+            data-report-changes
+          >
+            <h2 id="price-report-changes">{monthly.changesHeading}</h2>
+            {view.noChanges !== null ? (
+              <p data-no-changes>{view.noChanges}</p>
+            ) : (
+              <table class="price-table">
+                <caption>{view.changesCaption}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">{monthly.columns.plan}</th>
+                    <th scope="col">{monthly.columns.market}</th>
+                    <th scope="col">{monthly.columns.was}</th>
+                    <th scope="col">{monthly.columns.now}</th>
+                    <th scope="col">{monthly.columns.change}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {view.changes.map((row) => (
+                    <tr
+                      data-change-service={row.serviceId}
+                      data-change-plan={row.planId}
+                      data-change-market={row.market}
+                    >
+                      <th scope="row">{row.planLabel}</th>
+                      <td>
+                        {row.marketPart.href === null ? (
+                          <span data-mention-unlinked>
+                            {row.marketPart.text}
+                          </span>
+                        ) : (
+                          <a href={row.marketPart.href} data-mention-link>
+                            {row.marketPart.text}
+                          </a>
+                        )}
+                      </td>
+                      <td>
+                        <span
+                          class="price-table__amount"
+                          data-price-amount={row.oldAmount}
+                          data-price-currency={row.currency}
+                        >
+                          {row.oldText}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          class="price-table__amount"
+                          data-price-amount={row.newAmount}
+                          data-price-currency={row.currency}
+                        >
+                          {row.newText}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          class="price-table__amount"
+                          data-change-percent={row.changePercent}
+                        >
+                          {row.percentText}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+          <section
+            class="price-report__block"
+            aria-labelledby="price-report-direction"
+            data-report-direction
+          >
+            <h2 id="price-report-direction">{monthly.directionHeading}</h2>
+            {view.direction.length === 0 ? (
+              <p>{monthly.noDirection}</p>
+            ) : (
+              <ul class="price-report__sentences">
+                {view.direction.map((parts) => (
+                  <li>
+                    {parts.map((part) =>
+                      part.href === null ? (
+                        part.text
+                      ) : (
+                        <a href={part.href} data-mention-link>
+                          {part.text}
+                        </a>
+                      ),
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section
+            class="price-report__block"
+            aria-labelledby="price-report-extremes"
+            data-report-extremes
+          >
+            <h2 id="price-report-extremes">{monthly.extremesHeading}</h2>
+            {view.extremes.length === 0 ? (
+              <p>{monthly.noExtremes}</p>
+            ) : (
+              <>
+                <p class="price-report__note">{monthly.extremesBasis}</p>
+                <ul class="price-report__sentences">
+                  {view.extremes.map((parts) => (
+                    <li>
+                      {parts.map((part) =>
+                        part.href === null ? (
+                          part.text
+                        ) : (
+                          <a href={part.href} data-mention-link>
+                            {part.text}
+                          </a>
+                        ),
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {view.unranked !== null && (
+              <p class="price-report__note">{view.unranked}</p>
+            )}
+          </section>
+          <p class="price-report__note">
+            <a href="/price-index" data-methodology-link>
+              {pricesCopy.page.methodologyLink}
+            </a>
+          </p>
+        </>
+      )
+    }
+    <p class="price-report__note">{view.notAffiliated}</p>
+  </Container>
+</article>
+
+<style>
+  :global(.price-report__body) {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .price-breadcrumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--ink-600);
+    font-size: var(--step-0);
+  }
+
+  .price-breadcrumbs li + li::before {
+    content: '/';
+    margin-inline-end: var(--space-1);
+    color: var(--ink-300);
+  }
+
+  .price-breadcrumbs a {
+    color: inherit;
+    text-underline-offset: var(--underline-offset);
+  }
+
+  .price-report h1,
+  .price-report__prose :global(h1) {
+    margin: 0;
+    max-inline-size: var(--measure);
+    font-size: var(--step-4);
+    line-height: var(--leading-1);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .price-report__prose {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  .price-report__prose :global(h2),
+  .price-report__block h2 {
+    margin: 0;
+    font-size: var(--step-3);
+    line-height: var(--leading-3);
+  }
+
+  .price-report__prose :global(h2) {
+    margin-block-start: var(--space-2);
+  }
+
+  .price-report__prose :global(p) {
+    margin: 0;
+  }
+
+  .price-report__block {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  .price-report__block p {
+    margin: 0;
+  }
+
+  .price-report__note {
+    margin: 0;
+    max-inline-size: var(--measure);
+    color: var(--ink-600);
+  }
+
+  .price-report__links,
+  .price-report__sentences {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .price-report a {
+    text-underline-offset: var(--underline-offset);
+  }
+
+  .price-table {
+    inline-size: 100%;
+    border-collapse: collapse;
+    font-size: var(--step-0);
+  }
+
+  .price-table caption {
+    padding-block-end: var(--space-1-5);
+    color: var(--ink-600);
+    text-align: start;
+  }
+
+  .price-table th,
+  .price-table td {
+    padding: var(--space-1-5) var(--space-1);
+    border-block-end: var(--border-thin) solid var(--line);
+    text-align: start;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  .price-table thead th {
+    color: var(--ink-600);
+    font-weight: var(--weight-medium);
+  }
+
+  .price-table tbody th {
+    font-weight: var(--weight-semibold);
+  }
+
+  /* Every published number is set in the monospace token. */
+  .price-table__amount {
+    display: block;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-semibold);
+  }
+
+  @media (min-width: 48rem) {
+    .price-table th,
+    .price-table td {
+      padding-inline: var(--space-2);
+    }
+
+    .price-report h1,
+    .price-report__prose :global(h1) {
+      font-size: var(--step-5);
+    }
+  }
+</style>

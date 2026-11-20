@@ -65,30 +65,38 @@ const pageBindings: Record<string, string> = {
   '/prices': 'view.meta',
   '/prices/[service]': 'view.meta',
   '/prices/countries/[country]': 'view.meta',
+  // E11.6-13: the methodology from its content file, and each monthly report
+  // from the same view model.
+  '/price-index': 'entry.data',
+  '/price-index/[month]': 'view.meta',
 };
 
 // The page files whose routes are expanded from data rather than the file
 // tree: each published rules revision, each price page the bundled data
 // generates or the published-URL ledger holds (E11.6-10), and each service
-// and market hub the data makes (E11.6-12).
+// and market hub the data makes (E11.6-12), and each monthly report file
+// (E11.6-13).
 const expandedRouteFiles = new Set([
   'giveaway/rules/[rulesVersion].astro',
   'prices/[service]/[country].astro',
   'prices/[service]/index.astro',
   'prices/countries/[country].astro',
+  'price-index/[month].astro',
 ]);
 
 /**
  * Every price route of the data under `root`, with its metadata: the pages,
- * the hubs and `/prices` (E11.6-12). A retired URL that generates no page
- * answers 301 and has none.
+ * the hubs and `/prices` (E11.6-12), and the monthly reports (E11.6-13). A
+ * retired URL that generates no page answers 301 and has none.
  */
 export async function priceSeoPages(root: string): Promise<PageMetadata[]> {
   const site = createPriceSite(await readPriceSiteInputs(root));
-  return [...site.routes, ...site.hubs, site.index].map((route) => ({
-    pathname: route.path,
-    ...route.meta,
-  }));
+  return [...site.routes, ...site.hubs, site.index, ...site.monthlyReports].map(
+    (route) => ({
+      pathname: route.path,
+      ...route.meta,
+    }),
+  );
 }
 
 function frontmatterField(source: string, name: string): string {
@@ -120,6 +128,15 @@ export async function collectSeoPages(
     .map((file) => routeFromPageFile(`src/pages/${file}`))
     .filter((route): route is string => route !== null && !route.includes('['));
   const trustPaths = ['legit', 'guarantee', 'about'] as const;
+  // E11.6-13: the methodology's metadata is its content file's frontmatter.
+  const methodologySource = await readFile(
+    join(root, 'src/content/price-index-methodology.md'),
+    'utf8',
+  );
+  const methodology = page('/price-index', {
+    title: frontmatterField(methodologySource, 'title'),
+    description: frontmatterField(methodologySource, 'description'),
+  });
   const trust = await Promise.all(
     trustPaths.map(async (name) => {
       const source = await readFile(
@@ -154,6 +171,7 @@ export async function collectSeoPages(
   const pages: PageMetadata[] = [
     page('/', landingCopy.meta),
     ...trust,
+    methodology,
     page('/terms', legalPageCopy.terms),
     page('/privacy', legalPageCopy.privacy),
     page('/privacy/storage', legalPageCopy.storage),
@@ -556,6 +574,12 @@ export async function generateSitemap(root = projectRoot): Promise<void> {
   await writeFile(
     join(root, 'public', childSitemaps.pricesMarketHubs),
     urlsetXml(prices.hubSitemaps.markets),
+  );
+  // E11.6-13: the monthly reports have their own child sitemap, each dated
+  // by the build of the snapshot it reports, never the site's build date.
+  await writeFile(
+    join(root, 'public', childSitemaps.priceIndexMonthly),
+    urlsetXml(prices.monthlySitemap),
   );
   await writeFile(join(root, 'public/sitemap.xml'), sitemapIndexXml());
 }
