@@ -12,6 +12,9 @@ export const subjectExportTables = {
   verification_token: 'subscriber_id=$1',
   referral_edge: 'referrer_id=$1 OR referred_id=$1',
   milestone_award: 'subscriber_id=$1',
+  // E11.7-01: the member's code in the shared registry. Erasure retires the
+  // row and clears its owner, so an erased subject has nothing here.
+  referral_code: "owner_kind='member' AND owner_id=$1",
   survey_response: 'subscriber_id=$1',
   giveaway_entry: 'subscriber_id=$1',
   giveaway_draw_snapshot_row: 'subscriber_id=$1',

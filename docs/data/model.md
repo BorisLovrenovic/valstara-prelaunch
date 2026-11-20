@@ -31,7 +31,7 @@ The waitlist row.
 | `category_preference` | text[] | From the survey. Carried into the handoff |
 | `source` | text | Bucketed acquisition source |
 | `utm` | jsonb | `source`, `medium`, `campaign`, `content`, `term`; null when none. Captured server-side with the signed referral field; each value is trimmed, control-character-free and capped at 128 characters, with the serialized object capped at 512 bytes. Analytics-only |
-| `referral_code` | text unique **nullable** | **Null until verification.** The code is generated when a subscriber verifies, never for a `pending` row — so it cannot be `NOT NULL` (ADR-011, `docs/modules/referral.md`). Founder-authorised 2026-08-26, resolving the E1-03/E4-01 conflict; see E1-03's acceptance criteria |
+| `referral_code` | text unique **nullable** | **Null until verification.** The code is generated when a subscriber verifies, never for a `pending` row — so it cannot be `NOT NULL` (ADR-011, `docs/modules/referral.md`). Founder-authorised 2026-08-26, resolving the E1-03/E4-01 conflict; see E1-03's acceptance criteria. Every write is mirrored into the shared `referral_code` registry in the same transaction (E11.7-01) |
 | `referred_by_id` | uuid null → `subscriber(id)` | Set once at signup; **never reassigned** |
 | `referral_tier` | int not null default 0 | **Derived** from settled milestones |
 | `confirmed_referrals` | int not null default 0 | **Derived** from `referral_edge`; recomputable |
@@ -78,6 +78,26 @@ E8-01 derives verify, status and unsubscribe token plaintext as base64url `HMAC-
 The same table shape backs the signed status link for `/me` with a longer expiry and a `purpose` discriminator (`verify` · `status` · `unsubscribe`), so there is one token lifecycle to reason about rather than three.
 
 `GET /verify?token=` never reads or mutates this table; it renders a confirmation form so mail scanners and prefetchers are inert. Only the token-authenticated `POST /verify` consumes. Invalid and expired posts render identical copy and the same request-new-link control. `src/server/verification/retention.ts` invokes `purgeExpired()` daily through the maintenance scheduler with the shared 1,000-row batch cap, deleting rows 30 days after expiry; failure follows the P1 compliance-alert path.
+
+---
+
+## `referral_code`
+
+**The one namespace for every referral code, member and partner alike** (E11.7-01). A partner code can never equal a member code, or the reverse, and two codes that differ only in case can never both exist.
+
+| Column | Type | Notes |
+|---|---|---|
+| `code` | text **primary key** | **Upper case** (`code = upper(code)`, checked). Lookup upper-cases the input, so it is case-insensitive. A partner code must also match `^[A-Z0-9]{4,16}$` (checked); a member code is the E4-01 12-character code |
+| `owner_kind` | text not null | `member` · `partner` |
+| `owner_id` | uuid null | A member row's owner is `subscriber(id)`; a partner row's owner is its partner record (E11.7-05). Null only for a **retired** member code. No foreign key, because the owner table depends on the kind; an active member row is checked against its subscriber instead |
+| `active` | boolean not null default true | Whether the code resolves to its owner. A member code is active exactly while its subscriber holds it (checked). Partner activation sets it (E11.7-07) |
+| `created_at` | timestamptz not null | When the code was registered. Backfilled member codes take their subscriber's `verified_at` |
+
+Constraints: `owner_id` may be null only when `active` is false · one member code per subscriber (partial unique index on `owner_id` where `owner_kind = 'member'`) · `code`, `owner_kind` and `created_at` are immutable, and an owner can only be cleared, never set or changed (trigger) · **an active member row must be its subscriber's current `referral_code`** (deferred constraint trigger, checked at commit).
+
+**Member codes are mirrored, never written separately.** Generation (E4-01) claims the registry row first, with `ON CONFLICT DO NOTHING`, then writes `subscriber.referral_code` in the same transaction. A collision with any existing code, member or partner, regenerates without aborting the verification transaction. A trigger on `subscriber` mirrors every other write of `referral_code` in the same transaction and refuses, with `unique_violation`, a code another owner already holds in any case. When the subscriber's code is cleared (E9-05 erasure), the trigger **retires** the row: `active` false and `owner_id` null. A retired code no longer resolves, holds no link to the person, and is never reissued. Codes cleared by an erasure before this table existed were never registered.
+
+Permissions: the application role may `SELECT`, and `INSERT` only `code`, `owner_kind` and `owner_id`. It cannot update or delete a row. Migration `0058` backfilled every member code that existed when it ran.
 
 ---
 
@@ -384,4 +404,4 @@ The final 2026-10-02 founder decision supersedes immediate local erasure and the
 
 ### Export coverage
 
-`src/server/db/dsr-export.ts` registers subject-scoped tables. Every row includes every column through `to_jsonb`, reconciled against the model and schema by test. Referral counterparts, other winners, operator identities and third-party fraud evidence are redacted. NDJSON is streamed in 100-row pages under a repeatable-read transaction, with a fulfilment audit at successful completion. DSR tokens use distinct `dsr_export` and `dsr_delete` purposes with a 24-hour lifetime. An export replay is acknowledged without exporting again; invalid/expired links use one response. No plaintext token is persisted.
+`src/server/db/dsr-export.ts` registers subject-scoped tables. `referral_code` is registered by its member owner (E11.7-01); an erased subject's code is retired with its owner cleared, so it is no longer theirs to export. Every row includes every column through `to_jsonb`, reconciled against the model and schema by test. Referral counterparts, other winners, operator identities and third-party fraud evidence are redacted. NDJSON is streamed in 100-row pages under a repeatable-read transaction, with a fulfilment audit at successful completion. DSR tokens use distinct `dsr_export` and `dsr_delete` purposes with a 24-hour lifetime. An export replay is acknowledged without exporting again; invalid/expired links use one response. No plaintext token is persisted.

@@ -78,6 +78,9 @@ const relatedPolicyFields = {
       'created_at',
     ],
   },
+  referral_code: {
+    'Referral code': ['active', 'code', 'created_at', 'owner_id', 'owner_kind'],
+  },
   milestone_award: {
     'Referral code': [
       'id',

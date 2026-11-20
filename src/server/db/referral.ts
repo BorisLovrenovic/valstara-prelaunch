@@ -50,6 +50,7 @@ export interface ReferralRepository {
     referredId: string,
   ): Promise<ReferralEdgeForConfirmation | null>;
   findSubscriber(subscriberId: string): Promise<ReferralSubscriber | null>;
+  /** The active member owner of an upper-case code from the shared registry. */
   findSubscriberIdByCode(code: string): Promise<string | null>;
   findSettledReferralTier(subscriberId: string): Promise<number>;
   findSubscriberIdsForCounterRepair(limit: number): Promise<readonly string[]>;
@@ -266,11 +267,17 @@ export function createReferralRepository(
     },
 
     async findSubscriberIdByCode(code) {
-      const row = await database.readOne<{ id: string }>({
-        text: 'SELECT id FROM subscriber WHERE LOWER(referral_code) = LOWER($1)',
+      // The shared registry (E11.7-01) holds each member's code upper case
+      // while the subscriber holds it; callers pass the normalised code.
+      const row = await database.readOne<{ owner_id: string }>({
+        text: `
+          SELECT owner_id
+          FROM referral_code
+          WHERE code = $1 AND owner_kind = 'member' AND active
+        `,
         values: [code],
       });
-      return row?.id ?? null;
+      return row?.owner_id ?? null;
     },
 
     async findSettledReferralTier(subscriberId) {
