@@ -80,7 +80,8 @@ const expandedRouteFiles = new Set([
 
 /**
  * Every price route of the data under `root`, with its metadata: the pages,
- * the hubs and `/prices` (E11.6-12). A retired URL answers 301 and has none.
+ * the hubs and `/prices` (E11.6-12). A retired URL that generates no page
+ * answers 301 and has none.
  */
 export async function priceSeoPages(root: string): Promise<PageMetadata[]> {
   const site = createPriceSite(await readPriceSiteInputs(root));

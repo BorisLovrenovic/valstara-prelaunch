@@ -503,19 +503,28 @@ test('no hub shows a USD figure or a converted price: every price is its marketâ
   }
 });
 
-test('a retired URL answers its hub, is no page, and leaves every hub, related link and sitemap', async () => {
+test('a retired URL answers its hub while it generates no page, and its page returns when its data does (D-037 Q2)', async () => {
   const data = await dataset();
-  // The fixture's retired URL: Crunchyroll in the United States.
+  // The fixture's retired URL: Crunchyroll in the United States, which
+  // generates no page.
   let site = createPriceSite(data);
   assert.equal(
     site.redirect('/prices/crunchyroll/united-states'),
     '/prices/countries/united-states',
   );
   assert.equal(site.route('/prices/crunchyroll/united-states'), null);
+  assert.ok(
+    !site.sitemap.some(
+      (entry) => entry.path === '/prices/crunchyroll/united-states',
+    ),
+  );
+  assert.ok(!hubLinks(site).includes('/prices/crunchyroll/united-states'));
   assert.equal(site.redirect('/prices/spotify/sweden'), null);
+  const before = createPriceSite(data);
 
-  // A retired URL whose data publishes again stays retired: Spotify in
-  // France is no longer a page, a hub row, a related link or a sitemap entry.
+  // A retired URL whose data publishes again is a page again: Spotify in
+  // France keeps its retirement entry, but while its pair generates a page
+  // it is served like any generated page, never redirected.
   data.ledger.urls.push(
     {
       path: '/prices/spotify/france',
@@ -532,6 +541,43 @@ test('a retired URL answers its hub, is no page, and leaves every hub, related l
       actor: 'Founder',
       retired_on: '2026-12-02',
     },
+  );
+  site = createPriceSite(data);
+  assert.equal(site.redirect('/prices/spotify/france'), null);
+  const page = site.route('/prices/spotify/france');
+  assert.equal(page?.kind, 'generated');
+  // Exactly the page, sitemap, hubs and links it has with no retirement.
+  // Every route, so every related link, as with no retirement.
+  assert.deepEqual(site.routes, before.routes);
+  assert.deepEqual(site.sitemap, before.sitemap);
+  assert.deepEqual(site.hubs, before.hubs);
+  assert.deepEqual(site.index, before.index);
+  assert.ok(
+    site.sitemap.some((entry) => entry.path === '/prices/spotify/france'),
+  );
+  assert.ok(hubLinks(site).includes('/prices/spotify/france'));
+  assert.deepEqual(
+    serviceHubOf(site, '/prices/spotify').plans[0]!.rows.map(
+      (row) => row.market,
+    ),
+    ['SE', 'GB', 'US', 'FR'],
+  );
+  assert.deepEqual(
+    marketHubOf(site, '/prices/countries/france').categories.flatMap(
+      (category) => category.rows.map((row) => row.serviceId),
+    ),
+    ['spotify', 'duolingo'],
+  );
+  // Its "More prices" block links its two hubs.
+  assert.deepEqual(
+    page?.hubLinks.map((link) => link.path),
+    ['/prices/spotify', '/prices/countries/france'],
+  );
+
+  // If the pair later generates no page again, the URL answers 301 to its
+  // hub again, never the unavailable state, and leaves every listing.
+  data.latest!.records = data.latest!.records.filter(
+    (record) => !(record.service_id === 'spotify' && record.market === 'FR'),
   );
   site = createPriceSite(data);
   assert.equal(site.redirect('/prices/spotify/france'), '/prices/spotify');

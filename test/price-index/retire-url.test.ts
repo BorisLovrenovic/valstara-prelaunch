@@ -22,7 +22,9 @@ import {
 // Q2). A workspace builds Spotify Premium — Individual in Sweden and the
 // United Kingdom, so the ledger holds two published URLs and the data makes
 // the hubs /prices/spotify, /prices/countries/sweden and
-// /prices/countries/united-kingdom. Every refusal leaves the ledger
+// /prices/countries/united-kingdom. A URL is retired only once its data no
+// longer makes a page (D-037 Q1), so a test that retires one first takes
+// the United Kingdom out of the markets. Every refusal leaves the ledger
 // byte-identical.
 
 const mainScript = join(projectRoot, 'packages/price-index/src/cli/main.ts');
@@ -70,6 +72,20 @@ async function builtWorkspace(): Promise<Workspace> {
 
 const retiredOn = clockAt('2026-12-05T08:00:00.000Z');
 
+/**
+ * Takes a market out of the workspace's configuration: its URL stays in the
+ * ledger (temporarily unavailable on the site) but makes no page, and its
+ * market hub goes.
+ */
+async function withoutMarket(space: Workspace, code: string): Promise<void> {
+  const marketsPath = join(space.root, 'config/markets.json');
+  const markets = JSON.parse(
+    await readFile(marketsPath, 'utf8'),
+  ) as MarketsFile;
+  markets.markets = markets.markets.filter((market) => market.code !== code);
+  await writeFile(marketsPath, `${JSON.stringify(markets, null, 2)}\n`);
+}
+
 function ledgerPath(space: Workspace): string {
   return join(space.dataDirectory, 'published-urls.json');
 }
@@ -77,6 +93,7 @@ function ledgerPath(space: Workspace): string {
 test('retire-url appends one retirement, dated by the clock, after the URL’s publication, and validate accepts it', async (t) => {
   const space = await builtWorkspace();
   t.after(() => space.dispose());
+  await withoutMarket(space, 'GB');
   const before = await readPublishedUrls(ledgerPath(space));
   assert.deepEqual(
     before?.urls.map((entry) => entry.path),
@@ -86,7 +103,7 @@ test('retire-url appends one retirement, dated by the clock, after the URL’s p
   const result = await space.cli(
     [
       'retire-url',
-      '/prices/spotify/sweden',
+      '/prices/spotify/united-kingdom',
       '--to',
       '/prices/spotify',
       '--actor',
@@ -97,14 +114,14 @@ test('retire-url appends one retirement, dated by the clock, after the URL’s p
   assert.equal(result.status, 0, result.err);
   assert.match(
     result.out,
-    /\/prices\/spotify\/sweden now answers 301 to \/prices\/spotify/u,
+    /\/prices\/spotify\/united-kingdom now answers 301 to \/prices\/spotify/u,
   );
   const after = await readPublishedUrls(ledgerPath(space));
   // The publication entries are untouched; one entry is appended.
   assert.deepEqual(after?.urls.slice(0, 2), before?.urls);
   assert.deepEqual(after?.urls[2], {
     kind: 'retired',
-    path: '/prices/spotify/sweden',
+    path: '/prices/spotify/united-kingdom',
     to: '/prices/spotify',
     actor: 'Founder',
     retired_on: '2026-12-05',
@@ -113,7 +130,7 @@ test('retire-url appends one retirement, dated by the clock, after the URL’s p
   const text = await readFile(ledgerPath(space), 'utf8');
   assert.match(
     text,
-    /\{\n {6}"kind": "retired",\n {6}"path": "\/prices\/spotify\/sweden",\n {6}"to": "\/prices\/spotify",\n {6}"actor": "Founder",\n {6}"retired_on": "2026-12-05"\n {4}\}\n {2}\]\n\}\n$/u,
+    /\{\n {6}"kind": "retired",\n {6}"path": "\/prices\/spotify\/united-kingdom",\n {6}"to": "\/prices\/spotify",\n {6}"actor": "Founder",\n {6}"retired_on": "2026-12-05"\n {4}\}\n {2}\]\n\}\n$/u,
   );
   assert.equal((await space.cli(['validate'])).status, 0);
 
@@ -122,7 +139,7 @@ test('retire-url appends one retirement, dated by the clock, after the URL’s p
   const again = await space.cli(
     [
       'retire-url',
-      'https://valstara.com/prices/spotify/sweden',
+      'https://valstara.com/prices/spotify/united-kingdom',
       '--to',
       '/prices/spotify',
       '--actor',
@@ -160,6 +177,9 @@ test('retire-url refuses without --actor, or with an empty one, before anything 
 test('retire-url refuses a URL never published, a target that is not a hub, and a hub the data does not make', async (t) => {
   const space = await builtWorkspace();
   t.after(() => space.dispose());
+  // The United Kingdom makes no page and no market hub, so its URL may be
+  // retired, to a hub the data still makes.
+  await withoutMarket(space, 'GB');
   const before = await readFile(ledgerPath(space), 'utf8');
   const cases: [string[], RegExp][] = [
     // Never published.
@@ -180,15 +200,18 @@ test('retire-url refuses a URL never published, a target that is not a hub, and 
     ],
     [['/prices/spotify/sweden', '--to', '/prices'], /is not a hub/u],
     [['/prices/spotify/sweden', '--to', '/prices/countries'], /is not a hub/u],
-    // A hub the data does not make.
+    // A hub the data does not make: no Netflix page, and the United
+    // Kingdom's market hub went with its market.
     [
-      ['/prices/spotify/sweden', '--to', '/prices/netflix'],
+      ['/prices/spotify/united-kingdom', '--to', '/prices/netflix'],
       /not a hub the published data makes/u,
     ],
-    // Sweden's hub holds only this page, so it would be gone once it is
-    // retired: the redirect would lead nowhere.
     [
-      ['/prices/spotify/sweden', '--to', '/prices/countries/sweden'],
+      [
+        '/prices/spotify/united-kingdom',
+        '--to',
+        '/prices/countries/united-kingdom',
+      ],
       /not a hub the published data makes/u,
     ],
     // Unknown and repeated flags.
@@ -233,12 +256,7 @@ test('retire-url retires the URL of a market that has left the configuration, to
   // The United Kingdom leaves the markets: its URL stays in the ledger
   // (temporarily unavailable on the site) until it is retired to the
   // service hub, which Sweden keeps.
-  const marketsPath = join(space.root, 'config/markets.json');
-  const markets = JSON.parse(
-    await readFile(marketsPath, 'utf8'),
-  ) as MarketsFile;
-  markets.markets = markets.markets.filter((market) => market.code !== 'GB');
-  await writeFile(marketsPath, `${JSON.stringify(markets, null, 2)}\n`);
+  await withoutMarket(space, 'GB');
   const result = await space.cli(
     [
       'retire-url',
@@ -255,6 +273,37 @@ test('retire-url retires the URL of a market that has left the configuration, to
     (await readPublishedUrls(ledgerPath(space)))?.urls.at(-1)?.path,
     '/prices/spotify/united-kingdom',
   );
+});
+
+test('retire-url refuses a URL that still publishes a page, and writes nothing (D-037 Q1)', async (t) => {
+  const space = await builtWorkspace();
+  t.after(() => space.dispose());
+  const before = await readFile(ledgerPath(space), 'utf8');
+  // Sweden and the United Kingdom both make a page; a retirement never
+  // takes down a live page, whatever the hub.
+  for (const args of [
+    ['/prices/spotify/sweden', '--to', '/prices/spotify'],
+    ['/prices/spotify/sweden', '--to', '/prices/countries/united-kingdom'],
+    [
+      'https://valstara.com/prices/spotify/united-kingdom',
+      '--to',
+      '/prices/countries/sweden',
+    ],
+  ]) {
+    const result = await space.cli(
+      ['retire-url', ...args, '--actor', 'Founder'],
+      { clock: retiredOn },
+    );
+    assert.equal(result.status, 1, args.join(' '));
+    assert.match(result.err, /still publishes a page/u, args.join(' '));
+    assert.match(result.err, /Nothing was written/u, args.join(' '));
+    assert.equal(
+      await readFile(ledgerPath(space), 'utf8'),
+      before,
+      args.join(' '),
+    );
+  }
+  assert.equal((await space.cli(['validate'])).status, 0);
 });
 
 test('retire-url refuses an invalid ledger with exit 3 and writes nothing', async (t) => {

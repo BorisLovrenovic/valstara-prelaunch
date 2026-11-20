@@ -25,9 +25,10 @@ import {
 // A retirement (E11.6-12, D2 and D-032 Q2) is a second entry appended after
 // a URL's publication entry, never an edit of it: `price-index retire-url
 // <url> --to <hub> --actor` appends `{ kind: "retired", path, to, actor,
-// retired_on }`. A retired URL answers 301 to its `to`, a service or market
-// hub, and is in no sitemap. A path has one publication entry and at most
-// one retirement entry after it.
+// retired_on }`. While its pair generates no page, a retired URL answers 301
+// to its `to`, a service or market hub, and is in no sitemap; if the data
+// generates the page again, the page is served (D-037 Q2). A path has one
+// publication entry and at most one retirement entry after it.
 
 export const publishedUrlsFile = 'data/price-index/published-urls.json';
 

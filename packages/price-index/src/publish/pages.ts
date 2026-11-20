@@ -175,13 +175,21 @@ export function marketHubPath(marketSlug: string): string {
 }
 
 /**
- * The retired URLs of the ledger, each with the hub it answers 301 to
- * (E11.6-12, D2). A retired URL is never a page again, whatever the data.
+ * The retirements in force, each path with the hub it answers 301 to
+ * (E11.6-12, D2 and D-037 Q2). A retirement applies only while its pair
+ * generates no page: the entry stays in the ledger unchanged, and while the
+ * data generates the page again the page is served like any other, so its
+ * path is left out here. If the pair later generates none again, the path
+ * answers 301 again, never the unavailable state.
  */
-export function retiredUrls(ledger: PublishedUrlsFile): Map<string, string> {
+export function retiredUrls(
+  ledger: PublishedUrlsFile,
+  pages: readonly GeneratedPage[],
+): Map<string, string> {
+  const generated = new Set(pages.map((page) => page.path));
   const retired = new Map<string, string>();
   for (const entry of ledger.urls) {
-    if (isRetirement(entry)) {
+    if (isRetirement(entry) && !generated.has(entry.path)) {
       retired.set(entry.path, entry.to);
     }
   }
@@ -189,20 +197,8 @@ export function retiredUrls(ledger: PublishedUrlsFile): Map<string, string> {
 }
 
 /**
- * The pages the site serves: the generated pages whose URL the ledger has
- * not retired. Hubs, related links and sitemaps list only these.
- */
-export function livePages(
-  pages: readonly GeneratedPage[],
-  ledger: PublishedUrlsFile,
-): GeneratedPage[] {
-  const retired = retiredUrls(ledger);
-  return pages.filter((page) => !retired.has(page.path));
-}
-
-/**
- * The hubs the live pages make (E11.6-12): a service hub for each service
- * with at least one live page, and a market hub for each market with one.
+ * The hubs the generated pages make (E11.6-12): a service hub for each
+ * service with at least one page, and a market hub for each market with one.
  * A service or market with none has no hub. Paths in first-seen order.
  */
 export function hubPaths(pages: readonly GeneratedPage[]): string[] {

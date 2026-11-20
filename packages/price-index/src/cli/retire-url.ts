@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 
-import { generatedPages, hubPaths, livePages } from '../publish/pages.ts';
+import { generatedPages, hubPaths } from '../publish/pages.ts';
 import {
   isHubPath,
   isRetirement,
@@ -27,14 +27,17 @@ import {
 // configuration stays "temporarily unavailable" until the founder retires
 // it. Retiring appends one entry, `{ kind: "retired", path, to, actor,
 // retired_on }`, to data/price-index/published-urls.json, after the URL's
-// publication entry; nothing is edited (epic rule 7). The site then answers
-// the URL with a 301 to `to` and lists it in no sitemap.
+// publication entry; nothing is edited (epic rule 7). While its pair
+// generates no page, the site then answers the URL with a 301 to `to` in
+// place of the unavailable state, and lists it in no sitemap; if the data
+// generates the page again, the page is served (D-037 Q2).
 //
 // It refuses, with nothing written: a missing or empty --actor (checked
 // before anything is read), a URL that is not a service × market page, a
-// URL the ledger never published or has already retired, and a `to` that is
-// not a hub the data makes once this URL is retired, so a retired URL never
-// redirects to a page that is not there.
+// URL the ledger never published or has already retired, a URL that still
+// publishes a page, since a retirement never takes down a live page (D-037
+// Q1), and a `to` that is not a hub the current data makes, so a retired
+// URL never redirects to a page that is not there.
 
 export const retireUrlExitCodes = {
   done: 0,
@@ -193,6 +196,24 @@ export async function runRetireUrl(
     return refuse(`${request.path} is already retired.`);
   }
 
+  // A retirement ends a URL's unavailable state; it never takes down a
+  // live page (D-037 Q1).
+  const pages = generatedPages(latest, config.catalogue, config.markets);
+  if (pages.some((page) => page.path === request.path)) {
+    return refuse(
+      `${request.path} still publishes a page, so it cannot be retired. A URL is retired only once its data no longer makes a page.`,
+    );
+  }
+  // The URL being retired is never a generated page, so the hubs the
+  // current data makes are the hubs the site serves: the target must be one
+  // of them, or the redirect would lead nowhere.
+  const hubs = hubPaths(pages);
+  if (!hubs.includes(request.to)) {
+    return refuse(
+      `${request.to} is not a hub the published data makes, so it cannot receive the redirect. Hubs now: ${hubs.length === 0 ? 'none' : hubs.join(', ')}.`,
+    );
+  }
+
   const entry: RetiredUrl = {
     kind: 'retired',
     path: request.path,
@@ -200,19 +221,6 @@ export async function runRetireUrl(
     actor: request.actor,
     retired_on: dayOf(io.clock),
   };
-  // The hubs the site will serve once this URL is retired: the target must
-  // be one of them, or the redirect would lead nowhere.
-  const hubs = hubPaths(
-    livePages(generatedPages(latest, config.catalogue, config.markets), {
-      urls: [...ledger.urls, entry],
-    }),
-  );
-  if (!hubs.includes(request.to)) {
-    return refuse(
-      `${request.to} is not a hub the published data makes, so it cannot receive the redirect. Hubs now: ${hubs.length === 0 ? 'none' : hubs.join(', ')}.`,
-    );
-  }
-
   try {
     await appendRetirement(ledgerPath, entry);
   } catch (error) {

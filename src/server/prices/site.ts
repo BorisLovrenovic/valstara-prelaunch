@@ -5,7 +5,6 @@ import {
 import {
   generatedPages,
   hubPaths,
-  livePages,
   marketHubPath,
   retiredUrls,
   serviceHubPath,
@@ -377,7 +376,10 @@ export interface PriceSite {
     readonly services: readonly PriceSitemapEntry[];
     readonly markets: readonly PriceSitemapEntry[];
   };
-  /** The hub a retired URL answers 301 to, or null (E11.6-12, D2). */
+  /**
+   * The hub a retired URL answers 301 to while its pair generates no page,
+   * or null (E11.6-12, D2 and D-037 Q2).
+   */
   redirect(path: string): string | null;
 }
 
@@ -1364,10 +1366,11 @@ export function createPriceSite(inputs: PriceSiteInputs): PriceSite {
     );
   }
 
-  // A retired URL is never a page, whatever the data: it answers 301 to
-  // its hub (E11.6-12, D2). Every other listing reads the live pages.
-  const retired = retiredUrls(ledger);
-  const pages = livePages(generatedPages(latest, catalogue, markets), ledger);
+  // Every generated page is served, retired or not. A retirement applies
+  // only while its pair generates no page: the URL then answers 301 to its
+  // hub in place of the unavailable state (E11.6-12, D2 and D-037 Q2).
+  const pages = generatedPages(latest, catalogue, markets);
+  const retired = retiredUrls(ledger, pages);
   const hubSet = new Set(hubPaths(pages));
   const byPath = new Map<string, PriceRoute>();
   const hubs: PriceHub[] = [];

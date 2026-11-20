@@ -28,7 +28,8 @@ import { jsonLd } from '../../../server/seo.ts';
 // the Valstara comparison (behind `prices.valstara_comparison`), related
 // services and the FAQ, each rendered only when the data holds it.
 // E11.6-12 adds the links to the page's two hubs, and answers a URL the
-// founder has retired with a 301 to its recorded hub (D2).
+// founder has retired, while it generates no page, with a 301 to its
+// recorded hub (D2 and D-037 Q2).
 
 const flags = await getFlagService().list();
 const enabled = (key: keyof typeof campaignFlagRegistry) =>
@@ -52,7 +53,8 @@ if (!pagesEnabled) {
 }
 
 const path = `/prices/${Astro.params.service ?? ''}/${Astro.params.country ?? ''}`;
-// A retired URL answers 301 to the hub the ledger records (E11.6-12, D2).
+// A retired URL that generates no page answers 301 to the hub the ledger
+// records (E11.6-12, D2 and D-037 Q2); a generated page is always served.
 const retiredTo = pagesEnabled ? bundledPriceSite().redirect(path) : null;
 if (retiredTo !== null) {
   return Astro.redirect(retiredTo, 301);
