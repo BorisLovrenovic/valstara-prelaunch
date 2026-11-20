@@ -878,6 +878,9 @@ test('the sitemap index lists every child sitemap, pages.xml keeps the previous 
       'https://valstara.com/sitemaps/prices-index.xml',
       'https://valstara.com/sitemaps/prices-service-hubs.xml',
       'https://valstara.com/sitemaps/prices-market-hubs.xml',
+      // E11.6-13: the monthly price reports' child sitemap
+      // (test/seo.test.ts reads it).
+      'https://valstara.com/sitemaps/price-index-monthly.xml',
     ],
   );
   const pages = await get('/sitemaps/pages.xml');
