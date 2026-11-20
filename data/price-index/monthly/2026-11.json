@@ -1,0 +1,189 @@
+{
+  "month": "2026-11",
+  "snapshot": "2026-11-20.json",
+  "built_at": "2026-11-20T14:13:42.425Z",
+  "markets": 20,
+  "changes": [],
+  "plans": [
+    {
+      "service_id": "amazon-prime",
+      "plan_id": "prime",
+      "billing_period": "month",
+      "published_markets": 13,
+      "ranked_markets": 13,
+      "most_expensive": {
+        "market": "US",
+        "price_local": "14.99",
+        "currency": "USD"
+      },
+      "least_expensive": {
+        "market": "PL",
+        "price_local": "15.50",
+        "currency": "PLN"
+      },
+      "spread_ratio": "3.9",
+      "rose_in": 0,
+      "fell_in": 0
+    },
+    {
+      "service_id": "apple-music",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "published_markets": 18,
+      "ranked_markets": 18,
+      "most_expensive": {
+        "market": "CH",
+        "price_local": "14.90",
+        "currency": "CHF"
+      },
+      "least_expensive": {
+        "market": "PL",
+        "price_local": "26.99",
+        "currency": "PLN"
+      },
+      "spread_ratio": "2.6",
+      "rose_in": 0,
+      "fell_in": 0
+    },
+    {
+      "service_id": "apple-tv",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "published_markets": 20,
+      "ranked_markets": 20,
+      "most_expensive": {
+        "market": "US",
+        "price_local": "14.99",
+        "currency": "USD"
+      },
+      "least_expensive": {
+        "market": "RO",
+        "price_local": "39.99",
+        "currency": "RON"
+      },
+      "spread_ratio": "1.8",
+      "rose_in": 0,
+      "fell_in": 0
+    },
+    {
+      "service_id": "chatgpt",
+      "plan_id": "plus",
+      "billing_period": "month",
+      "published_markets": 20,
+      "ranked_markets": 20,
+      "most_expensive": {
+        "market": "GB",
+        "price_local": "20.00",
+        "currency": "GBP"
+      },
+      "least_expensive": {
+        "market": "CA",
+        "price_local": "25.00",
+        "currency": "CAD"
+      },
+      "spread_ratio": "1.5",
+      "rose_in": 0,
+      "fell_in": 0
+    },
+    {
+      "service_id": "netflix",
+      "plan_id": "basic",
+      "billing_period": "month",
+      "published_markets": 11,
+      "ranked_markets": 11,
+      "most_expensive": {
+        "market": "CH",
+        "price_local": "14.90",
+        "currency": "CHF"
+      },
+      "least_expensive": {
+        "market": "HR",
+        "price_local": "6.99",
+        "currency": "EUR"
+      },
+      "spread_ratio": "2.3",
+      "rose_in": 0,
+      "fell_in": 0
+    },
+    {
+      "service_id": "netflix",
+      "plan_id": "premium",
+      "billing_period": "month",
+      "published_markets": 19,
+      "ranked_markets": 19,
+      "most_expensive": {
+        "market": "CH",
+        "price_local": "29.90",
+        "currency": "CHF"
+      },
+      "least_expensive": {
+        "market": "HR",
+        "price_local": "14.99",
+        "currency": "EUR"
+      },
+      "spread_ratio": "2.2",
+      "rose_in": 0,
+      "fell_in": 0
+    },
+    {
+      "service_id": "netflix",
+      "plan_id": "standard",
+      "billing_period": "month",
+      "published_markets": 19,
+      "ranked_markets": 19,
+      "most_expensive": {
+        "market": "CH",
+        "price_local": "22.90",
+        "currency": "CHF"
+      },
+      "least_expensive": {
+        "market": "HR",
+        "price_local": "11.99",
+        "currency": "EUR"
+      },
+      "spread_ratio": "2.1",
+      "rose_in": 0,
+      "fell_in": 0
+    },
+    {
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "published_markets": 20,
+      "ranked_markets": 20,
+      "most_expensive": {
+        "market": "DK",
+        "price_local": "129.00",
+        "currency": "DKK"
+      },
+      "least_expensive": {
+        "market": "RO",
+        "price_local": "26.00",
+        "currency": "RON"
+      },
+      "spread_ratio": "3.6",
+      "rose_in": 0,
+      "fell_in": 0
+    },
+    {
+      "service_id": "youtube-premium",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "published_markets": 18,
+      "ranked_markets": 18,
+      "most_expensive": {
+        "market": "DK",
+        "price_local": "159.00",
+        "currency": "DKK"
+      },
+      "least_expensive": {
+        "market": "PL",
+        "price_local": "29.99",
+        "currency": "PLN"
+      },
+      "spread_ratio": "3.1",
+      "rose_in": 0,
+      "fell_in": 0
+    }
+  ]
+}

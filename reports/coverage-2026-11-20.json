@@ -1,0 +1,5508 @@
+{
+  "kind": "final",
+  "run_id": "20261120T132953Z",
+  "source": "scraper:youfundceo.com",
+  "fetch_status": "completed",
+  "market_scope": null,
+  "built_at": "2026-11-20T14:13:42.425Z",
+  "markets": [
+    "GB",
+    "DE",
+    "ES",
+    "FR",
+    "IT",
+    "PL",
+    "RO",
+    "SE",
+    "NO",
+    "DK",
+    "FI",
+    "CH",
+    "NL",
+    "HR",
+    "IE",
+    "AT",
+    "PT",
+    "CA",
+    "US",
+    "AU"
+  ],
+  "coverage": {
+    "overall": {
+      "publishable": 158,
+      "records": 460,
+      "percent": 34.3
+    },
+    "by_market": [
+      {
+        "market": "GB",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "DE",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "ES",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "FR",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "IT",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "PL",
+        "publishable": 9,
+        "records": 23,
+        "percent": 39.1
+      },
+      {
+        "market": "RO",
+        "publishable": 3,
+        "records": 23,
+        "percent": 13
+      },
+      {
+        "market": "SE",
+        "publishable": 9,
+        "records": 23,
+        "percent": 39.1
+      },
+      {
+        "market": "NO",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "DK",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "FI",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "CH",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "NL",
+        "publishable": 9,
+        "records": 23,
+        "percent": 39.1
+      },
+      {
+        "market": "HR",
+        "publishable": 7,
+        "records": 23,
+        "percent": 30.4
+      },
+      {
+        "market": "IE",
+        "publishable": 9,
+        "records": 23,
+        "percent": 39.1
+      },
+      {
+        "market": "AT",
+        "publishable": 9,
+        "records": 23,
+        "percent": 39.1
+      },
+      {
+        "market": "PT",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "CA",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "US",
+        "publishable": 8,
+        "records": 23,
+        "percent": 34.7
+      },
+      {
+        "market": "AU",
+        "publishable": 7,
+        "records": 23,
+        "percent": 30.4
+      }
+    ],
+    "by_service": [
+      {
+        "service_id": "adobe-creative-cloud",
+        "publishable": 0,
+        "records": 20,
+        "percent": 0
+      },
+      {
+        "service_id": "amazon-prime",
+        "publishable": 13,
+        "records": 20,
+        "percent": 65
+      },
+      {
+        "service_id": "apple-music",
+        "publishable": 18,
+        "records": 20,
+        "percent": 90
+      },
+      {
+        "service_id": "apple-tv",
+        "publishable": 20,
+        "records": 20,
+        "percent": 100
+      },
+      {
+        "service_id": "bolt-new",
+        "publishable": 0,
+        "records": 20,
+        "percent": 0
+      },
+      {
+        "service_id": "canva",
+        "publishable": 0,
+        "records": 20,
+        "percent": 0
+      },
+      {
+        "service_id": "chatgpt",
+        "publishable": 20,
+        "records": 20,
+        "percent": 100
+      },
+      {
+        "service_id": "crunchyroll",
+        "publishable": 0,
+        "records": 20,
+        "percent": 0
+      },
+      {
+        "service_id": "duolingo",
+        "publishable": 0,
+        "records": 40,
+        "percent": 0
+      },
+      {
+        "service_id": "figma",
+        "publishable": 0,
+        "records": 20,
+        "percent": 0
+      },
+      {
+        "service_id": "linkedin-premium",
+        "publishable": 0,
+        "records": 40,
+        "percent": 0
+      },
+      {
+        "service_id": "lovable",
+        "publishable": 0,
+        "records": 20,
+        "percent": 0
+      },
+      {
+        "service_id": "myfitnesspal",
+        "publishable": 0,
+        "records": 20,
+        "percent": 0
+      },
+      {
+        "service_id": "n8n",
+        "publishable": 0,
+        "records": 20,
+        "percent": 0
+      },
+      {
+        "service_id": "netflix",
+        "publishable": 49,
+        "records": 60,
+        "percent": 81.6
+      },
+      {
+        "service_id": "notion",
+        "publishable": 0,
+        "records": 20,
+        "percent": 0
+      },
+      {
+        "service_id": "perplexity",
+        "publishable": 0,
+        "records": 20,
+        "percent": 0
+      },
+      {
+        "service_id": "spotify",
+        "publishable": 20,
+        "records": 20,
+        "percent": 100
+      },
+      {
+        "service_id": "youtube-premium",
+        "publishable": 18,
+        "records": 20,
+        "percent": 90
+      }
+    ]
+  },
+  "matrix": [
+    {
+      "service_id": "adobe-creative-cloud",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "amazon-prime",
+      "plan_id": "prime",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "ES",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "US",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AU",
+          "status": "ok",
+          "missing_reason": null
+        }
+      ]
+    },
+    {
+      "service_id": "apple-music",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "ES",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "source_no_price"
+        },
+        {
+          "market": "SE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NO",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DK",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FI",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CH",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "source_no_price"
+        },
+        {
+          "market": "IE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CA",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "US",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AU",
+          "status": "ok",
+          "missing_reason": null
+        }
+      ]
+    },
+    {
+      "service_id": "apple-tv",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "ES",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "RO",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "SE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NO",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DK",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FI",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CH",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "HR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CA",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "US",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AU",
+          "status": "ok",
+          "missing_reason": null
+        }
+      ]
+    },
+    {
+      "service_id": "bolt-new",
+      "plan_id": "pro",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "canva",
+      "plan_id": "pro",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "chatgpt",
+      "plan_id": "plus",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "ES",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "RO",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "SE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NO",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DK",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FI",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CH",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "HR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CA",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "US",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AU",
+          "status": "ok",
+          "missing_reason": null
+        }
+      ]
+    },
+    {
+      "service_id": "crunchyroll",
+      "plan_id": "mega-fan",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "duolingo",
+      "plan_id": "max",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "duolingo",
+      "plan_id": "super",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "figma",
+      "plan_id": "professional",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "linkedin-premium",
+      "plan_id": "business",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "linkedin-premium",
+      "plan_id": "career",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "lovable",
+      "plan_id": "pro",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "myfitnesspal",
+      "plan_id": "premium",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "n8n",
+      "plan_id": "starter",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "netflix",
+      "plan_id": "basic",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "RO",
+          "status": "needs_review",
+          "missing_reason": null
+        },
+        {
+          "market": "SE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NO",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DK",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FI",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CH",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "HR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "netflix",
+      "plan_id": "premium",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "ES",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "RO",
+          "status": "needs_review",
+          "missing_reason": null
+        },
+        {
+          "market": "SE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NO",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DK",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FI",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CH",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "HR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CA",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "US",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AU",
+          "status": "ok",
+          "missing_reason": null
+        }
+      ]
+    },
+    {
+      "service_id": "netflix",
+      "plan_id": "standard",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "ES",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "RO",
+          "status": "needs_review",
+          "missing_reason": null
+        },
+        {
+          "market": "SE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NO",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DK",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FI",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CH",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "HR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CA",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "US",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AU",
+          "status": "ok",
+          "missing_reason": null
+        }
+      ]
+    },
+    {
+      "service_id": "notion",
+      "plan_id": "plus",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "perplexity",
+      "plan_id": "pro",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "ES",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "SE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NO",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "DK",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "FI",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CH",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "NL",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "HR",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "IE",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "PT",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "CA",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "US",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "not_on_source"
+        }
+      ]
+    },
+    {
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "ES",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "RO",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "SE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NO",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DK",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FI",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CH",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "HR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CA",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "US",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AU",
+          "status": "ok",
+          "missing_reason": null
+        }
+      ]
+    },
+    {
+      "service_id": "youtube-premium",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "cells": [
+        {
+          "market": "GB",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "ES",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "RO",
+          "status": "missing",
+          "missing_reason": "source_no_price"
+        },
+        {
+          "market": "SE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NO",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "DK",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "FI",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CH",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "NL",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "HR",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "IE",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "PT",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "CA",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "US",
+          "status": "ok",
+          "missing_reason": null
+        },
+        {
+          "market": "AU",
+          "status": "missing",
+          "missing_reason": "source_no_price"
+        }
+      ]
+    }
+  ],
+  "missing": [
+    {
+      "reason": "not_on_source",
+      "service_id": "adobe-creative-cloud",
+      "service_name": "Adobe Creative Cloud",
+      "website_url": "https://www.adobe.com/creativecloud.html",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "individual",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "amazon-prime",
+      "service_name": "Amazon Prime / Prime Video",
+      "website_url": "https://www.amazon.com/amazonprime",
+      "combinations": [
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "prime",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "prime",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "prime",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "prime",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "prime",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "prime",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "prime",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "bolt-new",
+      "service_name": "Bolt.new",
+      "website_url": "https://bolt.new/",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "canva",
+      "service_name": "Canva",
+      "website_url": "https://www.canva.com/",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "crunchyroll",
+      "service_name": "Crunchyroll",
+      "website_url": "https://www.crunchyroll.com/",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "mega-fan",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "duolingo",
+      "service_name": "Duolingo",
+      "website_url": "https://www.duolingo.com/",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "max",
+          "billing_period": "month"
+        },
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "super",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "super",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "figma",
+      "service_name": "Figma",
+      "website_url": "https://www.figma.com/",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "professional",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "professional",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "linkedin-premium",
+      "service_name": "LinkedIn Premium",
+      "website_url": "https://premium.linkedin.com/",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "business",
+          "billing_period": "month"
+        },
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "career",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "career",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "lovable",
+      "service_name": "Lovable",
+      "website_url": "https://lovable.dev/",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "myfitnesspal",
+      "service_name": "MyFitnessPal",
+      "website_url": "https://www.myfitnesspal.com/",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "premium",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "premium",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "n8n",
+      "service_name": "n8n",
+      "website_url": "https://n8n.io/",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "starter",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "starter",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "netflix",
+      "service_name": "Netflix",
+      "website_url": "https://www.netflix.com/",
+      "combinations": [
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "basic",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "basic",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "basic",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "basic",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "basic",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "basic",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "basic",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "basic",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "notion",
+      "service_name": "Notion",
+      "website_url": "https://www.notion.com/",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "plus",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "plus",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "not_on_source",
+      "service_id": "perplexity",
+      "service_name": "Perplexity",
+      "website_url": "https://www.perplexity.ai/",
+      "combinations": [
+        {
+          "market": "AT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "CA",
+          "currency": "CAD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "CH",
+          "currency": "CHF",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "DE",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "DK",
+          "currency": "DKK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "ES",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "FI",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "FR",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "GB",
+          "currency": "GBP",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "IE",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "IT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "NL",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "NO",
+          "currency": "NOK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "PL",
+          "currency": "PLN",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "PT",
+          "currency": "EUR",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "SE",
+          "currency": "SEK",
+          "plan_id": "pro",
+          "billing_period": "month"
+        },
+        {
+          "market": "US",
+          "currency": "USD",
+          "plan_id": "pro",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "source_no_price",
+      "service_id": "apple-music",
+      "service_name": "Apple Music",
+      "website_url": "https://www.apple.com/apple-music/",
+      "combinations": [
+        {
+          "market": "HR",
+          "currency": "EUR",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "individual",
+          "billing_period": "month"
+        }
+      ]
+    },
+    {
+      "reason": "source_no_price",
+      "service_id": "youtube-premium",
+      "service_name": "YouTube Premium",
+      "website_url": "https://www.youtube.com/premium",
+      "combinations": [
+        {
+          "market": "AU",
+          "currency": "AUD",
+          "plan_id": "individual",
+          "billing_period": "month"
+        },
+        {
+          "market": "RO",
+          "currency": "RON",
+          "plan_id": "individual",
+          "billing_period": "month"
+        }
+      ]
+    }
+  ],
+  "flagged": [
+    {
+      "market": "RO",
+      "service_id": "netflix",
+      "plan_id": "basic",
+      "billing_period": "month",
+      "status": "needs_review",
+      "shown": {
+        "price_local": "5.99",
+        "currency": "EUR",
+        "source": "scraper:youfundceo.com"
+      },
+      "manual": null,
+      "notes": "Breaks the currency check: EUR is not RON, the currency of RO.\nNo approval can publish it; a manual override can fill the gap."
+    },
+    {
+      "market": "RO",
+      "service_id": "netflix",
+      "plan_id": "premium",
+      "billing_period": "month",
+      "status": "needs_review",
+      "shown": {
+        "price_local": "13.99",
+        "currency": "EUR",
+        "source": "scraper:youfundceo.com"
+      },
+      "manual": null,
+      "notes": "Breaks the currency check: EUR is not RON, the currency of RO.\nNo approval can publish it; a manual override can fill the gap."
+    },
+    {
+      "market": "RO",
+      "service_id": "netflix",
+      "plan_id": "standard",
+      "billing_period": "month",
+      "status": "needs_review",
+      "shown": {
+        "price_local": "10.99",
+        "currency": "EUR",
+        "source": "scraper:youfundceo.com"
+      },
+      "manual": null,
+      "notes": "Breaks the currency check: EUR is not RON, the currency of RO.\nNo approval can publish it; a manual override can fill the gap."
+    }
+  ],
+  "retirable_overrides": [],
+  "unranked": [],
+  "untracked": [
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "adobe",
+      "source_plan": null,
+      "source_name": "Adobe Creative Cloud",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": "adobe-creative-cloud"
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "amazon-music",
+      "source_plan": null,
+      "source_name": "Amazon Music Unlimited",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "apple-arcade",
+      "source_plan": null,
+      "source_name": "Apple Arcade",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "apple-fitness-plus",
+      "source_plan": null,
+      "source_name": "Apple Fitness+",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "apple-one",
+      "source_plan": null,
+      "source_name": "Apple One",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": "apple-tv"
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "audible",
+      "source_plan": null,
+      "source_name": "Audible",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "babbel",
+      "source_plan": null,
+      "source_name": "Babbel",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "bitdefender",
+      "source_plan": null,
+      "source_name": "Bitdefender",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "claude",
+      "source_plan": null,
+      "source_name": "Claude",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "coursera-plus",
+      "source_plan": null,
+      "source_name": "Coursera Plus",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "dazn",
+      "source_plan": null,
+      "source_name": "DAZN",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "deezer",
+      "source_plan": null,
+      "source_name": "Deezer",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "disney-plus",
+      "source_plan": null,
+      "source_name": "Disney+",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "gemini",
+      "source_plan": null,
+      "source_name": "Google AI (Gemini)",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "google-one",
+      "source_plan": null,
+      "source_name": "Google One",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "grok",
+      "source_plan": null,
+      "source_name": "Grok / X Subscription",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "hbo-max",
+      "source_plan": null,
+      "source_name": "HBO Max",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "icloud-plus",
+      "source_plan": null,
+      "source_name": "iCloud+",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "iqiyi",
+      "source_plan": null,
+      "source_name": "iQIYI",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "microsoft-365",
+      "source_plan": null,
+      "source_name": "Microsoft 365",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "mubi",
+      "source_plan": null,
+      "source_name": "MUBI",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "nintendo-switch-online",
+      "source_plan": null,
+      "source_name": "Nintendo Switch Online",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "nordvpn",
+      "source_plan": null,
+      "source_name": "NordVPN",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "paramount-plus",
+      "source_plan": null,
+      "source_name": "Paramount+",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "playstation-plus",
+      "source_plan": null,
+      "source_name": "PlayStation Plus",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "prime-video",
+      "source_plan": null,
+      "source_name": "Prime Video",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": "amazon-prime"
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "proton",
+      "source_plan": null,
+      "source_name": "Proton",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "soundcloud",
+      "source_plan": null,
+      "source_name": "SoundCloud Go",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "twitch-turbo",
+      "source_plan": null,
+      "source_name": "Twitch Turbo",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "ubisoft-plus",
+      "source_plan": null,
+      "source_name": "Ubisoft+",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "viki",
+      "source_plan": null,
+      "source_name": "Rakuten Viki",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "viu",
+      "source_plan": null,
+      "source_name": "Viu",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "xbox-game-pass",
+      "source_plan": null,
+      "source_name": "Xbox Game Pass",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "service",
+      "service_id": null,
+      "source_service": "zee5",
+      "source_plan": null,
+      "source_name": "ZEE5",
+      "billing_period": null,
+      "markets": [],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "apple-music",
+      "source_service": "apple-music",
+      "source_plan": "family",
+      "source_name": "Family",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "AU",
+        "CA",
+        "CH",
+        "DE",
+        "DK",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "IE",
+        "IT",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "apple-music",
+      "source_service": "apple-music",
+      "source_plan": "student",
+      "source_name": "Student",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "AU",
+        "CA",
+        "CH",
+        "DE",
+        "DK",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "IE",
+        "IT",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "chatgpt",
+      "source_service": "chatgpt",
+      "source_plan": "go",
+      "source_name": "ChatGPT Go",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "AU",
+        "CA",
+        "CH",
+        "DE",
+        "DK",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "HR",
+        "IE",
+        "IT",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "RO",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "chatgpt",
+      "source_service": "chatgpt",
+      "source_plan": "pro-100",
+      "source_name": "ChatGPT Pro 100",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "AU",
+        "CA",
+        "CH",
+        "DE",
+        "DK",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "HR",
+        "IE",
+        "IT",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "RO",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "chatgpt",
+      "source_service": "chatgpt",
+      "source_plan": "pro-200",
+      "source_name": "ChatGPT Pro 200",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "AU",
+        "CA",
+        "CH",
+        "DE",
+        "DK",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "HR",
+        "IE",
+        "IT",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "RO",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "chatgpt",
+      "source_service": "chatgpt",
+      "source_plan": "pro-500",
+      "source_name": "ChatGPT Pro 500",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "AU",
+        "CA",
+        "CH",
+        "DE",
+        "DK",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "HR",
+        "IE",
+        "IT",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "RO",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "netflix",
+      "source_service": "netflix",
+      "source_plan": "standard-ads",
+      "source_name": "Standard with ads",
+      "billing_period": "month",
+      "markets": ["AU", "CA", "DE", "ES", "FR", "GB", "IT", "US"],
+      "suggestion": "standard"
+    },
+    {
+      "kind": "plan",
+      "service_id": "spotify",
+      "source_service": "spotify",
+      "source_plan": "duo",
+      "source_name": "Premium Duo",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "AU",
+        "CA",
+        "CH",
+        "DE",
+        "DK",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "HR",
+        "IE",
+        "IT",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "RO",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "spotify",
+      "source_service": "spotify",
+      "source_plan": "family",
+      "source_name": "Premium Family",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "AU",
+        "CA",
+        "CH",
+        "DE",
+        "DK",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "HR",
+        "IE",
+        "IT",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "spotify",
+      "source_service": "spotify",
+      "source_plan": "family-4",
+      "source_name": "Premium Family (4 accounts)",
+      "billing_period": "month",
+      "markets": ["PT", "RO"],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "spotify",
+      "source_service": "spotify",
+      "source_plan": "student",
+      "source_name": "Premium Student",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "AU",
+        "CA",
+        "CH",
+        "DE",
+        "DK",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "HR",
+        "IE",
+        "IT",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "RO",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "youtube-premium",
+      "source_service": "youtube-premium",
+      "source_plan": "duo",
+      "source_name": "Two-person",
+      "billing_period": "month",
+      "markets": ["FR"],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "youtube-premium",
+      "source_service": "youtube-premium",
+      "source_plan": "family",
+      "source_name": "Family",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "CA",
+        "CH",
+        "DE",
+        "DK",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "HR",
+        "IE",
+        "IT",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "youtube-premium",
+      "source_service": "youtube-premium",
+      "source_plan": "lite",
+      "source_name": "Premium Lite",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "CA",
+        "CH",
+        "DE",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "IE",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "youtube-premium",
+      "source_service": "youtube-premium",
+      "source_plan": "lite-family",
+      "source_name": "Premium Lite Family",
+      "billing_period": "month",
+      "markets": ["CA"],
+      "suggestion": null
+    },
+    {
+      "kind": "plan",
+      "service_id": "youtube-premium",
+      "source_service": "youtube-premium",
+      "source_plan": "student",
+      "source_name": "Student",
+      "billing_period": "month",
+      "markets": [
+        "AT",
+        "CA",
+        "CH",
+        "DE",
+        "DK",
+        "ES",
+        "FI",
+        "FR",
+        "GB",
+        "IE",
+        "IT",
+        "NL",
+        "NO",
+        "PL",
+        "PT",
+        "SE",
+        "US"
+      ],
+      "suggestion": null
+    }
+  ],
+  "spot_checks": {
+    "requested": 5,
+    "seed": 978384002,
+    "records": [
+      {
+        "market": "HR",
+        "service_id": "chatgpt",
+        "plan_id": "plus",
+        "billing_period": "month",
+        "price_local": "23.00",
+        "currency": "EUR",
+        "price_source_text": "€23",
+        "source_url": "https://www.youfundceo.com/services/chatgpt/croatia",
+        "official_url": "https://chatgpt.com/"
+      },
+      {
+        "market": "HR",
+        "service_id": "netflix",
+        "plan_id": "basic",
+        "billing_period": "month",
+        "price_local": "6.99",
+        "currency": "EUR",
+        "price_source_text": "€6.99",
+        "source_url": "https://www.youfundceo.com/services/netflix/croatia",
+        "official_url": "https://www.netflix.com/"
+      },
+      {
+        "market": "FR",
+        "service_id": "netflix",
+        "plan_id": "standard",
+        "billing_period": "month",
+        "price_local": "14.99",
+        "currency": "EUR",
+        "price_source_text": "€14.99",
+        "source_url": "https://www.youfundceo.com/services/netflix/france",
+        "official_url": "https://www.netflix.com/"
+      },
+      {
+        "market": "US",
+        "service_id": "netflix",
+        "plan_id": "standard",
+        "billing_period": "month",
+        "price_local": "19.99",
+        "currency": "USD",
+        "price_source_text": "$19.99 + tax",
+        "source_url": "https://www.youfundceo.com/services/netflix/united-states",
+        "official_url": "https://www.netflix.com/"
+      },
+      {
+        "market": "DE",
+        "service_id": "youtube-premium",
+        "plan_id": "individual",
+        "billing_period": "month",
+        "price_local": "14.99",
+        "currency": "EUR",
+        "price_source_text": "€14.99",
+        "source_url": "https://www.youfundceo.com/services/youtube-premium/germany",
+        "official_url": "https://www.youtube.com/premium"
+      }
+    ]
+  }
+}
