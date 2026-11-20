@@ -1,0 +1,28 @@
+---
+import { pricesCopy } from '../copy/prices.ts';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import TaskCard from '../layouts/task-card.astro';
+import Button from './button.astro';
+
+// The hubs' `prices.pages` off state (E11.6-12): the same paused card, with
+// `noindex`, as the service × market page shows (E11.6-10). The route sets
+// the 503, `Retry-After` and `X-Robots-Tag`.
+---
+
+<BaseLayout
+  title={pricesCopy.paused.meta.title}
+  description={pricesCopy.paused.meta.description}
+>
+  <meta slot="head" name="robots" content="noindex" />
+  <TaskCard
+    heading={pricesCopy.paused.heading}
+    icon="pause"
+    tone="neutral"
+    state="prices-paused"
+    line={pricesCopy.paused.body}
+  >
+    <div class="task-card__actions">
+      <Button href="/">{pricesCopy.paused.home}</Button>
+    </div>
+  </TaskCard>
+</BaseLayout>

@@ -1,0 +1,348 @@
+---
+import { pricesCopy } from '../copy/prices.ts';
+import type { PriceHub, PriceIndex } from '../server/prices/site.ts';
+import Container from './container.astro';
+
+// The body of a price hub (E11.6-12): `/prices`, a service hub or a market
+// hub, rendered from its view model in src/server/prices/site.ts. Every
+// figure is a published record, in its market's own currency, set in the
+// monospace token; every link is a generated page or a hub.
+
+interface Props {
+  view: PriceHub | PriceIndex;
+}
+
+const { view } = Astro.props;
+const lastCrumb = view.breadcrumbs.length - 1;
+const columns = pricesCopy.hubs.columns;
+---
+
+<article class="price-hub" data-price-hub={view.kind}>
+  <Container class="price-hub__body">
+    <nav class="price-breadcrumbs" aria-label={pricesCopy.breadcrumbLabel}>
+      <ol>
+        {
+          view.breadcrumbs.map((crumb, index) =>
+            index === lastCrumb ? (
+              <li>
+                <span aria-current="page">{crumb.name}</span>
+              </li>
+            ) : (
+              <li>
+                <a href={new URL(crumb.url).pathname}>{crumb.name}</a>
+              </li>
+            ),
+          )
+        }
+      </ol>
+    </nav>
+    <h1>{view.heading}</h1>
+    {
+      view.kind === 'index' && (
+        <>
+          <p class="price-hub__note">{view.intro}</p>
+          {view.empty !== null ? (
+            <p class="price-hub__empty" role="status" data-hub-empty>
+              {view.empty}
+            </p>
+          ) : (
+            <>
+              <section
+                class="price-hub__block"
+                aria-labelledby="price-index-services"
+                data-hub-services
+              >
+                <h2 id="price-index-services">
+                  {pricesCopy.hubs.index.servicesHeading}
+                </h2>
+                {view.services.map((group) => (
+                  <div class="price-hub__group">
+                    <h3>{group.heading}</h3>
+                    <ul class="price-hub__links">
+                      {group.links.map((link) => (
+                        <li>
+                          <a href={link.path} data-hub-link={link.path}>
+                            {link.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </section>
+              <section
+                class="price-hub__block"
+                aria-labelledby="price-index-markets"
+                data-hub-markets
+              >
+                <h2 id="price-index-markets">
+                  {pricesCopy.hubs.index.marketsHeading}
+                </h2>
+                <ul class="price-hub__links">
+                  {view.markets.map((link) => (
+                    <li>
+                      <a href={link.path} data-hub-link={link.path}>
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </>
+          )}
+        </>
+      )
+    }
+    {
+      view.kind === 'service-hub' &&
+        view.plans.map((plan) => (
+          <section
+            class="price-hub__block"
+            aria-labelledby={`price-hub-plan-${plan.planId}-${plan.billingPeriod}`}
+            data-hub-plan={plan.planId}
+            data-hub-billing-period={plan.billingPeriod}
+          >
+            <h2 id={`price-hub-plan-${plan.planId}-${plan.billingPeriod}`}>
+              {pricesCopy.planLabel(view.serviceName, plan.planName)}
+            </h2>
+            <table class="price-table">
+              <caption>{plan.tableCaption}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{columns.market}</th>
+                  <th scope="col">{columns.price}</th>
+                  <th scope="col">{columns.verified}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plan.rows.map((row) => (
+                  <tr
+                    data-hub-row
+                    data-hub-market={row.market}
+                    data-hub-rank={row.rank === null ? 'unranked' : row.rank}
+                  >
+                    <th scope="row">
+                      <a href={row.path}>{row.marketName}</a>
+                    </th>
+                    <td>
+                      <span
+                        class="price-table__amount"
+                        data-price-amount={row.amount}
+                        data-price-currency={row.currency}
+                      >
+                        {row.priceText}
+                      </span>
+                      <span class="price-table__period">{row.periodText}</span>
+                    </td>
+                    <td>
+                      <time datetime={row.verifiedOn}>{row.verifiedText}</time>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {plan.orderNote !== null && (
+              <p class="price-hub__note" data-hub-order>
+                {plan.orderNote}
+              </p>
+            )}
+          </section>
+        ))
+    }
+    {
+      view.kind === 'market-hub' &&
+        view.categories.map((category) => (
+          <section
+            class="price-hub__block"
+            aria-labelledby={`price-hub-category-${category.category}`}
+            data-hub-category={category.category}
+          >
+            <h2 id={`price-hub-category-${category.category}`}>
+              {category.heading}
+            </h2>
+            <table class="price-table">
+              <caption>{category.tableCaption}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{columns.plan}</th>
+                  <th scope="col">{columns.price}</th>
+                  <th scope="col">{columns.verified}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {category.rows.map((row) => (
+                  <tr
+                    data-hub-row
+                    data-hub-service={row.serviceId}
+                    data-hub-plan={row.planId}
+                  >
+                    <th scope="row">
+                      <a href={row.path}>{row.planLabel}</a>
+                    </th>
+                    <td>
+                      <span
+                        class="price-table__amount"
+                        data-price-amount={row.amount}
+                        data-price-currency={row.currency}
+                      >
+                        {row.priceText}
+                      </span>
+                      <span class="price-table__period">{row.periodText}</span>
+                    </td>
+                    <td>
+                      <time datetime={row.verifiedOn}>{row.verifiedText}</time>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        ))
+    }
+    {
+      view.verifiedLine !== null && (
+        <p class="price-hub__note" data-verified-line>
+          {view.verifiedLine}
+        </p>
+      )
+    }
+    <p class="price-hub__note">{view.notAffiliated}</p>
+  </Container>
+</article>
+
+<style>
+  :global(.price-hub__body) {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .price-breadcrumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--ink-600);
+    font-size: var(--step-0);
+  }
+
+  .price-breadcrumbs li + li::before {
+    content: '/';
+    margin-inline-end: var(--space-1);
+    color: var(--ink-300);
+  }
+
+  .price-breadcrumbs a {
+    color: inherit;
+    text-underline-offset: var(--underline-offset);
+  }
+
+  .price-hub h1 {
+    margin: 0;
+    max-inline-size: var(--measure);
+    font-size: var(--step-4);
+    line-height: var(--leading-1);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .price-hub__block,
+  .price-hub__group {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  .price-hub__block h2 {
+    margin: 0;
+    font-size: var(--step-3);
+    line-height: var(--leading-3);
+  }
+
+  .price-hub__group h3 {
+    margin: 0;
+    font-size: var(--step-1);
+  }
+
+  .price-hub__note {
+    margin: 0;
+    max-inline-size: var(--measure);
+    color: var(--ink-600);
+  }
+
+  .price-hub__empty {
+    margin: 0;
+    padding: var(--space-2);
+    border-radius: var(--radius-card);
+    background: var(--well);
+    max-inline-size: var(--measure);
+  }
+
+  .price-hub__links {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .price-hub a {
+    text-underline-offset: var(--underline-offset);
+  }
+
+  .price-table {
+    inline-size: 100%;
+    border-collapse: collapse;
+    font-size: var(--step-0);
+  }
+
+  .price-table caption {
+    padding-block-end: var(--space-1-5);
+    color: var(--ink-600);
+    text-align: start;
+  }
+
+  .price-table th,
+  .price-table td {
+    padding: var(--space-1-5) var(--space-1);
+    border-block-end: var(--border-thin) solid var(--line);
+    text-align: start;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  .price-table thead th {
+    color: var(--ink-600);
+    font-weight: var(--weight-medium);
+  }
+
+  .price-table tbody th {
+    font-weight: var(--weight-semibold);
+  }
+
+  /* Every published number is set in the monospace token. */
+  .price-table__amount,
+  .price-table time {
+    font-family: var(--font-mono);
+  }
+
+  .price-table__amount {
+    display: block;
+    font-weight: var(--weight-semibold);
+  }
+
+  .price-table__period {
+    color: var(--ink-600);
+  }
+
+  @media (min-width: 48rem) {
+    .price-table th,
+    .price-table td {
+      padding-inline: var(--space-2);
+    }
+
+    .price-hub h1 {
+      font-size: var(--step-5);
+    }
+  }
+</style>

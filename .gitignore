@@ -7,8 +7,12 @@ dist/
 .astro/
 .output/
 /public/images/og/
-# The price sitemap is written from the price data by every build (E11.6-10)
+# The price sitemaps are written from the price data by every build (E11.6-10,
+# the hubs E11.6-12)
 /public/sitemaps/prices-service-market.xml
+/public/sitemaps/prices-index.xml
+/public/sitemaps/prices-service-hubs.xml
+/public/sitemaps/prices-market-hubs.xml
 
 # Environment — never commit a secret (docs/engineering/ci-cd.md#secrets)
 .env

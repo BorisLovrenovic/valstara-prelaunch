@@ -4,6 +4,7 @@ import { runOverride } from './override.ts';
 import { runMonthlyReport } from './monthly-report.ts';
 import { linePrompt, type Prompt } from './prompt.ts';
 import { runReport } from './report.ts';
+import { runRetireUrl } from './retire-url.ts';
 import { runReview } from './review.ts';
 import { runScrape, type ScrapeEnvironment } from './scrape.ts';
 import { formatIssues, loadConfig, validateDataFiles } from './validate.ts';
@@ -61,6 +62,10 @@ Commands:
              Add a manual price, record a confirmed not_offered, or retire
              a manual entry in data/price-index/manual-overrides.json,
              answering one question per line.
+  retire-url <url> --to <hub> --actor <name>
+             Retire a published price page URL: append a retirement to
+             data/price-index/published-urls.json, so the URL answers 301
+             to the hub (/prices/{service} or /prices/countries/{country}).
 
 Exit codes: 0 done, 1 usage or refused, 2 stopped by the source,
 3 validation failure, 4 interrupted.
@@ -125,6 +130,10 @@ export async function runCli(
 
   if (command === 'monthly-report') {
     return runMonthlyReport(rest, io);
+  }
+
+  if (command === 'retire-url') {
+    return runRetireUrl(rest, { ...io, clock: io.clock ?? systemClock });
   }
 
   if (command === 'override') {

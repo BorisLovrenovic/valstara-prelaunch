@@ -20,6 +20,8 @@ export const layoutCopy = {
     { group: 'company', href: '/about', label: 'About' },
     { group: 'company', href: '/legit', label: 'Legit' },
     { group: 'company', href: '/guarantee', label: 'Guarantee' },
+    // D5 (E11.6-12): every price page is crawlable from every page.
+    { group: 'company', href: '/prices', label: 'Price index' },
     { group: 'legal', href: '/terms', label: 'Terms' },
     { group: 'legal', href: '/privacy', label: 'Privacy' },
     { group: 'legal', href: '/privacy/storage', label: 'Storage inventory' },

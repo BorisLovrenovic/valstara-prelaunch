@@ -39,6 +39,21 @@
       "service_name": "Spotify Premium",
       "market_name": "Sweden",
       "first_published_on": "2026-11-01"
+    },
+    {
+      "path": "/prices/crunchyroll/united-states",
+      "service_id": "crunchyroll",
+      "market": "US",
+      "service_name": "Crunchyroll",
+      "market_name": "the United States",
+      "first_published_on": "2026-11-01"
+    },
+    {
+      "kind": "retired",
+      "path": "/prices/crunchyroll/united-states",
+      "to": "/prices/countries/united-states",
+      "actor": "Founder",
+      "retired_on": "2026-12-01"
     }
   ]
 }

@@ -2,4 +2,7 @@
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap><loc>https://valstara.com/sitemaps/pages.xml</loc></sitemap>
   <sitemap><loc>https://valstara.com/sitemaps/prices-service-market.xml</loc></sitemap>
+  <sitemap><loc>https://valstara.com/sitemaps/prices-index.xml</loc></sitemap>
+  <sitemap><loc>https://valstara.com/sitemaps/prices-service-hubs.xml</loc></sitemap>
+  <sitemap><loc>https://valstara.com/sitemaps/prices-market-hubs.xml</loc></sitemap>
 </sitemapindex>

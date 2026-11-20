@@ -1,9 +1,10 @@
 import type { CatalogueFile } from '../schema/catalogue.ts';
 import type { MarketsFile } from '../schema/markets.ts';
 import type { LatestFile } from '../schema/price-index-files.ts';
-import type {
-  PublishedUrl,
-  PublishedUrlsFile,
+import {
+  isRetirement,
+  type PublishedUrl,
+  type PublishedUrlsFile,
 } from '../schema/published-urls.ts';
 import { publishedView, type PublishedRecord } from './gate.ts';
 
@@ -25,6 +26,8 @@ export interface GeneratedPage {
   readonly market_name: string;
   /** The market's name as it reads in a sentence ("the United States"). */
   readonly market_name_in_sentence: string;
+  /** The market's slug, as in its page and market hub paths. */
+  readonly market_slug: string;
   /**
    * The page's publishable records, one per catalogue plan that has one, in
    * the catalogue's plan order.
@@ -100,6 +103,7 @@ export function generatedPages(
           service_name: service.name,
           market_name: market.name,
           market_name_in_sentence: market.name_in_sentence ?? market.name,
+          market_slug: market.slug,
           records,
         });
       }
@@ -145,6 +149,9 @@ export function ledgerPathConflicts(
   );
   const conflicts: { entry: PublishedUrl; expected: string }[] = [];
   for (const entry of ledger.urls) {
+    if (isRetirement(entry)) {
+      continue;
+    }
     const market = markets.markets.find((item) => item.code === entry.market);
     if (market === undefined || !services.has(entry.service_id)) {
       continue;
@@ -155,4 +162,56 @@ export function ledgerPathConflicts(
     }
   }
   return conflicts;
+}
+
+/** The service hub's path (E11.6-12): every market of one service. */
+export function serviceHubPath(serviceId: string): string {
+  return `/prices/${serviceId}`;
+}
+
+/** The market hub's path (E11.6-12): every service in one market. */
+export function marketHubPath(marketSlug: string): string {
+  return `/prices/countries/${marketSlug}`;
+}
+
+/**
+ * The retired URLs of the ledger, each with the hub it answers 301 to
+ * (E11.6-12, D2). A retired URL is never a page again, whatever the data.
+ */
+export function retiredUrls(ledger: PublishedUrlsFile): Map<string, string> {
+  const retired = new Map<string, string>();
+  for (const entry of ledger.urls) {
+    if (isRetirement(entry)) {
+      retired.set(entry.path, entry.to);
+    }
+  }
+  return retired;
+}
+
+/**
+ * The pages the site serves: the generated pages whose URL the ledger has
+ * not retired. Hubs, related links and sitemaps list only these.
+ */
+export function livePages(
+  pages: readonly GeneratedPage[],
+  ledger: PublishedUrlsFile,
+): GeneratedPage[] {
+  const retired = retiredUrls(ledger);
+  return pages.filter((page) => !retired.has(page.path));
+}
+
+/**
+ * The hubs the live pages make (E11.6-12): a service hub for each service
+ * with at least one live page, and a market hub for each market with one.
+ * A service or market with none has no hub. Paths in first-seen order.
+ */
+export function hubPaths(pages: readonly GeneratedPage[]): string[] {
+  const paths = new Set<string>();
+  for (const page of pages) {
+    paths.add(serviceHubPath(page.service_id));
+  }
+  for (const page of pages) {
+    paths.add(marketHubPath(page.market_slug));
+  }
+  return [...paths];
 }

@@ -21,6 +21,13 @@ import {
 // display names as they were when it was first published, so the page can
 // still name itself after its service or market has left the configuration
 // (D2: such a URL stays "temporarily unavailable" until it is retired).
+//
+// A retirement (E11.6-12, D2 and D-032 Q2) is a second entry appended after
+// a URL's publication entry, never an edit of it: `price-index retire-url
+// <url> --to <hub> --actor` appends `{ kind: "retired", path, to, actor,
+// retired_on }`. A retired URL answers 301 to its `to`, a service or market
+// hub, and is in no sitemap. A path has one publication entry and at most
+// one retirement entry after it.
 
 export const publishedUrlsFile = 'data/price-index/published-urls.json';
 
@@ -31,6 +38,27 @@ export const servicePagePathPattern = new RegExp(
   `^/prices/(${segment})/(${segment})$`,
   'u',
 );
+
+/** `/prices/{service}`: the service hub (E11.6-12). */
+export const serviceHubPathPattern = new RegExp(`^/prices/(${segment})$`, 'u');
+
+/** `/prices/countries/{country}`: the market hub (E11.6-12). */
+export const marketHubPathPattern = new RegExp(
+  `^/prices/countries/(${segment})$`,
+  'u',
+);
+
+/**
+ * A hub path a retired URL may redirect to: a service hub or a market hub.
+ * `/prices/countries` itself is not a service hub, because `countries` is a
+ * reserved service id.
+ */
+export function isHubPath(path: string): boolean {
+  return (
+    marketHubPathPattern.test(path) ||
+    (serviceHubPathPattern.test(path) && path !== '/prices/countries')
+  );
+}
 
 export const publishedUrlSchema = z
   .strictObject({
@@ -64,18 +92,87 @@ export const publishedUrlSchema = z
     }
   });
 
+/** The retirement of a published URL (E11.6-12, D-032 Q2). */
+export const retiredUrlSchema = z.strictObject({
+  kind: z.literal('retired'),
+  /** A URL already published in the ledger, by an earlier entry. */
+  path: z.string().regex(servicePagePathPattern, {
+    error: 'must be /prices/{service}/{country} with kebab-case slugs',
+  }),
+  /** The hub it answers 301 to: `/prices/{service}` or `/prices/countries/{country}`. */
+  to: z.string().refine(isHubPath, {
+    error: 'must be a hub: /prices/{service} or /prices/countries/{country}',
+  }),
+  /** The person who retired it. */
+  actor: displayNameSchema,
+  /** The day it was retired, from the injected clock. */
+  retired_on: z.iso.date(),
+});
+
+/**
+ * A ledger entry: a URL's publication, or its later retirement. An entry
+ * with a `kind` is read as a retirement and any other as a publication, so
+ * each reports its own schema's issues rather than a union's.
+ */
+export const ledgerEntrySchema = z.unknown().transform((value, context) => {
+  const retirement =
+    typeof value === 'object' && value !== null && 'kind' in value;
+  const result = (retirement ? retiredUrlSchema : publishedUrlSchema).safeParse(
+    value,
+  );
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      context.addIssue({
+        code: 'custom',
+        message: issue.message,
+        path: issue.path,
+      });
+    }
+    return z.NEVER;
+  }
+  return result.data as LedgerEntry;
+});
+
+export function isRetirement(entry: LedgerEntry): entry is RetiredUrl {
+  return 'kind' in entry && entry.kind === 'retired';
+}
+
 export const publishedUrlsFileSchema = z
   .strictObject({
-    urls: z.array(publishedUrlSchema),
+    urls: z.array(ledgerEntrySchema),
   })
   .superRefine((file, context) => {
-    for (const path of duplicates(file.urls.map((entry) => entry.path))) {
+    const publications = file.urls.filter((entry) => !isRetirement(entry));
+    for (const path of duplicates(publications.map((entry) => entry.path))) {
       context.addIssue({
         code: 'custom',
         message: `duplicate URL ${path}`,
         path: ['urls'],
       });
     }
+    const published = new Set<string>();
+    const retired = new Set<string>();
+    file.urls.forEach((entry, index) => {
+      if (!isRetirement(entry)) {
+        published.add(entry.path);
+        return;
+      }
+      if (!published.has(entry.path)) {
+        context.addIssue({
+          code: 'custom',
+          message: `${entry.path} is retired before it is published`,
+          path: ['urls', index, 'path'],
+        });
+      }
+      if (retired.has(entry.path)) {
+        context.addIssue({
+          code: 'custom',
+          message: `${entry.path} is retired twice`,
+          path: ['urls', index, 'path'],
+        });
+      }
+      retired.add(entry.path);
+    });
   });
 
 /** The keys of an entry, in the order the file writes them. */
@@ -88,5 +185,16 @@ export const publishedUrlKeys = [
   'first_published_on',
 ] as const;
 
+/** The keys of a retirement entry, in the order the file writes them. */
+export const retiredUrlKeys = [
+  'kind',
+  'path',
+  'to',
+  'actor',
+  'retired_on',
+] as const;
+
 export type PublishedUrl = z.infer<typeof publishedUrlSchema>;
+export type RetiredUrl = z.infer<typeof retiredUrlSchema>;
+export type LedgerEntry = PublishedUrl | RetiredUrl;
 export type PublishedUrlsFile = z.infer<typeof publishedUrlsFileSchema>;

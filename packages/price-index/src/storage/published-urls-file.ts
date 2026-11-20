@@ -3,11 +3,15 @@ import { readFile } from 'node:fs/promises';
 import { z } from 'zod';
 
 import {
+  isRetirement,
   publishedUrlKeys,
   publishedUrlSchema,
   publishedUrlsFileSchema,
+  retiredUrlKeys,
+  retiredUrlSchema,
   type PublishedUrl,
   type PublishedUrlsFile,
+  type RetiredUrl,
 } from '../schema/published-urls.ts';
 import { writeFileAtomic, type AtomicWriteFs } from './atomic-write.ts';
 import { PriceStoreError } from './price-store.ts';
@@ -15,7 +19,8 @@ import { PriceStoreError } from './price-store.ts';
 // data/price-index/published-urls.json (E11.6-10). Append-only (epic rule 7):
 // the tool only ever adds entries at the end, and CI fails any other change.
 // Entries keep their append order: each build adds its newly published URLs
-// in path order.
+// in path order, and `price-index retire-url` adds one retirement at a time
+// (E11.6-12).
 
 function issuesText(error: z.ZodError): string {
   return error.issues
@@ -30,7 +35,11 @@ function pick<T extends object>(value: T, keys: readonly (keyof T)[]): T {
 /** The canonical bytes of the ledger: fixed key order, append order kept. */
 export function serialisePublishedUrls(file: PublishedUrlsFile): string {
   const canonical = {
-    urls: file.urls.map((entry) => pick(entry, publishedUrlKeys)),
+    urls: file.urls.map((entry) =>
+      isRetirement(entry)
+        ? pick(entry, retiredUrlKeys)
+        : pick(entry, publishedUrlKeys),
+    ),
   };
   return `${JSON.stringify(canonical, null, 2)}\n`;
 }
@@ -112,6 +121,44 @@ export async function appendPublishedUrls(
   }
   const next = publishedUrlsFileSchema.safeParse({
     urls: [...current.urls, ...checked.data],
+  });
+  if (!next.success) {
+    throw new PriceStoreError(
+      'invalid_data',
+      `the ledger would be invalid: ${issuesText(next.error)}`,
+    );
+  }
+  await writeFileAtomic(path, serialisePublishedUrls(next.data), {
+    mode: 'replace',
+    fs: options.fs,
+  });
+  return next.data;
+}
+
+/**
+ * Appends one retirement at the end of the ledger at `path`, atomically
+ * (E11.6-12, D-032 Q2). The entry and the existing file are validated first,
+ * and nothing is written if either fails, if the URL was never published,
+ * or if it is already retired. The file must already exist.
+ */
+export async function appendRetirement(
+  path: string,
+  entry: RetiredUrl,
+  options: { fs?: AtomicWriteFs } = {},
+): Promise<PublishedUrlsFile> {
+  const checked = retiredUrlSchema.safeParse(entry);
+  if (!checked.success) {
+    throw new PriceStoreError(
+      'invalid_data',
+      `the retirement is invalid: ${issuesText(checked.error)}`,
+    );
+  }
+  const current = await readPublishedUrls(path);
+  if (current === null) {
+    throw new PriceStoreError('invalid_data', `${path} does not exist`);
+  }
+  const next = publishedUrlsFileSchema.safeParse({
+    urls: [...current.urls, checked.data],
   });
   if (!next.success) {
     throw new PriceStoreError(

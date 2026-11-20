@@ -31,6 +31,8 @@ const footerUrls = [
   '/about',
   '/legit',
   '/guarantee',
+  // E11.6-12 (D5): the price index.
+  '/prices',
   '/terms',
   '/privacy',
   '/privacy/storage',
@@ -280,7 +282,7 @@ test('the footer is a midnight band with Company and Legal columns, contact and 
     }
 
     for (const [heading, links] of [
-      ['Company', ['About', 'Legit', 'Guarantee']],
+      ['Company', ['About', 'Legit', 'Guarantee', 'Price index']],
       ['Legal', ['Terms', 'Privacy', 'Storage inventory', 'Giveaway rules']],
     ]) {
       const list = footer.getByRole('list', { name: heading });

@@ -44,6 +44,9 @@ const notFoundPaths = new Set([
   '/giveaway/rules/not-a-version',
   // E11.6-10: a service × market pair the data does not generate.
   '/prices/not-a-service/sweden',
+  // E11.6-12: a service and a market with no page have no hub.
+  '/prices/not-a-service',
+  '/prices/countries/not-a-market',
 ]);
 // E11.6-10: the price pages of the site being crawled (the price fixture
 // site's, in the price crawl). Each carries the signup form, so each is a
@@ -877,21 +880,38 @@ test(
     // no page yet, so its page kinds are crawled on the site built over the
     // price-page fixture dataset: a generated page, the same with ?ref=, a
     // ledger URL whose data is lost, and a pair that generates nothing.
+    // E11.6-12: and `/prices`, a service hub, a market hub, a retired URL
+    // (which redirects to its hub), and a service and a market with no hub.
     const inventory = await sourcePagePaths();
-    assert.deepEqual(inventory.dataRoutes, ['/prices/[service]/[country]']);
+    assert.deepEqual(inventory.dataRoutes, [
+      '/prices/[service]/[country]',
+      '/prices/[service]',
+      '/prices/countries/[country]',
+      '/prices',
+    ]);
     const { root: fixtureRoot } = await priceFixtureSite();
     const site = createPriceSite(await priceFixtureInputs());
     const generated = site.routes.find((route) => route.kind === 'generated');
     const unavailable = site.routes.find(
       (route) => route.kind === 'unavailable',
     );
-    assert.ok(generated && unavailable);
+    const serviceHub = site.hubs.find((hub) => hub.kind === 'service-hub');
+    const marketHub = site.hubs.find((hub) => hub.kind === 'market-hub');
+    const retired = '/prices/crunchyroll/united-states';
+    assert.ok(generated && unavailable && serviceHub && marketHub);
+    assert.equal(site.redirect(retired), '/prices/countries/united-states');
     for (const route of site.routes) pricePagePaths.add(route.path);
     const paths = [
       generated.path,
       `${generated.path}?ref=ABCDEFGHJKMN&utm_source=newsletter`,
       unavailable.path,
       '/prices/not-a-service/sweden',
+      '/prices',
+      serviceHub.path,
+      marketHub.path,
+      retired,
+      '/prices/not-a-service',
+      '/prices/countries/not-a-market',
     ];
     const remote = await startBrowser();
     try {
