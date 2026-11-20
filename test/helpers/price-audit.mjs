@@ -119,6 +119,15 @@ export async function startPriceAuditServer({
       label,
       readyPath: '/robots.txt',
       cwd: root,
+      // The server stops on SIGTERM, which by default ends Node without
+      // writing its V8 coverage, so the price pages it rendered would count
+      // as unrun. Exiting cleanly writes it, as the unsubscribe page's
+      // server does (scripts/fixtures/run-unsubscribe-server.mjs). Preloaded
+      // rather than wrapped, so it serves any `root`'s own build.
+      nodeArguments: [
+        '--import',
+        'data:text/javascript,process.once("SIGTERM",()=>process.exit(0))',
+      ],
       env: () => ({
         ADMIN_CREDENTIAL: 'price-audit-admin-credential-32-chars',
         ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
