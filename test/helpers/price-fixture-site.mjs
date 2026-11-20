@@ -17,12 +17,14 @@ import { promisify } from 'node:util';
 import { inputDigest } from '../../scripts/ci/app-build.mjs';
 
 // E11.6-10: the site built over the price-page fixture dataset
-// (test/fixtures/price-index/pages/). The repository's own data has no
-// latest.json before the founder's first run, so the rendered price-page
-// tests build a copy of the site's build inputs with the fixture catalogue,
-// markets, latest.json, ledger, change log and Valstara prices in place of
-// the real ones, and serve that.
-// The real data files are never touched.
+// (test/fixtures/price-index/pages/). The rendered price-page tests assert
+// pages of a known dataset, so they build a copy of the site's build inputs
+// with the fixture catalogue, markets, latest.json, ledger, change log,
+// monthly reports and Valstara prices in place of the real ones, and serve
+// that. The copy takes nothing from the repository's data/price-index/: from
+// the founder's first monthly run on (E11.6-15) it holds real data, and a
+// real file the fixtures do not replace (a monthly report, say) would leak
+// into the fixture site. The real data files are never touched.
 //
 // The build is keyed by the repository's build inputs and the fixture files,
 // so the test files that need it share one build in a run. Exports only:
@@ -36,7 +38,7 @@ export const priceFixtureDirectory = join(
 );
 
 // Everything `npm run build` reads (scripts/ci/app-build.mjs inputPaths),
-// plus the rest of the price data directory the copy needs to exist.
+// except the price data, which priceFixtureFiles supplies in full.
 const buildInputs = [
   'src',
   'public',
@@ -47,7 +49,6 @@ const buildInputs = [
   'scripts/ci/seo-build-check.ts',
   'scripts/ci/provider-showcase-check.ts',
   'config',
-  'data/price-index',
   'packages/price-index/src/publish',
   'packages/price-index/src/schema',
 ];
@@ -98,9 +99,11 @@ export async function priceFixtureInputs() {
  * per distinct set of inputs; a later call with the same inputs reuses it.
  */
 export async function priceFixtureSite() {
-  const hash = createHash('sha256').update(
-    await inputDigest(projectRoot, process.env),
-  );
+  // This module's own source is part of the key: a change to what the copy
+  // takes from the repository must rebuild, never reuse an older tree.
+  const hash = createHash('sha256')
+    .update(await inputDigest(projectRoot, process.env))
+    .update(await readFile(fileURLToPath(import.meta.url)));
   for (const name of Object.keys(priceFixtureFiles).sort()) {
     hash
       .update(`${name}\0`)

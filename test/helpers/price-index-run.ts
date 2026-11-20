@@ -27,10 +27,17 @@ import type {
   LatestFile,
   MarketsFile,
 } from '../../packages/price-index/src/schema/index.ts';
-import { createJsonFileStore } from '../../packages/price-index/src/storage/index.ts';
+import {
+  createJsonFileStore,
+  serialiseApprovals,
+  serialiseChanges,
+  serialiseManualOverrides,
+  serialisePublishedUrls,
+} from '../../packages/price-index/src/storage/index.ts';
 
 // Shared by the E11.6-07 run suites: a workspace that is a small copy of the
-// repository's price-index files, a fake browser driver that serves the
+// repository's price-index configuration with empty seeded data files, a fake
+// browser driver that serves the
 // founder's captured pages (no test reaches the source, epic rule 2), and a
 // digest of a directory tree for byte-identical assertions. A module of
 // exports only, so running it bare (node --test discovers every file under
@@ -154,8 +161,22 @@ export interface Workspace {
 }
 
 /**
- * A temporary copy of the price-index configuration and the seeded data
- * files, with the catalogue cut to `services` and only `markets` enabled.
+ * The four data files `validate` requires, as the empty seeds E11.6-06 to
+ * E11.6-10 committed. Written by the workspace rather than copied from
+ * `data/price-index/`: the committed files hold the founder's real data from
+ * the first monthly run on (E11.6-15), and every suite built on a workspace
+ * starts from this known, empty state whatever the repository holds.
+ */
+export const seededDataFiles: Readonly<Record<string, string>> = {
+  'approvals.json': serialiseApprovals({ approvals: [] }),
+  'changes.json': serialiseChanges({ changes: [] }),
+  'manual-overrides.json': serialiseManualOverrides({ overrides: [] }),
+  'published-urls.json': serialisePublishedUrls({ urls: [] }),
+};
+
+/**
+ * A temporary copy of the price-index configuration with the seeded data
+ * files, the catalogue cut to `services` and only `markets` enabled.
  */
 export async function priceIndexWorkspace(
   options: {
@@ -169,16 +190,8 @@ export async function priceIndexWorkspace(
   });
   const dataDirectory = join(root, 'data/price-index');
   await mkdir(dataDirectory, { recursive: true });
-  for (const name of [
-    'approvals.json',
-    'changes.json',
-    'manual-overrides.json',
-    'published-urls.json',
-  ]) {
-    await cp(
-      join(projectRoot, 'data/price-index', name),
-      join(dataDirectory, name),
-    );
+  for (const [name, text] of Object.entries(seededDataFiles)) {
+    await writeFile(join(dataDirectory, name), text);
   }
   if (options.services !== undefined) {
     const path = join(root, 'config/catalogue.json');
