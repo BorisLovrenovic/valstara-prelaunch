@@ -16,6 +16,7 @@ import {
 } from '../packages/price-index/src/publish/index.ts';
 import {
   checkRenderedHead,
+  priceCardTitle,
   socialCardCacheDirectory,
   socialCardManifestFile,
 } from '../scripts/ci/seo-build-check.ts';
@@ -696,7 +697,15 @@ test('the price on a card equals the first plan row of the served page, and the 
     const card = manifest.cards[output];
     assert.ok(card, `${route.path} has a card in the manifest`);
     assert.equal(card.priceLine, `${plan} · ${price} ${period}`, route.path);
-    assert.equal(card.title, route.meta.title, route.path);
+    // D-039 Q1: the card title is the page's SEO title without its brand
+    // suffix; the card's wordmark carries the brand.
+    assert.ok(route.meta.title.endsWith(' — Valstara'), route.path);
+    assert.equal(card.title, priceCardTitle(route.meta.title), route.path);
+    assert.equal(
+      card.title,
+      route.meta.title.slice(0, -' — Valstara'.length),
+      route.path,
+    );
     const served = await getImage(socialImageUrl(route.path));
     assert.equal(
       createHash('sha256').update(served).digest('hex'),

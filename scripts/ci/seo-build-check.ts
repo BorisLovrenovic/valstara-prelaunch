@@ -230,7 +230,11 @@ function xml(value: string): string {
     .replaceAll("'", '&apos;');
 }
 
-function titleLines(title: string): string[] {
+/**
+ * A card title in lines of at most 20 characters. Beyond `maxLines`, the
+ * last line is shortened to keep the title's final words (E9-07).
+ */
+function titleLines(title: string, maxLines = 3): string[] {
   const lines: string[] = [];
   let line = '';
   const words = title.trim().split(/\s+/u);
@@ -244,12 +248,12 @@ function titleLines(title: string): string[] {
     }
   }
   if (line) lines.push(line);
-  if (lines.length > 3) {
-    const remainder = lines.slice(2).join(' ');
+  if (lines.length > maxLines) {
+    const remainder = lines.slice(maxLines - 1).join(' ');
     const suffix = words.at(-1) ?? '';
     lines.splice(
-      2,
-      lines.length - 2,
+      maxLines - 1,
+      lines.length - (maxLines - 1),
       suffix.length > 20
         ? `…${suffix}`
         : `…${remainder.slice(-17).trimStart()}`,
@@ -272,16 +276,44 @@ export function priceLineFontSize(priceLine: string): number {
   return Math.min(36, Math.floor(830 / (Array.from(priceLine).length * 0.6)));
 }
 
+/** A title line's baseline step, and a card's first and last baselines. */
+const titleLineStep = 82;
+const titleFirstBaseline = 252;
+/** A three-line title's last baseline: where every longer title ends too. */
+const titleLastBaseline = titleFirstBaseline + 2 * titleLineStep;
+
+/**
+ * A price card's title (D-039 Q1): the page's SEO title without its
+ * trailing brand suffix, because the card's wordmark carries the brand.
+ */
+export function priceCardTitle(seoTitle: string): string {
+  const suffix = ` — ${seoCopy.organisationName}`;
+  return seoTitle.endsWith(suffix)
+    ? seoTitle.slice(0, -suffix.length)
+    : seoTitle;
+}
+
+/**
+ * Draws a card. A price card's title (`priceCard`, D-039 Q1) may take a
+ * fourth line, which starts it one line higher, so its last line, the price
+ * line and the wordmark keep a three-line card's positions.
+ */
 export function socialCardSvg(
   title: string,
   tokens: SocialCardTokens,
   priceLine: string | null = null,
+  priceCard = false,
 ): string {
-  const lines = titleLines(title);
+  const lines = titleLines(title, priceCard ? 4 : 3);
+  const firstBaseline =
+    lines.length > 3
+      ? titleLastBaseline - (lines.length - 1) * titleLineStep
+      : titleFirstBaseline;
+  const lastBaseline = firstBaseline + (lines.length - 1) * titleLineStep;
   const titleMarkup = lines
     .map(
       (line, index) =>
-        `<tspan x="112" y="${252 + index * 82}" textLength="${Math.min(830, line.length * 34)}" lengthAdjust="spacingAndGlyphs">${xml(line)}</tspan>`,
+        `<tspan x="112" y="${firstBaseline + index * titleLineStep}" textLength="${Math.min(830, line.length * 34)}" lengthAdjust="spacingAndGlyphs">${xml(line)}</tspan>`,
     )
     .join('');
   // E11.6-14: a service × market card's price line, set in the monospace
@@ -292,10 +324,12 @@ export function socialCardSvg(
   if (priceLine !== null) {
     if (!tokens.mono)
       throw new Error('Social card token is missing: font-mono');
-    const y = 252 + lines.length * 82 + 4;
+    // Placed from the last title baseline, so a four-line title's price
+    // line sits where a three-line title's does (D-039 Q1).
+    const y = lastBaseline + titleLineStep + 4;
     priceMarkup = `<text x="112" y="${y}" fill="${xml(tokens.ink)}" font-family="${xml(tokens.mono)}" font-size="${priceLineFontSize(priceLine)}" font-weight="600">${xml(priceLine)}</text>`;
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="${xml(tokens.paper)}"/><path d="M944 0h256v150z" fill="${xml(tokens.coral)}"/><circle cx="1120" cy="518" r="80" fill="${xml(tokens.coral)}"/><rect x="104" y="88" width="128" height="12" rx="6" fill="${xml(tokens.coral)}"/><text x="112" y="${252 + (lines.length - 1) * 82}" fill="${xml(tokens.ink)}" font-family="${xml(tokens.font)}" font-size="64" font-weight="650">${titleMarkup}</text>${priceMarkup}<text x="112" y="548" fill="${xml(tokens.ink)}" font-family="${xml(tokens.font)}" font-size="30" font-weight="600">${xml(seoCopy.organisationName)}</text></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="${xml(tokens.paper)}"/><path d="M944 0h256v150z" fill="${xml(tokens.coral)}"/><circle cx="1120" cy="518" r="80" fill="${xml(tokens.coral)}"/><rect x="104" y="88" width="128" height="12" rx="6" fill="${xml(tokens.coral)}"/><text x="112" y="${lastBaseline}" fill="${xml(tokens.ink)}" font-family="${xml(tokens.font)}" font-size="64" font-weight="650">${titleMarkup}</text>${priceMarkup}<text x="112" y="548" fill="${xml(tokens.ink)}" font-family="${xml(tokens.font)}" font-size="30" font-weight="600">${xml(seoCopy.organisationName)}</text></svg>`;
 }
 
 function sfntFromWoff(woff: Buffer): Buffer {
@@ -401,6 +435,28 @@ export interface SocialCard {
   readonly title: string;
   /** The page's first plan row (D-038 Q1), or null for a title-only card. */
   readonly priceLine: string | null;
+  /**
+   * A price page's card (E11.6-14): its title may take four lines
+   * (D-039 Q1). Absent on E9-07's cards and the typed fallbacks.
+   */
+  readonly priceCard?: boolean;
+}
+
+/**
+ * A price page's card (D-039 Q1): the SEO title without its brand suffix,
+ * wrapped into at most four lines.
+ */
+export function priceSocialCard(
+  output: string,
+  seoTitle: string,
+  priceLine: string | null,
+): SocialCard {
+  return {
+    output,
+    title: priceCardTitle(seoTitle),
+    priceLine,
+    priceCard: true,
+  };
 }
 
 export interface SocialCardStats {
@@ -494,6 +550,7 @@ export async function renderSocialCards(
         organisationName: seoCopy.organisationName,
         title: card.title,
         priceLine: card.priceLine,
+        priceCard: card.priceCard === true,
         tokens: card.priceLine === null ? tokens : { ...tokens, mono },
         fonts:
           card.priceLine === null
@@ -533,7 +590,12 @@ export async function renderSocialCards(
       }
       image = await sharp(
         Buffer.from(
-          socialCardSvg(card.title, { ...tokens, mono }, card.priceLine),
+          socialCardSvg(
+            card.title,
+            { ...tokens, mono },
+            card.priceLine,
+            card.priceCard === true,
+          ),
         ),
       )
         .png({ compressionLevel: 9 })
@@ -599,12 +661,21 @@ export async function socialCardsFor(root: string): Promise<SocialCard[]> {
     // E11.6-14: a ledger URL that publishes no page keeps the typed prices
     // card, copied to its card URL at postbuild (D-038 Q1).
     if (route?.kind === 'unavailable') continue;
-    cards.push({
-      output: new URL(socialImageUrl(page.pathname)).pathname.slice(1),
-      title: page.title,
-      priceLine: route === undefined ? null : priceCardLine(route),
-    });
-    kinds.add(socialPageKind(page.pathname));
+    const output = new URL(socialImageUrl(page.pathname)).pathname.slice(1);
+    const kind = socialPageKind(page.pathname);
+    // D-039 Q1: every price page's card (service × market, hubs, `/prices`,
+    // `/price-index`, reports) drops the brand suffix and may take four
+    // lines; E9-07's cards are unchanged.
+    cards.push(
+      kind === 'prices'
+        ? priceSocialCard(
+            output,
+            page.title,
+            route === undefined ? null : priceCardLine(route),
+          )
+        : { output, title: page.title, priceLine: null },
+    );
+    kinds.add(kind);
   }
   for (const kind of socialPageKinds) {
     const fallbackTitle = seoCopy.socialCardFallbacks[kind];

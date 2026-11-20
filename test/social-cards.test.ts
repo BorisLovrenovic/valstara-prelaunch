@@ -18,6 +18,7 @@ import {
   generateOpenGraphImages,
   priceCardLine,
   priceLineFontSize,
+  priceSocialCard,
   renderSocialCards,
   socialCardCacheDirectory,
   socialCardManifestFile,
@@ -316,13 +317,30 @@ test('a changed page renders its own card only, and the cache keeps one build', 
   }
 });
 
+/** A card of the full-scale set, with the names its title must show. */
+interface FullScaleCard {
+  readonly card: SocialCard;
+  readonly shows: readonly string[];
+}
+
+/** `YYYY-MM-DD` as "November 2026", derived apart from the copy layer. */
+function monthOf(date: string): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleString('en-GB', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 /**
  * Every card a full-scale price index would have (D-038 Q2): every
  * catalogue service in every configured market, with its first plan's price
  * line, every service and market hub, `/prices`, `/price-index`, a year of
- * monthly reports, and the typed fallbacks.
+ * monthly reports, and the typed fallbacks. The pages are dated `newest`.
  */
-async function fullScaleCards(): Promise<SocialCard[]> {
+async function fullScaleEntries(
+  newest = '2026-11-20',
+): Promise<FullScaleCard[]> {
   const catalogue = JSON.parse(
     await readFile(join(root, 'config/catalogue.json'), 'utf8'),
   ) as {
@@ -342,67 +360,191 @@ async function fullScaleCards(): Promise<SocialCard[]> {
       currency: string;
     }[];
   };
-  const newest = '2026-11-20';
-  const cards: SocialCard[] = [];
+  const month = monthOf(newest);
+  const entries: FullScaleCard[] = [];
   for (const service of catalogue.services) {
     const plan = service.plans[0];
     for (const market of markets) {
-      cards.push({
-        output: outputOf(`/prices/${service.service_id}/${market.slug}`),
-        title: pricesCopy.page.title(
-          service.name,
-          market.name_in_sentence ?? market.name,
-          newest,
+      const marketName = market.name_in_sentence ?? market.name;
+      entries.push({
+        card: priceSocialCard(
+          outputOf(`/prices/${service.service_id}/${market.slug}`),
+          pricesCopy.page.title(service.name, marketName, newest),
+          pricesCopy.page.socialCardLine(
+            plan.name,
+            pricesCopy.page.price('1299.99', market.currency),
+            pricesCopy.page.period[plan.billing_period],
+          ),
         ),
-        priceLine: pricesCopy.page.socialCardLine(
-          plan.name,
-          pricesCopy.page.price('1299.99', market.currency),
-          pricesCopy.page.period[plan.billing_period],
-        ),
+        shows: [service.name, marketName, month],
       });
     }
-    cards.push({
-      output: outputOf(`/prices/${service.service_id}`),
-      title: pricesCopy.hubs.service.title(service.name, newest),
-      priceLine: null,
+    entries.push({
+      card: priceSocialCard(
+        outputOf(`/prices/${service.service_id}`),
+        pricesCopy.hubs.service.title(service.name, newest),
+        null,
+      ),
+      shows: [service.name, month],
     });
   }
   for (const market of markets) {
-    cards.push({
-      output: outputOf(`/prices/countries/${market.slug}`),
-      title: pricesCopy.hubs.market.title(market.name, newest),
-      priceLine: null,
+    entries.push({
+      card: priceSocialCard(
+        outputOf(`/prices/countries/${market.slug}`),
+        pricesCopy.hubs.market.title(market.name, newest),
+        null,
+      ),
+      shows: [market.name, month],
     });
   }
-  cards.push(
+  entries.push(
     {
-      output: outputOf('/prices'),
-      title: pricesCopy.hubs.index.title,
-      priceLine: null,
+      card: priceSocialCard(
+        outputOf('/prices'),
+        pricesCopy.hubs.index.title,
+        null,
+      ),
+      shows: [],
     },
     {
-      output: outputOf('/price-index'),
-      title: 'How the price index works — Valstara',
-      priceLine: null,
+      card: priceSocialCard(
+        outputOf('/price-index'),
+        'How the price index works — Valstara',
+        null,
+      ),
+      shows: [],
     },
   );
-  for (let month = 1; month <= 12; month += 1) {
-    const key = `2026-${String(month).padStart(2, '0')}`;
-    cards.push({
-      output: outputOf(`/price-index/${key}`),
-      title: pricesCopy.monthly.title(key),
-      priceLine: null,
+  for (let report = 1; report <= 12; report += 1) {
+    const key = `2026-${String(report).padStart(2, '0')}`;
+    entries.push({
+      card: priceSocialCard(
+        outputOf(`/price-index/${key}`),
+        pricesCopy.monthly.title(key),
+        null,
+      ),
+      shows: [monthOf(`${key}-01`)],
     });
   }
   for (const kind of socialPageKinds) {
-    cards.push({
-      output: new URL(socialFallbackImageUrl(kind)).pathname.slice(1),
-      title: seoCopy.socialCardFallbacks[kind],
-      priceLine: null,
+    entries.push({
+      card: {
+        output: new URL(socialFallbackImageUrl(kind)).pathname.slice(1),
+        title: seoCopy.socialCardFallbacks[kind],
+        priceLine: null,
+      },
+      shows: [],
     });
   }
-  return cards;
+  return entries;
 }
+
+async function fullScaleCards(): Promise<SocialCard[]> {
+  return (await fullScaleEntries()).map((entry) => entry.card);
+}
+
+function unescapeXml(value: string): string {
+  return value
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&apos;', "'")
+    .replaceAll('&amp;', '&');
+}
+
+/** The title lines a card's SVG draws, with their baselines. */
+function drawnTitle(svg: string): { y: number; text: string }[] {
+  return Array.from(
+    svg.matchAll(/<tspan x="112" y="(\d+)"[^>]*>([^<]*)<\/tspan>/gu),
+    (match) => ({ y: Number(match[1]), text: unescapeXml(match[2]) }),
+  );
+}
+
+test('every price card title shows its service, market and month in full, in every month', async () => {
+  const brandSuffix = ` — ${seoCopy.organisationName}`;
+  let fourLineCards = 0;
+  for (let month = 1; month <= 12; month += 1) {
+    const newest = `2026-${String(month).padStart(2, '0')}-28`;
+    const entries = await fullScaleEntries(newest);
+    for (const { card, shows } of entries) {
+      const svg = socialCardSvg(
+        card.title,
+        tokens,
+        card.priceLine,
+        card.priceCard === true,
+      );
+      const lines = drawnTitle(svg);
+      const text = lines.map((line) => line.text).join(' ');
+      const where = `${card.output} (${newest}): ${text}`;
+      assert.ok(lines.length >= 1 && lines.length <= 4, where);
+      assert.ok(!text.includes('…'), where);
+      for (const name of shows) assert.ok(text.includes(name), where);
+      if (card.priceCard !== true) continue;
+      assert.ok(!text.includes(brandSuffix), where);
+      // The last title line, the price line and the wordmark keep a
+      // three-line card's positions on a four-line card.
+      const baselines = lines.map((line) => line.y);
+      if (lines.length === 4) {
+        fourLineCards += 1;
+        assert.deepEqual(baselines, [170, 252, 334, 416], where);
+      } else {
+        assert.equal(baselines[0], 252, where);
+      }
+      if (card.priceLine !== null) {
+        const priceY = Number(
+          /<text x="112" y="(\d+)"[^>]*font-family="&apos;JetBrains Mono/u.exec(
+            svg,
+          )?.[1],
+        );
+        assert.equal(priceY, baselines.at(-1)! + 86, where);
+        if (lines.length >= 3) assert.equal(priceY, 502, where);
+      }
+      assert.match(svg, /<text x="112" y="548"[^>]*>Valstara<\/text>/u);
+    }
+  }
+  assert.ok(fourLineCards > 0, 'the set holds four-line price cards');
+});
+
+test('a price card is the SEO title without its brand suffix; other cards keep theirs', () => {
+  const card = priceSocialCard(
+    outputOf('/prices/amazon-prime/gb'),
+    'Amazon Prime / Prime Video price in the United Kingdom (September 2026) — Valstara',
+    'Monthly · 8.99 GBP per month',
+  );
+  assert.equal(
+    card.title,
+    'Amazon Prime / Prime Video price in the United Kingdom (September 2026)',
+  );
+  assert.equal(card.priceCard, true);
+  const lines = drawnTitle(
+    socialCardSvg(card.title, tokens, card.priceLine, true),
+  );
+  assert.deepEqual(
+    lines.map((line) => line.text),
+    [
+      'Amazon Prime / Prime',
+      'Video price in the',
+      'United Kingdom',
+      '(September 2026)',
+    ],
+  );
+  // A non-price card keeps three lines and E9-07's shortening.
+  const long = drawnTitle(socialCardSvg(`${card.title} — Valstara`, tokens));
+  assert.equal(long.length, 3);
+  assert.equal(long[2].text.startsWith('…'), true);
+  // Beyond four lines, a price card falls back to the same shortening.
+  const tooLong = drawnTitle(
+    socialCardSvg(
+      `${card.title} and a great deal more besides`,
+      tokens,
+      null,
+      true,
+    ),
+  );
+  assert.equal(tooLong.length, 4);
+  assert.equal(tooLong[3].text.startsWith('…'), true);
+});
 
 const coldRenderBudgetMilliseconds = 60_000;
 
