@@ -1,0 +1,29 @@
+{
+  "month": "2026-09",
+  "snapshot": "2026-09-29.json",
+  "built_at": "2026-09-29T10:00:00.000Z",
+  "markets": 6,
+  "changes": [],
+  "plans": [
+    {
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "published_markets": 3,
+      "ranked_markets": 3,
+      "most_expensive": {
+        "market": "GB",
+        "price_local": "11.99",
+        "currency": "GBP"
+      },
+      "least_expensive": {
+        "market": "US",
+        "price_local": "12.99",
+        "currency": "USD"
+      },
+      "spread_ratio": "1.2",
+      "rose_in": 0,
+      "fell_in": 0
+    }
+  ]
+}

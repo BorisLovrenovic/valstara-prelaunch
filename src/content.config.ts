@@ -25,6 +25,21 @@ const legal = defineCollection({
   }),
 });
 
+// E11.6-13: the price index's methodology, at its permanent URL. Every
+// statement in it is reconciled with the code and configuration it
+// describes (test/price-index/price-index-methodology.test.ts).
+const priceIndex = defineCollection({
+  loader: glob({
+    base: './src/content',
+    pattern: 'price-index-methodology.md',
+  }),
+  schema: z.object({
+    portTarget: z.enum(['/price-index']),
+    title: z.string().min(1),
+    description: z.string().min(1),
+  }),
+});
+
 const giveawayRules = defineCollection({
   loader: glob({
     base: './src/content/giveaway-rules',
@@ -33,4 +48,4 @@ const giveawayRules = defineCollection({
   schema: giveawayRulesSchema,
 });
 
-export const collections = { trust, legal, giveawayRules };
+export const collections = { trust, legal, priceIndex, giveawayRules };

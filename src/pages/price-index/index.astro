@@ -1,0 +1,66 @@
+---
+import { getEntry, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PriceIndexPage from '../../layouts/price-index-page.astro';
+import PricesPaused from '../../layouts/prices-paused.astro';
+import { getFlagService } from '../../server/flags/app-service.ts';
+import { bundledPriceSite } from '../../server/prices/bundled.ts';
+import { priceIndexRoute } from '../../server/prices/price-index-route.ts';
+import { jsonLd } from '../../server/seo.ts';
+
+// `/price-index` (E11.6-13): the price index's landing page and methodology,
+// server-rendered on request behind `prices.pages`. The methodology is the
+// content file src/content/price-index-methodology.md, at its permanent URL
+// (ADR-017); the monthly reports and the Dataset JSON-LD come from the price
+// data bundled at build (src/server/prices/site.ts), and the answer from
+// src/server/prices/price-index-route.ts. This page only renders them.
+
+const entry = await getEntry('priceIndex', 'price-index-methodology');
+if (!entry || entry.data.portTarget !== '/price-index') {
+  throw new Error('Missing or misrouted /price-index content.');
+}
+const result = priceIndexRoute(
+  bundledPriceSite,
+  '/price-index',
+  Astro.url,
+  await getFlagService().list(),
+  Astro.response.headers,
+);
+if (result.kind === 'not-found') {
+  return new Response(null, { status: 404 });
+}
+if (result.kind === 'paused') {
+  Astro.response.status = 503;
+}
+const view =
+  result.kind === 'page' && result.view.kind === 'price-index'
+    ? result.view
+    : null;
+const { Content } = await render(entry);
+---
+
+{
+  view === null ? (
+    <PricesPaused />
+  ) : (
+    <BaseLayout title={entry.data.title} description={entry.data.description}>
+      <script
+        is:inline
+        slot="head"
+        type="application/ld+json"
+        set:html={jsonLd(view.structuredData)}
+      />
+      {view.dataset !== null && (
+        <script
+          is:inline
+          slot="head"
+          type="application/ld+json"
+          set:html={jsonLd(view.dataset)}
+        />
+      )}
+      <PriceIndexPage view={view}>
+        <Content />
+      </PriceIndexPage>
+    </BaseLayout>
+  )
+}

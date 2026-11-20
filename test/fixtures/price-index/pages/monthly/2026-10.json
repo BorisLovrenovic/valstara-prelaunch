@@ -1,0 +1,118 @@
+{
+  "month": "2026-10",
+  "snapshot": "2026-10-30.json",
+  "built_at": "2026-10-30T10:00:00.000Z",
+  "markets": 6,
+  "changes": [
+    {
+      "market": "SE",
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "old_price_local": "129.00",
+      "new_price_local": "149.00",
+      "currency": "SEK",
+      "change_percent": "15.5",
+      "detected_on": "2026-10-02"
+    },
+    {
+      "market": "SE",
+      "service_id": "crunchyroll",
+      "plan_id": "mega-fan",
+      "billing_period": "month",
+      "old_price_local": "69.00",
+      "new_price_local": "79.00",
+      "currency": "SEK",
+      "change_percent": "14.5",
+      "detected_on": "2026-10-02"
+    },
+    {
+      "market": "FI",
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "old_price_local": "10.99",
+      "new_price_local": "11.99",
+      "currency": "EUR",
+      "change_percent": "9.1",
+      "detected_on": "2026-10-03"
+    },
+    {
+      "market": "NO",
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "old_price_local": "129.00",
+      "new_price_local": "139.00",
+      "currency": "NOK",
+      "change_percent": "7.8",
+      "detected_on": "2026-10-02"
+    }
+  ],
+  "plans": [
+    {
+      "service_id": "chatgpt",
+      "plan_id": "plus",
+      "billing_period": "month",
+      "published_markets": 2,
+      "ranked_markets": 2,
+      "most_expensive": {
+        "market": "GB",
+        "price_local": "20.00",
+        "currency": "GBP"
+      },
+      "least_expensive": {
+        "market": "US",
+        "price_local": "20.00",
+        "currency": "USD"
+      },
+      "spread_ratio": "1.3",
+      "rose_in": 0,
+      "fell_in": 0
+    },
+    {
+      "service_id": "crunchyroll",
+      "plan_id": "mega-fan",
+      "billing_period": "month",
+      "published_markets": 1,
+      "ranked_markets": 1,
+      "most_expensive": null,
+      "least_expensive": null,
+      "spread_ratio": null,
+      "rose_in": 1,
+      "fell_in": 0
+    },
+    {
+      "service_id": "netflix",
+      "plan_id": "standard",
+      "billing_period": "month",
+      "published_markets": 1,
+      "ranked_markets": 1,
+      "most_expensive": null,
+      "least_expensive": null,
+      "spread_ratio": null,
+      "rose_in": 0,
+      "fell_in": 0
+    },
+    {
+      "service_id": "spotify",
+      "plan_id": "individual",
+      "billing_period": "month",
+      "published_markets": 6,
+      "ranked_markets": 5,
+      "most_expensive": {
+        "market": "SE",
+        "price_local": "149.00",
+        "currency": "SEK"
+      },
+      "least_expensive": {
+        "market": "US",
+        "price_local": "12.99",
+        "currency": "USD"
+      },
+      "spread_ratio": "1.3",
+      "rose_in": 3,
+      "fell_in": 0
+    }
+  ]
+}

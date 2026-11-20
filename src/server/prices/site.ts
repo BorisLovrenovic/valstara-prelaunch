@@ -27,6 +27,11 @@ import {
   type MarketsFile,
 } from '../../../packages/price-index/src/schema/markets.ts';
 import {
+  monthPattern,
+  monthlyReportFileSchema,
+  type MonthlyReportFile,
+} from '../../../packages/price-index/src/schema/monthly-report.ts';
+import {
   latestFileSchema,
   type LatestFile,
 } from '../../../packages/price-index/src/schema/price-index-files.ts';
@@ -70,6 +75,11 @@ export interface PriceSiteInputs {
   readonly changes: unknown;
   /** config/valstara-prices.json: the Valstara comparison (E11.6-11). */
   readonly valstaraPrices: unknown;
+  /**
+   * data/price-index/monthly/YYYY-MM.json, by file name (`2026-10.json`):
+   * the monthly report pages (E11.6-13). None before the first report.
+   */
+  readonly monthly?: Readonly<Record<string, unknown>>;
 }
 
 export interface PriceBreadcrumb {
@@ -115,6 +125,8 @@ interface RouteBase {
    * while that hub exists: always both on a generated page.
    */
   readonly hubLinks: readonly HubLink[];
+  /** The link to the methodology at `/price-index` (E11.6-13). */
+  readonly methodologyLink: HubLink;
 }
 
 /** A link to a hub or a page, by its path. */
@@ -357,6 +369,81 @@ export interface PriceIndex {
   readonly notAffiliated: string;
 }
 
+/**
+ * A piece of a sentence on a monthly report (E11.6-13): plain text, or the
+ * name of a page the report mentions, linked while that page exists.
+ */
+export interface TextPart {
+  readonly text: string;
+  /** The page's path, or null: a page that is not generated is named only. */
+  readonly href: string | null;
+}
+
+/** One change of the month, as `data/price-index/monthly/YYYY-MM.json` holds it. */
+export interface MonthlyChangeRow {
+  readonly serviceId: string;
+  readonly planId: string;
+  readonly billingPeriod: PublishedRecord['billing_period'];
+  readonly market: string;
+  /** "Spotify Premium — Individual". */
+  readonly planLabel: string;
+  /** The market, linking to the service × market page while it is generated. */
+  readonly marketPart: TextPart;
+  /** The file's `old_price_local` and `new_price_local`, exactly. */
+  readonly oldAmount: string;
+  readonly newAmount: string;
+  readonly currency: string;
+  /** The file's signed `change_percent`, exactly. */
+  readonly changePercent: string;
+  readonly oldText: string;
+  readonly newText: string;
+  readonly percentText: string;
+}
+
+/** `/price-index/{yyyy-mm}`: one monthly report file, rendered (E11.6-13). */
+export interface MonthlyReportPage {
+  readonly kind: 'monthly';
+  readonly path: string;
+  /** `YYYY-MM`. */
+  readonly month: string;
+  readonly meta: PriceMeta;
+  readonly heading: string;
+  readonly intro: string;
+  readonly breadcrumbs: readonly PriceBreadcrumb[];
+  /** BreadcrumbList JSON-LD (schema.org). */
+  readonly structuredData: Readonly<Record<string, unknown>>;
+  readonly changesCaption: string;
+  /** Largest % first, as the file holds them. */
+  readonly changes: readonly MonthlyChangeRow[];
+  /** The honest "no changes" sentence, or null when there are changes. */
+  readonly noChanges: string | null;
+  /** "<plan> rose in N of M markets." — one per direction with a count. */
+  readonly direction: readonly (readonly TextPart[])[];
+  /** Each ranked plan's most and least expensive markets. */
+  readonly extremes: readonly (readonly TextPart[])[];
+  /** How many published plans the report could not rank, or null. */
+  readonly unranked: string | null;
+  /** `YYYY-MM-DD`: the day the report's snapshot was built, its sitemap `lastmod`. */
+  readonly lastmod: string;
+  readonly notAffiliated: string;
+}
+
+/** `/price-index`: the methodology's frame, from the data (E11.6-13). */
+export interface PriceIndexLanding {
+  readonly kind: 'price-index';
+  readonly path: '/price-index';
+  readonly breadcrumbs: readonly PriceBreadcrumb[];
+  /** BreadcrumbList JSON-LD (schema.org). */
+  readonly structuredData: Readonly<Record<string, unknown>>;
+  /** Dataset JSON-LD (schema.org), or null while no price is published. */
+  readonly dataset: Readonly<Record<string, unknown>> | null;
+  /** Every monthly report, newest first. */
+  readonly reports: readonly HubLink[];
+  /** Null while no price is published. */
+  readonly verifiedLine: string | null;
+  readonly notAffiliated: string;
+}
+
 export interface PriceSite {
   /** Every price route, generated and unavailable, in path order. */
   readonly routes: readonly PriceRoute[];
@@ -381,6 +468,14 @@ export interface PriceSite {
    * or null (E11.6-12, D2 and D-037 Q2).
    */
   redirect(path: string): string | null;
+  /** `/price-index` (E11.6-13). */
+  readonly priceIndex: PriceIndexLanding;
+  /** Every monthly report page, newest first (E11.6-13). */
+  readonly monthlyReports: readonly MonthlyReportPage[];
+  /** The report at `path`, or null: a month with no report file has no page. */
+  monthlyReport(path: string): MonthlyReportPage | null;
+  /** The monthly reports' own child sitemap, each dated by its snapshot. */
+  readonly monthlySitemap: readonly PriceSitemapEntry[];
 }
 
 function parse<T>(schema: z.ZodType<T>, value: unknown, file: string): T {
@@ -409,6 +504,14 @@ function verificationDate(record: PublishedRecord): string {
   }
   return date;
 }
+
+/** The methodology, where every price page says how its prices are checked. */
+export const priceIndexPath = '/price-index';
+
+const methodologyLink: HubLink = {
+  path: priceIndexPath,
+  label: pricesCopy.page.methodologyLink,
+};
 
 function breadcrumbData(
   breadcrumbs: readonly PriceBreadcrumb[],
@@ -955,6 +1058,7 @@ function generatedRoute(
         label: pricesCopy.hubs.market.name(marketName),
       },
     ],
+    methodologyLink,
     lastmod: newest,
     history,
     comparisons,
@@ -1017,6 +1121,7 @@ function unavailableRoute(
     breadcrumbs,
     structuredData: breadcrumbData(breadcrumbs),
     hubLinks,
+    methodologyLink,
   };
 }
 
@@ -1315,6 +1420,299 @@ function priceIndex(
   };
 }
 
+/** `2026-10.json`: a monthly report file's name, the month it reports. */
+const monthlyFileName = /^(\d{4}-(?:0[1-9]|1[0-2]))\.json$/u;
+
+/** `/price-index/2026-10`: a monthly report's permanent URL. */
+export function monthlyReportPath(month: string): string {
+  return `${priceIndexPath}/${month}`;
+}
+
+/**
+ * The monthly report files, validated, oldest first. A file whose name is
+ * not `YYYY-MM.json`, or whose `month` is not its name, fails the build.
+ */
+function monthlyReportFiles(
+  files: Readonly<Record<string, unknown>>,
+): MonthlyReportFile[] {
+  return Object.entries(files)
+    .map(([name, value]) => {
+      const month = monthlyFileName.exec(name)?.[1];
+      if (month === undefined) {
+        throw new PriceDataError(
+          `data/price-index/monthly/${name} is not named YYYY-MM.json, so no price page is built`,
+        );
+      }
+      const report = parse(
+        monthlyReportFileSchema,
+        value,
+        `data/price-index/monthly/${name}`,
+      );
+      if (report.month !== month || !monthPattern.test(report.month)) {
+        throw new PriceDataError(
+          `data/price-index/monthly/${name} reports ${report.month}, not ${month}, so no price page is built`,
+        );
+      }
+      return report;
+    })
+    .sort((a, b) => (a.month < b.month ? -1 : 1));
+}
+
+/**
+ * The names a monthly report shows. A report is a dated record, so it may
+ * mention a service, plan or market the configuration no longer has: it is
+ * then named as the ledger recorded it when its page was published, and
+ * otherwise by its identifier, and never linked.
+ */
+function reportNamer(
+  catalogue: CatalogueFile,
+  markets: MarketsFile,
+  ledger: z.infer<typeof publishedUrlsFileSchema>,
+) {
+  const publications = ledger.urls.filter(
+    (entry): entry is PublishedUrl => !isRetirement(entry),
+  );
+  const configuredMarket = (code: string) =>
+    markets.markets.find((market) => market.code === code);
+  const ledgerMarket = (code: string) =>
+    publications.find((entry) => entry.market === code)?.market_name;
+  const service = (serviceId: string) =>
+    catalogue.services.find((item) => item.service_id === serviceId);
+  const serviceName = (serviceId: string) =>
+    service(serviceId)?.name ??
+    publications.find((entry) => entry.service_id === serviceId)
+      ?.service_name ??
+    serviceId;
+  return {
+    plan(serviceId: string, planId: string, billingPeriod: string): string {
+      const name =
+        service(serviceId)?.plans.find(
+          (plan) =>
+            plan.plan_id === planId && plan.billing_period === billingPeriod,
+        )?.name ?? planId;
+      return pricesCopy.planLabel(serviceName(serviceId), name);
+    },
+    /** As a table names it ("United States"). */
+    market: (code: string) =>
+      configuredMarket(code)?.name ?? ledgerMarket(code) ?? code,
+    /** As a sentence names it ("the United States"). */
+    marketInSentence(code: string): string {
+      const configured = configuredMarket(code);
+      return configured === undefined
+        ? (ledgerMarket(code) ?? code)
+        : (configured.name_in_sentence ?? configured.name);
+    },
+  };
+}
+
+/**
+ * A monthly report page (E11.6-13), from its file and the build's live
+ * pages. Every page the report mentions is linked while it exists: a
+ * service × market pair to its generated page, a plan to its service hub.
+ * One that does not exist (not generated, retired, or no longer configured)
+ * is named without a link. Every figure is the file's, exactly; the file
+ * holds no USD figure and no converted price (E11.6-09).
+ */
+function monthlyReportPage(
+  report: MonthlyReportFile,
+  pages: readonly GeneratedPage[],
+  hubs: ReadonlySet<string>,
+  names: ReturnType<typeof reportNamer>,
+): MonthlyReportPage {
+  const copy = pricesCopy.monthly;
+  const pagePaths = new Map(
+    pages.map((page) => [`${page.service_id}/${page.market}`, page.path]),
+  );
+  const pagePart = (
+    serviceId: string,
+    market: string,
+    text: string,
+  ): TextPart => ({
+    text,
+    href: pagePaths.get(`${serviceId}/${market}`) ?? null,
+  });
+  const planPart = (plan: {
+    service_id: string;
+    plan_id: string;
+    billing_period: string;
+  }): TextPart => {
+    const hub = serviceHubPath(plan.service_id);
+    return {
+      text: names.plan(plan.service_id, plan.plan_id, plan.billing_period),
+      href: hubs.has(hub) ? hub : null,
+    };
+  };
+  const text = (value: string): TextPart => ({ text: value, href: null });
+
+  const changes = report.changes.map((entry): MonthlyChangeRow => ({
+    serviceId: entry.service_id,
+    planId: entry.plan_id,
+    billingPeriod: entry.billing_period,
+    market: entry.market,
+    planLabel: names.plan(
+      entry.service_id,
+      entry.plan_id,
+      entry.billing_period,
+    ),
+    marketPart: pagePart(
+      entry.service_id,
+      entry.market,
+      names.market(entry.market),
+    ),
+    oldAmount: entry.old_price_local,
+    newAmount: entry.new_price_local,
+    currency: entry.currency,
+    changePercent: entry.change_percent,
+    oldText: pricesCopy.page.price(entry.old_price_local, entry.currency),
+    newText: pricesCopy.page.price(entry.new_price_local, entry.currency),
+    percentText: copy.percent(entry.change_percent),
+  }));
+  const direction = report.plans.flatMap((plan) => [
+    ...(plan.rose_in > 0
+      ? [
+          [
+            planPart(plan),
+            text(copy.rose(plan.rose_in, plan.published_markets)),
+          ],
+        ]
+      : []),
+    ...(plan.fell_in > 0
+      ? [
+          [
+            planPart(plan),
+            text(copy.fell(plan.fell_in, plan.published_markets)),
+          ],
+        ]
+      : []),
+  ]);
+  const ranked = report.plans.filter(
+    (plan) => plan.most_expensive !== null && plan.least_expensive !== null,
+  );
+  const extremes = ranked.map((plan) => {
+    const most = plan.most_expensive!;
+    const least = plan.least_expensive!;
+    return [
+      planPart(plan),
+      text(copy.extremes.most),
+      pagePart(
+        plan.service_id,
+        most.market,
+        names.marketInSentence(most.market),
+      ),
+      text(
+        copy.extremes.price(
+          pricesCopy.page.price(most.price_local, most.currency),
+        ),
+      ),
+      text(copy.extremes.least),
+      pagePart(
+        plan.service_id,
+        least.market,
+        names.marketInSentence(least.market),
+      ),
+      text(
+        `${copy.extremes.price(
+          pricesCopy.page.price(least.price_local, least.currency),
+        )}${copy.extremes.end}${
+          plan.spread_ratio === null ? '' : copy.spread(plan.spread_ratio)
+        }`,
+      ),
+    ];
+  });
+  const unranked = report.plans.length - ranked.length;
+  const path = monthlyReportPath(report.month);
+  const name = copy.name(report.month);
+  const breadcrumbs: PriceBreadcrumb[] = [
+    { name: pricesCopy.home, url: canonicalUrl('/') },
+    { name: pricesCopy.priceIndex.crumb, url: canonicalUrl(priceIndexPath) },
+    { name, url: canonicalUrl(path) },
+  ];
+  return {
+    kind: 'monthly',
+    path,
+    month: report.month,
+    meta: {
+      title: copy.title(report.month),
+      description: copy.description(report.month),
+    },
+    heading: name,
+    intro: copy.intro(report.markets, report.built_at.slice(0, 10)),
+    breadcrumbs,
+    structuredData: breadcrumbData(breadcrumbs),
+    changesCaption: copy.changesCaption(report.month),
+    changes,
+    noChanges: changes.length === 0 ? copy.noChanges(report.month) : null,
+    direction,
+    extremes,
+    unranked:
+      unranked > 0 && ranked.length > 0 ? copy.unranked(unranked) : null,
+    lastmod: report.built_at.slice(0, 10),
+    notAffiliated: pricesCopy.hubs.notAffiliated,
+  };
+}
+
+/**
+ * The Dataset JSON-LD of `/price-index` (E11.6-13): what the index is, the
+ * enabled markets it covers, and the span of verification dates of the
+ * prices it publishes, newest as `dateModified`. Every figure is read from
+ * the published data; with no published price there is no dataset to
+ * describe, so there is none.
+ */
+function datasetData(
+  pages: readonly GeneratedPage[],
+  markets: MarketsFile,
+): Readonly<Record<string, unknown>> | null {
+  const dates = pages
+    .flatMap((page) => page.records.map(verificationDate))
+    .sort();
+  const oldest = dates[0];
+  const newest = dates.at(-1);
+  if (oldest === undefined || newest === undefined) {
+    return null;
+  }
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Dataset',
+    name: pricesCopy.priceIndex.dataset.name,
+    description: pricesCopy.priceIndex.dataset.description,
+    url: canonicalUrl(priceIndexPath),
+    temporalCoverage: oldest === newest ? newest : `${oldest}/${newest}`,
+    spatialCoverage: markets.markets
+      .filter((market) => market.enabled)
+      .map((market) => ({
+        '@type': 'Country',
+        name: market.name,
+        identifier: market.code,
+      })),
+    dateModified: newest,
+  };
+}
+
+function priceIndexLanding(
+  pages: readonly GeneratedPage[],
+  markets: MarketsFile,
+  reports: readonly MonthlyReportPage[],
+): PriceIndexLanding {
+  const breadcrumbs: PriceBreadcrumb[] = [
+    { name: pricesCopy.home, url: canonicalUrl('/') },
+    { name: pricesCopy.priceIndex.crumb, url: canonicalUrl(priceIndexPath) },
+  ];
+  const dates = pages.flatMap((page) => page.records.map(verificationDate));
+  return {
+    kind: 'price-index',
+    path: priceIndexPath,
+    breadcrumbs,
+    structuredData: breadcrumbData(breadcrumbs),
+    dataset: datasetData(pages, markets),
+    reports: reports.map((report) => ({
+      path: report.path,
+      label: pricesCopy.priceIndex.reportLink(report.month),
+    })),
+    verifiedLine: dates.length === 0 ? null : verifiedSpan(dates).line,
+    notAffiliated: pricesCopy.hubs.notAffiliated,
+  };
+}
+
 /**
  * The price site of one build. Every input is validated against its schema
  * first; an invalid file throws `PriceDataError` (or the gate's
@@ -1420,7 +1818,21 @@ export function createPriceSite(inputs: PriceSiteInputs): PriceSite {
     hubs
       .filter((hub) => hub.kind === kind)
       .map((hub) => ({ path: hub.path, lastmod: hub.lastmod }));
+  // E11.6-13: the monthly reports, newest first, and `/price-index`.
+  const names = reportNamer(catalogue, markets, ledger);
+  const monthlyReports = monthlyReportFiles(inputs.monthly ?? {})
+    .map((report) => monthlyReportPage(report, pages, hubSet, names))
+    .reverse();
+  const monthlyByPath = new Map(
+    monthlyReports.map((report) => [report.path, report]),
+  );
   return {
+    priceIndex: priceIndexLanding(pages, markets, monthlyReports),
+    monthlyReports,
+    monthlyReport: (path) => monthlyByPath.get(path) ?? null,
+    monthlySitemap: monthlyReports
+      .map((report) => ({ path: report.path, lastmod: report.lastmod }))
+      .sort((a, b) => (a.path < b.path ? -1 : 1)),
     routes,
     sitemap,
     route: (path) => byPath.get(path) ?? null,

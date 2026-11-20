@@ -120,6 +120,8 @@ export const pricesCopy = {
     verifiedOn: (date: string) => `Prices verified on ${dayText(date)}.`,
     verifiedBetween: (oldest: string, newest: string) =>
       `Prices verified between ${dayText(oldest)} and ${dayText(newest)}.`,
+    /** The page's link to the methodology at `/price-index` (E11.6-13). */
+    methodologyLink: 'How we collect and check these prices',
     notAffiliated: (service: string) =>
       `Valstara is an independent seller. It is not affiliated with or endorsed by ${service}, and the names of the services belong to their owners.`,
     /**
@@ -303,6 +305,79 @@ export const pricesCopy = {
     },
     /** The links from a service × market page to its two hubs. */
     pageLinksHeading: 'More prices',
+  },
+  /**
+   * `/price-index` and the monthly reports at `/price-index/{yyyy-mm}`
+   * (E11.6-13). The methodology's own prose is the content file
+   * src/content/price-index-methodology.md; these are the labels and
+   * sentence templates around it and on the reports, each filled from the
+   * data. Every sentence must stay literally true of the built system
+   * (test/price-index/price-index-methodology.test.ts), and none names the
+   * data source.
+   */
+  priceIndex: {
+    /** The breadcrumb name of `/price-index`. */
+    crumb: 'Price index',
+    /** The Dataset JSON-LD's name and description. */
+    dataset: {
+      name: 'Valstara subscription price index',
+      description:
+        "Official list prices of the subscriptions Valstara tracks, in each market it serves, in local currency. We collect them once a month from public price listings, and check them by hand against providers' own pricing pages where needed.",
+    },
+    reportsHeading: 'Monthly reports',
+    noReports: 'No monthly report is published yet.',
+    /** A monthly report's link on `/price-index`: "October 2026". */
+    reportLink: (month: string) => monthText(`${month}-01`),
+    pricesLink: 'See prices by service and country',
+  },
+  /** A monthly report page, `/price-index/{yyyy-mm}` (E11.6-13). */
+  monthly: {
+    /** The breadcrumb name, H1 and title: "Price index report: October 2026". */
+    name: (month: string) => `Price index report: ${monthText(`${month}-01`)}`,
+    title: (month: string) =>
+      `Price index report: ${monthText(`${month}-01`)} — Valstara`,
+    description: (month: string) =>
+      `The list price changes in our price index for ${monthText(`${month}-01`)}, and the most and least expensive of our markets, in local currency.`,
+    intro: (markets: number, builtOn: string) =>
+      `List prices across our ${markets} ${markets === 1 ? 'market' : 'markets'}, from the price index as updated on ${dayText(builtOn)}. Every price is in its market's own currency.`,
+    changesHeading: 'Price changes',
+    changesCaption: (month: string) =>
+      `List price changes in ${monthText(`${month}-01`)}, largest first`,
+    columns: {
+      plan: 'Plan',
+      market: 'Market',
+      was: 'Was',
+      now: 'Now',
+      change: 'Change',
+    },
+    noChanges: (month: string) =>
+      `No list price we track changed in ${monthText(`${month}-01`)}.`,
+    /** A signed `change_percent` as shown: "+15.5%", "-9.2%". */
+    percent: (signed: string) =>
+      signed.startsWith('-') ? `${signed}%` : `+${signed}%`,
+    directionHeading: 'Rises and falls',
+    /** The text after the plan's name: " rose in 2 of 4 markets." */
+    rose: (count: number, of: number) =>
+      ` rose in ${count} of ${of} ${of === 1 ? 'market' : 'markets'}.`,
+    fell: (count: number, of: number) =>
+      ` fell in ${count} of ${of} ${of === 1 ? 'market' : 'markets'}.`,
+    noDirection: 'No plan rose or fell this month.',
+    extremesHeading: 'Most and least expensive markets',
+    extremesBasis:
+      'Markets are ranked by price on a common basis and shown in their own currency.',
+    /** The parts of "<plan>: most expensive in <market> (<price>), least expensive in <market> (<price>)." */
+    extremes: {
+      most: ': most expensive in ',
+      least: ', least expensive in ',
+      price: (price: string) => ` (${price})`,
+      end: '.',
+    },
+    spread: (ratio: string) =>
+      ` The most expensive market costs ${ratio} times the cheapest.`,
+    noExtremes:
+      'No plan has a published price in two or more markets to compare.',
+    unranked: (plans: number) =>
+      `${plans} more ${plans === 1 ? 'plan has' : 'plans have'} a published price in fewer than two comparable markets, so ${plans === 1 ? 'it is' : 'they are'} not ranked.`,
   },
   /** Every price route while `prices.pages` is off: HTTP 503, `noindex`. */
   paused: {

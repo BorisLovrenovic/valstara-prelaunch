@@ -10,7 +10,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -81,8 +81,25 @@ async function copyPriceData(
           ],
           ['data/price-index/changes.json', fixtures, 'changes.json'],
           ['config/valstara-prices.json', fixtures, 'valstara-prices.json'],
+          // E11.6-13: the fixture's two monthly reports.
+          [
+            'data/price-index/monthly/2026-09.json',
+            fixtures,
+            'monthly/2026-09.json',
+          ],
+          [
+            'data/price-index/monthly/2026-10.json',
+            fixtures,
+            'monthly/2026-10.json',
+          ],
         ];
+  // The repository's data has no monthly report yet.
+  await rm(join(fixture, 'data/price-index/monthly'), {
+    recursive: true,
+    force: true,
+  });
   for (const [target, from, name] of files) {
+    await mkdir(dirname(join(fixture, target)), { recursive: true });
     await cp(join(from, name), join(fixture, target));
   }
 }
@@ -576,6 +593,8 @@ test('the committed /sitemap.xml is an index over pages.xml and the price sitema
       'https://valstara.com/sitemaps/prices-index.xml',
       'https://valstara.com/sitemaps/prices-service-hubs.xml',
       'https://valstara.com/sitemaps/prices-market-hubs.xml',
+      // E11.6-13: the monthly reports.
+      'https://valstara.com/sitemaps/price-index-monthly.xml',
     ],
   );
   assert.deepEqual(Object.values(childSitemaps), [
@@ -584,6 +603,7 @@ test('the committed /sitemap.xml is an index over pages.xml and the price sitema
     '/sitemaps/prices-index.xml',
     '/sitemaps/prices-service-hubs.xml',
     '/sitemaps/prices-market-hubs.xml',
+    '/sitemaps/price-index-monthly.xml',
   ]);
 });
 
@@ -629,6 +649,23 @@ test('the build writes the price sitemap from the data: generated pages only, ea
       prices,
       /chatgpt|crunchyroll|finland|apple-music\/united-states/u,
     );
+    // E11.6-13: the monthly reports have their own child sitemap, each dated
+    // by the build of the snapshot it reports, not the site's build date.
+    const monthly = await readFile(
+      join(fixture, 'public', childSitemaps.priceIndexMonthly),
+      'utf8',
+    );
+    assert.deepEqual(
+      [
+        ...monthly.matchAll(
+          /<url><loc>([^<]+)<\/loc><lastmod>([^<]+)<\/lastmod><\/url>/gu,
+        ),
+      ].map(([, loc, lastmod]) => [loc, lastmod]),
+      [
+        ['https://valstara.com/price-index/2026-09', '2026-09-29'],
+        ['https://valstara.com/price-index/2026-10', '2026-10-30'],
+      ],
+    );
     // The site's own routes keep exactly the committed pages.xml.
     assert.equal(
       await readFile(join(fixture, 'public', childSitemaps.pages), 'utf8'),
@@ -646,6 +683,14 @@ test('the build writes the price sitemap from the data: generated pages only, ea
     assert.doesNotMatch(
       await readFile(
         join(fixture, 'public', childSitemaps.pricesServiceMarket),
+        'utf8',
+      ),
+      /<url>/u,
+    );
+    // And with no monthly report, so is the monthly sitemap.
+    assert.doesNotMatch(
+      await readFile(
+        join(fixture, 'public', childSitemaps.priceIndexMonthly),
         'utf8',
       ),
       /<url>/u,
@@ -689,6 +734,21 @@ test('price pages join the E9-06 metadata check and take the typed prices card u
     assert.ok(
       prices.every((page) => socialPageKind(page.pathname) === 'prices'),
     );
+    // E11.6-13: the methodology and the monthly reports are price pages.
+    const priceIndexPages = pages.filter(
+      (page) =>
+        page.pathname === '/price-index' ||
+        page.pathname.startsWith('/price-index/'),
+    );
+    assert.deepEqual(
+      priceIndexPages.map((page) => page.pathname),
+      ['/price-index', '/price-index/2026-10', '/price-index/2026-09'],
+    );
+    assert.ok(
+      priceIndexPages.every(
+        (page) => socialPageKind(page.pathname) === 'prices',
+      ),
+    );
     assert.ok(socialPageKinds.includes('prices'));
     await checkSeoBuild(fixture);
 
@@ -706,7 +766,7 @@ test('price pages join the E9-06 metadata check and take the typed prices card u
       join(fixture, 'public/images/og/fallback/prices.png'),
     ).metadata();
     assert.deepEqual([fallback.width, fallback.height], [1200, 630]);
-    for (const page of prices) {
+    for (const page of [...prices, ...priceIndexPages]) {
       await assert.rejects(
         readFile(
           join(

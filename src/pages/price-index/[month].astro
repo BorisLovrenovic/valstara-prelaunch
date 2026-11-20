@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PriceIndexPage from '../../layouts/price-index-page.astro';
+import PricesPaused from '../../layouts/prices-paused.astro';
+import { getFlagService } from '../../server/flags/app-service.ts';
+import { bundledPriceSite } from '../../server/prices/bundled.ts';
+import { priceIndexRoute } from '../../server/prices/price-index-route.ts';
+import { jsonLd } from '../../server/seo.ts';
+
+// A monthly report, `/price-index/{yyyy-mm}` (E11.6-13): server-rendered on
+// request from data/price-index/monthly/YYYY-MM.json as bundled at build,
+// behind `prices.pages`. A month with no report file has no page and
+// answers the branded 404. The view model is src/server/prices/site.ts and
+// the answer src/server/prices/price-index-route.ts; this page only renders
+// them.
+
+const result = priceIndexRoute(
+  bundledPriceSite,
+  `/price-index/${Astro.params.month ?? ''}`,
+  Astro.url,
+  await getFlagService().list(),
+  Astro.response.headers,
+);
+if (result.kind === 'not-found') {
+  return new Response(null, { status: 404 });
+}
+if (result.kind === 'paused') {
+  Astro.response.status = 503;
+}
+const view =
+  result.kind === 'page' && result.view.kind === 'monthly' ? result.view : null;
+---
+
+{
+  view === null ? (
+    <PricesPaused />
+  ) : (
+    <BaseLayout title={view.meta.title} description={view.meta.description}>
+      <script
+        is:inline
+        slot="head"
+        type="application/ld+json"
+        set:html={jsonLd(view.structuredData)}
+      />
+      <PriceIndexPage view={view} />
+    </BaseLayout>
+  )
+}

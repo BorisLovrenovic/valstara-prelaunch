@@ -29,6 +29,10 @@ export function socialPageKind(pathname: string): SocialPageKind {
     return 'rules';
   }
   if (path === '/prices' || path.startsWith('/prices/')) return 'prices';
+  // E11.6-13: the methodology and the monthly reports are price pages too.
+  if (path === '/price-index' || path.startsWith('/price-index/')) {
+    return 'prices';
+  }
   return 'campaign';
 }
 
@@ -150,7 +154,8 @@ export function routeFromPageFile(file: string): string | null {
  * `pages` holds the site's own routes, exactly as `/sitemap.xml` did before;
  * `pricesServiceMarket` the generated service × market price pages. Each
  * kind of hub has its own (E11.6-12): `/prices`, the service hubs and the
- * market hubs, each dated from the newest verification it shows.
+ * market hubs, each dated from the newest verification it shows. The monthly
+ * reports have their own (E11.6-13), each dated by its snapshot's build.
  */
 export const childSitemaps = {
   pages: '/sitemaps/pages.xml',
@@ -158,6 +163,7 @@ export const childSitemaps = {
   pricesIndex: '/sitemaps/prices-index.xml',
   pricesServiceHubs: '/sitemaps/prices-service-hubs.xml',
   pricesMarketHubs: '/sitemaps/prices-market-hubs.xml',
+  priceIndexMonthly: '/sitemaps/price-index-monthly.xml',
 } as const;
 
 function xmlText(value: string): string {

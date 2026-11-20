@@ -75,6 +75,8 @@ test('the checklist maps every portable Markdown source to one known storefront 
     '/terms',
     '/privacy',
     '/privacy/storage',
+    // E11.6-13: the price index's methodology.
+    '/price-index',
     '/giveaway/rules',
     ...rulesFiles.map(
       (file) => `/giveaway/rules/${file.split('/').at(-1)?.slice(0, -3)}`,
