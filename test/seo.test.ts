@@ -18,6 +18,7 @@ import {
   checkRenderedHead,
   checkSeoBuild,
   collectSeoPages,
+  copyMissingCardsFromFallback,
   generateOpenGraphImages,
   generateSitemap,
   socialCardSvg,
@@ -38,6 +39,8 @@ import {
   validatePageMetadata,
 } from '../src/server/seo.ts';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import { readPriceSiteInputs } from '../src/server/prices/files.ts';
+import { createPriceSite } from '../src/server/prices/site.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const digest = (image: Buffer) =>
@@ -393,6 +396,11 @@ test('build generates page-specific PNGs and typed fallback crops from brand tok
       join(root, 'public/fonts/instrument-sans-latin-wght-normal.woff'),
       join(fixture, 'public/fonts/instrument-sans-latin-wght-normal.woff'),
     );
+    // A service × market card sets its price line in the monospace token.
+    await cp(
+      join(root, 'public/fonts/jetbrains-mono-latin-wght-normal.woff'),
+      join(fixture, 'public/fonts/jetbrains-mono-latin-wght-normal.woff'),
+    );
     await copyPriceData(fixture);
     const { pages } = await collectSeoPages(fixture);
     await generateOpenGraphImages(fixture);
@@ -478,9 +486,15 @@ test('build generates page-specific PNGs and typed fallback crops from brand tok
       digest(originalLanding),
       'changing the local font and font token changes the rendered pixels',
     );
-    // Price routes take the typed prices card until E11.6-14.
+    // Every page has its own card, the price pages included (E11.6-14),
+    // except a ledger URL that publishes no page.
+    const unavailable = new Set(
+      createPriceSite(await readPriceSiteInputs(fixture))
+        .routes.filter((route) => route.kind === 'unavailable')
+        .map((route) => route.path),
+    );
     for (const page of pages.filter(
-      ({ pathname }) => socialPageKind(pathname) !== 'prices',
+      ({ pathname }) => !unavailable.has(pathname),
     )) {
       const imagePath = new URL(socialImageUrl(page.pathname)).pathname;
       const metadata = await sharp(
@@ -700,7 +714,7 @@ test('the build writes the price sitemap from the data: generated pages only, ea
   }
 });
 
-test('price pages join the E9-06 metadata check and take the typed prices card until E11.6-14', async () => {
+test('every generated price page has its own card, and an unavailable ledger URL takes the typed prices card', async () => {
   const fixture = await priceFixture();
   try {
     const { pages } = await collectSeoPages(fixture);
@@ -756,27 +770,90 @@ test('price pages join the E9-06 metadata check and take the typed prices card u
       join(root, 'src/styles/tokens.css'),
       join(fixture, 'src/styles/tokens.css'),
     );
-    await mkdir(join(fixture, 'public/fonts'), { recursive: true });
-    await cp(
-      join(root, 'public/fonts/instrument-sans-latin-wght-normal.woff'),
-      join(fixture, 'public/fonts/instrument-sans-latin-wght-normal.woff'),
-    );
+    await cp(join(root, 'public/fonts'), join(fixture, 'public/fonts'), {
+      recursive: true,
+    });
     await generateOpenGraphImages(fixture);
-    const fallback = await sharp(
-      join(fixture, 'public/images/og/fallback/prices.png'),
-    ).metadata();
-    assert.deepEqual([fallback.width, fallback.height], [1200, 630]);
-    for (const page of [...prices, ...priceIndexPages]) {
+    const cardPath = (pathname: string) =>
+      join(
+        fixture,
+        'public',
+        new URL(socialImageUrl(pathname)).pathname.slice(1),
+      );
+    const fallbackPath = join(fixture, 'public/images/og/fallback/prices.png');
+    const fallback = await readFile(fallbackPath);
+    const fallbackMetadata = await sharp(fallback).metadata();
+    assert.deepEqual(
+      [fallbackMetadata.width, fallbackMetadata.height],
+      [1200, 630],
+    );
+    // The ledger URLs the fixture data publishes no page for.
+    const unavailable = [
+      '/prices/apple-music/united-states',
+      '/prices/chatgpt/united-kingdom',
+      '/prices/crunchyroll/sweden',
+      '/prices/spotify/finland',
+    ];
+    const own = [
+      ...prices,
+      ...priceIndexPages,
+      ...pages.filter((page) => page.pathname === '/prices'),
+    ].filter((page) => !unavailable.includes(page.pathname));
+    assert.equal(own.length, 20);
+    const digests = new Set<string>();
+    for (const page of own) {
+      const card = await readFile(cardPath(page.pathname));
+      const metadata = await sharp(card).metadata();
+      assert.equal(metadata.format, 'png', page.pathname);
+      assert.deepEqual(
+        [metadata.width, metadata.height],
+        [1200, 630],
+        page.pathname,
+      );
+      assert.notEqual(digest(card), digest(fallback), page.pathname);
+      digests.add(digest(card));
+    }
+    assert.equal(digests.size, own.length, 'each price page has its own card');
+    for (const pathname of unavailable) {
       await assert.rejects(
-        readFile(
-          join(
-            fixture,
-            'public',
-            new URL(socialImageUrl(page.pathname)).pathname.slice(1),
+        readFile(cardPath(pathname)),
+        { code: 'ENOENT' },
+        `${pathname} publishes no page, so it has no card of its own`,
+      );
+    }
+
+    // At postbuild, a page without its own card (an unavailable ledger URL,
+    // or a generated page whose card is lost) is given the typed prices card.
+    await cp(
+      join(fixture, 'public/images'),
+      join(fixture, 'dist/client/images'),
+      {
+        recursive: true,
+      },
+    );
+    const lost = '/prices/netflix/sweden';
+    await rm(
+      join(
+        fixture,
+        'dist/client',
+        new URL(socialImageUrl(lost)).pathname.slice(1),
+      ),
+    );
+    const copied = await copyMissingCardsFromFallback(fixture, pages);
+    assert.deepEqual(copied.toSorted(), [...unavailable, lost].toSorted());
+    for (const pathname of [...unavailable, lost]) {
+      assert.equal(
+        digest(
+          await readFile(
+            join(
+              fixture,
+              'dist/client',
+              new URL(socialImageUrl(pathname)).pathname.slice(1),
+            ),
           ),
         ),
-        { code: 'ENOENT' },
-        `${page.pathname} has no card of its own yet`,
+        digest(fallback),
+        pathname,
       );
     }
 

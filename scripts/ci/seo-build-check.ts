@@ -1,10 +1,11 @@
+import { createHash } from 'node:crypto';
 import {
   access,
   copyFile,
   mkdir,
-  mkdtemp,
   readFile,
   readdir,
+  rename,
   rm,
   writeFile,
 } from 'node:fs/promises';
@@ -20,11 +21,15 @@ import { landingCopy } from '../../src/copy/landing.ts';
 import { leaderboardCopy } from '../../src/copy/leaderboard.ts';
 import { legalPageCopy } from '../../src/copy/legal.ts';
 import { memberStatusCopy } from '../../src/copy/member-status.ts';
+import { pricesCopy } from '../../src/copy/prices.ts';
 import { seoCopy } from '../../src/copy/seo.ts';
 import { unsubscribeCopy } from '../../src/copy/unsubscribe.ts';
 import { verificationCopy } from '../../src/copy/verification.ts';
 import { readPriceSiteInputs } from '../../src/server/prices/files.ts';
-import { createPriceSite } from '../../src/server/prices/site.ts';
+import {
+  createPriceSite,
+  type PriceRoute,
+} from '../../src/server/prices/site.ts';
 import {
   childSitemaps,
   routeFromPageFile,
@@ -253,9 +258,24 @@ function titleLines(title: string): string[] {
   return lines;
 }
 
+/** The token values a card is drawn with; `mono` sets a card's price line. */
+export interface SocialCardTokens {
+  readonly paper: string;
+  readonly ink: string;
+  readonly coral: string;
+  readonly font: string;
+  readonly mono?: string;
+}
+
+/** The price line's font size: 36 px, smaller only when the line needs it. */
+export function priceLineFontSize(priceLine: string): number {
+  return Math.min(36, Math.floor(830 / (Array.from(priceLine).length * 0.6)));
+}
+
 export function socialCardSvg(
   title: string,
-  tokens: { paper: string; ink: string; coral: string; font: string },
+  tokens: SocialCardTokens,
+  priceLine: string | null = null,
 ): string {
   const lines = titleLines(title);
   const titleMarkup = lines
@@ -264,7 +284,18 @@ export function socialCardSvg(
         `<tspan x="112" y="${252 + index * 82}" textLength="${Math.min(830, line.length * 34)}" lengthAdjust="spacingAndGlyphs">${xml(line)}</tspan>`,
     )
     .join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="${xml(tokens.paper)}"/><path d="M944 0h256v150z" fill="${xml(tokens.coral)}"/><circle cx="1120" cy="518" r="80" fill="${xml(tokens.coral)}"/><rect x="104" y="88" width="128" height="12" rx="6" fill="${xml(tokens.coral)}"/><text x="112" y="${252 + (lines.length - 1) * 82}" fill="${xml(tokens.ink)}" font-family="${xml(tokens.font)}" font-size="64" font-weight="650">${titleMarkup}</text><text x="112" y="548" fill="${xml(tokens.ink)}" font-family="${xml(tokens.font)}" font-size="30" font-weight="600">${xml(seoCopy.organisationName)}</text></svg>`;
+  // E11.6-14: a service × market card's price line, set in the monospace
+  // token below the title (D-038 Q1). A monospace glyph advances 0.6 em, so
+  // the font size is chosen to keep the whole line inside the 830 px safe
+  // width: the rasteriser does not honour `textLength`.
+  let priceMarkup = '';
+  if (priceLine !== null) {
+    if (!tokens.mono)
+      throw new Error('Social card token is missing: font-mono');
+    const y = 252 + lines.length * 82 + 4;
+    priceMarkup = `<text x="112" y="${y}" fill="${xml(tokens.ink)}" font-family="${xml(tokens.mono)}" font-size="${priceLineFontSize(priceLine)}" font-weight="600">${xml(priceLine)}</text>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="${xml(tokens.paper)}"/><path d="M944 0h256v150z" fill="${xml(tokens.coral)}"/><circle cx="1120" cy="518" r="80" fill="${xml(tokens.coral)}"/><rect x="104" y="88" width="128" height="12" rx="6" fill="${xml(tokens.coral)}"/><text x="112" y="${252 + (lines.length - 1) * 82}" fill="${xml(tokens.ink)}" font-family="${xml(tokens.font)}" font-size="64" font-weight="650">${titleMarkup}</text>${priceMarkup}<text x="112" y="548" fill="${xml(tokens.ink)}" font-family="${xml(tokens.font)}" font-size="30" font-weight="600">${xml(seoCopy.organisationName)}</text></svg>`;
 }
 
 function sfntFromWoff(woff: Buffer): Buffer {
@@ -305,12 +336,18 @@ function sfntFromWoff(woff: Buffer): Buffer {
   return sfnt;
 }
 
-async function loadSocialCardFont(
+interface SocialCardFont {
+  readonly family: string;
+  readonly bytes: Buffer;
+  readonly digest: string;
+}
+
+/** The local WOFF source `tokens.css` declares for a font token's family. */
+async function socialCardFont(
   root: string,
   tokenSource: string,
   font: string,
-  directory: string,
-): Promise<void> {
+): Promise<SocialCardFont> {
   const family = /^['"]([^'"]+)['"]/u.exec(font)?.[1];
   const face = [...tokenSource.matchAll(/@font-face\s*\{([^}]+)\}/gu)]
     .map((match) => match[1])
@@ -319,27 +356,118 @@ async function loadSocialCardFont(
     face && /url\(['"]?(\/fonts\/[^'")]+\.woff)['"]?\)/u.exec(face)?.[1];
   if (!family || !path)
     throw new Error('Social card brand font source is missing');
-  const fontfile = join(directory, 'brand-font.ttf');
-  await writeFile(
-    fontfile,
-    sfntFromWoff(await readFile(join(root, 'public', path.slice(1)))),
-  );
+  const bytes = await readFile(join(root, 'public', path.slice(1)));
+  return {
+    family,
+    bytes,
+    digest: createHash('sha256').update(bytes).digest('hex'),
+  };
+}
+
+// The fonts this process has made available to the rasteriser, by digest.
+const registeredSocialCardFonts = new Set<string>();
+
+/**
+ * Makes a font available to the SVG rasteriser for this process. The font
+ * file is kept, named by its digest, because the rasteriser reads it again
+ * for every later card: deleting it would leave a later render, in the same
+ * process, without the brand font.
+ */
+async function registerSocialCardFont(font: SocialCardFont): Promise<void> {
+  if (registeredSocialCardFonts.has(font.digest)) return;
+  const directory = join(tmpdir(), 'valstara-og-fonts');
+  await mkdir(directory, { recursive: true });
+  const fontfile = join(directory, `${font.digest}.ttf`);
+  // Written aside and renamed, so a concurrent build never reads half a file.
+  const partial = `${fontfile}.${process.pid}.tmp`;
+  await writeFile(partial, sfntFromWoff(font.bytes));
+  await rename(partial, fontfile);
   await sharp({
-    text: { text: seoCopy.organisationName, font: `${family} 30`, fontfile },
+    text: {
+      text: seoCopy.organisationName,
+      font: `${font.family} 30`,
+      fontfile,
+    },
   })
     .png()
     .toBuffer();
+  registeredSocialCardFonts.add(font.digest);
 }
 
-export async function generateOpenGraphImages(
-  root = projectRoot,
-): Promise<void> {
-  // Invalid/new route fixtures are left for Astro's parser during the build;
-  // the strict postbuild metadata check still requires coverage for every route.
-  const { pages } = await collectSeoPages(root, false);
-  const outputDirectory = join(root, 'public/images/og');
-  await rm(outputDirectory, { recursive: true, force: true });
-  await mkdir(join(outputDirectory, 'fallback'), { recursive: true });
+/** One card to render: its file under `public/`, its title, its price line. */
+export interface SocialCard {
+  /** For example `images/og/<page-key>.png` or `images/og/fallback/prices.png`. */
+  readonly output: string;
+  readonly title: string;
+  /** The page's first plan row (D-038 Q1), or null for a title-only card. */
+  readonly priceLine: string | null;
+}
+
+export interface SocialCardStats {
+  /** Cards rasterised in this run. */
+  readonly rendered: number;
+  /** Cards copied from the cache unchanged. */
+  readonly reused: number;
+}
+
+interface SocialCardManifest {
+  readonly version: 1;
+  /** Each cached image by content key, with the sha-256 of its PNG bytes. */
+  readonly images: Record<string, string>;
+  /** Each card file this cache last placed, with the key and text it holds. */
+  readonly cards: Record<
+    string,
+    { key: string; title: string; priceLine: string | null }
+  >;
+}
+
+/**
+ * The card cache (D-038 Q3): rendered PNGs and their manifest, on the
+ * building machine only. It sits outside `public/`, so it is never served,
+ * and is git-ignored and Docker-ignored, so CI and the image build are cold.
+ */
+export const socialCardCacheDirectory = '.cache/social-cards';
+export const socialCardManifestFile = 'manifest.json';
+
+async function readSocialCardManifest(
+  directory: string,
+): Promise<SocialCardManifest> {
+  try {
+    const manifest = JSON.parse(
+      await readFile(join(directory, socialCardManifestFile), 'utf8'),
+    ) as SocialCardManifest;
+    if (
+      manifest?.version === 1 &&
+      typeof manifest.images === 'object' &&
+      typeof manifest.cards === 'object'
+    ) {
+      return manifest;
+    }
+  } catch (error) {
+    // A missing or unreadable manifest is an empty cache: every card renders.
+    if (
+      !(error instanceof SyntaxError) &&
+      (error as NodeJS.ErrnoException).code !== 'ENOENT'
+    ) {
+      throw error;
+    }
+  }
+  return { version: 1, images: {}, cards: {} };
+}
+
+const sha256 = (value: Buffer | string) =>
+  createHash('sha256').update(value).digest('hex');
+
+/**
+ * Renders `cards` into `public/` under `root`, reusing every image whose
+ * content key is unchanged. The key covers everything that changes a card's
+ * pixels: its text, the token values and font file bytes it uses, the card
+ * template's source and the rasteriser's version.
+ */
+export async function renderSocialCards(
+  root: string,
+  cards: readonly SocialCard[],
+): Promise<SocialCardStats> {
   const tokenSource = await readFile(
     join(root, 'src/styles/tokens.css'),
     'utf8',
@@ -350,40 +478,156 @@ export async function generateOpenGraphImages(
     coral: tokenValue(tokenSource, 'coral'),
     font: tokenValue(tokenSource, 'font-sans'),
   };
-  const fontDirectory = await mkdtemp(join(tmpdir(), 'valstara-og-font-'));
-  try {
-    await loadSocialCardFont(root, tokenSource, tokens.font, fontDirectory);
-    const generatedKinds = new Set<string>();
-    for (const page of pages) {
-      // The price pages take their typed fallback, copied to each page's card
-      // URL at postbuild, until E11.6-14 renders their own cards.
-      if (socialPageKind(page.pathname) === 'prices') continue;
-      const imagePath = new URL(socialImageUrl(page.pathname)).pathname;
-      const outputPath = join(root, 'public', imagePath.slice(1));
-      await sharp(Buffer.from(socialCardSvg(page.title, tokens)))
-        .png({ compressionLevel: 9 })
-        .toFile(outputPath);
-      generatedKinds.add(socialPageKind(page.pathname));
+  const sans = await socialCardFont(root, tokenSource, tokens.font);
+  const needsMono = cards.some((card) => card.priceLine !== null);
+  const mono = needsMono ? tokenValue(tokenSource, 'font-mono') : undefined;
+  const monoFont =
+    mono === undefined
+      ? undefined
+      : await socialCardFont(root, tokenSource, mono);
+  const template = sha256(await readFile(fileURLToPath(import.meta.url)));
+  const keyOf = (card: SocialCard) =>
+    sha256(
+      JSON.stringify({
+        template,
+        rasteriser: sharp.versions,
+        organisationName: seoCopy.organisationName,
+        title: card.title,
+        priceLine: card.priceLine,
+        tokens: card.priceLine === null ? tokens : { ...tokens, mono },
+        fonts:
+          card.priceLine === null
+            ? [sans.digest]
+            : [sans.digest, monoFont?.digest],
+      }),
+    );
+
+  const cacheDirectory = join(root, socialCardCacheDirectory);
+  await mkdir(cacheDirectory, { recursive: true });
+  const previous = await readSocialCardManifest(cacheDirectory);
+  const images: Record<string, string> = {};
+  const placed: SocialCardManifest['cards'] = {};
+  let fontsRegistered = false;
+  let rendered = 0;
+  let reused = 0;
+  for (const card of cards) {
+    const key = keyOf(card);
+    const outputPath = join(root, 'public', card.output);
+    await mkdir(join(outputPath, '..'), { recursive: true });
+    const cachedPath = join(cacheDirectory, `${key}.png`);
+    let image: Buffer | null = null;
+    const expected = images[key] ?? previous.images[key];
+    if (expected !== undefined) {
+      try {
+        const cached = await readFile(cachedPath);
+        if (sha256(cached) === expected) image = cached;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
     }
-    for (const kind of socialPageKinds) {
-      const fallbackTitle = seoCopy.socialCardFallbacks[kind];
-      if (!fallbackTitle)
-        throw new Error(`Social card fallback is missing: ${kind}`);
-      const outputPath = join(outputDirectory, 'fallback', `${kind}.png`);
-      await sharp(Buffer.from(socialCardSvg(fallbackTitle, tokens)))
-        .png({ compressionLevel: 9 })
-        .toFile(outputPath);
-    }
-    if (
-      socialPageKinds.some(
-        (kind) => kind !== 'prices' && !generatedKinds.has(kind),
+    if (image === null) {
+      if (!fontsRegistered) {
+        await registerSocialCardFont(sans);
+        if (monoFont !== undefined) await registerSocialCardFont(monoFont);
+        fontsRegistered = true;
+      }
+      image = await sharp(
+        Buffer.from(
+          socialCardSvg(card.title, { ...tokens, mono }, card.priceLine),
+        ),
       )
-    ) {
-      throw new Error('Social card generation is missing a page kind');
+        .png({ compressionLevel: 9 })
+        .toBuffer();
+      await writeFile(cachedPath, image);
+      rendered += 1;
+    } else {
+      reused += 1;
     }
-  } finally {
-    await rm(fontDirectory, { recursive: true, force: true });
+    images[key] = sha256(image);
+    placed[card.output] = {
+      key,
+      title: card.title,
+      priceLine: card.priceLine,
+    };
+    await writeFile(outputPath, image);
   }
+  const manifest: SocialCardManifest = { version: 1, images, cards: placed };
+  const temporary = join(cacheDirectory, `${socialCardManifestFile}.tmp`);
+  await writeFile(temporary, `${JSON.stringify(manifest, null, 2)}\n`);
+  await rename(temporary, join(cacheDirectory, socialCardManifestFile));
+  // Images no card uses any more are dropped, so the cache holds one build.
+  for (const file of await readdir(cacheDirectory)) {
+    if (file.endsWith('.png') && images[file.slice(0, -4)] === undefined) {
+      await rm(join(cacheDirectory, file), { force: true });
+    }
+  }
+  return { rendered, reused };
+}
+
+/**
+ * A service × market card's price line: the page's first plan row, word for
+ * word as its plan table shows it (D-038 Q1). Null for an unavailable URL.
+ */
+export function priceCardLine(route: PriceRoute): string | null {
+  if (route.kind !== 'generated') return null;
+  const first = route.rows[0];
+  if (first === undefined)
+    throw new Error(`Social card price row is missing for ${route.path}`);
+  return pricesCopy.page.socialCardLine(
+    first.planName,
+    first.priceText,
+    first.periodText,
+  );
+}
+
+/** Every card the build serves: one per page with metadata, and fallbacks. */
+export async function socialCardsFor(root: string): Promise<SocialCard[]> {
+  // Invalid/new route fixtures are left for Astro's parser during the build;
+  // the strict postbuild metadata check still requires coverage for every route.
+  const { pages } = await collectSeoPages(root, false);
+  const files = (
+    await readdir(join(root, 'src/pages'), { recursive: true })
+  ).filter((file) => file.endsWith('.astro'));
+  const priceRoutes = files.includes('prices/[service]/[country].astro')
+    ? createPriceSite(await readPriceSiteInputs(root)).routes
+    : [];
+  const routes = new Map(priceRoutes.map((route) => [route.path, route]));
+  const cards: SocialCard[] = [];
+  const kinds = new Set<string>();
+  for (const page of pages) {
+    const route = routes.get(page.pathname);
+    // E11.6-14: a ledger URL that publishes no page keeps the typed prices
+    // card, copied to its card URL at postbuild (D-038 Q1).
+    if (route?.kind === 'unavailable') continue;
+    cards.push({
+      output: new URL(socialImageUrl(page.pathname)).pathname.slice(1),
+      title: page.title,
+      priceLine: route === undefined ? null : priceCardLine(route),
+    });
+    kinds.add(socialPageKind(page.pathname));
+  }
+  for (const kind of socialPageKinds) {
+    const fallbackTitle = seoCopy.socialCardFallbacks[kind];
+    if (!fallbackTitle)
+      throw new Error(`Social card fallback is missing: ${kind}`);
+    cards.push({
+      output: new URL(socialFallbackImageUrl(kind)).pathname.slice(1),
+      title: fallbackTitle,
+      priceLine: null,
+    });
+  }
+  if (socialPageKinds.some((kind) => !kinds.has(kind))) {
+    throw new Error('Social card generation is missing a page kind');
+  }
+  return cards;
+}
+
+export async function generateOpenGraphImages(
+  root = projectRoot,
+): Promise<SocialCardStats> {
+  const cards = await socialCardsFor(root);
+  await rm(join(root, 'public/images/og'), { recursive: true, force: true });
+  return renderSocialCards(root, cards);
 }
 
 /**
@@ -447,6 +691,40 @@ export function checkRenderedHead(
   seen.descriptions.add(description);
 }
 
+/**
+ * Copies each page's typed fallback to its card URL in `dist/client` where
+ * the build placed no card of its own: a ledger URL that publishes no price
+ * page (E11.6-14), or any card lost before postbuild.
+ */
+export async function copyMissingCardsFromFallback(
+  root: string,
+  pages: readonly PageMetadata[],
+): Promise<string[]> {
+  const copied: string[] = [];
+  for (const page of pages) {
+    const imagePath = join(
+      root,
+      'dist/client',
+      new URL(socialImageUrl(page.pathname)).pathname.slice(1),
+    );
+    try {
+      await access(imagePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      const fallbackPath = join(
+        root,
+        'dist/client',
+        new URL(
+          socialFallbackImageUrl(socialPageKind(page.pathname)),
+        ).pathname.slice(1),
+      );
+      await copyFile(fallbackPath, imagePath);
+      copied.push(page.pathname);
+    }
+  }
+  return copied;
+}
+
 export async function checkSeoBuild(
   root = projectRoot,
   checkRendered = false,
@@ -495,26 +773,7 @@ export async function checkSeoBuild(
         descriptions: renderedDescriptions,
       });
     }
-    for (const page of pages) {
-      const imagePath = join(
-        root,
-        'dist/client',
-        new URL(socialImageUrl(page.pathname)).pathname.slice(1),
-      );
-      try {
-        await access(imagePath);
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-        const fallbackPath = join(
-          root,
-          'dist/client',
-          new URL(
-            socialFallbackImageUrl(socialPageKind(page.pathname)),
-          ).pathname.slice(1),
-        );
-        await copyFile(fallbackPath, imagePath);
-      }
-    }
+    await copyMissingCardsFromFallback(root, pages);
     const assets = new Set<string>();
     for (const page of pages) {
       assets.add(socialImageUrl(page.pathname));
@@ -592,6 +851,9 @@ if (
   if (process.argv.includes('--check')) await checkSeoBuild(projectRoot, true);
   else if (process.argv.includes('--sitemap')) {
     await generateSitemap();
-    await generateOpenGraphImages();
+    const { rendered, reused } = await generateOpenGraphImages();
+    console.log(
+      `Social cards: ${rendered} rendered, ${reused} reused from ${socialCardCacheDirectory}.`,
+    );
   }
 }

@@ -10,8 +10,8 @@ export const socialPageKinds = [
   'legal',
   'campaign',
   'rules',
-  // E11.6-10: the price pages. Until E11.6-14 gives each its own card, every
-  // price page takes this typed fallback.
+  // E11.6-10: the price pages. Each has its own card from E11.6-14; a ledger
+  // URL that publishes no page takes this typed fallback.
   'prices',
 ] as const;
 export type SocialPageKind = (typeof socialPageKinds)[number];

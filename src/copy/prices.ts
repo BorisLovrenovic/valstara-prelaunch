@@ -117,6 +117,13 @@ export const pricesCopy = {
       month: 'per month',
       year: 'per year',
     },
+    /**
+     * The social card's price line (E11.6-14, D-038 Q1): the page's first
+     * plan row word for word, "Basic · 7.99 EUR per month". Never "from" or
+     * any other comparative wording.
+     */
+    socialCardLine: (plan: string, price: string, period: string) =>
+      `${plan} · ${price} ${period}`,
     verifiedOn: (date: string) => `Prices verified on ${dayText(date)}.`,
     verifiedBetween: (oldest: string, newest: string) =>
       `Prices verified between ${dayText(oldest)} and ${dayText(newest)}.`,
