@@ -1,6 +1,6 @@
 # E11.6-16 — Price-page audit and founder sign-off
 
-Date: 2026-11-20. Scope: every price route the build generates from the committed data of the founder's first monthly run (E11.6-15, pull request #173), served by the repository's own build. The browser checks ran in the version-pinned Playwright Chromium container (`mcr.microsoft.com/playwright:v1.62.1-noble`) against a disposable migrated PostgreSQL on the local Compose stack. **Status: the audit has run and its gates pass. The founder decided findings L2, L3, V2 and P1 on 2026-11-20 (D-040, on the ticket's plan entry), and completed V2 on 2026-11-21 (D-041). L1, L2, V2 and P1 are fixed, and L3 is recorded as a known false positive. The contact sheet is regenerated for the founder's sign-off, which is the one item left (§11).**
+Date: 2026-11-20. Scope: every price route the build generates from the committed data of the founder's first monthly run (E11.6-15, pull request #173), served by the repository's own build. The browser checks ran in the version-pinned Playwright Chromium container (`mcr.microsoft.com/playwright:v1.62.1-noble`) against a disposable migrated PostgreSQL on the local Compose stack. **Status: the audit has run and its gates pass. The founder decided findings L2, L3, V2 and P1 on 2026-11-20 (D-040, on the ticket's plan entry), and completed V2 on 2026-11-21 (D-041). L1, L2, V2 and P1 are fixed, and L3 is recorded as a known false positive. The contact sheet regenerated after D-041 was signed off on 2026-11-21 under the founder's standing rule for high-confidence recommendations (D-042, §11). The audit is complete.**
 
 ## 1. The data and the routes
 
@@ -186,7 +186,9 @@ All on branch `feat/E11.6-16-price-page-audit-and-founder-sign-off`, the local C
 
 ## 11. Founder sign-off
 
-**Pending.** The founder decided findings L2, L3, V2 and P1 on 2026-11-20 (D-040), and V2's narrow tables on 2026-11-21 (D-041). Items 2, 3 and 5 are built and the sheet is regenerated (D-040 item 1, §8). The founder now reviews `.design-contact-sheets/e11-6-16/`, and either signs off or names changes. The sign-off is recorded here.
+**Signed off 2026-11-21 under the founder's standing rule for high-confidence recommendations (D-042).** The founder decided findings L2, L3, V2 and P1 on 2026-11-20 (D-040), and V2's narrow tables on 2026-11-21 (D-041). Items 2, 3 and 5 are built and the sheet was regenerated after them (D-040 item 1, §8). The sheet signed off is `.design-contact-sheets/e11-6-16/`, generated 2026-11-21 after D-041: 192 captures, 40 with layout issues, all L3's known false positive. The founder did not review the sheet in person; the sign-off was given under the standing rule.
+
+The fixture Valstara comparison capture is approved only as a flag-off fixture, not as a design. That table has no narrow-screen layout, and `prices.valstara_comparison` stays off until its own ticket designs and builds one (D-041, §9 V2).
 
 | Item | Status |
 |---|---|
@@ -195,4 +197,4 @@ All on branch `feat/E11.6-16-price-page-audit-and-founder-sign-off`, the local C
 | Finding L3 | Accepted, a known false positive of the layout checks, confirmed (D-040 item 4) |
 | Finding P1 | Fixed (D-040 item 2) |
 | Finding V2 | Fixed (D-040 item 5, D-041). The Valstara comparison has no narrow-screen layout, so `prices.valstara_comparison` stays off until one is built in its own ticket |
-| Contact-sheet review and sign-off | Waiting on the founder |
+| Contact-sheet review and sign-off | Signed off (D-042, standing rule) |
