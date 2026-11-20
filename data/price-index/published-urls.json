@@ -1,3 +1,1028 @@
 {
-  "urls": []
+  "urls": [
+    {
+      "path": "/prices/amazon-prime/australia",
+      "service_id": "amazon-prime",
+      "market": "AU",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "Australia",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/austria",
+      "service_id": "amazon-prime",
+      "market": "AT",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "Austria",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/canada",
+      "service_id": "amazon-prime",
+      "market": "CA",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "Canada",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/france",
+      "service_id": "amazon-prime",
+      "market": "FR",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "France",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/germany",
+      "service_id": "amazon-prime",
+      "market": "DE",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "Germany",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/ireland",
+      "service_id": "amazon-prime",
+      "market": "IE",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "Ireland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/italy",
+      "service_id": "amazon-prime",
+      "market": "IT",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "Italy",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/netherlands",
+      "service_id": "amazon-prime",
+      "market": "NL",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "the Netherlands",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/poland",
+      "service_id": "amazon-prime",
+      "market": "PL",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "Poland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/spain",
+      "service_id": "amazon-prime",
+      "market": "ES",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "Spain",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/sweden",
+      "service_id": "amazon-prime",
+      "market": "SE",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "Sweden",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/united-kingdom",
+      "service_id": "amazon-prime",
+      "market": "GB",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "the United Kingdom",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/amazon-prime/united-states",
+      "service_id": "amazon-prime",
+      "market": "US",
+      "service_name": "Amazon Prime / Prime Video",
+      "market_name": "the United States",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/australia",
+      "service_id": "apple-music",
+      "market": "AU",
+      "service_name": "Apple Music",
+      "market_name": "Australia",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/austria",
+      "service_id": "apple-music",
+      "market": "AT",
+      "service_name": "Apple Music",
+      "market_name": "Austria",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/canada",
+      "service_id": "apple-music",
+      "market": "CA",
+      "service_name": "Apple Music",
+      "market_name": "Canada",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/denmark",
+      "service_id": "apple-music",
+      "market": "DK",
+      "service_name": "Apple Music",
+      "market_name": "Denmark",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/finland",
+      "service_id": "apple-music",
+      "market": "FI",
+      "service_name": "Apple Music",
+      "market_name": "Finland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/france",
+      "service_id": "apple-music",
+      "market": "FR",
+      "service_name": "Apple Music",
+      "market_name": "France",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/germany",
+      "service_id": "apple-music",
+      "market": "DE",
+      "service_name": "Apple Music",
+      "market_name": "Germany",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/ireland",
+      "service_id": "apple-music",
+      "market": "IE",
+      "service_name": "Apple Music",
+      "market_name": "Ireland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/italy",
+      "service_id": "apple-music",
+      "market": "IT",
+      "service_name": "Apple Music",
+      "market_name": "Italy",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/netherlands",
+      "service_id": "apple-music",
+      "market": "NL",
+      "service_name": "Apple Music",
+      "market_name": "the Netherlands",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/norway",
+      "service_id": "apple-music",
+      "market": "NO",
+      "service_name": "Apple Music",
+      "market_name": "Norway",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/poland",
+      "service_id": "apple-music",
+      "market": "PL",
+      "service_name": "Apple Music",
+      "market_name": "Poland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/portugal",
+      "service_id": "apple-music",
+      "market": "PT",
+      "service_name": "Apple Music",
+      "market_name": "Portugal",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/spain",
+      "service_id": "apple-music",
+      "market": "ES",
+      "service_name": "Apple Music",
+      "market_name": "Spain",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/sweden",
+      "service_id": "apple-music",
+      "market": "SE",
+      "service_name": "Apple Music",
+      "market_name": "Sweden",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/switzerland",
+      "service_id": "apple-music",
+      "market": "CH",
+      "service_name": "Apple Music",
+      "market_name": "Switzerland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/united-kingdom",
+      "service_id": "apple-music",
+      "market": "GB",
+      "service_name": "Apple Music",
+      "market_name": "the United Kingdom",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-music/united-states",
+      "service_id": "apple-music",
+      "market": "US",
+      "service_name": "Apple Music",
+      "market_name": "the United States",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/australia",
+      "service_id": "apple-tv",
+      "market": "AU",
+      "service_name": "Apple TV",
+      "market_name": "Australia",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/austria",
+      "service_id": "apple-tv",
+      "market": "AT",
+      "service_name": "Apple TV",
+      "market_name": "Austria",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/canada",
+      "service_id": "apple-tv",
+      "market": "CA",
+      "service_name": "Apple TV",
+      "market_name": "Canada",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/croatia",
+      "service_id": "apple-tv",
+      "market": "HR",
+      "service_name": "Apple TV",
+      "market_name": "Croatia",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/denmark",
+      "service_id": "apple-tv",
+      "market": "DK",
+      "service_name": "Apple TV",
+      "market_name": "Denmark",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/finland",
+      "service_id": "apple-tv",
+      "market": "FI",
+      "service_name": "Apple TV",
+      "market_name": "Finland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/france",
+      "service_id": "apple-tv",
+      "market": "FR",
+      "service_name": "Apple TV",
+      "market_name": "France",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/germany",
+      "service_id": "apple-tv",
+      "market": "DE",
+      "service_name": "Apple TV",
+      "market_name": "Germany",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/ireland",
+      "service_id": "apple-tv",
+      "market": "IE",
+      "service_name": "Apple TV",
+      "market_name": "Ireland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/italy",
+      "service_id": "apple-tv",
+      "market": "IT",
+      "service_name": "Apple TV",
+      "market_name": "Italy",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/netherlands",
+      "service_id": "apple-tv",
+      "market": "NL",
+      "service_name": "Apple TV",
+      "market_name": "the Netherlands",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/norway",
+      "service_id": "apple-tv",
+      "market": "NO",
+      "service_name": "Apple TV",
+      "market_name": "Norway",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/poland",
+      "service_id": "apple-tv",
+      "market": "PL",
+      "service_name": "Apple TV",
+      "market_name": "Poland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/portugal",
+      "service_id": "apple-tv",
+      "market": "PT",
+      "service_name": "Apple TV",
+      "market_name": "Portugal",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/romania",
+      "service_id": "apple-tv",
+      "market": "RO",
+      "service_name": "Apple TV",
+      "market_name": "Romania",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/spain",
+      "service_id": "apple-tv",
+      "market": "ES",
+      "service_name": "Apple TV",
+      "market_name": "Spain",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/sweden",
+      "service_id": "apple-tv",
+      "market": "SE",
+      "service_name": "Apple TV",
+      "market_name": "Sweden",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/switzerland",
+      "service_id": "apple-tv",
+      "market": "CH",
+      "service_name": "Apple TV",
+      "market_name": "Switzerland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/united-kingdom",
+      "service_id": "apple-tv",
+      "market": "GB",
+      "service_name": "Apple TV",
+      "market_name": "the United Kingdom",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/apple-tv/united-states",
+      "service_id": "apple-tv",
+      "market": "US",
+      "service_name": "Apple TV",
+      "market_name": "the United States",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/australia",
+      "service_id": "chatgpt",
+      "market": "AU",
+      "service_name": "ChatGPT",
+      "market_name": "Australia",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/austria",
+      "service_id": "chatgpt",
+      "market": "AT",
+      "service_name": "ChatGPT",
+      "market_name": "Austria",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/canada",
+      "service_id": "chatgpt",
+      "market": "CA",
+      "service_name": "ChatGPT",
+      "market_name": "Canada",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/croatia",
+      "service_id": "chatgpt",
+      "market": "HR",
+      "service_name": "ChatGPT",
+      "market_name": "Croatia",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/denmark",
+      "service_id": "chatgpt",
+      "market": "DK",
+      "service_name": "ChatGPT",
+      "market_name": "Denmark",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/finland",
+      "service_id": "chatgpt",
+      "market": "FI",
+      "service_name": "ChatGPT",
+      "market_name": "Finland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/france",
+      "service_id": "chatgpt",
+      "market": "FR",
+      "service_name": "ChatGPT",
+      "market_name": "France",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/germany",
+      "service_id": "chatgpt",
+      "market": "DE",
+      "service_name": "ChatGPT",
+      "market_name": "Germany",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/ireland",
+      "service_id": "chatgpt",
+      "market": "IE",
+      "service_name": "ChatGPT",
+      "market_name": "Ireland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/italy",
+      "service_id": "chatgpt",
+      "market": "IT",
+      "service_name": "ChatGPT",
+      "market_name": "Italy",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/netherlands",
+      "service_id": "chatgpt",
+      "market": "NL",
+      "service_name": "ChatGPT",
+      "market_name": "the Netherlands",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/norway",
+      "service_id": "chatgpt",
+      "market": "NO",
+      "service_name": "ChatGPT",
+      "market_name": "Norway",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/poland",
+      "service_id": "chatgpt",
+      "market": "PL",
+      "service_name": "ChatGPT",
+      "market_name": "Poland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/portugal",
+      "service_id": "chatgpt",
+      "market": "PT",
+      "service_name": "ChatGPT",
+      "market_name": "Portugal",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/romania",
+      "service_id": "chatgpt",
+      "market": "RO",
+      "service_name": "ChatGPT",
+      "market_name": "Romania",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/spain",
+      "service_id": "chatgpt",
+      "market": "ES",
+      "service_name": "ChatGPT",
+      "market_name": "Spain",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/sweden",
+      "service_id": "chatgpt",
+      "market": "SE",
+      "service_name": "ChatGPT",
+      "market_name": "Sweden",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/switzerland",
+      "service_id": "chatgpt",
+      "market": "CH",
+      "service_name": "ChatGPT",
+      "market_name": "Switzerland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/united-kingdom",
+      "service_id": "chatgpt",
+      "market": "GB",
+      "service_name": "ChatGPT",
+      "market_name": "the United Kingdom",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/chatgpt/united-states",
+      "service_id": "chatgpt",
+      "market": "US",
+      "service_name": "ChatGPT",
+      "market_name": "the United States",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/australia",
+      "service_id": "netflix",
+      "market": "AU",
+      "service_name": "Netflix",
+      "market_name": "Australia",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/austria",
+      "service_id": "netflix",
+      "market": "AT",
+      "service_name": "Netflix",
+      "market_name": "Austria",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/canada",
+      "service_id": "netflix",
+      "market": "CA",
+      "service_name": "Netflix",
+      "market_name": "Canada",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/croatia",
+      "service_id": "netflix",
+      "market": "HR",
+      "service_name": "Netflix",
+      "market_name": "Croatia",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/denmark",
+      "service_id": "netflix",
+      "market": "DK",
+      "service_name": "Netflix",
+      "market_name": "Denmark",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/finland",
+      "service_id": "netflix",
+      "market": "FI",
+      "service_name": "Netflix",
+      "market_name": "Finland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/france",
+      "service_id": "netflix",
+      "market": "FR",
+      "service_name": "Netflix",
+      "market_name": "France",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/germany",
+      "service_id": "netflix",
+      "market": "DE",
+      "service_name": "Netflix",
+      "market_name": "Germany",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/ireland",
+      "service_id": "netflix",
+      "market": "IE",
+      "service_name": "Netflix",
+      "market_name": "Ireland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/italy",
+      "service_id": "netflix",
+      "market": "IT",
+      "service_name": "Netflix",
+      "market_name": "Italy",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/netherlands",
+      "service_id": "netflix",
+      "market": "NL",
+      "service_name": "Netflix",
+      "market_name": "the Netherlands",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/norway",
+      "service_id": "netflix",
+      "market": "NO",
+      "service_name": "Netflix",
+      "market_name": "Norway",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/poland",
+      "service_id": "netflix",
+      "market": "PL",
+      "service_name": "Netflix",
+      "market_name": "Poland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/portugal",
+      "service_id": "netflix",
+      "market": "PT",
+      "service_name": "Netflix",
+      "market_name": "Portugal",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/spain",
+      "service_id": "netflix",
+      "market": "ES",
+      "service_name": "Netflix",
+      "market_name": "Spain",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/sweden",
+      "service_id": "netflix",
+      "market": "SE",
+      "service_name": "Netflix",
+      "market_name": "Sweden",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/switzerland",
+      "service_id": "netflix",
+      "market": "CH",
+      "service_name": "Netflix",
+      "market_name": "Switzerland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/united-kingdom",
+      "service_id": "netflix",
+      "market": "GB",
+      "service_name": "Netflix",
+      "market_name": "the United Kingdom",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/netflix/united-states",
+      "service_id": "netflix",
+      "market": "US",
+      "service_name": "Netflix",
+      "market_name": "the United States",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/australia",
+      "service_id": "spotify",
+      "market": "AU",
+      "service_name": "Spotify Premium",
+      "market_name": "Australia",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/austria",
+      "service_id": "spotify",
+      "market": "AT",
+      "service_name": "Spotify Premium",
+      "market_name": "Austria",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/canada",
+      "service_id": "spotify",
+      "market": "CA",
+      "service_name": "Spotify Premium",
+      "market_name": "Canada",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/croatia",
+      "service_id": "spotify",
+      "market": "HR",
+      "service_name": "Spotify Premium",
+      "market_name": "Croatia",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/denmark",
+      "service_id": "spotify",
+      "market": "DK",
+      "service_name": "Spotify Premium",
+      "market_name": "Denmark",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/finland",
+      "service_id": "spotify",
+      "market": "FI",
+      "service_name": "Spotify Premium",
+      "market_name": "Finland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/france",
+      "service_id": "spotify",
+      "market": "FR",
+      "service_name": "Spotify Premium",
+      "market_name": "France",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/germany",
+      "service_id": "spotify",
+      "market": "DE",
+      "service_name": "Spotify Premium",
+      "market_name": "Germany",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/ireland",
+      "service_id": "spotify",
+      "market": "IE",
+      "service_name": "Spotify Premium",
+      "market_name": "Ireland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/italy",
+      "service_id": "spotify",
+      "market": "IT",
+      "service_name": "Spotify Premium",
+      "market_name": "Italy",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/netherlands",
+      "service_id": "spotify",
+      "market": "NL",
+      "service_name": "Spotify Premium",
+      "market_name": "the Netherlands",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/norway",
+      "service_id": "spotify",
+      "market": "NO",
+      "service_name": "Spotify Premium",
+      "market_name": "Norway",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/poland",
+      "service_id": "spotify",
+      "market": "PL",
+      "service_name": "Spotify Premium",
+      "market_name": "Poland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/portugal",
+      "service_id": "spotify",
+      "market": "PT",
+      "service_name": "Spotify Premium",
+      "market_name": "Portugal",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/romania",
+      "service_id": "spotify",
+      "market": "RO",
+      "service_name": "Spotify Premium",
+      "market_name": "Romania",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/spain",
+      "service_id": "spotify",
+      "market": "ES",
+      "service_name": "Spotify Premium",
+      "market_name": "Spain",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/sweden",
+      "service_id": "spotify",
+      "market": "SE",
+      "service_name": "Spotify Premium",
+      "market_name": "Sweden",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/switzerland",
+      "service_id": "spotify",
+      "market": "CH",
+      "service_name": "Spotify Premium",
+      "market_name": "Switzerland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/united-kingdom",
+      "service_id": "spotify",
+      "market": "GB",
+      "service_name": "Spotify Premium",
+      "market_name": "the United Kingdom",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/spotify/united-states",
+      "service_id": "spotify",
+      "market": "US",
+      "service_name": "Spotify Premium",
+      "market_name": "the United States",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/austria",
+      "service_id": "youtube-premium",
+      "market": "AT",
+      "service_name": "YouTube Premium",
+      "market_name": "Austria",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/canada",
+      "service_id": "youtube-premium",
+      "market": "CA",
+      "service_name": "YouTube Premium",
+      "market_name": "Canada",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/croatia",
+      "service_id": "youtube-premium",
+      "market": "HR",
+      "service_name": "YouTube Premium",
+      "market_name": "Croatia",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/denmark",
+      "service_id": "youtube-premium",
+      "market": "DK",
+      "service_name": "YouTube Premium",
+      "market_name": "Denmark",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/finland",
+      "service_id": "youtube-premium",
+      "market": "FI",
+      "service_name": "YouTube Premium",
+      "market_name": "Finland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/france",
+      "service_id": "youtube-premium",
+      "market": "FR",
+      "service_name": "YouTube Premium",
+      "market_name": "France",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/germany",
+      "service_id": "youtube-premium",
+      "market": "DE",
+      "service_name": "YouTube Premium",
+      "market_name": "Germany",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/ireland",
+      "service_id": "youtube-premium",
+      "market": "IE",
+      "service_name": "YouTube Premium",
+      "market_name": "Ireland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/italy",
+      "service_id": "youtube-premium",
+      "market": "IT",
+      "service_name": "YouTube Premium",
+      "market_name": "Italy",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/netherlands",
+      "service_id": "youtube-premium",
+      "market": "NL",
+      "service_name": "YouTube Premium",
+      "market_name": "the Netherlands",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/norway",
+      "service_id": "youtube-premium",
+      "market": "NO",
+      "service_name": "YouTube Premium",
+      "market_name": "Norway",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/poland",
+      "service_id": "youtube-premium",
+      "market": "PL",
+      "service_name": "YouTube Premium",
+      "market_name": "Poland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/portugal",
+      "service_id": "youtube-premium",
+      "market": "PT",
+      "service_name": "YouTube Premium",
+      "market_name": "Portugal",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/spain",
+      "service_id": "youtube-premium",
+      "market": "ES",
+      "service_name": "YouTube Premium",
+      "market_name": "Spain",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/sweden",
+      "service_id": "youtube-premium",
+      "market": "SE",
+      "service_name": "YouTube Premium",
+      "market_name": "Sweden",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/switzerland",
+      "service_id": "youtube-premium",
+      "market": "CH",
+      "service_name": "YouTube Premium",
+      "market_name": "Switzerland",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/united-kingdom",
+      "service_id": "youtube-premium",
+      "market": "GB",
+      "service_name": "YouTube Premium",
+      "market_name": "the United Kingdom",
+      "first_published_on": "2026-11-20"
+    },
+    {
+      "path": "/prices/youtube-premium/united-states",
+      "service_id": "youtube-premium",
+      "market": "US",
+      "service_name": "YouTube Premium",
+      "market_name": "the United States",
+      "first_published_on": "2026-11-20"
+    }
+  ]
 }

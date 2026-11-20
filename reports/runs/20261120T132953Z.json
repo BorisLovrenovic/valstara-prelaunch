@@ -1,0 +1,28 @@
+{
+  "run_id": "20261120T132953Z",
+  "source": "scraper:youfundceo.com",
+  "fetch_status": "completed",
+  "market_scope": null,
+  "observed_at": "2026-11-20T13:29:53.000Z",
+  "built_at": "2026-11-20T14:13:42.425Z",
+  "snapshot": "2026-11-20.json",
+  "coverage_percent": 34.3,
+  "counts": {
+    "fetched": 152,
+    "matched": 161,
+    "unmatched": 50,
+    "records_by_status": {
+      "ok": 158,
+      "missing": 299,
+      "not_offered": 0,
+      "needs_review": 3,
+      "manual_override": 0,
+      "stale": 0,
+      "conflict": 0
+    },
+    "failed_markets": 0,
+    "changed": 0
+  },
+  "failed_markets": [],
+  "failures": []
+}
