@@ -28,6 +28,7 @@
   "test/container-owner.test.mjs": 6.6,
   "test/content-pipeline.test.mjs": 5.6,
   "test/copy-layer.test.mjs": 1.6,
+  "test/coupon-ladder.test.ts": 16.3,
   "test/cross-site-form-guard.test.mjs": 1,
   "test/db.test.ts": 16.5,
   "test/deploy.test.mjs": 119.7,

@@ -32,6 +32,7 @@ const subscriberPolicyCategory = {
   referral_tier: 'Referral code',
   confirmed_referrals: 'Referral code',
   access_window: 'Waitlist status',
+  verification_order_window: 'Waitlist status',
   subslush_customer: 'Waitlist status',
   giveaway_rules_version: 'Giveaway entries',
   marketing_consent_at: 'Optional marketing choice',
@@ -90,6 +91,19 @@ const relatedPolicyFields = {
       'reward_kind',
       'state',
       'awarded_at',
+      'void_reason',
+    ],
+  },
+  referral_coupon: {
+    'Referral code': [
+      'id',
+      'subscriber_id',
+      'coupon_number',
+      'percent',
+      'state',
+      'expiry_basis',
+      'created_at',
+      'updated_at',
     ],
   },
   survey_response: {

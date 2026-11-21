@@ -281,6 +281,23 @@ test('the transition enumeration: no coupon transition reaches settled, and the 
       }),
       /check constraint/u,
     );
+    // A settled row with no percent passes the percent-shape check, so only
+    // the state check can refuse it.
+    await assert.rejects(
+      f.app.execute({
+        text: `UPDATE referral_coupon SET state = 'settled', percent = NULL WHERE subscriber_id = $1`,
+        values: [referrerId],
+      }),
+      /violates check constraint "referral_coupon_state_check"/u,
+    );
+    await assert.rejects(
+      f.app.execute({
+        text: `INSERT INTO referral_coupon (id, subscriber_id, coupon_number, percent, state, created_at, updated_at)
+               VALUES ($1, $2, 2, NULL, 'settled', $3, $3)`,
+        values: [randomUUID(), referrerId, now],
+      }),
+      /violates check constraint "referral_coupon_state_check"/u,
+    );
     // Nor can it change a coupon's owner or number.
     await assert.rejects(
       f.app.execute({
