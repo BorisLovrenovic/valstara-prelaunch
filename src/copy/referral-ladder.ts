@@ -25,10 +25,12 @@ export const referralLadderCopy = {
   /** ADR-012's messaging rule: what makes a coupon usable, and for how long. */
   held: (expiryYears: number) =>
     `Coupons become usable once one of your referred friends places their first order, and last ${expiryYears} years after launch.`,
-  heldShort: 'Usable once one of your referred friends places their first order.',
+  heldShort:
+    'Usable once one of your referred friends places their first order.',
   heldState: 'Held',
   nextAt: (target: number) => `At ${target} confirmed referrals`,
-  earlyAccessPill: (month: string) => `Early access, ${month}`,
+  // A drawn pill is one unbroken line, so the month is stated beside it.
+  earlyAccessPill: 'Early access',
   waveOne: {
     firstMembers: (month: string, firstMembers: string) =>
       `You're in wave 1, with early access from ${month}, as one of the first ${firstMembers} verified members.`,
@@ -63,5 +65,6 @@ export const referralLadderCopy = {
       `Coupons apply once a referred friend places a first order, for ${expiryYears} years after launch.`,
     waveOne: (threshold: number, month: string) =>
       `${threshold} confirmed referrals also give you early access in ${month}.`,
+    earlyAccessOpens: (month: string) => `Early access opens in ${month}.`,
   },
 } as const;

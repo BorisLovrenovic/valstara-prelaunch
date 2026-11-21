@@ -850,7 +850,9 @@ function expectedFigures(confirmedReferrals, accessWindow) {
     bars: accessWindows.length,
     barsOn: accessWindows.indexOf(accessWindow) + 1,
     unlocks: referralLadderCopy.nextAt(meter.target),
-    pills: [referralLadderCopy.coupon(meter.coupon.number, meter.coupon.percent)],
+    pills: [
+      referralLadderCopy.coupon(meter.coupon.number, meter.coupon.percent),
+    ],
   };
 }
 

@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { landingCopy } from '../src/copy/landing.ts';
+import { referralLadderCopy } from '../src/copy/referral-ladder.ts';
 import { resendVerificationCopy } from '../src/copy/resend-verification.ts';
 import { signupCopy, signupFormCopy } from '../src/copy/signup.ts';
 import { couponLadder } from '../src/server/referral/config.ts';
@@ -66,6 +67,8 @@ test('landing marketing copy stays inside its heading, line, card and FAQ budget
     landingLadder().sentence,
     landingLadder().steps,
     landingLadder().moreCoupons ?? '',
+    landingLadder().waveOne,
+    referralLadderCopy.earlyAccessPill,
     landingLadder().held,
     landingCopy.rewards.verifiedOnly,
     landingCopy.rewards.prize({ prizeCount, prizeApproxRetailValueEur }),

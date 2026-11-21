@@ -10,7 +10,7 @@ Seven transactional templates through **Resend on `send.valstara.com`**, and bro
 1. **Verification** — the only mail an unverified row may receive, besides its reminders
 2. **Verification reminder** — the ladder at +1h, +24h, +72h
 3. **Welcome** — referral link, status link, trust-page link
-4. **Milestone reached** — tier confirmation, and **plainly states which reward is settled and which is held**
+4. **Milestone reached** — tier confirmation, and **plainly states which reward is settled and which is held**. Since E11.7-03 none is queued; one already queued renders the member's current coupon ladder, early access and the coupons' held condition (E11.7-04). The welcome mail carries the same ladder section
 5. **Status link** — re-issued on request
 6. **Giveaway entry receipt** — entries, and a link to the immutable global rules version that governs them
 7. **Provisional winner notification** — status link, Section 9 response deadline and the governing rules-version link; E7-06 queues the record, E8-01 dispatches it and E8-03 renders it with a plain-text alternative from the copy layer

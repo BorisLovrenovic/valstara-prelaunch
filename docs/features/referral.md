@@ -1,7 +1,7 @@
 # Feature: Referral engine
 
 ## Summary
-Every verified subscriber gets an unguessable referral code and a link. A referred person who verifies confirms the edge. Cheap rewards settle on confirmation; **milestone discounts are held until any one of the owner's confirmed referred people places a first order within 90 days after store launch** — the structural answer to referral fraud (ADR-012).
+Every verified subscriber gets an unguessable referral code and a link. A referred person who verifies confirms the edge. Cheap rewards settle on confirmation; **coupons on the ladder (E11.7-03) are held until any one of the owner's confirmed referred people places a first order after launch, and expire five years after the configured public launch** — the structural answer to referral fraud (ADR-012). Every surface states the ladder, wave 1 and that condition from the configuration (E11.7-04, `docs/features/member-status.md`).
 
 ## Feature flag
 `referral.enabled` — default on. Off stops new attribution; **existing edges are untouched and existing rewards still settle.**

@@ -117,7 +117,8 @@ Values, not schema. Changing any of them requires no migration. They live in `sr
 - **Wave 1** (`waveOneReferralThreshold`): 3 confirmed, non-voided referrals.
 - **Access-window bands** (`accessWindowBands`, assigned once at verification as `verification_order_window`): `≤1,000 → wave-1 · ≤5,000 → wave-2 · ≤15,000 → wave-3 · else wave-4`. The count-and-assignment section is serialised, so concurrent verifications receive distinct ordinals at a band boundary.
 - **Cheap vs high-value** follows ADR-012: base/per-referral entries and wave position settle on confirmation; **coupons are `held`** and carried to the storefront. No configured reward is a draw entry.
-- `milestoneTiers` remains only as the figures the landing and verification pages print until E11.7-04 replaces that wording. Nothing awards, promotes or exports from it.
+- **Wave-1 early access** (`waveOneEarlyAccessMonth`): `'2027-07'`, the month every surface names for wave 1's early access (E11.7-04).
+- **What the surfaces show (E11.7-04).** `ladder-presentation.ts` turns the configuration and a member's confirmed count and windows into the ladder copy every surface shows: the progress line in the founder's form, the held condition with the configured expiry, the next step for the meter, early access and its reason, and the landing card. `ReferralService.status` no longer reads milestone awards or the tier, and the retired `milestoneTiers` figures are removed; `docs/features/member-status.md` has the surfaces.
 
 ## Dependencies
 `db`, `audit`, `fraud` (the E4-03 `self_referral` signal only), `giveaway` (entry accrual on confirmation; a referral void voids or restores the edge's entry before commitment, E11.7-02), `flags`.

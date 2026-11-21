@@ -64,7 +64,7 @@ test('E11.5-08 the shared presentation keys every field and coupon without chang
       verificationOrderWindow: 'wave-3',
     }),
   );
-  // E11.7-04: the retired referral tier is no longer a fact.
+  // E11.7-04: early access takes the retired referral tier's place.
   assert.deepEqual(
     view.fields.map(({ key, value }) => [key, value]),
     [
@@ -74,6 +74,7 @@ test('E11.5-08 the shared presentation keys every field and coupon without chang
       ],
       ['confirmedReferrals', '25'],
       ['ownRank', '7'],
+      ['earlyAccess', 'From July 2027'],
       ['accessWindow', 'wave-1'],
       ['giveawayEntries', '5'],
     ],
@@ -174,7 +175,9 @@ test('E11.5-08 member and leaderboard copy stays within the E11.5 copy budget', 
     referralLadderCopy.heldState,
     referralLadderCopy.heldShort,
     referralLadderCopy.nextAt(39),
-    referralLadderCopy.earlyAccessPill('July 2027'),
+    referralLadderCopy.earlyAccessPill,
+    memberStatusCopy.authenticated.earlyAccessFrom('September 2027'),
+    memberStatusCopy.authenticated.earlyAccessNotYet,
     memberStatusCopy.survey.submit,
     memberStatusCopy.marketing.turnOn,
     memberStatusCopy.marketing.turnOff,

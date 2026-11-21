@@ -46,8 +46,14 @@ test('the progress line follows the founder’s figures at every step', () => {
 test('every ladder progress carries the first-order condition and the configured expiry', () => {
   for (const count of [0, 3, 25, 60]) {
     const { held } = ladderProgress(count);
-    assert.match(held, /once one of your referred friends places their first order/u);
-    assert.match(held, new RegExp(`last ${couponLadder.expiryYears} years after launch`, 'u'));
+    assert.match(
+      held,
+      /once one of your referred friends places their first order/u,
+    );
+    assert.match(
+      held,
+      new RegExp(`last ${couponLadder.expiryYears} years after launch`, 'u'),
+    );
   }
   assert.match(
     ladderProgress(3, {
@@ -210,7 +216,7 @@ test('the landing ladder states the first unlock, the steps and wave 1 from conf
       '3 confirmed referrals → early access in July 2027 and a 5% coupon',
     steps: 'Each coupon rises 5% every 3 more confirmed referrals, up to 30%.',
     moreCoupons: 'Coupons 2 and 3 unlock at 21 and 39.',
-    waveOne: null,
+    waveOne: 'Early access opens in July 2027.',
     held: 'Coupons apply once a referred friend places a first order, for 5 years after launch.',
   });
   // A wave-1 threshold apart from the first unlock gets its own line.

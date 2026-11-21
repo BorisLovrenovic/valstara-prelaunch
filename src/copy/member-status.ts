@@ -13,6 +13,9 @@ export const memberStatusCopy = {
       verified: 'Verified',
     },
     wave: 'Access wave',
+    earlyAccess: 'Early access',
+    earlyAccessFrom: (month: string) => month,
+    earlyAccessNotYet: 'Not yet',
     // Only the wave-N format names a wave number; any other value is shown
     // as stored rather than as a wrong number.
     waveBadge: (window: string) => {

@@ -154,7 +154,7 @@ The count is confirmed, non-voided referrals, including retroactive partner attr
 
 ### Where progress shows
 
-Progress shows on `/me`, on the partner dashboard and in the relevant emails. For example: "Coupon 1: 30% · Coupon 2: 10% · 2 more confirmed referrals to 15%. Friends you refer now get 15% off their first order." The friend's line appears only for partners. **All ladder state and every welcome discount go into the attribution export and the hand-over document.**
+Progress shows on `/me`, on the partner dashboard and in the relevant emails. **As built (E11.7-04)** for members: `/me`, `/verify`, the landing card, the welcome and milestone emails and the privacy policy state the ladder from configuration, and `/me` says whether the member gets early access and why, or what earns it (`docs/features/member-status.md`). The partner dashboard's line is E11.7-09's. For example: "Coupon 1: 30% · Coupon 2: 10% · 2 more confirmed referrals to 15%. Friends you refer now get 15% off their first order." The friend's line appears only for partners. **All ladder state and every welcome discount go into the attribution export and the hand-over document.**
 
 ## Pages and surfaces
 

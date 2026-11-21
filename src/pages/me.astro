@@ -120,6 +120,7 @@ const factKeys: readonly DashboardField['key'][] = [
   'accessWindow',
   'ownRank',
   'confirmedReferrals',
+  'earlyAccess',
   ...(dashboardStatus !== null && dashboardStatus.giveawayEntries > 0
     ? (['giveawayEntries'] as const)
     : []),
@@ -140,7 +141,8 @@ const waveBars = accessWindows.map(
 // A figure is mono; a word in its place ("Not currently ranked") is muted.
 const mutedValue = (field: DashboardField) =>
   (field.key === 'ownRank' && dashboardStatus?.ownRank === null) ||
-  (field.key === 'accessWindow' && accessWindow === null);
+  (field.key === 'accessWindow' && accessWindow === null) ||
+  (field.key === 'earlyAccess' && !dashboardView?.earlyAccess.inWaveOne);
 // The link wraps after the origin and keeps its code in one unit, so it
 // never truncates, as on /verify (E11.5-11r decision 2).
 const referralUrl =
@@ -206,9 +208,12 @@ const meterSegments =
                 <p>{memberStatusCopy.authenticated.body}</p>
               </div>
               <dl
-                class="member-facts"
+                class:list={[
+                  'member-facts',
+                  facts.length === 6 && 'member-facts--6',
+                ]}
                 data-enter="shift"
-                style={`--enter-index: 1; --fact-count: ${facts.length}`}
+                style="--enter-index: 1"
               >
                 {facts.map((field) => (
                   <div class="member-fact" data-member-field={field.key}>
@@ -255,11 +260,9 @@ const meterSegments =
               </dl>
               <p
                 class="member-access"
-                data-early-access={dashboardView.earlyAccess.inWaveOne
-                  ? 'wave-1'
-                  : 'not-yet'}
-                data-enter="shift"
-                style="--enter-index: 2"
+                data-early-access={
+                  dashboardView.earlyAccess.inWaveOne ? 'wave-1' : 'not-yet'
+                }
               >
                 {dashboardView.earlyAccess.line}
               </p>
@@ -1300,8 +1303,8 @@ const meterSegments =
     text-wrap: pretty;
   }
 
-  /* The facts: two columns, three from 48rem, and one row from 64rem (four,
-     or five when giveaway entries show), each on the well. */
+  /* The facts: two columns, three from 48rem, five (six when giveaway
+     entries show) from 64rem, each on the well. */
   .member-access {
     margin-block-start: var(--space-3);
     font-size: var(--step-2);
@@ -2238,7 +2241,13 @@ const meterSegments =
     }
 
     .member-facts {
-      grid-template-columns: repeat(var(--fact-count), minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    /* Six facts share a row only from 80rem; at 64rem (which the canvas
+       does not draw) a six-column fact is too narrow for the wave badge. */
+    .member-facts--6 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .member-leave {
@@ -2246,4 +2255,9 @@ const meterSegments =
     }
   }
 
+  @media (min-width: 80rem) {
+    .member-facts--6 {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
 </style>

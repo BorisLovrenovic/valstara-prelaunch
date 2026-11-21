@@ -89,6 +89,10 @@ export const buildSelectors = {
   rewardBadges: '.member-reward__state',
   rewardSettled: '.member-reward__state--settled',
   rewardsEmpty: '.member-rewards-empty',
+  // E11.7-04: the early-access line and the coupons' held condition, which
+  // the canvas (drawn for the retired tier) does not have.
+  access: '.member-access',
+  rewardsHeld: '.member-rewards-held',
   prefBlocks: '.member-pref',
   switch: '.member-switch__track',
   switchWord: '[data-marketing-state]',
@@ -214,6 +218,9 @@ export function measureMember(selectors) {
     facts: box(one(selectors.facts, status), statusRect),
     fact: all(selectors.fact, status, statusRect),
     badge: box(one(selectors.badge, status), statusRect),
+    ...(selectors.access === undefined
+      ? {}
+      : { access: box(one(selectors.access, status), statusRect) }),
   };
   const referralRect = rectOf(referral);
   result.referral = {
@@ -237,6 +244,9 @@ export function measureMember(selectors) {
       row.querySelector(selectors.rewardSettled) === null ? 'held' : 'settled',
     ),
     empty: box(one(selectors.rewardsEmpty, rewards), rewardsRect),
+    ...(selectors.rewardsHeld === undefined
+      ? {}
+      : { held: box(one(selectors.rewardsHeld, rewards), rewardsRect) }),
   };
   const preferencesRect = rectOf(preferences);
   result.preferences = {

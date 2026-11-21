@@ -43,7 +43,7 @@ test('verification marketing copy stays within the E11.5 scan budget', () => {
     verificationCopy.referral.link,
     verificationReferralFigures(baseStatus).ladder.line,
     referralLadderCopy.coupon(1, 5),
-    referralLadderCopy.earlyAccessPill('July 2027'),
+    referralLadderCopy.earlyAccessPill,
     verificationCopy.referral.wave('wave-1'),
     ...verificationCopy.survey.categoryOptions.map((option) => option.label),
     ...verificationCopy.survey.frequencyOptions.map((option) => option.label),
@@ -68,8 +68,8 @@ test('a new member sees the first coupon and early access as the next step', () 
     },
   });
   assert.equal(
-    verificationReferralFigures({ ...baseStatus, confirmedReferrals: 2 })
-      .ladder.meter?.progress,
+    verificationReferralFigures({ ...baseStatus, confirmedReferrals: 2 }).ladder
+      .meter?.progress,
     2,
   );
 });

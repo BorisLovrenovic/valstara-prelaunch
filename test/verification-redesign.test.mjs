@@ -305,7 +305,10 @@ test('verification states, exact figures, native actions and flags render access
       '3',
     );
     // E11.7-04: the coupon ladder, with its held condition.
-    assert.match(successHtml, /3 more confirmed referrals to Coupon 1 at 5%\./u);
+    assert.match(
+      successHtml,
+      /3 more confirmed referrals to Coupon 1 at 5%\./u,
+    );
     assert.match(successHtml, /Coupon 1: 5%/u);
     assert.match(successHtml, /Access wave 1/u);
     assert.match(
@@ -368,10 +371,7 @@ test('verification states, exact figures, native actions and flags render access
       },
     );
     const revisedHtml = await revised.text();
-    assert.match(
-      revisedHtml,
-      /1 more confirmed referral to Coupon 1 at 5%\./u,
-    );
+    assert.match(revisedHtml, /1 more confirmed referral to Coupon 1 at 5%\./u);
     assert.match(revisedHtml, /Access wave 2/u);
     for (const marker of ['data-copy-referral', 'data-survey-skip']) {
       const tag = revisedHtml.match(

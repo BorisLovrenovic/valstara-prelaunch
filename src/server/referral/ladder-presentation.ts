@@ -166,8 +166,7 @@ export function earlyAccess(
   const threshold = configuration.waveOneReferrals;
   const inWaveOne =
     state.verificationOrderWindow === null
-      ? state.accessWindow === 'wave-1' ||
-        state.confirmedReferrals >= threshold
+      ? state.accessWindow === 'wave-1' || state.confirmedReferrals >= threshold
       : accessWindowForReferrals(
           state.verificationOrderWindow,
           state.confirmedReferrals,
@@ -217,8 +216,11 @@ export interface LandingLadder {
   readonly sentence: string;
   readonly steps: string;
   readonly moreCoupons: string | null;
-  /** Wave 1's own line, when its threshold differs from the first unlock. */
-  readonly waveOne: string | null;
+  /**
+   * When early access opens or, when wave 1's threshold differs from the
+   * first unlock, what earns it.
+   */
+  readonly waveOne: string;
   readonly held: string;
 }
 
@@ -254,7 +256,7 @@ export function landingLadder(
             later,
           ),
     waveOne: together
-      ? null
+      ? referralLadderCopy.landing.earlyAccessOpens(month)
       : referralLadderCopy.landing.waveOne(
           configuration.waveOneReferrals,
           month,

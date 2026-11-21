@@ -27,6 +27,10 @@ export function presentReferralStatus(
     giveawayEntries: String(status.giveawayEntries),
   };
   const ladder = ladderProgress(status.confirmedReferrals, configuration);
+  const access = earlyAccess(status, configuration);
+  const earlyAccessValue = access.inWaveOne
+    ? memberStatusCopy.authenticated.earlyAccessFrom(access.month)
+    : memberStatusCopy.authenticated.earlyAccessNotYet;
   return {
     values,
     // Each field keeps its key so /me can place it on its own card; the email
@@ -51,6 +55,12 @@ export function presentReferralStatus(
         tabular: true,
       },
       {
+        key: 'earlyAccess' as const,
+        label: memberStatusCopy.authenticated.earlyAccess,
+        value: earlyAccessValue,
+        tabular: false,
+      },
+      {
         key: 'accessWindow' as const,
         label: memberStatusCopy.authenticated.wave,
         value: values.accessWindow,
@@ -64,7 +74,7 @@ export function presentReferralStatus(
       },
     ],
     referralLink: status.referralLink,
-    earlyAccess: earlyAccess(status, configuration),
+    earlyAccess: access,
     ladder,
     // Every coupon the count earns. Each is held: the main platform makes it
     // usable once one of the member's referred friends places a first order
