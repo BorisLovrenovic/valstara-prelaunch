@@ -4003,6 +4003,10 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 - A blocklist entry matches regardless of case
 
 **Tests:** Format cases · blocklist cases with case variants · concurrent duplicate insert · member-after-partner collision · backfill and unchanged member-link resolution · alternatives always valid.
+
+**Founder decisions (2026-11-21):**
+1. **Each blocklist term refuses either any code that contains it or only the whole code, as its entry in `config/partner-code-blocklist.json` says.** Each category (`brand`, `reserved`, `profanity`) holds `contains` terms, which refuse any code that includes them (`NETFLIXDEALS` is refused), and `exact` terms, which refuse only that whole code, for words that occur inside ordinary names (`NOTION` in `PROMOTION`, `FREE` in `FREEDOM`, `ADMIN` in `BADMINTON`, `RAPE` in `GRAPE`). Brand names and most profanity are `contains`; reserved words, and the brand and profanity terms that occur inside ordinary words, are `exact`. Moving a term between the lists is a config edit, not a code change. A code that passes only because its term is `exact` (for example `ADMIN1`, `APPLE1`, `NOTIONPRO`) is left to the founder's review at approval (E11.7-06, `approve <id> [--code]`), which every partner code passes before it goes live. As built in b40dae9; described in `docs/features/partner-programme.md#links-and-codes` and `docs/modules/referral.md`. (Accepted under the founder's standing rule for high-confidence recommendations, D-043.)
+
 **Docs:** `docs/features/partner-programme.md#links-and-codes` · `docs/modules/referral.md` · `docs/data/model.md`
 
 ### E11.7-02 — Voiding a referral, and the founder command line
