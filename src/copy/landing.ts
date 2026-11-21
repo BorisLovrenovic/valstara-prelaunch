@@ -1,4 +1,3 @@
-import type { MilestoneTier } from '../server/referral/config.ts';
 import type { RulesRevision } from '../server/giveaway/rules.ts';
 
 export const landingCopy = {
@@ -46,16 +45,10 @@ export const landingCopy = {
     waveLabel: (wave: number) => `Wave ${wave}`,
     waveAxis: { earlier: 'earlier', later: 'later' },
     referralHeading: 'Referral rewards',
-    // Read by assistive technology; the equation below it is aria-hidden.
-    tier: (tier: MilestoneTier) =>
-      `${tier.threshold} confirmed referrals → move up an access wave and ${tier.discountPercent}% off at launch`,
+    // The ladder's sentences are in referral-ladder.ts, filled from the
+    // configuration; these are the drawn equation's fixed words.
     tierReferrals: 'confirmed referrals',
-    tierWave: 'Up one access wave',
     tierPlus: '+',
-    tierDiscount: (tier: Pick<MilestoneTier, 'discountPercent'>) =>
-      `${tier.discountPercent}%`,
-    tierDiscountLabel: 'off at launch',
-    held: 'Discount unlocks when a referred person places a first order within 90 days after launch.',
     verifiedOnly: 'Only confirmed, verified referrals count.',
     giveawayHeading: 'The giveaway',
     // Read by assistive technology; the prize figures below it are aria-hidden.

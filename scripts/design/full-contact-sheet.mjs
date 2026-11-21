@@ -1311,10 +1311,10 @@ async function seed(database, fixtureUrl) {
         marketing ? 'member_status' : null,
       ],
     );
-  await verified(ids.main, 'main', 'K7QX2MPR9AZB', 4, 'wave-2', true);
+  await verified(ids.main, 'main', 'K7QX2MPR9AZB', 4, 'wave-1', true);
   await verified(ids.zero, 'zero', 'ZERO23456789', 0, null, true);
   await verified(ids.fresh, 'fresh', 'FRESH2345678', 0, null, false);
-  await verified(ids.off, 'off', 'OFFX23456789', 4, 'wave-2', false);
+  await verified(ids.off, 'off', 'OFFX23456789', 4, 'wave-1', false);
   await verified(ids.other, 'other', 'OTHER2345678', 9, 'wave-1', true);
   await database.query(
     "INSERT INTO subscriber (id,email,email_normalised,email_domain,status,verified_at,unsubscribed_at,referral_code) VALUES ($1,$2,$2,'example.test','unsubscribed',$3,$3,'LEFT23456789')",
@@ -1324,11 +1324,6 @@ async function seed(database, fixtureUrl) {
       new Date('2026-10-02T12:00:00Z'),
     ],
   );
-  for (const id of [ids.main, ids.off])
-    await database.query(
-      "INSERT INTO milestone_award (id,subscriber_id,tier,reward_kind,state,awarded_at) VALUES ($1,$3,1,'wave_upgrade','settled',CURRENT_TIMESTAMP),($2,$3,1,'discount','held',CURRENT_TIMESTAMP)",
-      [randomUUID(), randomUUID(), id],
-    );
   const pool = createPool(fixtureUrl);
   try {
     await seedGiveawayEntryRows(pool, ids.main, 5, { rulesVersion: '2026-09' });

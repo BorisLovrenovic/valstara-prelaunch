@@ -1,9 +1,5 @@
 import { marketingOptInCopy } from './marketing.ts';
 
-const settledExplanation = 'Settled rewards are already earned.';
-const heldExplanation =
-  'Held discounts require the referred person’s first order within 90 days after store launch.';
-
 export const memberStatusCopy = {
   authenticated: {
     body: 'This private page shows the waitlist details attached to this link.',
@@ -16,7 +12,6 @@ export const memberStatusCopy = {
     statusValues: {
       verified: 'Verified',
     },
-    tier: 'Referral tier',
     wave: 'Access wave',
     // Only the wave-N format names a wave number; any other value is shown
     // as stored rather than as a wrong number.
@@ -32,30 +27,12 @@ export const memberStatusCopy = {
     copyFailed: 'Copy failed. Select and copy the link instead.',
     heading: 'Your referral link',
     linkLabel: 'Referral link',
-    progress: (count: number, threshold: number, tier: number) =>
-      `${count} of ${threshold} to Tier ${tier}`,
     share: 'Share link',
   },
   rewards: {
-    empty: 'No referral rewards yet.',
-    heading: 'Referral rewards',
-    // The email surfaces print both explanations as one paragraph; /me shows
-    // each beside its own state.
-    intro: `${settledExplanation} ${heldExplanation}`,
-    explanations: {
-      held: heldExplanation,
-      settled: settledExplanation,
-    },
-    kinds: {
-      discount: 'Launch discount',
-      merch: 'Merchandise',
-      wave_upgrade: 'Access-wave upgrade',
-    },
-    states: {
-      held: 'Held',
-      settled: 'Settled',
-    },
-    tier: (tier: number) => `Tier ${tier}`,
+    heading: 'Your coupons',
+    empty: (threshold: number) =>
+      `No coupons yet. Your first unlocks at ${threshold} confirmed referrals.`,
   },
   preferences: {
     heading: 'Preferences',

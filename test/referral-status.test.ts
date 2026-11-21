@@ -84,40 +84,27 @@ async function insertSubscriber(
   return id;
 }
 
-test('the shared computation preserves the exact count and derives reward status once', () => {
+test('the shared computation preserves the exact count and both stored windows', () => {
   assert.deepEqual(
-    computeReferralStatus(
-      12,
-      'ABCDEF234567',
-      [
-        { reward_kind: 'wave_upgrade', state: 'settled', tier: 1 },
-        { reward_kind: 'discount', state: 'held', tier: 7 },
-        { reward_kind: 'entries', state: 'held', tier: 7 },
-      ],
-      {
-        accessWindow: 'wave-2',
-        giveawayEntries: 8,
-        ownRank: 4,
-      },
-    ),
+    computeReferralStatus(12, 'ABCDEF234567', {
+      accessWindow: 'wave-1',
+      giveawayEntries: 8,
+      ownRank: 4,
+      verificationOrderWindow: 'wave-2',
+    }),
     {
-      accessWindow: 'wave-2',
+      accessWindow: 'wave-1',
       confirmedReferrals: 12,
       giveawayEntries: 8,
       ownRank: 4,
       referralLink: 'https://valstara.com/?ref=ABCDEF234567',
-      rewards: [
-        { kind: 'wave_upgrade', state: 'settled', tier: 1 },
-        { kind: 'discount', state: 'held', tier: 7 },
-        { kind: 'entries', state: 'held', tier: 7 },
-      ],
       subscriberStatus: 'verified',
-      tier: 1,
+      verificationOrderWindow: 'wave-2',
     },
   );
 });
 
-test('status returns the exact stored count, a settled-only tier, and each active reward state', async () => {
+test('status returns the exact stored count and windows, and reads no retired milestone award', async () => {
   const fixture = await createDatabaseFixture();
   try {
     const subscriberId = await insertSubscriber(fixture.database, 'verified');
@@ -134,7 +121,7 @@ test('status returns the exact stored count, a settled-only tier, and each activ
     await fixture.database.execute({
       text: `
         UPDATE subscriber
-        SET access_window = 'wave-2',
+        SET access_window = 'wave-1', verification_order_window = 'wave-2',
             verified_at = $2
         WHERE id = $1
       `,
@@ -195,19 +182,16 @@ test('status returns the exact stored count, a settled-only tier, and each activ
       fixture.applicationDatabase,
     ).status(subscriberId);
 
+    // E11.7-04: the coupon ladder is shown from the count, so the retired
+    // tiers' awards (and the stored referral_tier of 99) reach no surface.
     assert.deepEqual(status, {
-      accessWindow: 'wave-2',
+      accessWindow: 'wave-1',
       confirmedReferrals: 12,
       giveawayEntries: 8,
       ownRank: 3,
       referralLink: 'https://valstara.com/?ref=ABCDEF234567',
-      rewards: [
-        { kind: 'wave_upgrade', state: 'settled', tier: 1 },
-        { kind: 'discount', state: 'held', tier: 7 },
-        { kind: 'entries', state: 'held', tier: 7 },
-      ],
       subscriberStatus: 'verified',
-      tier: 1,
+      verificationOrderWindow: 'wave-2',
     });
   } finally {
     await fixture.dispose();

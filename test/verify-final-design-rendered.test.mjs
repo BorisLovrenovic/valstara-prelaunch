@@ -11,13 +11,11 @@ import axe from 'axe-core';
 import { chromium } from 'playwright';
 import { Pool } from 'pg';
 
+import { referralLadderCopy } from '../src/copy/referral-ladder.ts';
 import { verificationCopy } from '../src/copy/verification.ts';
 import { surveyCopy } from '../src/copy/survey.ts';
 import { resendVerificationCopy } from '../src/copy/resend-verification.ts';
-import {
-  accessWindows,
-  milestoneTiers,
-} from '../src/server/referral/config.ts';
+import { accessWindows } from '../src/server/referral/config.ts';
 import { verificationReferralFigures } from '../src/server/referral/verification-presentation.ts';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
@@ -513,17 +511,59 @@ function canvasFor(width, state, actual) {
     if (width < 768) assert.equal(grown, 0);
     expected.referral.copy = [copy[0] - grown, copy[1], built[2], copy[3]];
     expected.referral.linkbox[2] -= grown;
-    // The coral pill's text is the copy layer's "15% launch discount" in one
-    // text node, which the E11.5-07 suite matches in the HTML, so its figure
-    // is not wrapped in mono as the board's is: the pill is up to 4px
-    // narrower. Its position and height are the canvas's.
-    const [, discount] = expected.referral.pills;
-    const builtDiscount = actual.referral.pills[1];
-    assert.ok(
-      builtDiscount[2] <= discount[2] && builtDiscount[2] >= discount[2] - 4,
-      `${width} ${state}: the discount pill is ${builtDiscount[2]}px wide`,
-    );
-    discount[2] = builtDiscount[2];
+    // E11.7-04: the canvas draws the retired tier ("0 of 3 to Tier 1", two
+    // pills for a wave upgrade and the 15% discount, and the one-line 90-day
+    // held note). The build states the coupon ladder in their place, so these
+    // text boxes take their own text's size while keeping the canvas's
+    // anchors: the meter value stays right-aligned at the canvas's right
+    // edge, each pill keeps the first pill's row and height, and the held
+    // note keeps its left edge and width. Whatever the new words add or
+    // remove moves the boxes below them, inside and after the card, by
+    // exactly that much; every other box is still the canvas's.
+    const ref = expected.referral;
+    const rendered = actual.referral;
+    const sections = () =>
+      [
+        expected.hero?.card,
+        ref.card,
+        expected.survey?.card,
+        expected.status?.card,
+      ].filter(Boolean);
+    const contentBottom = (boxes) =>
+      Math.max(...boxes.map(([, y, , h]) => y + h));
+    const oldBottom = contentBottom(sections());
+    const cardBottom = ref.card[1] + ref.card[3];
+    const meterGrow = rendered.meterValue[3] - ref.meterValue[3];
+    ref.meterValue = [
+      ref.meterValue[0] + ref.meterValue[2] - rendered.meterValue[2],
+      ref.meterValue[1],
+      rendered.meterValue[2],
+      rendered.meterValue[3],
+    ];
+    ref.track[1] += meterGrow;
+    for (const segment of ref.segments) segment[1] += meterGrow;
+    ref.unlocksLabel[1] += meterGrow;
+    const [first] = ref.pills;
+    const extent = (pills) =>
+      Math.max(...pills.map(([, y, , h]) => y + h)) -
+      Math.min(...pills.map(([, y]) => y));
+    const pillsGrow = extent(rendered.pills) - extent(ref.pills);
+    ref.pills = rendered.pills.map((pill, index) => [
+      index === 0 ? first[0] : pill[0],
+      first[1] + meterGrow,
+      pill[2],
+      first[3],
+    ]);
+    ref.well[3] += meterGrow + pillsGrow;
+    ref.held[1] += meterGrow + pillsGrow;
+    const heldGrow = rendered.held[3] - ref.held[3];
+    ref.held[3] = rendered.held[3];
+    const grow = meterGrow + pillsGrow + heldGrow;
+    ref.card[3] += grow;
+    for (const section of [expected.survey, expected.status])
+      if (section?.card && section.card[1] >= cardBottom)
+        section.card[1] += grow;
+    expected.grid[3] += contentBottom(sections()) - oldBottom;
   }
   return expected;
 }
@@ -786,7 +826,9 @@ function shownFigures(page) {
 }
 
 // What the page must show for a status, from the shared presentation and
-// the configured ladder.
+// the configured ladder. Every fixture verifies among the first 1,000, so it
+// is in wave 1 by verification order and the next step promises only a
+// coupon.
 function expectedFigures(confirmedReferrals, accessWindow) {
   const figures = verificationReferralFigures({
     accessWindow,
@@ -794,42 +836,32 @@ function expectedFigures(confirmedReferrals, accessWindow) {
     giveawayEntries: 0,
     ownRank: null,
     referralLink: 'https://valstara.com/?ref=X',
-    rewards: [],
     subscriberStatus: 'verified',
-    tier: 0,
+    verificationOrderWindow: 'wave-1',
   });
-  const ladder = figures.ladder;
+  const { line, meter } = figures.ladder;
   return {
-    meter: verificationCopy.referral.progress(
-      ladder.progress,
-      ladder.threshold,
-      ladder.tier,
-    ),
-    value: String(ladder.progress),
-    max: String(ladder.threshold),
-    segments: ladder.threshold,
-    filled: ladder.progress,
+    meter: line,
+    value: String(meter.progress),
+    max: String(meter.span),
+    segments: meter.span,
+    filled: meter.progress,
     wave: verificationCopy.referral.wave(accessWindow),
     bars: accessWindows.length,
     barsOn: accessWindows.indexOf(accessWindow) + 1,
-    unlocks: verificationCopy.referral.unlocks(ladder.tier),
-    pills: [
-      verificationCopy.referral.waveReward,
-      verificationCopy.referral.reward(ladder.discountPercent),
-    ],
+    unlocks: referralLadderCopy.nextAt(meter.target),
+    pills: [referralLadderCopy.coupon(meter.coupon.number, meter.coupon.percent)],
   };
 }
 
-test('every figure comes from ReferralService.status and the ladder: count, threshold, tier, discount, wave and the meter', async () => {
+test('every figure comes from ReferralService.status and the ladder: count, next step, coupon, wave and the meter', async () => {
   const { subscriberId, token } = fixture.subscribers.figures;
   await successHtml(token);
-  const enabled = milestoneTiers.filter((tier) => tier.enabled);
-  const lastThreshold = enabled.at(-1).threshold;
   for (const [confirmed, wave] of [
     [0, 'wave-1'],
     [2, 'wave-3'],
-    [lastThreshold, 'wave-4'],
-    [lastThreshold + 2, 'wave-2'],
+    [3, 'wave-4'],
+    [20, 'wave-2'],
   ]) {
     await fixture.database.query(
       'UPDATE subscriber SET confirmed_referrals=$2, access_window=$3 WHERE id=$1',

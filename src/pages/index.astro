@@ -17,6 +17,7 @@ import landingFinalList from '../content/landing-final.json';
 import { resolveLandingHero } from '../content/landing-hero.ts';
 import providerData from '../content/provider-showcase.json';
 import type { Provider } from '../content/provider-showcase.ts';
+import { referralLadderCopy } from '../copy/referral-ladder.ts';
 import { landingCopy } from '../copy/landing.ts';
 import SignupForm from '../islands/SignupForm.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
@@ -30,7 +31,8 @@ import { getConfig } from '../server/config.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
 import { campaignFlagRegistry } from '../server/flags/registry.ts';
 import { currentRules } from '../server/giveaway/rules-catalog.ts';
-import { accessWindows, milestoneTiers } from '../server/referral/config.ts';
+import { accessWindows } from '../server/referral/config.ts';
+import { landingLadder } from '../server/referral/ladder-presentation.ts';
 import { createReferralCaptureService } from '../server/referral/capture.ts';
 
 const flags = await getFlagService().list();
@@ -62,10 +64,11 @@ const finalBanners = resolveLandingFinal(
     return source === undefined ? null : svgIntrinsicSize(source);
   },
 );
-const enabledTiers = milestoneTiers.filter((tier) => tier.enabled);
+// The coupon ladder and wave 1, from configuration (E11.7-04).
+const ladder = landingLadder();
 // "What you get" (E11.5-11e): the cards reflow across three, two and one
 // with no grid hole, and the footer row shows only with something to say.
-const showReferralCard = referralEnabled && enabledTiers.length > 0;
+const showReferralCard = referralEnabled;
 const rewardCards = 1 + Number(showReferralCard) + Number(rules !== null);
 const showRewardsFooter = referralEnabled || leaderboardEnabled;
 // The "How it works" step icons, in step order (E11.5-11d).
@@ -381,101 +384,106 @@ Astro.response.headers.set('X-Valstara-Flag-Generation', flagGeneration);
               </div>
               <div class="landing-reward__visual">
                 <div class="landing-reward__well">
-                  {enabledTiers.map((tier) => (
-                    <div
-                      class="landing-tier"
-                      data-tier={tier.number}
-                      style={`--sequence-steps: ${tier.threshold + 2}`}
-                    >
-                      <p class="landing-hidden">
-                        {landingCopy.rewards.tier(tier)}
-                      </p>
-                      {/*
-                        A vertical sum: the count, then an operator column
-                        (the arrow, the "+") beside the two reward pills. On
-                        the tier's own view timeline the person icons appear
-                        one after another, then the arrow draws, then the
-                        pills rise in (E11.5-11o).
-                      */}
-                      <div class="landing-tier__equation" aria-hidden="true">
-                        <div class="landing-tier__referrals">
-                          <span class="landing-figure tabular-figure">
-                            {tier.threshold}
-                          </span>
-                          <span class="landing-tier__meta">
-                            <span class="landing-tier__people">
-                              {Array.from(
-                                { length: tier.threshold },
-                                (_, person) => (
-                                  <span
-                                    class="landing-tier__person"
-                                    style={`--sequence-index: ${person}`}
-                                  >
-                                    <Icon name="person" size="sm" />
-                                  </span>
-                                ),
-                              )}
-                            </span>
-                            <span class="landing-tier__label">
-                              {landingCopy.rewards.tierReferrals}
-                            </span>
-                          </span>
-                        </div>
-                        <span
-                          class="landing-tier__arrow"
-                          style={`--sequence-index: ${tier.threshold}`}
-                        >
-                          <svg
-                            class="landing-tier__arrow-draw"
-                            focusable="false"
-                          >
-                            <mask
-                              id={`rewards-tier-arrow-${tier.number}`}
-                              maskUnits="userSpaceOnUse"
-                              x="0"
-                              y="0"
-                              width="100%"
-                              height="100%"
-                            >
-                              <line
-                                class="landing-tier__draw"
-                                x1="0"
-                                y1="50%"
-                                x2="100%"
-                                y2="50%"
-                                pathLength="1"
-                              />
-                            </mask>
-                            <g mask={`url(#rewards-tier-arrow-${tier.number})`}>
-                              <Icon name="arrow-right" size="base" />
-                            </g>
-                          </svg>
+                  <div
+                    class="landing-tier"
+                    data-tier="1"
+                    style={`--sequence-steps: ${ladder.threshold + 2}`}
+                  >
+                    <p class="landing-hidden">{ladder.sentence}</p>
+                    {/*
+                      A vertical sum: the count, then an operator column
+                      (the arrow, the "+") beside the reward pills. On the
+                      equation's own view timeline the person icons appear
+                      one after another, then the arrow draws, then the
+                      pills rise in (E11.5-11o). The first coupon's unlock
+                      is drawn; the ladder's later steps are the line below.
+                    */}
+                    <div class="landing-tier__equation" aria-hidden="true">
+                      <div class="landing-tier__referrals">
+                        <span class="landing-figure tabular-figure">
+                          {ladder.threshold}
                         </span>
+                        <span class="landing-tier__meta">
+                          <span class="landing-tier__people">
+                            {Array.from(
+                              { length: ladder.threshold },
+                              (_, person) => (
+                                <span
+                                  class="landing-tier__person"
+                                  style={`--sequence-index: ${person}`}
+                                >
+                                  <Icon name="person" size="sm" />
+                                </span>
+                              ),
+                            )}
+                          </span>
+                          <span class="landing-tier__label">
+                            {landingCopy.rewards.tierReferrals}
+                          </span>
+                        </span>
+                      </div>
+                      <span
+                        class="landing-tier__arrow"
+                        style={`--sequence-index: ${ladder.threshold}`}
+                      >
+                        <svg class="landing-tier__arrow-draw" focusable="false">
+                          <mask
+                            id="rewards-tier-arrow-1"
+                            maskUnits="userSpaceOnUse"
+                            x="0"
+                            y="0"
+                            width="100%"
+                            height="100%"
+                          >
+                            <line
+                              class="landing-tier__draw"
+                              x1="0"
+                              y1="50%"
+                              x2="100%"
+                              y2="50%"
+                              pathLength="1"
+                            />
+                          </mask>
+                          <g mask="url(#rewards-tier-arrow-1)">
+                            <Icon name="arrow-right" size="base" />
+                          </g>
+                        </svg>
+                      </span>
+                      {ladder.earlyAccessMonth !== null && (
                         <span class="landing-tier__plus">
                           {landingCopy.rewards.tierPlus}
                         </span>
-                        <div
-                          class="landing-tier__reward"
-                          style={`--sequence-index: ${tier.threshold + 1}`}
-                        >
+                      )}
+                      <div
+                        class="landing-tier__reward"
+                        style={`--sequence-index: ${ladder.threshold + 1}`}
+                      >
+                        {ladder.earlyAccessMonth !== null && (
                           <Pill>
-                            <Icon name="arrow-up" size="sm" />
-                            {landingCopy.rewards.tierWave}
+                            <Icon name="check" size="sm" />
+                            {referralLadderCopy.earlyAccessPill(
+                              ladder.earlyAccessMonth,
+                            )}
                           </Pill>
-                          <Pill variant="coral">
-                            <span class="tabular-figure">
-                              {landingCopy.rewards.tierDiscount(tier)}
-                            </span>{' '}
-                            {landingCopy.rewards.tierDiscountLabel}
-                          </Pill>
-                        </div>
+                        )}
+                        <Pill variant="coral">
+                          <span class="tabular-figure">
+                            {referralLadderCopy.percent(ladder.percent)}
+                          </span>{' '}
+                          {referralLadderCopy.landing.couponLabel}
+                        </Pill>
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
+                <p class="landing-ladder">
+                  {[ladder.steps, ladder.moreCoupons, ladder.waveOne]
+                    .filter((line) => line !== null)
+                    .join(' ')}
+                </p>
                 <p class="landing-held">
                   <Icon name="clock" size="sm" />
-                  {landingCopy.rewards.held}
+                  {ladder.held}
                 </p>
               </div>
             </Card>
@@ -1313,6 +1321,13 @@ Astro.response.headers.set('X-Valstara-Flag-Generation', flagGeneration);
     display: flex;
     gap: var(--space-1);
     align-items: flex-start;
+    color: var(--ink-600);
+    text-wrap: pretty;
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+  /* The ladder's later steps, under the drawn first unlock. */
+  .landing-rewards .landing-ladder {
     color: var(--ink-600);
     text-wrap: pretty;
     font-size: var(--step-1);

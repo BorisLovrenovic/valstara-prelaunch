@@ -32,7 +32,6 @@ import {
 } from './attribution-health.ts';
 
 const maximumCodeAttempts = 10;
-export const referralStatusRewardMaximumLimit = 100;
 export const referralCounterRepairMaximumLimit = 1_000;
 
 export interface ReferralServiceDependencies {
@@ -320,26 +319,19 @@ function createReferralServiceWithRepository(
         );
       }
 
-      const [awards, giveawayEntries, ownRank] = await Promise.all([
-        repository.findActiveMilestoneAwards(
-          subscriberId,
-          referralStatusRewardMaximumLimit + 1,
-        ),
+      const [giveawayEntries, ownRank] = await Promise.all([
         repository.findGiveawayEntryTotal(subscriberId),
         repository.findOwnReferralRank(subscriberId),
       ]);
-      if (awards.length > referralStatusRewardMaximumLimit) {
-        throw new Error('Referral status exceeds the configured reward limit.');
-      }
 
       return computeReferralStatus(
         subscriber.confirmed_referrals,
         subscriber.referral_code,
-        awards,
         {
           accessWindow: subscriber.access_window,
           giveawayEntries,
           ownRank,
+          verificationOrderWindow: subscriber.verification_order_window,
         },
       );
     },

@@ -9,7 +9,6 @@ import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import {
   computeCouponLadder,
   couponLadder,
-  milestoneTiers,
 } from '../src/server/referral/config.ts';
 import {
   couponTransitions,
@@ -120,11 +119,8 @@ test('every pre-launch transition into settled requires a cheap confirmation', (
       (transition) => (transition.to as string) !== 'settled',
     ),
   );
-  // No configured reward is a draw entry: the retired tiers carry none, and
-  // the ladder holds only percents.
-  assert.ok(
-    milestoneTiers.every((tier) => !Object.hasOwn(tier, 'bonusEntries')),
-  );
+  // No configured reward is a draw entry: the ladder holds only percents.
+  // (E11.7-04 removed the retired milestone tiers' configuration.)
   assert.ok(!Object.hasOwn(couponLadder, 'bonusEntries'));
 });
 

@@ -48,17 +48,13 @@ export function emailPreviewRenderers(
       data: {
         async referralStatus() {
           return {
-            accessWindow: 'wave-2',
-            confirmedReferrals: 3,
+            accessWindow: 'wave-1',
+            confirmedReferrals: 4,
             giveawayEntries: 6,
             ownRank: 4,
             referralLink: new URL('/?ref=ABCDEF234567', origin).toString(),
-            rewards: [
-              { kind: 'wave_upgrade', state: 'settled', tier: 1 },
-              { kind: 'discount', state: 'held', tier: 1 },
-            ],
             subscriberStatus: 'verified',
-            tier: 1,
+            verificationOrderWindow: 'wave-2',
           };
         },
         async receiptEntries() {

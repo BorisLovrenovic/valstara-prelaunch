@@ -1,5 +1,4 @@
 import { emailCopy } from '../../copy/email.ts';
-import { memberStatusCopy } from '../../copy/member-status.ts';
 import type { ReferralStatus } from '../referral/status.ts';
 import { presentReferralStatus } from '../referral/status-presentation.ts';
 
@@ -67,15 +66,17 @@ function awardLink(baseUrl: string, awardId: string, token: string): string {
   return target.toString();
 }
 
+/**
+ * The referral section both mails share with /me: the status facts, then the
+ * coupon ladder and early access in the founder's form, from the one
+ * presentation. The held condition is its own paragraph (ADR-012).
+ */
 function referralFacts(status: ReferralStatus): readonly string[] {
   const view = presentReferralStatus(status);
   return [
     ...view.fields.map(({ label, value }) => `${label}: ${value}`),
-    ...(view.rewards.length === 0
-      ? [memberStatusCopy.rewards.empty]
-      : view.rewards.map(
-          (reward) => `${reward.tier}: ${reward.label} — ${reward.state}`,
-        )),
+    view.ladder.line,
+    view.earlyAccess.line,
   ];
 }
 
@@ -151,7 +152,7 @@ export function createTransactionalRenderers(
           paragraphs: [
             emailCopy.welcome.firstLine,
             emailCopy.welcome.body,
-            memberStatusCopy.rewards.intro,
+            presentReferralStatus(status).ladder.held,
           ],
           facts: referralFacts(status),
           links: [
@@ -165,28 +166,23 @@ export function createTransactionalRenderers(
       );
     },
   };
+  // No milestone email has been queued since E11.7-03 retired the tiers; one
+  // already queued renders the member's current ladder instead of a tier.
   const milestone: TemplateRenderer = {
     kind: 'transactional',
     async render({ email, payload, token, unsubscribePageUrl }) {
-      const tier = payload.tier;
-      if (typeof tier !== 'number' || !Number.isInteger(tier) || tier < 1) {
-        throw new Error('email_template_tier_invalid');
-      }
       const statusTokenId = reference(payload, 'status_token_id');
       const [status, statusToken] = await Promise.all([
         dependencies.data.referralStatus(statusTokenId),
         token(statusTokenId),
       ]);
-      if (!status.rewards.some((reward) => reward.tier === tier)) {
-        throw new Error('email_template_milestone_missing');
-      }
       return render(
         {
-          subject: emailCopy.milestone.subject(tier),
+          subject: emailCopy.milestone.subject,
           preheader: emailCopy.milestone.preheader,
           paragraphs: [
-            emailCopy.milestone.firstLine(tier),
-            emailCopy.milestone.body,
+            emailCopy.milestone.firstLine,
+            presentReferralStatus(status).ladder.held,
           ],
           facts: referralFacts(status),
           links: [

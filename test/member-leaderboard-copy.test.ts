@@ -7,6 +7,8 @@ import {
 } from '../src/copy/leaderboard.ts';
 import { marketingOptInCopy } from '../src/copy/marketing.ts';
 import { memberStatusCopy } from '../src/copy/member-status.ts';
+import { referralLadderCopy } from '../src/copy/referral-ladder.ts';
+import { landingLadder } from '../src/server/referral/ladder-presentation.ts';
 import { presentReferralStatus } from '../src/server/referral/status-presentation.ts';
 import { computeReferralStatus } from '../src/server/referral/status.ts';
 
@@ -53,18 +55,16 @@ function strings(value: unknown): string[] {
   return [];
 }
 
-test('E11.5-08 the shared presentation keys every field and reward state without changing a value', () => {
+test('E11.5-08 the shared presentation keys every field and coupon without changing a value', () => {
   const view = presentReferralStatus(
-    computeReferralStatus(
-      4,
-      'KEYS23456789',
-      [
-        { reward_kind: 'wave_upgrade', state: 'settled', tier: 1 },
-        { reward_kind: 'discount', state: 'held', tier: 1 },
-      ],
-      { accessWindow: 'wave-3', giveawayEntries: 5, ownRank: 7 },
-    ),
+    computeReferralStatus(25, 'KEYS23456789', {
+      accessWindow: 'wave-1',
+      giveawayEntries: 5,
+      ownRank: 7,
+      verificationOrderWindow: 'wave-3',
+    }),
   );
+  // E11.7-04: the retired referral tier is no longer a fact.
   assert.deepEqual(
     view.fields.map(({ key, value }) => [key, value]),
     [
@@ -72,37 +72,34 @@ test('E11.5-08 the shared presentation keys every field and reward state without
         'subscriberStatus',
         memberStatusCopy.authenticated.statusValues.verified,
       ],
-      ['confirmedReferrals', '4'],
+      ['confirmedReferrals', '25'],
       ['ownRank', '7'],
-      ['tier', '1'],
-      ['accessWindow', 'wave-3'],
+      ['accessWindow', 'wave-1'],
       ['giveawayEntries', '5'],
     ],
   );
   assert.deepEqual(
-    view.rewards.map(({ stateKey, state }) => [stateKey, state]),
+    view.coupons.map(({ label, percent, state }) => [label, percent, state]),
     [
-      ['settled', memberStatusCopy.rewards.states.settled],
-      ['held', memberStatusCopy.rewards.states.held],
+      ['Coupon 1', '30%', referralLadderCopy.heldState],
+      ['Coupon 2', '10%', referralLadderCopy.heldState],
     ],
   );
+  // The founder's form (2026-11-17).
+  assert.equal(
+    view.ladder.line,
+    'Coupon 1: 30% · Coupon 2: 10% · 2 more confirmed referrals to 15%.',
+  );
+  for (const coupon of view.coupons)
+    assert.match(coupon.condition, /first order/u);
 });
 
-test('E11.5-08 the per-state explanations are the email intro, split, not reworded', () => {
-  assert.equal(
-    memberStatusCopy.rewards.intro,
-    `${memberStatusCopy.rewards.explanations.settled} ${memberStatusCopy.rewards.explanations.held}`,
-  );
-  assert.match(
-    memberStatusCopy.rewards.explanations.held,
-    /first order within 90 days after store launch/u,
-  );
+test('E11.5-08 the wave badge reads the stored wave', () => {
   assert.equal(memberStatusCopy.authenticated.waveBadge('wave-2'), 'Wave 2');
   // The badge reads the whole wave number and never invents one for a value
   // in another format.
   assert.equal(memberStatusCopy.authenticated.waveBadge('wave-12'), 'Wave 12');
   assert.equal(memberStatusCopy.authenticated.waveBadge('early-3'), 'early-3');
-  assert.equal(memberStatusCopy.referral.progress(2, 3, 1), '2 of 3 to Tier 1');
 });
 
 test('E11.5-08 leave and marketing copy carries no never-build pattern', () => {
@@ -120,6 +117,10 @@ test('E11.5-08 leave and marketing copy carries no never-build pattern', () => {
       ...strings(memberStatusCopy),
       ...strings(leaderboardCopy),
       ...strings(leaderboardPanelCopy),
+      // The ladder wording /me shows; the landing card's takes lists, so
+      // it is scanned as rendered from the configuration.
+      ...strings({ ...referralLadderCopy, landing: null }),
+      ...strings(landingLadder()),
     ]),
     [],
   );
@@ -168,10 +169,12 @@ test('E11.5-08 member and leaderboard copy stays within the E11.5 copy budget', 
     memberStatusCopy.referral.share,
     memberStatusCopy.referral.copied,
     memberStatusCopy.referral.copyFailed,
-    memberStatusCopy.referral.progress(0, 3, 1),
-    memberStatusCopy.rewards.empty,
-    ...Object.values(memberStatusCopy.rewards.kinds),
-    ...Object.values(memberStatusCopy.rewards.states),
+    memberStatusCopy.rewards.empty(3),
+    referralLadderCopy.coupon(1, 30),
+    referralLadderCopy.heldState,
+    referralLadderCopy.heldShort,
+    referralLadderCopy.nextAt(39),
+    referralLadderCopy.earlyAccessPill('July 2027'),
     memberStatusCopy.survey.submit,
     memberStatusCopy.marketing.turnOn,
     memberStatusCopy.marketing.turnOff,
@@ -183,7 +186,13 @@ test('E11.5-08 member and leaderboard copy stays within the E11.5 copy budget', 
   ];
   const supportingLines = [
     memberStatusCopy.authenticated.body,
-    ...Object.values(memberStatusCopy.rewards.explanations),
+    referralLadderCopy.held(5),
+    // The longest progress line: three coupons and the next step.
+    `${[referralLadderCopy.coupon(1, 30), referralLadderCopy.coupon(2, 30), referralLadderCopy.coupon(3, 25), referralLadderCopy.nextPercent(3, 30)].join(referralLadderCopy.separator)}.`,
+    `${[referralLadderCopy.coupon(1, 30), referralLadderCopy.coupon(2, 30), referralLadderCopy.coupon(3, 30), referralLadderCopy.complete].join(referralLadderCopy.separator)}.`,
+    referralLadderCopy.waveOne.firstMembers('September 2027', '1,000'),
+    referralLadderCopy.waveOne.referrals('September 2027', 3),
+    referralLadderCopy.waveOne.notYet('September 2027', 3),
     memberStatusCopy.marketing.wording,
     memberStatusCopy.leave.body,
     memberStatusCopy.left.body,
