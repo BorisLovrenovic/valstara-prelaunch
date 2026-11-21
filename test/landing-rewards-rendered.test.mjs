@@ -195,7 +195,7 @@ async function buildChangedFixture(rulesArticle) {
   );
   config = replaceOnce(
     config,
-    "waveOneEarlyAccessMonth = '2027-07';",
+    "waveOneEarlyAccessMonth = '2027-09';",
     "waveOneEarlyAccessMonth = '2027-08';",
   );
   await writeFile(join(root, configPath), config);
@@ -1018,7 +1018,7 @@ function assertFigures(figures, source, label) {
 const sources = {
   A: {
     tiers: [{ threshold: 3, discount: 5 }],
-    month: 'July 2027',
+    month: 'September 2027',
     prizeCount: 5,
     prizeValue: 300,
   },
@@ -1148,7 +1148,7 @@ test('every figure comes from the ladder and the published rules: a changed fixt
         people: 3,
         discount: '5%',
         sentence:
-          '3 confirmed referrals → early access in July 2027 and a 5% coupon',
+          '3 confirmed referrals → early access in September 2027 and a 5% coupon',
       },
     ],
   );
@@ -1156,7 +1156,7 @@ test('every figure comes from the ladder and the published rules: a changed fixt
   // configuration's too.
   assert.equal(
     baseline.ladderText,
-    'Each coupon rises 5% every 3 more confirmed referrals, up to 30%. Coupons 2 and 3 unlock at 21 and 39. Early access opens in July 2027.',
+    'Each coupon rises 5% every 3 more confirmed referrals, up to 30%. Coupons 2 and 3 unlock at 21 and 39. Early access opens in September 2027.',
   );
   assert.equal(
     baseline.heldText,

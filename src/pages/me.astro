@@ -1354,6 +1354,14 @@ const meterSegments =
     line-height: var(--leading-3);
   }
 
+  /* The early-access month ("September 2027", D-049) is the longest fact
+     value: the muted value's type step keeps it on the fact's one line at every
+     width, as the canvas draws each fact. */
+  .member-fact[data-member-field='earlyAccess'] dd:not(.member-fact__muted) {
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
   .member-fact dd :global(.icon) {
     color: var(--success-icon);
   }

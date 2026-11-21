@@ -126,7 +126,7 @@ The count is confirmed, non-voided referrals (`docs/features/partner-programme.m
 | 3 | 39 | 39 = 5% … 54 = 30% |
 
 - The ladder ends when coupon 3 reaches 30%; further referrals change no coupon.
-- Configuration: `unlocks [3, 21, 39]`, `stepReferrals 3`, `stepPercent 5`, `maximumPercent 30`, `publicLaunchDate 2027-09-01`, `expiryYears 5`.
+- Configuration: `unlocks [3, 21, 39]`, `stepReferrals 3`, `stepPercent 5`, `maximumPercent 30`, `publicLaunchDate 2027-10-01` (founder, 2026-11-22; previously 2027-09-01), `expiryYears 5`.
 - Coupons are derived state, recomputed from the count in every confirmation, void and un-void transaction and by the daily repair, so a void lowers or voids a coupon and an un-void restores it. They are high-value and `held` (ADR-012, as amended).
 
 ### Waves

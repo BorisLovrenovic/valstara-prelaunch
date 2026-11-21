@@ -470,7 +470,7 @@ test('the member page and the leaderboard render every state from their sources,
     );
     assert.match(
       memberView.earlyAccess.line,
-      /1 more confirmed referral and you get early access in July 2027/u,
+      /1 more confirmed referral and you get early access in September 2027/u,
     );
     // E11.5-11r named rewrite (founder-authorised 2026-11-11, decision 2):
     // the link is /verify's wrapping box, a paragraph, so it is read from its

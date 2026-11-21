@@ -35,7 +35,7 @@ export const ladderPresentationConfiguration: LadderPresentationConfiguration =
     earlyAccessMonth: waveOneEarlyAccessMonth,
   });
 
-/** "July 2027", from the configured `YYYY-MM`. */
+/** "September 2027", from the configured `YYYY-MM`. */
 export function earlyAccessMonthLabel(month: string): string {
   const match = /^(\d{4})-(\d{2})$/u.exec(month);
   const date =

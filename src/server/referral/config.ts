@@ -29,7 +29,7 @@ export const couponLadder: CouponLadder = Object.freeze({
   stepReferrals: 3,
   stepPercent: 5,
   maximumPercent: 30,
-  publicLaunchDate: '2027-09-01',
+  publicLaunchDate: '2027-10-01',
   expiryYears: 5,
 });
 
@@ -137,10 +137,11 @@ export function assertCouponLadder(ladder: CouponLadder): void {
 export const waveOneReferralThreshold = 3;
 
 /**
- * When wave 1's early access opens, `YYYY-MM` (founder, 2026-11-17: early July
- * 2027). Every surface that promises early access reads it from here.
+ * When wave 1's early access opens, `YYYY-MM` (founder, 2026-11-22: 1 September
+ * 2027, replacing early July 2027). Every surface that promises early access
+ * reads it from here.
  */
-export const waveOneEarlyAccessMonth = '2027-07';
+export const waveOneEarlyAccessMonth = '2027-09';
 
 /**
  * A member's access window: wave 1 when their verification-order window is

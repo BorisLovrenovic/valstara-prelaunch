@@ -301,7 +301,7 @@ test('the landing, verification and member pages state the ladder, each coupon w
     );
     assert.ok(
       member.includes(
-        "You're in wave 1, with early access from July 2027, for reaching 3 confirmed referrals.",
+        "You're in wave 1, with early access from September 2027, for reaching 3 confirmed referrals.",
       ),
     );
     // Each coupon row carries the condition itself.

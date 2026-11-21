@@ -114,8 +114,8 @@ test('early access says why a member is in wave 1, or exactly what earns it', ()
       inWaveOne: true,
       reason: 'first_members',
       remaining: 0,
-      month: 'July 2027',
-      line: "You're in wave 1, with early access from July 2027, as one of the first 1,000 verified members.",
+      month: 'September 2027',
+      line: "You're in wave 1, with early access from September 2027, as one of the first 1,000 verified members.",
     },
   );
   assert.equal(
@@ -124,7 +124,7 @@ test('early access says why a member is in wave 1, or exactly what earns it', ()
       verificationOrderWindow: 'wave-3',
       confirmedReferrals: 5,
     }).line,
-    "You're in wave 1, with early access from July 2027, for reaching 3 confirmed referrals.",
+    "You're in wave 1, with early access from September 2027, for reaching 3 confirmed referrals.",
   );
   // The founder's example (2026-11-17).
   assert.equal(
@@ -133,7 +133,7 @@ test('early access says why a member is in wave 1, or exactly what earns it', ()
       verificationOrderWindow: 'wave-3',
       confirmedReferrals: 1,
     }).line,
-    "You don't have early access yet. 2 more confirmed referrals and you get early access in July 2027.",
+    "You don't have early access yet. 2 more confirmed referrals and you get early access in September 2027.",
   );
   assert.equal(
     earlyAccess({
@@ -141,7 +141,7 @@ test('early access says why a member is in wave 1, or exactly what earns it', ()
       verificationOrderWindow: 'wave-2',
       confirmedReferrals: 2,
     }).line,
-    "You don't have early access yet. 1 more confirmed referral and you get early access in July 2027.",
+    "You don't have early access yet. 1 more confirmed referral and you get early access in September 2027.",
   );
   // The first-1,000 place outlasts a void that drops the count to zero.
   assert.equal(
@@ -159,7 +159,7 @@ test('early access says why a member is in wave 1, or exactly what earns it', ()
       verificationOrderWindow: null,
       confirmedReferrals: 0,
     }).line,
-    "You're in wave 1, with early access from July 2027.",
+    "You're in wave 1, with early access from September 2027.",
   );
 });
 
@@ -211,12 +211,12 @@ test('the landing ladder states the first unlock, the steps and wave 1 from conf
   assert.deepEqual(landingLadder(), {
     threshold: 3,
     percent: 5,
-    earlyAccessMonth: 'July 2027',
+    earlyAccessMonth: 'September 2027',
     sentence:
-      '3 confirmed referrals → early access in July 2027 and a 5% coupon',
+      '3 confirmed referrals → early access in September 2027 and a 5% coupon',
     steps: 'Each coupon rises 5% every 3 more confirmed referrals, up to 30%.',
     moreCoupons: 'Coupons 2 and 3 unlock at 21 and 39.',
-    waveOne: 'Early access opens in July 2027.',
+    waveOne: 'Early access opens in September 2027.',
     held: 'Coupons apply once a referred friend places a first order, for 5 years after launch.',
   });
   // A wave-1 threshold apart from the first unlock gets its own line.
@@ -230,6 +230,6 @@ test('the landing ladder states the first unlock, the steps and wave 1 from conf
   assert.equal(apart.moreCoupons, null);
   assert.equal(
     apart.waveOne,
-    '3 confirmed referrals also give you early access in July 2027.',
+    '3 confirmed referrals also give you early access in September 2027.',
   );
 });

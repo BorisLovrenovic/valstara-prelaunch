@@ -237,7 +237,7 @@ test('E8-03 verification begins with its purpose; E11.7-04 the milestone mail st
   );
   assert.ok(
     milestone.text.includes(
-      "You're in wave 1, with early access from July 2027, for reaching 3 confirmed referrals.",
+      "You're in wave 1, with early access from September 2027, for reaching 3 confirmed referrals.",
     ),
   );
   for (const retired of [
@@ -262,7 +262,7 @@ test('E8-03 welcome and milestone use the same referral presentation as /me', as
       ],
       [memberStatusCopy.authenticated.confirmedReferrals, '4'],
       [memberStatusCopy.authenticated.rank, '4'],
-      [memberStatusCopy.authenticated.earlyAccess, 'July 2027'],
+      [memberStatusCopy.authenticated.earlyAccess, 'September 2027'],
       [memberStatusCopy.authenticated.wave, 'wave-1'],
       [memberStatusCopy.authenticated.entries, '6'],
     ],

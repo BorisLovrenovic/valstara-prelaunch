@@ -345,7 +345,7 @@ test('E11.5-12: every rendered reward figure matches the referral configuration 
     stepReferrals: 3,
     stepPercent: 5,
     maximumPercent: 30,
-    publicLaunchDate: '2027-09-01',
+    publicLaunchDate: '2027-10-01',
     expiryYears: 5,
   });
   const [first, second, third] = couponLadder.unlocks;
@@ -372,7 +372,7 @@ test('E11.5-12: every rendered reward figure matches the referral configuration 
   // E11.7-04 (D-047): the landing card states the coupon ladder and wave 1
   // from the same configuration, and nothing states the retired tier.
   assert.equal(waveOneReferralThreshold, 3);
-  assert.equal(waveOneEarlyAccessMonth, '2027-07');
+  assert.equal(waveOneEarlyAccessMonth, '2027-09');
 
   const { body } = await renderLanding();
   // What a reader sees: the page's text, without its styles and scripts,
@@ -384,7 +384,7 @@ test('E11.5-12: every rendered reward figure matches the referral configuration 
   const ladder = landingLadder();
   assert.equal(
     ladder.sentence,
-    `${first} confirmed referrals → early access in July 2027 and a ${couponLadder.stepPercent}% coupon`,
+    `${first} confirmed referrals → early access in September 2027 and a ${couponLadder.stepPercent}% coupon`,
   );
   for (const sentence of [
     ladder.sentence,

@@ -1,10 +1,10 @@
 # Feature: Pre-launch partner programme
 
-Founder-authorised 2026-11-17. The founder's wider growth decisions are in `docs/prerequisites/valstara-prelaunch-growth-decisions.md`; where they disagree with the answers recorded here, the answers here are later and win. Built by Epic E11.7 (`docs/plan/development-plan.md`). **This spec is the in-repository record of the founder's brief and answers.** The brief has no other source. The brief (with superseded parts condensed) and the founder's two sets of answers are recorded verbatim at the end. **Where an answer and the brief conflict, the answer wins.**
+Founder-authorised 2026-11-17. The founder's wider growth decisions are in `docs/prerequisites/valstara-prelaunch-growth-decisions.md`; where they disagree with the answers recorded here, the answers here are later and win. Built by Epic E11.7 (`docs/plan/development-plan.md`). **This spec is the in-repository record of the founder's brief and answers.** The brief has no other source. The brief (with superseded parts condensed), the founder's two sets of answers and the founder's amendments of 22 November 2026 are recorded verbatim at the end. **Where an answer and the brief conflict, the answer wins, and the 22 November amendments win over both.**
 
 ## Summary
 
-A **lightweight, temporary** partner layer on top of the existing waitlist and referral system. It recruits marketers, creators, student ambassadors and community owners to promote the pre-launch campaign through their own link or code. It runs from now until early access (July 2027). Then the main platform's full affiliate system takes over, and this layer is retired.
+A **lightweight, temporary** partner layer on top of the existing waitlist and referral system. It recruits marketers, creators, student ambassadors and community owners to promote the pre-launch campaign through their own link or code. It runs from now until early access (1 September 2027). Then the main platform's full affiliate system takes over, and this layer is retired.
 
 **Only two of its outputs last:**
 
@@ -22,7 +22,14 @@ A **lightweight, temporary** partner layer on top of the existing waitlist and r
 - multi-currency, i18n, in-app contract signing;
 - fingerprinting, VPN or proxy blocking, any CAPTCHA beyond Turnstile.
 
-Commission (10% of order value, for 12 months from each referred customer's first order, one level, founding rate lock) is **shown in copy and never calculated here.**
+Commission is **shown in copy and never calculated here** (founder, 2026-11-22):
+- 10% of order value, on all products, one level;
+- only for customers a partner referred during the pre-launch campaign;
+- on every order they place from early access (1 September 2027) until one year after public launch (1 October 2028);
+- the founding rate lock lasts that one year, with no lifetime lock;
+- customers referred after public launch fall under the post-launch rates, agreed separately.
+
+**Positioning (founder, 2026-11-22):** "more than triple GameSeal's commission rate", then "double the rate of G2A and Eneba", each against the programme's standard rate, and only for the pre-launch terms.
 
 **The epic also replaces the campaign's reward rules for every member** (founder, 2026-11-17). The current "3 confirmed referrals: move up a wave and 15% off" milestone is replaced by a wave-1 rule and a coupon ladder. See "Early access and rewards".
 
@@ -91,12 +98,12 @@ These replace the brief's perks and the repository's current reward rules (ADR-0
 
 ### Waves
 
-- **Wave 1 is early access, early July 2027.** **The first 1,000 verified members are in wave 1 by signup order, whatever their referrals** (founder, 2026-11-17, D1). That place is never lost. After the first 1,000, the following go straight into wave 1:
+- **Wave 1 is early access, 1 September 2027** (founder, 2026-11-22; previously early July 2027). **The first 1,000 verified members are in wave 1 by signup order, whatever their referrals** (founder, 2026-11-17, D1). That place is never lost. After the first 1,000, the following go straight into wave 1:
   - any member with **3 or more confirmed, non-voided referrals**;
   - **every active partner**;
   - **everyone who signed up through an active partner's link or code**, including retroactive attribution.
-- Everyone else keeps the existing signup-order logic for waves 2–4, unchanged, and does not get early access in July 2027.
-- **Every member's `/me` page, and every partner's dashboard, says plainly whether they get early access in July 2027.** If not, it says how many more confirmed referrals earn it. The only scarcity wording allowed is the founder-approved line, used while it stays true: "Some high-demand products have limited supply. Early access members get first pick." There are no counts and no countdowns, and nothing implies the public launch will be empty.
+- Everyone else keeps the existing signup-order logic for waves 2–4, unchanged, and does not get early access in September 2027.
+- **Every member's `/me` page, and every partner's dashboard, says plainly whether they get early access in September 2027.** If not, it says how many more confirmed referrals earn it. The only scarcity wording allowed is the founder-approved line, used while it stays true: "Some high-demand products have limited supply. Early access members get first pick." There are no counts and no countdowns, and nothing implies the public launch will be empty.
 - **Wave 1 is recalculated in the same way as the coupons, up to handoff.** A member who drops below 3 confirmed referrals leaves wave 1. A friend whose own referral is voided loses a wave-1 place they got through a partner.
 
 ### The referrer coupon ladder (members and partners)
@@ -111,7 +118,7 @@ The count is confirmed, non-voided referrals, including retroactive partner attr
 
 - **The ladder ends after coupon 3 reaches 30%.** Further referrals still count for attribution, the leaderboard and partner commission.
 - **Each coupon is single-use.** Only one discount applies per order, with no stacking with each other or with any other discount. A coupon is usable on any order.
-- **Coupons expire five years after public launch.** The launch date is configured (default 2027-09-01, so 2032-09-01). The founder sets the real date at handoff, and the export carries the computed expiry.
+- **Coupons expire five years after public launch.** The launch date is configured (default 2027-10-01, so 2032-10-01; founder, 2026-11-22, previously 2027-09-01). The founder sets the real date at handoff, and the export carries the computed expiry.
 - **Voids recalculate the ladder from the current count, up to handoff.**
 - **The reward-gating invariant stands (ADR-012, `AGENTS.md` rule 3; founder, 2026-11-17).**
   - Every coupon is recorded here as **`held`**.
@@ -150,7 +157,7 @@ The count is confirmed, non-voided referrals, including retroactive partner attr
 
 ### The $5 store credit (normal members only; main platform)
 
-**A member who is not a partner earns $5 store credit for each referred friend who completes a purchase after launch** (founder, 2026-11-17). No credit is earned for a signup alone. Partners never get it: they earn 10% cash commission on their referred customers' orders for 12 months from each customer's first order. **Both are paid only by the main platform.** This repository records neither. It exports each referral edge marked as a member or partner edge, and the hand-over document (E11.7-14) states the rule.
+**A member who is not a partner earns $5 store credit for each referred friend who completes a purchase after launch** (founder, 2026-11-17). No credit is earned for a signup alone. Partners never get it: they earn 10% cash commission on the orders of the customers they referred during the pre-launch campaign, from early access until one year after public launch (founder, 2026-11-22). **Both are paid only by the main platform.** This repository records neither. It exports each referral edge marked as a member or partner edge, and the hand-over document (E11.7-14) states the rule.
 
 ### Where progress shows
 
@@ -418,3 +425,23 @@ The questions they answer, in brief:
 4. The exact expiry date.
 
 **How answer 2 is read:** the 10/15/20% *welcome discount* applies only to friends referred by an active partner. The 5–30% *coupon ladder* of 4.3 still applies to members and partners alike.
+
+## Founder amendments, 22 November 2026 (verbatim)
+
+These amend the brief, both sets of answers above and `docs/prerequisites/valstara-prelaunch-growth-decisions.md`, wherever they differ. They are recorded on the epic in `docs/plan/development-plan.md` (Epic E11.7, founder decisions 2026-11-22).
+
+From the founder's message of 21 November 2026:
+
+> Instead of comparing to Kinguin, we will compare to G2A, Eneba, and Game Seal. Those are the only three marketplaces or websites that we need to compare ourselves to. For Game Seal, they pay 2 to 3% for subscriptions. So in that case, our offer at 10% is more than triple. So I think we should always lead with that. More than triple in affiliate earnings. Then compared to Game Sale, but only during the pre-launch campaign. This is very important. Once we launch, the affiliate earnings will be different. So only affiliates that get accepted into our partner program during the pre-launch campaign will receive the 10% affiliate earnings only during the pre-launch campaign and the users they get in for that. If, for example, an affiliate then wants to become an affiliate once we launch the real website, then the new rates will be discussed from that. And any new users they refer to us after the public launch will be for that new different rate. [...] So all orders placed from 1st September all the way around 1 year until 1st October 2028 will count towards the 10% of the affiliate, only for those users referred during the pre-launch campaign. Once that year has passed, they are, removed as a referred user to that affiliate. They would then have to, get that user or get that customer referred or updated again afterwards. But then for the new affiliate rates that we actually have once we have launched, of course.
+
+From the founder's message of 22 November 2026, which authorises the change:
+
+> Okay, so first and foremost, regarding the commission, that the founding rate lock for the life of the program. I give you founders authorizations to change this. [...] Regarding the founding rate lock, it will be for 1 year. So no lifetime lock. Make sure that you update this decision everywhere in all documents that are relevant or that are referencing the old terms. Regarding the dates of early access in July 2027, change this to, I've already mentioned it, I'll say it again. The most updated early access date will be 1st September 2027 and the public launch will be on 1st October 2027. And regarding the positioning line, the recorded line is about double the marketplaces and not more than triple game sale. I understand that. And again, I give you founder authorization to update it. We should start with our best position here, which is more than triple than game sale, because that's actually true. And for the second, it will be double than G2A and Eneba. So it will not be about to double the marketplaces. It will state clearly double the rate than G2A and Eneba. And it will also state more than triple than GameZone. Update it.
+
+**How these are read:**
+
+1. "Game Seal", "Game Sale", "game sale" and "GameZone" all mean **GameSeal**.
+2. The 22 November message first gives the public launch as "1st October 2028", then restates it as **1 October 2027**; the restatement is the decision.
+3. **The one-year founding rate lock is the commission window:** orders from early access (1 September 2027) to one year after public launch (1 October 2028).
+4. "More than triple in affiliate earnings" is written in copy as a commission rate ("more than triple GameSeal's commission rate"), because what a partner earns depends on their audience's purchases and only the rate can be compared truthfully (`docs/brand/copy-rules.md#claims-that-must-stay-true`).
+

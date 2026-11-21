@@ -265,7 +265,7 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
     }
     assert.match(
       authenticatedBody,
-      /You(?:'|&#39;)re in wave 1, with early access from July 2027, for reaching 3 confirmed referrals\./u,
+      /You(?:'|&#39;)re in wave 1, with early access from September 2027, for reaching 3 confirmed referrals\./u,
     );
     assert.doesNotMatch(
       authenticatedBody,

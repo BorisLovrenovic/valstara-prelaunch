@@ -334,9 +334,9 @@ test("the founder's table cases", () => {
     { number: 2, percent: 30 },
     { number: 3, percent: 5 },
   ]);
-  // Five years after the configured public launch, 2027-09-01.
-  assert.equal(couponLadder.publicLaunchDate, '2027-09-01');
-  assert.equal(couponExpiresAt().toISOString(), '2032-09-01T00:00:00.000Z');
+  // Five years after the configured public launch, 2027-10-01.
+  assert.equal(couponLadder.publicLaunchDate, '2027-10-01');
+  assert.equal(couponExpiresAt().toISOString(), '2032-10-01T00:00:00.000Z');
   assert.throws(() => computeCouponLadder(-1), /non-negative/u);
   assert.throws(
     () => computeCouponLadder(3, { ...couponLadder, unlocks: [21, 3] }),

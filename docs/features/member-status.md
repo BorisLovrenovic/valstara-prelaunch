@@ -25,11 +25,11 @@ presentation (`src/server/referral/ladder-presentation.ts`, copy in
   become usable once one of your referred friends places their first order,
   and last 5 years after launch." Each coupon row on `/me` also carries
   "Usable once one of your referred friends places their first order."
-- **Early access** (founder, 2026-11-17): in wave 1, "You're in wave 1, with
-  early access from July 2027," and why — "as one of the first 1,000
+- **Early access** (founder, 2026-11-17; month amended 2026-11-22): in wave 1, "You're in wave 1, with
+  early access from September 2027," and why — "as one of the first 1,000
   verified members" or "for reaching 3 confirmed referrals" (partner reasons
   arrive with E11.7-07); otherwise "You don't have early access yet. 2 more
-  confirmed referrals and you get early access in July 2027." It applies the
+  confirmed referrals and you get early access in September 2027." It applies the
   recompute's own rule to the member's state.
 - The figures are the configuration's: `couponLadder`,
   `waveOneReferralThreshold`, `waveOneEarlyAccessMonth` and the wave-1 band
@@ -41,7 +41,7 @@ On `/verify`, the referral card's meter runs from the last ladder step
 reached to the next, labelled with the progress line, and the card names what
 that step brings: the coupon and, for a member not yet in wave 1 whose next
 step reaches the wave-1 threshold, early access. On `/me`, the status card's
-referral-tier fact is replaced by **Early access** ("July 2027" or "Not
+referral-tier fact is replaced by **Early access** ("September 2027" or "Not
 yet"), the early-access line follows the facts, the referral card's meter is
 `/verify`'s, and the rewards card ("Your coupons") lists each held coupon with
 its percent and condition, or says what unlocks the first, and always ends

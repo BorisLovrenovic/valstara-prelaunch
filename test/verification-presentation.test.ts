@@ -63,7 +63,7 @@ test('a new member sees the first coupon and early access as the next step', () 
         span: 3,
         target: 3,
         coupon: { number: 1, percent: 5 },
-        earlyAccessMonth: 'July 2027',
+        earlyAccessMonth: 'September 2027',
       },
     },
   });
