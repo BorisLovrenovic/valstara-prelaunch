@@ -80,6 +80,7 @@ The reward ladder and the wave-1 rule sit behind the existing `referral.enabled`
   - The registry is the `referral_code` table (`docs/data/model.md#referral_code`). Every existing member code was backfilled into it, and member code generation writes to it in the same transaction.
   - Format, blocklist and availability are checked in that order. Each refuses with its own reason (`format`, `blocked`, `taken`), and a refusal offers up to three alternatives that passed every rule.
   - A blocklist term matches regardless of case. A brand or profanity term usually refuses any code that contains it, so `NETFLIXDEALS` is refused. Terms that occur inside ordinary names, such as `NOTION` (in `PROMOTION`), `FREE` (in `FREEDOM`) or `ADMIN` (in `BADMINTON`), refuse only the whole code. The full rules are in `docs/modules/referral.md`.
+  - A code that passes only because its term is exact-match, for example `ADMIN1` or `NOTIONPRO`, is caught by the founder at approval (E11.7-06), per D-043.
 - **The partner's existing member referral code keeps working** and resolves to the same identity once they are active.
 - **One referrer per signup, fixed when the signup is created** (the existing write-once `referred_by_id`). Only a founder correction changes it. **A typed code beats the link's code.**
 - **QR codes** of the partner's link, as PNG and SVG, generated on the server.
