@@ -21,7 +21,6 @@ interface ReferralService {
   rejectEdgesOf(referrerId: string, reason: RejectReason): Promise<number>
   recomputeCounters(limit: number): Promise<{ checked: number; corrected: number }>
 }
-```
 
 // src/server/referral/code-registry.ts — the shared code registry (E11.7-01)
 interface ReferralCodeRegistry {
@@ -61,9 +60,11 @@ interface PartnerCodeRules {
   order, each refusing with its own reason:
   1. `format`: 4–16 of A–Z and 0–9 in any case, surrounding spaces ignored,
      stored upper case;
-  2. `blocked`: `config/partner-code-blocklist.json`, validated at boot. Its
-     `brand`, `reserved` and `profanity` categories each hold `contains` terms
-     (refuse any code that includes them) and `exact` terms (refuse only that
+  2. `blocked`: `config/partner-code-blocklist.json`, validated when
+     `partner-code.ts` loads, so a malformed list fails startup once a route
+     imports it (E11.7-05). Its `brand`, `reserved` and `profanity`
+     categories each hold `contains` terms (refuse any code that includes
+     them) and `exact` terms (refuse only that
      whole code, for words that occur inside ordinary names, such as `NOTION`,
      `FREE` or `RAPE`). Terms are upper case, so a match ignores case. Every
      provider in `src/content/provider-showcase.json` is a brand term, by name
