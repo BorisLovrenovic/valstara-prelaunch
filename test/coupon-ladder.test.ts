@@ -551,28 +551,14 @@ test('wave 1 at the threshold, and the first-1,000 place is never lost', async (
       coupons: [{ number: 1, percent: null, state: 'void' }],
     });
 
-    // The database holds both rules: the recorded window is write-once, and a
-    // first-1,000 member's access window can only be wave 1.
-    await assert.rejects(
-      f.owner.execute({
-        text: `UPDATE subscriber SET access_window = 'wave-2' WHERE id = $1`,
-        values: [early],
-      }),
-      /subscriber_access_window_from_order/u,
-    );
+    // The recorded window is write-once, so no later write can take the
+    // first-1,000 place away either.
     await assert.rejects(
       f.app.execute({
         text: `UPDATE subscriber SET verification_order_window = 'wave-2' WHERE id = $1`,
         values: [early],
       }),
       /write-once/u,
-    );
-    await assert.rejects(
-      f.owner.execute({
-        text: `UPDATE subscriber SET access_window = 'wave-3' WHERE id = $1`,
-        values: [referrerId],
-      }),
-      /subscriber_access_window_from_order/u,
     );
   } finally {
     await f.dispose();

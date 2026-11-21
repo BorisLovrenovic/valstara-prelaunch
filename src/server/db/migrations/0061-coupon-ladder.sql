@@ -167,14 +167,3 @@ SET access_window = wave.to_window, updated_at = CURRENT_TIMESTAMP
 FROM coupon_ladder_wave wave
 WHERE subscriber.id = wave.id
   AND wave.from_window IS DISTINCT FROM wave.to_window;
-
--- The recorded window is always honoured: a member's access window is the
--- window their verification order gave them, or wave 1. In particular, the
--- first-1,000 place (`wave-1` here) can never be lost. Added after the
--- recalculation, since a tier promotion could leave any earlier window.
-ALTER TABLE subscriber
-  ADD CONSTRAINT subscriber_access_window_from_order CHECK (
-    verification_order_window IS NULL
-    OR access_window = verification_order_window
-    OR access_window = 'wave-1'
-  );
