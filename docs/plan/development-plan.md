@@ -4116,6 +4116,9 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 
    The figures come from the member's own state and the configuration. *(Founder decision.)*
 
+**Founder decisions (2026-11-22):**
+1. **The weekly update needs no change: it states no reward, so there is nothing to replace.** The weekly email (`src/server/email/weekly-template.ts`, `emailCopy.weekly` in `src/copy/email.ts`) carries only the leaderboard snapshot and the `/me` link, and never stated the retired 15% discount or a wave upgrade. The Build's "replace every statement of the old reward" is therefore met for it without a change, and the old-reward scan over `src/copy/` (`test/ladder-copy-surfaces.test.mjs`) asserts it stays that way. The weekly gains no per-recipient ladder, early-access or coupon line; its payload stays the snapshot ID and a status-token ID (`docs/features/email-campaign.md`), and `/me` carries the member's own progress. (Accepted under the founder's standing rule for high-confidence recommendations, D-048.)
+
 **Docs:** `docs/brand/copy-rules.md#claims-that-must-stay-true` · `docs/features/member-status.md` · `docs/features/referral.md`
 
 ### E11.7-05 — The programme page and the partner application
