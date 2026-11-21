@@ -3964,6 +3964,11 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 - E11.7-14 builds the export and hand-over;
 - E11.7-15 is the audit.
 
+**Founder decisions (2026-11-22): dates, partner terms and the positioning line.** These amend the brief, the founder's 2026-11-17 answers and `docs/prerequisites/valstara-prelaunch-growth-decisions.md` wherever they differ, and every ticket in this epic builds to them. The founder's words are recorded verbatim in `docs/features/partner-programme.md#founder-amendments-22-november-2026-verbatim`.
+1. **Dates.** "The most updated early access date will be 1st September 2027 and the public launch will be on 1st October 2027." Wave 1's early-access month is therefore September 2027 (`waveOneEarlyAccessMonth = '2027-09'`), and the configured public-launch date defaults to 2027-10-01, so coupons and welcome discounts expire on 2032-10-01. The founder still sets the real launch date in configuration at handoff.
+2. **Partner commission.** 10% of order value, on all products, applies only to partners accepted during the pre-launch campaign, and only to the customers they referred during it. It counts every order those customers place from early access (1 September 2027) until one year after public launch (1 October 2028). After that, the customer is no longer attributed to the partner under these terms. **The founding rate lock lasts that one year; there is no lifetime lock.** Customers a partner refers after public launch fall under the post-launch rates, which are agreed separately. This replaces "12 months from each customer's first order" and "the founding rate lock for the life of the programme". This repository still calculates no commission; it shows the terms in copy and carries them in the hand-over document.
+3. **The positioning line.** Replacing the brief's "about double what the large marketplaces pay", partner-facing copy leads with "more than triple GameSeal's commission rate", followed by "double the rate of G2A and Eneba". Copy compares with each programme's standard rate, and the claim is used only for the pre-launch terms.
+
 **Founder inputs.** P10 (the asset kit files) gates E11.7-11. D1 was answered on 2026-11-17 and is recorded on E11.7-03. **The founder's growth decisions record is `docs/prerequisites/valstara-prelaunch-growth-decisions.md`.** Where it and the answers recorded in `docs/features/partner-programme.md` disagree, the later answers recorded there win.
 
 ### Rules for every E11.7 ticket
@@ -4044,7 +4049,7 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
   - coupons unlock at 3, 21 and 39;
   - each coupon steps by 5% every 3 referrals, up to 30%;
   - there are three coupons;
-  - the expiry is five years after the configured public-launch date, which defaults to 2027-09-01.
+  - the expiry is five years after the configured public-launch date, which defaults to 2027-09-01 (2027-10-01 since the founder's 2026-11-22 decision, Epic E11.7 decision 1).
 - **The coupon table.** Create `referral_coupon` (owner, coupon number, percent, state, expiry basis) as **derived state**. It is recomputed from non-voided confirmed edges inside the same transaction as every confirmation, void and un-void, and by the daily repair job. **Its only states here are `held` and `void`.**
 - **Retire the old reward.** Retire the tier-1 15% discount and the wave upgrade. Existing `milestone_award` rows are voided with the reason `ladder_replaced` and are never deleted.
 - **Wave 1.** A member with 3 or more confirmed, non-voided referrals is in wave 1, recalculated on every change up to handoff. Partner-based wave 1 is added by E11.7-07.
@@ -4080,7 +4085,7 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 
    This guarantees that the exported coupons and wave-1 groups match the configured ladder. The first-1,000 place is never removed. The daily repair, its 1,000-per-run cap and E4-09's batch-cap test are unchanged, and the handoff rehearsal is unchanged. Update `docs/modules/referral.md`, `docs/data/model.md` and `docs/architecture/fallbacks.md`: the sentence saying the handoff exports coupons as stored now says the handoff first recomputes everyone. This adds one test to the Tests line: **the handoff recompute** changes the configured ladder after confirmations, with more verified subscribers than one batch. It then asserts that every exported coupon and wave group matches the new ladder, including a referrer beyond the first batch; that no batch exceeds 1,000; and that each changed subscriber is audited. It must fail if the pass is removed. *(Accepted under the founder's standing rule for high-confidence recommendations; the founder did not review it in person.)*
 
-**Named test rewrite (founder-authorised 2026-11-21):** `test/e11-04-claims-audit.test.mjs`, "E11.5-12: every rendered reward figure matches the referral configuration and its documented source". The four `assert.match` calls on `docs/modules/referral.md` (Tier 1 at 3, the 15% launch discount, the 15% / 25% confirmed production values and the 90-day qualification deadline) are replaced, because E11.7-03 retired that reward. The replacements assert that `couponLadder` equals the founder's figures (unlocks 3, 21 and 39, a 5% step every 3 referrals, a 30% maximum, five years after a 2027-09-01 public launch) and that `docs/modules/referral.md` states those same figures. They also assert that the referral module no longer states the 90-day qualification deadline or calls 15% / 25% confirmed production values. Every other assertion in the test stays as it is: the `milestoneTiers` check, the rendered landing tier checks, the 90-day held-window checks across the four copy files and the held sentence. E11.7-04 rewrites those when it replaces the copy (D-047).
+**Named test rewrite (founder-authorised 2026-11-21):** `test/e11-04-claims-audit.test.mjs`, "E11.5-12: every rendered reward figure matches the referral configuration and its documented source". The four `assert.match` calls on `docs/modules/referral.md` (Tier 1 at 3, the 15% launch discount, the 15% / 25% confirmed production values and the 90-day qualification deadline) are replaced, because E11.7-03 retired that reward. The replacements assert that `couponLadder` equals the founder's figures (unlocks 3, 21 and 39, a 5% step every 3 referrals, a 30% maximum, five years after a 2027-10-01 public launch; the date was 2027-09-01 until the founder's 2026-11-22 decision) and that `docs/modules/referral.md` states those same figures. They also assert that the referral module no longer states the 90-day qualification deadline or calls 15% / 25% confirmed production values. Every other assertion in the test stays as it is: the `milestoneTiers` check, the rendered landing tier checks, the 90-day held-window checks across the four copy files and the held sentence. E11.7-04 rewrites those when it replaces the copy (D-047).
 
 **Docs:** `docs/features/partner-programme.md#early-access-and-rewards-founder-2026-11-17` · `docs/architecture/adr/012-reward-gating.md` · `docs/architecture/adr/025-campaign-configuration.md` · `docs/modules/referral.md`
 
@@ -4106,10 +4111,10 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 - The E11-04 claims checks and the forbidden-copy scan pass, and the final-design layout checks still pass on the changed surfaces
 
 **Tests:** The old-reward scan · configuration-driven copy · the held-condition assertion on every surface · layout checks on the landing, verification and `/me` pages · email rendering for the changed templates.
-**Founder decisions (2026-11-17):**
-1. **Every member's `/me` page says plainly whether they get early access in July 2027, and if not, exactly what earns it.**
-   - A member in wave 1 sees that they are in wave 1 with early access from July 2027, and why: one of the first 1,000, 3 confirmed referrals, a partner, or joined through a partner.
-   - A member not in wave 1 sees that they do not yet have early access, and how many more confirmed referrals they need. For example: "2 more confirmed referrals and you get early access in July 2027."
+**Founder decisions (2026-11-17; month amended to September 2027 by the founder on 2026-11-22, epic decision 1):**
+1. **Every member's `/me` page says plainly whether they get early access in September 2027, and if not, exactly what earns it.**
+   - A member in wave 1 sees that they are in wave 1 with early access from September 2027, and why: one of the first 1,000, 3 confirmed referrals, a partner, or joined through a partner.
+   - A member not in wave 1 sees that they do not yet have early access, and how many more confirmed referrals they need. For example: "2 more confirmed referrals and you get early access in September 2027."
    - The partner dashboard (E11.7-09) shows the same line.
    - The only scarcity wording allowed is the founder-approved line in `docs/prerequisites/valstara-prelaunch-growth-decisions.md`, and only while it stays true: "Some high-demand products have limited supply. Early access members get first pick."
    - **No stock counts, no countdowns, and no implication that the public launch will be empty** (ADR-024, `AGENTS.md`).
@@ -4127,7 +4132,7 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 
 **Build:**
 - **Register `partners.enabled`** (default on).
-- **`/partners`** is the programme page, from a content file covering the brief's §3.11 points.
+- **`/partners`** is the programme page, from a content file covering the brief's §3.11 points, with the commission terms and the positioning line of the founder's 2026-11-22 decisions (epic decisions 2 and 3) in place of the brief's "12 months", "founding partners keep the founding terms" and "about double what the large marketplaces pay".
 - **`/partners/apply`** is the application form with exactly the brief's §3.2 fields. Its country of residence is a plain dropdown.
   - Create `partner` with the application fields and the statuses of the lifecycle, with its checks, permissions and indexes.
   - The route verifies Turnstile first and is rate-limited.
@@ -4210,7 +4215,7 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 **Build:**
 - **The toggle.** A collapsed "Have a referral code?" toggle in the hero form only, using native disclosure with no JavaScript, pre-filled from the signed `?ref=` capture. The sticky bar is unchanged.
 - **Precedence.** The server reads the typed code. **A typed code beats the link's code.** An unknown typed code is ignored with a neutral note, and the signup still completes.
-- **Perks shown.** The verification success page and the confirmation email state a partner-referred person's perks in the founder's form, e.g. "You joined through MAYA: early access from July 2027 and 15% off your first order."
+- **Perks shown.** The verification success page and the confirmation email state a partner-referred person's perks in the founder's form, e.g. "You joined through MAYA: early access from September 2027 and 15% off your first order."
 - **Amend ADR-008.** A typed code is first-party form input read on the server. No cookie and no client-side attribution path.
 
 **Acceptance criteria:**
@@ -4237,7 +4242,7 @@ Also the "approved" and "rejected" emails, and a database check that only the do
   - signups per week, as a table;
   - a breakdown by survey category (survey v2);
   - the ladder and the current welcome discount in the founder's form;
-  - the terms summary: 10%, 12 months, one level, the founding rate lock, the contract date and version, and "Earnings start with early access in July 2027.", with no earnings figure.
+  - the terms summary in the founder's 2026-11-22 terms (epic decision 2): 10% on orders from the customers they refer during the pre-launch campaign, from early access until one year after public launch; one level; the one-year founding rate lock; the contract date and version; and "Earnings start with early access in September 2027.", with no earnings figure.
 - **Settings.** Display name, show-on-leaderboard (off by default) and non-essential email preferences, saved with the dashboard token under the precedent of `/me`'s actions (ADR-006).
 - **Page hygiene.** `noindex` and `no-store`, no page-view emitter, excluded from the sitemap and disallowed in `robots.txt`.
 
@@ -4341,6 +4346,7 @@ Also the "approved" and "rejected" emails, and a database check that only the do
   - the code rules;
   - the field definitions;
   - the coupon and welcome-discount rules, including ADR-012's first-order condition and the five-year expiry from the configured launch date;
+  - the pre-launch commission window (epic decision 2, 2026-11-22): 10% only on orders placed by customers referred during the pre-launch campaign, from early access (1 September 2027) until one year after public launch (1 October 2028), after which those customers are no longer attributed under these terms; customers referred after public launch fall under the post-launch rates;
   - the cutover steps: freeze writes → export → import → switch `/r/` routing → keep this database read-only for 90 days (ADR-022).
 
 **Acceptance criteria:**
