@@ -28,8 +28,9 @@ export function presentReferralStatus(
   };
   const ladder = ladderProgress(status.confirmedReferrals, configuration);
   const access = earlyAccess(status, configuration);
+  // In wave 1 the fact is the month early access opens.
   const earlyAccessValue = access.inWaveOne
-    ? memberStatusCopy.authenticated.earlyAccessFrom(access.month)
+    ? access.month
     : memberStatusCopy.authenticated.earlyAccessNotYet;
   return {
     values,
