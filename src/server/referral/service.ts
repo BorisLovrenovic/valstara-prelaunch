@@ -12,6 +12,7 @@ import {
   type ReferralRepository,
 } from '../db/referral.ts';
 import { createFraudFlagRepository } from '../db/fraud-flag.ts';
+import { createReferralCodeRepository } from '../db/referral-code.ts';
 import type { DatabaseConnection, DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
 import { createTransactionalEmailProducers } from '../email/producers.ts';
@@ -28,6 +29,7 @@ import {
   type RewardClassifications,
   promoteAccessWindow,
 } from './config.ts';
+import { normaliseReferralCodeForLookup } from './code-registry.ts';
 import { rewardStateAtConfirmation } from './reward-state.ts';
 import { computeReferralStatus, type ReferralStatus } from './status.ts';
 import {
@@ -178,8 +180,9 @@ function createReferralServiceWithRepository(
     async attribute(referredId, code, allowAttribution = true) {
       return runTransaction(async (connection) => {
         const transactionalRepository = createReferralRepository(connection);
-        const referrerId =
-          await transactionalRepository.findSubscriberIdByCode(code);
+        const referrerId = await transactionalRepository.findSubscriberIdByCode(
+          normaliseReferralCodeForLookup(code),
+        );
         if (referrerId === null) {
           return { kind: 'unattributed' };
         }
@@ -384,42 +387,43 @@ function createReferralServiceWithRepository(
     },
 
     async generateCode(subscriberId) {
-      const subscriber = await repository.findSubscriber(subscriberId);
-      if (subscriber === null) {
-        throw new Error('A referral code requires an existing subscriber.');
-      }
-      if (subscriber.referral_code !== null) {
-        return subscriber.referral_code;
-      }
-      if (subscriber.status !== 'verified') {
-        throw new Error('A referral code requires a verified subscriber.');
-      }
-
-      for (let attempt = 0; attempt < maximumCodeAttempts; attempt += 1) {
-        const code = createCode();
-        try {
-          const assigned = await repository.assignReferralCode(
-            subscriberId,
-            code,
-          );
-          if (assigned === 1) {
-            return code;
-          }
-
-          // Another verification/replay may have won the allocation race for
-          // this subscriber. Return that code so generation stays idempotent.
-          const concurrentlyAssigned = await repository.findCode(subscriberId);
-          if (concurrentlyAssigned !== null) {
-            return concurrentlyAssigned;
-          }
-        } catch (error) {
-          if (!isReferralCodeCollision(error)) {
-            throw error;
-          }
+      return runTransaction(async (connection) => {
+        const transactionalRepository = createReferralRepository(connection);
+        const registry = createReferralCodeRepository(connection);
+        // The row lock serialises concurrent allocation for one subscriber, so
+        // a replay waits and then returns the code the first call assigned.
+        const subscriber =
+          await transactionalRepository.lockSubscriber(subscriberId);
+        if (subscriber === null) {
+          throw new Error('A referral code requires an existing subscriber.');
         }
-      }
+        if (subscriber.referral_code !== null) {
+          return subscriber.referral_code;
+        }
+        if (subscriber.status !== 'verified') {
+          throw new Error('A referral code requires a verified subscriber.');
+        }
 
-      throw new Error('Could not allocate a unique referral code.');
+        for (let attempt = 0; attempt < maximumCodeAttempts; attempt += 1) {
+          const code = createCode();
+          // The shared registry (E11.7-01) is the one namespace for member and
+          // partner codes: a code any owner holds, in any case, is regenerated.
+          if (!(await registry.claimMemberCode(code, subscriberId))) {
+            continue;
+          }
+          if (
+            (await transactionalRepository.assignReferralCode(
+              subscriberId,
+              code,
+            )) !== 1
+          ) {
+            throw new Error('The claimed referral code could not be assigned.');
+          }
+          return code;
+        }
+
+        throw new Error('Could not allocate a unique referral code.');
+      });
     },
 
     async getReferralCode(subscriberId) {
@@ -427,7 +431,9 @@ function createReferralServiceWithRepository(
     },
 
     async lookupCode(code) {
-      return repository.findSubscriberIdByCode(code);
+      return repository.findSubscriberIdByCode(
+        normaliseReferralCodeForLookup(code),
+      );
     },
 
     async recomputeCounters(limit) {
@@ -583,13 +589,4 @@ function isDatabasePool(
   database: DatabaseConnection | DatabasePool,
 ): database is DatabasePool {
   return 'connect' in database;
-}
-
-function isReferralCodeCollision(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505'
-  );
 }

@@ -6,7 +6,7 @@ Kind: domain. Implements ADR-008 and ADR-012.
 Referral codes, the referral edge, tier and milestone computation, and reward state — including the hold that makes referral fraud unprofitable.
 
 ## Data owned
-`referral_edge`, `milestone_award`; and it is the sole writer of `subscriber.confirmed_referrals` and `subscriber.referral_tier`.
+`referral_code` (the shared code registry, E11.7-01), `referral_edge`, `milestone_award`; and it is the sole writer of `subscriber.confirmed_referrals` and `subscriber.referral_tier`.
 
 ## Exposed interface
 ```ts
@@ -21,6 +21,19 @@ interface ReferralService {
   rejectEdgesOf(referrerId: string, reason: RejectReason): Promise<number>
   recomputeCounters(limit: number): Promise<{ checked: number; corrected: number }>
 }
+
+// src/server/referral/code-registry.ts — the shared code registry (E11.7-01)
+interface ReferralCodeRegistry {
+  lookup(code: string): Promise<{ code: string; ownerKind: 'member' | 'partner'; ownerId: string | null; active: boolean } | null>
+}
+
+// src/server/referral/partner-code.ts — the partner code rules (E11.7-01)
+interface PartnerCodeRules {
+  check(requested: string): Promise<
+    | { outcome: 'available'; code: string }
+    | { outcome: 'refused'; reason: 'format' | 'blocked' | 'taken'; alternatives: string[] }
+  >
+}
 ```
 
 ## Rules
@@ -29,6 +42,42 @@ interface ReferralService {
   `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (more than 59 bits). Allocation is idempotent,
   limited to verified subscribers, collision-checked on write and backed by the
   database unique constraint. Lookup is case-insensitive.
+- **Every code, member or partner, lives in one namespace: the `referral_code`
+  registry** (E11.7-01, `docs/data/model.md#referral_code`). Codes are stored
+  upper case under a primary key, so a partner code can never equal a member
+  code and two codes differing only in case can never both exist. `generateCode()`
+  locks the subscriber row, claims the registry row with `ON CONFLICT DO
+  NOTHING`, then writes `subscriber.referral_code`, all in the caller's
+  transaction; a taken code is regenerated without aborting it. A database
+  trigger mirrors any other write of `subscriber.referral_code` and retires the
+  code when erasure clears it. Member attribution (`attribute()`,
+  `lookupCode()`) resolves only active **member** rows, so member links resolve
+  exactly as they did before the registry; partner codes resolve for
+  attribution from E11.7-07. `ReferralCodeRegistry.lookup()` returns any code's
+  owner. Lookup upper-cases ASCII letters only, so it is case-insensitive
+  without a locale-dependent case mapping.
+- **Partner code rules** (`PartnerCodeRules.check()`, E11.7-01). Checked in this
+  order, each refusing with its own reason:
+  1. `format`: 4–16 of A–Z and 0–9 in any case, surrounding spaces ignored,
+     stored upper case;
+  2. `blocked`: `config/partner-code-blocklist.json`, validated when
+     `partner-code.ts` loads, so a malformed list fails startup once a route
+     imports it (E11.7-05). Its `brand`, `reserved` and `profanity`
+     categories each hold `contains` terms (refuse any code that includes
+     them) and `exact` terms (refuse only that
+     whole code, for words that occur inside ordinary names, such as `NOTION`,
+     `FREE` or `RAPE`). Terms are upper case, so a match ignores case. Every
+     provider in `src/content/provider-showcase.json` is a brand term, by name
+     with spaces and punctuation removed, reconciled by test;
+  3. `taken`: the code is in the registry in any state, including a retired
+     member code.
+
+  A refusal carries up to three alternatives, each of which passed all three
+  rules when checked. They are built first from the request's letters and
+  digits with any contained blocklist term removed, then from the request as
+  typed, by appending `1`, `2`, `3` … within 16 characters. Where nothing usable
+  remains, they are random eight-character codes from the member-code alphabet.
+  Availability is advisory, because the registry's primary key decides a race.
 - **`?ref=` and accepted UTM parameters are read server-side on the rendering request** and returned as one signed, HMAC-SHA256 field with a named 24-hour TTL. `REFERRAL_SIGNING_SECRET` is server-only and signatures are compared in constant time. There is no cookie, no `localStorage`, and no client-side attribution path anywhere in the codebase. This is what keeps the mechanic outside ePrivacy Article 5(3) — and it is also simply more reliable.
 - UTM accepts only source, medium, campaign, content and term; values are trimmed, control-character-free, capped at 128 characters and 512 serialized bytes. Invalid values are dropped. It is analytics-only and never gates attribution or rewards.
 - **`verifyRef()` returns `null` rather than throwing.** A bad ref must never cost a signup.
@@ -58,4 +107,4 @@ The held discount percentages (15% / 25%) are **confirmed production values** (A
 `db`, `audit`, `fraud` (the E4-03 `self_referral` signal only), `giveaway` (entry accrual on confirmation), `flags`.
 
 ## Contract tests
-Entropy and collision over a large generated sample · a tampered signed ref returns `null` · self-referral rejected and the signup still completes · duplicate edge rejected by the database · duplicate milestone award rejected by the database · a mid-campaign tier addition stays non-retroactive until an audited backfill · tier derives only from settled awards · referral status returns the exact stored count and active reward states · **seeded property test: `recomputeCounters()` is idempotent and matches the edges for any generated graph** · **a high-value reward cannot reach `settled` from a verification path** · rejecting a referrer's edges leaves referred subscribers' status unchanged.
+Entropy and collision over a large generated sample · **one code namespace: case variants never coexist under genuine concurrency, and a member code generated after a partner code never equals it** · backfilled member codes resolve exactly as before · each partner-code rule refuses with its own reason, and every alternative passes all three · a tampered signed ref returns `null` · self-referral rejected and the signup still completes · duplicate edge rejected by the database · duplicate milestone award rejected by the database · a mid-campaign tier addition stays non-retroactive until an audited backfill · tier derives only from settled awards · referral status returns the exact stored count and active reward states · **seeded property test: `recomputeCounters()` is idempotent and matches the edges for any generated graph** · **a high-value reward cannot reach `settled` from a verification path** · rejecting a referrer's edges leaves referred subscribers' status unchanged.

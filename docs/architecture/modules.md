@@ -76,7 +76,7 @@ valstara-prelaunch/
       motion.css                   the motion utilities, page transitions and smooth scrolling (E11.5-11i); waitlist presentation, not ported verbatim
   packages/
     price-index/                   the price-index tool: a separate offline process the founder runs by hand (ADR-033)
-  config/                          the price index's markets, catalogue and Valstara prices, validated by `price-index validate`
+  config/                          the price index's markets, catalogue and Valstara prices, validated by `price-index validate`; the partner code blocklist (E11.7-01), validated when `partner-code.ts` loads, so a malformed list fails startup once a route imports it (E11.7-05)
   infra/
     compose/                       docker-compose, local + production, hard memory limits
     deploy/                        deploy.sh, rollback.sh, migration audit
