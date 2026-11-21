@@ -34,6 +34,9 @@ export function ownData(
   if (table === 'referral_edge') {
     if (result.referrer_id !== id) result.referrer_id = null;
     if (result.referred_id !== id) result.referred_id = null;
+    // E11.7-02: the operator who voided the referral is an operator identity.
+    if (result.voided_by !== null && result.voided_by !== undefined)
+      result.voided_by = 'redacted';
   }
   if (
     table === 'fraud_flag' &&

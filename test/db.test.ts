@@ -294,6 +294,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0057-maintenance-heartbeat.sql',
       '0058-referral-code-registry.sql',
       '0059-referral-code-partner-inactive.sql',
+      '0060-referral-void.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -358,6 +359,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0057-maintenance-heartbeat.sql',
         '0058-referral-code-registry.sql',
         '0059-referral-code-partner-inactive.sql',
+        '0060-referral-void.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -570,6 +572,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0057-maintenance-heartbeat.sql',
             '0058-referral-code-registry.sql',
             '0059-referral-code-partner-inactive.sql',
+            '0060-referral-void.sql',
           ],
         );
       } finally {

@@ -220,7 +220,7 @@ export async function openHandoffSnapshot(
           AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = s.email_normalised)) AS discount_count,
         (SELECT count(*)::int FROM referral_edge e
           JOIN subscriber r ON r.id = e.referrer_id JOIN subscriber d ON d.id = e.referred_id
-          WHERE e.state = 'confirmed' AND r.status = 'verified' AND d.status = 'verified'
+          WHERE e.state = 'confirmed' AND e.voided_at IS NULL AND r.status = 'verified' AND d.status = 'verified'
           AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = r.email_normalised)
           AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = d.email_normalised)) AS referral_count`,
     });
@@ -272,7 +272,7 @@ export async function openHandoffSnapshot(
               FROM referral_edge e
               JOIN subscriber r ON r.id = e.referrer_id
               JOIN subscriber d ON d.id = e.referred_id
-              WHERE e.state = 'confirmed' AND r.status = 'verified' AND d.status = 'verified'
+              WHERE e.state = 'confirmed' AND e.voided_at IS NULL AND r.status = 'verified' AND d.status = 'verified'
                 AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = r.email_normalised)
                 AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = d.email_normalised)
                 AND ($1::uuid IS NULL OR e.id > $1::uuid)

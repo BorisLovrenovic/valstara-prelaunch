@@ -114,7 +114,12 @@ Permissions: the application role may `SELECT`, and `INSERT` only `code`, `owner
 | `reward_state` | text not null | `none` · `settled` · `held` · `void` |
 | `rejected_reason` | text null | `self_referral` · `duplicate_identity` · `referrer_disqualified` · `manual` |
 | `state_before_rejection` | text null | `attributed` or `confirmed`, retained only for a reversible referrer disqualification |
+| `voided_at` | timestamptz null | Set when the founder voids the referral (E11.7-02); cleared by an un-void. A voided edge is kept and counts nowhere |
+| `void_reason` | text null | The founder's reason: one line of 1–200 characters, refused if it holds an email or IP address |
+| `voided_by` | text null | The authenticated human actor (`admin.operator`); never a `system:` actor |
 | `confirmed_at` `created_at` | timestamptz | |
+
+**A void is a flag over the edge, not a state** (E11.7-02). The check `referral_edge_void_recorded` requires all three void columns together, a non-blank reason of at most 200 characters and a non-`system:` actor, or none of them. `state` and `reward_state` are never changed by a void, so the reward-gating transitions are untouched. **Every consumer of the confirmed count reads only `state = 'confirmed' AND voided_at IS NULL`**: `confirmed_referrals` and its daily repair, the milestone backfill, giveaway referral entitlement and accrual, and the handoff's confirmed referral pairs. The leaderboard, `/me`, rank and the admin CSV read the recomputed `confirmed_referrals`, which the void transaction recomputes. The application role may update only the three void columns. Every void and un-void is audited as `referral.voided` or `referral.unvoided` with before and after values.
 
 **Cheap rewards settle on confirmation; milestone discounts enter `held` and only settle when any one of the owner's confirmed referred people places a first order within 90 days after store launch** (ADR-012). The pre-launch repository carries export-set owners' held discounts at handoff with that qualification deadline. The storefront owns settlement and deadline-driven voiding. Ineligible owners' discounts and legacy bonus-entry awards are voided with audited reasons at handoff, never deleted.
 
@@ -130,7 +135,7 @@ Permissions: the application role may `SELECT`, and `INSERT` only `code`, `owner
 
 ## `giveaway_entry`
 
-`id` · `subscriber_id` · `method` (`base` · `referral`) · `entries` int **always 1, enforced by a validated check constraint (E7-04)** · `rules_version` text · `rules_sha256` bytea not null, exactly 32 bytes (added by E7-03) · `source_edge_id` uuid null · `voided_at` · `voided_by_disqualification_flag_id` uuid null → `fraud_flag` · `created_at`. Unique with `NULLS NOT DISTINCT` on `(subscriber_id, method, source_edge_id)` so a retry cannot double-credit when `source_edge_id` is null.
+`id` · `subscriber_id` · `method` (`base` · `referral`) · `entries` int **always 1, enforced by a validated check constraint (E7-04)** · `rules_version` text · `rules_sha256` bytea not null, exactly 32 bytes (added by E7-03) · `source_edge_id` uuid null · `voided_at` · `voided_by_disqualification_flag_id` uuid null → `fraud_flag` · `voided_by_referral_void` boolean not null default false (E11.7-02) · `created_at`. Unique with `NULLS NOT DISTINCT` on `(subscriber_id, method, source_edge_id)` so a retry cannot double-credit when `source_edge_id` is null.
 
 **`rules_version` and `rules_sha256` are stamped at accrual.** There is one global rules page (ADR-026) and no jurisdiction column; S-01 dropped `jurisdiction` and the `amoe` method, because the ordinary verified signup is the free entry route. Entries keep the rules that were in force when they accrued — that is what makes a mid-campaign rules revision survivable (`docs/architecture/fallbacks.md`).
 
@@ -141,6 +146,8 @@ The 2026-09-26 founder decision makes verification and edge confirmation within 
 When a human upholds a fraud flag, only that referrer's `referral` entries are
 voided and tied to the flag. Reversing that decision restores those entries;
 the referred subscribers' entries are never affected.
+
+**Referral voids (E11.7-02).** Before any draw snapshot is committed, voiding a referral also voids that edge's `referral` entry through `voided_at`, and sets `voided_by_referral_void`; an un-void clears both, and restores only an entry this marker identifies. An entry another decision already voided is left as it was. The check `giveaway_entry_referral_void_shape` allows the marker only on a voided `referral` entry with a source edge. The void takes the entry-ledger lock that serialises snapshot commitment, so it is decided either wholly before or wholly after the commit. **After commitment, a void or un-void never touches `giveaway_entry`, `giveaway_draw` or its snapshot and selection rows**, so the draw still reproduces (E9-05's precedent). A voided edge is not a referral entitlement, so reconciliation never accrues one for it; an un-voided edge becomes one again.
 
 ## `giveaway_draw`
 

@@ -128,7 +128,7 @@ export function createReferralRepository(
         text: `
           SELECT COUNT(*)::text AS count
           FROM referral_edge
-          WHERE referrer_id = $1 AND state = 'confirmed'
+          WHERE referrer_id = $1 AND state = 'confirmed' AND voided_at IS NULL
         `,
         values: [referrerId],
       });
@@ -222,6 +222,7 @@ export function createReferralRepository(
               JOIN referral_edge
                 ON referral_edge.referrer_id = subscriber.id
                AND referral_edge.state = 'confirmed'
+               AND referral_edge.voided_at IS NULL
               WHERE subscriber.status = 'verified'
                 AND NOT EXISTS (
                   SELECT 1

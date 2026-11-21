@@ -68,6 +68,7 @@ valstara-prelaunch/
       subscriber/  verification/  referral/  fraud/  giveaway/
       email/                       service + providers/{resend,brevo}
       flags/  audit/  analytics/  turnstile/  ratelimit/  admin-auth/  content/
+      admin/cli.ts                 the founder command line: an HTTP client of /api/admin/* that never opens the database (E11.7-02)
       config.ts                    validated env; fails fast at boot
     copy/                          interface strings
     content/                       trust + legal prose as Markdown (ADR-017)

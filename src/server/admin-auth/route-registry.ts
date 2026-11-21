@@ -71,4 +71,14 @@ export const adminRouteRegistry = defineAdminRouteRegistry([
     pathname: '/api/admin/fraud/:id',
     methods: [{ method: 'POST', audit: 'required' }],
   },
+  {
+    source: 'src/pages/api/admin/referrals/void.ts',
+    pathname: '/api/admin/referrals/void',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/referrals/unvoid.ts',
+    pathname: '/api/admin/referrals/unvoid',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
 ]);
