@@ -142,8 +142,11 @@ and is audited as `referral.voided` with before and after values. Before the
 draw snapshot is committed it also voids that referral's giveaway entry, and
 an un-void restores it. After commitment the draw is never touched. A referral
 cannot be changed while its referrer is disqualified, being erased or erased:
-reverse the disqualification first. A void does not revoke a milestone award
-already made.
+reverse the disqualification first. A void also recomputes the referrer's
+coupon ladder and wave 1 (E11.7-03): a coupon drops a step or to `void`, and
+the referrer leaves wave 1 below 3 confirmed referrals unless their
+verification order put them there. An un-void restores both, and the audit
+record carries the referrer's coupons and wave before and after.
 
 ---
 

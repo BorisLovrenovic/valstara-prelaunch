@@ -92,6 +92,8 @@ test('the required audit action registry is complete', () => {
     'referral.counters_repaired',
     'referral.voided',
     'referral.unvoided',
+    'referral.milestone_retired',
+    'referral.access_window_recalculated',
     'survey.response_replaced',
     'flag.changed',
     'flag.enable_refused',
@@ -116,6 +118,7 @@ test('the required audit action registry is complete', () => {
     'handoff.bonus_entries_voided',
     'handoff.discount_voided',
     'handoff.discount_carried',
+    'handoff.coupon_carried',
   ]);
 });
 

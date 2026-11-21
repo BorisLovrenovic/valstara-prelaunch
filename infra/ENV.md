@@ -422,9 +422,11 @@ when it finishes.
 ## E11-06 handoff rehearsal
 
 `scripts/export-handoff.ts` reads the existing `DATABASE_URL` for the waitlist
-database. It requires command arguments for the operator actor, the store-launch
-instant and a new output path. Keep the resulting NDJSON outside public paths;
-the exporter creates it with mode `0600`.
+database. It requires command arguments for the operator actor and a new output
+path. Coupon expiry comes from the configured public-launch date
+(`couponLadder.publicLaunchDate` in `src/server/referral/config.ts`), not from an
+argument or variable. Keep the resulting NDJSON outside public paths; the
+exporter creates it with mode `0600`.
 
 `HANDOFF_REHEARSAL_ADMIN_URL` is an owner connection URL to a PostgreSQL
 administration database. `scripts/import-rehearsal.ts` uses it to create and

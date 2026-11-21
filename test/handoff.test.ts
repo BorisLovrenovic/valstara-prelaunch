@@ -20,9 +20,11 @@ import {
   importRehearsalBatch,
   rehearsalBatchSize,
 } from '../src/server/db/handoff-rehearsal.ts';
+import { couponExpiresAt } from '../src/server/referral/config.ts';
+import { createReferralService } from '../src/server/referral/service.ts';
+import { createReferralVoidService } from '../src/server/referral/void.ts';
 import {
   exportHandoff,
-  qualificationDeadline,
   type HandoffRecord,
 } from '../src/server/subscriber/handoff.ts';
 import {
@@ -35,6 +37,8 @@ const defaultDatabaseUrl =
 const appPassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const launch = new Date('2027-03-15T10:00:00.000Z');
+// Five years after the configured public-launch date (E11.7-03).
+const couponExpiry = '2032-09-01T00:00:00.000Z';
 
 test('the named freeze audit requires signups closed and records its mode', async () => {
   const f = await fixture();
@@ -154,6 +158,34 @@ async function heldDiscount(
   return id;
 }
 
+async function heldCoupon(
+  owner: DatabasePool,
+  subscriberId: string,
+  couponNumber = 1,
+  percent: number | null = 5,
+  state: 'held' | 'void' = 'held',
+): Promise<string> {
+  const id = randomUUID();
+  await owner.execute({
+    text: `INSERT INTO referral_coupon
+      (id,subscriber_id,coupon_number,percent,state,created_at,updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$6)`,
+    values: [id, subscriberId, couponNumber, percent, state, launch],
+  });
+  return id;
+}
+
+async function carryAudit(
+  owner: DatabasePool,
+  couponId: string,
+): Promise<unknown> {
+  return owner.readOne({
+    text: `SELECT actor,subject_type,detail FROM audit_log
+      WHERE action='handoff.coupon_carried' AND subject_id=$1`,
+    values: [couponId],
+  });
+}
+
 async function referralEdge(
   owner: DatabasePool,
   referrerId: string,
@@ -196,7 +228,6 @@ test('handoff exports v1 and v2 categories with versions and imports both twice'
     await exportHandoff(
       f.app,
       'operator',
-      launch,
       async (record) => {
         records.push(record);
       },
@@ -324,7 +355,6 @@ test('unexpired unsubscribe tokens export by hash with origin and import idempot
     const counts = await exportHandoff(
       f.app,
       'operator',
-      launch,
       async (record) => {
         records.push(record);
       },
@@ -472,7 +502,7 @@ test('handoff preflight refuses a published draw with a nonterminal award', asyn
   }
 });
 
-test('handoff exports verified unsuppressed customers, eligible held discounts and audited legacy voids', async () => {
+test('handoff exports verified unsuppressed customers, eligible held coupons and audited legacy voids', async () => {
   const f = await fixture();
   try {
     const included = await subscriber(
@@ -489,27 +519,23 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
       text: `INSERT INTO suppression(email_normalised,reason,source)
       VALUES ('suppressed@example.test','manual','test')`,
     });
+    // A retired held discount (E11.7-03): kept, never exported.
     const discountId = randomUUID();
-    const secondDiscountId = randomUUID();
     const legacyId = randomUUID();
     const settledLegacyId = randomUUID();
     await f.owner.execute({
       text: `INSERT INTO milestone_award(id,subscriber_id,tier,reward_kind,state)
-        VALUES ($1,$2,1,'discount','held'),($3,$2,2,'discount','held'),
-          ($4,$2,1,'entries','held'),($5,$2,2,'entries','settled')`,
-      values: [
-        discountId,
-        included,
-        secondDiscountId,
-        legacyId,
-        settledLegacyId,
-      ],
+        VALUES ($1,$2,1,'discount','held'),
+          ($3,$2,1,'entries','held'),($4,$2,2,'entries','settled')`,
+      values: [discountId, included, legacyId, settledLegacyId],
     });
+    const couponId = await heldCoupon(f.owner, included, 1, 30);
+    const secondCouponId = await heldCoupon(f.owner, included, 2, 5);
+    const voidCouponId = await heldCoupon(f.owner, included, 3, null, 'void');
     const records: HandoffRecord[] = [];
     const counts = await exportHandoff(
       f.app,
       'operator',
-      launch,
       async (record) => {
         records.push(record);
       },
@@ -517,7 +543,7 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
     );
     assert.deepEqual(counts, {
       customers: 1,
-      heldDiscounts: 2,
+      heldCoupons: 2,
       confirmedReferrals: 0,
       unsubscribeTokens: 0,
       voidedIneligibleDiscounts: 0,
@@ -544,41 +570,51 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
     });
     assert.deepEqual(
       records
-        .filter((record) => record.type === 'held_discount')
-        .sort((left, right) => left.award_id.localeCompare(right.award_id)),
+        .filter((record) => record.type === 'held_coupon')
+        .sort((left, right) => left.coupon_id.localeCompare(right.coupon_id)),
       [
         {
-          type: 'held_discount',
-          award_id: discountId,
+          type: 'held_coupon',
+          coupon_id: couponId,
           subscriber_id: included,
           email_normalised: 'included@example.test',
-          tier: 1,
-          discount_percent: 15,
+          coupon_number: 1,
+          percent: 30,
           state: 'held',
           outcome: 'carried_to_storefront',
-          qualification_deadline: qualificationDeadline(launch),
+          expires_at: couponExpiry,
         },
         {
-          type: 'held_discount',
-          award_id: secondDiscountId,
+          type: 'held_coupon',
+          coupon_id: secondCouponId,
           subscriber_id: included,
           email_normalised: 'included@example.test',
-          tier: 2,
-          discount_percent: 25,
+          coupon_number: 2,
+          percent: 5,
           state: 'held',
           outcome: 'carried_to_storefront',
-          qualification_deadline: qualificationDeadline(launch),
+          expires_at: couponExpiry,
         },
-      ].sort((left, right) => left.award_id.localeCompare(right.award_id)),
+      ].sort((left, right) => left.coupon_id.localeCompare(right.coupon_id)),
     );
-    assert.equal(qualificationDeadline(launch), '2027-06-13T10:00:00.000Z');
+    assert.equal(couponExpiresAt().toISOString(), couponExpiry);
     assert.ok(
       records.every(
         (record) =>
           !Object.hasOwn(record, 'country') &&
-          !Object.hasOwn(record, 'reward_kind'),
+          !Object.hasOwn(record, 'reward_kind') &&
+          (record.type as string) !== 'held_discount' &&
+          !Object.hasOwn(record, 'qualification_deadline'),
       ),
     );
+    const run = await f.owner.readOne<{
+      detail: Record<string, unknown>;
+    }>({
+      text: `SELECT detail FROM audit_log WHERE action='export.run' AND subject_type='handoff'`,
+    });
+    assert.equal(run?.detail.held_coupon_count, 2);
+    assert.equal(run?.detail.coupon_expires_at, couponExpiry);
+    assert.ok(!Object.hasOwn(run?.detail ?? {}, 'qualification_deadline'));
     assert.deepEqual(
       await f.owner.readOne({
         text: 'SELECT state FROM milestone_award WHERE id=$1',
@@ -612,27 +648,29 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
       voidAudit?.detail.reason,
       'bonus_entries_unqualifiable_under_published_rules',
     );
-    for (const awardId of [discountId, secondDiscountId]) {
-      assert.deepEqual(
-        await f.owner.readOne({
-          text: `SELECT actor,detail FROM audit_log WHERE action='handoff.discount_carried' AND subject_id=$1`,
-          values: [awardId],
-        }),
-        {
-          actor: 'operator',
-          detail: {
-            outcome: 'carried_to_storefront',
-            qualification_deadline: qualificationDeadline(launch),
-          },
+    for (const id of [couponId, secondCouponId]) {
+      assert.deepEqual(await carryAudit(f.owner, id), {
+        actor: 'operator',
+        subject_type: 'referral_coupon',
+        detail: {
+          outcome: 'carried_to_storefront',
+          expires_at: couponExpiry,
         },
-      );
+      });
     }
+    assert.equal(await carryAudit(f.owner, voidCouponId), null);
+    assert.equal(
+      await f.owner.readOne({
+        text: `SELECT id FROM audit_log WHERE action='handoff.discount_carried' AND subject_id=$1`,
+        values: [discountId],
+      }),
+      null,
+    );
     const second: HandoffRecord[] = [];
     assert.deepEqual(
       await exportHandoff(
         f.app,
         'operator',
-        launch,
         async (record) => {
           second.push(record);
         },
@@ -640,7 +678,7 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
       ),
       {
         customers: 1,
-        heldDiscounts: 2,
+        heldCoupons: 2,
         confirmedReferrals: 0,
         unsubscribeTokens: 0,
         voidedIneligibleDiscounts: 0,
@@ -655,21 +693,21 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
     assert.deepEqual(await importRehearsal(f.scratch, lines()), {
       createdCustomers: 1,
       createdGroups: 2,
-      createdDiscounts: 2,
+      createdCoupons: 2,
       createdReferrals: 0,
       createdTokens: 0,
     });
     assert.deepEqual(await importRehearsal(f.scratch, lines()), {
       createdCustomers: 0,
       createdGroups: 0,
-      createdDiscounts: 0,
+      createdCoupons: 0,
       createdReferrals: 0,
       createdTokens: 0,
     });
     assert.deepEqual(await countRehearsalRows(f.scratch), {
       customers: 1,
       groups: 2,
-      discounts: 2,
+      coupons: 2,
       referrals: 0,
       tokens: 0,
     });
@@ -678,7 +716,98 @@ test('handoff exports verified unsuppressed customers, eligible held discounts a
   }
 });
 
-test('failed handoff output does not audit a carried discount', async () => {
+test('the export fields: coupons recomputed by real confirmations are carried held with percent and computed expiry', async () => {
+  const f = await fixture();
+  try {
+    const referrerId = await subscriber(
+      f.owner,
+      'ladder@example.test',
+      'verified',
+    );
+    const referral = createReferralService(f.app);
+    const referredIds: string[] = [];
+    for (let index = 0; index < 21; index += 1) {
+      const referredId = await subscriber(
+        f.owner,
+        `friend-${index}@example.test`,
+        'verified',
+      );
+      await referralEdge(f.owner, referrerId, referredId, 'attributed');
+      await referral.confirm(referredId, launch);
+      referredIds.push(referredId);
+    }
+    const exportCoupons = async () => {
+      const records: HandoffRecord[] = [];
+      const counts = await exportHandoff(
+        f.app,
+        'operator',
+        async (record) => {
+          records.push(record);
+        },
+        async () => {},
+      );
+      return {
+        counts,
+        coupons: records
+          .filter((record) => record.type === 'held_coupon')
+          .map((record) =>
+            Object.fromEntries(
+              Object.entries(record).filter(([key]) => key !== 'coupon_id'),
+            ),
+          )
+          .sort(
+            (left, right) =>
+              Number(left.coupon_number) - Number(right.coupon_number),
+          ),
+      };
+    };
+    const fields = (couponNumber: number, percent: number) => ({
+      type: 'held_coupon',
+      subscriber_id: referrerId,
+      email_normalised: 'ladder@example.test',
+      coupon_number: couponNumber,
+      percent,
+      state: 'held',
+      outcome: 'carried_to_storefront',
+      expires_at: couponExpiry,
+    });
+
+    // 21 confirmed referrals: coupon 1 at 30% and coupon 2 at 5%.
+    const first = await exportCoupons();
+    assert.equal(first.counts.heldCoupons, 2);
+    assert.equal(first.counts.confirmedReferrals, 21);
+    assert.deepEqual(first.coupons, [fields(1, 30), fields(2, 5)]);
+
+    // A void below coupon 2's unlock leaves it void, and a void coupon is
+    // never carried.
+    await createReferralVoidService(f.app, () => launch).voidReferral(
+      referredIds[0]!,
+      'Duplicate household',
+      'founder',
+    );
+    const second = await exportCoupons();
+    assert.equal(second.counts.heldCoupons, 1);
+    assert.deepEqual(second.coupons, [fields(1, 30)]);
+    assert.deepEqual(
+      await f.owner.list(
+        {
+          text: `SELECT coupon_number, percent, state FROM referral_coupon
+            WHERE subscriber_id=$1 ORDER BY coupon_number`,
+          values: [referrerId],
+        },
+        5,
+      ),
+      [
+        { coupon_number: 1, percent: 30, state: 'held' },
+        { coupon_number: 2, percent: null, state: 'void' },
+      ],
+    );
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('failed handoff output does not audit a carried coupon', async () => {
   const f = await fixture();
   try {
     const ownerId = await subscriber(f.owner, 'owner@example.test', 'verified');
@@ -687,13 +816,12 @@ test('failed handoff output does not audit a carried discount', async () => {
       'referred@example.test',
       'verified',
     );
-    const awardId = await heldDiscount(f.owner, ownerId);
+    const couponId = await heldCoupon(f.owner, ownerId);
     await referralEdge(f.owner, ownerId, referredId);
     await assert.rejects(
       exportHandoff(
         f.app,
         'operator',
-        launch,
         async (record) => {
           if (record.type === 'confirmed_referral')
             throw new Error('write failed');
@@ -702,18 +830,11 @@ test('failed handoff output does not audit a carried discount', async () => {
       ),
       /write failed/u,
     );
-    assert.equal(
-      await f.owner.readOne({
-        text: `SELECT id FROM audit_log WHERE action='handoff.discount_carried' AND subject_id=$1`,
-        values: [awardId],
-      }),
-      null,
-    );
+    assert.equal(await carryAudit(f.owner, couponId), null);
     await assert.rejects(
       exportHandoff(
         f.app,
         'operator',
-        launch,
         async () => {},
         async () => {
           throw new Error('finish failed');
@@ -721,19 +842,13 @@ test('failed handoff output does not audit a carried discount', async () => {
       ),
       /finish failed/u,
     );
-    assert.equal(
-      await f.owner.readOne({
-        text: `SELECT id FROM audit_log WHERE action='handoff.discount_carried' AND subject_id=$1`,
-        values: [awardId],
-      }),
-      null,
-    );
+    assert.equal(await carryAudit(f.owner, couponId), null);
   } finally {
     await f.dispose();
   }
 });
 
-test('handoff import rejects missing or extra fields, a changed deadline, and bonus entries', () => {
+test('handoff import rejects missing or extra fields, a changed expiry, retired discounts and bonus entries', () => {
   const customer = {
     type: 'customer',
     email: 'a@example.test',
@@ -794,28 +909,57 @@ test('handoff import rejects missing or extra fields, a changed deadline, and bo
     () => parseHandoffRecord({ type: 'held_bonus_entries' }),
     TypeError,
   );
-  const discount = {
-    type: 'held_discount',
-    award_id: randomUUID(),
+  const coupon = {
+    type: 'held_coupon',
+    coupon_id: randomUUID(),
     subscriber_id: randomUUID(),
     email_normalised: 'a@example.test',
-    tier: 1,
-    discount_percent: 15,
+    coupon_number: 1,
+    percent: 30,
     state: 'held',
     outcome: 'carried_to_storefront',
-    qualification_deadline: '2027-06-13T10:00:00.000Z',
+    expires_at: couponExpiry,
   };
-  assert.deepEqual(parseHandoffRecord(discount), discount);
+  assert.deepEqual(parseHandoffRecord(coupon), coupon);
+  for (const changed of [
+    { expires_at: null },
+    // A changed expiry, including the retired 90-day deadline shape.
+    { expires_at: '2027-06-13T10:00:00.000Z' },
+    { expires_at: '2032-09-01T00:00:00Z' },
+    { percent: 0 },
+    { percent: 101 },
+    { percent: 5.5 },
+    { coupon_number: 0 },
+    { state: 'settled' },
+    { state: 'void' },
+    { outcome: 'settled' },
+    { email_normalised: null },
+    { coupon_id: 'not-a-uuid' },
+    { qualification_deadline: '2027-06-13T10:00:00.000Z' },
+  ]) {
+    assert.throws(
+      () => parseHandoffRecord({ ...coupon, ...changed }),
+      TypeError,
+      JSON.stringify(changed),
+    );
+  }
+  const missingExpiry: Partial<typeof coupon> = { ...coupon };
+  delete missingExpiry.expires_at;
+  assert.throws(() => parseHandoffRecord(missingExpiry), TypeError);
+  // The retired milestone discount is no longer a handoff record (E11.7-03).
   assert.throws(
-    () => parseHandoffRecord({ ...discount, qualification_deadline: null }),
-    TypeError,
-  );
-  assert.throws(
-    () => parseHandoffRecord({ ...discount, discount_percent: 5 }),
-    TypeError,
-  );
-  assert.throws(
-    () => parseHandoffRecord({ ...discount, email_normalised: null }),
+    () =>
+      parseHandoffRecord({
+        type: 'held_discount',
+        award_id: randomUUID(),
+        subscriber_id: randomUUID(),
+        email_normalised: 'a@example.test',
+        tier: 1,
+        discount_percent: 15,
+        state: 'held',
+        outcome: 'carried_to_storefront',
+        qualification_deadline: '2027-06-13T10:00:00.000Z',
+      }),
     TypeError,
   );
   const referral = {
@@ -850,12 +994,13 @@ for (const scenario of [
     reason: 'owner_not_in_handoff',
   },
 ] as const) {
-  test(`held discount owner ${scenario.label} is voided with an audited outcome and excluded`, async () => {
+  test(`held coupon owner ${scenario.label} is excluded, and a held discount is voided with an audited outcome`, async () => {
     const f = await fixture();
     try {
       const email = `${scenario.label.replaceAll(' ', '-')}@example.test`;
       const ownerId = await subscriber(f.owner, email, scenario.status);
       const awardId = await heldDiscount(f.owner, ownerId);
+      const couponId = await heldCoupon(f.owner, ownerId, 1, 10);
       if (scenario.suppressed) {
         await f.owner.execute({
           text: `INSERT INTO suppression(email_normalised,reason,source) VALUES ($1,'manual','test')`,
@@ -866,15 +1011,16 @@ for (const scenario of [
       const counts = await exportHandoff(
         f.app,
         'operator',
-        launch,
         async (record) => {
           records.push(record);
         },
         async () => {},
       );
       assert.equal(counts.voidedIneligibleDiscounts, 1);
-      assert.equal(counts.heldDiscounts, 0);
+      assert.equal(counts.heldCoupons, 0);
       assert.deepEqual(records, []);
+      // Outside the export set, the coupon is neither carried nor audited.
+      assert.equal(await carryAudit(f.owner, couponId), null);
       assert.deepEqual(
         await f.owner.readOne({
           text: 'SELECT state FROM milestone_award WHERE id=$1',
@@ -895,7 +1041,7 @@ for (const scenario of [
   });
 }
 
-test('marketing-withdrawn verified owner retains the held discount and an audited carry outcome', async () => {
+test('marketing-withdrawn verified owner retains the held coupon and an audited carry outcome', async () => {
   const f = await fixture();
   try {
     const ownerId = await subscriber(
@@ -907,43 +1053,36 @@ test('marketing-withdrawn verified owner retains the held discount and an audite
       text: `UPDATE subscriber SET marketing_consent_at=NULL,marketing_consent_version=NULL,marketing_consent_source=NULL WHERE id=$1`,
       values: [ownerId],
     });
-    const awardId = await heldDiscount(f.owner, ownerId);
+    const couponId = await heldCoupon(f.owner, ownerId);
     const records: HandoffRecord[] = [];
     const counts = await exportHandoff(
       f.app,
       'operator',
-      launch,
       async (record) => {
         records.push(record);
       },
       async () => {},
     );
-    assert.equal(counts.heldDiscounts, 1);
+    assert.equal(counts.heldCoupons, 1);
     assert.equal(counts.voidedIneligibleDiscounts, 0);
     assert.equal(
-      records.find((record) => record.type === 'held_discount')
-        ?.email_normalised,
+      records.find((record) => record.type === 'held_coupon')?.email_normalised,
       'withdrawn@example.test',
     );
-    assert.deepEqual(
-      await f.owner.readOne({
-        text: `SELECT actor,detail FROM audit_log WHERE action='handoff.discount_carried' AND subject_id=$1`,
-        values: [awardId],
-      }),
-      {
-        actor: 'operator',
-        detail: {
-          outcome: 'carried_to_storefront',
-          qualification_deadline: qualificationDeadline(launch),
-        },
+    assert.deepEqual(await carryAudit(f.owner, couponId), {
+      actor: 'operator',
+      subject_type: 'referral_coupon',
+      detail: {
+        outcome: 'carried_to_storefront',
+        expires_at: couponExpiry,
       },
-    );
+    });
   } finally {
     await f.dispose();
   }
 });
 
-test('erased owner has no discount or identity to export after E9-05 erasure', async () => {
+test('erased owner has no coupon or identity to export after E9-05 erasure', async () => {
   const f = await fixture();
   try {
     const ownerId = await subscriber(
@@ -952,6 +1091,7 @@ test('erased owner has no discount or identity to export after E9-05 erasure', a
       'verified',
     );
     const awardId = await heldDiscount(f.owner, ownerId);
+    const couponId = await heldCoupon(f.owner, ownerId);
     await withTransaction(f.owner, async (connection) => {
       await connection.execute({
         text: `INSERT INTO dsr_erasure(subscriber_id,requested_at,next_attempt_at)
@@ -965,6 +1105,10 @@ test('erased owner has no discount or identity to export after E9-05 erasure', a
       await connection.execute({
         text: `DELETE FROM milestone_award WHERE id=$1`,
         values: [awardId],
+      });
+      await connection.execute({
+        text: `DELETE FROM referral_coupon WHERE id=$1`,
+        values: [couponId],
       });
       await connection.readOne({
         text: 'SELECT erase_subscriber_identity($1)',
@@ -983,18 +1127,24 @@ test('erased owner has no discount or identity to export after E9-05 erasure', a
     const counts = await exportHandoff(
       f.app,
       'operator',
-      launch,
       async (record) => {
         records.push(record);
       },
       async () => {},
     );
-    assert.equal(counts.heldDiscounts, 0);
+    assert.equal(counts.heldCoupons, 0);
     assert.deepEqual(records, []);
     assert.equal(
       await f.owner.readOne({
         text: 'SELECT id FROM milestone_award WHERE id=$1',
         values: [awardId],
+      }),
+      null,
+    );
+    assert.equal(
+      await f.owner.readOne({
+        text: 'SELECT id FROM referral_coupon WHERE id=$1',
+        values: [couponId],
       }),
       null,
     );
@@ -1042,7 +1192,6 @@ test('confirmed referral links include only pairs whose two people are exported 
     const counts = await exportHandoff(
       f.app,
       'operator',
-      launch,
       async (record) => {
         records.push(record);
       },
@@ -1067,7 +1216,7 @@ test('confirmed referral links include only pairs whose two people are exported 
     assert.deepEqual(await importRehearsal(f.scratch, lines()), {
       createdCustomers: 0,
       createdGroups: 0,
-      createdDiscounts: 0,
+      createdCoupons: 0,
       createdReferrals: 0,
       createdTokens: 0,
     });
@@ -1108,19 +1257,19 @@ test('a failed legacy-void audit rolls the award transition back', async () => {
 test('scratch import rejects a conflicting idempotency key and enforces the batch cap', async () => {
   const f = await fixture();
   try {
-    const discount = parseHandoffRecord({
-      type: 'held_discount',
-      award_id: randomUUID(),
+    const coupon = parseHandoffRecord({
+      type: 'held_coupon',
+      coupon_id: randomUUID(),
       subscriber_id: randomUUID(),
       email_normalised: 'owner@example.test',
-      tier: 1,
-      discount_percent: 15,
+      coupon_number: 1,
+      percent: 15,
       state: 'held',
       outcome: 'carried_to_storefront',
-      qualification_deadline: '2027-06-13T10:00:00.000Z',
+      expires_at: couponExpiry,
     });
-    if (discount.type !== 'held_discount')
-      throw new Error('Expected a held discount fixture.');
+    if (coupon.type !== 'held_coupon')
+      throw new Error('Expected a held coupon fixture.');
     const customer = parseHandoffRecord({
       type: 'customer',
       email: 'owner@example.test',
@@ -1142,17 +1291,17 @@ test('scratch import rejects a conflicting idempotency key and enforces the batc
     await assert.rejects(
       importRehearsalBatch(f.scratch, [
         {
-          ...discount,
-          award_id: randomUUID(),
+          ...coupon,
+          coupon_id: randomUUID(),
           email_normalised: 'outside@example.test',
         },
       ]),
       /foreign key constraint/u,
     );
-    assert.deepEqual(await importRehearsalBatch(f.scratch, [discount]), {
+    assert.deepEqual(await importRehearsalBatch(f.scratch, [coupon]), {
       createdCustomers: 0,
       createdGroups: 0,
-      createdDiscounts: 1,
+      createdCoupons: 1,
       createdReferrals: 0,
       createdTokens: 0,
     });
@@ -1167,22 +1316,31 @@ test('scratch import rejects a conflicting idempotency key and enforces the batc
       /foreign key constraint/u,
     );
     await assert.rejects(
+      importRehearsalBatch(f.scratch, [{ ...coupon, percent: 20 }]),
+      /conflicting data/u,
+    );
+    await assert.rejects(
       importRehearsalBatch(f.scratch, [
-        { ...discount, qualification_deadline: '2027-06-14T10:00:00.000Z' },
+        { ...coupon, expires_at: '2032-09-02T00:00:00.000Z' },
       ]),
       /conflicting data/u,
+    );
+    // One coupon per owner and coupon number, whatever its ID.
+    await assert.rejects(
+      importRehearsalBatch(f.scratch, [{ ...coupon, coupon_id: randomUUID() }]),
+      /unique constraint/u,
     );
     assert.deepEqual(await countRehearsalRows(f.scratch), {
       customers: 1,
       groups: 1,
-      discounts: 1,
+      coupons: 1,
       referrals: 0,
       tokens: 0,
     });
     await assert.rejects(
       importRehearsalBatch(
         f.scratch,
-        Array.from({ length: rehearsalBatchSize + 1 }, () => discount),
+        Array.from({ length: rehearsalBatchSize + 1 }, () => coupon),
       ),
       RangeError,
     );
@@ -1199,21 +1357,30 @@ test('handoff pages over more than one capped batch', async () => {
         SELECT md5(n::text)::uuid, 'bulk-'||n||'@example.test', 'bulk-'||n||'@example.test',
           'example.test','verified','wave-4' FROM generate_series(1,1001) n`,
     });
-    let emitted = 0;
+    await f.owner.execute({
+      text: `INSERT INTO referral_coupon(id,subscriber_id,coupon_number,percent,state,created_at,updated_at)
+        SELECT gen_random_uuid(), md5(n::text)::uuid, 1, 5, 'held', $1, $1
+        FROM generate_series(1,1001) n`,
+      values: [launch],
+    });
+    const emitted = { customer: 0, held_coupon: 0 };
     const counts = await exportHandoff(
       f.app,
       'operator',
-      launch,
       async (record) => {
-        assert.equal(record.type, 'customer');
-        emitted += 1;
+        assert.ok(record.type === 'customer' || record.type === 'held_coupon');
+        emitted[record.type] += 1;
       },
       async () => {},
     );
-    assert.equal(emitted, 1001);
+    assert.deepEqual(emitted, { customer: 1001, held_coupon: 1001 });
+    const carried = await f.owner.readOne<{ count: number }>({
+      text: `SELECT count(*)::int AS count FROM audit_log WHERE action='handoff.coupon_carried'`,
+    });
+    assert.equal(carried?.count, 1001);
     assert.deepEqual(counts, {
       customers: 1001,
-      heldDiscounts: 0,
+      heldCoupons: 1001,
       confirmedReferrals: 0,
       unsubscribeTokens: 0,
       voidedIneligibleDiscounts: 0,
@@ -1224,7 +1391,7 @@ test('handoff pages over more than one capped batch', async () => {
   }
 });
 
-test('seeded property: double import adds no customer, group or deadline-bearing discount on replay', async () => {
+test('seeded property: double import adds no customer, group or expiry-bearing coupon on replay', async () => {
   const f = await fixture();
   let caseNumber = 0;
   try {
@@ -1258,15 +1425,15 @@ test('seeded property: double import adds no customer, group or deadline-bearing
           );
           records.push(
             parseHandoffRecord({
-              type: 'held_discount',
-              award_id: `00000000-0000-4000-8000-${String(caseNumber).padStart(12, '0')}`,
+              type: 'held_coupon',
+              coupon_id: `00000000-0000-4000-8000-${String(caseNumber).padStart(12, '0')}`,
               subscriber_id: '11111111-1111-4111-8111-111111111111',
               email_normalised: `case${caseNumber}-${numbers[0]}@example.test`,
-              tier: 1,
-              discount_percent: 15,
+              coupon_number: 1,
+              percent: 15,
               state: 'held',
               outcome: 'carried_to_storefront',
-              qualification_deadline: '2027-06-13T10:00:00.000Z',
+              expires_at: couponExpiry,
             }),
           );
           const lines = async function* () {
@@ -1279,12 +1446,12 @@ test('seeded property: double import adds no customer, group or deadline-bearing
             first.createdGroups,
             numbers.length * (subslush ? 2 : 1),
           );
-          assert.equal(first.createdDiscounts, 1);
+          assert.equal(first.createdCoupons, 1);
           assert.equal(first.createdReferrals, 0);
           assert.deepEqual(second, {
             createdCustomers: 0,
             createdGroups: 0,
-            createdDiscounts: 0,
+            createdCoupons: 0,
             createdReferrals: 0,
             createdTokens: 0,
           });

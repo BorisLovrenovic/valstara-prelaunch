@@ -21,15 +21,6 @@ const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required.');
 const output = argument('output');
 const actor = argument('actor');
-const storeLaunchText = argument('store-launch-at');
-if (
-  !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u.test(storeLaunchText)
-) {
-  throw new Error('Store launch must be an RFC 3339 UTC instant.');
-}
-const storeLaunchAt = new Date(storeLaunchText);
-if (!Number.isFinite(storeLaunchAt.getTime()))
-  throw new Error('Store launch instant is invalid.');
 const database = createPool(databaseUrl);
 const stream = createWriteStream(output, { flags: 'wx', mode: 0o600 });
 let outputFinished = false;
@@ -38,7 +29,6 @@ try {
   const counts = await exportHandoff(
     database,
     actor,
-    storeLaunchAt,
     async (record) => {
       if (!stream.write(`${JSON.stringify(record)}\n`))
         await once(stream, 'drain');

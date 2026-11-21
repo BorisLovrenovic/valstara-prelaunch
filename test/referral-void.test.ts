@@ -157,6 +157,14 @@ async function referrerWith(
   verifiedAt?: Date,
 ): Promise<{ referrerId: string; referredIds: string[]; edgeIds: string[] }> {
   const referrerId = await subscriber(database, { code: true, verifiedAt });
+  // A referrer whose verification order gave them wave 3, so wave 1 comes
+  // only from their referrals (E11.7-03).
+  await database.execute({
+    text: `UPDATE subscriber
+           SET verification_order_window = 'wave-3', access_window = 'wave-3'
+           WHERE id = $1`,
+    values: [referrerId],
+  });
   await entry(database, referrerId, null);
   const referredIds: string[] = [];
   const edgeIds: string[] = [];
@@ -229,13 +237,27 @@ async function measure(f: Fixture, referrerId: string) {
       100,
     )
   ).length;
-  const backfill = (
-    await createReferralRepository(f.app).findMilestoneBackfillCandidateIds(
-      1,
-      3,
-      100,
-    )
-  ).includes(referrerId);
+  // The coupon ladder and wave 1 (E11.7-03) read the same count.
+  const ladder = {
+    coupons: await f.app.list<{
+      number: number;
+      percent: number | null;
+      state: string;
+    }>(
+      {
+        text: `SELECT coupon_number AS number, percent, state FROM referral_coupon
+               WHERE subscriber_id = $1 ORDER BY coupon_number`,
+        values: [referrerId],
+      },
+      10,
+    ),
+    window: (
+      await f.app.readOne<{ access_window: string | null }>({
+        text: 'SELECT access_window FROM subscriber WHERE id = $1',
+        values: [referrerId],
+      })
+    )?.access_window,
+  };
   const repair = await referral.recomputeCounters(1_000);
   return {
     counter: counter?.confirmed_referrals,
@@ -257,7 +279,7 @@ async function measure(f: Fixture, referrerId: string) {
     exportCount,
     ledger,
     entitlements,
-    backfill,
+    ladder,
     repairCorrections: repair.corrected,
   };
 }
@@ -283,7 +305,7 @@ test('a void removes one referral from every count, and an un-void restores each
       snapshot: before.snapshot,
       prizeEntries: before.prizeEntries,
       handoffPairs: before.handoffPairs,
-      backfill: before.backfill,
+      ladder: before.ladder,
       repairCorrections: before.repairCorrections,
     },
     {
@@ -292,7 +314,10 @@ test('a void removes one referral from every count, and an un-void restores each
       snapshot: { score: 3, rank: 1 },
       prizeEntries: 4,
       handoffPairs: 5,
-      backfill: true,
+      ladder: {
+        coupons: [{ number: 1, percent: 5, state: 'held' }],
+        window: 'wave-1',
+      },
       repairCorrections: 0,
     },
   );
@@ -319,7 +344,11 @@ test('a void removes one referral from every count, and an un-void restores each
     handoffCustomerCount: 2,
     exportCount: 2,
     ledger: before.ledger - 1,
-    backfill: false,
+    // Below coupon 1's unlock and wave 1's threshold of 3.
+    ladder: {
+      coupons: [{ number: 1, percent: null, state: 'void' }],
+      window: 'wave-3',
+    },
     // The counter was recomputed in the void transaction; repair finds
     // nothing to correct, and so raises no alert.
     repairCorrections: 0,
@@ -495,6 +524,8 @@ test('every void and un-void writes the audit log with before and after values; 
             void_reason: null,
             voided_by: null,
             referrer_confirmed_referrals: 2,
+            referrer_coupons: [],
+            referrer_access_window: 'wave-3',
             giveaway_entry_voided: false,
           },
           after: {
@@ -502,6 +533,8 @@ test('every void and un-void writes the audit log with before and after values; 
             void_reason: 'Bulk signups',
             voided_by: actor,
             referrer_confirmed_referrals: 1,
+            referrer_coupons: [],
+            referrer_access_window: 'wave-3',
             giveaway_entry_voided: true,
           },
         },
@@ -521,6 +554,8 @@ test('every void and un-void writes the audit log with before and after values; 
             void_reason: 'Bulk signups',
             voided_by: actor,
             referrer_confirmed_referrals: 1,
+            referrer_coupons: [],
+            referrer_access_window: 'wave-3',
             giveaway_entry_voided: true,
           },
           after: {
@@ -528,6 +563,8 @@ test('every void and un-void writes the audit log with before and after values; 
             void_reason: null,
             voided_by: null,
             referrer_confirmed_referrals: 2,
+            referrer_coupons: [],
+            referrer_access_window: 'wave-3',
             giveaway_entry_voided: false,
           },
         },
@@ -1017,9 +1054,7 @@ test('concurrent voids of one referral record exactly one void, and a void racin
     await edge(f.owner, a.referrerId, referredId, 'attributed');
     pending.push(referredId);
   }
-  const referral = createReferralService(f.app, {
-    milestoneEmail: async () => false,
-  });
+  const referral = createReferralService(f.app, {});
   await Promise.all([
     ...pending.map((referredId) => referral.confirm(referredId, now)),
     service.voidReferral(a.referredIds[1]!, 'Bulk signups', actor),

@@ -1,16 +1,17 @@
-import type { RewardClassification } from './reward-state.ts';
-
 export const accessWindows = ['wave-1', 'wave-2', 'wave-3', 'wave-4'] as const;
 export type AccessWindow = (typeof accessWindows)[number];
 export interface AccessWindowBand {
   readonly maximumVerificationOrder: number | null;
   readonly window: AccessWindow;
 }
-export type MilestoneRewardKind = 'discount' | 'wave_upgrade';
-export type RewardClassifications = Readonly<
-  Record<MilestoneRewardKind, RewardClassification>
->;
 
+/**
+ * ADR-025's retired milestone tiers, kept only as the figures the landing and
+ * verification pages still print until E11.7-04 replaces that wording with the
+ * coupon ladder. Nothing awards, promotes or exports from them: since E11.7-03
+ * no confirmation creates a `milestone_award`, and every existing award was
+ * voided with the reason `ladder_replaced` (migration 0061).
+ */
 export interface MilestoneTier {
   readonly discountPercent: number;
   readonly enabled: boolean;
@@ -18,23 +19,6 @@ export interface MilestoneTier {
   readonly threshold: number;
 }
 
-export function milestoneReachedAtConfirmation(
-  confirmedReferrals: number,
-  tiers: readonly MilestoneTier[] = milestoneTiers,
-): MilestoneTier | null {
-  return (
-    tiers.find(
-      (candidate) =>
-        candidate.enabled && candidate.threshold === confirmedReferrals,
-    ) ?? null
-  );
-}
-
-/**
- * Founder-confirmed campaign values from ADR-025. Tier 2 remains present as
- * configuration but disabled until its explicit mid-campaign activation; this
- * keeps the cut-list promise without a migration or a code change.
- */
 export const milestoneTiers: readonly MilestoneTier[] = Object.freeze([
   {
     discountPercent: 15,
@@ -51,14 +35,157 @@ export const milestoneTiers: readonly MilestoneTier[] = Object.freeze([
 ]);
 
 /**
- * Founder-confirmed ADR-025 values. This is campaign configuration rather
- * than schema: changing a classification requires no migration.
+ * The referrer coupon ladder (founder, 2026-11-17; ADR-025 as amended by
+ * E11.7-03). This is configuration, not schema: changing a threshold, the step,
+ * the maximum, the number of coupons or the launch date needs no migration.
  */
-export const milestoneRewardClassifications: RewardClassifications =
-  Object.freeze({
-    discount: 'high_value',
-    wave_upgrade: 'cheap',
+export interface CouponLadder {
+  /** The confirmed-referral count at which each coupon unlocks, in coupon order. */
+  readonly unlocks: readonly number[];
+  /** Confirmed referrals between one step and the next. */
+  readonly stepReferrals: number;
+  /** The percent a coupon starts at, and adds at every step. */
+  readonly stepPercent: number;
+  readonly maximumPercent: number;
+  /** The configured public-launch date, `YYYY-MM-DD` in UTC. */
+  readonly publicLaunchDate: string;
+  /** A coupon expires this many years after the public-launch date. */
+  readonly expiryYears: number;
+}
+
+export const couponLadder: CouponLadder = Object.freeze({
+  unlocks: Object.freeze([3, 21, 39]),
+  stepReferrals: 3,
+  stepPercent: 5,
+  maximumPercent: 30,
+  publicLaunchDate: '2027-09-01',
+  expiryYears: 5,
+});
+
+/** One coupon the count earns: its number on the ladder and its percent. */
+export interface LadderCoupon {
+  readonly number: number;
+  readonly percent: number;
+}
+
+/**
+ * Every coupon a confirmed, non-voided referral count earns, in coupon order.
+ * A coupon that has not unlocked is absent. The count is the only input, so a
+ * void that lowers it lowers or removes the coupons, and an un-void restores
+ * them exactly.
+ */
+export function computeCouponLadder(
+  confirmedReferrals: number,
+  ladder: CouponLadder = couponLadder,
+): readonly LadderCoupon[] {
+  if (!Number.isInteger(confirmedReferrals) || confirmedReferrals < 0) {
+    throw new RangeError(
+      'A confirmed referral count must be a non-negative integer.',
+    );
+  }
+  assertCouponLadder(ladder);
+  return ladder.unlocks.flatMap((unlock, index) => {
+    if (confirmedReferrals < unlock) return [];
+    const steps = Math.floor(
+      (confirmedReferrals - unlock) / ladder.stepReferrals,
+    );
+    return [
+      {
+        number: index + 1,
+        percent: Math.min(
+          ladder.maximumPercent,
+          ladder.stepPercent * (steps + 1),
+        ),
+      },
+    ];
   });
+}
+
+/**
+ * Every coupon's expiry: five years (configured) after the configured
+ * public-launch date, at 00:00 UTC. The founder sets the real date in the
+ * configuration at handoff, and the export carries the computed instant.
+ */
+export function couponExpiresAt(ladder: CouponLadder = couponLadder): Date {
+  assertCouponLadder(ladder);
+  const [year, month, day] = ladder.publicLaunchDate.split('-').map(Number);
+  return new Date(Date.UTC(year! + ladder.expiryYears, month! - 1, day!));
+}
+
+export function assertCouponLadder(ladder: CouponLadder): void {
+  if (ladder.unlocks.length === 0) {
+    throw new RangeError('The coupon ladder must hold at least one coupon.');
+  }
+  let previous = 0;
+  for (const unlock of ladder.unlocks) {
+    if (!Number.isInteger(unlock) || unlock <= previous) {
+      throw new RangeError(
+        'Coupon unlocks must be increasing positive integers.',
+      );
+    }
+    previous = unlock;
+  }
+  if (!Number.isInteger(ladder.stepReferrals) || ladder.stepReferrals < 1) {
+    throw new RangeError(
+      'A coupon step must be a positive whole number of referrals.',
+    );
+  }
+  if (
+    !Number.isInteger(ladder.stepPercent) ||
+    !Number.isInteger(ladder.maximumPercent) ||
+    ladder.stepPercent < 1 ||
+    ladder.maximumPercent < ladder.stepPercent ||
+    ladder.maximumPercent > 100
+  ) {
+    throw new RangeError(
+      'Coupon percents must be whole numbers from the step up to at most 100.',
+    );
+  }
+  if (!Number.isInteger(ladder.expiryYears) || ladder.expiryYears < 1) {
+    throw new RangeError(
+      'A coupon expiry must be a positive whole number of years.',
+    );
+  }
+  const launch = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(ladder.publicLaunchDate);
+  if (
+    launch === null ||
+    new Date(`${ladder.publicLaunchDate}T00:00:00.000Z`)
+      .toISOString()
+      .slice(0, 10) !== ladder.publicLaunchDate
+  ) {
+    throw new RangeError(
+      'The public-launch date must be a valid YYYY-MM-DD date.',
+    );
+  }
+}
+
+/**
+ * Confirmed, non-voided referrals that put a member in wave 1 (founder,
+ * 2026-11-17). Configuration, like the ladder.
+ */
+export const waveOneReferralThreshold = 3;
+
+/**
+ * A member's access window: wave 1 when their verification-order window is
+ * wave 1 (the first 1,000, which no void removes) or their confirmed,
+ * non-voided referrals reach the threshold; otherwise the window their
+ * verification order gave them. Partner-based wave 1 is added by E11.7-07.
+ */
+export function accessWindowForReferrals(
+  verificationOrderWindow: AccessWindow,
+  confirmedReferrals: number,
+  threshold: number = waveOneReferralThreshold,
+): AccessWindow {
+  if (!Number.isInteger(confirmedReferrals) || confirmedReferrals < 0) {
+    throw new RangeError(
+      'A confirmed referral count must be a non-negative integer.',
+    );
+  }
+  if (!Number.isInteger(threshold) || threshold < 1) {
+    throw new RangeError('The wave-1 threshold must be a positive integer.');
+  }
+  return confirmedReferrals >= threshold ? 'wave-1' : verificationOrderWindow;
+}
 
 export const referralCodeAlphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const referralCodeLength = 12;
@@ -75,16 +202,16 @@ export const accessWindowBands: readonly AccessWindowBand[] = Object.freeze([
   { maximumVerificationOrder: null, window: 'wave-4' },
 ]);
 
+/**
+ * The window a member's verification order gives them, assigned once at
+ * verification and never changed (ADR-025's bands; founder D1, 2026-11-17).
+ */
 export function accessWindowForVerificationOrder(
   verificationOrder: number,
-  tier = 0,
   bands: readonly AccessWindowBand[] = accessWindowBands,
 ): AccessWindow {
   if (!Number.isInteger(verificationOrder) || verificationOrder < 1) {
     throw new RangeError('Verification order must be a positive integer.');
-  }
-  if (!Number.isInteger(tier) || tier < 0) {
-    throw new RangeError('Referral tier must be a non-negative integer.');
   }
   assertAccessWindowBands(bands);
 
@@ -97,18 +224,7 @@ export function accessWindowForVerificationOrder(
     throw new RangeError('Access-window configuration must cover every order.');
   }
 
-  return promoteAccessWindow(band.window, tier);
-}
-
-export function promoteAccessWindow(
-  window: AccessWindow,
-  tiers: number,
-): AccessWindow {
-  if (!Number.isInteger(tiers) || tiers < 0) {
-    throw new RangeError('Promotion levels must be a non-negative integer.');
-  }
-  const current = accessWindows.indexOf(window);
-  return accessWindows[Math.max(0, current - tiers)] ?? 'wave-1';
+  return band.window;
 }
 
 function assertAccessWindowBands(bands: readonly AccessWindowBand[]): void {

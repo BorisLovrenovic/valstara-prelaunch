@@ -3,12 +3,18 @@ import { redactAuditDetail } from '../audit/redact-detail.ts';
 import type { AuditDetail } from '../audit/types.ts';
 import { createGiveawayDrawRepository } from '../db/giveaway-draw.ts';
 import type { DatabasePool } from '../db/pool.ts';
-import { createReferralRepository } from '../db/referral.ts';
+import { createReferralCouponRepository } from '../db/referral-coupon.ts';
 import {
   createReferralVoidRepository,
   type ReferralVoidEdgeRow,
 } from '../db/referral-void.ts';
 import { withTransaction } from '../db/transaction.ts';
+
+import {
+  recomputeReferralRewards,
+  referralRewardConfiguration,
+  type ReferralRewardConfiguration,
+} from './rewards.ts';
 
 // E11.7-02: the founder voids one referral with a reason, or un-voids it.
 // A voided edge is kept, with its reason, actor and time, and counts nowhere:
@@ -16,6 +22,8 @@ import { withTransaction } from '../db/transaction.ts';
 // referrer's cached count is recomputed in the same transaction. Before the
 // draw snapshot is committed, the edge's referral entry is voided with it and
 // restored by an un-void; after commitment, nothing in the giveaway changes.
+// The referrer's coupon ladder and wave 1 are recomputed in the same
+// transaction (E11.7-03), so a void lowers them and an un-void restores them.
 
 export const referralVoidReasonMaximumLength = 200;
 
@@ -127,17 +135,26 @@ function assertHumanActor(actor: string): string {
   return trimmed;
 }
 
+interface AuditCoupon {
+  readonly number: number;
+  readonly percent: number | null;
+  readonly state: string;
+}
+
 interface AuditState {
   readonly voided_at: string | null;
   readonly void_reason: string | null;
   readonly voided_by: string | null;
   readonly referrer_confirmed_referrals: number;
+  readonly referrer_coupons: readonly AuditCoupon[];
+  readonly referrer_access_window: string | null;
   readonly giveaway_entry_voided: boolean | null;
 }
 
 export function createReferralVoidService(
   database: DatabasePool,
   clock: () => Date = () => new Date(),
+  rewards: ReferralRewardConfiguration = referralRewardConfiguration,
 ): ReferralVoidService {
   async function change(
     operation: 'void' | 'unvoid',
@@ -151,7 +168,7 @@ export function createReferralVoidService(
 
     return withTransaction(database, async (connection) => {
       const voids = createReferralVoidRepository(connection);
-      const referrals = createReferralRepository(connection);
+      const coupons = createReferralCouponRepository(connection);
 
       const found = await voids.findEdgeByReferred(referredId);
       if (found === null) throw new ReferralVoidRefusedError('not_found');
@@ -190,6 +207,15 @@ export function createReferralVoidService(
       await createGiveawayDrawRepository(connection).lockEntryLedger();
       const committed = await voids.drawSnapshotCommitted();
       const entryBefore = await voids.entryVoided(edge.id);
+      const couponsBefore = (await coupons.listCoupons(referrerId)).map(
+        (row): AuditCoupon => ({
+          number: row.coupon_number,
+          percent: row.percent,
+          state: row.state,
+        }),
+      );
+      const windowBefore =
+        (await coupons.findWaves(referrerId))?.access_window ?? null;
 
       const now = clock();
       const updated =
@@ -219,21 +245,28 @@ export function createReferralVoidService(
       }
       const entryAfter = await voids.entryVoided(edge.id);
 
-      const confirmedReferrals =
-        await referrals.countConfirmedEdges(referrerId);
-      const settledTier = await referrals.findSettledReferralTier(referrerId);
-      await referrals.setReferralCounterAndTier(
+      const recomputed = await recomputeReferralRewards(
+        connection,
         referrerId,
-        confirmedReferrals,
-        settledTier,
+        { actor, configuration: rewards, now },
       );
+      const confirmedReferrals = recomputed.confirmedReferrals;
 
       const before: AuditState = {
         voided_at: edge.voided_at?.toISOString() ?? null,
         void_reason: edge.void_reason,
         voided_by: edge.voided_by,
         referrer_confirmed_referrals: referrer.confirmed_referrals,
+        referrer_coupons: couponsBefore,
+        referrer_access_window: windowBefore,
         giveaway_entry_voided: entryBefore,
+      };
+      const ladderAfter = {
+        referrer_confirmed_referrals: confirmedReferrals,
+        referrer_coupons: recomputed.coupons.map((coupon): AuditCoupon => ({
+          ...coupon,
+        })),
+        referrer_access_window: recomputed.accessWindow,
       };
       const after: AuditState =
         operation === 'void'
@@ -241,14 +274,14 @@ export function createReferralVoidService(
               voided_at: now.toISOString(),
               void_reason: reason,
               voided_by: actor,
-              referrer_confirmed_referrals: confirmedReferrals,
+              ...ladderAfter,
               giveaway_entry_voided: entryAfter,
             }
           : {
               voided_at: null,
               void_reason: null,
               voided_by: null,
-              referrer_confirmed_referrals: confirmedReferrals,
+              ...ladderAfter,
               giveaway_entry_voided: entryAfter,
             };
       const detail: AuditDetail = {
@@ -257,8 +290,18 @@ export function createReferralVoidService(
         referred_id: referredId,
         draw_snapshot_committed: committed,
         giveaway_entry: giveawayEntry,
-        before: { ...before },
-        after: { ...after },
+        before: {
+          ...before,
+          referrer_coupons: before.referrer_coupons.map((coupon) => ({
+            ...coupon,
+          })),
+        },
+        after: {
+          ...after,
+          referrer_coupons: after.referrer_coupons.map((coupon) => ({
+            ...coupon,
+          })),
+        },
       };
       await createAuditService(connection).record({
         action: operation === 'void' ? 'referral.voided' : 'referral.unvoided',
