@@ -5,6 +5,8 @@ import { withTransaction } from './transaction.ts';
 export const handoffBatchSize = 500;
 export const legacyBonusVoidBatchSize = 100;
 export const ineligibleDiscountVoidBatchSize = 100;
+/** Verified subscribers recomputed per transaction before the export (D-047). */
+export const handoffRecomputeBatchSize = 1_000;
 
 /** A held coupon whose owner is in the customer export set (E11.7-03). */
 export interface HeldCouponRow {
@@ -189,6 +191,28 @@ export async function voidLegacyBonusBatch(
     }
     return rows.length;
   });
+}
+
+/**
+ * Locks the next verified subscribers after `afterId`, in ID order, for the
+ * handoff's reward recompute (D-047), inside the caller's transaction. It waits
+ * for a row that concurrent work holds instead of skipping it, because every
+ * verified subscriber must be recomputed before the export.
+ */
+export async function lockVerifiedSubscribersForRecompute(
+  connection: DatabaseConnection,
+  afterId: string | null,
+): Promise<readonly string[]> {
+  const rows = await connection.list<{ id: string }>(
+    {
+      text: `SELECT id FROM subscriber
+        WHERE status = 'verified' AND ($1::uuid IS NULL OR id > $1::uuid)
+        ORDER BY id FOR UPDATE`,
+      values: [afterId],
+    },
+    handoffRecomputeBatchSize,
+  );
+  return rows.map((row) => row.id);
 }
 
 export async function openHandoffSnapshot(

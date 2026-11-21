@@ -81,7 +81,7 @@
   "test/giveaway-rules-build.test.mjs": 11.4,
   "test/giveaway-rules-history.test.mjs": 0.2,
   "test/giveaway-rules.test.ts": 0.5,
-  "test/handoff.test.ts": 11.6,
+  "test/handoff.test.ts": 19.7,
   "test/helpers/container-owner.d.mts": 0.3,
   "test/helpers/container-owner.mjs": 0.2,
   "test/helpers/faq-page-data.mjs": 0.1,

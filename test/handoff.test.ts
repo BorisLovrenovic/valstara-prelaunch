@@ -8,7 +8,11 @@ import {
   assertCutoverEligible,
   voidLegacyBonusBatch,
 } from '../src/server/db/handoff.ts';
-import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
+import {
+  createPool,
+  type DatabasePool,
+  type SqlStatement,
+} from '../src/server/db/pool.ts';
 import { createFlagService } from '../src/server/flags/service.ts';
 import { recordHandoffFreeze } from '../src/server/subscriber/handoff-freeze.ts';
 import { withTransaction } from '../src/server/db/transaction.ts';
@@ -20,7 +24,14 @@ import {
   importRehearsalBatch,
   rehearsalBatchSize,
 } from '../src/server/db/handoff-rehearsal.ts';
-import { couponExpiresAt } from '../src/server/referral/config.ts';
+import {
+  accessWindowForReferrals,
+  computeCouponLadder,
+  couponExpiresAt,
+  couponLadder,
+  type AccessWindow,
+} from '../src/server/referral/config.ts';
+import type { ReferralRewardConfiguration } from '../src/server/referral/rewards.ts';
 import { createReferralService } from '../src/server/referral/service.ts';
 import { createReferralVoidService } from '../src/server/referral/void.ts';
 import {
@@ -203,6 +214,27 @@ async function referralEdge(
       state === 'confirmed' ? 'settled' : 'none',
     ],
   });
+}
+
+/**
+ * Confirmed referrals that earn a fixture's coupons, because the handoff first
+ * recomputes every verified subscriber's coupons from their edges (D-047).
+ * Each friend verified and then left the waitlist, so the edge counts for the
+ * referrer while the friend is outside the export set and its referral pairs.
+ */
+async function departedFriends(
+  owner: DatabasePool,
+  referrerId: string,
+  count: number,
+): Promise<void> {
+  for (let index = 0; index < count; index += 1) {
+    const friendId = await subscriber(
+      owner,
+      `departed-${index}-${referrerId}@example.test`,
+      'unsubscribed',
+    );
+    await referralEdge(owner, referrerId, friendId);
+  }
 }
 
 test('handoff exports v1 and v2 categories with versions and imports both twice', async () => {
@@ -511,6 +543,8 @@ test('handoff exports verified unsuppressed customers, eligible held coupons and
       'verified',
       'wave-2',
     );
+    // 21 confirmed referrals earn coupon 1 at 30% and coupon 2 at 5%.
+    await departedFriends(f.owner, included, 21);
     await subscriber(f.owner, 'pending@example.test', 'pending');
     await subscriber(f.owner, 'expired@example.test', 'expired');
     await subscriber(f.owner, 'disqualified@example.test', 'disqualified');
@@ -548,6 +582,7 @@ test('handoff exports verified unsuppressed customers, eligible held coupons and
       unsubscribeTokens: 0,
       voidedIneligibleDiscounts: 0,
       voidedLegacyBonusEntries: 2,
+      recomputedRewards: 0,
     });
     assert.equal(records.length, 3);
     const customer = records.find((record) => record.type === 'customer');
@@ -555,9 +590,10 @@ test('handoff exports verified unsuppressed customers, eligible held coupons and
       type: 'customer',
       email: 'included@example.test',
       email_normalised: 'included@example.test',
-      referral_tier: 1,
+      // Recomputed before export: no settled award, 21 confirmed edges.
+      referral_tier: 0,
       referral_code: null,
-      confirmed_referrals: 3,
+      confirmed_referrals: 21,
       category_preference: ['apparel', 'home'],
       survey_version: '2026-09-08',
       source: 'referral',
@@ -683,6 +719,7 @@ test('handoff exports verified unsuppressed customers, eligible held coupons and
         unsubscribeTokens: 0,
         voidedIneligibleDiscounts: 0,
         voidedLegacyBonusEntries: 0,
+        recomputedRewards: 0,
       },
     );
     assert.deepEqual(second, records);
@@ -818,6 +855,8 @@ test('failed handoff output does not audit a carried coupon', async () => {
     );
     const couponId = await heldCoupon(f.owner, ownerId);
     await referralEdge(f.owner, ownerId, referredId);
+    // Three confirmed referrals earn the 5% coupon.
+    await departedFriends(f.owner, ownerId, 2);
     await assert.rejects(
       exportHandoff(
         f.app,
@@ -1000,6 +1039,8 @@ for (const scenario of [
       const email = `${scenario.label.replaceAll(' ', '-')}@example.test`;
       const ownerId = await subscriber(f.owner, email, scenario.status);
       const awardId = await heldDiscount(f.owner, ownerId);
+      // Six confirmed referrals earn the 10% coupon.
+      await departedFriends(f.owner, ownerId, 6);
       const couponId = await heldCoupon(f.owner, ownerId, 1, 10);
       if (scenario.suppressed) {
         await f.owner.execute({
@@ -1053,6 +1094,8 @@ test('marketing-withdrawn verified owner retains the held coupon and an audited 
       text: `UPDATE subscriber SET marketing_consent_at=NULL,marketing_consent_version=NULL,marketing_consent_source=NULL WHERE id=$1`,
       values: [ownerId],
     });
+    // Three confirmed referrals earn the 5% coupon.
+    await departedFriends(f.owner, ownerId, 3);
     const couponId = await heldCoupon(f.owner, ownerId);
     const records: HandoffRecord[] = [];
     const counts = await exportHandoff(
@@ -1363,6 +1406,18 @@ test('handoff pages over more than one capped batch', async () => {
         FROM generate_series(1,1001) n`,
       values: [launch],
     });
+    // Three confirmed referrals each, from friends who left the waitlist, earn
+    // every 5% coupon in the recompute before export (D-047).
+    await f.owner.execute({
+      text: `INSERT INTO subscriber(id,email,email_normalised,email_domain,status)
+        SELECT md5('friend-'||n)::uuid, 'friend-'||n||'@example.test', 'friend-'||n||'@example.test',
+          'example.test','unsubscribed' FROM generate_series(1,3003) n`,
+    });
+    await f.owner.execute({
+      text: `INSERT INTO referral_edge(id,referrer_id,referred_id,state,reward_state)
+        SELECT gen_random_uuid(), md5(((n+2)/3)::text)::uuid, md5('friend-'||n)::uuid,
+          'confirmed','settled' FROM generate_series(1,3003) n`,
+    });
     const emitted = { customer: 0, held_coupon: 0 };
     const counts = await exportHandoff(
       f.app,
@@ -1385,7 +1440,266 @@ test('handoff pages over more than one capped batch', async () => {
       unsubscribeTokens: 0,
       voidedIneligibleDiscounts: 0,
       voidedLegacyBonusEntries: 0,
+      recomputedRewards: 0,
     });
+  } finally {
+    await f.dispose();
+  }
+});
+
+/**
+ * The pool, passed through, recording each batch the handoff recompute locks:
+ * the limit it asked for and the rows it got.
+ */
+function observeRecomputeBatches(
+  database: DatabasePool,
+  batches: { limit: number; rows: number }[],
+): DatabasePool {
+  const recomputeLock =
+    /FROM subscriber\s+WHERE status = 'verified'[\s\S]*FOR UPDATE/u;
+  return new Proxy(database, {
+    get(target, key) {
+      if (key === 'connect')
+        return async () => {
+          const client = await target.connect();
+          return new Proxy(client, {
+            get(inner, innerKey) {
+              if (innerKey === 'list')
+                return async (statement: SqlStatement, limit: number) => {
+                  const rows = await inner.list(statement, limit);
+                  if (recomputeLock.test(statement.text))
+                    batches.push({ limit, rows: rows.length });
+                  return rows;
+                };
+              const value: unknown = Reflect.get(inner, innerKey, inner);
+              return typeof value === 'function' ? value.bind(inner) : value;
+            },
+          });
+        };
+      const value: unknown = Reflect.get(target, key, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+}
+
+test('the handoff recompute: a changed ladder reaches every verified subscriber before export, in audited batches of at most 1,000', async () => {
+  const f = await fixture();
+  try {
+    // The lowest and highest IDs, so one referrer is in the first batch and
+    // the other is beyond it.
+    const first = '00000000-0000-4000-8000-000000000001';
+    const beyond = 'ffffffff-ffff-4fff-bfff-ffffffffffff';
+    const verified = async (id: string, window: AccessWindow) =>
+      f.owner.execute({
+        text: `INSERT INTO subscriber(id,email,email_normalised,email_domain,status,
+            verified_at,verification_order_window,access_window)
+          VALUES ($1,$2,$2,'example.test','verified',$3,$4,$4)`,
+        values: [id, `${id}@example.test`, launch, window],
+      });
+    // The first referrer holds a first-1,000 place, the other does not.
+    await verified(first, 'wave-1');
+    await verified(beyond, 'wave-3');
+    await f.owner.execute({
+      text: `INSERT INTO subscriber(id,email,email_normalised,email_domain,status,
+          verified_at,verification_order_window,access_window)
+        SELECT md5('member-'||n)::uuid, 'member-'||n||'@example.test',
+          'member-'||n||'@example.test','example.test','verified',$1,'wave-4','wave-4'
+        FROM generate_series(1,1000) n`,
+      values: [launch],
+    });
+    // Confirmations under the configured ladder.
+    const referral = createReferralService(f.app);
+    const confirmFriends = async (referrerId: string, count: number) => {
+      for (let index = 0; index < count; index += 1) {
+        const friendId = randomUUID();
+        await verified(friendId, 'wave-4');
+        await referralEdge(f.owner, referrerId, friendId, 'attributed');
+        await referral.confirm(friendId, launch);
+      }
+    };
+    await confirmFriends(first, 21);
+    await confirmFriends(beyond, 4);
+    const storedCoupons = async (id: string) =>
+      f.owner.list(
+        {
+          text: `SELECT coupon_number AS number, percent, state FROM referral_coupon
+            WHERE subscriber_id=$1 ORDER BY coupon_number`,
+          values: [id],
+        },
+        10,
+      );
+    assert.deepEqual(await storedCoupons(first), [
+      { number: 1, percent: 30, state: 'held' },
+      { number: 2, percent: 5, state: 'held' },
+    ]);
+    assert.deepEqual(await storedCoupons(beyond), [
+      { number: 1, percent: 5, state: 'held' },
+    ]);
+    const population = await f.owner.list<{
+      id: string;
+      email_normalised: string;
+      verification_order_window: AccessWindow;
+      confirmed: number;
+    }>(
+      {
+        text: `SELECT s.id::text, s.email_normalised, s.verification_order_window,
+            (SELECT count(*)::int FROM referral_edge e WHERE e.referrer_id = s.id
+              AND e.state = 'confirmed' AND e.voided_at IS NULL) AS confirmed
+          FROM subscriber s WHERE s.status = 'verified' ORDER BY s.id`,
+      },
+      2_000,
+    );
+    assert.equal(population.length, 1_027);
+    assert.equal(population.at(-1)?.id, beyond);
+    assert.equal(population[0]?.id, first);
+
+    // The founder changes the ladder and the wave-1 count after those
+    // confirmations; no confirmation, void or repair follows.
+    const tuned: ReferralRewardConfiguration = {
+      ladder: {
+        ...couponLadder,
+        unlocks: [2, 4, 6],
+        stepReferrals: 1,
+        stepPercent: 10,
+        maximumPercent: 20,
+      },
+      waveOneReferrals: 25,
+    };
+    const batches: { limit: number; rows: number }[] = [];
+    const records: HandoffRecord[] = [];
+    const counts = await exportHandoff(
+      observeRecomputeBatches(f.app, batches),
+      'operator',
+      async (record) => {
+        records.push(record);
+      },
+      async () => {},
+      () => launch,
+      tuned,
+    );
+
+    // Every verified subscriber, in batches of at most 1,000.
+    assert.ok(batches.length >= 2, 'more than one batch');
+    assert.ok(
+      batches.every(({ limit, rows }) => limit <= 1_000 && rows <= 1_000),
+      'no batch exceeds 1,000',
+    );
+    assert.equal(
+      batches.reduce((total, { rows }) => total + rows, 0),
+      population.length,
+    );
+
+    // Every exported wave group and coupon follows the changed ladder.
+    const customers = new Map(
+      records.flatMap((record) =>
+        record.type === 'customer'
+          ? [[record.email_normalised, record] as const]
+          : [],
+      ),
+    );
+    const coupons = new Map<string, { number: number; percent: number }[]>();
+    for (const record of records) {
+      if (record.type !== 'held_coupon') continue;
+      assert.equal(
+        record.expires_at,
+        couponExpiresAt(tuned.ladder).toISOString(),
+      );
+      const owned = coupons.get(record.subscriber_id) ?? [];
+      owned.push({ number: record.coupon_number, percent: record.percent });
+      coupons.set(record.subscriber_id, owned);
+    }
+    assert.equal(customers.size, population.length);
+    for (const member of population) {
+      const window = accessWindowForReferrals(
+        member.verification_order_window,
+        member.confirmed,
+        tuned.waveOneReferrals,
+      );
+      const customer = customers.get(member.email_normalised);
+      assert.equal(customer?.access_window, window, member.id);
+      assert.deepEqual(customer?.groups, [window], member.id);
+      assert.deepEqual(
+        (coupons.get(member.id) ?? []).sort(
+          (left, right) => left.number - right.number,
+        ),
+        computeCouponLadder(member.confirmed, tuned.ladder).map(
+          ({ number, percent }) => ({ number, percent }),
+        ),
+        member.id,
+      );
+    }
+    assert.deepEqual(coupons.get(first), [
+      { number: 1, percent: 20 },
+      { number: 2, percent: 20 },
+      { number: 3, percent: 20 },
+    ]);
+    assert.deepEqual(customers.get(`${first}@example.test`)?.groups, [
+      'wave-1',
+    ]);
+    assert.deepEqual(coupons.get(beyond), [
+      { number: 1, percent: 20 },
+      { number: 2, percent: 10 },
+    ]);
+    assert.deepEqual(customers.get(`${beyond}@example.test`)?.groups, [
+      'wave-3',
+    ]);
+
+    // Each changed subscriber is audited with the actor and both states.
+    assert.equal(counts.recomputedRewards, 2);
+    const audits = await f.owner.list<{
+      subject_id: string;
+      actor: string;
+      subject_type: string;
+      detail: unknown;
+    }>(
+      {
+        text: `SELECT subject_id, actor, subject_type, detail FROM audit_log
+          WHERE action='handoff.rewards_recomputed' ORDER BY subject_id`,
+      },
+      10,
+    );
+    assert.deepEqual(audits, [
+      {
+        subject_id: first,
+        actor: 'operator',
+        subject_type: 'subscriber',
+        detail: {
+          before: {
+            coupons: [
+              { number: 1, percent: 30, state: 'held' },
+              { number: 2, percent: 5, state: 'held' },
+            ],
+            access_window: 'wave-1',
+          },
+          after: {
+            coupons: [
+              { number: 1, percent: 20, state: 'held' },
+              { number: 2, percent: 20, state: 'held' },
+              { number: 3, percent: 20, state: 'held' },
+            ],
+            access_window: 'wave-1',
+          },
+        },
+      },
+      {
+        subject_id: beyond,
+        actor: 'operator',
+        subject_type: 'subscriber',
+        detail: {
+          before: {
+            coupons: [{ number: 1, percent: 5, state: 'held' }],
+            access_window: 'wave-1',
+          },
+          after: {
+            coupons: [
+              { number: 1, percent: 20, state: 'held' },
+              { number: 2, percent: 10, state: 'held' },
+            ],
+            access_window: 'wave-3',
+          },
+        },
+      },
+    ]);
   } finally {
     await f.dispose();
   }

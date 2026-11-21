@@ -119,6 +119,7 @@ test('the required audit action registry is complete', () => {
     'handoff.discount_voided',
     'handoff.discount_carried',
     'handoff.coupon_carried',
+    'handoff.rewards_recomputed',
   ]);
 });
 

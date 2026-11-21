@@ -21,7 +21,8 @@ import { couponTransition, type CouponState } from './reward-state.ts';
 // E11.7-03: the coupon ladder and wave 1 replace ADR-025's milestone tiers.
 // Both are derived state. This is their one recompute, called inside the
 // transaction of every confirmation (ReferralService.confirm), every void and
-// un-void (ReferralVoidService) and the daily repair (recomputeCounters), so
+// un-void (ReferralVoidService), the daily repair (recomputeCounters) and the
+// handoff's recompute of every verified subscriber (exportHandoff, D-047), so
 // the stored coupons and wave always equal what the current confirmed,
 // non-voided count gives.
 
