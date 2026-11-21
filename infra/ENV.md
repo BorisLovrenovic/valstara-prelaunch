@@ -453,3 +453,17 @@ only a loopback target. The command and profile are in
 | `LOAD_UMAMI_CONTAINER`      | Umami container name for memory sampling                                                           |
 | `LOAD_ADMIN_CREDENTIAL`     | Disposable admin bearer credential for the deliberately large CSV export                           |
 | `LOAD_ADMIN_TOTP_SECRET`    | Disposable admin TOTP secret for the deliberately large CSV export                                 |
+
+## E11.7-02 founder command line
+
+`npm run admin -- <command>` (`src/server/admin/cli.ts`) runs on the founder's
+own machine and calls the admin API over HTTP. It is not part of the app boot
+schema and opens no database connection. It reads only these variables, from
+the shell; it never reads or writes a file, so no credential is held on disk.
+The authenticator code is never an environment variable: it is asked for on
+every run.
+
+| Variable           | Purpose                                                                                                                                 |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_API_ORIGIN` | Optional bare origin of the admin API; defaults to `https://valstara.com`. Plain HTTP is accepted only for `localhost` or a loopback IP |
+| `ADMIN_CREDENTIAL` | Optional. The same operator bearer credential the app boots with; when unset, the command asks for it without echo                      |

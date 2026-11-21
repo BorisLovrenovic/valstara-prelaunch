@@ -117,6 +117,36 @@ If a genuine person was disqualified, reversing it is also an audited action, an
 
 ---
 
+## Voiding a single referral
+
+When one referral is not genuine (a duplicate person, a test signup, a
+household gaming the board) but the referrer is not being disqualified, void
+that one referral from your own machine with the founder command line. It
+calls the admin API; it never touches the database directly.
+
+```sh
+npm run admin -- referrals void <referred-subscriber-id> --reason "Same person as an earlier signup"
+npm run admin -- referrals unvoid <referred-subscriber-id> --reason "Re-checked: two different people"
+```
+
+The subscriber id is the **referred** person's, because each person has at
+most one referral. The command asks for the authenticator code every time, and
+for the secret key unless `ADMIN_CREDENTIAL` is set in your shell; it writes
+nothing to disk. The reason is required, one line of at most 200 characters,
+and must not contain an email or IP address: it is kept on the edge and in the
+append-only audit log.
+
+A void takes the referral out of the referrer's confirmed count, `/me`, rank,
+the next leaderboard snapshot, the handoff export and giveaway entitlement,
+and is audited as `referral.voided` with before and after values. Before the
+draw snapshot is committed it also voids that referral's giveaway entry, and
+an un-void restores it. After commitment the draw is never touched. A referral
+cannot be changed while its referrer is disqualified, being erased or erased:
+reverse the disqualification first. A void does not revoke a milestone award
+already made.
+
+---
+
 ## "The site is up but signups fail"
 
 Almost always PostgreSQL. Check the health endpoint, the container, and memory headroom. **An OOM kill that recurs is a capacity signal, not a restart loop to tolerate** — the box runs with hard limits and no swap deliberately, so contention fails loudly.

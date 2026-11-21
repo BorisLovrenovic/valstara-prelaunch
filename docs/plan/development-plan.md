@@ -4029,6 +4029,10 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 - After snapshot commitment, a void changes nothing in the draw and still reproduces it
 
 **Tests:** Void and un-void round-trip across every count · reason and actor enforcement · audit records · the giveaway entry before and after commitment · the admin route registry reconciliation · the command line against a test server.
+
+**Founder decisions (2026-11-21):**
+1. **A void or un-void is refused while the referrer is disqualified, being erased or erased; the founder reverses a disqualification before voiding or un-voiding one of its referrals.** E5-05's disqualification and reversal code is unchanged: a disqualification voids only entries not already voided and its reversal restores only the entries it voided, so a void made before a disqualification survives its reversal, and refusing voids during one keeps the reversal exact. A void of a rejected edge is also refused, since it already counts nowhere. Add one integration test to `test/referral-void.test.ts`: void a referral, disqualify the referrer, reverse the disqualification — the edge stays voided, its giveaway entry stays voided, and `confirmed_referrals` equals the non-voided confirmed edges; then un-void, and the entry and count are restored. As built in 694245a (`src/server/referral/void.ts`); described in `docs/features/admin.md`, `docs/modules/referral.md` and `docs/ops/runbook.md`. (Accepted under the founder's standing rule for high-confidence recommendations, D-045.)
+
 **Docs:** `docs/features/admin.md` · `docs/modules/referral.md` · `docs/features/giveaway.md`
 
 ### E11.7-03 — The coupon ladder and wave 1 replace the milestone tiers

@@ -208,7 +208,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      59,
+      60,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -294,6 +294,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0057-maintenance-heartbeat.sql',
       '0058-referral-code-registry.sql',
       '0059-referral-code-partner-inactive.sql',
+      '0060-referral-void.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -358,6 +359,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0057-maintenance-heartbeat.sql',
         '0058-referral-code-registry.sql',
         '0059-referral-code-partner-inactive.sql',
+        '0060-referral-void.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -504,10 +506,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          59,
+          60,
         );
 
-        assert.equal(appliedCount, 59);
+        assert.equal(appliedCount, 60);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -570,6 +572,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0057-maintenance-heartbeat.sql',
             '0058-referral-code-registry.sql',
             '0059-referral-code-partner-inactive.sql',
+            '0060-referral-void.sql',
           ],
         );
       } finally {

@@ -7,6 +7,8 @@ export const auditActions = [
   'referral.access_window_promoted',
   'referral.milestone_backfilled',
   'referral.counters_repaired',
+  'referral.voided',
+  'referral.unvoided',
   'survey.response_replaced',
   'flag.changed',
   'flag.enable_refused',

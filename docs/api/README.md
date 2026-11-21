@@ -128,6 +128,7 @@ middleware.
 | `GET /api/admin/export.csv` | The list export. A `text/csv` attachment with the exact handoff fields in `docs/data/model.md`, streamed in 500-row pages from one repeatable-read snapshot. An `export.run` audit with actor and snapshot row count is committed before bytes are returned. `Cache-Control: no-store` |
 | `GET /api/admin/fraud?limit=…` · `POST /api/admin/fraud/:id` | Priority-ordered review queue (hard maximum 50); POST body is `{ "outcome": "dismissed" | "upheld" }`. Both outcomes use the authenticated actor and are audited. Upholding disqualifies once E5-05 adds that downstream transition |
 | `POST /api/admin/draw` | Authenticated, audited draw commitment. Reconciles eligible entries, checks the top-20 review and listed bundle contents, closes entry inserts, and commits the non-voided snapshot hash and future drand round. Returns `202` with `{ draw: { id, state: "pending", target_round, target_round_at } }`. The maintenance worker verifies two relays, selects winners and ordered reserves, and publishes only after offline reproduction. A second active draw is refused. |
+| `POST /api/admin/referrals/void` · `POST /api/admin/referrals/unvoid` | Void or un-void one referral (E11.7-02). Body `{ "subscriber_id": "<referred subscriber UUID>", "reason": "<one line, 1–200 characters, no email or IP address>" }`, no other field. Returns `200` with `{ referral: { edge_id, referred_id, referrer_id, state, voided, voided_at, void_reason, voided_by }, referrer: { confirmed_referrals }, giveaway_entry }`, where `giveaway_entry` is `voided`, `restored`, `unchanged`, `none` or `draw_committed`. A malformed body, a refused reason, an unknown referral, a void of a rejected or voided edge, an un-void of an edge that is not voided, and either while the referrer is disqualified or erased all return `400 invalid_input` with a message from the copy layer. Audited as `referral.voided` / `referral.unvoided` with before and after values; `no-store` |
 | `GET /api/admin/health` | Verification and referral-attribution health, snapshot age, queue depth, domain authentication, seed tests, quota consumption and projection, persisted purge-job status, maintenance-worker heartbeat per loop, open flag count; `no-store` |
 
 **Admin authentication is a single shared bearer credential plus TOTP, not a
@@ -137,6 +138,11 @@ never logged, audited or returned. There is one operator, exposed to routes as
 the `admin.operator` audit actor. There is no password, session or permission
 matrix. A missing or invalid factor returns the same `401 unauthorized`
 envelope with `Cache-Control: no-store`.
+
+**The founder command line** (`npm run admin -- <command>`, E11.7-02) is the
+founder's client for these routes. It sends the bearer credential and a freshly
+typed TOTP, never connects to the database and writes nothing to disk
+(`docs/features/admin.md#the-founder-command-line`).
 
 **Campaign flags have no HTTP route.** They are read and set with the audited
 operator CLI, `node ./src/server/flags/cli.ts list` and

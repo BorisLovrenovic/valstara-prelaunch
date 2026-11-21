@@ -45,6 +45,7 @@ interface GiveawayService {
 - A successful Section 9 response confirms the award against the published entry snapshot. If an item is unavailable generally or in the winner's country, a separate substitution offer starts a configured 14-day choice period. A founder-approved repository catalog is the authority for retail values, regional availability and replacement choices. Server-side validation requires the chosen replacement goods plus available original goods to retain at least the stated bundle value. Explicit decline or silence at the substitution deadline settles cash for unavailable items only. The confirmed winner retains the prize in all substitution outcomes; each is audited.
 - On maintenance shutdown, the draw and award worker stops starting new cycles, finishes any active cycle, and closes its database pool afterward.
 - Voiding a referrer's entries never touches the entries of the people they referred.
+- **A voided referral earns no entry** (E11.7-02). Accrual and reconciliation require a confirmed, non-voided edge. Before any draw snapshot is committed, the founder's void also voids that edge's referral entry (`voided_at`, marked `voided_by_referral_void`), and an un-void restores exactly that entry. It serialises with commitment through the entry-ledger lock. After commitment, nothing in the ledger, the draw or its snapshot changes, so the draw still reproduces.
 
 ## Dependencies
 `db`, `audit`, `flags`, `subscriber`.

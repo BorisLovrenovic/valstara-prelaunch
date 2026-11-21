@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "admin": "node ./src/server/admin/cli.ts",
     "build": "astro build",
     "check": "npm run price-index -- validate && npm run lint && npm run format && npm run typecheck && npm run security && node scripts/ci/app-build.mjs",
     "prebuild": "tsx scripts/ci/provider-showcase-check.ts && tsx scripts/ci/seo-build-check.ts --sitemap",

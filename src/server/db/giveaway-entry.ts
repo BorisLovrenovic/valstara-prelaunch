@@ -76,6 +76,7 @@ export function createGiveawayEntryRepository(
         text: `SELECT EXISTS (
                  SELECT 1 FROM referral_edge
                  WHERE id = $1 AND referrer_id = $2 AND state = 'confirmed'
+                   AND voided_at IS NULL
                    AND confirmed_at >= $3 AND confirmed_at < $4
                ) AS present`,
         values: [sourceEdgeId, referrerId, periodStart, periodEnd],
@@ -120,7 +121,8 @@ export function createGiveawayEntryRepository(
     async confirmedEdgeFor(referredId) {
       const row = await database.readOne<{ id: string; referrer_id: string }>({
         text: `SELECT id::text, referrer_id::text FROM referral_edge
-               WHERE referred_id = $1 AND state = 'confirmed'`,
+               WHERE referred_id = $1 AND state = 'confirmed'
+                 AND voided_at IS NULL`,
         values: [referredId],
       });
       return row === null ? null : { id: row.id, referrerId: row.referrer_id };
@@ -148,7 +150,8 @@ export function createGiveawayEntryRepository(
           FROM referral_edge e
           JOIN subscriber s ON s.id = e.referrer_id
           JOIN subscriber referred ON referred.id = e.referred_id
-          WHERE e.state = 'confirmed' AND e.confirmed_at >= $1
+          WHERE e.state = 'confirmed' AND e.voided_at IS NULL
+            AND e.confirmed_at >= $1
             AND e.confirmed_at < $2 AND s.status = 'verified'
             AND s.verified_at >= $1 AND s.verified_at < $2
             AND referred.verified_at >= $1 AND referred.verified_at < $2

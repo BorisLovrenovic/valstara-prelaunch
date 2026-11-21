@@ -77,6 +77,7 @@ const relatedPolicyFields = {
       'confirmed_at',
       'created_at',
     ],
+    'Fraud review decisions': ['voided_at', 'void_reason', 'voided_by'],
   },
   referral_code: {
     'Referral code': ['active', 'code', 'created_at', 'owner_id', 'owner_kind'],
@@ -112,6 +113,7 @@ const relatedPolicyFields = {
       'source_edge_id',
       'voided_at',
       'voided_by_disqualification_flag_id',
+      'voided_by_referral_void',
       'created_at',
     ],
   },
