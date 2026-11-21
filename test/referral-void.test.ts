@@ -13,6 +13,7 @@ import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
 import { createReferralRepository } from '../src/server/db/referral.ts';
 import { withTransaction } from '../src/server/db/transaction.ts';
+import { createFraudReviewService } from '../src/server/fraud/review.ts';
 import { createTopTwentyReviewGate } from '../src/server/fraud/top-twenty-review.ts';
 import { createDrawService } from '../src/server/giveaway/draw.ts';
 import { createSharedLeaderboardSnapshotStore } from '../src/server/leaderboard/persisted.ts';
@@ -590,6 +591,164 @@ test('a referral that cannot be changed is refused without any write', async (t)
              AS count`,
   });
   assert.equal(Number(voidedRows?.count), 0);
+});
+
+test('a void made before a disqualification survives its reversal, and an un-void afterwards restores the entry and count exactly', async (t) => {
+  // D-045: E5-05's disqualification voids only entries not already voided,
+  // and its reversal restores only the entries it voided, so a referral void
+  // made before the disqualification is still in force after the reversal.
+  const f = await fixture();
+  t.after(() => f.close());
+  const a = await referrerWith(f.owner, 2);
+  await createReferralService(f.app).recomputeCounters(1_000);
+  const service = createReferralVoidService(f.app, () => now);
+  const referrals = createReferralRepository(f.app);
+  const [voidedReferred, keptReferred] = a.referredIds as [string, string];
+  const [voidedEdge, keptEdge] = a.edgeIds as [string, string];
+  const refusal = (expected: string) => (error: unknown) =>
+    error instanceof ReferralVoidRefusedError && error.refusal === expected;
+
+  const edgeRow = (edgeId: string) =>
+    f.owner.readOne<{
+      state: string;
+      voided_at: Date | null;
+      void_reason: string | null;
+      voided_by: string | null;
+    }>({
+      text: `SELECT state, voided_at, void_reason, voided_by
+             FROM referral_edge WHERE id = $1`,
+      values: [edgeId],
+    });
+  const entryRow = (edgeId: string) =>
+    f.owner.readOne<{
+      voided_at: Date | null;
+      voided_by_referral_void: boolean;
+      voided_by_disqualification_flag_id: string | null;
+    }>({
+      text: `SELECT voided_at, voided_by_referral_void,
+                    voided_by_disqualification_flag_id::text
+             FROM giveaway_entry
+             WHERE source_edge_id = $1 AND method = 'referral'`,
+      values: [edgeId],
+    });
+  const cachedCount = async () =>
+    (
+      await f.owner.readOne<{ confirmed_referrals: number }>({
+        text: 'SELECT confirmed_referrals FROM subscriber WHERE id = $1',
+        values: [a.referrerId],
+      })
+    )?.confirmed_referrals;
+  const entryBefore = await entryRow(voidedEdge);
+  assert.deepEqual(entryBefore, {
+    voided_at: null,
+    voided_by_referral_void: false,
+    voided_by_disqualification_flag_id: null,
+  });
+
+  // No draw exists, so the snapshot is not committed and the entry is voided.
+  const voided = await service.voidReferral(
+    voidedReferred,
+    'Same household, confirmed by the founder',
+    actor,
+  );
+  assert.equal(voided.giveawayEntry, 'voided');
+  assert.equal(voided.referrerConfirmedReferrals, 1);
+  const voidedEdgeRow = {
+    state: 'confirmed',
+    voided_at: now,
+    void_reason: 'Same household, confirmed by the founder',
+    voided_by: actor,
+  };
+  const voidedEntryRow = {
+    voided_at: now,
+    voided_by_referral_void: true,
+    voided_by_disqualification_flag_id: null,
+  };
+
+  // The referrer is disqualified, and reinstated, by the real E5-05 path.
+  const flagId = randomUUID();
+  await f.owner.execute({
+    text: `INSERT INTO fraud_flag (id, subscriber_id, kind, detail, state, created_at)
+           VALUES ($1, $2, 'duplicate_identity', '{"reason":"void_fixture"}'::jsonb,
+                   'open', $3)`,
+    values: [flagId, a.referrerId, new Date('2026-10-15T00:00:00.000Z')],
+  });
+  const review = createFraudReviewService(f.app);
+  await review.review(flagId, 'upheld', actor);
+  const keptDuringDisqualification = await entryRow(keptEdge);
+  assert.notEqual(keptDuringDisqualification?.voided_at, null);
+  assert.deepEqual(keptDuringDisqualification, {
+    voided_at: keptDuringDisqualification?.voided_at,
+    voided_by_referral_void: false,
+    voided_by_disqualification_flag_id: flagId,
+  });
+  // The disqualification left the already-voided entry as the void made it.
+  assert.deepEqual(await entryRow(voidedEdge), voidedEntryRow);
+  // While the referrer is disqualified, neither a void nor an un-void runs.
+  await assert.rejects(
+    service.unvoidReferral(voidedReferred, 'Cleared on appeal', actor),
+    refusal('not_changeable'),
+  );
+  await assert.rejects(
+    service.voidReferral(keptReferred, 'Bulk signups', actor),
+    refusal('not_changeable'),
+  );
+
+  await review.review(flagId, 'dismissed', actor);
+  // After the reversal the edge is still voided, with its reason, actor and
+  // time; its entry is still voided by the referral void alone; and every
+  // count excludes it.
+  assert.deepEqual(await edgeRow(voidedEdge), voidedEdgeRow);
+  assert.deepEqual(await entryRow(voidedEdge), voidedEntryRow);
+  assert.deepEqual(await edgeRow(keptEdge), {
+    state: 'confirmed',
+    voided_at: null,
+    void_reason: null,
+    voided_by: null,
+  });
+  assert.deepEqual(await entryRow(keptEdge), entryBefore);
+  assert.equal(await referrals.countConfirmedEdges(a.referrerId), 1);
+  assert.equal(await cachedCount(), 1);
+  assert.equal(
+    (await createReferralService(f.app).recomputeCounters(1_000)).corrected,
+    0,
+  );
+
+  const restored = await service.unvoidReferral(
+    voidedReferred,
+    'Founder re-checked: two different people',
+    actor,
+  );
+  assert.equal(restored.giveawayEntry, 'restored');
+  assert.equal(restored.referrerConfirmedReferrals, 2);
+  assert.deepEqual(await edgeRow(voidedEdge), {
+    state: 'confirmed',
+    voided_at: null,
+    void_reason: null,
+    voided_by: null,
+  });
+  assert.deepEqual(await entryRow(voidedEdge), entryBefore);
+  assert.deepEqual(await entryRow(keptEdge), entryBefore);
+  assert.equal(await referrals.countConfirmedEdges(a.referrerId), 2);
+  assert.equal(await cachedCount(), 2);
+
+  // Defence in depth for the un-void's entry restore: an entry that a
+  // disqualification also claims keeps its void when the referral is
+  // un-voided. E5-05 cannot produce this shape today, since a disqualification
+  // skips entries already voided, so it is written directly.
+  await service.voidReferral(voidedReferred, 'Bulk signups', actor);
+  await f.owner.execute({
+    text: `UPDATE giveaway_entry SET voided_by_disqualification_flag_id = $2
+           WHERE source_edge_id = $1 AND method = 'referral'`,
+    values: [voidedEdge, flagId],
+  });
+  await service.unvoidReferral(voidedReferred, 'Cleared on appeal', actor);
+  assert.equal((await edgeRow(voidedEdge))?.voided_at, null);
+  assert.deepEqual(await entryRow(voidedEdge), {
+    voided_at: now,
+    voided_by_referral_void: false,
+    voided_by_disqualification_flag_id: flagId,
+  });
 });
 
 test('before the draw snapshot is committed, a void voids the entry and an un-void restores it', async (t) => {
