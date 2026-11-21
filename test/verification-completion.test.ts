@@ -330,10 +330,13 @@ test('concurrent verifications receive distinct recorded orders at a wave bounda
       'wave-1',
       'wave-2',
     ]);
-    const persisted = await fixture.database.list<{ access_window: string }>(
+    const persisted = await fixture.database.list<{
+      access_window: string;
+      verification_order_window: string;
+    }>(
       {
         text: `
-          SELECT access_window
+          SELECT access_window, verification_order_window
           FROM subscriber
           WHERE id = $1 OR id = $2
           ORDER BY access_window
@@ -342,9 +345,11 @@ test('concurrent verifications receive distinct recorded orders at a wave bounda
       },
       2,
     );
+    // The window from verification order is recorded once, beside the
+    // access window it gives (E11.7-03, founder D1).
     assert.deepEqual(persisted, [
-      { access_window: 'wave-1' },
-      { access_window: 'wave-2' },
+      { access_window: 'wave-1', verification_order_window: 'wave-1' },
+      { access_window: 'wave-2', verification_order_window: 'wave-2' },
     ]);
   } finally {
     await fixture.dispose();
@@ -411,12 +416,14 @@ async function seedAttributedEdge(
   });
 }
 
-test('verification commits the referral completion together and holds high-value Tier 1 rewards', async () => {
+test("verification commits the referral completion together, holds the referrer's coupon and puts them in wave 1", async () => {
   const fixture = await createDatabaseFixture();
   try {
     const referrerId = await insertSubscriber(fixture.database, 'verified');
     await fixture.database.execute({
-      text: "UPDATE subscriber SET access_window = 'wave-3' WHERE id = $1",
+      text: `UPDATE subscriber
+             SET verification_order_window = 'wave-3', access_window = 'wave-3'
+             WHERE id = $1`,
       values: [referrerId],
     });
     for (let index = 0; index < 2; index += 1) {
@@ -473,48 +480,54 @@ test('verification commits the referral completion together and holds high-value
       values: [referrerId],
     });
     assert.deepEqual(referrer, {
-      access_window: 'wave-2',
+      access_window: 'wave-1',
       confirmed_referrals: 3,
-      referral_tier: 1,
+      referral_tier: 0,
     });
     assert.deepEqual(
       await fixture.database.readOne({
         text: `
           SELECT actor, detail
           FROM audit_log
-          WHERE action = 'referral.access_window_promoted'
+          WHERE action = 'referral.access_window_recalculated'
         `,
       }),
       {
         actor: 'system:referral-confirmation',
         detail: {
-          fromTier: 0,
+          confirmedReferrals: 3,
           fromWindow: 'wave-3',
-          toTier: 1,
-          toWindow: 'wave-2',
+          toWindow: 'wave-1',
+          verificationOrderWindow: 'wave-3',
         },
       },
     );
 
-    const awards = await fixture.database.list<{
-      reward_kind: string;
+    // The coupon ladder replaces the milestone tiers: coupon 1 is held at 5%,
+    // and no milestone award is made.
+    const coupons = await fixture.database.list<{
+      coupon_number: number;
+      percent: number;
       state: string;
     }>(
       {
         text: `
-        SELECT reward_kind, state
-        FROM milestone_award
+        SELECT coupon_number, percent, state
+        FROM referral_coupon
         WHERE subscriber_id = $1
-        ORDER BY reward_kind
       `,
         values: [referrerId],
       },
-      2,
+      3,
     );
-    assert.deepEqual(awards, [
-      { reward_kind: 'discount', state: 'held' },
-      { reward_kind: 'wave_upgrade', state: 'settled' },
+    assert.deepEqual(coupons, [
+      { coupon_number: 1, percent: 5, state: 'held' },
     ]);
+    const awards = await fixture.database.readOne<{ count: number }>({
+      text: 'SELECT count(*)::int AS count FROM milestone_award WHERE subscriber_id = $1',
+      values: [referrerId],
+    });
+    assert.equal(awards?.count, 0);
   } finally {
     await fixture.dispose();
   }
@@ -546,7 +559,7 @@ test('an attributed edge cannot confirm before its referred subscriber verifies'
   }
 });
 
-test('confirmation derives the counter from edges and evaluates each milestone only once', async () => {
+test('confirmation derives the counter from edges and recomputes the ladder only once', async () => {
   const fixture = await createDatabaseFixture();
   try {
     const referrerId = await insertSubscriber(fixture.database, 'verified');
@@ -582,23 +595,22 @@ test('confirmation derives the counter from edges and evaluates each milestone o
       text: 'SELECT confirmed_referrals, referral_tier FROM subscriber WHERE id = $1',
       values: [referrerId],
     });
-    const awards = await fixture.database.list<{ reward_kind: string }>(
+    const coupons = await fixture.database.list<{
+      coupon_number: number;
+      percent: number;
+    }>(
       {
         text: `
-          SELECT reward_kind
-          FROM milestone_award
+          SELECT coupon_number, percent
+          FROM referral_coupon
           WHERE subscriber_id = $1
-          ORDER BY reward_kind
         `,
         values: [referrerId],
       },
-      2,
+      3,
     );
-    assert.deepEqual(referrer, { confirmed_referrals: 3, referral_tier: 1 });
-    assert.deepEqual(awards, [
-      { reward_kind: 'discount' },
-      { reward_kind: 'wave_upgrade' },
-    ]);
+    assert.deepEqual(referrer, { confirmed_referrals: 3, referral_tier: 0 });
+    assert.deepEqual(coupons, [{ coupon_number: 1, percent: 5 }]);
   } finally {
     await fixture.dispose();
   }
@@ -681,6 +693,18 @@ test('an induced failure rolls back every E3-07 transition', async () => {
       values: [referrerId],
     });
     assert.equal(award, null);
+    const coupon = await fixture.database.readOne<{ id: string }>({
+      text: 'SELECT id FROM referral_coupon WHERE subscriber_id = $1',
+      values: [referrerId],
+    });
+    assert.equal(coupon, null);
+    const window = await fixture.database.readOne<{
+      verification_order_window: string | null;
+    }>({
+      text: 'SELECT verification_order_window FROM subscriber WHERE id = $1',
+      values: [referredId],
+    });
+    assert.deepEqual(window, { verification_order_window: null });
     const token = await fixture.database.readOne<{ consumed_at: Date | null }>({
       text: 'SELECT consumed_at FROM verification_token WHERE subscriber_id = $1',
       values: [referredId],
@@ -691,10 +715,16 @@ test('an induced failure rolls back every E3-07 transition', async () => {
   }
 });
 
-test('with referral.enabled off, verification still confirms and settles an existing edge', async () => {
+test('with referral.enabled off, verification still confirms an existing edge and recomputes the ladder and wave 1 from it', async () => {
   const fixture = await createDatabaseFixture();
   try {
     const referrerId = await insertSubscriber(fixture.database, 'verified');
+    await fixture.database.execute({
+      text: `UPDATE subscriber
+             SET verification_order_window = 'wave-4', access_window = 'wave-4'
+             WHERE id = $1`,
+      values: [referrerId],
+    });
     for (let index = 0; index < 2; index += 1) {
       const priorReferralId = await insertSubscriber(
         fixture.database,
@@ -743,31 +773,33 @@ test('with referral.enabled off, verification still confirms and settles an exis
       values: [referredId],
     });
     assert.deepEqual(edge, { reward_state: 'settled', state: 'confirmed' });
+    // The flag gates display and new attribution only. The ladder and wave 1
+    // are derived from the edges whatever its state, so turning it back on
+    // shows state that already matches them (E11.7-03).
     assert.deepEqual(
       await fixture.database.readOne({
-        text: 'SELECT referral_tier FROM subscriber WHERE id = $1',
+        text: 'SELECT referral_tier, access_window FROM subscriber WHERE id = $1',
         values: [referrerId],
       }),
-      { referral_tier: 1 },
+      { referral_tier: 0, access_window: 'wave-1' },
     );
-    const awards = await fixture.database.list<{
-      reward_kind: string;
+    const coupons = await fixture.database.list<{
+      coupon_number: number;
+      percent: number;
       state: string;
     }>(
       {
         text: `
-          SELECT reward_kind, state
-          FROM milestone_award
-          WHERE subscriber_id = $1 AND tier = 1
-          ORDER BY reward_kind
+          SELECT coupon_number, percent, state
+          FROM referral_coupon
+          WHERE subscriber_id = $1
         `,
         values: [referrerId],
       },
-      2,
+      3,
     );
-    assert.deepEqual(awards, [
-      { reward_kind: 'discount', state: 'held' },
-      { reward_kind: 'wave_upgrade', state: 'settled' },
+    assert.deepEqual(coupons, [
+      { coupon_number: 1, percent: 5, state: 'held' },
     ]);
   } finally {
     await fixture.dispose();

@@ -6,6 +6,8 @@
 
 **Survey amendment:** ADR-031 makes the digital-goods v2 taxonomy current for new forms. The v1 set below remains accepted for submissions from pages rendered before that change and for stored responses; its claim to be the current canonical storefront taxonomy is superseded by ADR-031. Reward and wave decisions here are unchanged.
 
+**Ladder amendment (E11.7-03, founder-authorised 2026-11-17):** the coupon ladder and wave 1 replace the tier ladder and the tier-driven wave promotion below. The tier table, the 15% and 25% discounts and the "Tier promotes" rule are superseded and kept as history; the access-window bands and the first band's place for the first 1,000 are unchanged (founder D1). See "Amendment: the coupon ladder and wave 1" at the end.
+
 ## Context
 Several tickets deliberately defer their business numbers to keep the schema and the
 mechanic decisions clean: E4-05 (the tier ladder), E4-06 (which rewards are cheap
@@ -110,3 +112,31 @@ The two values that carried real-world consequence are **confirmed** (2026-09-08
 The trigger that reopens this ADR: the founder revising a discount rate or the taxonomy,
 or any tuning of the wave thresholds during the campaign — each a config change, no
 migration.
+
+## Amendment: the coupon ladder and wave 1 (E11.7-03, founder-authorised 2026-11-17)
+These values are configuration in `src/server/referral/config.ts`; changing any of them needs no migration. They replace the tier ladder and tier promotion above.
+
+### Coupon ladder (`referral_coupon`, one row per owner and coupon number)
+The count is confirmed, non-voided referrals (`docs/features/partner-programme.md#the-referrer-coupon-ladder-members-and-partners`).
+
+| Coupon | Unlocks at | Steps (5% every 3 referrals, up to 30%) |
+|---|---|---|
+| 1 | 3 | 3 = 5% · 6 = 10% · 9 = 15% · 12 = 20% · 15 = 25% · 18 = 30% |
+| 2 | 21 | 21 = 5% … 36 = 30% |
+| 3 | 39 | 39 = 5% … 54 = 30% |
+
+- The ladder ends when coupon 3 reaches 30%; further referrals change no coupon.
+- Configuration: `unlocks [3, 21, 39]`, `stepReferrals 3`, `stepPercent 5`, `maximumPercent 30`, `publicLaunchDate 2027-09-01`, `expiryYears 5`.
+- Coupons are derived state, recomputed from the count in every confirmation, void and un-void transaction and by the daily repair, so a void lowers or voids a coupon and an un-void restores it. They are high-value and `held` (ADR-012, as amended).
+
+### Waves
+1. **Verification-order window**, assigned once at verification from the bands above and recorded as `verification_order_window`: `≤ 1,000 → wave-1` · `≤ 5,000 → wave-2` · `≤ 15,000 → wave-3` · else `wave-4`. **The first 1,000 keep wave 1 whatever their referrals, and no void removes it** (founder D1).
+2. **Wave 1 by referrals:** a member with **3 or more confirmed, non-voided referrals** is in `wave-1` (`waveOneReferralThreshold`). This is recalculated, up to handoff, on every confirmation, void and un-void and by the daily repair: below 3, the member returns to their verification-order window. Every change is audited as `referral.access_window_recalculated`. Partner-based wave 1 is added by E11.7-07.
+
+The four values `wave-1`…`wave-4` stay frozen as the handoff customer groups.
+
+### What is retired
+- The tier table, its 15% and 25% discounts and the `wave_upgrade` reward. Existing `milestone_award` rows were voided with `ladder_replaced` and audited, never deleted (migration 0061), and none is created any more.
+- The tier backfill (`backfillTier`, `referral.milestone_backfilled`) and tier promotion (`referral.access_window_promoted`). Their audit actions stay registered for the history already written.
+- `referral_tier` stays in the handoff, derived from settled awards; with every award void it is 0.
+

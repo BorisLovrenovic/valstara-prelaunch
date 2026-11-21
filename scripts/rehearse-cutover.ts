@@ -106,12 +106,30 @@ try {
              ($2,'pending@example.test','pending@example.test','example.test','pending',NULL,NULL)`,
     values: [verifiedId, pendingId, clockStart],
   });
-  const awardId = randomUUID();
+  // One held coupon from the referrer ladder (E11.7-03), carried at export.
   await owner.execute({
-    text: `INSERT INTO milestone_award(id,subscriber_id,tier,reward_kind,state)
-      VALUES ($1,$2,1,'discount','held')`,
-    values: [awardId, verifiedId],
+    text: `INSERT INTO referral_coupon
+      (id,subscriber_id,coupon_number,percent,state,created_at,updated_at)
+      VALUES ($1,$2,1,5,'held',$3,$3)`,
+    values: [randomUUID(), verifiedId, clockStart],
   });
+  // The export first recomputes every verified subscriber's coupons from
+  // their edges (D-047), so the coupon is earned: two friends who verified and
+  // then left the waitlist, with the pending friend confirmed below, make the
+  // three confirmed referrals of the 5% coupon.
+  for (const index of [1, 2]) {
+    const friendId = randomUUID();
+    await owner.execute({
+      text: `INSERT INTO subscriber(id,email,email_normalised,email_domain,status)
+        VALUES ($1,$2,$2,'example.test','unsubscribed')`,
+      values: [friendId, `departed-${index}@example.test`],
+    });
+    await owner.execute({
+      text: `INSERT INTO referral_edge(id,referrer_id,referred_id,state,reward_state)
+        VALUES ($1,$2,$3,'confirmed','settled')`,
+      values: [randomUUID(), verifiedId, friendId],
+    });
+  }
 
   await timeStep(1, 'Close signups and audit', async () => {
     await createFlagService(application!).set('signup.enabled', false, actor);
@@ -295,7 +313,6 @@ try {
         'scripts/export-handoff.ts',
         `--output=${exportPath}`,
         `--actor=${actor}`,
-        '--store-launch-at=2027-03-18T10:00:00.000Z',
       ],
       {
         env: { ...process.env, DATABASE_URL: applicationUrl.toString() },
@@ -305,7 +322,7 @@ try {
     return JSON.parse(stdout) as Record<string, number>;
   });
   assert.equal(exported.customers, 2);
-  assert.equal(exported.heldDiscounts, 1);
+  assert.equal(exported.heldCoupons, 1);
   assert.equal(exported.confirmedReferrals, 1);
   assert.ok(exported.unsubscribeTokens >= 1);
 
@@ -357,15 +374,15 @@ try {
     assert.ok(imported.rehearsals.every((r) => r.finalCounts.referrals === 1));
     return { referrals: 1 };
   });
-  await timeStep(10, 'Verify held discount and token import', async () => {
+  await timeStep(10, 'Verify held coupon and token import', async () => {
     assert.ok(
       imported.rehearsals.every(
         (r) =>
-          r.finalCounts.discounts === 1 &&
+          r.finalCounts.coupons === 1 &&
           r.finalCounts.tokens === exported.unsubscribeTokens,
       ),
     );
-    return { heldDiscounts: 1, unsubscribeTokens: exported.unsubscribeTokens };
+    return { heldCoupons: 1, unsubscribeTokens: exported.unsubscribeTokens };
   });
   await timeStep(11, 'Run local route cutover fixture', async () => {
     await execFile(

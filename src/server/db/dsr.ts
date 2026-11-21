@@ -165,6 +165,7 @@ export function createDsrRepository(db: DatabaseConnection) {
         'verification_token',
         'survey_response',
         'milestone_award',
+        'referral_coupon',
       ] as const) {
         await bounded(
           `DELETE FROM ${table} WHERE id IN (SELECT id FROM ${table} WHERE subscriber_id=$1 LIMIT 100)`,

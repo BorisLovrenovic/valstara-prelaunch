@@ -15,22 +15,16 @@ import { createFraudFlagRepository } from '../db/fraud-flag.ts';
 import { createReferralCodeRepository } from '../db/referral-code.ts';
 import type { DatabaseConnection, DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
-import { createTransactionalEmailProducers } from '../email/producers.ts';
 import { createFlagServiceWithDependencies } from '../flags/service.ts';
 
-import {
-  referralCodeAlphabet,
-  referralCodeLength,
-  milestoneRewardClassifications,
-  milestoneTiers,
-  milestoneReachedAtConfirmation,
-  type AccessWindow,
-  type MilestoneTier,
-  type RewardClassifications,
-  promoteAccessWindow,
-} from './config.ts';
+import { referralCodeAlphabet, referralCodeLength } from './config.ts';
 import { normaliseReferralCodeForLookup } from './code-registry.ts';
 import { rewardStateAtConfirmation } from './reward-state.ts';
+import {
+  recomputeReferralRewards,
+  referralRewardConfiguration,
+  type ReferralRewardConfiguration,
+} from './rewards.ts';
 import { computeReferralStatus, type ReferralStatus } from './status.ts';
 import {
   createReferralAttributionHealth,
@@ -38,7 +32,6 @@ import {
 } from './attribution-health.ts';
 
 const maximumCodeAttempts = 10;
-export const milestoneBackfillMaximumLimit = 100;
 export const referralStatusRewardMaximumLimit = 100;
 export const referralCounterRepairMaximumLimit = 1_000;
 
@@ -47,18 +40,8 @@ export interface ReferralServiceDependencies {
   readonly isReferralEnabled?: () => Promise<boolean>;
   readonly clock?: () => Date;
   readonly createCode?: () => string;
-  readonly rewardClassifications?: RewardClassifications;
-  readonly tiers?: readonly MilestoneTier[];
-  readonly milestoneEmail?: (
-    connection: DatabaseConnection,
-    subscriberId: string,
-    tier: number,
-  ) => Promise<boolean>;
-}
-
-export interface MilestoneBackfillResult {
-  readonly awarded: number;
-  readonly checked: number;
+  /** The coupon ladder and wave-1 figures (E11.7-03); configuration. */
+  readonly rewards?: ReferralRewardConfiguration;
 }
 
 export interface ReferralCounterRepairResult {
@@ -78,12 +61,6 @@ export interface ReferralService {
     code: string,
     allowAttribution?: boolean,
   ): Promise<AttributeResult>;
-  backfillTier(
-    tier: number,
-    actor: string,
-    limit: number,
-    now: Date,
-  ): Promise<MilestoneBackfillResult>;
   /** New confirmed edge's settled referrer tier; null on a no-op. */
   confirm(referredId: string, now: Date): Promise<number | null>;
   generateCode(subscriberId: string): Promise<string>;
@@ -102,17 +79,7 @@ export function createReferralService(
   dependencies: ReferralServiceDependencies = {},
 ): ReferralService {
   const createCode = dependencies.createCode ?? createReferralCode;
-  const rewardClassifications =
-    dependencies.rewardClassifications ?? milestoneRewardClassifications;
-  const tiers = dependencies.tiers ?? milestoneTiers;
-  const milestoneEmail =
-    dependencies.milestoneEmail ??
-    (isDatabasePool(database)
-      ? createTransactionalEmailProducers(
-          database,
-          dependencies.clock ?? (() => new Date()),
-        ).milestone
-      : undefined);
+  const rewards = dependencies.rewards ?? referralRewardConfiguration;
   const clock = dependencies.clock ?? (() => new Date());
   const flagService = createFlagServiceWithDependencies(
     createCampaignFlagRepository(database),
@@ -132,9 +99,8 @@ export function createReferralService(
   return createReferralServiceWithRepository(
     createReferralRepository(database),
     createCode,
-    rewardClassifications,
-    tiers,
-    milestoneEmail,
+    rewards,
+    clock,
     isDatabasePool(database)
       ? (operation) =>
           withTransaction(database, async (connection) => operation(connection))
@@ -169,9 +135,8 @@ export function createReferralCode(): string {
 function createReferralServiceWithRepository(
   repository: ReferralRepository,
   createCode: () => string,
-  rewardClassifications: RewardClassifications,
-  tiers: readonly MilestoneTier[],
-  milestoneEmail: ReferralServiceDependencies['milestoneEmail'],
+  rewards: ReferralRewardConfiguration,
+  clock: () => Date,
   runTransaction: ReferralTransaction,
   attributionHealth: () => Promise<ReferralAttributionHealth>,
 ): ReferralService {
@@ -218,95 +183,6 @@ function createReferralServiceWithRepository(
         return { kind: 'attributed' };
       });
     },
-    async backfillTier(tierNumber, actor, limit, now) {
-      if (actor.trim() === '') {
-        throw new RangeError('A milestone backfill requires a human actor.');
-      }
-      if (
-        !Number.isInteger(limit) ||
-        limit < 1 ||
-        limit > milestoneBackfillMaximumLimit
-      ) {
-        throw new RangeError(
-          `A milestone backfill limit must be between 1 and ${milestoneBackfillMaximumLimit}.`,
-        );
-      }
-      const tier = tiers.find(
-        (candidate) => candidate.enabled && candidate.number === tierNumber,
-      );
-      if (tier === undefined) {
-        throw new RangeError('A milestone backfill requires an enabled tier.');
-      }
-
-      return runTransaction(async (connection) => {
-        const transactionalRepository = createReferralRepository(connection);
-        const candidateIds =
-          await transactionalRepository.findMilestoneBackfillCandidateIds(
-            tier.number,
-            tier.threshold,
-            limit,
-          );
-        let awarded = 0;
-
-        for (const subscriberId of candidateIds) {
-          const subscriber =
-            await transactionalRepository.findSubscriber(subscriberId);
-          if (subscriber === null) {
-            throw new Error(
-              'A milestone backfill subscriber could not be read.',
-            );
-          }
-          const previousSettledTier =
-            await transactionalRepository.findSettledReferralTier(subscriberId);
-          if (
-            await awardMilestone(
-              transactionalRepository,
-              subscriberId,
-              tier,
-              rewardClassifications,
-              now,
-            )
-          ) {
-            awarded += 1;
-            await milestoneEmail?.(connection, subscriberId, tier.number);
-            if (subscriber.access_window !== null) {
-              await promoteSubscriberAccessWindow(
-                connection,
-                transactionalRepository,
-                subscriberId,
-                subscriber.access_window,
-                tier.number - previousSettledTier,
-                previousSettledTier,
-                tier.number,
-                actor,
-              );
-            }
-          }
-          const settledTier =
-            await transactionalRepository.findSettledReferralTier(subscriberId);
-          const confirmedReferrals =
-            await transactionalRepository.countConfirmedEdges(subscriberId);
-          await transactionalRepository.setReferralCounterAndTier(
-            subscriberId,
-            confirmedReferrals,
-            settledTier,
-          );
-        }
-
-        await createAuditService(connection).record({
-          action: 'referral.milestone_backfilled',
-          actor,
-          detail: {
-            awarded,
-            checked: candidateIds.length,
-            limit,
-          },
-          subjectId: String(tier.number),
-          subjectType: 'referral_tier',
-        });
-        return { awarded, checked: candidateIds.length };
-      });
-    },
     async confirm(referredId, now) {
       return runTransaction(async (connection) => {
         const transactionalRepository = createReferralRepository(connection);
@@ -317,7 +193,7 @@ function createReferralServiceWithRepository(
         }
 
         // Serialising confirmations for one referrer ensures two real people
-        // verifying together cannot both skip over an exact tier threshold.
+        // verifying together each see the other's edge in the recompute.
         const current = await transactionalRepository.lockSubscriber(
           edge.referrer_id,
         );
@@ -334,55 +210,16 @@ function createReferralServiceWithRepository(
           throw new Error('The referral edge could not be confirmed.');
         }
 
-        const confirmedReferrals =
-          await transactionalRepository.countConfirmedEdges(edge.referrer_id);
-        const previousSettledTier =
-          await transactionalRepository.findSettledReferralTier(
-            edge.referrer_id,
-          );
-        const reachedTier = milestoneReachedAtConfirmation(
-          confirmedReferrals,
-          tiers,
-        );
-        if (
-          reachedTier !== null &&
-          (await awardMilestone(
-            transactionalRepository,
-            edge.referrer_id,
-            reachedTier,
-            rewardClassifications,
-            now,
-          ))
-        ) {
-          await milestoneEmail?.(
-            connection,
-            edge.referrer_id,
-            reachedTier.number,
-          );
-          if (current.access_window !== null) {
-            await promoteSubscriberAccessWindow(
-              connection,
-              transactionalRepository,
-              edge.referrer_id,
-              current.access_window,
-              reachedTier.number - previousSettledTier,
-              previousSettledTier,
-              reachedTier.number,
-              'system:referral-confirmation',
-            );
-          }
-        }
-
-        const settledTier =
-          await transactionalRepository.findSettledReferralTier(
-            edge.referrer_id,
-          );
-        await transactionalRepository.setReferralCounterAndTier(
+        // The ladder and wave 1 are derived state, recomputed from the
+        // referrer's confirmed, non-voided edges in this transaction (E11.7-03).
+        await recomputeReferralRewards(connection, edge.referrer_id, {
+          actor: 'system:referral-confirmation',
+          configuration: rewards,
+          now,
+        });
+        return transactionalRepository.findSettledReferralTier(
           edge.referrer_id,
-          confirmedReferrals,
-          settledTier,
         );
-        return settledTier;
       });
     },
 
@@ -445,18 +282,18 @@ function createReferralServiceWithRepository(
             limit,
           );
         let corrected = 0;
+        const now = clock();
         for (const subscriberId of subscriberIds) {
-          const [confirmedReferrals, tier] = await Promise.all([
-            transactionalRepository.countConfirmedEdges(subscriberId),
-            transactionalRepository.findSettledReferralTier(subscriberId),
-          ]);
-          if (
-            await transactionalRepository.repairReferralCounterAndTier(
-              subscriberId,
-              confirmedReferrals,
-              tier,
-            )
-          ) {
+          const recomputed = await recomputeReferralRewards(
+            connection,
+            subscriberId,
+            {
+              actor: 'system:referral-counter-repair',
+              configuration: rewards,
+              now,
+            },
+          );
+          if (recomputed.changed) {
             corrected += 1;
           }
         }
@@ -507,70 +344,6 @@ function createReferralServiceWithRepository(
       );
     },
   };
-}
-
-async function promoteSubscriberAccessWindow(
-  connection: DatabaseConnection,
-  repository: ReferralRepository,
-  subscriberId: string,
-  currentWindow: AccessWindow,
-  levels: number,
-  fromTier: number,
-  toTier: number,
-  actor: string,
-): Promise<void> {
-  const promotedWindow = promoteAccessWindow(currentWindow, levels);
-  if (promotedWindow === currentWindow) {
-    return;
-  }
-  if ((await repository.setAccessWindow(subscriberId, promotedWindow)) !== 1) {
-    throw new Error('The referral tier could not promote its access window.');
-  }
-  await createAuditService(connection).record({
-    action: 'referral.access_window_promoted',
-    actor,
-    detail: {
-      fromTier,
-      fromWindow: currentWindow,
-      toTier,
-      toWindow: promotedWindow,
-    },
-    subjectId: subscriberId,
-    subjectType: 'subscriber',
-  });
-}
-
-async function awardMilestone(
-  repository: ReferralRepository,
-  subscriberId: string,
-  tier: MilestoneTier,
-  rewardClassifications: RewardClassifications,
-  now: Date,
-): Promise<boolean> {
-  // The settled wave upgrade is the tier-progress record. Inserting it first
-  // makes the database constraint the arbiter for exactly-once evaluation.
-  const inserted = await repository.insertMilestoneAward(
-    randomUUID(),
-    subscriberId,
-    tier.number,
-    'wave_upgrade',
-    rewardStateAtConfirmation(rewardClassifications.wave_upgrade),
-    now,
-  );
-  if (inserted === 0) {
-    return false;
-  }
-  if (tier.discountPercent > 0) {
-    await repository.insertMilestoneAward(
-      randomUUID(),
-      subscriberId,
-      tier.number,
-      'discount',
-      rewardStateAtConfirmation(rewardClassifications.discount),
-      now,
-    );
-  }
-  return true;
 }
 
 function assertCounterRepairLimit(limit: number): void {

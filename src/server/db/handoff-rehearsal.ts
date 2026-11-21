@@ -1,7 +1,7 @@
 import type {
+  HandoffCoupon,
   HandoffCustomer,
   HandoffConfirmedReferral,
-  HandoffDiscount,
   HandoffRecord,
   HandoffUnsubscribeToken,
 } from '../subscriber/handoff.ts';
@@ -19,7 +19,7 @@ export const rehearsalGroups = [
 
 export interface RehearsalCounts {
   readonly createdCustomers: number;
-  readonly createdDiscounts: number;
+  readonly createdCoupons: number;
   readonly createdGroups: number;
   readonly createdReferrals: number;
   readonly createdTokens: number;
@@ -42,12 +42,15 @@ export async function createRehearsalTables(
   )`,
   });
   await database.execute({
-    text: `CREATE TABLE rehearsal_discount (
-    award_id uuid PRIMARY KEY,
+    text: `CREATE TABLE rehearsal_coupon (
+    coupon_id uuid PRIMARY KEY,
     subscriber_id uuid NOT NULL,
     email_normalised text NOT NULL REFERENCES rehearsal_customer(email_normalised),
-    qualification_deadline timestamptz NOT NULL,
-    payload jsonb NOT NULL
+    coupon_number integer NOT NULL CHECK (coupon_number >= 1),
+    percent integer NOT NULL CHECK (percent BETWEEN 1 AND 100),
+    expires_at timestamptz NOT NULL,
+    payload jsonb NOT NULL,
+    UNIQUE (email_normalised, coupon_number)
   )`,
   });
   await database.execute({
@@ -97,38 +100,40 @@ async function importCustomer(
   return {
     createdCustomers,
     createdGroups,
-    createdDiscounts: 0,
+    createdCoupons: 0,
     createdReferrals: 0,
     createdTokens: 0,
   };
 }
 
-async function importDiscount(
+async function importCoupon(
   connection: DatabaseConnection,
-  record: HandoffDiscount,
+  record: HandoffCoupon,
 ): Promise<RehearsalCounts> {
   const payload = JSON.stringify(record);
-  const createdDiscounts = await connection.execute({
-    text: `INSERT INTO rehearsal_discount (award_id, subscriber_id, email_normalised, qualification_deadline, payload)
-      VALUES ($1, $2, $3, $4, $5::jsonb) ON CONFLICT (award_id) DO NOTHING`,
+  const createdCoupons = await connection.execute({
+    text: `INSERT INTO rehearsal_coupon (coupon_id, subscriber_id, email_normalised, coupon_number, percent, expires_at, payload)
+      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb) ON CONFLICT (coupon_id) DO NOTHING`,
     values: [
-      record.award_id,
+      record.coupon_id,
       record.subscriber_id,
       record.email_normalised,
-      record.qualification_deadline,
+      record.coupon_number,
+      record.percent,
+      record.expires_at,
       payload,
     ],
   });
   const existing = await connection.readOne<{ matches: boolean }>({
-    text: `SELECT payload = $2::jsonb AS matches FROM rehearsal_discount WHERE award_id = $1`,
-    values: [record.award_id, payload],
+    text: `SELECT payload = $2::jsonb AS matches FROM rehearsal_coupon WHERE coupon_id = $1`,
+    values: [record.coupon_id, payload],
   });
   if (!existing?.matches)
-    throw new Error('Discount idempotency key has conflicting data.');
+    throw new Error('Coupon idempotency key has conflicting data.');
   return {
     createdCustomers: 0,
     createdGroups: 0,
-    createdDiscounts,
+    createdCoupons,
     createdReferrals: 0,
     createdTokens: 0,
   };
@@ -163,7 +168,7 @@ async function importReferral(
   return {
     createdCustomers: 0,
     createdGroups: 0,
-    createdDiscounts: 0,
+    createdCoupons: 0,
     createdReferrals,
     createdTokens: 0,
   };
@@ -195,7 +200,7 @@ async function importUnsubscribeToken(
     throw new Error('Unsubscribe token hash has conflicting data.');
   return {
     createdCustomers: 0,
-    createdDiscounts: 0,
+    createdCoupons: 0,
     createdGroups: 0,
     createdReferrals: 0,
     createdTokens,
@@ -212,7 +217,7 @@ export async function importRehearsalBatch(
     const counts = {
       createdCustomers: 0,
       createdGroups: 0,
-      createdDiscounts: 0,
+      createdCoupons: 0,
       createdReferrals: 0,
       createdTokens: 0,
     };
@@ -220,14 +225,14 @@ export async function importRehearsalBatch(
       const result =
         record.type === 'customer'
           ? await importCustomer(connection, record)
-          : record.type === 'held_discount'
-            ? await importDiscount(connection, record)
+          : record.type === 'held_coupon'
+            ? await importCoupon(connection, record)
             : record.type === 'confirmed_referral'
               ? await importReferral(connection, record)
               : await importUnsubscribeToken(connection, record);
       counts.createdCustomers += result.createdCustomers;
       counts.createdGroups += result.createdGroups;
-      counts.createdDiscounts += result.createdDiscounts;
+      counts.createdCoupons += result.createdCoupons;
       counts.createdReferrals += result.createdReferrals;
       counts.createdTokens += result.createdTokens;
     }
@@ -238,21 +243,21 @@ export async function importRehearsalBatch(
 export async function countRehearsalRows(database: DatabasePool): Promise<{
   customers: number;
   groups: number;
-  discounts: number;
+  coupons: number;
   referrals: number;
   tokens: number;
 }> {
   const row = await database.readOne<{
     customers: number;
     groups: number;
-    discounts: number;
+    coupons: number;
     referrals: number;
     tokens: number;
   }>({
     text: `SELECT
       (SELECT count(*)::int FROM rehearsal_customer) AS customers,
       (SELECT count(*)::int FROM rehearsal_customer_group) AS groups,
-      (SELECT count(*)::int FROM rehearsal_discount) AS discounts,
+      (SELECT count(*)::int FROM rehearsal_coupon) AS coupons,
       (SELECT count(*)::int FROM rehearsal_confirmed_referral) AS referrals,
       (SELECT count(*)::int FROM rehearsal_unsubscribe_token) AS tokens`,
   });

@@ -59,7 +59,7 @@ try {
       const secondImport = await load();
       if (
         secondImport.createdCustomers !== 0 ||
-        secondImport.createdDiscounts !== 0 ||
+        secondImport.createdCoupons !== 0 ||
         secondImport.createdGroups !== 0 ||
         secondImport.createdReferrals !== 0 ||
         secondImport.createdTokens !== 0
@@ -69,7 +69,7 @@ try {
       const finalCounts = await countRehearsalRows(scratch);
       if (
         finalCounts.customers !== firstImport.createdCustomers ||
-        finalCounts.discounts !== firstImport.createdDiscounts ||
+        finalCounts.coupons !== firstImport.createdCoupons ||
         finalCounts.groups !== firstImport.createdGroups ||
         finalCounts.referrals !== firstImport.createdReferrals ||
         finalCounts.tokens !== firstImport.createdTokens

@@ -174,7 +174,6 @@ test('real database attribution health counts edge rows, not signup ref hints', 
       attributionConfiguration: { ...configuration, minimumSignups: 1 },
       isReferralEnabled: async () => true,
       clock: () => measuredAt,
-      milestoneEmail: async () => false,
     }).attributionHealth();
     assert.deepEqual(result.current, { signups: 2, attributed: 1, share: 0.5 });
     assert.deepEqual(result.baseline, {
@@ -206,9 +205,11 @@ test('real database attribution health counts edge rows, not signup ref hints', 
       screenEmailDomain: async () => ({ flags: [] }),
       sendVerificationMail: async () => undefined,
       attributeReferral: (referredId, code, allowAttribution) =>
-        createReferralService(applicationDatabase, {
-          milestoneEmail: async () => false,
-        }).attribute(referredId, code, allowAttribution),
+        createReferralService(applicationDatabase, {}).attribute(
+          referredId,
+          code,
+          allowAttribution,
+        ),
     });
     const route = createSignupRoute({
       isSignupEnabled: async () => true,
@@ -250,7 +251,6 @@ test('real database attribution health counts edge rows, not signup ref hints', 
     });
     const disabled = await createReferralService(applicationDatabase, {
       clock: () => measuredAt,
-      milestoneEmail: async () => false,
     }).attributionHealth();
     assert.equal(disabled.state, 'disabled');
     assert.equal(disabled.current, null);

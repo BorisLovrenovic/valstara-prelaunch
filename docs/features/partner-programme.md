@@ -122,6 +122,12 @@ The count is confirmed, non-voided referrals, including retroactive partner attr
 - **Coupons are entitlements only.** No checkout code is generated, because the main platform does that.
 - **The configuration is data.** Thresholds, step, maximum and coupon count live in configuration, so the ladder changes without a migration.
 
+**As built (E11.7-03):**
+- The ladder is `couponLadder` in `src/server/referral/config.ts`, and each coupon is a `referral_coupon` row (`docs/data/model.md#referral_coupon`) in state `held` or `void`; the database refuses `settled`. One recompute rewrites a referrer's coupons and wave from the confirmed, non-voided count inside every confirmation, void and un-void, and in the daily repair. A coupon below its unlock is `void`, never deleted, and returns to `held` when the count recovers.
+- Wave 1 is `access_window = 'wave-1'`. The first-1,000 place is the separately recorded `verification_order_window`, written once at verification, so a void never removes it; the referral reason is recalculated with the coupons. Partner reasons are added by E11.7-07.
+- Every existing milestone award was voided with `ladder_replaced` and audited, none deleted. No milestone email is sent any more, because the tier it announced no longer exists.
+- The handoff export carries every export-set owner's held coupons as `held_coupon` records with their percent and `expires_at`, computed from the configured public-launch date.
+
 ### The friend's welcome discount (partner referrals only)
 
 **Only friends referred by an active partner get it.** A member referral that is not through the partner programme carries no welcome discount (founder, 2026-11-17). Its rules:

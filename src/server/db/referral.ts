@@ -1,9 +1,6 @@
 import type { DatabaseConnection } from './pool.ts';
 import type { AccessWindow } from '../referral/config.ts';
-import type {
-  ConfirmationRewardState,
-  MilestoneAwardState,
-} from '../referral/reward-state.ts';
+import type { ConfirmationRewardState } from '../referral/reward-state.ts';
 import { countedSubscriberStatus } from './subscriber-maintenance.ts';
 
 export interface ReferralEdgeForConfirmation {
@@ -41,11 +38,6 @@ export interface ReferralRepository {
     subscriberId: string,
     limit: number,
   ): Promise<readonly ReferralStatusAward[]>;
-  findMilestoneBackfillCandidateIds(
-    tier: number,
-    threshold: number,
-    limit: number,
-  ): Promise<readonly string[]>;
   findEdgeForConfirmation(
     referredId: string,
   ): Promise<ReferralEdgeForConfirmation | null>;
@@ -55,14 +47,6 @@ export interface ReferralRepository {
   findSettledReferralTier(subscriberId: string): Promise<number>;
   findSubscriberIdsForCounterRepair(limit: number): Promise<readonly string[]>;
   findStrandedVerifiedReferralIds(limit: number): Promise<readonly string[]>;
-  insertMilestoneAward(
-    id: string,
-    subscriberId: string,
-    tier: number,
-    rewardKind: 'discount' | 'wave_upgrade',
-    state: Exclude<MilestoneAwardState, 'void'>,
-    now: Date,
-  ): Promise<number>;
   insertAttributedEdge(
     id: string,
     referrerId: string,
@@ -70,12 +54,6 @@ export interface ReferralRepository {
   ): Promise<number>;
   lockAccessWindowAssignment(): Promise<void>;
   lockSubscriber(subscriberId: string): Promise<ReferralSubscriber | null>;
-  setAccessWindow(subscriberId: string, window: AccessWindow): Promise<number>;
-  setReferralCounterAndTier(
-    subscriberId: string,
-    confirmedReferrals: number,
-    tier: number,
-  ): Promise<number>;
   repairReferralCounterAndTier(
     subscriberId: string,
     confirmedReferrals: number,
@@ -209,38 +187,6 @@ export function createReferralRepository(
       );
     },
 
-    async findMilestoneBackfillCandidateIds(tier, threshold, limit) {
-      if (!Number.isInteger(limit) || limit < 1) {
-        throw new RangeError('A milestone backfill limit must be positive.');
-      }
-      return (
-        await database.list<{ id: string }>(
-          {
-            text: `
-              SELECT subscriber.id
-              FROM subscriber
-              JOIN referral_edge
-                ON referral_edge.referrer_id = subscriber.id
-               AND referral_edge.state = 'confirmed'
-               AND referral_edge.voided_at IS NULL
-              WHERE subscriber.status = 'verified'
-                AND NOT EXISTS (
-                  SELECT 1
-                  FROM milestone_award
-                  WHERE milestone_award.subscriber_id = subscriber.id
-                    AND milestone_award.tier = $1
-                )
-              GROUP BY subscriber.id, subscriber.created_at
-              HAVING COUNT(referral_edge.id) >= $2
-              ORDER BY subscriber.created_at, subscriber.id
-            `,
-            values: [tier, threshold],
-          },
-          limit,
-        )
-      ).map((row) => row.id);
-    },
-
     async findEdgeForConfirmation(referredId) {
       return database.readOne<ReferralEdgeForConfirmation>({
         text: `
@@ -334,17 +280,6 @@ export function createReferralRepository(
       return rows.map((row) => row.referred_id);
     },
 
-    async insertMilestoneAward(id, subscriberId, tier, rewardKind, state, now) {
-      return database.execute({
-        text: `
-          INSERT INTO milestone_award (id, subscriber_id, tier, reward_kind, state, awarded_at)
-          VALUES ($1, $2, $3, $4, $5, $6)
-          ON CONFLICT (subscriber_id, tier, reward_kind) DO NOTHING
-        `,
-        values: [id, subscriberId, tier, rewardKind, state, now],
-      });
-    },
-
     async insertAttributedEdge(id, referrerId, referredId) {
       return database.execute({
         text: `
@@ -374,28 +309,6 @@ export function createReferralRepository(
           FOR UPDATE
         `,
         values: [subscriberId],
-      });
-    },
-
-    async setAccessWindow(subscriberId, window) {
-      return database.execute({
-        text: `
-          UPDATE subscriber
-          SET access_window = $2, updated_at = CURRENT_TIMESTAMP
-          WHERE id = $1
-        `,
-        values: [subscriberId, window],
-      });
-    },
-
-    async setReferralCounterAndTier(subscriberId, confirmedReferrals, tier) {
-      return database.execute({
-        text: `
-          UPDATE subscriber
-          SET confirmed_referrals = $2, referral_tier = $3, updated_at = CURRENT_TIMESTAMP
-          WHERE id = $1
-        `,
-        values: [subscriberId, confirmedReferrals, tier],
       });
     },
 

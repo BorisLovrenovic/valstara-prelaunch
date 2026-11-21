@@ -12,6 +12,8 @@ export const subjectExportTables = {
   verification_token: 'subscriber_id=$1',
   referral_edge: 'referrer_id=$1 OR referred_id=$1',
   milestone_award: 'subscriber_id=$1',
+  // E11.7-03: the member's coupon ladder. Erasure deletes it.
+  referral_coupon: 'subscriber_id=$1',
   // E11.7-01: the member's code in the shared registry. Erasure retires the
   // row and clears its owner, so an erased subject has nothing here.
   referral_code: "owner_kind='member' AND owner_id=$1",
@@ -45,6 +47,7 @@ export const subjectExportTables = {
     SELECT id::text FROM verification_token WHERE subscriber_id=$1::uuid
     UNION SELECT id::text FROM referral_edge WHERE referrer_id=$1::uuid OR referred_id=$1::uuid
     UNION SELECT id::text FROM milestone_award WHERE subscriber_id=$1::uuid
+    UNION SELECT id::text FROM referral_coupon WHERE subscriber_id=$1::uuid
     UNION SELECT id::text FROM survey_response WHERE subscriber_id=$1::uuid
     UNION SELECT id::text FROM giveaway_entry WHERE subscriber_id=$1::uuid
     UNION SELECT id::text FROM giveaway_draw WHERE id IN

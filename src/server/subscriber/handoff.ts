@@ -1,16 +1,26 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import { createAuditService } from '../audit/service.ts';
 import {
   handoffBatchSize,
+  handoffRecomputeBatchSize,
   ineligibleDiscountVoidBatchSize,
   legacyBonusVoidBatchSize,
+  lockVerifiedSubscribersForRecompute,
   openHandoffSnapshot,
   openUnsubscribeTokenSnapshot,
   voidIneligibleDiscountBatch,
   voidLegacyBonusBatch,
 } from '../db/handoff.ts';
-import type { DatabasePool } from '../db/pool.ts';
+import type { DatabaseConnection, DatabasePool } from '../db/pool.ts';
+import { createReferralCouponRepository } from '../db/referral-coupon.ts';
 import { withTransaction } from '../db/transaction.ts';
-import { milestoneTiers, type AccessWindow } from '../referral/config.ts';
+import { couponExpiresAt, type AccessWindow } from '../referral/config.ts';
+import {
+  recomputeReferralRewards,
+  referralRewardConfiguration,
+  type ReferralRewardConfiguration,
+} from '../referral/rewards.ts';
 
 export interface HandoffCustomer {
   readonly type: 'customer';
@@ -30,16 +40,22 @@ export interface HandoffCustomer {
   readonly groups: readonly string[];
 }
 
-export interface HandoffDiscount {
-  readonly type: 'held_discount';
-  readonly award_id: string;
+/**
+ * One held coupon from the referrer coupon ladder (E11.7-03). The main
+ * platform makes all of an owner's coupons usable once any one of the owner's
+ * exported confirmed referred people places a first order, until `expires_at`:
+ * five years after the configured public-launch date (ADR-012, as amended).
+ */
+export interface HandoffCoupon {
+  readonly type: 'held_coupon';
+  readonly coupon_id: string;
   readonly subscriber_id: string;
   readonly email_normalised: string;
-  readonly tier: number;
-  readonly discount_percent: number;
+  readonly coupon_number: number;
+  readonly percent: number;
   readonly state: 'held';
   readonly outcome: 'carried_to_storefront';
-  readonly qualification_deadline: string;
+  readonly expires_at: string;
 }
 
 export interface HandoffConfirmedReferral {
@@ -58,40 +74,95 @@ export interface HandoffUnsubscribeToken {
 
 export type HandoffRecord =
   | HandoffCustomer
-  | HandoffDiscount
+  | HandoffCoupon
   | HandoffConfirmedReferral
   | HandoffUnsubscribeToken;
 
 export interface HandoffCounts {
   readonly customers: number;
-  readonly heldDiscounts: number;
+  readonly heldCoupons: number;
   readonly confirmedReferrals: number;
   readonly unsubscribeTokens: number;
   readonly voidedIneligibleDiscounts: number;
   readonly voidedLegacyBonusEntries: number;
+  /** Verified subscribers whose coupons or access window the recompute changed. */
+  readonly recomputedRewards: number;
 }
 
-export function qualificationDeadline(storeLaunchAt: Date): string {
-  if (!Number.isFinite(storeLaunchAt.getTime()))
-    throw new RangeError('Store launch must be a valid instant.');
-  const deadline = new Date(
-    storeLaunchAt.getTime() + 90 * 24 * 60 * 60 * 1_000,
-  );
-  if (!Number.isFinite(deadline.getTime()))
-    throw new RangeError('Store launch is outside the supported date range.');
-  return deadline.toISOString();
+interface RewardState {
+  readonly coupons: readonly {
+    readonly number: number;
+    readonly percent: number | null;
+    readonly state: string;
+  }[];
+  readonly access_window: AccessWindow | null;
+}
+
+/**
+ * Recomputes one verified subscriber's coupons and wave from their confirmed,
+ * non-voided edges under the configured ladder (D-047), under the row lock the
+ * caller holds. A change to the coupons or the access window is audited with
+ * the handoff actor and both states; the first-1,000 place is kept by the
+ * recompute itself.
+ */
+async function recomputeForHandoff(
+  connection: DatabaseConnection,
+  subscriberId: string,
+  actor: string,
+  rewards: ReferralRewardConfiguration,
+  now: Date,
+): Promise<boolean> {
+  const coupons = createReferralCouponRepository(connection);
+  const before: RewardState = {
+    coupons: (await coupons.listCoupons(subscriberId)).map((row) => ({
+      number: row.coupon_number,
+      percent: row.percent,
+      state: row.state,
+    })),
+    access_window:
+      (await coupons.findWaves(subscriberId))?.access_window ?? null,
+  };
+  const recomputed = await recomputeReferralRewards(connection, subscriberId, {
+    actor,
+    configuration: rewards,
+    now,
+  });
+  const after: RewardState = {
+    coupons: recomputed.coupons.map((coupon) => ({ ...coupon })),
+    access_window: recomputed.accessWindow,
+  };
+  if (isDeepStrictEqual(before, after)) return false;
+  await createAuditService(connection).record({
+    action: 'handoff.rewards_recomputed',
+    actor,
+    subjectType: 'subscriber',
+    subjectId: subscriberId,
+    detail: {
+      before: {
+        coupons: before.coupons.map((coupon) => ({ ...coupon })),
+        access_window: before.access_window,
+      },
+      after: {
+        coupons: after.coupons.map((coupon) => ({ ...coupon })),
+        access_window: after.access_window,
+      },
+    },
+  });
+  return true;
 }
 
 export async function exportHandoff(
   database: DatabasePool,
   actor: string,
-  storeLaunchAt: Date,
   writeRecord: (record: HandoffRecord) => Promise<void>,
   finishOutput: () => Promise<void>,
   clock: () => Date = () => new Date(),
+  rewards: ReferralRewardConfiguration = referralRewardConfiguration,
 ): Promise<HandoffCounts> {
   if (actor.trim() === '') throw new Error('A handoff actor is required.');
-  const deadline = qualificationDeadline(storeLaunchAt);
+  // Every coupon expires five years after the configured public-launch date;
+  // the founder sets the real date in configuration at handoff (E11.7-03).
+  const expiresAt = couponExpiresAt(rewards.ladder).toISOString();
   const audit = createAuditService(database);
   let voidedLegacyBonusEntries = 0;
   for (;;) {
@@ -131,6 +202,28 @@ export async function exportHandoff(
     if (voided < ineligibleDiscountVoidBatchSize) break;
   }
 
+  // D-047: the daily repair reaches at most 1,000 subscribers a run, so before
+  // the snapshot every verified subscriber's coupons and wave are recomputed
+  // under the configured ladder, in keyset-paged batches of at most 1,000.
+  let recomputedRewards = 0;
+  let recomputeAfter: string | null = null;
+  for (;;) {
+    const after = recomputeAfter;
+    const batch = await withTransaction(database, async (connection) => {
+      const ids = await lockVerifiedSubscribersForRecompute(connection, after);
+      const now = clock();
+      let changed = 0;
+      for (const id of ids) {
+        if (await recomputeForHandoff(connection, id, actor, rewards, now))
+          changed += 1;
+      }
+      return { ids, changed };
+    });
+    recomputedRewards += batch.changed;
+    if (batch.ids.length < handoffRecomputeBatchSize) break;
+    recomputeAfter = batch.ids[batch.ids.length - 1]!;
+  }
+
   const snapshot = await openHandoffSnapshot(database);
   try {
     await audit.record({
@@ -140,9 +233,9 @@ export async function exportHandoff(
       subjectId: null,
       detail: {
         customer_count: snapshot.customerCount,
-        held_discount_count: snapshot.discountCount,
+        held_coupon_count: snapshot.couponCount,
         confirmed_referral_count: snapshot.referralCount,
-        qualification_deadline: deadline,
+        coupon_expires_at: expiresAt,
         voided_ineligible_discounts: voidedIneligibleDiscounts,
         voided_legacy_bonus_entries: voidedLegacyBonusEntries,
       },
@@ -193,38 +286,31 @@ export async function exportHandoff(
         customerAfter = row.id;
       }
     }
-    let heldDiscounts = 0;
-    let discountAfter: string | null = null;
-    while (heldDiscounts < snapshot.discountCount) {
-      const page = await snapshot.discounts(discountAfter);
+    let heldCoupons = 0;
+    let couponAfter: string | null = null;
+    while (heldCoupons < snapshot.couponCount) {
+      const page = await snapshot.coupons(couponAfter);
       if (page.length === 0)
-        throw new Error('Handoff discount snapshot ended early.');
+        throw new Error('Handoff coupon snapshot ended early.');
       if (
         page.length > handoffBatchSize ||
-        heldDiscounts + page.length > snapshot.discountCount
+        heldCoupons + page.length > snapshot.couponCount
       )
-        throw new Error(
-          'Handoff discount page exceeded its count or batch cap.',
-        );
+        throw new Error('Handoff coupon page exceeded its count or batch cap.');
       for (const row of page) {
-        const tier = milestoneTiers.find(
-          (candidate) => candidate.number === row.tier,
-        );
-        if (tier === undefined || tier.discountPercent <= 0)
-          throw new Error('Held discount has no configured percentage.');
         await writeRecord({
-          type: 'held_discount',
-          award_id: row.id,
+          type: 'held_coupon',
+          coupon_id: row.id,
           subscriber_id: row.subscriber_id,
           email_normalised: row.email_normalised,
-          tier: row.tier,
-          discount_percent: tier.discountPercent,
+          coupon_number: row.coupon_number,
+          percent: row.percent,
           state: 'held',
           outcome: 'carried_to_storefront',
-          qualification_deadline: deadline,
+          expires_at: expiresAt,
         });
-        heldDiscounts += 1;
-        discountAfter = row.id;
+        heldCoupons += 1;
+        couponAfter = row.id;
       }
     }
     let confirmedReferrals = 0;
@@ -289,25 +375,25 @@ export async function exportHandoff(
       const carryAudit = createAuditService(connection);
       let audited = 0;
       let auditAfter: string | null = null;
-      while (audited < snapshot.discountCount) {
-        const page = await snapshot.discounts(auditAfter);
+      while (audited < snapshot.couponCount) {
+        const page = await snapshot.coupons(auditAfter);
         if (
           page.length === 0 ||
           page.length > handoffBatchSize ||
-          audited + page.length > snapshot.discountCount
+          audited + page.length > snapshot.couponCount
         )
           throw new Error(
-            'Handoff discount audit snapshot did not match the export.',
+            'Handoff coupon audit snapshot did not match the export.',
           );
         for (const row of page) {
           await carryAudit.record({
-            action: 'handoff.discount_carried',
+            action: 'handoff.coupon_carried',
             actor,
-            subjectType: 'milestone_award',
+            subjectType: 'referral_coupon',
             subjectId: row.id,
             detail: {
               outcome: 'carried_to_storefront',
-              qualification_deadline: deadline,
+              expires_at: expiresAt,
             },
           });
           audited += 1;
@@ -317,11 +403,12 @@ export async function exportHandoff(
     });
     return {
       customers,
-      heldDiscounts,
+      heldCoupons,
       confirmedReferrals,
       unsubscribeTokens,
       voidedIneligibleDiscounts,
       voidedLegacyBonusEntries,
+      recomputedRewards,
     };
   } finally {
     await snapshot.close();

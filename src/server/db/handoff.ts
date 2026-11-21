@@ -5,12 +5,16 @@ import { withTransaction } from './transaction.ts';
 export const handoffBatchSize = 500;
 export const legacyBonusVoidBatchSize = 100;
 export const ineligibleDiscountVoidBatchSize = 100;
+/** Verified subscribers recomputed per transaction before the export (D-047). */
+export const handoffRecomputeBatchSize = 1_000;
 
-export interface HeldDiscountRow {
+/** A held coupon whose owner is in the customer export set (E11.7-03). */
+export interface HeldCouponRow {
   readonly id: string;
   readonly subscriber_id: string;
   readonly email_normalised: string;
-  readonly tier: number;
+  readonly coupon_number: number;
+  readonly percent: number;
 }
 
 export interface ConfirmedReferralRow {
@@ -30,10 +34,10 @@ export interface LegacyBonusRow {
 
 export interface HandoffSnapshot {
   readonly customerCount: number;
-  readonly discountCount: number;
+  readonly couponCount: number;
   readonly referralCount: number;
   customers(afterId: string | null): Promise<readonly HandoffCustomerRow[]>;
-  discounts(afterId: string | null): Promise<readonly HeldDiscountRow[]>;
+  coupons(afterId: string | null): Promise<readonly HeldCouponRow[]>;
   referrals(afterId: string | null): Promise<readonly ConfirmedReferralRow[]>;
   close(): Promise<void>;
 }
@@ -189,6 +193,28 @@ export async function voidLegacyBonusBatch(
   });
 }
 
+/**
+ * Locks the next verified subscribers after `afterId`, in ID order, for the
+ * handoff's reward recompute (D-047), inside the caller's transaction. It waits
+ * for a row that concurrent work holds instead of skipping it, because every
+ * verified subscriber must be recomputed before the export.
+ */
+export async function lockVerifiedSubscribersForRecompute(
+  connection: DatabaseConnection,
+  afterId: string | null,
+): Promise<readonly string[]> {
+  const rows = await connection.list<{ id: string }>(
+    {
+      text: `SELECT id FROM subscriber
+        WHERE status = 'verified' AND ($1::uuid IS NULL OR id > $1::uuid)
+        ORDER BY id FOR UPDATE`,
+      values: [afterId],
+    },
+    handoffRecomputeBatchSize,
+  );
+  return rows.map((row) => row.id);
+}
+
 export async function openHandoffSnapshot(
   database: DatabasePool,
 ): Promise<HandoffSnapshot> {
@@ -209,15 +235,15 @@ export async function openHandoffSnapshot(
     });
     const counts = await connection.readOne<{
       customer_count: number;
-      discount_count: number;
+      coupon_count: number;
       referral_count: number;
     }>({
       text: `SELECT
         (SELECT count(*)::int FROM subscriber s WHERE s.status = 'verified'
           AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = s.email_normalised)) AS customer_count,
-        (SELECT count(*)::int FROM milestone_award a JOIN subscriber s ON s.id = a.subscriber_id
-          WHERE a.reward_kind = 'discount' AND a.state = 'held' AND s.status = 'verified'
-          AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = s.email_normalised)) AS discount_count,
+        (SELECT count(*)::int FROM referral_coupon c JOIN subscriber s ON s.id = c.subscriber_id
+          WHERE c.state = 'held' AND s.status = 'verified'
+          AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = s.email_normalised)) AS coupon_count,
         (SELECT count(*)::int FROM referral_edge e
           JOIN subscriber r ON r.id = e.referrer_id JOIN subscriber d ON d.id = e.referred_id
           WHERE e.state = 'confirmed' AND e.voided_at IS NULL AND r.status = 'verified' AND d.status = 'verified'
@@ -227,7 +253,7 @@ export async function openHandoffSnapshot(
     if (counts === null) throw new Error('Handoff counts were unavailable.');
     return {
       customerCount: counts.customer_count,
-      discountCount: counts.discount_count,
+      couponCount: counts.coupon_count,
       referralCount: counts.referral_count,
       async customers(afterId) {
         if (closed) throw new Error('Handoff snapshot is closed.');
@@ -247,17 +273,17 @@ export async function openHandoffSnapshot(
           handoffBatchSize,
         );
       },
-      async discounts(afterId) {
+      async coupons(afterId) {
         if (closed) throw new Error('Handoff snapshot is closed.');
-        return connection.list<HeldDiscountRow>(
+        return connection.list<HeldCouponRow>(
           {
-            text: `SELECT a.id, a.subscriber_id, s.email_normalised, a.tier
-            FROM milestone_award a JOIN subscriber s ON s.id = a.subscriber_id
-            WHERE a.reward_kind = 'discount' AND a.state = 'held'
+            text: `SELECT c.id, c.subscriber_id, s.email_normalised, c.coupon_number, c.percent
+            FROM referral_coupon c JOIN subscriber s ON s.id = c.subscriber_id
+            WHERE c.state = 'held'
               AND s.status = 'verified'
               AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = s.email_normalised)
-              AND ($1::uuid IS NULL OR a.id > $1::uuid)
-            ORDER BY a.id`,
+              AND ($1::uuid IS NULL OR c.id > $1::uuid)
+            ORDER BY c.id`,
             values: [afterId],
           },
           handoffBatchSize,

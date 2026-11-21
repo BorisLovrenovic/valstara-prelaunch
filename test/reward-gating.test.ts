@@ -6,12 +6,13 @@ import fc from 'fast-check';
 
 import { runMigrations } from '../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../src/server/db/pool.ts';
-import type { RewardClassifications } from '../src/server/referral/config.ts';
 import {
-  milestoneRewardClassifications,
+  computeCouponLadder,
+  couponLadder,
   milestoneTiers,
 } from '../src/server/referral/config.ts';
 import {
+  couponTransitions,
   prelaunchRewardTransitions,
   rewardStateAtConfirmation,
 } from '../src/server/referral/reward-state.ts';
@@ -112,89 +113,65 @@ test('every pre-launch transition into settled requires a cheap confirmation', (
   ]);
   assert.equal(rewardStateAtConfirmation('cheap'), 'settled');
   assert.equal(rewardStateAtConfirmation('high_value'), 'held');
-  assert.deepEqual(Object.keys(milestoneRewardClassifications).sort(), [
-    'discount',
-    'wave_upgrade',
-  ]);
+  // The high-value reward is now the coupon ladder (E11.7-03), and none of
+  // its transitions reaches `settled`.
+  assert.ok(
+    couponTransitions.every(
+      (transition) => (transition.to as string) !== 'settled',
+    ),
+  );
+  // No configured reward is a draw entry: the retired tiers carry none, and
+  // the ladder holds only percents.
   assert.ok(
     milestoneTiers.every((tier) => !Object.hasOwn(tier, 'bonusEntries')),
   );
+  assert.ok(!Object.hasOwn(couponLadder, 'bonusEntries'));
 });
 
-test('confirmation applies the configured cheap and high-value classifications', async () => {
+test('confirmation settles only the cheap edge reward and holds every coupon', async () => {
   const fixture = await createDatabaseFixture();
   try {
     const referrerId = await insertVerifiedSubscriber(fixture.database);
-    for (let index = 0; index < 3; index += 1) {
+    for (let index = 0; index < 6; index += 1) {
       await insertAttributedEdge(fixture.database, referrerId);
     }
 
-    const awards = await fixture.database.list<{
-      reward_kind: string;
+    const edges = await fixture.database.list<{ reward_state: string }>(
+      {
+        text: `SELECT DISTINCT reward_state FROM referral_edge WHERE referrer_id = $1`,
+        values: [referrerId],
+      },
+      5,
+    );
+    assert.deepEqual(edges, [{ reward_state: 'settled' }]);
+    const coupons = await fixture.database.list<{
+      percent: number;
       state: string;
     }>(
       {
-        text: `
-          SELECT reward_kind, state
-          FROM milestone_award
-          WHERE subscriber_id = $1
-          ORDER BY reward_kind
-        `,
+        text: `SELECT percent, state FROM referral_coupon WHERE subscriber_id = $1`,
         values: [referrerId],
       },
-      2,
+      5,
     );
-    assert.deepEqual(awards, [
-      { reward_kind: 'discount', state: 'held' },
-      { reward_kind: 'wave_upgrade', state: 'settled' },
-    ]);
-
-    const configuredClassifications: RewardClassifications = {
-      discount: 'cheap',
-      wave_upgrade: 'cheap',
-    };
-    const configuredReferrerId = await insertVerifiedSubscriber(
-      fixture.database,
-    );
-    for (let index = 0; index < 3; index += 1) {
-      const referredId = await insertVerifiedSubscriber(fixture.database);
-      await fixture.database.execute({
-        text: `
-          INSERT INTO referral_edge (id, referrer_id, referred_id, state, reward_state)
-          VALUES ($1, $2, $3, 'attributed', 'none')
-        `,
-        values: [randomUUID(), configuredReferrerId, referredId],
-      });
-      await createReferralService(fixture.database, {
-        rewardClassifications: configuredClassifications,
-      }).confirm(referredId, now);
-    }
-    const configuredAwards = await fixture.database.list<{ state: string }>(
-      {
-        text: `
-          SELECT state
-          FROM milestone_award
-          WHERE subscriber_id = $1
-        `,
-        values: [configuredReferrerId],
-      },
-      2,
-    );
-    assert.deepEqual(configuredAwards, [
-      { state: 'settled' },
-      { state: 'settled' },
-    ]);
+    assert.deepEqual(coupons, [{ percent: 10, state: 'held' }]);
+    const awards = await fixture.database.readOne<{ count: number }>({
+      text: 'SELECT count(*)::int AS count FROM milestone_award WHERE subscriber_id = $1',
+      values: [referrerId],
+    });
+    assert.equal(awards?.count, 0);
   } finally {
     await fixture.dispose();
   }
 });
 
-test('a seeded referral-graph property keeps high-value awards out of settled without an order signal', async () => {
+test('a seeded referral-graph property keeps every coupon held, never settled, without an order signal', async () => {
   const fixture = await createDatabaseFixture();
   try {
     await fc.assert(
       fc.asyncProperty(
-        fc.array(fc.integer({ min: 3, max: 7 }), {
+        // Up to coupon 3's unlock at 39, so every coupon is generated.
+        fc.array(fc.integer({ min: 3, max: 42 }), {
           maxLength: 3,
           minLength: 1,
         }),
@@ -208,23 +185,31 @@ test('a seeded referral-graph property keeps high-value awards out of settled wi
             }
           }
 
-          const highValueAwards = await fixture.database.list<{
-            reward_kind: string;
-            state: string;
-          }>(
+          const coupons = await fixture.database.list<{ state: string }>(
             {
               text: `
-                SELECT reward_kind, state
-                FROM milestone_award
+                SELECT state
+                FROM referral_coupon
                 WHERE subscriber_id = ANY($1::uuid[])
-                  AND reward_kind = 'discount'
               `,
               values: [referrerIds],
             },
-            confirmationCounts.length,
+            confirmationCounts.length * couponLadder.unlocks.length,
           );
-          assert.equal(highValueAwards.length, confirmationCounts.length);
-          assert.ok(highValueAwards.every((award) => award.state === 'held'));
+          assert.equal(
+            coupons.length,
+            confirmationCounts.reduce(
+              (total, count) => total + computeCouponLadder(count).length,
+              0,
+            ),
+          );
+          assert.ok(coupons.every((coupon) => coupon.state === 'held'));
+          const awards = await fixture.database.readOne<{ count: number }>({
+            text: `SELECT count(*)::int AS count FROM milestone_award
+                   WHERE subscriber_id = ANY($1::uuid[])`,
+            values: [referrerIds],
+          });
+          assert.equal(awards?.count, 0);
         },
       ),
       { numRuns: 20, seed: 20_260_913 },

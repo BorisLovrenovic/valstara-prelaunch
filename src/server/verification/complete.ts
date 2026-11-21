@@ -1,6 +1,7 @@
 import type { DatabasePool } from '../db/pool.ts';
 import { createAuditService } from '../audit/service.ts';
 import { createReferralRepository } from '../db/referral.ts';
+import { createReferralCouponRepository } from '../db/referral-coupon.ts';
 import { createVerificationCompletionRepository } from '../db/verification-completion.ts';
 import { withTransaction } from '../db/transaction.ts';
 import {
@@ -116,9 +117,7 @@ export function createVerificationCompletionService(
       }
 
       const subscriberId = consumed.subscriberId;
-      const referral = createReferralService(connection, {
-        milestoneEmail: producers.milestone,
-      });
+      const referral = createReferralService(connection);
       const completion = createVerificationCompletionRepository(connection);
       const repository = createReferralRepository(connection);
 
@@ -155,19 +154,19 @@ export function createVerificationCompletionService(
         }
         await dependencies.afterStep?.('verified');
 
-        const subscriber = await repository.findSubscriber(subscriberId);
-        if (subscriber === null) {
-          throw new Error(
-            'A verified subscriber could not be read for wave assignment.',
-          );
-        }
+        // The verification-order window is written once (founder D1,
+        // 2026-11-17): wave 1 for the first 1,000, which no void removes.
+        // Later referral-based wave 1 is recomputed with the ladder.
         const order = await repository.verificationOrder();
         const window = accessWindowForVerificationOrder(
           order,
-          subscriber.referral_tier,
           dependencies.accessWindowBands ?? accessWindowBands,
         );
-        if ((await repository.setAccessWindow(subscriberId, window)) !== 1) {
+        if (
+          (await createReferralCouponRepository(
+            connection,
+          ).assignVerificationOrderWindow(subscriberId, window)) !== 1
+        ) {
           throw new Error('The verified subscriber wave was not recorded.');
         }
         await dependencies.afterStep?.('access-window');

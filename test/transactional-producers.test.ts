@@ -282,41 +282,36 @@ test('verification queues welcome once and renders shared status with member das
   }
 });
 
-test('a newly awarded referral tier queues one renderable milestone from the live transition', async () => {
+test('the live confirmation path queues no milestone email once the ladder replaces the tiers (E11.7-03)', async () => {
   const f = await fixture();
   try {
     const id = await subscriber(f.owner);
     await createReferralService(f.app, { clock }).generateCode(id);
-    for (let index = 0; index < 3; index += 1) {
-      await confirmedEdge(f.owner, id);
-    }
     const referral = createReferralService(f.app, { clock });
-    assert.deepEqual(await referral.backfillTier(1, 'e8-03a-test', 10, now), {
-      awarded: 1,
-      checked: 1,
-    });
-    assert.deepEqual(await referral.backfillTier(1, 'e8-03a-test', 10, now), {
-      awarded: 0,
-      checked: 0,
-    });
-    const rows = await sendRows(f.owner, id);
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0]?.business_key, `milestone:${id}:1`);
-    const renderer = createTransactionalRenderers({
-      baseUrl: 'http://localhost:4321',
-      sendingDomain: 'send.valstara.com',
-      data: createTransactionalTemplateData(f.app),
-    }).get('milestone_reached');
-    assert.ok(renderer);
-    const rendered = await prepareDispatchMessage({
-      row: rows[0]!,
-      recipient: `${id}@example.test`,
-      renderer,
-      baseUrl: 'http://localhost:4321',
-      token: async (tokenId) => deriveEmailToken(tokenId, secret),
-    });
-    assert.match(rendered.message.text, /Settled/u);
-    assert.match(rendered.message.text, /Held/u);
+    // Confirm through the live transition past coupon 1's unlock at 3, the
+    // count that used to award tier 1 and queue its milestone email.
+    for (let index = 0; index < 4; index += 1) {
+      const referredId = await subscriber(f.owner);
+      await f.owner.execute({
+        text: `INSERT INTO referral_edge (id, referrer_id, referred_id, state, reward_state)
+          VALUES ($1, $2, $3, 'attributed', 'none')`,
+        values: [randomUUID(), id, referredId],
+      });
+      await referral.confirm(referredId, now);
+    }
+    // The tier the email announced no longer exists, so nothing announces it.
+    assert.deepEqual(await sendRows(f.owner, id), []);
+    const coupons = await f.owner.list<{
+      coupon_number: number;
+      state: string;
+    }>(
+      {
+        text: 'SELECT coupon_number, state FROM referral_coupon WHERE subscriber_id = $1',
+        values: [id],
+      },
+      5,
+    );
+    assert.deepEqual(coupons, [{ coupon_number: 1, state: 'held' }]);
   } finally {
     await f.close();
   }
@@ -416,20 +411,6 @@ test('queue failure rolls back the status token but commits verification, tier a
     const referrerId = await subscriber(f.owner);
     for (let index = 0; index < 3; index += 1)
       await confirmedEdge(f.owner, referrerId);
-    const referral = createReferralService(f.app, {
-      clock,
-      milestoneEmail: failing.milestone,
-    });
-    assert.deepEqual(await referral.backfillTier(1, 'e8-03a-test', 10, now), {
-      awarded: 1,
-      checked: 1,
-    });
-    assert.equal((await sendRows(f.owner, referrerId)).length, 0);
-    const award = await f.owner.readOne<{ id: string }>({
-      text: `SELECT id FROM milestone_award WHERE subscriber_id = $1 AND tier = 1`,
-      values: [referrerId],
-    });
-    assert.ok(award);
 
     const flags = { isEnabled: async () => true };
     const accrual = createGiveawayAccrualService(

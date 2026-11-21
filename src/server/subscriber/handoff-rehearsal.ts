@@ -1,4 +1,4 @@
-import { accessWindows, milestoneTiers } from '../referral/config.ts';
+import { accessWindows, couponExpiresAt } from '../referral/config.ts';
 import { surveyQuestionSets } from '../survey/questions.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import {
@@ -7,8 +7,8 @@ import {
   type RehearsalCounts,
 } from '../db/handoff-rehearsal.ts';
 import type {
+  HandoffCoupon,
   HandoffCustomer,
-  HandoffDiscount,
   HandoffRecord,
   HandoffUnsubscribeToken,
 } from './handoff.ts';
@@ -30,16 +30,16 @@ const customerKeys = [
   'subslush_customer',
   'groups',
 ] as const;
-const discountKeys = [
+const couponKeys = [
   'type',
-  'award_id',
+  'coupon_id',
   'subscriber_id',
   'email_normalised',
-  'tier',
-  'discount_percent',
+  'coupon_number',
+  'percent',
   'state',
   'outcome',
-  'qualification_deadline',
+  'expires_at',
 ] as const;
 const referralKeys = [
   'type',
@@ -159,27 +159,28 @@ export function parseHandoffRecord(value: unknown): HandoffRecord {
     }
     return value as unknown as HandoffCustomer;
   }
-  if (value.type === 'held_discount') {
+  if (value.type === 'held_coupon') {
     if (
-      !exactKeys(value, discountKeys) ||
-      typeof value.award_id !== 'string' ||
-      !uuid.test(value.award_id) ||
+      !exactKeys(value, couponKeys) ||
+      typeof value.coupon_id !== 'string' ||
+      !uuid.test(value.coupon_id) ||
       typeof value.subscriber_id !== 'string' ||
       !uuid.test(value.subscriber_id) ||
       typeof value.email_normalised !== 'string' ||
       value.email_normalised.length === 0 ||
-      !nonNegativeInteger(value.tier) ||
-      value.tier < 1 ||
-      !nonNegativeInteger(value.discount_percent) ||
+      !nonNegativeInteger(value.coupon_number) ||
+      value.coupon_number < 1 ||
+      !nonNegativeInteger(value.percent) ||
+      value.percent < 1 ||
+      value.percent > 100 ||
       value.state !== 'held' ||
       value.outcome !== 'carried_to_storefront' ||
-      !validInstant(value.qualification_deadline) ||
-      milestoneTiers.find((tier) => tier.number === value.tier)
-        ?.discountPercent !== value.discount_percent
+      !validInstant(value.expires_at) ||
+      value.expires_at !== couponExpiresAt().toISOString()
     ) {
-      throw new TypeError('Held discount does not match its field contract.');
+      throw new TypeError('Held coupon does not match its field contract.');
     }
-    return value as unknown as HandoffDiscount;
+    return value as unknown as HandoffCoupon;
   }
   if (value.type === 'confirmed_referral') {
     if (
@@ -221,7 +222,7 @@ export async function importRehearsal(
 ): Promise<RehearsalCounts> {
   const totals = {
     createdCustomers: 0,
-    createdDiscounts: 0,
+    createdCoupons: 0,
     createdGroups: 0,
     createdReferrals: 0,
     createdTokens: 0,
@@ -231,7 +232,7 @@ export async function importRehearsal(
     if (batch.length === 0) return;
     const result = await importRehearsalBatch(database, batch);
     totals.createdCustomers += result.createdCustomers;
-    totals.createdDiscounts += result.createdDiscounts;
+    totals.createdCoupons += result.createdCoupons;
     totals.createdGroups += result.createdGroups;
     totals.createdReferrals += result.createdReferrals;
     totals.createdTokens += result.createdTokens;
