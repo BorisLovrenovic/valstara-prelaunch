@@ -330,19 +330,43 @@ test('E11.5-12: every showcase entry matches its P8 confirmation, and the landin
 });
 
 test('E11.5-12: every rendered reward figure matches the referral configuration and its documented source', async () => {
-  const { milestoneTiers } = await import('../src/server/referral/config.ts');
+  const { couponLadder, milestoneTiers } =
+    await import('../src/server/referral/config.ts');
   const referral = await readFile(
     join(root, 'docs/modules/referral.md'),
     'utf8',
   );
-  // ADR-025's confirmed values, as the referral module records them.
-  assert.match(referral, /\*\*Tier 1 — 3 confirmed referrals:\*\*/u);
-  assert.match(referral, /= 15% launch discount/u);
-  assert.match(
+  // The founder's coupon ladder (2026-11-17), as configuration and as the
+  // referral module records it; E11.7-03 retired the tier-1 discount (D-047).
+  assert.deepEqual(couponLadder, {
+    unlocks: [3, 21, 39],
+    stepReferrals: 3,
+    stepPercent: 5,
+    maximumPercent: 30,
+    publicLaunchDate: '2027-09-01',
+    expiryYears: 5,
+  });
+  const [first, second, third] = couponLadder.unlocks;
+  assert.ok(
+    referral.includes(
+      `Coupons unlock at ${first}, ${second} and ${third} confirmed, non-voided referrals, start at ${couponLadder.stepPercent}%, rise ${couponLadder.stepPercent}% every ${couponLadder.stepReferrals} referrals and stop at ${couponLadder.maximumPercent}%`,
+    ),
+    'the referral module states the ladder',
+  );
+  assert.ok(
+    referral.includes(
+      `**Coupon ladder** (\`couponLadder\`): unlocks at \`[${couponLadder.unlocks.join(', ')}]\` (one coupon each), \`stepReferrals = ${couponLadder.stepReferrals}\`, \`stepPercent = ${couponLadder.stepPercent}\`, \`maximumPercent = ${couponLadder.maximumPercent}\`, \`publicLaunchDate = '${couponLadder.publicLaunchDate}'\`, \`expiryYears = ${couponLadder.expiryYears}\``,
+    ),
+    'the referral module records the configured figures',
+  );
+  assert.doesNotMatch(
+    referral,
+    /qualification deadline 90 days after store launch/u,
+  );
+  assert.doesNotMatch(
     referral,
     /\(15% \/ 25%\) are \*\*confirmed production values\*\*/u,
   );
-  assert.match(referral, /qualification deadline 90 days after store launch/u);
   assert.deepEqual(
     milestoneTiers.map(({ number, threshold, discountPercent, enabled }) => ({
       number,
