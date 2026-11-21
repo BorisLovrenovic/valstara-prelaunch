@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { cp, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
@@ -48,11 +48,15 @@ async function createFixture(
   const owner = createPool(databaseUrl.toString());
 
   if (beforeRegistry !== undefined) {
-    // Migrate to the release before the registry, seed, then apply it.
+    // Migrate to the release before the registry, seed, then apply it and
+    // every later migration.
     const directory = await mkdtemp(join(tmpdir(), 'valstara-e11701-'));
     try {
       await cp(migrationDirectory, directory, {
-        filter: (source) => !source.endsWith(registryMigration),
+        filter: (source) => {
+          const name = basename(source);
+          return !name.endsWith('.sql') || name < registryMigration;
+        },
         recursive: true,
       });
       await runMigrations(owner, {
@@ -128,6 +132,18 @@ async function insertPartnerCode(
     values: [code, partnerId],
   });
   return partnerId;
+}
+
+async function activatePartnerCode(
+  database: DatabasePool,
+  code: string,
+): Promise<void> {
+  // Stands in for partner activation (E11.7-07), run as the owner role
+  // because the application role has no UPDATE.
+  await database.execute({
+    text: `UPDATE referral_code SET active = true WHERE code = $1 AND owner_kind = 'partner'`,
+    values: [code],
+  });
 }
 
 async function registryRows(database: DatabasePool, code: string) {
@@ -224,6 +240,63 @@ test('the database refuses a code that is not upper case, and a malformed partne
         text: `UPDATE referral_code SET code = 'GRANTS2' WHERE code = 'GRANTS1'`,
       }),
       /immutable/u,
+    );
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+test('a partner code always enters the registry inactive; a member code still inserts active', async () => {
+  const fixture = await createFixture();
+  try {
+    const registry = createReferralCodeRegistry(fixture.app);
+
+    // As the application role, with an owner: stored inactive, and lookup
+    // reports it inactive.
+    const partnerId = await insertPartnerCode(fixture.app, 'MAYA2026');
+    assert.deepEqual(await registryRows(fixture.owner, 'MAYA2026'), [
+      {
+        active: false,
+        code: 'MAYA2026',
+        owner_id: partnerId,
+        owner_kind: 'partner',
+      },
+    ]);
+    assert.deepEqual(await registry.lookup('maya2026'), {
+      active: false,
+      code: 'MAYA2026',
+      ownerId: partnerId,
+      ownerKind: 'partner',
+    });
+
+    // Whoever inserts it: even the owner role asking for active gets an
+    // inactive partner row.
+    const ownerInserted = randomUUID();
+    await fixture.owner.execute({
+      text: `INSERT INTO referral_code (code, owner_kind, owner_id, active) VALUES ('JONAS77', 'partner', $1, true)`,
+      values: [ownerInserted],
+    });
+    assert.deepEqual(await registry.lookup('JONAS77'), {
+      active: false,
+      code: 'JONAS77',
+      ownerId: ownerInserted,
+      ownerKind: 'partner',
+    });
+
+    // A member row inserted by the application role (generation) is active.
+    const memberId = await insertSubscriber(fixture.owner);
+    const memberCode = await createReferralService(fixture.app, {
+      createCode: () => 'MEMBERCODE23',
+    }).generateCode(memberId);
+    assert.deepEqual(await registry.lookup(memberCode), {
+      active: true,
+      code: 'MEMBERCODE23',
+      ownerId: memberId,
+      ownerKind: 'member',
+    });
+    assert.equal(
+      await createReferralService(fixture.app).lookupCode(memberCode),
+      memberId,
     );
   } finally {
     await fixture.dispose();
@@ -351,6 +424,9 @@ test('a member code generated after a partner code never equals it, and the reve
   try {
     const partnerCode = 'ABCDEFGHJKMN';
     const partnerId = await insertPartnerCode(fixture.owner, partnerCode);
+    // Active, so the member lookup below proves it filters by kind, not
+    // only by state.
+    await activatePartnerCode(fixture.owner, partnerCode);
     const memberId = await insertSubscriber(fixture.owner);
 
     // Generation inside a caller's transaction, as verification runs it: the
