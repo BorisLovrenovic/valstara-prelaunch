@@ -120,6 +120,18 @@ test('the required audit action registry is complete', () => {
     'handoff.discount_carried',
     'handoff.coupon_carried',
     'handoff.rewards_recomputed',
+    'partner.listed',
+    'partner.viewed',
+    'partner.approved',
+    'partner.rejected',
+    'partner.contract_sent',
+    'partner.contract_signed',
+    'partner.paused',
+    'partner.terminated',
+    'partner.reactivated',
+    'partner.type_changed',
+    'partner.note_replaced',
+    'partner.exported',
   ]);
 });
 

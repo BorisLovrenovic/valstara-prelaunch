@@ -94,6 +94,13 @@ interface PartnerCodeRules {
   typed, by appending `1`, `2`, `3` … within 16 characters. Where nothing usable
   remains, they are random eight-character codes from the member-code alphabet.
   Availability is advisory, because the registry's primary key decides a race.
+- **Partner codes are registered at approval** (E11.7-06, `docs/features/admin.md#user-flows`).
+  `approve` runs `PartnerCodeRules.check()` again on the requested code or the
+  founder's `--code`, then inserts the row with `ON CONFLICT DO NOTHING`; a
+  refusal, or a race lost to another insert, changes nothing. The row enters
+  inactive (D-044), one per partner. It stays registered after a reject, and
+  when the partner's personal data is purged or erased a database trigger
+  retires it (inactive, owner cleared), so a partner code is never reissued.
 - **`?ref=` and accepted UTM parameters are read server-side on the rendering request** and returned as one signed, HMAC-SHA256 field with a named 24-hour TTL. `REFERRAL_SIGNING_SECRET` is server-only and signatures are compared in constant time. There is no cookie, no `localStorage`, and no client-side attribution path anywhere in the codebase. This is what keeps the mechanic outside ePrivacy Article 5(3) — and it is also simply more reliable.
 - UTM accepts only source, medium, campaign, content and term; values are trimmed, control-character-free, capped at 128 characters and 512 serialized bytes. Invalid values are dropped. It is analytics-only and never gates attribution or rewards.
 - **`verifyRef()` returns `null` rather than throwing.** A bad ref must never cost a signup.

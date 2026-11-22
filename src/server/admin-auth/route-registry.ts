@@ -81,4 +81,66 @@ export const adminRouteRegistry = defineAdminRouteRegistry([
     pathname: '/api/admin/referrals/unvoid',
     methods: [{ method: 'POST', audit: 'required' }],
   },
+  // E11.7-06: the partner review, contract and lifecycle commands. The two
+  // reads are audited too (D-052 Q4d), so every method is `required`.
+  {
+    source: 'src/pages/api/admin/partners/index.ts',
+    pathname: '/api/admin/partners',
+    methods: [{ method: 'GET', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/partners/export.csv.ts',
+    pathname: '/api/admin/partners/export.csv',
+    methods: [{ method: 'GET', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/partners/[id].ts',
+    pathname: '/api/admin/partners/:id',
+    methods: [{ method: 'GET', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/partners/[id]/approve.ts',
+    pathname: '/api/admin/partners/:id/approve',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/partners/[id]/reject.ts',
+    pathname: '/api/admin/partners/:id/reject',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/partners/[id]/contract-sent.ts',
+    pathname: '/api/admin/partners/:id/contract-sent',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/partners/[id]/contract-signed.ts',
+    pathname: '/api/admin/partners/:id/contract-signed',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/partners/[id]/pause.ts',
+    pathname: '/api/admin/partners/:id/pause',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/partners/[id]/terminate.ts',
+    pathname: '/api/admin/partners/:id/terminate',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/partners/[id]/reactivate.ts',
+    pathname: '/api/admin/partners/:id/reactivate',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/partners/[id]/type.ts',
+    pathname: '/api/admin/partners/:id/type',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+  {
+    source: 'src/pages/api/admin/partners/[id]/note.ts',
+    pathname: '/api/admin/partners/:id/note',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
 ]);

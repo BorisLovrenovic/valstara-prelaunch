@@ -169,7 +169,9 @@ export function createPartnerRepository(
 /**
  * Every personal field of a `partner` row, cleared together with its member
  * link, for the retention purge and for erasure (E9-05). Only the status,
- * the partner type and the timestamps remain.
+ * the partner type, the timestamps and the contract's signing date and
+ * version remain. E11.7-06 added the contract reference and the founder's
+ * notes (D-052 Q4e); clearing them retires the partner's code (migration 0063).
  */
 export const purgedPersonalFields = `
   subscriber_id = NULL,
@@ -185,4 +187,6 @@ export const purgedPersonalFields = `
   student_email = NULL,
   company_name = NULL,
   age_confirmed = NULL,
-  programme_terms_agreed = NULL`;
+  programme_terms_agreed = NULL,
+  contract_reference = NULL,
+  notes = NULL`;

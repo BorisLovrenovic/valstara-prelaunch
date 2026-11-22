@@ -209,6 +209,9 @@ test('every source page and API route has a recorded cutover disposition', async
       return '/giveaway/rules/<rules_version>';
     if (route === '/api/webhooks/[provider]') return '/api/webhooks/<provider>';
     if (route === '/api/admin/fraud/[id]') return '/api/admin/fraud/<id>';
+    // E11.7-06: the partner admin routes, named by partner id.
+    if (route.startsWith('/api/admin/partners/[id]'))
+      return route.replace('/[id]', '/<id>');
     return route;
   });
   assert.equal(new Set(routes).size, routes.length);

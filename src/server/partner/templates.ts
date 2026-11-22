@@ -7,11 +7,17 @@ import {
   partnerConfirmationTemplate,
   partnerReceivedTemplate,
 } from './application.ts';
+import {
+  partnerApprovedTemplate,
+  partnerRejectedTemplate,
+} from './review-email.ts';
 
 /**
- * The partner application's two transactional emails (D-050 Q4): the
+ * The partner programme's transactional emails. E11.7-05 (D-050 Q4): the
  * confirmation link sent on submit, and "application received" once the
- * application reaches `applied`. Neither carries an application field.
+ * application reaches `applied`. E11.7-06: "approved" at `approve`, and
+ * "rejected" only when `reject --template` asks for it (D-052 Q2). None
+ * carries an application field; each links the member's own status page.
  */
 export function partnerApplicationRenderers(
   baseUrl: string,
@@ -80,8 +86,67 @@ export function partnerApplicationRenderers(
       });
     },
   };
+  const statusUrl = async (
+    payload: Readonly<Record<string, unknown>>,
+    token: (id: string) => Promise<string>,
+  ) => {
+    if (
+      typeof payload.status_token_id !== 'string' ||
+      payload.status_token_id === ''
+    ) {
+      throw new Error('email_template_reference_missing');
+    }
+    const status = new URL('/me', origin);
+    status.searchParams.set('t', await token(payload.status_token_id));
+    return status.toString();
+  };
+  const approved: TemplateRenderer = {
+    kind: 'transactional',
+    async render({ email, payload, token, unsubscribePageUrl }) {
+      const status = await statusUrl(payload, token);
+      return renderEmailDocument({
+        from,
+        to: email,
+        unsubscribePageUrl,
+        document: {
+          subject: partnersCopy.email.approved.subject,
+          preheader: partnersCopy.email.approved.preheader,
+          paragraphs: [
+            partnersCopy.email.approved.firstLine,
+            partnersCopy.email.approved.body,
+          ],
+          links: [
+            { label: partnersCopy.email.approved.action, url: programmeUrl },
+            { label: emailCopy.status, url: status },
+          ],
+        },
+      });
+    },
+  };
+  const rejected: TemplateRenderer = {
+    kind: 'transactional',
+    async render({ email, payload, token, unsubscribePageUrl }) {
+      const status = await statusUrl(payload, token);
+      return renderEmailDocument({
+        from,
+        to: email,
+        unsubscribePageUrl,
+        document: {
+          subject: partnersCopy.email.rejected.subject,
+          preheader: partnersCopy.email.rejected.preheader,
+          paragraphs: [
+            partnersCopy.email.rejected.firstLine,
+            partnersCopy.email.rejected.body,
+          ],
+          links: [{ label: emailCopy.status, url: status }],
+        },
+      });
+    },
+  };
   return new Map([
     [partnerConfirmationTemplate, confirm],
     [partnerReceivedTemplate, received],
+    [partnerApprovedTemplate, approved],
+    [partnerRejectedTemplate, rejected],
   ]);
 }

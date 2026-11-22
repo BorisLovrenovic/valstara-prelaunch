@@ -431,6 +431,12 @@ test('the field schema is exactly the brief’s fields, with no address, phone, 
       'confirmation_token_id',
       'personal_data_purged_at',
       'created_at',
+      // E11.7-06: the founder's contract record and notes, set by command.
+      'contract_sent_at',
+      'contract_signed_at',
+      'contract_version',
+      'contract_reference',
+      'notes',
     ];
     // The form's controls, less the email (the linked subscriber's own).
     const applicationColumns = partnerApplicationFieldNames.filter(

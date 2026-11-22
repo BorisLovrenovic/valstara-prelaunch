@@ -100,6 +100,8 @@ export const eventRegistry = Object.freeze({
         'weekly_campaign_update',
         'partner_application_confirm',
         'partner_application_received',
+        'partner_approved',
+        'partner_rejected',
         'member_status',
       ),
     }),

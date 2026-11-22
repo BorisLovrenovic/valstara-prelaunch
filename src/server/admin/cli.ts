@@ -8,8 +8,9 @@ import { fileURLToPath } from 'node:url';
 // passes the E5-03a boundary and is audited by the route it calls. It never
 // connects to the database, and it never writes the key, the code or any
 // response to disk: the key comes from the environment or a hidden prompt, the
-// code from a prompt on every run. Later tickets add their commands to
-// `adminCommands`.
+// code from a prompt on every run. Responses go to standard output; the
+// partners export (E11.7-06) streams its review CSV there for the founder to
+// redirect. Later tickets add their commands to `adminCommands`.
 
 export const defaultAdminApiOrigin = 'https://valstara.com';
 const requestTimeoutMilliseconds = 30_000;
@@ -22,6 +23,8 @@ export interface AdminCommandIo {
     options: { readonly hidden: boolean },
   ): Promise<string>;
   write(line: string): void;
+  /** Write a streamed response chunk and wait for the output to accept it. */
+  writeChunk(text: string): void | Promise<void>;
 }
 
 export interface AdminCommandEnvironment {
@@ -29,16 +32,23 @@ export interface AdminCommandEnvironment {
   readonly ADMIN_CREDENTIAL?: string | undefined;
 }
 
-interface AdminRequest {
-  readonly method: 'POST';
-  readonly path: string;
-  readonly body: Record<string, unknown>;
-}
+type AdminRequest =
+  | {
+      readonly method: 'POST';
+      readonly path: string;
+      readonly body: Record<string, unknown>;
+    }
+  | {
+      readonly method: 'GET';
+      readonly path: string;
+      readonly query?: Readonly<Record<string, string>>;
+    };
 
 interface AdminCommand {
   readonly usage: string;
   build(args: readonly string[]): AdminRequest;
-  describe(body: Record<string, unknown>): readonly string[];
+  /** Lines for a JSON response; a command without it streams the body. */
+  describe?(body: Record<string, unknown>): readonly string[];
 }
 
 export class AdminCommandError extends Error {
@@ -110,9 +120,291 @@ function referralVoidCommand(operation: 'unvoid' | 'void'): AdminCommand {
   };
 }
 
+/**
+ * Splits `args` into positional values and `--options`. Value options take
+ * the next argument; flags take none. An unknown, repeated or empty option is
+ * refused, so a typo never silently drops a filter.
+ */
+function readOptions(
+  args: readonly string[],
+  valueOptions: readonly string[],
+  flagOptions: readonly string[] = [],
+): {
+  positional: readonly string[];
+  values: Readonly<Record<string, string>>;
+  flags: ReadonlySet<string>;
+} {
+  const positional: string[] = [];
+  const values: Record<string, string> = {};
+  const flags = new Set<string>();
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index] ?? '';
+    if (!argument.startsWith('--')) {
+      positional.push(argument);
+      continue;
+    }
+    if (argument in values || flags.has(argument)) {
+      throw usageError(`${argument} is given more than once.`);
+    }
+    if (flagOptions.includes(argument)) {
+      flags.add(argument);
+      continue;
+    }
+    if (!valueOptions.includes(argument)) {
+      throw usageError(`Unknown option ${argument}.`);
+    }
+    const value = args[index + 1];
+    if (value === undefined || value.trim() === '' || value.startsWith('--')) {
+      throw usageError(`${argument} needs a value.`);
+    }
+    values[argument] = value;
+    index += 1;
+  }
+  return { positional, values, flags };
+}
+
+function onePartnerId(positional: readonly string[]): string {
+  if (positional.length !== 1 || positional[0] === undefined) {
+    throw usageError('Name one partner by its id.');
+  }
+  return encodeURIComponent(positional[0]);
+}
+
+function describeTransition(body: Record<string, unknown>): readonly string[] {
+  const partner = record(body.partner);
+  const before = record(partner.before);
+  const after = record(partner.after);
+  const lines = [
+    `Partner ${String(partner.id)}: ${String(before.status)} -> ${String(
+      after.status,
+    )}.`,
+  ];
+  if (after.code !== null && after.code !== undefined) {
+    lines.push(
+      `Code: ${String(after.code)} (${after.code_active === true ? 'live' : 'not live'}).`,
+    );
+  }
+  if (body.mail_queued !== null && body.mail_queued !== undefined) {
+    lines.push(`Email queued: ${body.mail_queued === true ? 'yes' : 'no'}.`);
+  }
+  return lines;
+}
+
+/** A partner command that takes only the partner's id. */
+function partnerStatusCommand(
+  verb: 'contract-sent' | 'pause' | 'reactivate' | 'terminate',
+): AdminCommand {
+  return {
+    usage: `partners ${verb} <partner-id>`,
+    build(args) {
+      const { positional } = readOptions(args, []);
+      return {
+        method: 'POST',
+        path: `/api/admin/partners/${onePartnerId(positional)}/${verb}`,
+        body: {},
+      };
+    },
+    describe: describeTransition,
+  };
+}
+
+const partnerCommands: Readonly<Record<string, AdminCommand>> = {
+  'partners list': {
+    usage:
+      'partners list [--status <status>] [--type <type>] [--since YYYY-MM-DD] [--stale] [--after <partner-id>]',
+    build(args) {
+      const { positional, values, flags } = readOptions(
+        args,
+        ['--status', '--type', '--since', '--after'],
+        ['--stale'],
+      );
+      if (positional.length !== 0) throw usageError('Unexpected argument.');
+      const query: Record<string, string> = {};
+      for (const [option, value] of Object.entries(values)) {
+        query[option.slice(2)] = value;
+      }
+      if (flags.has('--stale')) query.stale = 'true';
+      return { method: 'GET', path: '/api/admin/partners', query };
+    },
+    describe(body) {
+      const partners = Array.isArray(body.partners) ? body.partners : [];
+      const lines = partners.map((value) => {
+        const row = record(value);
+        return [
+          String(row.id),
+          String(row.status),
+          String(row.partner_type),
+          String(row.code ?? row.requested_code ?? '-'),
+          String(row.full_name ?? '-'),
+          String(row.email ?? '-'),
+          `applied ${String(row.applied_at)}`,
+          row.stale === true ? 'STALE' : '',
+        ]
+          .filter((part) => part !== '')
+          .join('  ');
+      });
+      lines.push(`${partners.length} partners.`);
+      if (typeof body.next_after === 'string') {
+        lines.push(`More: add --after ${body.next_after}`);
+      }
+      return lines;
+    },
+  },
+  'partners show': {
+    usage: 'partners show <partner-id>',
+    build(args) {
+      const { positional } = readOptions(args, []);
+      return {
+        method: 'GET',
+        path: `/api/admin/partners/${onePartnerId(positional)}`,
+      };
+    },
+    describe(body) {
+      const partner = record(body.partner);
+      const referrals = record(body.referrals);
+      const lines = Object.entries(partner).map(
+        ([key, value]) =>
+          `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`,
+      );
+      lines.push(
+        `referrals: ${String(referrals.confirmed)} confirmed, ${String(
+          referrals.pending,
+        )} pending, ${String(referrals.voided)} voided, ${String(
+          referrals.flagged,
+        )} flagged`,
+        `last_activity_at: ${String(referrals.last_activity_at)}`,
+      );
+      const flagged = Array.isArray(body.flagged_referrals)
+        ? body.flagged_referrals
+        : [];
+      for (const value of flagged) {
+        const referral = record(value);
+        const kinds = Array.isArray(referral.flag_kinds)
+          ? referral.flag_kinds.join(', ')
+          : '';
+        lines.push(
+          `flagged: ${String(referral.referred_id)} ${String(referral.state)}${
+            referral.voided === true ? ' voided' : ''
+          } (${kinds})`,
+        );
+      }
+      return lines;
+    },
+  },
+  'partners approve': {
+    usage: 'partners approve <partner-id> [--code <CODE>]',
+    build(args) {
+      const { positional, values } = readOptions(args, ['--code']);
+      const code = values['--code'];
+      return {
+        method: 'POST',
+        path: `/api/admin/partners/${onePartnerId(positional)}/approve`,
+        body: code === undefined ? {} : { code },
+      };
+    },
+    describe: describeTransition,
+  },
+  'partners reject': {
+    usage: 'partners reject <partner-id> [--template]',
+    build(args) {
+      const { positional, flags } = readOptions(args, [], ['--template']);
+      return {
+        method: 'POST',
+        path: `/api/admin/partners/${onePartnerId(positional)}/reject`,
+        body: flags.has('--template') ? { template: true } : {},
+      };
+    },
+    describe: describeTransition,
+  },
+  'partners contract-sent': partnerStatusCommand('contract-sent'),
+  'partners contract-signed': {
+    usage:
+      'partners contract-signed <partner-id> --date YYYY-MM-DD --version <version> [--reference "<signfree reference>"]',
+    build(args) {
+      const { positional, values } = readOptions(args, [
+        '--date',
+        '--version',
+        '--reference',
+      ]);
+      const date = values['--date'];
+      const version = values['--version'];
+      if (date === undefined || version === undefined) {
+        throw usageError('A signed contract needs --date and --version.');
+      }
+      const reference = values['--reference'];
+      return {
+        method: 'POST',
+        path: `/api/admin/partners/${onePartnerId(positional)}/contract-signed`,
+        body:
+          reference === undefined
+            ? { date, version }
+            : { date, version, reference },
+      };
+    },
+    describe: describeTransition,
+  },
+  'partners pause': partnerStatusCommand('pause'),
+  'partners terminate': partnerStatusCommand('terminate'),
+  'partners reactivate': partnerStatusCommand('reactivate'),
+  'partners set-type': {
+    usage:
+      'partners set-type <partner-id> <standard|student_ambassador|creator> [--university "<name>"]',
+    build(args) {
+      const { positional, values } = readOptions(args, ['--university']);
+      if (positional.length !== 2 || positional[1] === undefined) {
+        throw usageError('Name the partner and its new type.');
+      }
+      const university = values['--university'];
+      return {
+        method: 'POST',
+        path: `/api/admin/partners/${onePartnerId(positional.slice(0, 1))}/type`,
+        body:
+          university === undefined
+            ? { type: positional[1] }
+            : { type: positional[1], university },
+      };
+    },
+    describe(body) {
+      const partner = record(body.partner);
+      return [
+        `Partner ${String(partner.id)} is now ${String(
+          record(partner.after).partner_type,
+        )}.`,
+      ];
+    },
+  },
+  'partners note': {
+    usage: 'partners note <partner-id> --text "<notes>"',
+    build(args) {
+      const { positional, values } = readOptions(args, ['--text']);
+      const text = values['--text'];
+      if (text === undefined) throw usageError('Notes need --text.');
+      return {
+        method: 'POST',
+        path: `/api/admin/partners/${onePartnerId(positional)}/note`,
+        body: { text },
+      };
+    },
+    describe(body) {
+      return [`Notes replaced for partner ${String(record(body.partner).id)}.`];
+    },
+  },
+  // Streams the CSV to standard output, unchanged; redirect it to a file:
+  // `npm run --silent admin -- partners export > partners.csv`.
+  'partners export': {
+    usage: 'partners export',
+    build(args) {
+      const { positional } = readOptions(args, []);
+      if (positional.length !== 0) throw usageError('Unexpected argument.');
+      return { method: 'GET', path: '/api/admin/partners/export.csv' };
+    },
+  },
+};
+
 export const adminCommands: Readonly<Record<string, AdminCommand>> = {
   'referrals void': referralVoidCommand('void'),
   'referrals unvoid': referralVoidCommand('unvoid'),
+  ...partnerCommands,
 };
 
 function record(value: unknown): Record<string, unknown> {
@@ -177,21 +469,49 @@ export async function runAdminCommand(
     );
   }
 
+  const target = new URL(adminRequest.path, origin);
+  if (adminRequest.method === 'GET') {
+    for (const [key, value] of Object.entries(adminRequest.query ?? {})) {
+      target.searchParams.set(key, value);
+    }
+  }
   let response: Response;
   try {
-    response = await request(new URL(adminRequest.path, origin), {
+    response = await request(target, {
       method: adminRequest.method,
       headers: {
         Authorization: `Bearer ${credential.trim()}`,
-        'Content-Type': 'application/json',
+        ...(adminRequest.method === 'POST'
+          ? { 'Content-Type': 'application/json' }
+          : {}),
         'X-Valstara-TOTP': code,
       },
-      body: JSON.stringify(adminRequest.body),
+      ...(adminRequest.method === 'POST'
+        ? { body: JSON.stringify(adminRequest.body) }
+        : {}),
       redirect: 'error',
       signal: AbortSignal.timeout(requestTimeoutMilliseconds),
     });
   } catch {
     throw new AdminCommandError('The admin API could not be reached.');
+  }
+
+  if (command.describe === undefined && response.ok) {
+    // A streamed export: written as it arrives, never buffered whole and
+    // never written to disk by this command.
+    if (response.body === null) {
+      throw new AdminCommandError('The admin API returned an empty response.');
+    }
+    const decoder = new TextDecoder();
+    try {
+      for await (const chunk of response.body) {
+        await io.writeChunk(decoder.decode(chunk, { stream: true }));
+      }
+      await io.writeChunk(decoder.decode());
+    } catch {
+      throw new AdminCommandError('The export stopped before it finished.');
+    }
+    return;
   }
 
   let body: Record<string, unknown>;
@@ -210,7 +530,7 @@ export async function runAdminCommand(
       )}`,
     );
   }
-  for (const line of command.describe(body)) io.write(line);
+  for (const line of command.describe?.(body) ?? []) io.write(line);
 }
 
 /** Prompts on stderr; reads lines when piped, or raw keys without echo. */
@@ -271,6 +591,14 @@ function createProcessIo(): AdminCommandIo & { close(): void } {
     },
     write(line) {
       process.stdout.write(`${line}\n`);
+    },
+    writeChunk(text) {
+      return new Promise<void>((resolve, reject) => {
+        process.stdout.write(text, (error) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      });
     },
     close() {
       reader?.close();

@@ -64,3 +64,22 @@ export const partnerApplicationMailWindowMs = 15 * 60 * 1_000;
 export const partnerApplicationMailLimit = 1;
 /** Confirmation attempts per hashed IP prefix per window, as `/dsr` allows. */
 export const partnerConfirmationIpLimit = 5;
+
+/**
+ * `partners list --stale` shows partners in `applied`, `approved` or
+ * `contract_sent` for longer than this (the planning default, E11.7-06).
+ * Nothing changes automatically.
+ */
+export const partnerStaleAfterMs = 14 * DAY_MS;
+
+/** The founder's review fields (E11.7-06, D-052), mirrored by migration 0063's checks. */
+export const partnerReviewLimits = Object.freeze({
+  // One notes field, replaced whole (D-052 Q4e).
+  notes: 2_000,
+  // An optional signfree reference or link.
+  contractReference: 200,
+});
+
+/** A contract version is a label such as `v1` or `2026-11`, never free text. */
+export const partnerContractVersionPattern =
+  /^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$/u;

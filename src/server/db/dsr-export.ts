@@ -14,12 +14,16 @@ export const subjectExportTables = {
   milestone_award: 'subscriber_id=$1',
   // E11.7-03: the member's coupon ladder. Erasure deletes it.
   referral_coupon: 'subscriber_id=$1',
-  // E11.7-01: the member's code in the shared registry. Erasure retires the
-  // row and clears its owner, so an erased subject has nothing here.
-  referral_code: "owner_kind='member' AND owner_id=$1",
+  // E11.7-01: the member's code in the shared registry, and since E11.7-06
+  // the partner code registered for any of the member's applications.
+  // Erasure retires both rows and clears their owners, so an erased subject
+  // has nothing here.
+  referral_code: `(owner_kind='member' AND owner_id=$1) OR (owner_kind='partner'
+    AND owner_id IN (SELECT id FROM partner WHERE subscriber_id=$1::uuid))`,
   survey_response: 'subscriber_id=$1',
-  // E11.7-05: the member's partner applications. Erasure clears every
-  // personal field and the member link, so an erased subject has none here.
+  // E11.7-05: the member's partner applications, with the founder's notes
+  // and the contract record since E11.7-06. Erasure clears every personal
+  // field and the member link, so an erased subject has none here.
   partner: 'subscriber_id=$1',
   giveaway_entry: 'subscriber_id=$1',
   giveaway_draw_snapshot_row: 'subscriber_id=$1',

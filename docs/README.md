@@ -63,6 +63,7 @@ docs/
   ops/
     runbook.md                     by symptom
     launch-cutover.md              the host swap and the trust-page port
+    founder-later-actions.md       things the founder must do later (features shipped switched off)
   prerequisites/
     founder-prerequisites.md       what the founder must supply, with instructions
     p4-rules-page-draft.md         the founder-approved text E7-02 publishes at /giveaway/rules

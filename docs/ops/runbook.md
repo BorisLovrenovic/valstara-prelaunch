@@ -150,6 +150,54 @@ record carries the referrer's coupons and wave before and after.
 
 ---
 
+## Reviewing partners (E11.7-06)
+
+Partner applications are reviewed, contracted and managed from your own machine
+with the same founder command line. Every command calls the admin API, asks
+for the authenticator code, and is audited with the actor and the before and
+after values. Reads are audited too, with no personal data.
+
+```sh
+npm run admin -- partners list --stale                 # waiting more than 14 days
+npm run admin -- partners list --status applied --since 2026-11-01
+npm run admin -- partners show <partner-id>            # counts, flagged referrals, last activity
+npm run admin -- partners approve <partner-id> [--code MAYA]
+npm run admin -- partners reject <partner-id> [--template]
+npm run admin -- partners contract-sent <partner-id>
+npm run admin -- partners contract-signed <partner-id> --date 2026-11-22 --version v1 [--reference "<signfree reference>"]
+npm run admin -- partners pause|reactivate|terminate <partner-id>
+npm run admin -- partners set-type <partner-id> student_ambassador --university "<name>"
+npm run admin -- partners note <partner-id> --text "<notes>"
+npm run --silent admin -- partners export > partners.csv
+```
+
+- **Approve** re-runs the code rules on the requested code, or on `--code`.
+  A code taken, blocked or malformed since the application changes nothing and
+  prints up to three available alternatives; approve again with `--code`. The
+  code is registered inactive and goes live only at activation (E11.7-07).
+  Approval queues the "approved" email.
+- **Reject** sends the polite "rejected" email only with `--template`. It also
+  closes an approved or contract-sent partner whose contract never went ahead.
+  The registered code stays taken and inactive, and the person may apply again.
+- **Contract-signed** records the signing date (not in the future, not before
+  the contract went out), the version and an optional signfree reference, and
+  makes the partner `active`.
+- **Only the documented transitions exist**, and the database refuses every
+  other one: nothing leaves `rejected` or `terminated`. A paused partner can be
+  terminated directly.
+- **Notes** replace the single notes field (1–2,000 characters, no email or IP
+  address). They are personal data: erasure and the purge clear them, and the
+  audit records only their length and SHA-256.
+- **`partners list --stale`** is the waiting-state check (standing rule 14):
+  review it weekly. Nothing changes automatically.
+- **The export** is for founder review only. It excludes suppressed addresses,
+  pending and completed erasures, and purged records. Use `--silent` so npm's
+  banner stays out of the CSV. Retire the Brevo dashboard upload, including
+  any previously saved CSV. D-056 defers the dedicated partner sync.
+  [Text-only spreadsheet import procedure](../features/admin.md#edge-cases-and-error-states)
+
+---
+
 ## "The site is up but signups fail"
 
 Almost always PostgreSQL. Check the health endpoint, the container, and memory headroom. **An OOM kill that recurs is a capacity signal, not a restart loop to tolerate** — the box runs with hard limits and no swap deliberately, so contention fails loudly.
