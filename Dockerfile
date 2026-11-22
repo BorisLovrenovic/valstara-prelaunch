@@ -56,10 +56,12 @@ COPY --chown=node:node --from=build /app/src/server/verification-rate ./src/serv
 COPY --chown=node:node --from=build /app/src/server/analytics ./src/server/analytics
 COPY --chown=node:node --from=build /app/src/server/dsr ./src/server/dsr
 COPY --chown=node:node --from=build /app/src/server/leaderboard ./src/server/leaderboard
+COPY --chown=node:node --from=build /app/src/server/partner ./src/server/partner
 COPY --chown=node:node --from=build /app/src/copy ./src/copy
 COPY --chown=node:node --from=build /app/src/styles/tokens.css ./src/styles/tokens.css
 COPY --chown=node:node --from=build /app/src/content/giveaway-rules ./src/content/giveaway-rules
 COPY --chown=node:node --from=build /app/src/content/giveaway-award-catalog.json ./src/content/giveaway-award-catalog.json
+COPY --chown=node:node --from=build /app/src/content/partner-countries.json ./src/content/partner-countries.json
 COPY --chown=node:node package.json ./package.json
 
 USER node
