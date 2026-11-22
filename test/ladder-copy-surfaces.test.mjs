@@ -10,6 +10,7 @@ import test from 'node:test';
 import { Pool } from 'pg';
 
 import { emailCopy } from '../src/copy/email.ts';
+import { couponLadder } from '../src/server/referral/config.ts';
 import { createTransactionalRenderers } from '../src/server/email/transactional-templates.ts';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
@@ -114,6 +115,11 @@ test('the privacy policy describes the coupon ladder and its held condition', as
   const privacy = await readFile(join(root, 'src/content/privacy.md'), 'utf8');
   assert.match(privacy, /coupon/iu);
   assert.ok(!heldConditionMissing(privacy));
+  // How long the coupons last, from the configured duration.
+  assert.ok(
+    privacy.includes(`last ${couponLadder.expiryYears} years after launch`),
+    'the privacy policy states how long coupons last',
+  );
   assert.doesNotMatch(privacy, /\bmilestone\b/iu);
 });
 
