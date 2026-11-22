@@ -8,7 +8,8 @@ import type { ReferralStatus } from './status.ts';
 
 /**
  * The referral meter on /verify and /me: progress from the last ladder step
- * reached to the next, and what that next step brings. Every figure comes from
+ * reached to the next, or to wave 1's threshold when that comes first, and
+ * what that point brings. Every figure comes from
  * the shared status and the ladder configuration. A complete ladder has no
  * meter.
  */
@@ -19,6 +20,11 @@ export function verificationReferralFigures(
   const progress = ladderProgress(status.confirmedReferrals, configuration);
   const access = earlyAccess(status, configuration);
   const next = progress.next;
+  const threshold = configuration.waveOneReferrals;
+  // Wave 1's threshold can fall before the next ladder step; the meter then
+  // ends there, and that point brings early access and no coupon.
+  const accessFirst =
+    next !== null && !access.inWaveOne && threshold < next.target;
   return {
     accessWindow: status.accessWindow,
     ladder: {
@@ -29,13 +35,12 @@ export function verificationReferralFigures(
           ? null
           : {
               progress: status.confirmedReferrals - next.from,
-              span: next.target - next.from,
-              target: next.target,
-              coupon: next.coupon,
-              // Reaching the next step also opens early access.
+              span: (accessFirst ? threshold : next.target) - next.from,
+              target: accessFirst ? threshold : next.target,
+              coupon: accessFirst ? null : next.coupon,
+              // Reaching wave 1's threshold opens early access.
               earlyAccessMonth:
-                !access.inWaveOne &&
-                next.target >= configuration.waveOneReferrals
+                !access.inWaveOne && next.target >= threshold
                   ? access.month
                   : null,
             },

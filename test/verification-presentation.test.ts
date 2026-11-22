@@ -144,3 +144,40 @@ test('the figures follow a changed ladder configuration', () => {
     },
   });
 });
+
+test('the meter ends at a wave-1 threshold that falls before the next ladder step', () => {
+  const configuration = {
+    ...ladderPresentationConfiguration,
+    ladder: { ...couponLadder, unlocks: [6, 30] },
+    waveOneReferrals: 4,
+  };
+  const figures = verificationReferralFigures(
+    { ...baseStatus, confirmedReferrals: 2 },
+    configuration,
+  );
+  assert.equal(
+    figures.ladder.line,
+    '4 more confirmed referrals to Coupon 1 at 5%.',
+  );
+  assert.deepEqual(figures.ladder.meter, {
+    progress: 2,
+    span: 4,
+    target: 4,
+    coupon: null,
+    earlyAccessMonth: 'September 2027',
+  });
+  // Past the threshold, the meter runs on to the ladder step.
+  assert.deepEqual(
+    verificationReferralFigures(
+      { ...baseStatus, confirmedReferrals: 4 },
+      configuration,
+    ).ladder.meter,
+    {
+      progress: 4,
+      span: 6,
+      target: 6,
+      coupon: { number: 1, percent: 5 },
+      earlyAccessMonth: null,
+    },
+  );
+});

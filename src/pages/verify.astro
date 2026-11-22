@@ -372,14 +372,16 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
                             </Pill>
                           </li>
                         )}
-                        <li>
-                          <Pill variant="coral">
-                            {referralLadderCopy.coupon(
-                              meter.coupon.number,
-                              meter.coupon.percent,
-                            )}
-                          </Pill>
-                        </li>
+                        {meter.coupon === null ? null : (
+                          <li>
+                            <Pill variant="coral">
+                              {referralLadderCopy.coupon(
+                                meter.coupon.number,
+                                meter.coupon.percent,
+                              )}
+                            </Pill>
+                          </li>
+                        )}
                       </ul>
                     </div>
                   )}
