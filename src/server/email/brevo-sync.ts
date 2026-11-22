@@ -50,13 +50,36 @@ export function createBrevoContactSyncJob(
   };
 }
 
+type BrevoSyncFailureCode =
+  'contact_sync_unavailable' | 'partner_sync_unavailable';
+
+export async function reportBrevoSyncFailure(
+  alerts: AlertTransport,
+  clock: () => Date,
+  code: BrevoSyncFailureCode,
+): Promise<void> {
+  try {
+    await alerts.send({
+      event: 'brevo_contact_sync_failed',
+      detail: { code },
+      occurredAt: clock(),
+      severity: 'P2',
+    });
+  } catch {
+    process.stderr.write(
+      `${JSON.stringify({ event: 'brevo_sync_alert_failed', code: 'alert_unavailable' })}\n`,
+    );
+  }
+}
+
 export async function runBrevoContactSync(
-  job: ReturnType<typeof createBrevoContactSyncJob>,
+  job: { run(limit: number): Promise<unknown> },
   alerts: AlertTransport,
   clock: () => Date,
   signal: AbortSignal,
   sleep: (ms: number, signal: AbortSignal) => Promise<void> = (ms, abort) =>
     systemSleep(ms, undefined, { signal: abort }),
+  failureCode: BrevoSyncFailureCode = 'contact_sync_unavailable',
 ): Promise<void> {
   while (!signal.aborted) {
     let delay = 10_000;
@@ -64,18 +87,7 @@ export async function runBrevoContactSync(
       await job.run(maxBrevoSyncBatch);
     } catch {
       delay = 60_000;
-      try {
-        await alerts.send({
-          event: 'brevo_contact_sync_failed',
-          detail: { code: 'contact_sync_unavailable' },
-          occurredAt: clock(),
-          severity: 'P2',
-        });
-      } catch {
-        process.stderr.write(
-          `${JSON.stringify({ event: 'brevo_sync_alert_failed', code: 'alert_unavailable' })}\n`,
-        );
-      }
+      await reportBrevoSyncFailure(alerts, clock, failureCode);
     }
     try {
       await sleep(delay, signal);

@@ -337,6 +337,17 @@ The authoritative eligibility query joins `subscriber` to `suppression` and
 requires verified status plus current marketing consent. A provider failure
 leaves this row unchanged so the next bounded batch resumes the contact.
 
+## `brevo_partner_sync`
+
+E11.7-06. The primary key is `subscriber_id` (foreign key to `subscriber`) and
+`list_id` (positive bigint). `fingerprint` is the 32-byte SHA-256 of the last
+successfully applied contact projection, with its `synced_at` timestamp. Both
+fields are null until the first confirmed provider success. The record is
+personal data linked to the subscriber and contains no copy of their address
+or synced attributes. It is included in the subject export and deleted at
+erasure fulfilment. The signed confirmation excludes the pending subject
+from both the sync and the review CSV immediately.
+
 ## `suppression`
 
 `email_normalised` pk · `reason` (`unsubscribe` · `bounce_hard` · `complaint` · `manual`) · `source` · `created_at`. **Checked at dispatch, not only at queue time** — a suppression written after queueing must still stop the send.

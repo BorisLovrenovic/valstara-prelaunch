@@ -44,7 +44,7 @@ Commission is **shown in copy and never calculated here** (founder, 2026-11-22):
 | A typed "Referral code" field | **A collapsed "Have a referral code?" toggle in the hero form only**, with no JavaScript, handled server-side. ADR-008 is amended |
 | Assets uploaded by the founder to a folder | **Images and PDFs are committed to the repository** and ship with each deploy. Videos are plain links |
 | Auto-invite at 10 confirmed referrals | **Sent only to members who opted in to marketing** (ADR-027). `/partners` stays public |
-| Brevo partner list sync | **Cut.** A partners CSV the founder imports into Brevo each quarter |
+| Brevo partner list sync | E11.7-06 restores the automatic sync with the signed erasure cutoff. The partners CSV is for founder review only |
 | Milestone emails 1 / 10 / 25 / 50 / 100 | **Cut to "first confirmed signup" only** |
 | Partner leaderboard | **Kept** |
 
@@ -53,6 +53,7 @@ Commission is **shown in copy and never calculated here** (founder, 2026-11-22):
 | Flag | Default | Off means |
 |---|---|---|
 | `partners.enabled` | **on** | `/partners/apply` shows an honest "applications are paused" message. `/r/{CODE}` still redirects to `/`, without attributing. Partner dashboards say the programme is paused. Existing data is untouched. The incident lever |
+| `partners.brevo_sync` | **off** | Automatic and on-demand Brevo partner list sync make no provider calls. The review CSV and confirmed erasure remain available |
 | `partners.digest` | **off** | No partner digest is sent. It stays off until the founder turns it on |
 
 The reward ladder and the wave-1 rule sit behind the existing `referral.enabled`.
@@ -106,6 +107,8 @@ The reward ladder and the wave-1 rule sit behind the existing `referral.enabled`
 - **Emails.** "Approved" is sent at `approve`. "Rejected" is sent only by `reject --template`. Each has its own business key and follows hard rule 5.
 - **An erased or purged partner's code is deactivated and never reissued.** When the personal fields are purged, by erasure or by the 90-day purge, a narrowly scoped database function retires the partner's registry row: it becomes inactive and loses its owner, as a retired member code does, and the code stays taken.
 - **The commands** are in `docs/features/admin.md#user-flows` (item 7) and `docs/ops/runbook.md#reviewing-partners-e117-06`.
+
+Brevo programme updates use a dedicated list maintained by the server with the existing account. It includes eligible active, paused and terminated partners. Routine active-partner updates exclude paused and terminated partners. The [wording review](../legal/compliance.md#2-lawful-basis-and-the-record-of-processing) specifies which contract administration messages each status may receive. The founder can run `partners sync-brevo` through MFA, and `partners export` produces a review-only CSV. Retire old files from the manual upload workflow.
 
 ## Links and codes
 

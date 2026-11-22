@@ -14,6 +14,7 @@ export const campaignFlagRegistry = Object.freeze({
   // E11.7-05: the partner application. Off pauses applications honestly and
   // accepts nothing (docs/features/partner-programme.md#feature-flag).
   'partners.enabled': true,
+  'partners.brevo_sync': false,
 } as const);
 
 export type FlagKey = keyof typeof campaignFlagRegistry;

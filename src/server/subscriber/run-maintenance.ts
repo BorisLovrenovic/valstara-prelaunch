@@ -50,6 +50,10 @@ import { createAlertWebhookTransport } from '../verification-rate/p1-webhook.ts'
 import { createVerificationRateMonitor } from '../verification-rate/service.ts';
 import { createVerificationTokenRetentionJob } from '../verification/retention.ts';
 import { createPartnerApplicationPurgeJob } from '../partner/retention.ts';
+import {
+  createPartnerBrevoSync,
+  partnerBrevoTarget,
+} from '../partner/brevo-sync.ts';
 import { createFlagService } from '../flags/service.ts';
 import { createGiveawayEntryReconciliationJob } from '../giveaway/reconcile.ts';
 import { currentRulesFromFiles } from '../giveaway/current-rules-file.ts';
@@ -332,6 +336,13 @@ const running = [
     clock,
     shutdown.signal,
   ),
+  createPartnerBrevoSync(
+    database,
+    broadcastFlags,
+    partnerBrevoTarget(brevoConfiguration),
+    alerts,
+    clock,
+  ).runContinuously(shutdown.signal),
 ];
 
 try {

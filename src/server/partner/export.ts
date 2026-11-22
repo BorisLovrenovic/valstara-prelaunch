@@ -7,12 +7,8 @@ import {
 } from '../db/partner-review.ts';
 import type { DatabasePool } from '../db/pool.ts';
 
-// E11.7-06: `partners export`, the quarterly Brevo import file (D-052 Q3).
-// One CSV row per contracted partner whose personal data is not purged and
-// whose address is not suppressed. `EXT_ID` is the linked member's normalised
-// email, the external ID the Brevo contact sync already uses, so erasure's
-// Brevo delete by ext_id also removes an imported partner contact. No country,
-// application answers, notes or referred person's data is exported.
+// E11.7-06: the review CSV shares contract eligibility and fields with the
+// separate automatic Brevo sync. The CSV is for founder review only.
 
 /** The columns, in the founder's order (D-052 Q3). */
 export const partnerExportColumns = [

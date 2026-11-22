@@ -127,6 +127,7 @@ export const flagAnalysis = Object.freeze({
     'not read by the landing; the price pages only (the Valstara price block, E11.6-11), a data route whose sheet E11.6-16 captures from real data',
   'partners.enabled':
     'not read by the landing; /partners/apply only (the paused card, E11.7-05)',
+  'partners.brevo_sync': 'server-side partner contact sync only (E11.7-06)',
 });
 
 const on = (value) => (value ? 'on' : 'off');

@@ -169,6 +169,7 @@ npm run admin -- partners pause|reactivate|terminate <partner-id>
 npm run admin -- partners set-type <partner-id> student_ambassador --university "<name>"
 npm run admin -- partners note <partner-id> --text "<notes>"
 npm run --silent admin -- partners export > partners.csv
+npm run admin -- partners sync-brevo
 ```
 
 - **Approve** re-runs the code rules on the requested code, or on `--code`.
@@ -190,10 +191,15 @@ npm run --silent admin -- partners export > partners.csv
   audit records only their length and SHA-256.
 - **`partners list --stale`** is the waiting-state check (standing rule 14):
   review it weekly. Nothing changes automatically.
-- **The export** is the quarterly Brevo import file: contracted partners only,
-  suppressed addresses left out, no country, answers, notes or referred
-  person's data. Use `--silent` so npm's banner stays out of the file, import
-  it into Brevo matching contacts on `EXT_ID`, then delete the local file.
+- **The export** is for founder review only. It excludes suppressed addresses,
+  pending and completed erasures, and purged records. Use `--silent` so npm's
+  banner stays out of the CSV. Retire the Brevo dashboard upload, including
+  any previously saved CSV.
+- **Brevo sync** runs automatically when `partners.brevo_sync` is on. The
+  founder command runs one bounded pass and audits the outcome and counts.
+  A P2 sync failure leaves unapplied changes for retry. Check the list ID,
+  account attributes, and provider availability, then verify a successful
+  pass. [Founder setup](founder-later-actions.md#1-turn-on-the-automatic-brevo-partner-sync)
 
 ---
 

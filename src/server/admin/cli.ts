@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 // connects to the database, and it never writes the key, the code or any
 // response to disk: the key comes from the environment or a hidden prompt, the
 // code from a prompt on every run. Responses go to standard output; the
-// partners export (E11.7-06) streams its CSV there for the founder to
+// partners export (E11.7-06) streams its review CSV there for the founder to
 // redirect. Later tickets add their commands to `adminCommands`.
 
 export const defaultAdminApiOrigin = 'https://valstara.com';
@@ -397,6 +397,25 @@ const partnerCommands: Readonly<Record<string, AdminCommand>> = {
       const { positional } = readOptions(args, []);
       if (positional.length !== 0) throw usageError('Unexpected argument.');
       return { method: 'GET', path: '/api/admin/partners/export.csv' };
+    },
+  },
+  'partners sync-brevo': {
+    usage: 'partners sync-brevo',
+    build(args) {
+      const { positional } = readOptions(args, []);
+      if (positional.length !== 0) throw usageError('Unexpected argument.');
+      return {
+        method: 'POST',
+        path: '/api/admin/partners/sync-brevo',
+        body: {},
+      };
+    },
+    describe(body) {
+      const sync = record(body.sync);
+      if (sync.state === 'disabled') return ['Partner sync to Brevo is off.'];
+      return [
+        `Partner sync to Brevo: ${String(sync.selected)} checked, ${String(sync.upserted)} updated, ${String(sync.removed)} removed.`,
+      ];
     },
   },
 };

@@ -6,7 +6,7 @@ import { DatabaseUnavailableError } from '../../../../server/db/errors.ts';
 import type { PartnerExportService } from '../../../../server/partner/export.ts';
 import { getPartnerExportService } from '../../../../server/partner/review-runtime.ts';
 
-// E11.7-06: `partners export`, the quarterly Brevo import file (D-052 Q3),
+// E11.7-06: `partners export`, the founder review CSV,
 // streamed in pages of at most 500 rows and audited as `partner.exported`
 // with its row count before the first byte.
 export function createPartnerExportRoute(

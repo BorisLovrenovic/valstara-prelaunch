@@ -244,6 +244,7 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
     'BREVO_API_KEY',
     'BREVO_DAILY_CAP',
     'BREVO_LIST_ID',
+    'BREVO_PARTNER_LIST_ID',
     'BREVO_SENDING_DOMAIN',
     'BREVO_TIER',
     'BREVO_WEBHOOK_TOKEN',

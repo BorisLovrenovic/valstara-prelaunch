@@ -28,12 +28,14 @@ import { createSetTypePartnerRoute } from '../src/pages/api/admin/partners/[id]/
 import { createShowPartnerRoute } from '../src/pages/api/admin/partners/[id].ts';
 import { createPartnerExportRoute } from '../src/pages/api/admin/partners/export.csv.ts';
 import { createListPartnersRoute } from '../src/pages/api/admin/partners/index.ts';
+import { createPartnerBrevoSyncRoute } from '../src/pages/api/admin/partners/sync-brevo.ts';
 import { createAdminAuthenticator } from '../src/server/admin-auth/authenticate.ts';
 import { createAdminAuthMiddleware } from '../src/server/admin-auth/middleware.ts';
 import { adminRouteRegistry } from '../src/server/admin-auth/route-registry.ts';
 import { generateTotp } from '../src/server/admin-auth/totp.ts';
 import { adminCommands } from '../src/server/admin/cli.ts';
 import { createAuditService } from '../src/server/audit/service.ts';
+import { createPartnerBrevoSync } from '../src/server/partner/brevo-sync.ts';
 import { createPartnerExportService } from '../src/server/partner/export.ts';
 import { createPartnerReviewService } from '../src/server/partner/review.ts';
 
@@ -80,6 +82,21 @@ async function harness(): Promise<Harness> {
   const list = createListPartnersRoute(service);
   const show = createShowPartnerRoute(service);
   const exportRoute = createPartnerExportRoute(exporter);
+  const sync = createPartnerBrevoSync(
+    fixture.app,
+    { isEnabled: async () => true },
+    {
+      listId: 27,
+      provider: {
+        requireContactAttributes: async () => {},
+        upsertContact: async () => {},
+        removeContact: async () => {},
+      },
+    },
+    { send: async () => {} },
+    () => instant,
+  );
+  const syncRoute = createPartnerBrevoSyncRoute(sync.runOnDemand);
   const middleware = createAdminAuthMiddleware(
     createAdminAuthenticator({ credential, totpSecret }, () => instant),
   );
@@ -92,6 +109,8 @@ async function harness(): Promise<Harness> {
       return { route: list, params: {} };
     if (method === 'GET' && pathname === '/api/admin/partners/export.csv')
       return { route: exportRoute, params: {} };
+    if (method === 'POST' && pathname === '/api/admin/partners/sync-brevo')
+      return { route: syncRoute, params: {} };
     const match = /^\/api\/admin\/partners\/([^/]+)(?:\/([^/]+))?$/u.exec(
       pathname,
     );
@@ -210,6 +229,7 @@ test('authentication refusal: every partner command refuses without the authenti
     'partners set-type': [partner.id, 'standard'],
     'partners note': [partner.id, '--text', 'A note'],
     'partners export': [],
+    'partners sync-brevo': [],
   };
   // Every partner command the command line has is covered here.
   assert.deepEqual(
@@ -234,7 +254,7 @@ test('authentication refusal: every partner command refuses without the authenti
 
   // At the API, a missing or wrong code is the same 401 on every partner
   // route, and nothing is read, written or audited.
-  assert.equal(partnerRoutes.length, 12);
+  assert.equal(partnerRoutes.length, 13);
   for (const route of partnerRoutes) {
     const path = route.pathname.replace(':id', partner.id);
     for (const method of route.methods) {
@@ -260,6 +280,31 @@ test('authentication refusal: every partner command refuses without the authenti
     values: [partner.id],
   });
   assert.equal(row?.status, 'applied');
+});
+
+test('partners sync-brevo runs one pass and audits only the actor, state and counts', async (t) => {
+  const h = await harness();
+  t.after(() => h.close());
+  const partner = await insertPartner(h.fixture, { status: 'active' });
+  const result = await runCli(h, ['partners', 'sync-brevo'], `${code}\n`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1 checked, 1 updated, 0 removed/u);
+  assert.ok(!result.stdout.includes(partner.email));
+  assert.deepEqual(h.requests, ['POST /api/admin/partners/sync-brevo']);
+  const audit = await h.fixture.owner.readOne({
+    text: `SELECT actor, subject_id, detail FROM audit_log WHERE action='partner.brevo_synced'`,
+  });
+  assert.deepEqual(audit, {
+    actor: 'admin.operator',
+    subject_id: null,
+    detail: {
+      state: 'completed',
+      selected: 1,
+      upserted: 1,
+      removed: 0,
+      failed: 0,
+    },
+  });
 });
 
 test('the command line takes a partner from review to termination, and streams the export, audited as the operator', async (t) => {

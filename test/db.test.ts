@@ -208,7 +208,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       {
         text: 'SELECT filename, checksum, applied_by_release FROM migration_ledger ORDER BY filename',
       },
-      63,
+      64,
     );
     const tables = await fixture.database.list<TableRow>(
       {
@@ -219,7 +219,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
           ORDER BY table_name
         `,
       },
-      38,
+      100,
     );
     const giveawayRulesVersionColumn = await fixture.database.readOne<{
       data_type: string;
@@ -298,6 +298,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0061-coupon-ladder.sql',
       '0062-partner-application.sql',
       '0063-partner-review-lifecycle.sql',
+      '0064-brevo-partner-sync.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -366,6 +367,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0061-coupon-ladder.sql',
         '0062-partner-application.sql',
         '0063-partner-review-lifecycle.sql',
+        '0064-brevo-partner-sync.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -379,6 +381,7 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       [
         'audit_log',
         'brevo_contact_sync',
+        'brevo_partner_sync',
         'campaign_flag',
         'domain_allow',
         'dsr_erasure',
@@ -514,10 +517,10 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
         }
         const ledger = await fixture.database.list<{ filename: string }>(
           { text: 'SELECT filename FROM migration_ledger ORDER BY filename' },
-          63,
+          64,
         );
 
-        assert.equal(appliedCount, 63);
+        assert.equal(appliedCount, 64);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -584,6 +587,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0061-coupon-ladder.sql',
             '0062-partner-application.sql',
             '0063-partner-review-lifecycle.sql',
+            '0064-brevo-partner-sync.sql',
           ],
         );
       } finally {

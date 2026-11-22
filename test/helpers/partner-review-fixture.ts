@@ -6,6 +6,9 @@ import { randomUUID } from 'node:crypto';
 import { runMigrations } from '../../src/server/db/migration.ts';
 import { createPool, type DatabasePool } from '../../src/server/db/pool.ts';
 import type { PartnerStatus } from '../../src/server/db/partner-review.ts';
+import { createDsrService } from '../../src/server/dsr/http.ts';
+import { createErasureService } from '../../src/server/dsr/service.ts';
+import { createVerificationService } from '../../src/server/verification/service.ts';
 
 const defaultDatabaseUrl =
   'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
@@ -16,6 +19,40 @@ export interface PartnerFixture {
   readonly owner: DatabasePool;
   readonly app: DatabasePool;
   dispose(): Promise<void>;
+}
+
+export function partnerErasure(
+  fixture: PartnerFixture,
+  deleteContact: (email: string) => Promise<void>,
+) {
+  const clock = () => new Date('2026-11-22T12:00:00.000Z');
+  const alerts = { send: async () => assertUnexpected('erasure alert') };
+  const erasure = createErasureService(fixture.app, {
+    clock,
+    deleteContact,
+    alerts,
+  });
+  const execute = createDsrService(fixture.app, {
+    clock,
+    erasure,
+    alerts,
+    challenge: async () => assertUnexpected('Turnstile on a signed request'),
+  });
+  return {
+    async signedConfirmation(id: string) {
+      const { token } = await createVerificationService(fixture.app, {
+        clock,
+      }).issue(id, 'dsr_delete');
+      const form = new FormData();
+      form.set('token', token);
+      return () => execute('delete', form, `test-${id}`);
+    },
+    fulfil: erasure.run,
+  };
+}
+
+function assertUnexpected(operation: string): never {
+  throw new Error(`Unexpected ${operation}.`);
 }
 
 export async function createPartnerFixture(

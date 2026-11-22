@@ -367,19 +367,34 @@ export interface PartnerExportSnapshot {
   close(): Promise<void>;
 }
 
-// The export's row set (D-052 Q3): contracted partners whose personal data is
-// not purged, leaving out any whose address is suppressed.
-// A partner holds at most one code (uq_referral_code_partner_owner), so the
-// join never changes the count.
-const exportRowSet = `
+// Shared by the founder's review CSV and the automatic Brevo partner sync.
+// A partner holds at most one code (uq_referral_code_partner_owner).
+export const contractedPartnerRows = `
   FROM partner p
   JOIN subscriber s ON s.id = p.subscriber_id
   ${partnerCodeJoin}
   WHERE p.status IN ('active', 'paused', 'terminated')
     AND p.personal_data_purged_at IS NULL
+    AND s.verified_at IS NOT NULL
+    AND s.status NOT IN ('erasure_pending', 'erased')
     AND NOT EXISTS (
       SELECT 1 FROM suppression x WHERE x.email_normalised = s.email_normalised
     )`;
+
+export const contractedPartnerColumns = `
+  p.id, s.email, s.email_normalised, p.full_name, p.status,
+  p.partner_type, c.code,
+  to_char(p.contract_signed_at, 'YYYY-MM-DD') AS contract_signed_at,
+  p.contract_version,
+  (SELECT count(*) FROM referral_edge e
+    WHERE e.referrer_id = p.subscriber_id
+      AND e.state = 'confirmed' AND e.voided_at IS NULL
+  )::int AS confirmed_referrals,
+  (SELECT count(*) FROM referral_edge e
+    WHERE e.referrer_id = p.subscriber_id
+      AND e.state = 'attributed' AND e.voided_at IS NULL
+  )::int AS pending_referrals,
+  s.marketing_consent_at IS NOT NULL AS marketing_consent`;
 
 /**
  * One repeatable-read, read-only snapshot of the partners export, counted
@@ -406,7 +421,7 @@ export async function openPartnerExportSnapshot(
       text: 'BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY',
     });
     const count = await connection.readOne<{ row_count: number }>({
-      text: `SELECT count(*)::int AS row_count ${exportRowSet}`,
+      text: `SELECT count(*)::int AS row_count ${contractedPartnerRows}`,
     });
     if (count === null) {
       throw new Error('Partner export snapshot count was unavailable.');
@@ -419,20 +434,8 @@ export async function openPartnerExportSnapshot(
         return connection.list<PartnerExportRow>(
           {
             text: `
-              SELECT p.id, s.email, s.email_normalised, p.full_name, p.status,
-                p.partner_type, c.code,
-                to_char(p.contract_signed_at, 'YYYY-MM-DD') AS contract_signed_at,
-                p.contract_version,
-                (SELECT count(*) FROM referral_edge e
-                  WHERE e.referrer_id = p.subscriber_id
-                    AND e.state = 'confirmed' AND e.voided_at IS NULL
-                )::int AS confirmed_referrals,
-                (SELECT count(*) FROM referral_edge e
-                  WHERE e.referrer_id = p.subscriber_id
-                    AND e.state = 'attributed' AND e.voided_at IS NULL
-                )::int AS pending_referrals,
-                s.marketing_consent_at IS NOT NULL AS marketing_consent
-              ${exportRowSet}
+              SELECT ${contractedPartnerColumns}
+              ${contractedPartnerRows}
                 AND ($1::uuid IS NULL OR p.id > $1::uuid)
               ORDER BY p.id
             `,

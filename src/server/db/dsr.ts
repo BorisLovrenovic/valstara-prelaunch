@@ -207,6 +207,14 @@ export function createDsrRepository(db: DatabaseConnection) {
         text: 'DELETE FROM brevo_contact_sync WHERE email_normalised=$1',
         values: [subject.email_normalised],
       });
+      // The signed confirmation can wait behind a partner upsert in a
+      // repeatable-read transaction. Clear its cache at fulfilment so that
+      // a newly committed sync cannot cause a confirmation write conflict.
+      await bounded(
+        `DELETE FROM brevo_partner_sync WHERE (subscriber_id, list_id) IN
+          (SELECT subscriber_id, list_id FROM brevo_partner_sync WHERE subscriber_id=$1 LIMIT 100)`,
+        [id],
+      );
       await db.execute({
         text: 'DELETE FROM suppression WHERE email_normalised=$1',
         values: [subject.email_normalised],

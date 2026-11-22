@@ -1,4 +1,4 @@
-// E11.7-06: `partners export`, the quarterly Brevo import file (D-052 Q3),
+// E11.7-06: `partners export`, the founder review CSV,
 // against a real database. The Tests line: the export's columns, paging and
 // audit. The CSV is read back through the real admin route.
 import assert from 'node:assert/strict';
@@ -23,6 +23,7 @@ import {
   createPartnerFixture,
   insertPartner,
   insertReferral,
+  partnerErasure,
   type PartnerFixture,
 } from './helpers/partner-review-fixture.ts';
 
@@ -206,6 +207,30 @@ test("the export's columns: one row per contracted partner, in the founder's ord
     ]) {
       assert.equal(text.includes(absent), false, absent);
     }
+  });
+});
+
+test('a fresh review export excludes pending and completed erasures', async () => {
+  await withFixture(async (fixture) => {
+    const erased = await insertPartner(fixture, { status: 'active' });
+    const pending = await insertPartner(fixture, { status: 'paused' });
+    const eligible = await insertPartner(fixture, { status: 'terminated' });
+    const erasure = partnerErasure(fixture, async () => {});
+    const confirmErased = await erasure.signedConfirmation(erased.subscriberId);
+    const confirmPending = await erasure.signedConfirmation(
+      pending.subscriberId,
+    );
+    assert.deepEqual(await confirmErased(), { kind: 'pending' });
+    assert.equal(await erasure.fulfil(), 1);
+    assert.deepEqual(await confirmPending(), { kind: 'pending' });
+    const response = await exportThroughRoute(fixture);
+    assert.equal(response.status, 200);
+    const [header, ...rows] = parseCsv(await response.text());
+    assert.deepEqual(header, [...partnerExportColumns]);
+    assert.deepEqual(
+      rows.map((row) => row[2]),
+      [eligible.id],
+    );
   });
 });
 

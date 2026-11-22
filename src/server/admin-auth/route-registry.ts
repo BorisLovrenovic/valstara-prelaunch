@@ -94,6 +94,11 @@ export const adminRouteRegistry = defineAdminRouteRegistry([
     methods: [{ method: 'GET', audit: 'required' }],
   },
   {
+    source: 'src/pages/api/admin/partners/sync-brevo.ts',
+    pathname: '/api/admin/partners/sync-brevo',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
+  {
     source: 'src/pages/api/admin/partners/[id].ts',
     pathname: '/api/admin/partners/:id',
     methods: [{ method: 'GET', audit: 'required' }],
