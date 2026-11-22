@@ -23,8 +23,8 @@ export interface AdminCommandIo {
     options: { readonly hidden: boolean },
   ): Promise<string>;
   write(line: string): void;
-  /** Write a streamed response body as it arrives, unchanged (a CSV export). */
-  writeChunk(text: string): void;
+  /** Write a streamed response chunk and wait for the output to accept it. */
+  writeChunk(text: string): void | Promise<void>;
 }
 
 export interface AdminCommandEnvironment {
@@ -524,9 +524,9 @@ export async function runAdminCommand(
     const decoder = new TextDecoder();
     try {
       for await (const chunk of response.body) {
-        io.writeChunk(decoder.decode(chunk, { stream: true }));
+        await io.writeChunk(decoder.decode(chunk, { stream: true }));
       }
-      io.writeChunk(decoder.decode());
+      await io.writeChunk(decoder.decode());
     } catch {
       throw new AdminCommandError('The export stopped before it finished.');
     }
@@ -612,7 +612,12 @@ function createProcessIo(): AdminCommandIo & { close(): void } {
       process.stdout.write(`${line}\n`);
     },
     writeChunk(text) {
-      process.stdout.write(text);
+      return new Promise<void>((resolve, reject) => {
+        process.stdout.write(text, (error) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      });
     },
     close() {
       reader?.close();

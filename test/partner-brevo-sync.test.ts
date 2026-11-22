@@ -9,6 +9,7 @@ import type { Alert } from '../src/server/verification-rate/p1-webhook.ts';
 
 import {
   createPartnerFixture,
+  insertMember,
   insertPartner,
   insertReferral,
   partnerErasure,
@@ -38,7 +39,7 @@ interface Contact {
   readonly attributes: Record<string, unknown>;
 }
 
-function harness(fixture: PartnerFixture) {
+function harness(fixture: PartnerFixture, syncClock = clock) {
   const contacts = new Map<string, Contact>();
   const upserts: string[] = [];
   const removals: string[] = [];
@@ -106,7 +107,7 @@ function harness(fixture: PartnerFixture) {
       flags,
       { listId, provider },
       transport,
-      clock,
+      syncClock,
     );
   return {
     contacts,
@@ -318,6 +319,90 @@ test('a fresh partner sync excludes pending and completed signed erasures', asyn
     failed: 0,
   });
   assert.deepEqual(h.upserts, [eligible.email]);
+});
+
+test('on-demand partner sync refuses provider dispatch if its opening audit fails', async (t) => {
+  const fixture = await createPartnerFixture('partner-sync-no-opening-audit');
+  t.after(() => fixture.dispose());
+  const h = harness(fixture);
+  await insertPartner(fixture, { status: 'active' });
+  await h.enable();
+  // Deny the runtime role's audit writes while keeping other writes available.
+  await fixture.owner.execute({
+    text: 'REVOKE INSERT ON audit_log FROM valstara_app',
+  });
+  await assert.rejects(h.newJob().runOnDemand('admin.operator'));
+  assert.deepEqual(h.upserts, []);
+});
+
+test('on-demand partner sync preserves counts if its closing audit fails', async (t) => {
+  const fixture = await createPartnerFixture('partner-sync-no-closing-audit');
+  t.after(() => fixture.dispose());
+  const h = harness(fixture);
+  const partner = await insertPartner(fixture, { status: 'active' });
+  await h.enable();
+  let openingAudit: unknown;
+  h.hooks.beforeUpsert = async () => {
+    openingAudit = await fixture.owner.readOne({
+      text: "SELECT actor, detail FROM audit_log WHERE action = 'partner.brevo_sync_started'",
+    });
+    await fixture.owner.execute({
+      text: 'REVOKE INSERT ON audit_log FROM valstara_app',
+    });
+  };
+  const counts = { selected: 1, upserted: 1, removed: 0, failed: 0 };
+  assert.deepEqual(await h.newJob().runOnDemand('admin.operator'), {
+    state: 'unavailable',
+    ...counts,
+  });
+  assert.deepEqual(openingAudit, { actor: 'admin.operator', detail: {} });
+  assert.deepEqual(h.upserts, [partner.email]);
+  assert.deepEqual(
+    await fixture.owner.readOne({
+      text: `SELECT result.state, result.selected, result.upserted, result.removed, result.failed
+        FROM brevo_partner_sync_result result JOIN audit_log opened
+          ON opened.request_id = result.id::text AND opened.action = 'partner.brevo_sync_started'
+        WHERE opened.actor = 'admin.operator'`,
+    }),
+    { state: 'completed', ...counts },
+  );
+  assert.equal(h.alerts.length, 1);
+  assert.equal((await h.newJob().run()).selected, 0);
+});
+
+test('persistently failing contacts yield a bounded pass to waiting contacts and then retry', async (t) => {
+  const fixture = await createPartnerFixture('partner-sync-fair-retry');
+  t.after(() => fixture.dispose());
+  let currentTime = clock();
+  const h = harness(fixture, () => currentTime);
+  const first = await insertPartner(fixture, { status: 'active' });
+  const second = await insertPartner(fixture, { status: 'active' });
+  const [failing, waiting] =
+    first.subscriberId < second.subscriberId
+      ? [first, second]
+      : [second, first];
+  h.hooks.beforeUpsert = async (id) => {
+    if (id === failing.email) throw new Error('test transport interrupted');
+  };
+  await h.enable();
+  assert.equal((await h.newJob().run(1)).failed, 1);
+  assert.equal((await h.newJob().run(1)).upserted, 1);
+  currentTime = new Date('2026-11-23T12:00:00.000Z');
+  const newcomer = await insertMember(fixture, { at: currentTime });
+  await insertPartner(fixture, {
+    status: 'active',
+    subscriberId: newcomer.id,
+    email: newcomer.email,
+    at: currentTime,
+  });
+  assert.equal((await h.newJob().run(1)).failed, 1);
+  assert.equal((await h.newJob().run(1)).upserted, 1);
+  assert.deepEqual(h.upserts, [
+    failing.email,
+    waiting.email,
+    failing.email,
+    newcomer.email,
+  ]);
 });
 
 test('the automatic pass finishes an in-flight contact before shutting down', async (t) => {

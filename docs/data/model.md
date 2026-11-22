@@ -178,7 +178,7 @@ E11.7-05 (founder decisions D-050, 2026-11-22). One row per submitted partner ap
 | `age_confirmed`, `programme_terms_agreed` | boolean null | Both true on every unpurged row |
 | `contract_sent_at` | timestamptz null | E11.7-06 `contract-sent`. Set exactly for `contract_sent`, `active`, `paused` and `terminated`, and kept on a partner rejected after it; written once, by that transition |
 | `contract_signed_at` | date null | E11.7-06 `contract-signed`: the signing date, never before the UTC day the contract was sent. Set exactly for `active`, `paused` and `terminated`; written once, by `contract_sent` → `active` |
-| `contract_version` | text null | The contract's version label, `^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$`. Set exactly with `contract_signed_at` |
+| `contract_version` | text null | The contract's version label, `^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$`. The database refuses labels containing IP addresses. Set exactly with `contract_signed_at` |
 | `contract_reference` | text null | The optional signfree reference or link, 1–200 characters. **Personal data** (it identifies the person's signed contract): cleared by the purge and erasure, and recorded in the audit log only as its length and SHA-256 |
 | `notes` | text null | The founder's internal notes, one field of 1–2,000 characters replaced whole by `note` (E11.7-06, D-052 Q4e), refused if it holds an email or IP address. **Personal data**: in the subject's data export, cleared by the purge and erasure, and recorded in the audit log only as its length and SHA-256, never as text |
 | `personal_data_purged_at` | timestamptz null | Set when the retention purge or erasure clears every personal field and the member link together |
@@ -342,11 +342,22 @@ leaves this row unchanged so the next bounded batch resumes the contact.
 E11.7-06. The primary key is `subscriber_id` (foreign key to `subscriber`) and
 `list_id` (positive bigint). `fingerprint` is the 32-byte SHA-256 of the last
 successfully applied contact projection, with its `synced_at` timestamp. Both
-fields are null until the first confirmed provider success. The record is
+fields are null until the first confirmed provider success. `last_attempt_at`
+records when the last attempt started, and `last_attempt` breaks ties using
+attempt order. Both fields are separate from the successful fingerprint.
+The oldest attempts run first, using subscriber verification time for
+candidates without a recorded attempt. The record is
 personal data linked to the subscriber and contains no copy of their address
 or synced attributes. It is included in the subject export and deleted at
 erasure fulfilment. The signed confirmation excludes the pending subject
 from both the sync and the review CSV immediately.
+
+## `brevo_partner_sync_result`
+
+E11.7-06. This append-only table holds the final outcome and counts for each
+on-demand pass. Its UUID key matches the audit log's `request_id` on
+`partner.brevo_sync_started` and, when available, `partner.brevo_synced`.
+It contains no contact data. The application role can insert and read rows.
 
 ## `suppression`
 

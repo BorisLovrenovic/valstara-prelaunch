@@ -282,6 +282,8 @@ const relatedPolicyFields = {
       'list_id',
       'fingerprint',
       'synced_at',
+      'last_attempt',
+      'last_attempt_at',
     ],
   },
 };

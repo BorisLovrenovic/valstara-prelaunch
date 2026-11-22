@@ -12,6 +12,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { setImmediate as yieldTurn } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 import type { APIContext, APIRoute } from 'astro';
@@ -33,7 +34,7 @@ import { createAdminAuthenticator } from '../src/server/admin-auth/authenticate.
 import { createAdminAuthMiddleware } from '../src/server/admin-auth/middleware.ts';
 import { adminRouteRegistry } from '../src/server/admin-auth/route-registry.ts';
 import { generateTotp } from '../src/server/admin-auth/totp.ts';
-import { adminCommands } from '../src/server/admin/cli.ts';
+import { adminCommands, runAdminCommand } from '../src/server/admin/cli.ts';
 import { createAuditService } from '../src/server/audit/service.ts';
 import { createPartnerBrevoSync } from '../src/server/partner/brevo-sync.ts';
 import { createPartnerExportService } from '../src/server/partner/export.ts';
@@ -347,6 +348,24 @@ test('the command line takes a partner from review to termination, and streams t
     `Partner ${partner.id}: approved -> contract_sent.`,
     'Code: MAYA2026 (not live).',
   ]);
+  const address = '192.0.2.1';
+  const ipRefusal = await runCli(
+    h,
+    [
+      'partners',
+      'contract-signed',
+      partner.id,
+      '--date',
+      '2026-11-22',
+      '--version',
+      address,
+    ],
+    `${code}\n`,
+  );
+  assert.equal(ipRefusal.status, 1);
+  assert.match(ipRefusal.stderr, /invalid_input/u);
+  assert.equal(ipRefusal.stdout, '');
+  assert.ok(!ipRefusal.stderr.includes(address));
   assert.deepEqual(
     await run(
       'partners',
@@ -440,6 +459,49 @@ test('the command line takes a partner from review to termination, and streams t
   assert.ok(actions.every((row) => row.actor === 'admin.operator'));
   // Nothing was written to disk by the command line.
   assert.deepEqual(await readdir(h.home), []);
+});
+
+test('the export command waits for stdout before reading another chunk', async () => {
+  const firstWrite = Promise.withResolvers<void>();
+  const resume = Promise.withResolvers<void>();
+  const output: string[] = [];
+  const chunks = ['EMAIL\r\n', 'partner@example.test\r\n'];
+  let reads = 0;
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        const chunk = chunks[reads++];
+        if (chunk === undefined) controller.close();
+        else controller.enqueue(new TextEncoder().encode(chunk));
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  const running = runAdminCommand(
+    ['partners', 'export'],
+    { ADMIN_CREDENTIAL: credential },
+    {
+      prompt: async () => code,
+      write: assert.fail,
+      async writeChunk(text) {
+        output.push(text);
+        if (output.length === 1) {
+          firstWrite.resolve();
+          await resume.promise;
+        }
+      },
+    },
+    async () => new Response(body),
+  );
+  try {
+    await firstWrite.promise;
+    await yieldTurn();
+    assert.equal(reads, 1);
+  } finally {
+    resume.resolve();
+    await running;
+  }
+  assert.equal(output.join(''), chunks.join(''));
 });
 
 test('the command line refuses an unknown, repeated or valueless option before asking for anything', async (t) => {

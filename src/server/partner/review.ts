@@ -478,7 +478,10 @@ export function createPartnerReviewService(
   ): (row: PartnerReviewRow, now: Date) => PartnerContractSigning {
     const signed = parsePartnerDate(input.date);
     const version = typeof input.version === 'string' ? input.version : '';
-    if (!partnerContractVersionPattern.test(version)) {
+    if (
+      !partnerContractVersionPattern.test(version) ||
+      holdsPersonalAddress(version)
+    ) {
       throw new PartnerReviewInputError('contractVersion');
     }
     const reference =

@@ -31,6 +31,8 @@ Joining the waitlist and entering the giveaway use the contract basis. Marketing
 
 We collect no country or other location at signup. We request a provisional winner's country of residence at award time, and a partner applicant's country of residence on the partner application, for the partner contract. Applying to the partner programme uses the same email confirmation as the waitlist: confirming your application also confirms your waitlist place. We do not collect a postal address for the giveaway; prizes are delivered electronically.
 
+For partners, we also record when we last tried to sync your details and in what order so we can retry failed syncs alongside new ones.
+
 Our email providers process message data to deliver mail. Cloudflare processes connection information for site security and the verification challenge. The waitlist database is separate from the storefront database. This draft will be replaced with reviewed details of recipients, transfers and your rights.
 
 ## Cookie and storage inventory

@@ -11,7 +11,6 @@ import { exportSubject } from '../src/server/dsr/export.ts';
 import { createErasureService } from '../src/server/dsr/service.ts';
 import { withTransaction } from '../src/server/db/transaction.ts';
 import { partnerListPageLimit } from '../src/server/db/partner-review.ts';
-import { partnerStaleAfterMs } from '../src/server/partner/config.ts';
 import { createPartnerApplicationPurgeJob } from '../src/server/partner/retention.ts';
 import {
   createPartnerReviewService,
@@ -335,6 +334,15 @@ test('contract fields: contract-sent records the time, and contract-signed recor
     assert.equal(
       (await partnerRow(fixture, partner.id)).status,
       'contract_sent',
+    );
+
+    await assert.rejects(
+      fixture.app.execute({
+        text: `UPDATE partner SET status = 'active', status_changed_at = $2,
+          contract_signed_at = '2026-11-22', contract_version = $3 WHERE id = $1`,
+        values: [partner.id, new Date(now.getTime() + 1), '192.0.2.1'],
+      }),
+      { code: '23514', constraint: 'partner_contract_version_no_ip' },
     );
 
     const signed = await service.contractSigned(
@@ -688,8 +696,9 @@ test('note replaces one notes field and refuses an email or IP address', async (
 test('the stale filter shows only partners waiting more than 14 days in applied, approved or contract_sent', async () => {
   await withFixture(async (fixture) => {
     const service = createPartnerReviewService(fixture.app, clock);
-    const old = new Date(now.getTime() - partnerStaleAfterMs - 60_000);
-    const fresh = new Date(now.getTime() - partnerStaleAfterMs + 60_000);
+    const boundary = now.getTime() - 14 * DAY_MS;
+    const old = new Date(boundary - 1);
+    const fresh = new Date(boundary + 1);
     const staleApplied = await insertPartner(fixture, {
       status: 'applied',
       at: old,
@@ -703,6 +712,10 @@ test('the stale filter shows only partners waiting more than 14 days in applied,
       at: old,
     });
     await insertPartner(fixture, { status: 'applied', at: fresh });
+    const exactly14Days = await insertPartner(fixture, {
+      status: 'applied',
+      at: new Date(boundary),
+    });
     await insertPartner(fixture, { status: 'active', at: old });
     await insertPartner(fixture, { status: 'paused', at: old });
     await insertPartner(fixture, { status: 'rejected', at: old });
@@ -718,8 +731,12 @@ test('the stale filter shows only partners waiting more than 14 days in applied,
     // Without the filter every confirmed application is listed, and
     // unconfirmed ones never are.
     const all = await service.list({}, actor);
-    assert.equal(all.partners.length, 7);
+    assert.equal(all.partners.length, 8);
     assert.equal(all.partners.filter((row) => row.stale).length, 3);
+    assert.equal(
+      all.partners.find((row) => row.id === exactly14Days.id)?.stale,
+      false,
+    );
     await assert.rejects(
       service.list({ status: 'unconfirmed' }, actor),
       (error: unknown) =>
@@ -751,7 +768,7 @@ test('the stale filter shows only partners waiting more than 14 days in applied,
             stale: false,
             after: null,
           },
-          row_count: 7,
+          row_count: 8,
         },
       ],
     );

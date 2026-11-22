@@ -236,7 +236,7 @@ test('a fresh review export excludes pending and completed erasures', async () =
 
 test("the export's paging: it streams pages of at most 500 rows from one snapshot", async () => {
   await withFixture(async (fixture) => {
-    const total = 2 * partnerExportBatchSize + 7;
+    const total = 1_007;
     const at = new Date('2026-11-01T09:00:00.000Z');
     await fixture.owner.execute({
       text: `INSERT INTO subscriber (id, email, email_normalised, email_domain,
@@ -287,19 +287,16 @@ test("the export's paging: it streams pages of at most 500 rows from one snapsho
     assert.equal(rows.length, total);
     assert.equal(new Set(rows.map((row) => row[2])).size, total);
     assert.deepEqual(pages, [
-      { limit: partnerExportBatchSize, rows: partnerExportBatchSize },
-      { limit: partnerExportBatchSize, rows: partnerExportBatchSize },
-      { limit: partnerExportBatchSize, rows: 7 },
+      { limit: 500, rows: 500 },
+      { limit: 500, rows: 500 },
+      { limit: 500, rows: 7 },
     ]);
     assert.ok(closed >= 1);
 
     // The snapshot refuses a page larger than the batch cap.
     const snapshot = await openPartnerExportSnapshot(fixture.app);
     try {
-      await assert.rejects(
-        snapshot.page(null, partnerExportBatchSize + 1),
-        RangeError,
-      );
+      await assert.rejects(snapshot.page(null, 501), RangeError);
     } finally {
       await snapshot.close();
     }

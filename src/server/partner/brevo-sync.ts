@@ -1,8 +1,11 @@
+import { randomUUID } from 'node:crypto';
+
 import { createAuditService } from '../audit/service.ts';
 import type { BrevoConfiguration } from '../config.ts';
 import {
   createBrevoPartnerSyncRepository,
   maxPartnerSyncBatch,
+  type PartnerSyncResult,
 } from '../db/brevo-partner-sync.ts';
 import type { PartnerExportRow } from '../db/partner-review.ts';
 import type { DatabasePool } from '../db/pool.ts';
@@ -65,13 +68,7 @@ const failureCode = 'partner_sync_unavailable';
 // its alert or the CLI response for the entire batch. Finish in-flight calls.
 const passStartWindowMs = 10_000;
 
-export interface PartnerSyncResult {
-  readonly state: 'completed' | 'disabled' | 'unavailable';
-  readonly selected: number;
-  readonly upserted: number;
-  readonly removed: number;
-  readonly failed: number;
-}
+export type { PartnerSyncResult } from '../db/brevo-partner-sync.ts';
 
 export function createPartnerBrevoSync(
   database: DatabasePool,
@@ -105,13 +102,13 @@ export function createPartnerBrevoSync(
         if (stop?.aborted) break;
         counts.selected += 1;
         try {
-          // Commit the first-upsert marker ahead of the network call. An
-          // interrupted or failed local commit can then still trigger an
-          // unlink if the subject stops being eligible before the retry.
+          // Commit the attempt order before network I/O so failures yield to
+          // waiting contacts. An unsettled first attempt also leaves a marker
+          // for unlinking if eligibility is lost before the retry.
           await withTransaction(database, async (connection) => {
             const repository = createBrevoPartnerSyncRepository(connection);
             if (await repository.lockSubscriber(id))
-              await repository.stage(id, listId);
+              await repository.stage(id, listId, clock());
           });
 
           const applied = await withTransaction(
@@ -160,19 +157,40 @@ export function createPartnerBrevoSync(
   return {
     run,
     async runOnDemand(actor: string): Promise<PartnerSyncResult> {
-      const result = await run(
-        maxPartnerSyncBatch,
-        AbortSignal.timeout(passStartWindowMs),
-      );
-      if (result.state === 'unavailable')
-        await reportBrevoSyncFailure(alerts, clock, failureCode);
-      await createAuditService(database).record({
-        action: 'partner.brevo_synced',
+      const requestId = randomUUID();
+      const audit = createAuditService(database);
+      const evidence = {
         actor,
         subjectType: 'partner',
         subjectId: null,
-        detail: { ...result },
-      });
+        requestId,
+      };
+      let result: PartnerSyncResult | undefined;
+      try {
+        await audit.record({
+          action: 'partner.brevo_sync_started',
+          ...evidence,
+        });
+        result = await run(
+          maxPartnerSyncBatch,
+          AbortSignal.timeout(passStartWindowMs),
+        );
+        await createBrevoPartnerSyncRepository(database).recordResult(
+          requestId,
+          result,
+        );
+        await audit.record({
+          action: 'partner.brevo_synced',
+          ...evidence,
+          detail: { ...result },
+        });
+      } catch (error) {
+        await reportBrevoSyncFailure(alerts, clock, failureCode);
+        if (result === undefined) throw error;
+        return { ...result, state: 'unavailable' };
+      }
+      if (result.state === 'unavailable')
+        await reportBrevoSyncFailure(alerts, clock, failureCode);
       return result;
     },
     runContinuously(signal: AbortSignal): Promise<void> {

@@ -194,9 +194,11 @@ npm run admin -- partners sync-brevo
 - **The export** is for founder review only. It excludes suppressed addresses,
   pending and completed erasures, and purged records. Use `--silent` so npm's
   banner stays out of the CSV. Retire the Brevo dashboard upload, including
-  any previously saved CSV.
+  any previously saved CSV. [Text-only spreadsheet import procedure](../features/admin.md#edge-cases-and-error-states)
 - **Brevo sync** runs automatically when `partners.brevo_sync` is on. The
-  founder command runs one bounded pass and audits the outcome and counts.
+  founder command audits the operator before dispatch and runs one bounded
+  pass. If the completion audit fails, match the opening audit's `request_id`
+  to `brevo_partner_sync_result.id` to recover the outcome and counts.
   A P2 sync failure leaves unapplied changes for retry. Check the list ID,
   account attributes, and provider availability, then verify a successful
   pass. [Founder setup](founder-later-actions.md#1-turn-on-the-automatic-brevo-partner-sync)

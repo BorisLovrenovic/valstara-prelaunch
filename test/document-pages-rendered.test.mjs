@@ -91,7 +91,7 @@ const recordedContent = new Map([
   ],
   [
     'src/content/privacy.md',
-    '424e8a7564c073ac74e6053ed3c48f276e22842803bb27a89195f7285a002439',
+    'ff131f0b554091b1948186c2bc41cd181aa455c4b9a07c7ecad62ae3124d998f',
   ],
   [
     'src/content/terms.md',

@@ -19,7 +19,7 @@ export const adminCopy = {
     actor: 'A human actor is required.',
     date: 'Write the date as YYYY-MM-DD, using a real calendar date.',
     contractVersion:
-      'A contract version is 1 to 50 letters, digits, dots, dashes or underscores, starting with a letter or digit.',
+      'A contract version is 1 to 50 letters, digits, dots, dashes or underscores, starting with a letter or digit. It cannot contain an IP address.',
     contractReference:
       'A contract reference is one line of 1 to 200 characters, with no email or IP address.',
     signedInFuture: 'A contract cannot be signed in the future.',
