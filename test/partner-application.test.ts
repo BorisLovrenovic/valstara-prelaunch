@@ -42,6 +42,7 @@ import { createPartnerApplicationPurgeJob } from '../src/server/partner/retentio
 import { createPartnerCodeRules } from '../src/server/referral/partner-code.ts';
 import { consumeRateLimit } from '../src/server/ratelimit/consume.ts';
 import { createUnverifiedExpiryJob } from '../src/server/subscriber/expiry.ts';
+import { createFinalReminderJob } from '../src/server/subscriber/final-reminder.ts';
 import { createRecordedPurgeJob } from '../src/server/subscriber/purge-run.ts';
 import { createVerificationReminderJob } from '../src/server/subscriber/reminder.ts';
 import type { TurnstileOutcome } from '../src/server/turnstile/verify.ts';
@@ -852,6 +853,28 @@ test('an unconfirmed application expires with its link, gets no waitlist reminde
     ]);
     assert.ok(
       (await templates(fixture, waitlistId)).includes('verification_reminder'),
+    );
+
+    // The final reminder before freeze passes it over too.
+    const final = await createFinalReminderJob(fixture.app, dayLater).run(
+      null,
+      100,
+    );
+    assert.equal(final.queued, 1);
+    assert.deepEqual(await templates(fixture, applicant!.id), [
+      'partner_application_confirm',
+    ]);
+    const finalKeys = await fixture.owner.list<{ subscriber_id: string }>(
+      {
+        text: `SELECT subscriber_id FROM email_send
+          WHERE business_key LIKE 'verify-reminder-final:%'
+            AND template = 'verification_reminder'`,
+      },
+      10,
+    );
+    assert.deepEqual(
+      finalKeys.map((row) => row.subscriber_id),
+      [waitlistId],
     );
 
     // After its seven days the link confirms nothing.
