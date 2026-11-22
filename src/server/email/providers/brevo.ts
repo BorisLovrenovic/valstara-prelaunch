@@ -2,20 +2,10 @@ import { createHash } from 'node:crypto';
 
 import type { EmailProvider } from '../service.ts';
 
-export type BrevoContactAttribute = string | number | boolean;
-type BrevoAttributeType = 'text' | 'float' | 'boolean';
-
 export interface BrevoContactProvider extends EmailProvider {
-  upsertContact(
-    emailNormalised: string,
-    email: string,
-    attributes?: Readonly<Record<string, BrevoContactAttribute>>,
-  ): Promise<void>;
+  upsertContact(emailNormalised: string, email: string): Promise<void>;
   removeContact(emailNormalised: string): Promise<void>;
   deleteContact(emailNormalised: string): Promise<void>;
-  requireContactAttributes(
-    expected: Readonly<Record<string, BrevoAttributeType>>,
-  ): Promise<void>;
   listReconciliationEvents(input: {
     event: 'hardBounces' | 'spam';
     startDate: string;
@@ -190,41 +180,14 @@ export function createBrevoProvider(
         throw new Error('brevo_response_invalid');
       return { providerMessageId: body.messageId };
     },
-    async upsertContact(emailNormalised, email, attributes) {
+    async upsertContact(emailNormalised, email) {
       const response = await call('/contacts', 'POST', {
         ext_id: emailNormalised,
         email,
         listIds: [listId],
         updateEnabled: true,
-        attributes,
       });
       if (!response.ok) throw new Error('brevo_contact_upsert_rejected');
-    },
-    async requireContactAttributes(expected) {
-      const response = await call('/contacts/attributes', 'GET', undefined);
-      if (!response.ok) throw new Error('brevo_contact_attributes_unavailable');
-      const body: unknown = await response.json().catch(() => null);
-      const attributes =
-        typeof body === 'object' && body !== null && 'attributes' in body
-          ? body.attributes
-          : null;
-      if (
-        !Array.isArray(attributes) ||
-        !Object.entries(expected).every(([name, type]) =>
-          attributes.some(
-            (attribute: unknown) =>
-              typeof attribute === 'object' &&
-              attribute !== null &&
-              'category' in attribute &&
-              attribute.category === 'normal' &&
-              'name' in attribute &&
-              attribute.name === name &&
-              'type' in attribute &&
-              attribute.type === type,
-          ),
-        )
-      )
-        throw new Error('brevo_contact_attributes_invalid');
     },
     async deleteContact(emailNormalised) {
       const response = await call(

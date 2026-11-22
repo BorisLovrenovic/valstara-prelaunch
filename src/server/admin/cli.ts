@@ -399,25 +399,6 @@ const partnerCommands: Readonly<Record<string, AdminCommand>> = {
       return { method: 'GET', path: '/api/admin/partners/export.csv' };
     },
   },
-  'partners sync-brevo': {
-    usage: 'partners sync-brevo',
-    build(args) {
-      const { positional } = readOptions(args, []);
-      if (positional.length !== 0) throw usageError('Unexpected argument.');
-      return {
-        method: 'POST',
-        path: '/api/admin/partners/sync-brevo',
-        body: {},
-      };
-    },
-    describe(body) {
-      const sync = record(body.sync);
-      if (sync.state === 'disabled') return ['Partner sync to Brevo is off.'];
-      return [
-        `Partner sync to Brevo: ${String(sync.selected)} checked, ${String(sync.upserted)} updated, ${String(sync.removed)} removed.`,
-      ];
-    },
-  },
 };
 
 export const adminCommands: Readonly<Record<string, AdminCommand>> = {

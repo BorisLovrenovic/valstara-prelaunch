@@ -20,9 +20,8 @@ Flags exist for one reason: **so a mechanic can be switched off during an incide
 | `prices.pages` | on | `price-index.md` | **The lever for a wrong price that has gone live** (E11.6-10). Off answers every price route (the service × market pages, since E11.6-12 `/prices` and the hubs, and since E11.6-13 `/price-index` and the monthly reports) with `503`, `Retry-After` and `noindex`, without a deploy |
 | `prices.valstara_comparison` | **off** | `price-index.md` | **A Valstara price shown is a public price commitment** (E11.6-11). Off, no Valstara price renders on any page, whatever `config/valstara-prices.json` holds; the waitlist call to action stays either way. It stays off until the founder turns it on |
 | `partners.enabled` | on | `partner-programme.md` | **The partner programme's incident lever** (E11.7-05). Off, `/partners/apply` says plainly that applications are paused and accepts no application or confirmation; existing data is untouched. Later E11.7 tickets extend it to `/r/{CODE}` and the partner dashboard |
-| `partners.brevo_sync` | **off** | `partner-programme.md` | Pauses automatic and on-demand sync to the configured dedicated Brevo partner list. Erasure and the review CSV continue to work |
 
-**Four flags default off.** The founder retired the pre-launch `trustpilot.widget` flag on 2026-10-10; it is no longer a registered feature.
+**Three flags default off.** The founder retired the pre-launch `trustpilot.widget` flag on 2026-10-10; it is no longer a registered feature.
 
 **`giveaway.open` and `email.broadcast` are hard gates:** each depends on something **outside the code** — published rules pages for one, verified DNS authentication and an upgraded ESP tier for the other. ADR-029 removed the representative prerequisite. Neither may be turned on until its remaining prerequisite is complete, and E8-09 enforces the ESP one in code. **`prices.valstara_comparison` is a founder decision, not a technical gate:** turning it on publishes every Valstara price in `config/valstara-prices.json` as a price commitment, so only the founder turns it on.
 

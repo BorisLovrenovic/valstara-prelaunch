@@ -44,7 +44,6 @@ const optionalKeys = [
   'SEED_TEST_CONFIG_PATH',
   'BREVO_API_KEY',
   'BREVO_LIST_ID',
-  'BREVO_PARTNER_LIST_ID',
   'BREVO_SENDING_DOMAIN',
   'RESEND_WEBHOOK_GAP_MINUTES',
   'WEEKLY_SEND_UTC',
@@ -133,7 +132,6 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
 export interface BrevoConfiguration {
   readonly apiKey: string;
   readonly listId: number;
-  readonly partnerListId?: number;
   readonly sendingDomain: typeof productionBrevoSendingDomain;
 }
 
@@ -143,14 +141,8 @@ export function getBrevoConfiguration(
 ): BrevoConfiguration | null {
   const key = optionalValue(environment, 'BREVO_API_KEY');
   const rawListId = optionalValue(environment, 'BREVO_LIST_ID');
-  const rawPartnerListId = optionalValue(environment, 'BREVO_PARTNER_LIST_ID');
   const domain = optionalValue(environment, 'BREVO_SENDING_DOMAIN');
-  if (
-    key === undefined &&
-    rawListId === undefined &&
-    domain === undefined &&
-    rawPartnerListId === undefined
-  )
+  if (key === undefined && rawListId === undefined && domain === undefined)
     return null;
   if (key === undefined)
     return invalid('BREVO_API_KEY', 'is required when Brevo is configured');
@@ -168,22 +160,9 @@ export function getBrevoConfiguration(
     String(listId) !== rawListId
   )
     return invalid('BREVO_LIST_ID', 'must be a positive integer');
-  const partnerListId =
-    rawPartnerListId === undefined ? undefined : Number(rawPartnerListId);
-  if (partnerListId !== undefined) {
-    if (
-      !Number.isSafeInteger(partnerListId) ||
-      partnerListId < 1 ||
-      String(partnerListId) !== rawPartnerListId
-    )
-      return invalid('BREVO_PARTNER_LIST_ID', 'must be a positive integer');
-    if (partnerListId === listId)
-      return invalid('BREVO_PARTNER_LIST_ID', 'must differ from BREVO_LIST_ID');
-  }
   return Object.freeze({
     apiKey: key,
     listId,
-    ...(partnerListId === undefined ? {} : { partnerListId }),
     sendingDomain: productionBrevoSendingDomain,
   });
 }

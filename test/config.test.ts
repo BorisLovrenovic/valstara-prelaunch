@@ -304,32 +304,6 @@ test('Brevo configuration fails closed on partial or wrong-domain settings', () 
   }
 });
 
-test('the optional Brevo partner list must be positive and separate from the broadcast list', () => {
-  const environment = {
-    BREVO_API_KEY: 'local-only-key',
-    BREVO_LIST_ID: '42',
-    BREVO_SENDING_DOMAIN: 'mail.valstara.com',
-  };
-  assert.equal(getBrevoConfiguration(environment)?.partnerListId, undefined);
-  assert.equal(
-    getBrevoConfiguration({ ...environment, BREVO_PARTNER_LIST_ID: '27' })
-      ?.partnerListId,
-    27,
-  );
-  for (const invalid of ['0', '42', '4.2', '027']) {
-    assert.throws(
-      () =>
-        getBrevoConfiguration({
-          ...environment,
-          BREVO_PARTNER_LIST_ID: invalid,
-        }),
-      (error) =>
-        error instanceof ConfigurationError &&
-        error.variableName === 'BREVO_PARTNER_LIST_ID',
-    );
-  }
-});
-
 test('E8-02 rejects production sandbox configuration and live mode outside production', () => {
   const production = {
     ...validEnvironment,

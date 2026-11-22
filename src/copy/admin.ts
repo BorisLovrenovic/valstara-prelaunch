@@ -51,6 +51,4 @@ export const adminCopy = {
       : `Available instead: ${alternatives.join(', ')}.`,
   partnerUnavailable: 'The partner command is temporarily unavailable.',
   partnerExportUnavailable: 'The partners export is temporarily unavailable.',
-  partnerBrevoUnavailable:
-    'The partner sync to Brevo is temporarily unavailable.',
 } as const;

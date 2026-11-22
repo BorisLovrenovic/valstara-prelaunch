@@ -44,7 +44,6 @@ export const subjectExportTables = {
     'email_normalised=(SELECT email_normalised FROM subscriber WHERE id=$1::uuid)',
   brevo_contact_sync:
     'email_normalised=(SELECT email_normalised FROM subscriber WHERE id=$1::uuid)',
-  brevo_partner_sync: 'subscriber_id=$1',
   dsr_erasure: 'subscriber_id=$1',
   erasure_ledger: 'subscriber_id=$1',
   rate_limit_bucket:

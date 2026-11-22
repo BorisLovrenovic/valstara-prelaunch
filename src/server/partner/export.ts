@@ -7,8 +7,7 @@ import {
 } from '../db/partner-review.ts';
 import type { DatabasePool } from '../db/pool.ts';
 
-// E11.7-06: the review CSV shares contract eligibility and fields with the
-// separate automatic Brevo sync. The CSV is for founder review only.
+// E11.7-06: contracted-partner CSV for founder review only (D-056).
 
 /** The columns, in the founder's order (D-052 Q3). */
 export const partnerExportColumns = [

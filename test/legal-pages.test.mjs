@@ -276,16 +276,6 @@ const relatedPolicyFields = {
       'synced_at',
     ],
   },
-  brevo_partner_sync: {
-    'If you apply to the partner programme': [
-      'subscriber_id',
-      'list_id',
-      'fingerprint',
-      'synced_at',
-      'last_attempt',
-      'last_attempt_at',
-    ],
-  },
 };
 
 function tableRows(section) {

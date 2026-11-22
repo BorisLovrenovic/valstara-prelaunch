@@ -337,28 +337,6 @@ The authoritative eligibility query joins `subscriber` to `suppression` and
 requires verified status plus current marketing consent. A provider failure
 leaves this row unchanged so the next bounded batch resumes the contact.
 
-## `brevo_partner_sync`
-
-E11.7-06. The primary key is `subscriber_id` (foreign key to `subscriber`) and
-`list_id` (positive bigint). `fingerprint` is the 32-byte SHA-256 of the last
-successfully applied contact projection, with its `synced_at` timestamp. Both
-fields are null until the first confirmed provider success. `last_attempt_at`
-records when the last attempt started, and `last_attempt` breaks ties using
-attempt order. Both fields are separate from the successful fingerprint.
-The oldest attempts run first, using subscriber verification time for
-candidates without a recorded attempt. The record is
-personal data linked to the subscriber and contains no copy of their address
-or synced attributes. It is included in the subject export and deleted at
-erasure fulfilment. The signed confirmation excludes the pending subject
-from both the sync and the review CSV immediately.
-
-## `brevo_partner_sync_result`
-
-E11.7-06. This append-only table holds the final outcome and counts for each
-on-demand pass. Its UUID key matches the audit log's `request_id` on
-`partner.brevo_sync_started` and, when available, `partner.brevo_synced`.
-It contains no contact data. The application role can insert and read rows.
-
 ## `suppression`
 
 `email_normalised` pk · `reason` (`unsubscribe` · `bounce_hard` · `complaint` · `manual`) · `source` · `created_at`. **Checked at dispatch, not only at queue time** — a suppression written after queueing must still stop the send.

@@ -367,9 +367,9 @@ export interface PartnerExportSnapshot {
   close(): Promise<void>;
 }
 
-// Shared by the founder's review CSV and the automatic Brevo partner sync.
+// Eligibility for the founder's review CSV (D-056).
 // A partner holds at most one code (uq_referral_code_partner_owner).
-export const contractedPartnerRows = `
+const contractedPartnerRows = `
   FROM partner p
   JOIN subscriber s ON s.id = p.subscriber_id
   ${partnerCodeJoin}
@@ -381,7 +381,7 @@ export const contractedPartnerRows = `
       SELECT 1 FROM suppression x WHERE x.email_normalised = s.email_normalised
     )`;
 
-export const contractedPartnerColumns = `
+const contractedPartnerColumns = `
   p.id, s.email, s.email_normalised, p.full_name, p.status,
   p.partner_type, c.code,
   to_char(p.contract_signed_at, 'YYYY-MM-DD') AS contract_signed_at,

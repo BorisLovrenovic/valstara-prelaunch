@@ -92,18 +92,6 @@ E11.7-05 registers the partner application's two transactional templates (`src/s
 
 The transactional registry includes `dsr_export` and `dsr_delete`, carrying only a token ID in the durable payload. Pending or erased subscribers cannot queue or dispatch mail. Dispatch and Brevo sync hold a shared subscriber lock through the provider operation, so pending confirmation cannot commit ahead of an in-flight send or upsert. The pending transaction clears the Brevo sync cache; no retry metadata copies the address. Erasure DELETEs the Brevo contact by `ext_id`, treating 404 as success. It never broadens Resend's sending-only key. Late webhook/reconciliation events ignore addresses without an active subject, so they cannot recreate erased suppression. Processor delivery logs follow processor retention.
 
-## Automatic partner list sync
+## Partner programme contact workflow
 
-E11.7-06 runs a separate maintenance pass alongside the marketing contact sync. It uses the existing Brevo account and key, `BREVO_PARTNER_LIST_ID` for the dedicated list, and the default-off `partners.brevo_sync` flag. The on-demand `partners sync-brevo` command uses the same service. An enabled pass with no configured list refuses and alerts P2. The review CSV is for founder review. The manual upload workflow is retired, including previously saved files.
-
-The sync considers at most 500 candidates per pass. It adds or updates unpurged `active`, `paused` or `terminated` partners with a verified email and no suppression, pending erasure or completed erasure. It unlinks partners who lose eligibility from the partner list, preserving any unrelated list membership. It stores a fingerprint only after a successful provider application. An unsettled first attempt leaves a subscriber/list marker so a retry can apply or undo the membership even if the earlier attempt reached Brevo. Failures raise the existing contact-sync P2 alert with the code `partner_sync_unavailable` and retry from PostgreSQL. Each pass starts with the candidates who have waited longest, ordered by the last attempt or the subscriber’s verification time before the first attempt. This lets waiting contacts proceed while failed contacts remain eligible for retry. Use a stable dedicated list ID. If it must change, retire the old list before enabling the new one.
-
-Pre-create the following normal contact attributes in Brevo. `EMAIL` and `EXT_ID` use Brevo's built-in fields, and `EXT_ID` is the subscriber's normalised email. The service checks the custom names and types before its first upsert in each pass. [Brevo contact attributes](https://developers.brevo.com/reference/get-attributes) · [Brevo contact upsert](https://developers.brevo.com/reference/create-contact)
-
-| Brevo type | Attributes |
-|---|---|
-| Text | `PARTNER_ID`, `FULL_NAME`, `STATUS`, `PARTNER_TYPE`, `CODE`, `CONTRACT_SIGNED_AT` (`YYYY-MM-DD`), `CONTRACT_VERSION` |
-| Number (`float` in the API) | `CONFIRMED_REFERRALS`, `PENDING_REFERRALS` |
-| Boolean | `MARKETING_CONSENT` |
-
-Each upsert re-reads eligibility under a shared subscriber lock held through the provider call. E9-05's signed confirmation waits for that lock and sets `erasure_pending` at commit. The erasure worker then deletes the contact by `EXT_ID` and clears local partner sync state at fulfilment. Promotional broadcasts still require current marketing consent, verification and a suppression check at dispatch under ADR-027. The partner list and its synced consent attribute do not grant consent.
+D-056 defers the dedicated Brevo partner sync. The E11.7-06 CSV is for founder review only. All manual Brevo uploads are retired, including uploads from previously saved files. The existing Brevo marketing contact sync and E9-05 signed erasure continue. Promotional broadcasts check verification, current marketing consent and suppression at dispatch under ADR-027.

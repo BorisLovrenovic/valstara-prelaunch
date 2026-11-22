@@ -8,20 +8,17 @@ Check this list before launch, after launch, and whenever a ticket ships somethi
 
 ## Open
 
-### 1. Turn on the automatic Brevo partner sync
+*(Nothing yet.)*
 
-- **Added:** 2026-11-22, from E11.7-06 (founder decision recorded on that ticket in `docs/plan/development-plan.md`)
-- **When:** after the site is live, once the first partner has signed their contract. Until then there is nobody to sync.
-- **Why it matters:** contracted partners are added to a dedicated Brevo list for programme updates. The sync ships **switched off** and the partner list stays empty until you set it up.
+## Deferred
 
-**Steps**
+### Dedicated Brevo partner sync
 
-1. In Brevo, go to **Contacts → Lists** and create a new list, for example "Valstara partners".
-2. Note the list's numeric **ID**, shown next to the list name.
-3. Add the required contact attributes listed in [the email module](../modules/email.md#automatic-partner-list-sync).
-4. Set `BREVO_PARTNER_LIST_ID` in the production configuration to that ID. Use a dedicated list whose ID differs from `BREVO_LIST_ID`. Recreate the app and maintenance containers to load it.
-5. Enable `partners.brevo_sync` with the founder flags command.
-6. Run `partners sync-brevo` once and check that eligible contracted partners and their attributes appear in the new list. Use the automatic sync for all subsequent updates and retire any saved import files.
+D-056 defers this work until a founder-authorised plan change establishes a verified provider-side ordering or cancellation guarantee. The E11.7-06 CSV is for founder review only. Manual Brevo uploads, including uploads from previously saved files, are retired.
+
+The release blocker is an upsert that Brevo receives before the response is lost. In the real PostgreSQL reproduction, the provider simulator accepts the upsert, loses the response and delays applying the write. Signed erasure confirmation commits and fulfilment deletes the contact. The delayed write then recreates the contact. The deferred regression must exercise that ordering and assert that the contact stays absent.
+
+Carry forward the sync requirements and tests on the E11.7-06 plan entry. The on-demand tests must also prove that the operator audit commits before provider dispatch and that final counts remain recoverable if the completion audit fails. The retry test must prove that failed contacts yield to waiting candidates and remain eligible for retry. The prior sync tests are in `test/partner-brevo-sync.test.ts` at `f8a8fdb`.
 
 ---
 
