@@ -109,6 +109,12 @@ const relatedPolicyFields = {
       'programme_terms_agreed',
       'personal_data_purged_at',
       'created_at',
+      // E11.7-06: the founder's notes and the contract record.
+      'contract_sent_at',
+      'contract_signed_at',
+      'contract_version',
+      'contract_reference',
+      'notes',
     ],
   },
   milestone_award: {

@@ -59,7 +59,7 @@ The reward ladder and the wave-1 rule sit behind the existing `referral.enabled`
 
 ## Partner lifecycle
 
-`applied` → `approved` → `contract_sent` → **`active`** → `paused` | `terminated`, plus `rejected`. `reactivate` returns a `paused` partner to `active`.
+`applied` → `approved` → `contract_sent` → **`active`** → `paused` | `terminated`, plus `rejected`. `reactivate` returns a `paused` partner to `active`. The exact transitions are the eleven listed under "As built (E11.7-06)" below.
 
 - **An application counts only once its email is confirmed.** Submitting sends a confirmation link to the address. For someone not yet on the waitlist, confirming it is also their double opt-in, and creates or links their member record. An unconfirmed application expires with the verification token, and is never shown for review.
 - **Contracts live outside this system.** The founder sends each one through signfree.io. This system stores only `contract_sent_at`, `contract_signed_at`, `contract_version`, an optional signfree reference and notes, set by founder command.
@@ -80,6 +80,32 @@ The reward ladder and the wave-1 rule sit behind the existing `referral.enabled`
 - **The requested code is checked, not reserved** (D-050 Q3): the E11.7-01 rules run on submit, a refused code returns the form with what was typed, the reason and up to three alternatives, with no JavaScript, and the accepted code is stored as `requested_code` with no uniqueness constraint and no `referral_code` row. E11.7-06's `approve <id> [--code]` registers it.
 - **Waiting states.** An unconfirmed application expires with its token and is never listed; a subscriber the application created receives no waitlist reminder and expires by the 30-day pending sweep. Rejected and unconfirmed applications have their personal fields and member link purged after 90 days by the daily `partner_application_purge` job. Erasure clears the same fields, the requested code included.
 - **Flag off** pauses `/partners/apply` with an honest message; nothing is accepted and no link is consumed.
+
+**As built (E11.7-06; founder decisions D-052, 2026-11-22):**
+- **Exactly eleven transitions exist, enforced by the database** (migration 0063's `partner_lifecycle_guard` trigger, which replaces E11.7-05's guard):
+
+  | From | To | Set by |
+  |---|---|---|
+  | `unconfirmed` | `applied` | confirming the application (E11.7-05) |
+  | `applied` | `approved` | `approve` |
+  | `applied` | `rejected` | `reject` |
+  | `approved` | `contract_sent` | `contract-sent` |
+  | `approved` | `rejected` | `reject` |
+  | `contract_sent` | `active` | `contract-signed` |
+  | `contract_sent` | `rejected` | `reject` |
+  | `active` | `paused` | `pause` |
+  | `active` | `terminated` | `terminate` |
+  | `paused` | `active` | `reactivate` |
+  | `paused` | `terminated` | `terminate` |
+
+  Every other pair of the eight statuses is refused, including any move out of `rejected` or `terminated` and a "move" to the same status. A partner reaches `approved` only with a registered code.
+- **An approved or contract-sent partner whose contract is never signed is closed with `reject`.** It is an application that did not go ahead: it gets the 90-day personal-data purge, and the person may apply again. A paused partner is terminated directly.
+- **The partner code is registered at `approve`**, after the E11.7-01 rules run again, so a code taken or blocked since the application was submitted is refused there and changes nothing. It enters the registry inactive (D-044); E11.7-07's activation makes it live. A partner holds at most one registered code.
+- **The contract record.** `contract-sent` stores `contract_sent_at`; `contract-signed` stores `contract_signed_at` (a date), `contract_version` and the optional signfree `contract_reference`, and sets `active`. Each is written once, by its own transition.
+- **Notes.** One notes field of 1–2,000 characters, replaced whole by `note`, refused if it holds an email or IP address. It is personal data, exported to the person, and cleared by the purge and erasure; the audit records only its length and SHA-256.
+- **Emails.** "Approved" is sent at `approve`. "Rejected" is sent only by `reject --template`. Each has its own business key and follows hard rule 5.
+- **An erased or purged partner's code is deactivated and never reissued.** When the personal fields are purged, by erasure or by the 90-day purge, a narrowly scoped database function retires the partner's registry row: it becomes inactive and loses its owner, as a retired member code does, and the code stays taken.
+- **The commands** are in `docs/features/admin.md#user-flows` (item 7) and `docs/ops/runbook.md#reviewing-partners-e117-06`.
 
 ## Links and codes
 
@@ -225,7 +251,7 @@ These were chosen while planning, to satisfy the standing rules where the brief 
 | A paused or terminated partner's member code keeps working as a plain member referral, without partner perks | E11.7-07 |
 | An active partner is in wave 1 only while active; friends keep the wave 1 they got through a partner unless their own referral is voided | E11.7-07 |
 | A typed code that is unknown or inactive is ignored with a neutral note, and the signup completes | E11.7-08 |
-| An erased partner's code is deactivated and never reissued (moved from E11.7-05 by D-050 Q3: E11.7-05 registers no partner code, and E11.7-06's `approve <id> [--code]` does) | E11.7-06 |
+| An erased partner's code is deactivated and never reissued (moved from E11.7-05 by D-050 Q3: E11.7-05 registers no partner code, and E11.7-06's `approve <id> [--code]` does). Built by E11.7-06: purging a partner's personal fields, by erasure or the 90-day purge, retires its registry row (inactive, owner cleared), and the code stays taken | E11.7-06 |
 
 ## Founder brief, 17 November 2026 (verbatim)
 

@@ -32,6 +32,8 @@ const preheaders: Readonly<Record<string, string>> = {
   dsr_delete: dsrCopy.delete.preheader,
   partner_application_confirm: partnersCopy.email.confirm.preheader,
   partner_application_received: partnersCopy.email.received.preheader,
+  partner_approved: partnersCopy.email.approved.preheader,
+  partner_rejected: partnersCopy.email.rejected.preheader,
   weekly_campaign_update: emailCopy.weekly.preheader,
 };
 
@@ -52,6 +54,8 @@ const mainActions: Readonly<Record<string, string>> = {
   dsr_delete: '/dsr',
   partner_application_confirm: '/partners/apply',
   partner_application_received: '/partners',
+  partner_approved: '/partners',
+  partner_rejected: '/me',
   weekly_campaign_update: '/me',
 };
 
@@ -325,8 +329,9 @@ test('E11.5-11 every template carries its hidden preheader from the copy layer',
       ?.message.text.split('\n')[0],
     emailCopy.verify.firstLine,
   );
-  // E11.7-05 added the partner application's two emails.
-  assert.equal(new Set(Object.values(preheaders)).size, 12);
+  // E11.7-05 added the partner application's two emails, and E11.7-06 the
+  // "approved" and "rejected" emails.
+  assert.equal(new Set(Object.values(preheaders)).size, 14);
 });
 
 test('E11.5-11 the layout is at most 600px wide and its one button is at least 44px tall', () => {

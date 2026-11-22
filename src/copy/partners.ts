@@ -139,5 +139,19 @@ export const partnersCopy = {
       body: 'The founder reviews every application by hand and replies by email. Nothing more is needed from you for now.',
       action: 'Read about the partner programme',
     },
+    // E11.7-06: the founder's review outcome (brief §3.9).
+    approved: {
+      subject: 'Your Valstara partner application is approved',
+      preheader: 'Your partner contract is the next step.',
+      firstLine: 'Your partner application is approved.',
+      body: 'Your contract will arrive by email from signfree.io shortly. Your code and link go live once your signed contract is recorded, and we will email you when they do.',
+      action: 'Read about the partner programme',
+    },
+    rejected: {
+      subject: 'Your Valstara partner application',
+      preheader: 'Thank you for applying to the partner programme.',
+      firstLine: 'Thank you for applying to the Valstara partner programme.',
+      body: 'We are not able to offer you a partnership this time. Your waitlist place is unchanged, and you are welcome to apply again later.',
+    },
   },
 } as const;

@@ -308,6 +308,7 @@ test('the command line refuses a missing reason, an unknown command and an insec
       return code;
     },
     write: () => undefined,
+    writeChunk: () => undefined,
   };
   const requests: string[] = [];
   const request = (async (input: string | URL | Request) => {

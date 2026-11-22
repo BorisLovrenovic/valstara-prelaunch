@@ -50,7 +50,8 @@ const tableRoutes = ['/legit', '/privacy', '/privacy/storage'];
 // change or disappear. E11.7-04 re-records the privacy policy, whose
 // description of rewards that ticket's Build replaces with the coupon ladder.
 // E11.7-05 re-records it again: its Build discloses the partner application's
-// fields, purpose and retention there.
+// fields, purpose and retention there. E11.7-06 re-records it once more: the
+// founder's notes and contract record, and the partners' Brevo import (D-052).
 const recordedContent = new Map([
   [
     'src/content/.gitkeep',
@@ -90,7 +91,7 @@ const recordedContent = new Map([
   ],
   [
     'src/content/privacy.md',
-    'da4ac9b04b7a37fbf3181371bf34d4c95fd048faa84f3ea5982263ad58f28b50',
+    'de510638b4bca8c90a1a1461d5acbc7559789b8e56e6203210bfc127130ab771',
   ],
   [
     'src/content/terms.md',
