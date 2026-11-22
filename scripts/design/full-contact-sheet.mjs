@@ -125,6 +125,8 @@ export const flagAnalysis = Object.freeze({
     'not read by the landing; the price pages only (the 503 paused card), a data route whose sheet E11.6-16 captures from real data',
   'prices.valstara_comparison':
     'not read by the landing; the price pages only (the Valstara price block, E11.6-11), a data route whose sheet E11.6-16 captures from real data',
+  'partners.enabled':
+    'not read by the landing; /partners/apply only (the paused card, E11.7-05)',
 });
 
 const on = (value) => (value ? 'on' : 'off');
@@ -862,6 +864,8 @@ function documentEntries(rulesRoutes) {
       '/terms',
       '/privacy',
       '/privacy/storage',
+      // E11.7-05: the partner programme page.
+      '/partners',
     ].map((route) => page(route, 'document')),
     ...rulesRoutes.map((route) => page(route, 'rules')),
   ];
@@ -908,6 +912,19 @@ function taskEntries() {
       context.awardId,
     ]);
   return [
+    // E11.7-05: the partner application, its emailed link's confirmation and
+    // the paused state.
+    task('partners-apply', '/partners/apply', '/partners/apply', {
+      record: true,
+    }),
+    task(
+      'partners-apply-confirm',
+      '/partners/apply',
+      '/partners/apply?token=emailed-link',
+    ),
+    task('partners-apply-paused', '/partners/apply', '/partners/apply', {
+      flags: { 'partners.enabled': false },
+    }),
     task('dsr-export-request', '/dsr', exportPath, { record: true }),
     task('dsr-delete-request', '/dsr', deletePath),
     task('dsr-export-confirm', '/dsr', `${exportPath}&t=emailed-link`),

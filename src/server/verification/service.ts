@@ -28,6 +28,8 @@ export const purposeLifetimeMs: Readonly<Record<TokenPurpose, number>> = {
   unsubscribe: 90 * DAY_MS,
   dsr_export: DAY_MS,
   dsr_delete: DAY_MS,
+  // E11.7-05: the same week as a waitlist verification link.
+  partner_application: 7 * DAY_MS,
 };
 
 export interface IssuedToken {
@@ -165,7 +167,11 @@ async function consumeWithSubscriber(
     if (existing === null) {
       throw new Error('A consumed verification token could not be read.');
     }
-    return { outcome: 'verified', subscriberId: existing.subscriber_id };
+    return {
+      outcome: 'verified',
+      subscriberId: existing.subscriber_id,
+      tokenId: existing.id,
+    };
   }
   // Status links are reusable bearer credentials, but never beyond expiry.
   // Verification-token replays retain their existing success semantics.
@@ -173,10 +179,18 @@ async function consumeWithSubscriber(
     return { outcome: 'expired', subscriberId: null };
   }
   if (existing.consumed_at !== null) {
-    return { outcome: 'already', subscriberId: existing.subscriber_id };
+    return {
+      outcome: 'already',
+      subscriberId: existing.subscriber_id,
+      tokenId: existing.id,
+    };
   }
   if (existing.expires_at <= now) {
     return { outcome: 'expired', subscriberId: null };
   }
-  return { outcome: 'already', subscriberId: existing.subscriber_id };
+  return {
+    outcome: 'already',
+    subscriberId: existing.subscriber_id,
+    tokenId: existing.id,
+  };
 }

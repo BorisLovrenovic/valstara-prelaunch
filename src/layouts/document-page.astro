@@ -5,10 +5,11 @@ import TextLink from '../components/text-link.astro';
 import { documentPagesCopy } from '../copy/document-pages.ts';
 import { landingCopy } from '../copy/landing.ts';
 import { layoutCopy } from '../copy/layout.ts';
+import { partnersCopy } from '../copy/partners.ts';
 import type { ContentsEntry } from '../server/content/contents.ts';
 
 interface Props {
-  kind: 'trust' | 'legal' | 'rules';
+  kind: 'trust' | 'legal' | 'rules' | 'partners';
   // The page's summary line: its content description (trust, rules) or its
   // legal.ts entry. It is never written here.
   summary: string;
@@ -19,7 +20,7 @@ interface Props {
 const { kind, summary, contents = [] } = Astro.props;
 const eyebrow = documentPagesCopy.eyebrow[kind];
 const onGuarantee = Astro.url.pathname.replace(/\/+$/u, '') === '/guarantee';
-const hasAside = kind === 'trust' || contents.length > 0;
+const hasAside = kind === 'trust' || kind === 'partners' || contents.length > 0;
 ---
 
 {
@@ -83,6 +84,30 @@ const hasAside = kind === 'trust' || contents.length > 0;
                   full
                 >
                   {layoutCopy.joinLabel}
+                </Button>
+              </div>
+            </div>
+          </aside>
+        ) : kind === 'partners' ? (
+          <aside
+            class="document__aside"
+            aria-label={partnersCopy.programme.cardHeading}
+          >
+            <div
+              class="document__card"
+              data-document-card="partners"
+              data-enter="shift"
+              style="--enter-index: 3"
+            >
+              <h2 class="document__card-heading">
+                {partnersCopy.programme.cardHeading}
+              </h2>
+              <p class="document__card-body">
+                {partnersCopy.programme.cardBody}
+              </p>
+              <div class="document__card-actions">
+                <Button href="/partners/apply" full>
+                  {partnersCopy.programme.apply}
                 </Button>
               </div>
             </div>
@@ -569,6 +594,17 @@ const hasAside = kind === 'trust' || contents.length > 0;
     font-size: var(--step-1);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-1);
+  }
+
+  /* The partner programme card's line (E11.7-05): 14/20 ink-600 under the
+     heading. */
+  .document__card-body {
+    margin: 0;
+    margin-block-start: var(--space-1-5);
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    text-wrap: pretty;
   }
 
   .document__card-actions {

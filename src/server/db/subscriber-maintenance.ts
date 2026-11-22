@@ -71,6 +71,14 @@ export function createSubscriberMaintenanceRepository(
               AND subscriber.created_at <=
                 $1::timestamptz - make_interval(hours => reminder.offset_hours)
               AND email_send.id IS NULL
+              -- E11.7-05 (D-050): a subscriber a partner application created
+              -- receives that application's link instead of the waitlist
+              -- reminders, and expires by the same 30-day sweep.
+              AND NOT EXISTS (
+                SELECT 1 FROM partner
+                WHERE partner.subscriber_id = subscriber.id
+                  AND partner.created_subscriber
+              )
             ORDER BY subscriber.created_at, reminder.offset_hours, subscriber.id
           `,
           values: [now],
@@ -98,6 +106,8 @@ export function createSubscriberMaintenanceRepository(
               AND NOT EXISTS (SELECT 1 FROM suppression p WHERE p.email_normalised = s.email_normalised)
               AND NOT EXISTS (SELECT 1 FROM email_send e
                 WHERE e.business_key = 'verify-reminder-final:' || s.id::text)
+              AND NOT EXISTS (SELECT 1 FROM partner p
+                WHERE p.subscriber_id = s.id AND p.created_subscriber)
             ORDER BY s.id`,
           values: [afterId],
         },

@@ -1,0 +1,631 @@
+---
+import Button from '../../components/button.astro';
+import Field from '../../components/field.astro';
+import Icon from '../../components/icon.astro';
+import Input from '../../components/input.astro';
+import Select from '../../components/select.astro';
+import TextLink from '../../components/text-link.astro';
+import TaskCard from '../../layouts/task-card.astro';
+import TaskNotice from '../../layouts/task-notice.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { partnersCopy } from '../../copy/partners.ts';
+import { getConfig } from '../../server/config.ts';
+import { getFlagService } from '../../server/flags/app-service.ts';
+import type { PartnerApplicationOutcome } from '../../server/partner/application.ts';
+import {
+  partnerAudienceSizes,
+  partnerChannels,
+  partnerTypes,
+} from '../../server/partner/config.ts';
+import type { PartnerConfirmationOutcome } from '../../server/partner/confirm.ts';
+import {
+  emptyPartnerApplicationValues,
+  partnerCountries,
+} from '../../server/partner/fields.ts';
+import { partnerApplyView } from '../../server/partner/page-presentation.ts';
+import {
+  runPartnerApplication,
+  runPartnerConfirmation,
+} from '../../server/partner/runtime.ts';
+
+// E11.7-05: the partner application. The page handles its own POST, as /dsr
+// does: the application form is Turnstile-protected and rate-limited, and the
+// emailed link's confirmation is authenticated by its single-use token. GET
+// never consumes a token. A refused application renders back with what was
+// typed and the code's alternatives, with no JavaScript (Turnstile aside).
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+const copy = partnersCopy.apply;
+const fields = copy.fields;
+const tokenParameter = Astro.url.searchParams.get('token');
+const flags = getFlagService();
+const isOn = (key: 'partners.enabled' | 'giveaway.open') =>
+  flags.isEnabled(key).catch(() => false);
+
+let application: PartnerApplicationOutcome | null = null;
+let confirmation: PartnerConfirmationOutcome | null = null;
+let postedToken: string | null = null;
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData().catch(() => new FormData());
+  if (form.has('token')) {
+    const value = form.get('token');
+    postedToken = typeof value === 'string' ? value : '';
+    try {
+      confirmation = await runPartnerConfirmation(
+        postedToken,
+        Astro.clientAddress,
+      );
+    } catch {
+      confirmation = { kind: 'unavailable' };
+    }
+  } else {
+    try {
+      application = await runPartnerApplication(form, Astro.clientAddress);
+    } catch {
+      application = {
+        kind: 'unavailable',
+        values: emptyPartnerApplicationValues,
+      };
+    }
+  }
+}
+const enabled =
+  application === null && confirmation === null
+    ? await isOn('partners.enabled')
+    : true;
+const view = partnerApplyView({
+  enabled,
+  token: tokenParameter,
+  application,
+  confirmation,
+});
+Astro.response.status = view.status;
+const confirmToken = postedToken ?? tokenParameter ?? '';
+const giveawayOpen =
+  view.form === 'application' ? await isOn('giveaway.open') : false;
+const values = view.values;
+const errors = view.errors;
+const errorId = (field: string) =>
+  errors[field as keyof typeof errors] === undefined
+    ? undefined
+    : `partner-${field}-error`;
+const outcome = Astro.request.method === 'POST';
+---
+
+<BaseLayout title={copy.title} description={copy.description}>
+  <TaskCard
+    heading={view.heading}
+    icon={view.icon}
+    tone={view.tone}
+    state={view.state}
+    line={view.line}
+    notice={view.notice}
+    outcome={outcome}
+  >
+    {
+      view.form === 'confirm' ? (
+        <form class="task-card__form" method="post" action="/partners/apply">
+          <input type="hidden" name="token" value={confirmToken} />
+          <div class="task-card__actions">
+            <Button type="submit">{copy.confirm.button}</Button>
+          </div>
+        </form>
+      ) : view.form === 'application' ? (
+        <>
+          <noscript>
+            <TaskNotice tone="info" message={copy.noJavaScript} />
+          </noscript>
+          <form
+            class="task-card__form partner-apply"
+            method="post"
+            action="/partners/apply"
+            data-partner-application
+          >
+            <Field
+              controlId="partner-full-name"
+              label={fields.fullName}
+              error={errors.full_name}
+              errorId={errorId('full_name')}
+            >
+              <Input
+                id="partner-full-name"
+                name="full_name"
+                autocomplete="name"
+                required
+                maxlength="200"
+                value={values.fullName}
+                invalid={errors.full_name !== undefined}
+                aria-describedby={errorId('full_name')}
+              />
+            </Field>
+            <Field
+              controlId="partner-email"
+              label={fields.emailAddress}
+              description={fields.emailAddressDescription}
+              descriptionId="partner-address-description"
+              error={errors.email_address}
+              errorId={errorId('email_address')}
+            >
+              <Input
+                id="partner-email"
+                name="email_address"
+                type="email"
+                autocomplete="email"
+                required
+                maxlength="254"
+                value={values.email}
+                invalid={errors.email_address !== undefined}
+                aria-describedby={[
+                  'partner-address-description',
+                  errorId('email_address'),
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              />
+            </Field>
+            <Field
+              controlId="partner-country"
+              label={fields.country}
+              description={fields.countryDescription}
+              descriptionId="partner-country-description"
+              error={errors.country_of_residence}
+              errorId={errorId('country_of_residence')}
+            >
+              <Select
+                id="partner-country"
+                name="country_of_residence"
+                required
+                invalid={errors.country_of_residence !== undefined}
+                aria-describedby={[
+                  'partner-country-description',
+                  errorId('country_of_residence'),
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                <option value="" selected={values.countryOfResidence === ''}>
+                  {fields.countryPrompt}
+                </option>
+                {partnerCountries.map((country) => (
+                  <option
+                    value={country.code}
+                    selected={values.countryOfResidence === country.code}
+                  >
+                    {country.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field
+              controlId="partner-type"
+              label={fields.partnerType}
+              error={errors.partner_type}
+              errorId={errorId('partner_type')}
+            >
+              <Select
+                id="partner-type"
+                name="partner_type"
+                required
+                invalid={errors.partner_type !== undefined}
+                aria-describedby={errorId('partner_type')}
+              >
+                <option value="" selected={values.partnerType === ''}>
+                  {fields.typePrompt}
+                </option>
+                {partnerTypes.map((type) => (
+                  <option value={type} selected={values.partnerType === type}>
+                    {fields.types[type]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field
+              controlId="partner-university"
+              label={fields.university}
+              description={fields.universityDescription}
+              descriptionId="partner-university-description"
+              error={errors.university}
+              errorId={errorId('university')}
+            >
+              <Input
+                id="partner-university"
+                name="university"
+                autocomplete="organization"
+                maxlength="200"
+                value={values.university}
+                invalid={errors.university !== undefined}
+                aria-describedby={[
+                  'partner-university-description',
+                  errorId('university'),
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              />
+            </Field>
+            <Field
+              controlId="partner-student-email"
+              label={fields.studentEmail}
+              description={fields.studentEmailDescription}
+              descriptionId="partner-student-address-description"
+              error={errors.student_email}
+              errorId={errorId('student_email')}
+            >
+              <Input
+                id="partner-student-email"
+                name="student_email"
+                type="email"
+                maxlength="254"
+                value={values.studentEmail}
+                invalid={errors.student_email !== undefined}
+                aria-describedby={[
+                  'partner-student-address-description',
+                  errorId('student_email'),
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              />
+            </Field>
+            <Field
+              controlId="partner-company"
+              label={fields.companyName}
+              description={fields.companyNameDescription}
+              descriptionId="partner-company-description"
+              error={errors.company_name}
+              errorId={errorId('company_name')}
+            >
+              <Input
+                id="partner-company"
+                name="company_name"
+                autocomplete="organization"
+                maxlength="200"
+                value={values.companyName}
+                invalid={errors.company_name !== undefined}
+                aria-describedby={[
+                  'partner-company-description',
+                  errorId('company_name'),
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              />
+            </Field>
+            <fieldset
+              class="partner-apply__group"
+              aria-describedby={errorId('channels')}
+            >
+              <legend class="partner-apply__legend">{fields.channels}</legend>
+              {partnerChannels.map((channel) => (
+                <label class="task-card__choice">
+                  <span class="task-card__control">
+                    <input
+                      name="channels"
+                      type="checkbox"
+                      value={channel}
+                      checked={values.channels.includes(channel)}
+                    />
+                    <span class="task-card__box" aria-hidden="true">
+                      <Icon name="check" size="sm" />
+                    </span>
+                  </span>
+                  <span>{fields.channelOptions[channel]}</span>
+                </label>
+              ))}
+              {errors.channels !== undefined && (
+                <p class="partner-apply__error" id={errorId('channels')}>
+                  <Icon name="alert-circle" size="base" />
+                  <span>{errors.channels}</span>
+                </p>
+              )}
+            </fieldset>
+            <Field
+              controlId="partner-handles"
+              label={fields.handles}
+              description={fields.handlesDescription}
+              descriptionId="partner-handles-description"
+              error={errors.handles}
+              errorId={errorId('handles')}
+            >
+              <Input
+                id="partner-handles"
+                name="handles"
+                required
+                maxlength="2200"
+                value={values.handles}
+                invalid={errors.handles !== undefined}
+                aria-describedby={[
+                  'partner-handles-description',
+                  errorId('handles'),
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              />
+            </Field>
+            <Field
+              controlId="partner-audience"
+              label={fields.audienceSize}
+              error={errors.audience_size}
+              errorId={errorId('audience_size')}
+            >
+              <Select
+                id="partner-audience"
+                name="audience_size"
+                required
+                invalid={errors.audience_size !== undefined}
+                aria-describedby={errorId('audience_size')}
+              >
+                <option value="" selected={values.audienceSize === ''}>
+                  {fields.audiencePrompt}
+                </option>
+                {partnerAudienceSizes.map((size) => (
+                  <option value={size} selected={values.audienceSize === size}>
+                    {fields.audienceOptions[size]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field
+              controlId="partner-plan"
+              label={fields.promotionPlan}
+              description={fields.promotionPlanDescription}
+              descriptionId="partner-plan-description"
+              error={errors.promotion_plan}
+              errorId={errorId('promotion_plan')}
+            >
+              <Input
+                id="partner-plan"
+                name="promotion_plan"
+                required
+                maxlength="500"
+                value={values.promotionPlan}
+                invalid={errors.promotion_plan !== undefined}
+                aria-describedby={[
+                  'partner-plan-description',
+                  errorId('promotion_plan'),
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              />
+            </Field>
+            <Field
+              controlId="partner-code"
+              label={fields.requestedCode}
+              description={fields.requestedCodeDescription}
+              descriptionId="partner-code-description"
+              error={errors.requested_code}
+              errorId={errorId('requested_code')}
+            >
+              <Input
+                id="partner-code"
+                class="partner-apply__code"
+                name="requested_code"
+                required
+                maxlength="16"
+                autocapitalize="characters"
+                spellcheck="false"
+                value={values.requestedCode}
+                invalid={errors.requested_code !== undefined}
+                aria-describedby={[
+                  'partner-code-description',
+                  errorId('requested_code'),
+                  view.alternatives.length > 0
+                    ? 'partner-code-alternatives'
+                    : undefined,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              />
+            </Field>
+            {view.alternatives.length > 0 && (
+              <div
+                class="partner-apply__alternatives"
+                id="partner-code-alternatives"
+                data-code-alternatives
+              >
+                <p>{copy.alternatives}</p>
+                <ul>
+                  {view.alternatives.map((code) => (
+                    <li class="partner-apply__alternative">{code}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div class="partner-apply__consent">
+              <label class="task-card__choice task-card__choice--strong">
+                <span class="task-card__control">
+                  <input
+                    name="age_confirmed"
+                    type="checkbox"
+                    value="yes"
+                    required
+                    checked={values.ageConfirmed}
+                    aria-describedby={errorId('age_confirmed')}
+                  />
+                  <span class="task-card__box" aria-hidden="true">
+                    <Icon name="check" size="sm" />
+                  </span>
+                </span>
+                <span>{fields.age}</span>
+              </label>
+              {errors.age_confirmed !== undefined && (
+                <p class="partner-apply__error" id={errorId('age_confirmed')}>
+                  <Icon name="alert-circle" size="base" />
+                  <span>{errors.age_confirmed}</span>
+                </p>
+              )}
+              <label class="task-card__choice task-card__choice--strong">
+                <span class="task-card__control">
+                  <input
+                    name="programme_terms_agreed"
+                    type="checkbox"
+                    value="yes"
+                    required
+                    checked={values.programmeTermsAgreed}
+                    aria-describedby={errorId('programme_terms_agreed')}
+                  />
+                  <span class="task-card__box" aria-hidden="true">
+                    <Icon name="check" size="sm" />
+                  </span>
+                </span>
+                <span>{fields.terms}</span>
+              </label>
+              {errors.programme_terms_agreed !== undefined && (
+                <p
+                  class="partner-apply__error"
+                  id={errorId('programme_terms_agreed')}
+                >
+                  <Icon name="alert-circle" size="base" />
+                  <span>{errors.programme_terms_agreed}</span>
+                </p>
+              )}
+              <div class="partner-apply__links">
+                <TextLink href="/partners" arrow>
+                  {copy.summaryLink}
+                </TextLink>
+                <TextLink href="/privacy" arrow>
+                  {fields.privacyLink}
+                </TextLink>
+              </div>
+            </div>
+            <p class="partner-apply__membership" data-partner-membership>
+              {giveawayOpen
+                ? copy.membership.waitlistAndGiveaway
+                : copy.membership.waitlist}{' '}
+              {copy.ageStatement}
+              {giveawayOpen && (
+                <>
+                  {' '}
+                  {copy.freeEntryDisclosure}{' '}
+                  <TextLink href="/giveaway/rules">
+                    {copy.giveawayRulesLink}
+                  </TextLink>
+                  {copy.giveawayRulesLinkEnd}
+                </>
+              )}
+            </p>
+            <div
+              class="cf-turnstile"
+              data-sitekey={getConfig().turnstileSiteKey}
+              data-size="compact"
+              data-response-field-name="turnstile_token"
+            />
+            <div class="task-card__actions">
+              <Button type="submit">{copy.submit}</Button>
+            </div>
+          </form>
+        </>
+      ) : null
+    }
+    {
+      view.applyAgain ? (
+        <TextLink class="task-card__link" href="/partners/apply" arrow>
+          {copy.invalid.apply}
+        </TextLink>
+      ) : null
+    }
+    {
+      view.form === 'application' ? (
+        <script
+          is:inline
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          async
+          defer
+        />
+      ) : null
+    }
+  </TaskCard>
+</BaseLayout>
+
+<style>
+  .partner-apply__group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .partner-apply__legend {
+    margin-block-end: var(--space-1);
+    padding: 0;
+    color: var(--ink);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
+  }
+
+  .partner-apply__error {
+    display: flex;
+    gap: var(--space-1);
+    align-items: flex-start;
+    margin: 0;
+    color: var(--error-text);
+    font-size: var(--step-1);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-1);
+  }
+
+  .partner-apply__error :global(.icon) {
+    flex: none;
+    color: var(--error);
+  }
+
+  /* Codes are set in the monospace token (epic rule 10). */
+  :global(.partner-apply__code),
+  .partner-apply__alternative {
+    font-family: var(--font-mono);
+  }
+
+  .partner-apply__alternatives {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-block-start: calc(-1 * var(--space-1-5));
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+  }
+
+  .partner-apply__alternatives ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .partner-apply__alternative {
+    padding-block: var(--space-0-5);
+    padding-inline: var(--space-1-5);
+    color: var(--ink);
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+    background-color: var(--well);
+    border-radius: var(--radius-control);
+    user-select: all;
+  }
+
+  .partner-apply__consent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .partner-apply__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .partner-apply__links :global(a) {
+    min-block-size: var(--tap-min);
+  }
+
+  .partner-apply__membership {
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    text-wrap: pretty;
+  }
+</style>

@@ -29,6 +29,8 @@ const inputPaths = [
   // E11.6-11: the price history and the Valstara prices.
   'data/price-index/changes.json',
   'config/valstara-prices.json',
+  // E11.7-05: the partner application checks codes against the blocklist.
+  'config/partner-code-blocklist.json',
   // E11.6-13: the monthly reports.
   'data/price-index/monthly',
   'packages/price-index/src/publish',

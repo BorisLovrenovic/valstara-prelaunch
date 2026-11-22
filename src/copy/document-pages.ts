@@ -6,6 +6,8 @@ export const documentPagesCopy = {
     trust: 'Trust',
     legal: 'Legal',
     rules: 'Giveaway rules',
+    // E11.7-05: the partner programme page.
+    partners: 'Partner programme',
   },
   contents: {
     heading: 'On this page',

@@ -29,6 +29,9 @@ export const enforcedPages = Object.freeze([
   '/unsubscribe',
   '/dsr',
   '/giveaway/award',
+  // E11.7-05: the partner programme page and the application.
+  '/partners',
+  '/partners/apply',
   '/404',
   '/500',
 ]);

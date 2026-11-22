@@ -333,6 +333,8 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
     '/leaderboard',
     '/legit',
     '/me',
+    '/partners',
+    '/partners/apply',
     '/price-index',
     '/prices',
     '/privacy',

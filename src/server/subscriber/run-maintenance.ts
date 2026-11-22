@@ -49,6 +49,7 @@ import { createReferralCounterRepairJob } from '../referral/counter-repair.ts';
 import { createAlertWebhookTransport } from '../verification-rate/p1-webhook.ts';
 import { createVerificationRateMonitor } from '../verification-rate/service.ts';
 import { createVerificationTokenRetentionJob } from '../verification/retention.ts';
+import { createPartnerApplicationPurgeJob } from '../partner/retention.ts';
 import { createFlagService } from '../flags/service.ts';
 import { createGiveawayEntryReconciliationJob } from '../giveaway/reconcile.ts';
 import { currentRulesFromFiles } from '../giveaway/current-rules-file.ts';
@@ -204,6 +205,12 @@ const scheduler = createReferralAttributionMaintenanceScheduler(
       createVerificationTokenRetentionJob(database, { clock }),
       purgeRuns,
       'verification_token_retention',
+      clock,
+    ),
+    partnerApplicationPurge: createRecordedPurgeJob(
+      createPartnerApplicationPurgeJob(database, { clock }),
+      purgeRuns,
+      'partner_application_purge',
       clock,
     ),
     seedTest,

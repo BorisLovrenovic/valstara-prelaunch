@@ -262,6 +262,8 @@ test('verification states, exact figures, native actions and flags render access
       '/unsubscribe',
       '/dsr',
       '/giveaway/award',
+      '/partners',
+      '/partners/apply',
       '/404',
       '/500',
     ]);

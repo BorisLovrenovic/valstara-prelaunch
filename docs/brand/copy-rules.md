@@ -39,8 +39,12 @@ Two CI scans keep copy honest, both in `scripts/ci/security-gates.mjs`:
 | shared account · stolen · bypass | account · licence · key · credit |
 | **instant delivery · immediate access** | **delivered within 24 hours** |
 | digital products | **digital goods** |
+| passive income · financial freedom · unlimited | commission |
+| team · downline | partners · referred customers |
 
 **"Instant delivery" is the one that matters most.** It is what this category's worst actors claim and frequently fail to honour, and the guarantee's first promise exists precisely to say the real number instead. It must never ship.
+
+The last two rows are the partner brief's banned words (`docs/features/partner-programme.md`, Epic E11.7 rule 9), added by E11.7-05. They are scanned everywhere the list is, not only in partner copy, so a planted word in `src/copy/partners.ts` or `src/content/partner-programme.json` fails the scan. The partner programme's commission is a stated 10%, one level, so nothing on the site needs any of them.
 
 Three rules govern the list itself, and they apply whatever the transcribed terms turn out to be:
 

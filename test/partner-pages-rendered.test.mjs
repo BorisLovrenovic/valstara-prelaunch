@@ -1,0 +1,345 @@
+// E11.7-05: /partners and /partners/apply served by the built app. Asserts
+// the programme page's terms and positioning line, the form's controls
+// against the field schema, the refused-code round trip as a plain HTML form
+// POST with no JavaScript (values kept, alternatives shown), the accepted
+// answer, the emailed link's confirmation, and flag off.
+import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
+import test, { after, before } from 'node:test';
+
+import { Pool } from 'pg';
+import { partnersCopy } from '../src/copy/partners.ts';
+import { partnerApplicationFieldNames } from '../src/server/partner/fields.ts';
+import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
+import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import { startAppServer } from './helpers/listen-port.mjs';
+
+const executeFile = promisify(execFile);
+const root = fileURLToPath(new URL('..', import.meta.url));
+const databaseUrl =
+  process.env.TEST_DATABASE_URL ??
+  'postgresql://valstara:valstara-local-only@127.0.0.1:5434/postgres';
+const appPassword =
+  process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
+
+// Turnstile's siteverify, stubbed inside the app process: every non-empty
+// token passes, so no request leaves the machine.
+const siteverifyStub = `data:text/javascript,${encodeURIComponent(`
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.includes('challenges.cloudflare.com/turnstile/v0/siteverify')) {
+      const body = new URLSearchParams(String(init?.body ?? ''));
+      return (body.get('response') ?? '') === ''
+        ? Response.json({ success: false, 'error-codes': ['missing-input-response'] })
+        : Response.json({ success: true });
+    }
+    return realFetch(input, init);
+  };
+`)}`;
+
+const decode = (value) =>
+  value
+    .replaceAll('&#39;', "'")
+    .replaceAll('&quot;', '"')
+    .replaceAll('&amp;', '&');
+const visibleText = (html) =>
+  decode(
+    html
+      .replace(/<(style|script)\b[\s\S]*?<\/\1>/gu, ' ')
+      .replace(/<[^>]+>/gu, ' ')
+      .replace(/\s+/gu, ' '),
+  );
+
+let admin;
+let database;
+let name;
+let appUrl;
+let app;
+
+async function startApp() {
+  return startAppServer({
+    label: 'Partner pages',
+    readyPath: '/privacy',
+    cwd: root,
+    nodeArguments: ['--import', siteverifyStub],
+    env: () => ({
+      ADMIN_CREDENTIAL: 'partner-pages-admin-credential-32-chars',
+      ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+      DATABASE_URL: appUrl,
+      HOST: '127.0.0.1',
+      IP_PREFIX_PEPPER: 'partner-pages-prefix-pepper',
+      P1_ALERT_WEBHOOK_URL: 'http://127.0.0.1:9/alert',
+      P1_ALERT_WEBHOOK_TOKEN: 'partner-pages-alert-token',
+      REFERRAL_SIGNING_SECRET: 'partner-pages-referral-secret',
+      RESEND_API_KEY: 'partner-pages-resend-key',
+      RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
+      RESEND_KEY_MODE: 'test',
+      RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+      RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+      RESEND_SENDING_DOMAIN: 'send.valstara.com',
+      TURNSTILE_SECRET_KEY: 'partner-pages-turnstile-secret',
+    }),
+  });
+}
+
+before(async () => {
+  await ensureAppBuild();
+  name = 'valstara_partner_pages_' + randomUUID().replaceAll('-', '');
+  const adminUrl = new URL(databaseUrl);
+  const fixtureUrl = new URL(adminUrl);
+  fixtureUrl.pathname = '/' + name;
+  const application = new URL(fixtureUrl);
+  application.username = 'valstara_app';
+  application.password = appPassword;
+  appUrl = application.toString();
+  admin = new Pool({ connectionString: adminUrl.toString() });
+  await admin.query('CREATE DATABASE "' + name + '"');
+  database = new Pool({ connectionString: fixtureUrl.toString() });
+  await executeFile(
+    'npx',
+    ['tsx', 'src/server/db/run-migrations.ts', 'e11-7-05-pages-test'],
+    {
+      cwd: root,
+      env: {
+        ...process.env,
+        MIGRATION_DATABASE_URL: fixtureUrl.toString(),
+        VALSTARA_APP_DB_PASSWORD: appPassword,
+      },
+    },
+  );
+  app = await startApp();
+});
+
+after(async () => {
+  await app?.stop();
+  await database?.end();
+  if (admin !== undefined) {
+    await admin.query(
+      'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1',
+      [name],
+    );
+    await admin.query('DROP DATABASE "' + name + '"');
+    await admin.end();
+  }
+});
+
+const origin = () => 'http://127.0.0.1:' + app.port;
+const get = (path) => globalThis.fetch(origin() + path);
+// A plain HTML form submission, as a browser with JavaScript off sends it.
+// The addresses are at a domain with a published MX record, as the signup
+// rendered tests use, because the app runs the real domain screen.
+const post = (path, fields) =>
+  globalThis.fetch(origin() + path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Origin: origin(),
+    },
+    body: new globalThis.URLSearchParams(fields),
+  });
+
+function applicationFields(overrides = {}) {
+  const fields = [
+    ['turnstile_token', 'turnstile-ok'],
+    ['full_name', 'Rendered Maya'],
+    ['email_address', 'renderedmaya@gmail.com'],
+    ['country_of_residence', 'SE'],
+    ['partner_type', 'creator'],
+    ['channels', 'tiktok'],
+    ['channels', 'discord'],
+    ['handles', '@rendered-maya'],
+    ['audience_size', '1k_10k'],
+    ['promotion_plan', 'Weekly price round-ups for my community.'],
+    ['requested_code', 'RENDERMAYA'],
+    ['age_confirmed', 'yes'],
+    ['programme_terms_agreed', 'yes'],
+  ].filter(([key]) => !(key in overrides));
+  for (const [key, value] of Object.entries(overrides))
+    if (value !== null) fields.push([key, value]);
+  return fields;
+}
+
+function applicationForm(html) {
+  const match =
+    /<form\b[^>]*data-partner-application[^>]*>([\s\S]*?)<\/form>/u.exec(html);
+  assert.ok(match, 'the application form renders');
+  return match[1];
+}
+
+test('/partners states the founder’s terms and positioning line, with an apply link', async () => {
+  const response = await get('/partners');
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('set-cookie'), null);
+  const html = await response.text();
+  const text = visibleText(html);
+  for (const statement of [
+    'You recommend. Your audience saves. You earn 10% of what they buy.',
+    'until one year after public launch, on 1 October 2028',
+    'One level only',
+    "covered by Valstara's guarantee",
+    'there is no lifetime lock',
+    'Earnings start with early access in September 2027.',
+    "more than triple GameSeal's commission rate",
+    'double the rate of G2A and Eneba',
+  ])
+    assert.ok(text.includes(statement), statement);
+  // The brief's superseded terms are gone (epic decisions 2 and 3).
+  for (const retired of [
+    /12 months/u,
+    /about double/iu,
+    /founding partners keep/iu,
+    /July 2027/u,
+  ])
+    assert.doesNotMatch(text, retired);
+  assert.match(html, /href="\/partners\/apply"/u);
+  assert.equal((html.match(/<h1\b/gu) ?? []).length, 1);
+  assert.doesNotMatch(html, /challenges\.cloudflare\.com/u);
+});
+
+test('/partners/apply renders exactly the field schema’s controls, with Turnstile and the membership line', async () => {
+  const response = await get('/partners/apply');
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('set-cookie'), null);
+  assert.equal(response.headers.get('cache-control'), 'private, no-store');
+  const html = await response.text();
+  const form = applicationForm(html);
+  const names = [
+    ...new Set(
+      [
+        ...form.matchAll(/<(?:input|select|textarea)\b[^>]*\bname="([^"]+)"/gu),
+      ].map((match) => match[1]),
+    ),
+  ].sort();
+  assert.deepEqual(names, [...partnerApplicationFieldNames].sort());
+  assert.match(form, /class="cf-turnstile"/u);
+  assert.match(html, /challenges\.cloudflare\.com\/turnstile\/v0\/api\.js/u);
+  // The country is a plain dropdown, with no preselected country.
+  assert.match(form, /<select\b[^>]*name="country_of_residence"/u);
+  assert.doesNotMatch(form, /<option value="[A-Z]{2}"[^>]*selected/u);
+  const text = visibleText(form);
+  assert.ok(text.includes(partnersCopy.apply.membership.waitlist));
+  assert.ok(text.includes(partnersCopy.apply.ageStatement));
+  // giveaway.open is off by default, so no giveaway claim is made.
+  assert.ok(!text.includes(partnersCopy.apply.freeEntryDisclosure));
+});
+
+test('a refused code returns the form with the typed values and the alternatives, with no JavaScript', async () => {
+  const response = await post(
+    '/partners/apply',
+    applicationFields({ requested_code: 'netflixdeals' }),
+  );
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get('set-cookie'), null);
+  const html = await response.text();
+  const form = applicationForm(html);
+  assert.match(form, /name="full_name"[^>]*value="Rendered Maya"/u);
+  assert.match(
+    form,
+    /name="email_address"[^>]*value="renderedmaya@gmail.com"/u,
+  );
+  assert.match(form, /name="requested_code"[^>]*value="netflixdeals"/u);
+  assert.match(form, /name="handles"[^>]*value="@rendered-maya"/u);
+  assert.match(form, /<option value="SE" selected/u);
+  assert.match(form, /<option value="creator" selected/u);
+  assert.match(form, /<option value="1k_10k" selected/u);
+  assert.match(form, /value="tiktok" checked/u);
+  assert.match(form, /value="discord" checked/u);
+  assert.doesNotMatch(form, /value="youtube" checked/u);
+  assert.ok(visibleText(form).includes(partnersCopy.apply.errors.blocked));
+  const alternatives = /data-code-alternatives[^>]*>([\s\S]*?)<\/div>/u.exec(
+    form,
+  );
+  assert.ok(alternatives, 'the alternatives are listed');
+  const codes = [
+    ...alternatives[1].matchAll(
+      /<li class="partner-apply__alternative[^"]*"[^>]*>([A-Z0-9]{4,16})<\/li>/gu,
+    ),
+  ].map((match) => match[1]);
+  assert.ok(codes.length >= 1 && codes.length <= 3, String(codes));
+  // Nothing was stored for the refused application.
+  const stored = await database.query(
+    `SELECT count(*)::int AS count FROM subscriber WHERE email_normalised = 'renderedmaya@gmail.com'`,
+  );
+  assert.equal(stored.rows[0].count, 0);
+
+  // The visitor takes an alternative and submits again: accepted.
+  const accepted = await post(
+    '/partners/apply',
+    applicationFields({ requested_code: codes[0] }),
+  );
+  assert.equal(accepted.status, 200);
+  const acceptedHtml = await accepted.text();
+  assert.match(acceptedHtml, /data-task-state="accepted"/u);
+  assert.ok(
+    visibleText(acceptedHtml).includes(partnersCopy.apply.accepted.line),
+  );
+  const partner = await database.query(
+    `SELECT p.status, p.requested_code, p.confirmation_token_id
+     FROM partner p JOIN subscriber s ON s.id = p.subscriber_id
+     WHERE s.email_normalised = 'renderedmaya@gmail.com'`,
+  );
+  assert.equal(partner.rows.length, 1);
+  assert.equal(partner.rows[0].status, 'unconfirmed');
+  assert.equal(partner.rows[0].requested_code, codes[0]);
+
+  // The emailed link: GET shows a confirmation form and consumes nothing;
+  // the POST confirms.
+  const token = deriveEmailToken(
+    partner.rows[0].confirmation_token_id,
+    process.env.EMAIL_TOKEN_SECRET,
+  );
+  const link = await get('/partners/apply?token=' + encodeURIComponent(token));
+  assert.equal(link.status, 200);
+  const linkHtml = await link.text();
+  assert.match(linkHtml, /data-task-state="confirm"/u);
+  assert.match(linkHtml, /<input type="hidden" name="token"/u);
+  assert.doesNotMatch(linkHtml, /challenges\.cloudflare\.com/u);
+  const confirmed = await post('/partners/apply', { token });
+  assert.equal(confirmed.status, 200);
+  assert.match(await confirmed.text(), /data-task-state="confirmed"/u);
+  const after = await database.query(
+    `SELECT p.status, s.status AS member FROM partner p
+     JOIN subscriber s ON s.id = p.subscriber_id
+     WHERE s.email_normalised = 'renderedmaya@gmail.com'`,
+  );
+  assert.deepEqual(after.rows, [{ status: 'applied', member: 'verified' }]);
+  const invalid = await post('/partners/apply', { token: 'not-a-real-link' });
+  assert.equal(invalid.status, 400);
+  assert.match(await invalid.text(), /data-task-state="link-invalid"/u);
+});
+
+test('flag off shows an honest paused message and accepts nothing', async () => {
+  await app.stop();
+  await database.query(
+    `INSERT INTO campaign_flag (key, enabled, updated_by)
+     VALUES ('partners.enabled', false, 'partner-pages-test')`,
+  );
+  app = await startApp();
+  const page = await get('/partners/apply');
+  assert.equal(page.status, 200);
+  const html = await page.text();
+  assert.match(html, /data-task-state="paused"/u);
+  assert.ok(visibleText(html).includes(partnersCopy.apply.paused));
+  assert.doesNotMatch(html, /data-partner-application/u);
+  assert.doesNotMatch(html, /challenges\.cloudflare\.com/u);
+
+  const submitted = await post(
+    '/partners/apply',
+    applicationFields({ email_address: 'pausedrender@gmail.com' }),
+  );
+  assert.equal(submitted.status, 200);
+  assert.match(await submitted.text(), /data-task-state="paused"/u);
+  const stored = await database.query(
+    `SELECT count(*)::int AS count FROM subscriber WHERE email_normalised = 'pausedrender@gmail.com'`,
+  );
+  assert.equal(stored.rows[0].count, 0);
+  const confirm = await post('/partners/apply', { token: 'any-link' });
+  assert.match(
+    await confirm.text(),
+    /data-task-state="(?:paused|link-invalid)"/u,
+  );
+});

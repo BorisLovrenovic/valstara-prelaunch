@@ -251,6 +251,10 @@ test('every /verify, /me, leaderboard, task and error state is on the sheet', ()
     'leaderboard-paused-flag-off',
   ]);
   assert.deepEqual(labelsOf('task'), [
+    // E11.7-05: the partner application, its link's confirmation, paused.
+    'partners-apply',
+    'partners-apply-confirm',
+    'partners-apply-paused',
     'dsr-export-request',
     'dsr-delete-request',
     'dsr-export-confirm',
@@ -293,6 +297,8 @@ test('every /verify, /me, leaderboard, task and error state is on the sheet', ()
       '/terms',
       '/privacy',
       '/privacy/storage',
+      // E11.7-05: the partner programme page.
+      '/partners',
     ],
   );
   assert.deepEqual(

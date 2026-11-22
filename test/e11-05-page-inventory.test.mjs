@@ -64,12 +64,17 @@ const protectedPages = new Set([
   '/me',
   '/dsr',
   '/giveaway/award',
+  // E11.7-05: the partner application form.
+  '/partners/apply',
 ]);
 
 function expectedProtectedFormCount(url) {
   if (url.pathname === '/') return 1;
   if (pricePagePaths.has(url.pathname)) return 1;
   if (url.pathname === '/dsr') return url.searchParams.has('t') ? 0 : 1;
+  // The emailed link's confirmation is token-authenticated, with no widget.
+  if (url.pathname === '/partners/apply')
+    return url.searchParams.has('token') ? 0 : 1;
   if (url.pathname === '/verify') return url.searchParams.has('token') ? 0 : 1;
   if (url.pathname === '/me') {
     return url.searchParams.has('t') && url.searchParams.get('t') !== 'invalid'
@@ -816,6 +821,7 @@ test(
           '/dsr?t=invalid',
           '/dsr?operation=delete',
           '/dsr?operation=delete&t=invalid',
+          '/partners/apply?token=invalid',
         ];
         assert.ok(inventory.routes.includes('/404'));
         assert.ok(inventory.routes.includes('/500'));

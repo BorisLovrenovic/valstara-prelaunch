@@ -1,6 +1,6 @@
 # Feature Specs
 
-Sixteen pre-launch features, one spec each. `price-index.md` was added with Epic E11.6 and `partner-programme.md` with Epic E11.7 (both founder-authorised 2026-11-17); their flags join the registry below when their tickets register them. Every spec uses the same headings so tickets can reference stable anchors: **Summary · Feature flag · User flows · Edge cases and error states · Acceptance criteria · Telemetry.** `price-index-source-findings.md` is not a spec: it is E11.6-01's record of the price-index source site, which the later E11.6 tickets read.
+Sixteen pre-launch features, one spec each. `price-index.md` was added with Epic E11.6 and `partner-programme.md` with Epic E11.7 (both founder-authorised 2026-11-17); their flags join the registry below when their tickets register them (`partners.enabled` since E11.7-05). Every spec uses the same headings so tickets can reference stable anchors: **Summary · Feature flag · User flows · Edge cases and error states · Acceptance criteria · Telemetry.** `price-index-source-findings.md` is not a spec: it is E11.6-01's record of the price-index source site, which the later E11.6 tickets read.
 
 Scope is the 8–12 week campaign on `valstara.com`. Anything that belongs to the store belongs to the storefront repository.
 
@@ -19,6 +19,7 @@ Flags exist for one reason: **so a mechanic can be switched off during an incide
 | `email.broadcast` | **off** | `email-campaign.md` | **Off until domain authentication is verified end to end.** Transactional mail is unaffected |
 | `prices.pages` | on | `price-index.md` | **The lever for a wrong price that has gone live** (E11.6-10). Off answers every price route (the service × market pages, since E11.6-12 `/prices` and the hubs, and since E11.6-13 `/price-index` and the monthly reports) with `503`, `Retry-After` and `noindex`, without a deploy |
 | `prices.valstara_comparison` | **off** | `price-index.md` | **A Valstara price shown is a public price commitment** (E11.6-11). Off, no Valstara price renders on any page, whatever `config/valstara-prices.json` holds; the waitlist call to action stays either way. It stays off until the founder turns it on |
+| `partners.enabled` | on | `partner-programme.md` | **The partner programme's incident lever** (E11.7-05). Off, `/partners/apply` says plainly that applications are paused and accepts no application or confirmation; existing data is untouched. Later E11.7 tickets extend it to `/r/{CODE}` and the partner dashboard |
 
 **Three flags default off.** The founder retired the pre-launch `trustpilot.widget` flag on 2026-10-10; it is no longer a registered feature.
 

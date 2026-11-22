@@ -36,6 +36,8 @@ interface UnverifiedExpiryJob {
 }
 ```
 
+**Partner applications (E11.7-05, D-050).** A partner application finds or creates a `pending` subscriber for the normalised address, with signup's normalisation, domain screen and fraud signals, and with no marketing choice or referral. A subscriber an application created (`partner.created_subscriber`) is left out of the verification reminder ladder and the final reminder, because the application's own confirmation link replaces them, and it expires by the same 30-day sweep. Confirming the application verifies it through the verification module's completion.
+
 The maintenance process runs the reminder job hourly and the expiry job once per
 UTC day. Each invocation is explicitly capped. The reminder offsets are exactly
 `+1h`, `+24h` and `+72h`; their immutable business keys are

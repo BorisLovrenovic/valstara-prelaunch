@@ -18,6 +18,9 @@ export const subjectExportTables = {
   // row and clears its owner, so an erased subject has nothing here.
   referral_code: "owner_kind='member' AND owner_id=$1",
   survey_response: 'subscriber_id=$1',
+  // E11.7-05: the member's partner applications. Erasure clears every
+  // personal field and the member link, so an erased subject has none here.
+  partner: 'subscriber_id=$1',
   giveaway_entry: 'subscriber_id=$1',
   giveaway_draw_snapshot_row: 'subscriber_id=$1',
   giveaway_draw_selection: 'subscriber_id=$1',
@@ -49,6 +52,7 @@ export const subjectExportTables = {
     UNION SELECT id::text FROM milestone_award WHERE subscriber_id=$1::uuid
     UNION SELECT id::text FROM referral_coupon WHERE subscriber_id=$1::uuid
     UNION SELECT id::text FROM survey_response WHERE subscriber_id=$1::uuid
+    UNION SELECT id::text FROM partner WHERE subscriber_id=$1::uuid
     UNION SELECT id::text FROM giveaway_entry WHERE subscriber_id=$1::uuid
     UNION SELECT id::text FROM giveaway_draw WHERE id IN
       (SELECT draw_id FROM giveaway_draw_snapshot_row WHERE subscriber_id=$1::uuid)

@@ -49,6 +49,8 @@ const tableRoutes = ['/legit', '/privacy', '/privacy/storage'];
 // content file; a new rules revision may be added, but none listed here may
 // change or disappear. E11.7-04 re-records the privacy policy, whose
 // description of rewards that ticket's Build replaces with the coupon ladder.
+// E11.7-05 re-records it again: its Build discloses the partner application's
+// fields, purpose and retention there.
 const recordedContent = new Map([
   [
     'src/content/.gitkeep',
@@ -88,7 +90,7 @@ const recordedContent = new Map([
   ],
   [
     'src/content/privacy.md',
-    '70013403fb9ac86d4f39d9634f5eec865eb2f9aaf7bee5a056b8d1bbb872c589',
+    'da4ac9b04b7a37fbf3181371bf34d4c95fd048faa84f3ea5982263ad58f28b50',
   ],
   [
     'src/content/terms.md',

@@ -73,6 +73,14 @@ The reward ladder and the wave-1 rule sit behind the existing `referral.enabled`
   - `applied`, `approved` and `contract_sent` wait on the founder or on the signature. `partners list --stale` shows any that have been in one state for more than 14 days (configurable). Nothing changes automatically;
   - a dashboard link expires after 30 days, with one-click re-send.
 
+**As built (E11.7-05; founder decisions D-050, 2026-11-22):**
+- **The application and its confirmation.** `/partners/apply` takes exactly the brief's §3.2 fields, with the country as a plain dropdown (`src/content/partner-countries.json`), and stores them on `partner` (`docs/data/model.md#partner`). A submission runs Turnstile first, then the flag, then the hashed-prefix rate limit, then the fields and the code rules, then signup's normalisation, domain screen and fraud signals (`src/server/partner/application.ts`). It finds or creates a `pending` subscriber for the normalised address: a `pending` or `verified` member is linked, and any other status, a member with a confirmed application, and a repeat within the one-link-per-address window get the same neutral answer with no mail and no row. The row is `unconfirmed`, bound to its own `partner_application` token (seven days, in `verification_token`), whose link is the `partner_application_confirm` email.
+- **Confirming** (`src/server/partner/confirm.ts`) consumes that token first, then rate-limits and reads the flag. A `pending` member is verified through the existing verification completion, so they get what every verified member gets: a referral code, a verification-order wave, a giveaway base entry while `giveaway.open` is on, and the welcome email with the `/me` link. A `verified` member is linked unchanged. The application moves to `applied`, which a database trigger allows only for a verified member, and the `partner_application_received` email is queued under its own business key. Both emails follow hard rule 5.
+- **The form says what confirming does** (D-050 Q2): it joins the waitlist, and while the giveaway is open it enters the giveaway, with the signup form's "Open to people aged 18 and over.", "No purchase necessary." and rules link from the copy layer. No field is added for it.
+- **The requested code is checked, not reserved** (D-050 Q3): the E11.7-01 rules run on submit, a refused code returns the form with what was typed, the reason and up to three alternatives, with no JavaScript, and the accepted code is stored as `requested_code` with no uniqueness constraint and no `referral_code` row. E11.7-06's `approve <id> [--code]` registers it.
+- **Waiting states.** An unconfirmed application expires with its token and is never listed; a subscriber the application created receives no waitlist reminder and expires by the 30-day pending sweep. Rejected and unconfirmed applications have their personal fields and member link purged after 90 days by the daily `partner_application_purge` job. Erasure clears the same fields, the requested code included.
+- **Flag off** pauses `/partners/apply` with an honest message; nothing is accepted and no link is consumed.
+
 ## Links and codes
 
 - **`https://valstara.com/r/{CODE}` is permanent.** It will be printed on flyers and QR codes, and the main platform must serve it with identical behaviour (the hand-over requirement). An active code redirects (302) to `/?ref={CODE}`, where the existing server-side signed capture (E4-02) takes over. An inactive, unknown or flag-off code redirects to `/` with no referrer.
@@ -167,7 +175,7 @@ Progress shows on `/me`, on the partner dashboard and in the relevant emails. **
 
 | Route | What |
 |---|---|
-| `/partners` | The public programme page, with copy from a content file |
+| `/partners` | The public programme page, with copy from a content file (`src/content/partner-programme.json`, E11.7-05) |
 | `/partners/apply` | The application form: Turnstile, rate limit, the fields in the brief's §3.2, the country dropdown, the code check on submit |
 | `/partners/dashboard?t=` | The partner's private page. It shows: link and code; QR downloads; counts (confirmed, pending, voided, signups per week); a breakdown by survey category; the ladder and welcome discount; the terms summary; the leaderboard; the asset kit; settings. `noindex`, `no-store`, no page-view emitter, excluded from the sitemap and `robots.txt` |
 | `/partners/dashboard/flyer?t=` | A print-ready flyer for A4 and US Letter |
@@ -212,12 +220,12 @@ These were chosen while planning, to satisfy the standing rules where the brief 
 |---|---|
 | A partner dashboard link lasts 30 days, the same as `/me`'s | E11.7-09 |
 | `partners list --stale` shows partners more than 14 days in `applied`, `approved` or `contract_sent`. Nothing changes automatically | E11.7-06 |
-| Rejected and unconfirmed applications have their personal fields purged after 90 days | E11.7-05 |
+| Rejected and unconfirmed applications have their personal fields purged after 90 days (built by E11.7-05: the daily `partner_application_purge`, 500 rows a run) | E11.7-05 |
 | A void before the draw snapshot is committed also voids that referral's giveaway entry. After commitment, nothing in the draw changes | E11.7-02 |
 | A paused or terminated partner's member code keeps working as a plain member referral, without partner perks | E11.7-07 |
 | An active partner is in wave 1 only while active; friends keep the wave 1 they got through a partner unless their own referral is voided | E11.7-07 |
 | A typed code that is unknown or inactive is ignored with a neutral note, and the signup completes | E11.7-08 |
-| An erased partner's code is deactivated and never reissued | E11.7-05 |
+| An erased partner's code is deactivated and never reissued (moved from E11.7-05 by D-050 Q3: E11.7-05 registers no partner code, and E11.7-06's `approve <id> [--code]` does) | E11.7-06 |
 
 ## Founder brief, 17 November 2026 (verbatim)
 

@@ -35,6 +35,7 @@ Status: authoritative. This describes the **store launch**, which happens after 
 | `/giveaway/rules`, `/giveaway/rules/<rules_version>` | The global rules page and all three immutable revisions (ADR-026) | **Kept live** with `200` for 12 months after the final award, then `410`; revisions kept internally for 6 years |
 | `/waitlist`, `/leaderboard` | Campaign mechanics | `301` to storefront `/` |
 | `/me` | Member status | `301` to the storefront account area |
+| `/partners`, `/partners/apply` | The pre-launch partner programme page and its application (E11.7-05), behind `partners.enabled` | Campaign mechanics: applications close at the freeze, then both `301` to storefront `/`. Partner attribution and codes are handed over through E11.7-14's export, not through these pages |
 | `/dsr` | Privacy-rights request | `301` to storefront privacy-rights page |
 | `/unsubscribe`, `/api/unsubscribe` | Email preference and RFC 8058 one-click endpoint | Storefront handles every imported, unexpired token at these paths, hashing the presented token and applying marketing withdrawal; a transactional-origin token also suppresses non-essential mail. After the token expires, both paths `301` to storefront email preferences |
 | `/giveaway/award` | Provisional award response | `410`, only after the draw is published and every award is terminal |

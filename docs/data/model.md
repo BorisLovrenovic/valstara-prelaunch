@@ -67,7 +67,7 @@ Indexes: `email_normalised` (unique) · `referral_code` (unique) ·
 | `id` | uuid pk | |
 | `subscriber_id` | uuid not null → `subscriber` | |
 | `token_hash` | bytea not null unique | **SHA-256 of the token. The plaintext is never stored** — it exists only in the emailed URL |
-| `purpose` | text not null | `verify` · `status` · `unsubscribe` · `dsr_export` · `dsr_delete` |
+| `purpose` | text not null | `verify` · `status` · `unsubscribe` · `dsr_export` · `dsr_delete` · `partner_application` (E11.7-05: a partner application's confirmation link, seven days) |
 | `expires_at` | timestamptz not null | |
 | `consumed_at` | timestamptz null | Single use. A second consume is a **no-op that reports success** |
 | `created_at` | timestamptz not null | |
@@ -90,7 +90,7 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 |---|---|---|
 | `code` | text **primary key** | **Upper case** (`code = upper(code)`, checked). Lookup upper-cases the input, so it is case-insensitive. A partner code must also match `^[A-Z0-9]{4,16}$` (checked); a member code is the E4-01 12-character code |
 | `owner_kind` | text not null | `member` · `partner` |
-| `owner_id` | uuid null | A member row's owner is `subscriber(id)`; a partner row's owner is its partner record (E11.7-05). Null only for a **retired** member code. No foreign key, because the owner table depends on the kind; an active member row is checked against its subscriber instead |
+| `owner_id` | uuid null | A member row's owner is `subscriber(id)`; a partner row's owner is its `partner` record, registered at approval by E11.7-06 (D-050: E11.7-05 checks the requested code but writes no row). Null only for a **retired** member code. No foreign key, because the owner table depends on the kind; an active member row is checked against its subscriber instead |
 | `active` | boolean not null default true | Whether the code resolves to its owner. A member code is active exactly while its subscriber holds it (checked). **A partner code always enters inactive**, whoever inserts it (trigger, D-044); only partner activation makes it live (E11.7-07) |
 | `created_at` | timestamptz not null | When the code was registered. Backfilled member codes take their subscriber's `verified_at` |
 
@@ -149,6 +149,39 @@ Permissions: the application role may `SELECT`, and `INSERT` only `code`, `owner
 A coupon row is created when the count first reaches its unlock and is never deleted except by erasure, so a void coupon stays visible as `void`. The only transitions are `none → held`, `held → held` (a percent step), `held → void` and `void → held` (`couponTransitions` in `src/server/referral/reward-state.ts`). The ladder's figures are configuration in `src/server/referral/config.ts` (ADR-025, as amended), so changing a threshold, the step or the launch date needs no migration. The launch date is read when the handoff export computes the expiry. A changed threshold or step reaches an owner's stored rows only at that owner's next recompute — a confirmation, void or un-void — or at the daily repair, which checks at most 1,000 verified subscribers per run, lowest IDs first, and so does not reach every owner. The handoff first recomputes everyone: before its snapshot it recomputes every verified subscriber's coupons and wave under the configured ladder, in batches of at most 1,000, and audits each change as `handoff.rewards_recomputed` (D-047), so the export follows the configured ladder.
 
 Permissions: the application role has `SELECT`, `INSERT` of every column but `expiry_basis`, `UPDATE (percent, state, updated_at)` and `DELETE` (erasure only). It cannot change a row's owner, number or basis. Personal data: a member's rewards, covered by the privacy policy's referral row, the E9-05 export and erasure.
+
+## `partner`
+
+E11.7-05 (founder decisions D-050, 2026-11-22). One row per submitted partner application; the later lifecycle tickets (E11.7-06 and E11.7-07) move it through review and activation. **Personal data**, disclosed in the privacy notice and covered by the E9-05 export and erasure.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid pk | |
+| `subscriber_id` | uuid null → `subscriber` | The member record for the applicant's normalised email, found or created `pending` on submit. **The partner's email is the subscriber's**: it is not copied here. Not null until the personal fields are purged; it can only be cleared |
+| `status` | text not null | `unconfirmed` · `applied` · `approved` · `contract_sent` · `active` · `paused` · `terminated` · `rejected`. A submission is `unconfirmed`; **only a confirmed application reaches `applied`**. E11.7-06 sets the founder's statuses and adds the transition matrix |
+| `status_changed_at` | timestamptz not null | When the row reached its current status; the retention purge reads it |
+| `submitted_at` | timestamptz not null | Immutable |
+| `applied_at` | timestamptz null | Set exactly when the status leaves `unconfirmed` |
+| `created_subscriber` | boolean not null | True when the submission created its pending subscriber. Such a subscriber gets no waitlist verification reminder (the 1, 24 and 72-hour ladder and the final reminder): it receives the application's link instead, and expires by the 30-day pending sweep. Immutable |
+| `confirmation_token_id` | uuid null → `verification_token`, `ON DELETE SET NULL` | The `partner_application` token the confirmation email carries. Unique while set |
+| `full_name` | text null | 1–200 characters |
+| `country_of_residence` | text null | ISO 3166-1 alpha-2, from `src/content/partner-countries.json`. **The only country the site stores outside a provisional winner's award record** (ADR-026 as amended), for the partner contract. In no analytics event |
+| `partner_type` | text not null | `standard` · `student_ambassador` · `creator` |
+| `channels` | text[] null | 1–9 of `tiktok` · `youtube` · `instagram` · `x` · `discord` · `telegram_whatsapp` · `newsletter_blog` · `campus_offline` · `other` |
+| `handles` | text[] null | 1–10 handles or URLs |
+| `audience_size` | text null | `under_1k` · `1k_10k` · `10k_50k` · `50k_150k` · `150k_plus` |
+| `promotion_plan` | text null | 1–500 characters |
+| `requested_code` | text null | The preferred code after the E11.7-01 rules, upper case, `^[A-Z0-9]{4,16}$`. **Checked, not reserved**: no uniqueness constraint and no `referral_code` row; E11.7-06's `approve <id> [--code]` registers it, re-running the rules (D-050 Q3) |
+| `university` | text null | Required for a `student_ambassador`, kept for no other type |
+| `student_email` | text null | Optional, student ambassadors only |
+| `company_name` | text null | Optional, for an applicant applying as a business |
+| `age_confirmed`, `programme_terms_agreed` | boolean null | Both true on every unpurged row |
+| `personal_data_purged_at` | timestamptz null | Set when the retention purge or erasure clears every personal field and the member link together |
+| `created_at` | timestamptz not null | |
+
+**Checks:** every required field is present until purged, and every personal field and the member link are null once purged; a student ambassador has a university; the closed value sets above. No address, phone, payout, tax or bank field exists. **Indexes:** one live application or partnership per member (`subscriber_id` unique where the status is neither `unconfirmed` nor `rejected`), a unique confirmation token, the member lookup, and the purge scan. **Trigger:** a row leaves `unconfirmed`, or is inserted past it, only while its subscriber is `verified`, and never returns to `unconfirmed`; the id, submission and creation facts are immutable, and a purged row keeps its status. **Permissions:** the application role has `SELECT`, column-scoped `INSERT` and column-scoped `UPDATE` (status, the confirmation time, the token link and the personal fields for the purge and erasure), and no `DELETE`.
+
+**Retention:** rejected and unconfirmed applications have their personal fields and member link cleared 90 days after they reached that state (`partnerApplicationRetentionMs` in `src/server/partner/config.ts`), by the daily `partner_application_purge` job (at most 500 rows a run, recorded in `purge_job_run`). The row, with its status, type and timestamps, stays for the programme's counts. **Erasure** clears the same fields, the requested code included. Confirmed applications are kept until handoff, like the member record.
 
 ## `survey_response`
 
@@ -332,7 +365,7 @@ E6-06 also records `consent.marketing_withdrawn` or `subscriber.unsubscribed` wi
 
 ## `purge_job_run`
 
-One row per scheduled purge job. `job_key` text primary key with a finite CHECK over `ip_prefix_retention` (the fraud IP-prefix retention job), `rate_limit_retention`, `verification_token_retention` (verification and status tokens), and `leaderboard_snapshot_purge`. `last_started_at` · nullable `last_finished_at` · nullable `last_succeeded_at` · nullable `last_outcome` (`succeeded` or `failed`) · `rows_purged` integer at least zero · nullable sanitized `last_error_code`. No personal data. Each job upserts at start and finish; a record-write failure cannot fail the purge. The application role has SELECT, INSERT and UPDATE, never DELETE. Health treats a missing success as stale and a daily job's last success as stale only after 48 hours. The clock is injected. The subscriber expiry sweep changes status and is not a purge job.
+One row per scheduled purge job. `job_key` text primary key with a finite CHECK over `ip_prefix_retention` (the fraud IP-prefix retention job), `rate_limit_retention`, `verification_token_retention` (verification and status tokens), `leaderboard_snapshot_purge` and `partner_application_purge` (E11.7-05). `last_started_at` · nullable `last_finished_at` · nullable `last_succeeded_at` · nullable `last_outcome` (`succeeded` or `failed`) · `rows_purged` integer at least zero · nullable sanitized `last_error_code`. No personal data. Each job upserts at start and finish; a record-write failure cannot fail the purge. The application role has SELECT, INSERT and UPDATE, never DELETE. Health treats a missing success as stale and a daily job's last success as stale only after 48 hours. The clock is injected. The subscriber expiry sweep changes status and is not a purge job.
 
 ## `maintenance_heartbeat`
 
@@ -371,6 +404,7 @@ Existing pgBackRest backups are unmodified, encrypted and beyond use, never read
 | `signup_ip_prefix_hash` | 90 days | Daily purge job |
 | Unverified `pending` subscribers | Campaign-configured horizon (default 30 days) | Daily expiry sweep → `expired` |
 | Verification and status tokens | Purged 30 days after expiry | Daily, 1,000-row-capped sweep; P1 on failure |
+| Rejected and unconfirmed partner applications (`partner` personal fields) | 90 days after rejection or submission | Daily, 500-row-capped `partner_application_purge`; P1 on failure (E11.7-05) |
 | `rate_limit_bucket` | 7 days | Daily cleanup |
 | Personal data in existing encrypted backups after erasure | Up to 30 days, beyond use | Weekly full backup rotation, `retention-full=2`; re-apply newest erasure ledger before restored traffic |
 | Provider delivery logs after erasure | Limited period under processor retention | Resend and Brevo processor expiry; no Resend deletion call |
@@ -434,4 +468,4 @@ The final 2026-10-02 founder decision supersedes immediate local erasure and the
 
 ### Export coverage
 
-`src/server/db/dsr-export.ts` registers subject-scoped tables. `referral_coupon` is registered by its owner (E11.7-03), and erasure deletes it. `referral_code` is registered by its member owner (E11.7-01); an erased subject's code is retired with its owner cleared, so it is no longer theirs to export. Every row includes every column through `to_jsonb`, reconciled against the model and schema by test. Referral counterparts, other winners, operator identities and third-party fraud evidence are redacted. NDJSON is streamed in 100-row pages under a repeatable-read transaction, with a fulfilment audit at successful completion. DSR tokens use distinct `dsr_export` and `dsr_delete` purposes with a 24-hour lifetime. An export replay is acknowledged without exporting again; invalid/expired links use one response. No plaintext token is persisted.
+`src/server/db/dsr-export.ts` registers subject-scoped tables. `referral_coupon` is registered by its owner (E11.7-03), and erasure deletes it. `referral_code` is registered by its member owner (E11.7-01); an erased subject's code is retired with its owner cleared, so it is no longer theirs to export. `partner` is registered by its member link (E11.7-05); erasure clears every personal field and the link, so an erased subject has no application to export. Every row includes every column through `to_jsonb`, reconciled against the model and schema by test. Referral counterparts, other winners, operator identities and third-party fraud evidence are redacted. NDJSON is streamed in 100-row pages under a repeatable-read transaction, with a fulfilment audit at successful completion. DSR tokens use distinct `dsr_export` and `dsr_delete` purposes with a 24-hour lifetime. An export replay is acknowledged without exporting again; invalid/expired links use one response. No plaintext token is persisted.

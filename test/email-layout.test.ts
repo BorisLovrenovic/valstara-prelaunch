@@ -9,6 +9,7 @@ import {
 } from '../scripts/design/email-previews.ts';
 import { dsrCopy } from '../src/copy/dsr.ts';
 import { emailCopy } from '../src/copy/email.ts';
+import { partnersCopy } from '../src/copy/partners.ts';
 import {
   emailThemeFromCss,
   renderEmailDocument,
@@ -29,6 +30,8 @@ const preheaders: Readonly<Record<string, string>> = {
   giveaway_winner: emailCopy.winner.preheader,
   dsr_export: dsrCopy.export.preheader,
   dsr_delete: dsrCopy.delete.preheader,
+  partner_application_confirm: partnersCopy.email.confirm.preheader,
+  partner_application_received: partnersCopy.email.received.preheader,
   weekly_campaign_update: emailCopy.weekly.preheader,
 };
 
@@ -47,6 +50,8 @@ const mainActions: Readonly<Record<string, string>> = {
   giveaway_winner: '/giveaway/award',
   dsr_export: '/dsr',
   dsr_delete: '/dsr',
+  partner_application_confirm: '/partners/apply',
+  partner_application_received: '/partners',
   weekly_campaign_update: '/me',
 };
 
@@ -58,6 +63,8 @@ const firstPartyPaths = new Set([
   '/unsubscribe',
   '/dsr',
   '/giveaway/award',
+  '/partners',
+  '/partners/apply',
   rulesPath,
 ]);
 
@@ -143,6 +150,7 @@ function renderFixture(css: string) {
 test('E11.5-11 previews cover every template the dispatcher registers', () => {
   const dispatch = readFileSync('src/server/email/resend-dispatch.ts', 'utf8');
   assert.match(dispatch, /\.\.\.dsrRenderers\(/u);
+  assert.match(dispatch, /\.\.\.partnerApplicationRenderers\(/u);
   assert.match(dispatch, /\.\.\.createTransactionalRenderers\(/u);
   assert.match(dispatch, /'weekly_campaign_update',\s*createWeeklyTemplate\(/u);
   assert.deepEqual(
@@ -317,7 +325,8 @@ test('E11.5-11 every template carries its hidden preheader from the copy layer',
       ?.message.text.split('\n')[0],
     emailCopy.verify.firstLine,
   );
-  assert.equal(new Set(Object.values(preheaders)).size, 10);
+  // E11.7-05 added the partner application's two emails.
+  assert.equal(new Set(Object.values(preheaders)).size, 12);
 });
 
 test('E11.5-11 the layout is at most 600px wide and its one button is at least 44px tall', () => {

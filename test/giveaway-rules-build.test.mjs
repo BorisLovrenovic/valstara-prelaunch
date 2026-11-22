@@ -46,6 +46,8 @@ async function buildFixture(changeContent) {
       'config/catalogue.json',
       'config/markets.json',
       'config/valstara-prices.json',
+      // E11.7-05: the partner application's code blocklist.
+      'config/partner-code-blocklist.json',
       'data/price-index',
       'packages/price-index/src/publish',
       'packages/price-index/src/schema',

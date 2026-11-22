@@ -1,4 +1,4 @@
-import type { DatabasePool } from '../db/pool.ts';
+import type { DatabaseConnection, DatabasePool } from '../db/pool.ts';
 import { createAuditService } from '../audit/service.ts';
 import { createReferralRepository } from '../db/referral.ts';
 import { createReferralCouponRepository } from '../db/referral-coupon.ts';
@@ -62,6 +62,121 @@ export interface VerificationCompletionDependencies {
 export type VerificationCompletionStep =
   'verified' | 'referral-code' | 'referral-confirmed' | 'access-window';
 
+export interface VerificationCompletionSteps {
+  readonly verified: {
+    readonly createdAt: Date;
+    readonly verifiedAt: Date;
+    readonly utm: UtmParameters | null;
+    readonly hasRef: boolean;
+  } | null;
+  readonly referrerTier: number | null;
+  readonly giveawayMethods: readonly ('base' | 'referral')[];
+}
+
+/**
+ * The durable verification steps, inside the caller's transaction. A `fresh`
+ * completion verifies a `pending` subscriber: it promotes pending marketing
+ * consent, writes the verification-order wave, allocates the referral code,
+ * confirms the referral edge, accrues the giveaway base entry and queues the
+ * welcome email. A replay only repeats the idempotent code allocation and
+ * edge confirmation. `/verify` runs it after consuming a `verify` token, and
+ * the partner application's confirmation (E11.7-05, D-050) after consuming a
+ * `partner_application` token for a `pending` subscriber, so a member created
+ * by an application is identical to a waitlist signup.
+ */
+export async function completeVerificationInTransaction(
+  connection: DatabaseConnection,
+  subscriberId: string,
+  fresh: boolean,
+  dependencies: Omit<
+    VerificationCompletionDependencies,
+    'clock' | 'emailProducers' | 'onCommitted' | 'referralEnabled'
+  > & {
+    readonly clock: () => Date;
+    readonly producers: TransactionalEmailProducers;
+  },
+): Promise<VerificationCompletionSteps> {
+  const { clock, producers } = dependencies;
+  const referral = createReferralService(connection);
+  const completion = createVerificationCompletionRepository(connection);
+  const repository = createReferralRepository(connection);
+  let verifiedEvent: VerificationCompletionSteps['verified'] = null;
+  let giveawayMethods: readonly ('base' | 'referral')[] = [];
+
+  if (fresh) {
+    // Serialise the count-and-assign section so concurrent verifications
+    // receive distinct, stable ordinals at a configured band boundary.
+    await repository.lockAccessWindowAssignment();
+    const verificationTime = clock();
+    const verified = await completion.markVerified(
+      subscriberId,
+      verificationTime,
+    );
+    if (verified !== 1) {
+      throw new Error(
+        'A fresh verification token did not verify a pending subscriber.',
+      );
+    }
+    const source = await completion.sourceFacts(subscriberId);
+    if (source === null)
+      throw new Error('A verified subscriber has no source facts.');
+    verifiedEvent = { ...source, verifiedAt: verificationTime };
+    const consentVersion = await completion.promotePendingMarketingConsent(
+      subscriberId,
+      verificationTime,
+    );
+    if (consentVersion !== null) {
+      await createAuditService(connection).record({
+        action: 'consent.marketing_granted',
+        actor: 'subscriber',
+        detail: { source: 'signup', version: consentVersion },
+        subjectId: subscriberId,
+        subjectType: 'subscriber',
+      });
+    }
+    await dependencies.afterStep?.('verified');
+
+    // The verification-order window is written once (founder D1,
+    // 2026-11-17): wave 1 for the first 1,000, which no void removes.
+    // Later referral-based wave 1 is recomputed with the ladder.
+    const order = await repository.verificationOrder();
+    const window = accessWindowForVerificationOrder(
+      order,
+      dependencies.accessWindowBands ?? accessWindowBands,
+    );
+    if (
+      (await createReferralCouponRepository(
+        connection,
+      ).assignVerificationOrderWindow(subscriberId, window)) !== 1
+    ) {
+      throw new Error('The verified subscriber wave was not recorded.');
+    }
+    await dependencies.afterStep?.('access-window');
+  }
+
+  // The flag gates only display/new attribution. Code allocation and an
+  // already-recorded edge must continue to completion even while it is off;
+  // running these idempotently on replay also repairs rows stranded by the
+  // former flag-off behaviour.
+  await referral.generateCode(subscriberId);
+  await dependencies.afterStep?.('referral-code');
+  const referrerTier = await referral.confirm(subscriberId, clock());
+  await dependencies.afterStep?.('referral-confirmed');
+  if (fresh && dependencies.giveaway !== undefined) {
+    giveawayMethods = await createGiveawayAccrualServiceInTransaction(
+      connection,
+      dependencies.giveaway.flags,
+      dependencies.giveaway.currentRules,
+      undefined,
+      producers.receipt,
+    ).accrueForVerification(subscriberId);
+  }
+  if (fresh) {
+    await producers.welcome(connection, subscriberId);
+  }
+  return { verified: verifiedEvent, referrerTier, giveawayMethods };
+}
+
 /**
  * The E3-07 completion boundary. A successful verification commits every
  * durable verification/referral/wave mutation together. Replays do not repeat
@@ -121,77 +236,15 @@ export function createVerificationCompletionService(
       const completion = createVerificationCompletionRepository(connection);
       const repository = createReferralRepository(connection);
 
-      if (consumed.outcome === 'verified') {
-        // Serialise the count-and-assign section so concurrent verifications
-        // receive distinct, stable ordinals at a configured band boundary.
-        await repository.lockAccessWindowAssignment();
-        const verificationTime = clock();
-        const verified = await completion.markVerified(
-          subscriberId,
-          verificationTime,
-        );
-        if (verified !== 1) {
-          throw new Error(
-            'A fresh verification token did not verify a pending subscriber.',
-          );
-        }
-        const source = await completion.sourceFacts(subscriberId);
-        if (source === null)
-          throw new Error('A verified subscriber has no source facts.');
-        verifiedEvent = { ...source, verifiedAt: verificationTime };
-        const consentVersion = await completion.promotePendingMarketingConsent(
-          subscriberId,
-          verificationTime,
-        );
-        if (consentVersion !== null) {
-          await createAuditService(connection).record({
-            action: 'consent.marketing_granted',
-            actor: 'subscriber',
-            detail: { source: 'signup', version: consentVersion },
-            subjectId: subscriberId,
-            subjectType: 'subscriber',
-          });
-        }
-        await dependencies.afterStep?.('verified');
-
-        // The verification-order window is written once (founder D1,
-        // 2026-11-17): wave 1 for the first 1,000, which no void removes.
-        // Later referral-based wave 1 is recomputed with the ladder.
-        const order = await repository.verificationOrder();
-        const window = accessWindowForVerificationOrder(
-          order,
-          dependencies.accessWindowBands ?? accessWindowBands,
-        );
-        if (
-          (await createReferralCouponRepository(
-            connection,
-          ).assignVerificationOrderWindow(subscriberId, window)) !== 1
-        ) {
-          throw new Error('The verified subscriber wave was not recorded.');
-        }
-        await dependencies.afterStep?.('access-window');
-      }
-
-      // The flag gates only display/new attribution. Code allocation and an
-      // already-recorded edge must continue to completion even while it is off;
-      // running these idempotently on replay also repairs rows stranded by the
-      // former flag-off behaviour.
-      await referral.generateCode(subscriberId);
-      await dependencies.afterStep?.('referral-code');
-      referrerTier = await referral.confirm(subscriberId, clock());
-      await dependencies.afterStep?.('referral-confirmed');
-      if (
-        consumed.outcome === 'verified' &&
-        dependencies.giveaway !== undefined
-      ) {
-        giveawayMethods = await createGiveawayAccrualServiceInTransaction(
-          connection,
-          dependencies.giveaway.flags,
-          dependencies.giveaway.currentRules,
-          undefined,
-          producers.receipt,
-        ).accrueForVerification(subscriberId);
-      }
+      const steps = await completeVerificationInTransaction(
+        connection,
+        subscriberId,
+        consumed.outcome === 'verified',
+        { ...dependencies, clock, producers },
+      );
+      verifiedEvent = steps.verified;
+      referrerTier = steps.referrerTier;
+      giveawayMethods = steps.giveawayMethods;
 
       const subscriber = await repository.findSubscriber(subscriberId);
       if (subscriber === null || subscriber.status !== 'verified') {
@@ -201,9 +254,6 @@ export function createVerificationCompletionService(
       }
 
       const status = await verification.issue(subscriberId, 'status');
-      if (consumed.outcome === 'verified') {
-        await producers.welcome(connection, subscriberId);
-      }
       return {
         accessWindow: subscriber.access_window,
         outcome: consumed.outcome,

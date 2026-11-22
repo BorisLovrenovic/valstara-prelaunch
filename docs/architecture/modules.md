@@ -102,6 +102,7 @@ valstara-prelaunch/
 | **verification** | Single-use verification tokens, hashed at rest, with an expiry and a consumption record | A token is consumed exactly once; a replay is a no-op, never an error the visitor sees | `docs/modules/verification.md` |
 | **referral** | Referral codes, the referral **edge** table, tier and milestone state, reward state | `confirmed_referrals` is **derived from edges and recomputable**, never blindly incremented | `docs/modules/referral.md` |
 | **giveaway** | Entry eligibility (no location), the entry ledger, the draw record, the award-time checks; maps an award page outcome and state to its message and icon (`server/giveaway/award-presentation.ts`, E11.5-10) | Every entry stamps the global rules version and hash; location is collected only from provisional winners (ADR-026) | `docs/modules/giveaway.md` |
+| **partner** (`server/partner/`, E11.7-05) | The partner application: its fields, the `partner` row, its confirmation link and emails, its retention purge, and the `/partners/apply` page outcome | A submission finds or creates a `pending` subscriber with signup's own domain screen and fraud signals; **only a confirmed application reaches `applied`**, and confirming verifies a pending member through the verification module's completion | `docs/features/partner-programme.md` |
 | **fraud** | Blocklist, MX results, velocity and self-referral signals, flags and their review state | Signals **flag, never auto-ban.** Every disqualification is a human decision and is audited | `docs/modules/fraud.md` |
 
 ### Cross-cutting services — no domain data of their own
@@ -163,6 +164,7 @@ Jobs only ever **materialise, remind, expire and repair.** Nothing a customer is
 | Referral counter repair | daily | yes | Counters drift from edges; the edges remain correct and authoritative |
 | Giveaway entry reconciliation | hourly and when `giveaway.open` turns on | 1,000 per transaction | Missing entries remain recoverable from verification and confirmed-edge timestamps; a failed run raises P2 and retries |
 | IP-prefix retention purge | daily | yes | **Retention breach — this is a compliance alert, not a hygiene one** |
+| Partner application purge (E11.7-05) | daily | 500 rows a run | Rejected and unconfirmed applications keep their personal fields past 90 days; a failed run takes the compliance P1 path and retries next day |
 | Bounce/complaint reconciliation | hourly | yes | Suppression lags; a suppressed address could receive one more send |
 | Maintenance heartbeat (G7-1-I2) | after each scheduler cycle and each email dispatch pass; the app's watchdog reads it every 30 s | n/a (one row per loop) | A stale loop raises one deduplicated P1; the work itself waits on durable rows and catches up |
 

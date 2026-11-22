@@ -8,6 +8,7 @@ import { createRankingIntegrityService } from '../referral/ranking.ts';
 import { maintenanceLoopIntervalMs } from '../subscriber/heartbeat-file.ts';
 
 import { dsrRenderers } from '../dsr/templates.ts';
+import { partnerApplicationRenderers } from '../partner/templates.ts';
 import { createResendProvider } from './providers/resend.ts';
 import type { BrevoContactProvider } from './providers/brevo.ts';
 import { createTransactionalTemplateData } from './transactional-template-data.ts';
@@ -48,6 +49,10 @@ export function createResendDispatcher(
       renderers ??
       new Map([
         ...dsrRenderers(config.emailBaseUrl, config.resendSendingDomain),
+        ...partnerApplicationRenderers(
+          config.emailBaseUrl,
+          config.resendSendingDomain,
+        ),
         ...createTransactionalRenderers({
           baseUrl: config.emailBaseUrl,
           sendingDomain: config.resendSendingDomain,

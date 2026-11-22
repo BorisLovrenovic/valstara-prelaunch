@@ -53,6 +53,11 @@ test('the checklist maps every portable Markdown source to one known storefront 
       // E11.5-11c (founder-authorised 2026-10-27): the landing hero's list.
       'src/content/landing-hero.json',
       'src/content/landing-hero.ts',
+      // E11.7-05: the partner application's country list, and the partner
+      // programme page's prose, which is campaign mechanics with no
+      // storefront port target (docs/brand/tokens.md).
+      'src/content/partner-countries.json',
+      'src/content/partner-programme.json',
       'src/content/provider-showcase.json',
       'src/content/provider-showcase.ts',
     ],
