@@ -4202,6 +4202,9 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 
 **Named test rewrite (founder-authorised 2026-11-22):** `test/document-pages-rendered.test.mjs`, “no content file changed: every recorded file is byte-identical”: update only the expected SHA-256 for `src/content/privacy.md` to match the founder-approved wording. Preserve the file-existence and byte-equality assertions and every other recorded hash.
 
+**Founder decisions (2026-12-04):**
+1. **Defer the quarterly partner CSV and Brevo import until the founder approves a workflow that enforces confirmed erasure.** This puts the `partners export` command, its CSV endpoint and the quarterly dashboard upload in D-052 Q3 on hold. The current export implementation and its tests stay in work in progress. Do not release the route or command, upload any previously generated partner CSV, or publish the quarterly-import disclosure as an active practice while the hold applies. E9-05's signed-confirmation commit remains the cutoff. Before release, prove that a fresh export excludes erasure-pending and erased subjects and that a file generated before confirmation cannot cause a Brevo upsert after confirmation, including an import already in progress. Preserve the existing columns, paging, audit and authentication test requirements. Keep E11.7-06 blocked until the founder approves the workflow or separately authorises a split for the lifecycle commands. This decision changes no register order or QA gate. (D-054.) *(Accepted under the founder's standing rule for high-confidence recommendations.)*
+
 **Docs:** `docs/features/admin.md` · `docs/features/partner-programme.md#partner-lifecycle`
 
 ### E11.7-07 — Activation: `/r/{CODE}`, partner attribution and retroactive attribution
