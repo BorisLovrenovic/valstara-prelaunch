@@ -49,7 +49,7 @@ const appPassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const launch = new Date('2027-03-15T10:00:00.000Z');
 // Five years after the configured public-launch date (E11.7-03).
-const couponExpiry = '2032-09-01T00:00:00.000Z';
+const couponExpiry = '2032-10-01T00:00:00.000Z';
 
 test('the named freeze audit requires signups closed and records its mode', async () => {
   const f = await fixture();

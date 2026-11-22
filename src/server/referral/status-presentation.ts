@@ -1,9 +1,19 @@
 import { memberStatusCopy } from '../../copy/member-status.ts';
+import { referralLadderCopy } from '../../copy/referral-ladder.ts';
 
+import {
+  earlyAccess,
+  ladderPresentationConfiguration,
+  ladderProgress,
+  type LadderPresentationConfiguration,
+} from './ladder-presentation.ts';
 import type { ReferralStatus } from './status.ts';
 
 /** Shared display values for the member page and transactional referral mail. */
-export function presentReferralStatus(status: ReferralStatus) {
+export function presentReferralStatus(
+  status: ReferralStatus,
+  configuration: LadderPresentationConfiguration = ladderPresentationConfiguration,
+) {
   const values = {
     subscriberStatus:
       memberStatusCopy.authenticated.statusValues[status.subscriberStatus],
@@ -12,11 +22,16 @@ export function presentReferralStatus(status: ReferralStatus) {
       status.ownRank === null
         ? memberStatusCopy.authenticated.rankUnavailable
         : String(status.ownRank),
-    tier: String(status.tier),
     accessWindow:
       status.accessWindow ?? memberStatusCopy.authenticated.wavePending,
     giveawayEntries: String(status.giveawayEntries),
   };
+  const ladder = ladderProgress(status.confirmedReferrals, configuration);
+  const access = earlyAccess(status, configuration);
+  // In wave 1 the fact is the month early access opens.
+  const earlyAccessValue = access.inWaveOne
+    ? access.month
+    : memberStatusCopy.authenticated.earlyAccessNotYet;
   return {
     values,
     // Each field keeps its key so /me can place it on its own card; the email
@@ -41,10 +56,10 @@ export function presentReferralStatus(status: ReferralStatus) {
         tabular: true,
       },
       {
-        key: 'tier' as const,
-        label: memberStatusCopy.authenticated.tier,
-        value: values.tier,
-        tabular: true,
+        key: 'earlyAccess' as const,
+        label: memberStatusCopy.authenticated.earlyAccess,
+        value: earlyAccessValue,
+        tabular: false,
       },
       {
         key: 'accessWindow' as const,
@@ -60,19 +75,17 @@ export function presentReferralStatus(status: ReferralStatus) {
       },
     ],
     referralLink: status.referralLink,
-    rewards: status.rewards
-      .filter(
-        (
-          reward,
-        ): reward is typeof reward & {
-          kind: 'discount' | 'merch' | 'wave_upgrade';
-        } => reward.kind !== 'entries',
-      )
-      .map((reward) => ({
-        label: memberStatusCopy.rewards.kinds[reward.kind],
-        tier: memberStatusCopy.rewards.tier(reward.tier),
-        state: memberStatusCopy.rewards.states[reward.state],
-        stateKey: reward.state,
-      })),
+    earlyAccess: access,
+    ladder,
+    // Every coupon the count earns. Each is held: the main platform makes it
+    // usable once one of the member's referred friends places a first order
+    // (ADR-012), so each row carries that condition.
+    coupons: ladder.coupons.map(({ number, percent }) => ({
+      number,
+      label: referralLadderCopy.couponName(number),
+      percent: referralLadderCopy.percent(percent),
+      state: referralLadderCopy.heldState,
+      condition: referralLadderCopy.heldShort,
+    })),
   };
 }

@@ -304,10 +304,18 @@ test('verification states, exact figures, native actions and flags render access
         .getAttribute('max'),
       '3',
     );
-    assert.match(successHtml, /0 of 3 to Tier 1/u);
-    assert.match(successHtml, /15% launch discount/u);
+    // E11.7-04: the coupon ladder, with its held condition.
+    assert.match(
+      successHtml,
+      /3 more confirmed referrals to Coupon 1 at 5%\./u,
+    );
+    assert.match(successHtml, /Coupon 1: 5%/u);
     assert.match(successHtml, /Access wave 1/u);
-    assert.match(successHtml, /first order within 90 days/u);
+    assert.match(
+      successHtml,
+      /places their first order, and last 5 years after launch/u,
+    );
+    assert.doesNotMatch(successHtml, /Tier \d|launch discount|90 days/u);
     assert.equal(await confirmation.locator('input[value="ai"]').count(), 1);
     assert.equal(
       await confirmation.locator('input[value="apparel"]').count(),
@@ -342,7 +350,10 @@ test('verification states, exact figures, native actions and flags render access
         body: new globalThis.URLSearchParams({ token: data.token }),
       },
     );
-    assert.match(await replay.text(), /0 of 3 to Tier 1/u);
+    assert.match(
+      await replay.text(),
+      /3 more confirmed referrals to Coupon 1 at 5%\./u,
+    );
     assert.equal(replay.headers.get('set-cookie'), null);
     await data.database.query(
       "UPDATE subscriber SET confirmed_referrals=2, access_window='wave-2' WHERE id=$1",
@@ -360,7 +371,7 @@ test('verification states, exact figures, native actions and flags render access
       },
     );
     const revisedHtml = await revised.text();
-    assert.match(revisedHtml, /2 of 3 to Tier 1/u);
+    assert.match(revisedHtml, /1 more confirmed referral to Coupon 1 at 5%\./u);
     assert.match(revisedHtml, /Access wave 2/u);
     for (const marker of ['data-copy-referral', 'data-survey-skip']) {
       const tag = revisedHtml.match(

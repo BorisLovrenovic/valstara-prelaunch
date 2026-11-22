@@ -6,7 +6,7 @@ export const verificationCopy = {
   },
   complete: 'Your email address is verified.',
   completeNext:
-    'Your place is confirmed. Share your link to move toward your next tier.',
+    'Your place is confirmed. Share your link to earn referral rewards.',
   completeNextNoReferral: 'Your place is confirmed.',
   invalid: 'This verification link is not available.',
   invalidHeading: 'Request a new link',
@@ -22,15 +22,6 @@ export const verificationCopy = {
     copied: 'Link copied.',
     copyFailed: 'Select and copy the link instead.',
     share: 'Share link',
-    progress: (count: number, threshold: number, tier: number) =>
-      `${count} of ${threshold} to Tier ${tier}`,
-    reward: (discount: number) => `${discount}% launch discount`,
-    unlocks: (tier: number) => `Tier ${tier} unlocks`,
-    waveReward: 'Earlier access wave',
-    heldCondition:
-      'The discount is held until a confirmed referral places a first order within 90 days after launch.',
-    held: 'Held',
-    settled: 'Settled',
     wave: (window: string) => `Access wave ${window.slice(-1)}`,
   },
   resend: {

@@ -330,8 +330,10 @@ test('E11.5-12: every showcase entry matches its P8 confirmation, and the landin
 });
 
 test('E11.5-12: every rendered reward figure matches the referral configuration and its documented source', async () => {
-  const { couponLadder, milestoneTiers } =
+  const { couponLadder, waveOneReferralThreshold, waveOneEarlyAccessMonth } =
     await import('../src/server/referral/config.ts');
+  const { landingLadder, ladderProgress } =
+    await import('../src/server/referral/ladder-presentation.ts');
   const referral = await readFile(
     join(root, 'docs/modules/referral.md'),
     'utf8',
@@ -343,7 +345,7 @@ test('E11.5-12: every rendered reward figure matches the referral configuration 
     stepReferrals: 3,
     stepPercent: 5,
     maximumPercent: 30,
-    publicLaunchDate: '2027-09-01',
+    publicLaunchDate: '2027-10-01',
     expiryYears: 5,
   });
   const [first, second, third] = couponLadder.unlocks;
@@ -367,18 +369,10 @@ test('E11.5-12: every rendered reward figure matches the referral configuration 
     referral,
     /\(15% \/ 25%\) are \*\*confirmed production values\*\*/u,
   );
-  assert.deepEqual(
-    milestoneTiers.map(({ number, threshold, discountPercent, enabled }) => ({
-      number,
-      threshold,
-      discountPercent,
-      enabled,
-    })),
-    [
-      { number: 1, threshold: 3, discountPercent: 15, enabled: true },
-      { number: 2, threshold: 5, discountPercent: 25, enabled: false },
-    ],
-  );
+  // E11.7-04 (D-047): the landing card states the coupon ladder and wave 1
+  // from the same configuration, and nothing states the retired tier.
+  assert.equal(waveOneReferralThreshold, 3);
+  assert.equal(waveOneEarlyAccessMonth, '2027-09');
 
   const { body } = await renderLanding();
   // What a reader sees: the page's text, without its styles and scripts,
@@ -387,48 +381,74 @@ test('E11.5-12: every rendered reward figure matches the referral configuration 
     .replace(/<(style|script)\b[\s\S]*?<\/\1>/gu, ' ')
     .replace(/<[^>]+>/gu, ' ')
     .replace(/\s+/gu, ' ');
-  const enabled = milestoneTiers.filter((tier) => tier.enabled);
-  assert.deepEqual(
-    [...body.matchAll(/class="landing-tier" data-tier="(\d+)"/gu)].map(
-      ([, number]) => Number(number),
-    ),
-    enabled.map(({ number }) => number),
-    'only enabled tiers are promised',
+  const ladder = landingLadder();
+  assert.equal(
+    ladder.sentence,
+    `${first} confirmed referrals → early access in September 2027 and a ${couponLadder.stepPercent}% coupon`,
   );
-  for (const tier of enabled) {
-    const sentence = landingCopy.rewards.tier(tier);
-    assert.ok(visible.includes(sentence), `tier ${tier.number} sentence`);
-    assert.ok(
-      sentence.includes(`${tier.threshold} confirmed referrals`) &&
-        sentence.includes(`${tier.discountPercent}% off`),
-    );
-    const drawn = new RegExp(
-      `data-tier="${tier.number}"[\\s\\S]*?<span class="landing-figure tabular-figure"[^>]*>\\s*${tier.threshold}\\s*</span>[\\s\\S]*?<span class="tabular-figure"[^>]*>\\s*${tier.discountPercent}%\\s*</span>`,
+  for (const sentence of [
+    ladder.sentence,
+    ladder.steps,
+    ladder.moreCoupons,
+    ladder.waveOne,
+    ladder.held,
+  ])
+    assert.ok(visible.includes(sentence), sentence);
+  assert.ok(
+    ladder.steps.includes(
+      `${couponLadder.stepPercent}% every ${couponLadder.stepReferrals} more confirmed referrals, up to ${couponLadder.maximumPercent}%`,
+    ),
+  );
+  assert.ok(ladder.moreCoupons.includes(`at ${second} and ${third}`));
+  assert.ok(ladder.held.includes(`${couponLadder.expiryYears} years`));
+  assert.equal(
+    [...body.matchAll(/class="landing-tier" data-tier="(\d+)"/gu)].length,
+    1,
+    'one drawn equation: the first unlock',
+  );
+  assert.match(
+    body,
+    new RegExp(
+      `data-tier="1"[\\s\\S]*?<span class="landing-figure tabular-figure"[^>]*>\\s*${first}\\s*</span>[\\s\\S]*?<span class="tabular-figure"[^>]*>\\s*${couponLadder.stepPercent}%\\s*</span>`,
       'u',
-    );
-    assert.match(body, drawn, `tier ${tier.number} drawn figures`);
-  }
-  for (const tier of milestoneTiers.filter((candidate) => !candidate.enabled))
-    assert.ok(
-      !visible.includes(landingCopy.rewards.tier(tier)) &&
-        !visible.includes(`${tier.discountPercent}%`) &&
-        !new RegExp(`\\b${tier.threshold} confirmed referrals`, 'u').test(
-          visible,
-        ),
-      `disabled tier ${tier.number} is not promised`,
-    );
-  // The held-discount window, wherever a surface states it.
-  const window = /within (\d+) days after (?:store )?launch/u;
+    ),
+    'the drawn figures',
+  );
+  // The retired reward is stated nowhere a reader can see.
+  assert.doesNotMatch(
+    visible,
+    /15% off|launch discount|move up an access wave|Tier \d|within \d+ days after/iu,
+  );
+  // The held condition, wherever a surface states it: the first order and
+  // the configured expiry, never the retired 90-day window.
+  const ladderCopy = await readFile(
+    join(root, 'src/copy/referral-ladder.ts'),
+    'utf8',
+  );
+  assert.match(
+    ladderCopy,
+    /places their first order, and last \$\{expiryYears\} years after launch/u,
+  );
+  assert.match(
+    ladderCopy,
+    /places a first order, for \$\{expiryYears\} years after launch/u,
+  );
   for (const path of [
     'src/copy/landing.ts',
     'src/copy/verification.ts',
     'src/copy/member-status.ts',
     'src/copy/email.ts',
+    'src/copy/referral-ladder.ts',
   ]) {
     const source = await readFile(join(root, path), 'utf8');
-    const stated = [...source.matchAll(new RegExp(window, 'gu'))];
-    assert.ok(stated.length > 0, `${path} states the held window`);
-    for (const [, days] of stated) assert.equal(days, '90', path);
+    assert.doesNotMatch(
+      source,
+      /within \d+ days after (?:store )?launch/u,
+      path,
+    );
   }
-  assert.ok(body.includes(landingCopy.rewards.held));
+  assert.match(
+    ladderProgress(first).held,
+    new RegExp(`first order, and last ${couponLadder.expiryYears} years`, 'u'),
+  );
 });

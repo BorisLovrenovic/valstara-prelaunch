@@ -1,6 +1,6 @@
 # Valstara — Pre-Launch Growth & Partner Programme: Decisions
 
-**Last updated:** 17 November 2026
+**Last updated:** 22 November 2026 (dates, partner terms, positioning and the competition window amended by the founder; verbatim in `docs/features/partner-programme.md#founder-amendments-22-november-2026-verbatim`)
 **Supersedes:** anything in the growth playbooks or the Nov 2026 research report that conflicts with this file.
 **Out of scope here:** legal, compliance, payouts, tax. Handled by the legal team.
 
@@ -10,9 +10,12 @@
 
 | Date | Event |
 |---|---|
-| Now → July 2027 | Pre-launch campaign: waitlist, referrals, partner programme open |
-| Early July 2027 | **Early access opens.** Store live for qualifying members. Real orders and partner commissions start on the main platform. |
-| Early September 2027 | **Public launch.** Lines up with the start of the academic year. |
+| Now → 1 September 2027 | Pre-launch campaign: waitlist, referrals, partner programme open |
+| **1 September 2027** | **Early access opens.** Store live for qualifying members. Real orders and partner commissions start on the main platform. |
+| **1 October 2027** | **Public launch.** Early in the academic year. |
+| **1 October 2028** | The pre-launch partner commission window ends |
+
+*Amended 22 November 2026 (founder): previously early July 2027 and early September 2027.*
 
 ## SubSlush (locked)
 
@@ -30,16 +33,16 @@ SubSlush is **completely separate** from Valstara: no shared emails, no mentions
 ## Partner (affiliate) programme — commercial terms (locked)
 
 - **Rate:** fixed **10%** of order value on **all products**. No category rates. Gift cards and game keys aren't in the launch catalogue; revisit when they arrive.
-- **Duration:** 10% of every order a referred customer places, for **12 months** from that customer's first order.
+- **Duration (amended 22 Nov 2026):** 10% of every order placed by a customer the partner referred **during the pre-launch campaign**, from early access (**1 September 2027**) until one year after public launch (**1 October 2028**). After that, the customer is no longer attributed to the partner under these terms. Customers referred after public launch fall under the post-launch rates, agreed separately.
 - **One level only.** No commission for recruiting other partners.
-- **Founding rate lock:** partners who join before public launch keep 10% for 12 months per referred customer for the life of the programme. Any future change applies only to partners who join later.
+- **Founding rate lock (amended 22 Nov 2026):** **one year, not lifetime.** Only partners accepted during the pre-launch campaign get the 10%, and only on their pre-launch referrals, until 1 October 2028.
 - **Contracts for every partner.** Short, plain-English and fair: no small print, readable without a lawyer.
 - **Programme opens now.** Most active recruiting happens April–June 2027. Student ambassadors and seeded creators (recruited directly, under contract) can start immediately.
-- **Positioning:** "double what the big marketplaces pay" (G2A and Eneba pay about 5%).
+- **Positioning (amended 22 Nov 2026):** lead with **"more than triple GameSeal's commission rate"** (GameSeal's standard rate is about 2–3%), then **"double the rate of G2A and Eneba"** (about 5% at most). Compare only with these three, against their standard rates, and only for the pre-launch terms.
 
 ## Pre-launch partner system (locked 17 Nov 2026)
 
-**It's deliberately simple and temporary.** It's retired when the full affiliate system on the main Valstara platform goes live, which is planned for **July 2027 (early access)**. Keep build time and complexity low.
+**It's deliberately simple and temporary.** It's retired when the full affiliate system on the main Valstara platform goes live, which is planned for **1 September 2027 (early access)**. Keep build time and complexity low.
 
 - **No commissions are calculated before launch.** The pre-launch system only records attribution (who referred whom) and exports it to the main platform.
 - **Entry:** anyone can apply, and the founder reviews every application by hand. Members who reach **10 confirmed referrals** get an automatic invitation to apply.
@@ -67,7 +70,7 @@ SubSlush is **completely separate** from Valstara: no shared emails, no mentions
 
 ### Post-launch partner competition
 Runs on the main platform. Ranked on real referred order value after refunds. Prizes for the top 3, plus a bonus for everyone who passes a set amount. Announce it pre-launch so it motivates partners now.
-- **Open:** the measurement window. Founder proposed public launch → 31 Dec 2027. Recommendation: 1 Jul → 31 Dec 2027, to include early access.
+- **Measurement window (decided 21 Nov 2026):** **1 September 2027 (early access) → 31 December 2027.**
 
 ## Creator seeding (locked)
 
@@ -139,12 +142,13 @@ Trust Ledger and building in public, monthly price index, programmatic pages, ov
 - **Early access:** see "Early access" above (the first 1,000, or 3 confirmed referrals).
 - **Coupon ladder** (members and partners): coupon 1 unlocks at 3 confirmed referrals at 5%, then +5% every 3 referrals up to 30% at 18. Coupon 2 runs 21–36, and coupon 3 runs 39–54, the same way. Each coupon is single-use, no discounts stack, and coupons expire five years after public launch. Coupons are held until one of the member's referred friends places a first order.
 - **$5 store credit — normal members only:** a member who is not a partner earns **$5 store credit for each referred friend who completes a purchase after launch.** No credit is earned for a signup alone. Credits stack, because each one is backed by a real purchase. It is paid on the main platform.
-- **Partners do not get the $5 credit.** Instead they earn **10% cash commission on every order their referred customers place in the first 12 months** from each customer's first order, paid on the main platform.
+- **Partners do not get the $5 credit.** Instead they earn **10% cash commission on every order placed by the customers they referred during the pre-launch campaign, from early access until 1 October 2028**, paid on the main platform.
 - **Referred friend's discount:** only friends of partners get a welcome discount (see "Pre-launch partner system"). Friends of normal members get none.
 
 ## Open decisions
 
-1. Window for the post-launch partner competition (Jul–Dec vs Sep–Dec).
-2. Final $5k budget split.
+1. Final $5k budget split. The founder sets it.
+
+*(The post-launch partner competition window was decided on 21 November 2026: 1 September – 31 December 2027.)*
 
 *(The member referral reward structure was decided on 17 Nov 2026; see above.)*

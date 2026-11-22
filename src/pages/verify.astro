@@ -1,4 +1,5 @@
 ---
+import { referralLadderCopy } from '../copy/referral-ladder.ts';
 import { verificationCopy } from '../copy/verification.ts';
 import { surveyCopy } from '../copy/survey.ts';
 import { resendVerificationCopy } from '../copy/resend-verification.ts';
@@ -110,6 +111,7 @@ const referralUrl =
     ? new URL(completion.referralStatus.referralLink)
     : null;
 const showReferral = referralUrl !== null && ladderFigures !== null;
+const meter = ladderFigures?.meter ?? null;
 // The link wraps after the origin and keeps its code in one unit, so it
 // never truncates (the canvas's .linkbox). The parts are the URL's own.
 const referralCode = referralUrl?.searchParams.get('ref') ?? '';
@@ -127,12 +129,9 @@ const referralParts =
         }
       : { base: referralUrl.toString(), query: '', code: '' };
 const meterSegments =
-  ladderFigures === null
+  meter === null
     ? []
-    : Array.from(
-        { length: ladderFigures.threshold },
-        (_, index) => index < ladderFigures.progress,
-      );
+    : Array.from({ length: meter.span }, (_, index) => index < meter.progress);
 const statusUrl =
   completion.statusToken === null
     ? null
@@ -317,86 +316,79 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
                   </div>
                 </div>
                 <div class="verification-well">
-                  <div class="verification-meter">
-                    <div class="verification-meter__top">
-                      <label
-                        class="verification-meter__value"
-                        for="referral-progress"
-                        data-meter-text
-                      >
-                        {verificationCopy.referral.progress(
-                          ladderFigures.progress,
-                          ladderFigures.threshold,
-                          ladderFigures.tier,
-                        )}
-                      </label>
-                    </div>
-                    <progress
-                      class="verification-meter__native"
-                      id="referral-progress"
-                      data-referral-progress
-                      value={ladderFigures.progress}
-                      max={ladderFigures.threshold}
-                    />
-                    <span
-                      class="verification-meter__track"
-                      aria-hidden="true"
-                      data-meter-track
-                    >
-                      {meterSegments.map((filled) => (
-                        <i
-                          class:list={[
-                            'verification-meter__segment',
-                            filled && 'is-filled',
-                          ]}
-                        >
-                          {filled ? (
-                            <b class="verification-meter__fill" />
-                          ) : null}
-                        </i>
-                      ))}
-                    </span>
-                  </div>
-                  <div class="verification-unlocks">
-                    <p class="verification-label">
-                      {verificationCopy.referral.unlocks(ladderFigures.tier)}
+                  {meter === null ? (
+                    <p class="verification-meter__value" data-meter-text>
+                      {ladderFigures.line}
                     </p>
-                    <ul class="verification-unlocks__list">
-                      <li>
-                        <Pill>
-                          <Icon name="arrow-up" size="sm" />
-                          {verificationCopy.referral.waveReward}
-                        </Pill>
-                      </li>
-                      <li>
-                        <Pill variant="coral">
-                          {verificationCopy.referral.reward(
-                            ladderFigures.discountPercent,
-                          )}
-                        </Pill>
-                      </li>
-                    </ul>
-                    {ladderFigures.rewardStates.length > 0 ? (
+                  ) : (
+                    <div class="verification-meter">
+                      <div class="verification-meter__top">
+                        <label
+                          class="verification-meter__value"
+                          for="referral-progress"
+                          data-meter-text
+                        >
+                          {ladderFigures.line}
+                        </label>
+                      </div>
+                      <progress
+                        class="verification-meter__native"
+                        id="referral-progress"
+                        data-referral-progress
+                        value={meter.progress}
+                        max={meter.span}
+                      />
+                      <span
+                        class="verification-meter__track"
+                        aria-hidden="true"
+                        data-meter-track
+                      >
+                        {meterSegments.map((filled) => (
+                          <i
+                            class:list={[
+                              'verification-meter__segment',
+                              filled && 'is-filled',
+                            ]}
+                          >
+                            {filled ? (
+                              <b class="verification-meter__fill" />
+                            ) : null}
+                          </i>
+                        ))}
+                      </span>
+                    </div>
+                  )}
+                  {meter === null ? null : (
+                    <div class="verification-unlocks">
+                      <p class="verification-label">
+                        {referralLadderCopy.nextAt(meter.target)}
+                      </p>
                       <ul class="verification-unlocks__list">
-                        {ladderFigures.rewardStates.map((reward) => (
+                        {meter.earlyAccessMonth === null ? null : (
                           <li>
                             <Pill>
-                              {reward.kind === 'discount'
-                                ? verificationCopy.referral.reward(
-                                    ladderFigures.discountPercent,
-                                  )
-                                : verificationCopy.referral.waveReward}
-                              : {verificationCopy.referral[reward.state]}
+                              <Icon name="check" size="sm" />
+                              {referralLadderCopy.earlyAccessPill}
                             </Pill>
                           </li>
-                        ))}
+                        )}
+                        {meter.coupon === null ? null : (
+                          <li>
+                            <Pill variant="coral">
+                              {referralLadderCopy.coupon(
+                                meter.coupon.number,
+                                meter.coupon.percent,
+                              )}
+                            </Pill>
+                          </li>
+                        )}
                       </ul>
-                    ) : null}
-                  </div>
+                    </div>
+                  )}
                 </div>
                 <p class="verification-held">
                   <Icon name="clock" size="sm" />
-                  <span>{verificationCopy.referral.heldCondition}</span>
+                  <span>{ladderFigures.held}</span>
                 </p>
               </Card>
             ) : null}

@@ -1,38 +1,49 @@
-import { milestoneTiers, type MilestoneTier } from './config.ts';
+import {
+  earlyAccess,
+  ladderPresentationConfiguration,
+  ladderProgress,
+  type LadderPresentationConfiguration,
+} from './ladder-presentation.ts';
 import type { ReferralStatus } from './status.ts';
 
 /**
- * Figures on the verification page stay tied to the shared status and ladder.
- * The access wave comes from status alone, so it survives a ladder with no
- * enabled tier; the ladder figures are null then, and no tier is promised.
+ * The referral meter on /verify and /me: progress from the last ladder step
+ * reached to the next, or to wave 1's threshold when that comes first, and
+ * what that point brings. Every figure comes from
+ * the shared status and the ladder configuration. A complete ladder has no
+ * meter.
  */
 export function verificationReferralFigures(
   status: ReferralStatus,
-  ladder: readonly MilestoneTier[] = milestoneTiers,
+  configuration: LadderPresentationConfiguration = ladderPresentationConfiguration,
 ) {
-  const enabled = ladder.filter((tier) => tier.enabled);
-  const target =
-    enabled.find((tier) => status.confirmedReferrals < tier.threshold) ??
-    enabled.at(-1);
-  if (target === undefined)
-    return { accessWindow: status.accessWindow, ladder: null };
-
-  const progress = Math.min(status.confirmedReferrals, target.threshold);
-  const awards = status.rewards.filter(
-    (reward) => reward.tier === target.number,
-  );
+  const progress = ladderProgress(status.confirmedReferrals, configuration);
+  const access = earlyAccess(status, configuration);
+  const next = progress.next;
+  const threshold = configuration.waveOneReferrals;
+  // Wave 1's threshold can fall before the next ladder step; the meter then
+  // ends there, and that point brings early access and no coupon.
+  const accessFirst =
+    next !== null && !access.inWaveOne && threshold < next.target;
   return {
     accessWindow: status.accessWindow,
     ladder: {
-      confirmedReferrals: status.confirmedReferrals,
-      discountPercent: target.discountPercent,
-      progress,
-      rewardStates: awards.map((award) => ({
-        kind: award.kind,
-        state: award.state,
-      })),
-      threshold: target.threshold,
-      tier: target.number,
+      line: progress.line,
+      held: progress.held,
+      meter:
+        next === null
+          ? null
+          : {
+              progress: status.confirmedReferrals - next.from,
+              span: (accessFirst ? threshold : next.target) - next.from,
+              target: accessFirst ? threshold : next.target,
+              coupon: accessFirst ? null : next.coupon,
+              // Reaching wave 1's threshold opens early access.
+              earlyAccessMonth:
+                !access.inWaveOne && next.target >= threshold
+                  ? access.month
+                  : null,
+            },
     },
   };
 }

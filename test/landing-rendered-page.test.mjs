@@ -134,10 +134,13 @@ test(
       giveawayCard(baseline.body),
       /5 prizes, approximately €300 each/u,
     );
+    // E11.7-04: the referral card states the coupon ladder, not the retired
+    // wave-upgrade and 15% reward.
     assert.match(
       baseline.body,
-      /3 confirmed referrals → move up an access wave and 15% off at launch/u,
+      /3 confirmed referrals → early access in September 2027 and a 5% coupon/u,
     );
+    assert.doesNotMatch(baseline.body, /move up an access wave|15% off/u);
 
     const article =
       /<article\b[^>]*data-rules-version="[^"]+"[^>]*data-rules-sha256="[a-f0-9]{64}"[^>]*>([\s\S]*?)<\/article>/u.exec(
@@ -197,13 +200,30 @@ test(
       assert.notEqual(revisedRules, rules);
       await writeFile(rulesPath, revisedRules);
       const configPath = join(root, 'src/server/referral/config.ts');
+      // E11.7-04: the ladder's first unlock, its step, the wave-1 threshold
+      // and the early-access month are configuration.
       const config = await readFile(configPath, 'utf8');
-      await writeFile(
-        configPath,
-        config
-          .replace('discountPercent: 15', 'discountPercent: 17')
-          .replace('threshold: 3', 'threshold: 4'),
-      );
+      let changedConfig = config;
+      for (const [from, to] of [
+        [
+          'unlocks: Object.freeze([3, 21, 39])',
+          'unlocks: Object.freeze([4, 21, 39])',
+        ],
+        ['stepPercent: 5,', 'stepPercent: 6,'],
+        ['waveOneReferralThreshold = 3;', 'waveOneReferralThreshold = 4;'],
+        [
+          "waveOneEarlyAccessMonth = '2027-09';",
+          "waveOneEarlyAccessMonth = '2027-08';",
+        ],
+      ]) {
+        assert.equal(
+          changedConfig.split(from).length,
+          2,
+          `exactly one "${from}"`,
+        );
+        changedConfig = changedConfig.replace(from, to);
+      }
+      await writeFile(configPath, changedConfig);
       await executeFile(
         join(projectRoot, 'node_modules/.bin/astro'),
         ['build'],
@@ -224,11 +244,11 @@ test(
       );
       assert.match(
         changed.body,
-        /4 confirmed referrals → move up an access wave and 17% off at launch/u,
+        /4 confirmed referrals → early access in August 2027 and a 6% coupon/u,
       );
       assert.doesNotMatch(
         changed.body,
-        /3 confirmed referrals → move up an access wave and 15% off at launch/u,
+        /3 confirmed referrals → early access in September 2027 and a 5% coupon/u,
       );
     } finally {
       await rm(root, { recursive: true, force: true });

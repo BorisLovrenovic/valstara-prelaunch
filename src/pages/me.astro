@@ -12,7 +12,7 @@ import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
 import { createUnsubscribeRepository } from '../server/db/unsubscribe.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
-import { accessWindows } from '../server/referral/config.ts';
+import { accessWindows, couponLadder } from '../server/referral/config.ts';
 import { createReferralService } from '../server/referral/service.ts';
 import { presentReferralStatus } from '../server/referral/status-presentation.ts';
 import { verificationReferralFigures } from '../server/referral/verification-presentation.ts';
@@ -120,7 +120,7 @@ const factKeys: readonly DashboardField['key'][] = [
   'accessWindow',
   'ownRank',
   'confirmedReferrals',
-  'tier',
+  'earlyAccess',
   ...(dashboardStatus !== null && dashboardStatus.giveawayEntries > 0
     ? (['giveawayEntries'] as const)
     : []),
@@ -141,7 +141,8 @@ const waveBars = accessWindows.map(
 // A figure is mono; a word in its place ("Not currently ranked") is muted.
 const mutedValue = (field: DashboardField) =>
   (field.key === 'ownRank' && dashboardStatus?.ownRank === null) ||
-  (field.key === 'accessWindow' && accessWindow === null);
+  (field.key === 'accessWindow' && accessWindow === null) ||
+  (field.key === 'earlyAccess' && !dashboardView?.earlyAccess.inWaveOne);
 // The link wraps after the origin and keeps its code in one unit, so it
 // never truncates, as on /verify (E11.5-11r decision 2).
 const referralUrl =
@@ -160,16 +161,12 @@ const referralParts =
           code: referralCode,
         }
       : { base: referralUrl.toString(), query: '', code: '' };
+const meter = ladderFigures?.meter ?? null;
+const firstCouponUnlock = couponLadder.unlocks[0]!;
 const meterSegments =
-  ladderFigures === null
+  meter === null
     ? []
-    : Array.from(
-        { length: ladderFigures.threshold },
-        (_, index) => index < ladderFigures.progress,
-      );
-// Held and settled differ by icon, word, fill and outline, never by colour
-// alone.
-const rewardIcon = { held: 'clock', settled: 'check' } as const;
+    : Array.from({ length: meter.span }, (_, index) => index < meter.progress);
 ---
 
 <BaseLayout
@@ -261,6 +258,14 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
                   </div>
                 ))}
               </dl>
+              <p
+                class="member-access"
+                data-early-access={
+                  dashboardView.earlyAccess.inWaveOne ? 'wave-1' : 'not-yet'
+                }
+              >
+                {dashboardView.earlyAccess.line}
+              </p>
             </Card>
 
             <Card
@@ -334,7 +339,13 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
                   </Button>
                 </template>
               </div>
-              {ladderFigures !== null ? (
+              {ladderFigures === null ? null : meter === null ? (
+                <div class="member-well member-meter">
+                  <p class="member-meter__value" data-meter-text>
+                    {ladderFigures.line}
+                  </p>
+                </div>
+              ) : (
                 <div class="member-well member-meter">
                   <div class="member-meter__top">
                     <label
@@ -342,19 +353,15 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
                       for="member-referral-progress"
                       data-meter-text
                     >
-                      {memberStatusCopy.referral.progress(
-                        ladderFigures.progress,
-                        ladderFigures.threshold,
-                        ladderFigures.tier,
-                      )}
+                      {ladderFigures.line}
                     </label>
                   </div>
                   <progress
                     class="member-meter__native"
                     id="member-referral-progress"
                     data-referral-progress
-                    value={ladderFigures.progress}
-                    max={ladderFigures.threshold}
+                    value={meter.progress}
+                    max={meter.span}
                   />
                   <span
                     class="member-meter__track"
@@ -373,7 +380,7 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
                     ))}
                   </span>
                 </div>
-              ) : null}
+              )}
             </Card>
 
             <Card
@@ -391,38 +398,37 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
                   {memberStatusCopy.rewards.heading}
                 </h2>
               </div>
-              {dashboardView.rewards.length === 0 ? (
+              {dashboardView.coupons.length === 0 ? (
                 <div class="member-well member-rewards-empty">
-                  <p>{memberStatusCopy.rewards.empty}</p>
+                  <p>{memberStatusCopy.rewards.empty(firstCouponUnlock)}</p>
                 </div>
               ) : (
                 <ul class="member-rewards">
-                  {/* Each row carries its state's whole key: the icon, the
-                      word and the plain explanation. */}
-                  {dashboardView.rewards.map((reward) => (
+                  {/* Every coupon is held, and each row says what makes it
+                      usable: an icon, the word and the condition. */}
+                  {dashboardView.coupons.map((coupon) => (
                     <li
                       class="member-reward"
-                      data-reward-state={reward.stateKey}
-                      data-reward-key={reward.stateKey}
+                      data-reward-state="held"
+                      data-coupon={coupon.number}
                     >
-                      <span class="member-reward__kind">{reward.label}</span>
-                      <span
-                        class:list={[
-                          'member-reward__state',
-                          `member-reward__state--${reward.stateKey}`,
-                        ]}
-                      >
-                        <Icon name={rewardIcon[reward.stateKey]} size="sm" />
-                        {reward.state}
+                      <span class="member-reward__kind">{coupon.label}</span>
+                      <span class="member-reward__state member-reward__state--held">
+                        <Icon name="clock" size="sm" />
+                        {coupon.state}
                       </span>
-                      <span class="member-reward__tier">{reward.tier}</span>
-                      <p class="member-reward__why">
-                        {memberStatusCopy.rewards.explanations[reward.stateKey]}
-                      </p>
+                      <span class="member-reward__tier tabular-figure">
+                        {coupon.percent}
+                      </span>
+                      <p class="member-reward__why">{coupon.condition}</p>
                     </li>
                   ))}
                 </ul>
               )}
+              <p class="member-rewards-held" data-held-condition>
+                <Icon name="clock" size="sm" />
+                <span>{dashboardView.ladder.held}</span>
+              </p>
             </Card>
 
             <Card
@@ -1299,6 +1305,14 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
 
   /* The facts: two columns, three from 48rem, five (six when giveaway
      entries show) from 64rem, each on the well. */
+  .member-access {
+    margin-block-start: var(--space-3);
+    font-size: var(--step-2);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-2);
+    text-wrap: pretty;
+  }
+
   .member-facts {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1338,6 +1352,14 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
     font-size: var(--step-3);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-3);
+  }
+
+  /* The early-access month ("September 2027", D-049) is the longest fact
+     value: the muted value's type step keeps it on the fact's one line at every
+     width, as the canvas draws each fact. */
+  .member-fact[data-member-field='earlyAccess'] dd:not(.member-fact__muted) {
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
   }
 
   .member-fact dd :global(.icon) {
@@ -1568,6 +1590,17 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
     margin-block-start: var(--space-2);
   }
 
+  .member-rewards-held {
+    display: flex;
+    gap: var(--space-1);
+    align-items: flex-start;
+    margin-block-start: var(--space-2);
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    text-wrap: pretty;
+  }
+
   .member-rewards-empty p {
     color: var(--ink-600);
     font-size: var(--step-1);
@@ -1608,8 +1641,7 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
     text-wrap: pretty;
   }
 
-  /* Settled is filled ink with a check; held is an outline with a clock.
-     The held outline is a real border, so it survives forced colours, and
+  /* Every coupon is held: an outline with a clock. The held outline is a real border, so it survives forced colours, and
      its padding gives back the border's width, so the badge keeps the
      board's size. */
   .member-reward__state {
@@ -1630,11 +1662,6 @@ const rewardIcon = { held: 'clock', settled: 'check' } as const;
 
   .member-reward__state :global(.icon path) {
     stroke-width: var(--stroke-heavy);
-  }
-
-  .member-reward__state--settled {
-    color: var(--paper);
-    background-color: var(--ink);
   }
 
   .member-reward__state--held {

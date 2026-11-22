@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { referralLadderCopy } from '../src/copy/referral-ladder.ts';
 import { verificationCopy } from '../src/copy/verification.ts';
+import { couponLadder } from '../src/server/referral/config.ts';
+import { ladderPresentationConfiguration } from '../src/server/referral/ladder-presentation.ts';
 import { verificationReferralFigures } from '../src/server/referral/verification-presentation.ts';
 import type { ReferralStatus } from '../src/server/referral/status.ts';
 
@@ -11,9 +14,8 @@ const baseStatus: ReferralStatus = {
   giveawayEntries: 1,
   ownRank: null,
   referralLink: 'https://valstara.com/?ref=TESTREF12345',
-  rewards: [],
   subscriberStatus: 'verified',
-  tier: 0,
+  verificationOrderWindow: 'wave-2',
 };
 
 test('verification marketing copy stays within the E11.5 scan budget', () => {
@@ -23,7 +25,7 @@ test('verification marketing copy stays within the E11.5 scan budget', () => {
     verificationCopy.complete,
     verificationCopy.invalidHeading,
     verificationCopy.referral.label,
-    verificationCopy.referral.unlocks(1),
+    referralLadderCopy.nextAt(39),
     verificationCopy.survey.heading,
     verificationCopy.status.label,
   ]) {
@@ -33,15 +35,15 @@ test('verification marketing copy stays within the E11.5 scan budget', () => {
     verificationCopy.confirm.next,
     verificationCopy.completeNext,
     verificationCopy.invalid,
-    verificationCopy.referral.heldCondition,
+    referralLadderCopy.held(couponLadder.expiryYears),
   ]) {
     assert.ok(words(line) <= 20, line);
   }
   for (const cardText of [
     verificationCopy.referral.link,
-    verificationCopy.referral.progress(0, 3, 1),
-    verificationCopy.referral.reward(15),
-    verificationCopy.referral.waveReward,
+    verificationReferralFigures(baseStatus).ladder.line,
+    referralLadderCopy.coupon(1, 5),
+    referralLadderCopy.earlyAccessPill,
     verificationCopy.referral.wave('wave-1'),
     ...verificationCopy.survey.categoryOptions.map((option) => option.label),
     ...verificationCopy.survey.frequencyOptions.map((option) => option.label),
@@ -50,81 +52,132 @@ test('verification marketing copy stays within the E11.5 scan budget', () => {
   }
 });
 
-test('verification figures use the enabled ladder and exact shared count', () => {
+test('a new member sees the first coupon and early access as the next step', () => {
   assert.deepEqual(verificationReferralFigures(baseStatus), {
     accessWindow: 'wave-2',
     ladder: {
-      confirmedReferrals: 0,
-      discountPercent: 15,
-      progress: 0,
-      rewardStates: [],
-      threshold: 3,
-      tier: 1,
+      line: '3 more confirmed referrals to Coupon 1 at 5%.',
+      held: 'Coupons become usable once one of your referred friends places their first order, and last 5 years after launch.',
+      meter: {
+        progress: 0,
+        span: 3,
+        target: 3,
+        coupon: { number: 1, percent: 5 },
+        earlyAccessMonth: 'September 2027',
+      },
     },
   });
   assert.equal(
-    verificationReferralFigures({
-      ...baseStatus,
-      confirmedReferrals: 2,
-    }).ladder?.progress,
+    verificationReferralFigures({ ...baseStatus, confirmedReferrals: 2 }).ladder
+      .meter?.progress,
     2,
   );
 });
 
-test('verification ladder figures follow a non-default ladder', () => {
-  const ladder = [
-    { discountPercent: 15, enabled: false, number: 1, threshold: 3 },
-    { discountPercent: 20, enabled: true, number: 2, threshold: 4 },
-  ];
-  assert.deepEqual(
-    verificationReferralFigures(
-      {
-        ...baseStatus,
-        confirmedReferrals: 1,
-        rewards: [
-          { kind: 'wave_upgrade', state: 'settled', tier: 1 },
-          { kind: 'discount', state: 'held', tier: 2 },
-        ],
-      },
-      ladder,
-    ),
+test('the meter runs from the last step reached to the next', () => {
+  const figures = verificationReferralFigures({
+    ...baseStatus,
+    accessWindow: 'wave-1',
+    confirmedReferrals: 19,
+  });
+  assert.equal(
+    figures.ladder.line,
+    'Coupon 1: 30% · 2 more confirmed referrals to Coupon 2 at 5%.',
+  );
+  assert.deepEqual(figures.ladder.meter, {
+    progress: 1,
+    span: 3,
+    target: 21,
+    coupon: { number: 2, percent: 5 },
+    // Already in wave 1, so the next step promises only the coupon.
+    earlyAccessMonth: null,
+  });
+});
+
+test('a first-1,000 member is never promised early access they already have', () => {
+  const figures = verificationReferralFigures({
+    ...baseStatus,
+    accessWindow: 'wave-1',
+    verificationOrderWindow: 'wave-1',
+  });
+  assert.equal(figures.ladder.meter?.earlyAccessMonth, null);
+});
+
+test('a complete ladder has no meter', () => {
+  const figures = verificationReferralFigures({
+    ...baseStatus,
+    accessWindow: 'wave-1',
+    confirmedReferrals: 60,
+  });
+  assert.equal(figures.ladder.meter, null);
+  assert.equal(
+    figures.ladder.line,
+    'Coupon 1: 30% · Coupon 2: 30% · Coupon 3: 30% · The ladder is complete.',
+  );
+});
+
+test('the figures follow a changed ladder configuration', () => {
+  const figures = verificationReferralFigures(
+    { ...baseStatus, confirmedReferrals: 5 },
     {
-      accessWindow: 'wave-2',
+      ...ladderPresentationConfiguration,
       ladder: {
-        confirmedReferrals: 1,
-        discountPercent: 20,
-        progress: 1,
-        rewardStates: [{ kind: 'discount', state: 'held' }],
-        threshold: 4,
-        tier: 2,
+        ...couponLadder,
+        unlocks: [4, 30],
+        stepPercent: 10,
+        stepReferrals: 4,
+        maximumPercent: 20,
+        expiryYears: 3,
       },
+      waveOneReferrals: 4,
     },
   );
-});
-
-test('the access wave survives a ladder with no enabled tier', () => {
-  assert.deepEqual(
-    verificationReferralFigures(baseStatus, [
-      { discountPercent: 15, enabled: false, number: 1, threshold: 3 },
-    ]),
-    { accessWindow: 'wave-2', ladder: null },
-  );
-});
-
-test('earned states come from status; a disabled tier is never promised', () => {
-  const result = verificationReferralFigures({
-    ...baseStatus,
-    confirmedReferrals: 4,
-    tier: 1,
-    rewards: [
-      { kind: 'wave_upgrade', state: 'settled', tier: 1 },
-      { kind: 'discount', state: 'held', tier: 1 },
-    ],
+  assert.deepEqual(figures.ladder, {
+    line: 'Coupon 1: 10% · 3 more confirmed referrals to 20%.',
+    held: 'Coupons become usable once one of your referred friends places their first order, and last 3 years after launch.',
+    meter: {
+      progress: 1,
+      span: 4,
+      target: 8,
+      coupon: { number: 1, percent: 20 },
+      earlyAccessMonth: null,
+    },
   });
-  assert.equal(result.ladder?.tier, 1);
-  assert.equal(result.ladder?.progress, 3);
-  assert.deepEqual(result.ladder?.rewardStates, [
-    { kind: 'wave_upgrade', state: 'settled' },
-    { kind: 'discount', state: 'held' },
-  ]);
+});
+
+test('the meter ends at a wave-1 threshold that falls before the next ladder step', () => {
+  const configuration = {
+    ...ladderPresentationConfiguration,
+    ladder: { ...couponLadder, unlocks: [6, 30] },
+    waveOneReferrals: 4,
+  };
+  const figures = verificationReferralFigures(
+    { ...baseStatus, confirmedReferrals: 2 },
+    configuration,
+  );
+  assert.equal(
+    figures.ladder.line,
+    '4 more confirmed referrals to Coupon 1 at 5%.',
+  );
+  assert.deepEqual(figures.ladder.meter, {
+    progress: 2,
+    span: 4,
+    target: 4,
+    coupon: null,
+    earlyAccessMonth: 'September 2027',
+  });
+  // Past the threshold, the meter runs on to the ladder step.
+  assert.deepEqual(
+    verificationReferralFigures(
+      { ...baseStatus, confirmedReferrals: 4 },
+      configuration,
+    ).ladder.meter,
+    {
+      progress: 4,
+      span: 6,
+      target: 6,
+      coupon: { number: 1, percent: 5 },
+      earlyAccessMonth: null,
+    },
+  );
 });

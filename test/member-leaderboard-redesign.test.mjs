@@ -136,10 +136,6 @@ async function fixture() {
       "INSERT INTO subscriber (id,email,email_normalised,email_domain,status,verified_at,unsubscribed_at,referral_code) VALUES ($1,$2,$2,'example.test','unsubscribed',$3,$3,'LEFT23456789')",
       [ids.left, 'left-design@example.test', new Date('2026-10-02T12:00:00Z')],
     );
-    await database.query(
-      "INSERT INTO milestone_award (id,subscriber_id,tier,reward_kind,state,awarded_at) VALUES ($1,$3,1,'wave_upgrade','settled',CURRENT_TIMESTAMP),($2,$3,1,'discount','held',CURRENT_TIMESTAMP)",
-      [randomUUID(), randomUUID(), ids.member],
-    );
     const pool = createPool(fixtureUrl.toString());
     try {
       await seedGiveawayEntryRows(pool, ids.member, 4, {
@@ -299,25 +295,6 @@ async function axeViolations(page) {
   );
 }
 
-// Everything about a reward state that is not a colour: its words, its icon
-// geometry and its outline style. The icon's paint and hiding are read too,
-// since the clock is not in the E2-04 primitives fixture.
-async function rewardStateShape(page, state) {
-  return page
-    .locator(`[data-reward-state="${state}"] .member-reward__state`)
-    .evaluate((element) => {
-      const style = globalThis.getComputedStyle(element);
-      const path = element.querySelector('svg path');
-      return {
-        text: element.textContent.trim(),
-        icon: path?.getAttribute('d') ?? null,
-        paint: [path?.getAttribute('fill'), path?.getAttribute('stroke')],
-        hidden: element.querySelector('svg')?.getAttribute('aria-hidden'),
-        border: style.borderTopStyle,
-      };
-    });
-}
-
 async function renderedFigure(page, selector) {
   return page
     .locator(selector)
@@ -460,7 +437,7 @@ test('the member page and the leaderboard render every state from their sources,
         'accessWindow',
         'ownRank',
         'confirmedReferrals',
-        'tier',
+        'earlyAccess',
         'giveawayEntries',
       ].map((key) => [key, byKey.get(key).label, byKey.get(key).value]),
     );
@@ -471,11 +448,11 @@ test('the member page and the leaderboard render every state from their sources,
     const ladder = verificationReferralFigures(memberStatus).ladder;
     assert.equal(
       await page.locator('[data-referral-progress]').getAttribute('value'),
-      String(ladder.progress),
+      String(ladder.meter.progress),
     );
     assert.equal(
       await page.locator('[data-referral-progress]').getAttribute('max'),
-      String(ladder.threshold),
+      String(ladder.meter.span),
     );
     assert.equal(
       (
@@ -483,7 +460,17 @@ test('the member page and the leaderboard render every state from their sources,
           .locator('label[for="member-referral-progress"]')
           .textContent()
       ).trim(),
-      memberStatusCopy.referral.progress(2, 3, 1),
+      '1 more confirmed referral to Coupon 1 at 5%.',
+    );
+    // E11.7-04: two confirmed referrals hold no coupon and no early access
+    // yet; the page says exactly what earns each.
+    assert.equal(
+      (await page.locator('[data-early-access]').textContent()).trim(),
+      memberView.earlyAccess.line,
+    );
+    assert.match(
+      memberView.earlyAccess.line,
+      /1 more confirmed referral and you get early access in September 2027/u,
     );
     // E11.5-11r named rewrite (founder-authorised 2026-11-11, decision 2):
     // the link is /verify's wrapping box, a paragraph, so it is read from its
@@ -507,26 +494,17 @@ test('the member page and the leaderboard render every state from their sources,
       assert.equal(figure.numeric, 'tabular-nums', key);
     }
 
-    // Held and settled stay distinguishable with colour removed.
-    const settled = await rewardStateShape(page, 'settled');
-    const held = await rewardStateShape(page, 'held');
-    assert.equal(settled.text, memberStatusCopy.rewards.states.settled);
-    assert.equal(held.text, memberStatusCopy.rewards.states.held);
-    assert.ok(settled.icon !== null && held.icon !== null);
-    assert.notEqual(settled.icon, held.icon);
-    assert.notEqual(settled.border, held.border);
-    for (const shape of [settled, held]) {
-      assert.ok(shape.paint.includes('currentColor'), shape.text);
-      assert.equal(shape.hidden, 'true', shape.text);
-    }
-    for (const state of ['settled', 'held']) {
-      const key = page.locator(`[data-reward-key="${state}"]`);
-      assert.equal(await key.locator('svg path').count(), 1);
-      assert.match(
-        await key.textContent(),
-        new RegExp(memberStatusCopy.rewards.explanations[state], 'u'),
-      );
-    }
+    // E11.7-04: no coupon yet, so the rewards card says what unlocks the
+    // first, and still states the held condition (ADR-012).
+    assert.equal(await page.locator('[data-coupon]').count(), 0);
+    assert.equal(
+      (await page.locator('.member-rewards-empty').textContent()).trim(),
+      memberStatusCopy.rewards.empty(3),
+    );
+    assert.equal(
+      (await page.locator('[data-held-condition]').textContent()).trim(),
+      memberView.ladder.held,
+    );
 
     // The marketing switch is still the Turnstile form on its route; leaving
     // is one plain, separated action with no confirmation step.
@@ -608,8 +586,11 @@ test('the member page and the leaderboard render every state from their sources,
     // the zero-entries rule is asserted on the field, now that entries are a
     // fact rather than a card.
     assert.doesNotMatch(freshHtml, /data-member-field="giveawayEntries"/u);
-    assert.match(freshHtml, new RegExp(memberStatusCopy.rewards.empty, 'u'));
-    assert.match(freshHtml, />\s*0 of 3 to Tier 1\s*</u);
+    assert.ok(freshHtml.includes(memberStatusCopy.rewards.empty(3)));
+    assert.match(
+      freshHtml,
+      />\s*3 more confirmed referrals to Coupon 1 at 5%\.\s*</u,
+    );
     assert.match(
       freshHtml,
       new RegExp(memberStatusCopy.authenticated.wavePending, 'u'),

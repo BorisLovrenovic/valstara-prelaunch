@@ -2,18 +2,29 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { landingCopy } from '../src/copy/landing.ts';
+import { referralLadderCopy } from '../src/copy/referral-ladder.ts';
+import { couponLadder } from '../src/server/referral/config.ts';
+import {
+  ladderPresentationConfiguration,
+  landingLadder,
+} from '../src/server/referral/ladder-presentation.ts';
 
 // E11.5-11e: the drawn figures on the reward cards are formatted from their
 // source values, never written into copy.
 
-test('the coral pill figure is the tier discount it is given', () => {
+test('the coral pill figure is the first coupon percent it is given', () => {
+  assert.equal(referralLadderCopy.percent(5), '5%');
   assert.equal(
-    landingCopy.rewards.tierDiscount({ discountPercent: 15 }),
-    '15%',
+    landingLadder().percent,
+    couponLadder.stepPercent,
+    'the drawn percent is the configured first step',
   );
   assert.equal(
-    landingCopy.rewards.tierDiscount({ discountPercent: 30 }),
-    '30%',
+    landingLadder({
+      ...ladderPresentationConfiguration,
+      ladder: { ...couponLadder, stepPercent: 6, maximumPercent: 30 },
+    }).percent,
+    6,
   );
 });
 
@@ -39,13 +50,18 @@ test('the drawn prize value is the rules value in euros, grouped like the prize 
   );
 });
 
-test('the drawn equation fragments are the tier sentence in pieces', () => {
-  const tier = { discountPercent: 15, enabled: true, number: 1, threshold: 3 };
-  const sentence = landingCopy.rewards.tier(tier);
-  assert.ok(sentence.includes(landingCopy.rewards.tierReferrals));
+test('the drawn equation fragments are the ladder sentence in pieces', () => {
+  const ladder = landingLadder();
+  assert.ok(ladder.earlyAccessMonth !== null);
   assert.ok(
-    sentence.includes(
-      `${landingCopy.rewards.tierDiscount(tier)} ${landingCopy.rewards.tierDiscountLabel}`,
+    ladder.sentence.startsWith(
+      `${ladder.threshold} ${landingCopy.rewards.tierReferrals}`,
     ),
   );
+  assert.ok(
+    ladder.sentence.includes(
+      `${referralLadderCopy.percent(ladder.percent)} ${referralLadderCopy.landing.couponLabel}`,
+    ),
+  );
+  assert.ok(ladder.sentence.includes(ladder.earlyAccessMonth));
 });

@@ -22,6 +22,7 @@ import axe from 'axe-core';
 import sharp from 'sharp';
 
 import { landingCopy } from '../src/copy/landing.ts';
+import { referralLadderCopy } from '../src/copy/referral-ladder.ts';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { renderLanding } from './helpers/landing-render.mjs';
 import { entranceEnded } from './helpers/motion.mjs';
@@ -102,15 +103,15 @@ const variants = {
     verified: false,
     leaderboard: false,
   },
-  // F is served from a build with a second tier configured (see before()).
-  // Its figures differ from the canvas's (4 → 17% and 6 → 30%, 4 × €350,
-  // against 3 → 15% and 5 → 25%, 5 × €300), but no box depends on them: the
-  // figures are single digits and mono-width values, and the person and gift
-  // rows are full-width containers.
+  // F is served from a build with a changed coupon ladder and rules (see
+  // before()). Its figures differ from the canvas's (4 → 6%, 4 × €350,
+  // against 3 → 15%, 5 × €300), but no box depends on them: the figures are
+  // single digits and mono-width values, and the person and gift rows are
+  // full-width containers.
   F: {
     flags: [giveawayOn],
     cards: ['access', 'referral', 'giveaway'],
-    tiers: 2,
+    tiers: 1,
     verified: true,
     leaderboard: true,
   },
@@ -134,9 +135,10 @@ function replaceOnce(source, from, to) {
   return source.replace(from, to);
 }
 
-// A copy of the project built with a changed ladder (tier 1 at 4 → 17%, and
-// tier 2 switched on at 6 → 30%) and changed published rules (4 prizes at
-// €350), the way a configuration or rules revision changes them.
+// A copy of the project built with a changed coupon ladder (unlocks at 4, 25
+// and 46, a 6% step, wave 1 at 4, early access in August 2027 and a 6-year
+// expiry; E11.7-04) and changed published rules (4 prizes at €350), the way
+// a configuration or rules revision changes them.
 async function buildChangedFixture(rulesArticle) {
   const root = await mkdtemp(join(tmpdir(), 'valstara-rewards-'));
   // E11.6-10: the price pages bundle the price data and the price-index
@@ -179,11 +181,23 @@ async function buildChangedFixture(rulesArticle) {
   await writeFile(join(root, rulesPath), rules);
 
   let config = await readFile(join(root, configPath), 'utf8');
-  config = replaceOnce(config, 'discountPercent: 15', 'discountPercent: 17');
-  config = replaceOnce(config, 'threshold: 3', 'threshold: 4');
-  config = replaceOnce(config, 'discountPercent: 25', 'discountPercent: 30');
-  config = replaceOnce(config, 'enabled: false', 'enabled: true');
-  config = replaceOnce(config, 'threshold: 5', 'threshold: 6');
+  config = replaceOnce(
+    config,
+    'unlocks: Object.freeze([3, 21, 39])',
+    'unlocks: Object.freeze([4, 25, 46])',
+  );
+  config = replaceOnce(config, 'stepPercent: 5,', 'stepPercent: 6,');
+  config = replaceOnce(config, 'expiryYears: 5,', 'expiryYears: 6,');
+  config = replaceOnce(
+    config,
+    'waveOneReferralThreshold = 3;',
+    'waveOneReferralThreshold = 4;',
+  );
+  config = replaceOnce(
+    config,
+    "waveOneEarlyAccessMonth = '2027-09';",
+    "waveOneEarlyAccessMonth = '2027-08';",
+  );
   await writeFile(join(root, configPath), config);
 
   await execFileAsync(join(projectRoot, 'node_modules/.bin/astro'), ['build'], {
@@ -494,6 +508,7 @@ function measure(page) {
           pills: all('.pill', tier),
         })),
         held: one('.landing-held'),
+        ladder: one('.landing-ladder'),
         prize: one('.landing-prize__line'),
         gifts: one('.landing-prize__gifts'),
         note: one('.landing-reward__note'),
@@ -569,6 +584,8 @@ function measure(page) {
         document.querySelector('.landing-prize .landing-hidden'),
       ),
       noteText: text(document.querySelector('.landing-reward__note')),
+      ladderText: text(document.querySelector('.landing-ladder')),
+      heldText: text(document.querySelector('.landing-held')),
       rulesHref: document
         .querySelector('[data-giveaway-card] a')
         ?.getAttribute('href'),
@@ -636,6 +653,77 @@ function assertCanvas(actual, expected, label) {
   }
   for (const [key, value] of Object.entries(expected))
     assertCanvas(actual[key], value, `${label} ${key}`);
+}
+
+// The canvas's boxes for a variant with the build's E11.7-04 difference
+// applied. The canvas draws the retired tier; the build states the coupon
+// ladder, which adds its later steps (the .landing-ladder line) between the
+// equation's well and the held note, at the visual's gap, and the held note
+// takes its own text's height, as each drawn pill takes its own text's
+// width. The referral card is then its content's
+// height plus its padding; the cards in its row stretch with it, as their
+// visuals do, and every box below that row moves down by the same amount.
+// Every other box is the canvas's.
+function withLadder(canvasGeometry, geometry) {
+  const expected = globalThis.structuredClone(canvasGeometry);
+  const referral = expected.cards.find((card) => card.kind === 'referral');
+  if (referral === undefined) {
+    expected.ladder = null;
+    return expected;
+  }
+  const bottom = (item) => item[1] + item[3];
+  // The pills name the ladder's first unlock ("Early access", "5% coupon"),
+  // so each takes its own text's width at the canvas's place and height.
+  expected.tiers.forEach((tier, index) => {
+    tier.pills = tier.pills.map((pill, pillIndex) => [
+      pill[0],
+      pill[1],
+      geometry.tiers[index].pills[pillIndex][2],
+      pill[3],
+    ]);
+  });
+  const gap = expected.held[1] - bottom(referral.wells.at(-1));
+  expected.ladder = [
+    expected.held[0],
+    expected.held[1],
+    expected.held[2],
+    geometry.ladder[3],
+  ];
+  const oldRowBottom = bottom(referral.box);
+  const padding = referral.head[0] - referral.box[0];
+  expected.held = [
+    expected.held[0],
+    bottom(expected.ladder) + gap,
+    expected.held[2],
+    geometry.held[3],
+  ];
+  const grow = Math.max(0, bottom(expected.held) + padding - oldRowBottom);
+  const shift = (node) => {
+    if (!Array.isArray(node) && (typeof node !== 'object' || node === null))
+      return;
+    if (
+      Array.isArray(node) &&
+      node.length === 4 &&
+      typeof node[0] === 'number'
+    ) {
+      if (node[1] >= oldRowBottom) node[1] += grow;
+      return;
+    }
+    for (const value of Object.values(node)) shift(value);
+  };
+  // The equation, the ladder line and the held note are inside the
+  // referral card, and move only with it.
+  const inside = ['grid', 'cards', 'tiers', 'ladder', 'held'];
+  for (const [key, value] of Object.entries(expected))
+    if (!inside.includes(key)) shift(value);
+  for (const card of expected.cards) {
+    if (card.box[1] === referral.box[1]) {
+      card.box[3] += grow;
+      card.visual[3] += grow;
+    } else shift(card);
+  }
+  expected.grid[3] += grow;
+  return expected;
 }
 
 // No grid hole: the cards fill every row of the grid edge to edge, each row
@@ -904,7 +992,7 @@ function assertFigures(figures, source, label) {
       figure: String(tier.threshold),
       discount: `${tier.discount}%`,
       people: tier.threshold,
-      sentence: `${tier.threshold} confirmed referrals → move up an access wave and ${tier.discount}% off at launch`,
+      sentence: `${tier.threshold} confirmed referrals → early access in ${source.month} and a ${tier.discount}% coupon`,
     })),
     `${label} tier figures`,
   );
@@ -929,15 +1017,14 @@ function assertFigures(figures, source, label) {
 
 const sources = {
   A: {
-    tiers: [{ threshold: 3, discount: 15 }],
+    tiers: [{ threshold: 3, discount: 5 }],
+    month: 'September 2027',
     prizeCount: 5,
     prizeValue: 300,
   },
   F: {
-    tiers: [
-      { threshold: 4, discount: 17 },
-      { threshold: 6, discount: 30 },
-    ],
+    tiers: [{ threshold: 4, discount: 6 }],
+    month: 'August 2027',
     prizeCount: 4,
     prizeValue: 350,
   },
@@ -950,7 +1037,11 @@ test('card anatomy and geometry match the canvas at 1440, 1024, 768, 390 and 320
       const { context, page } = await openVariant('A', { width, colorScheme });
       const m = await measure(page);
       assert.equal(m.overflow, 0, `${label} no horizontal overflow`);
-      assertCanvas(m.geometry, canvas.widths[width].A, label);
+      assertCanvas(
+        m.geometry,
+        withLadder(canvas.widths[width].A, m.geometry),
+        label,
+      );
 
       // Type, colour and surface, from the canvas and the tokens.
       const { styles, tokens } = m;
@@ -1055,11 +1146,29 @@ test('every figure comes from the ladder and the published rules: a changed fixt
       {
         figure: '3',
         people: 3,
-        discount: '15%',
+        discount: '5%',
         sentence:
-          '3 confirmed referrals → move up an access wave and 15% off at launch',
+          '3 confirmed referrals → early access in September 2027 and a 5% coupon',
       },
     ],
+  );
+  // E11.7-04: the ladder's later steps and the held condition are the
+  // configuration's too.
+  assert.equal(
+    baseline.ladderText,
+    'Each coupon rises 5% every 3 more confirmed referrals, up to 30%. Coupons 2 and 3 unlock at 21 and 39. Early access opens in September 2027.',
+  );
+  assert.equal(
+    baseline.heldText,
+    'Coupons apply once a referred friend places a first order, for 5 years after launch.',
+  );
+  assert.equal(
+    revised.ladderText,
+    'Each coupon rises 6% every 3 more confirmed referrals, up to 30%. Coupons 2 and 3 unlock at 25 and 46. Early access opens in August 2027.',
+  );
+  assert.equal(
+    revised.heldText,
+    'Coupons apply once a referred friend places a first order, for 6 years after launch.',
   );
   assert.deepEqual(
     revised.tiers.map(({ figure, people, discount, sentence }) => ({
@@ -1072,16 +1181,9 @@ test('every figure comes from the ladder and the published rules: a changed fixt
       {
         figure: '4',
         people: 4,
-        discount: '17%',
+        discount: '6%',
         sentence:
-          '4 confirmed referrals → move up an access wave and 17% off at launch',
-      },
-      {
-        figure: '6',
-        people: 6,
-        discount: '30%',
-        sentence:
-          '6 confirmed referrals → move up an access wave and 30% off at launch',
+          '4 confirmed referrals → early access in August 2027 and a 6% coupon',
       },
     ],
   );
@@ -1107,8 +1209,14 @@ test('every figure comes from the ladder and the published rules: a changed fixt
   assert.equal(revised.gifts, 4);
 
   // No figure is literal in the copy layer.
-  const copy = await readFile(join(projectRoot, 'src/copy/landing.ts'), 'utf8');
-  assert.doesNotMatch(copy, /€\d|\d%|\b(?:3|5) (?:prizes|confirmed)\b/u);
+  for (const path of ['src/copy/landing.ts', 'src/copy/referral-ladder.ts']) {
+    const copy = await readFile(join(projectRoot, path), 'utf8');
+    assert.doesNotMatch(
+      copy,
+      /€\d|\d%|\b(?:3|5) (?:prizes|confirmed)\b|\b20\d\d\b/u,
+      path,
+    );
+  }
 });
 
 test('no figure is ever shown at a value other than its real one: every frame of the reveal, at its start, middle and end, shows the source values', async () => {
@@ -1188,7 +1296,11 @@ test('variants A to F render as Switches.dc.html at 1440 and 390, in both themes
           near(m.geometry.footer[1] - m.geometry.grid[3], 24, label);
         const rows = assertNoGridHoles(m, label);
         // As drawn: every box the canvas draws for this variant.
-        assertCanvas(m.geometry, canvas.widths[width][name], label);
+        // E11.7-04: the ladder draws one equation whatever its
+        // configuration, so variant F is laid out as variant A, whose
+        // switches it shares; the canvas's F draws the retired second tier.
+        const drawn = canvas.widths[width][name === 'F' ? 'A' : name];
+        assertCanvas(m.geometry, withLadder(drawn, m.geometry), label);
 
         if (width === 1440) {
           // One row: three, two or one equal columns.
@@ -1218,15 +1330,6 @@ test('variants A to F render as Switches.dc.html at 1440 and 390, in both themes
           const [card] = m.geometry.cards;
           near(card.visual[0] - (card.head[0] + card.head[2]), 80, label);
         }
-        if (name === 'F') {
-          // The second tier row: 16px apart, 16px padding over a 1px dashed
-          // line, and the grid row grows.
-          const [first, second] = m.tiers;
-          near(second.box[1] - (first.box[1] + first.box[3]), 16, label);
-          assert.equal(m.styles.tiers[1].borderTop, '1px dashed');
-          assert.equal(m.styles.tiers[1].padding[0], 16);
-          assert.equal(m.styles.tiers[0].borderTop, '0px none');
-        }
         await context.close();
 
         // After the reveals, with motion on, every box is the at-rest box.
@@ -1240,7 +1343,7 @@ test('variants A to F render as Switches.dc.html at 1440 and 390, in both themes
           const revealed = await measure(moving.page);
           assertCanvas(
             revealed.geometry,
-            canvas.widths[width][name],
+            withLadder(drawn, revealed.geometry),
             `${label} after the reveals`,
           );
           assertNoGridHoles(revealed, `${label} after the reveals`);
@@ -1249,14 +1352,6 @@ test('variants A to F render as Switches.dc.html at 1440 and 390, in both themes
       }
     }
   }
-  // F's row is taller than A's: the second tier grows it.
-  const heights = {};
-  for (const name of ['A', 'F']) {
-    const { context, page } = await openVariant(name, { width: 1440 });
-    heights[name] = (await measure(page)).geometry.grid[3];
-    await context.close();
-  }
-  assert.ok(heights.F > heights.A, `F ${heights.F} grows past A ${heights.A}`);
 });
 
 test('assistive technology reads each tier sentence and the prize sentence, never the drawn equation', async () => {
@@ -1273,20 +1368,27 @@ test('assistive technology reads each tier sentence and the prize sentence, neve
     assert.equal(m.giftsHidden, 'true');
     const referral = await page.locator('[data-referral-card]').ariaSnapshot();
     for (const tier of m.tiers) assert.ok(referral.includes(tier.sentence));
-    // The drawn pill and labels are never read on their own: their words
-    // reach the tree only inside each tier's sentence.
-    assert.ok(!referral.includes(landingCopy.rewards.tierWave));
+    // The drawn pills and labels are never read on their own: once the
+    // sentence, the ladder line and the held note are taken out, none of
+    // their words is left in the tree.
+    assert.ok(referral.includes(m.ladderText));
+    assert.ok(referral.includes(m.heldText));
+    let rest = referral;
+    for (const read of [
+      ...m.tiers.map((tier) => tier.sentence),
+      m.ladderText,
+      m.heldText,
+    ])
+      rest = rest.split(read).join('');
     for (const drawn of [
-      landingCopy.rewards.tierDiscountLabel,
+      referralLadderCopy.earlyAccessPill,
+      referralLadderCopy.landing.couponLabel,
       landingCopy.rewards.tierReferrals,
-    ]) {
-      assert.equal(
-        referral.split(drawn).length - 1,
-        m.tiers.length,
-        `"${drawn}" is read only inside each tier sentence`,
+    ])
+      assert.ok(
+        !rest.toLowerCase().includes(drawn.toLowerCase()),
+        `"${drawn}" is read only inside the card's sentences`,
       );
-    }
-    assert.ok(referral.includes(landingCopy.rewards.held));
     const giveaway = await page.locator('[data-giveaway-card]').ariaSnapshot();
     assert.ok(giveaway.includes(m.prizeSentence));
     assert.equal(
@@ -1550,18 +1652,13 @@ test('the cards reveal in reading order, the waves grow from their start points,
     assert.ok(atRest(motion.footer), `${label} footer at rest at 70%`);
     await context.close();
 
-    // Variant F: each configured tier runs its own sequence, the second as
-    // the first, on its own view timeline and with its own N.
+    // Variant F: the changed ladder's equation runs the same sequence, on
+    // its own view timeline and with its own N (E11.7-04: the ladder draws
+    // only its first unlock).
     const second = await openVariant('F', { width, motion: true });
     const { tiers } = await readMotion(second.page);
-    assert.equal(tiers.length, 2, `${label} variant F has two tiers`);
-    for (const position of [0, 1])
-      await assertTierSequence(
-        second.page,
-        position,
-        sources.F,
-        `${label} variant F tier ${position + 1}`,
-      );
+    assert.equal(tiers.length, 1, `${label} variant F draws one equation`);
+    await assertTierSequence(second.page, 0, sources.F, `${label} variant F`);
     await second.context.close();
   }
 });

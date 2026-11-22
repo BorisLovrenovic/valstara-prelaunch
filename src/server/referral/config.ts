@@ -6,35 +6,6 @@ export interface AccessWindowBand {
 }
 
 /**
- * ADR-025's retired milestone tiers, kept only as the figures the landing and
- * verification pages still print until E11.7-04 replaces that wording with the
- * coupon ladder. Nothing awards, promotes or exports from them: since E11.7-03
- * no confirmation creates a `milestone_award`, and every existing award was
- * voided with the reason `ladder_replaced` (migration 0061).
- */
-export interface MilestoneTier {
-  readonly discountPercent: number;
-  readonly enabled: boolean;
-  readonly number: number;
-  readonly threshold: number;
-}
-
-export const milestoneTiers: readonly MilestoneTier[] = Object.freeze([
-  {
-    discountPercent: 15,
-    enabled: true,
-    number: 1,
-    threshold: 3,
-  },
-  {
-    discountPercent: 25,
-    enabled: false,
-    number: 2,
-    threshold: 5,
-  },
-]);
-
-/**
  * The referrer coupon ladder (founder, 2026-11-17; ADR-025 as amended by
  * E11.7-03). This is configuration, not schema: changing a threshold, the step,
  * the maximum, the number of coupons or the launch date needs no migration.
@@ -58,7 +29,7 @@ export const couponLadder: CouponLadder = Object.freeze({
   stepReferrals: 3,
   stepPercent: 5,
   maximumPercent: 30,
-  publicLaunchDate: '2027-09-01',
+  publicLaunchDate: '2027-10-01',
   expiryYears: 5,
 });
 
@@ -164,6 +135,13 @@ export function assertCouponLadder(ladder: CouponLadder): void {
  * 2026-11-17). Configuration, like the ladder.
  */
 export const waveOneReferralThreshold = 3;
+
+/**
+ * When wave 1's early access opens, `YYYY-MM` (founder, 2026-11-22: 1 September
+ * 2027, replacing early July 2027). Every surface that promises early access
+ * reads it from here.
+ */
+export const waveOneEarlyAccessMonth = '2027-09';
 
 /**
  * A member's access window: wave 1 when their verification-order window is

@@ -4,9 +4,14 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { landingCopy } from '../src/copy/landing.ts';
+import { referralLadderCopy } from '../src/copy/referral-ladder.ts';
 import { resendVerificationCopy } from '../src/copy/resend-verification.ts';
 import { signupCopy, signupFormCopy } from '../src/copy/signup.ts';
-import { milestoneTiers } from '../src/server/referral/config.ts';
+import { couponLadder } from '../src/server/referral/config.ts';
+import {
+  ladderPresentationConfiguration,
+  landingLadder,
+} from '../src/server/referral/ladder-presentation.ts';
 
 const words = (value: string): number => value.trim().split(/\s+/u).length;
 
@@ -47,7 +52,7 @@ test('landing marketing copy stays inside its heading, line, card and FAQ budget
     landingCopy.paused.body,
     landingCopy.catalogue.body,
     landingCopy.rewards.accessBody,
-    landingCopy.rewards.held,
+    landingLadder().held,
     landingCopy.trust.intro,
     ...landingCopy.trust.promises.map((promise) => promise.line),
   ];
@@ -59,10 +64,12 @@ test('landing marketing copy stays inside its heading, line, card and FAQ budget
     ...landingCopy.trustLinks.items.map((item) => item.line),
     landingCopy.rewards.accessBody,
     ...[1, 2, 3, 4].map(landingCopy.rewards.waveLabel),
-    ...milestoneTiers
-      .filter((tier) => tier.enabled)
-      .map(landingCopy.rewards.tier),
-    landingCopy.rewards.held,
+    landingLadder().sentence,
+    landingLadder().steps,
+    landingLadder().moreCoupons ?? '',
+    landingLadder().waveOne,
+    referralLadderCopy.earlyAccessPill,
+    landingLadder().held,
     landingCopy.rewards.verifiedOnly,
     landingCopy.rewards.prize({ prizeCount, prizeApproxRetailValueEur }),
     `${landingCopy.rewards.freeEntry} · ${landingCopy.rewards.age}`,
@@ -122,19 +129,23 @@ test('the signup copy-budget exception is narrow: without it the success body fa
 });
 
 test('referral and prize copy derives its figures from injected source values', () => {
-  const tier = milestoneTiers.find((candidate) => candidate.enabled);
-  assert.ok(tier);
-  const renderedTier = landingCopy.rewards.tier(tier);
-  assert.match(renderedTier, new RegExp(`\\b${tier.threshold}\\b`, 'u'));
-  assert.match(renderedTier, new RegExp(`${tier.discountPercent}%`, 'u'));
-  assert.notEqual(
-    landingCopy.rewards.tier({
-      ...tier,
-      threshold: tier.threshold + 2,
-      discountPercent: tier.discountPercent + 7,
-    }),
-    renderedTier,
-  );
+  const ladder = landingLadder();
+  assert.match(ladder.sentence, new RegExp(`^${ladder.threshold} `, 'u'));
+  assert.match(ladder.sentence, new RegExp(`${ladder.percent}% coupon`, 'u'));
+  const changed = landingLadder({
+    ...ladderPresentationConfiguration,
+    ladder: {
+      ...couponLadder,
+      unlocks: [4, 25, 46],
+      stepPercent: 6,
+      stepReferrals: 4,
+    },
+    waveOneReferrals: 4,
+  });
+  assert.notEqual(changed.sentence, ladder.sentence);
+  assert.match(changed.sentence, /^4 .* 6% coupon$/u);
+  assert.match(changed.steps, /6% every 4 more/u);
+  assert.match(changed.moreCoupons ?? '', /at 25 and 46/u);
   const rules = { prizeCount: 5, prizeApproxRetailValueEur: 300 };
   const renderedPrize = landingCopy.rewards.prize(rules);
   assert.match(renderedPrize, /5 prizes/u);

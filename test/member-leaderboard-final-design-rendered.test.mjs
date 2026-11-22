@@ -13,6 +13,7 @@ import { Pool } from 'pg';
 
 import { leaderboardCopy } from '../src/copy/leaderboard.ts';
 import { memberStatusCopy } from '../src/copy/member-status.ts';
+import { referralLadderCopy } from '../src/copy/referral-ladder.ts';
 import { createPool } from '../src/server/db/pool.ts';
 import { flagCacheTtlMilliseconds } from '../src/server/flags/service.ts';
 import { createReferralService } from '../src/server/referral/service.ts';
@@ -114,11 +115,13 @@ async function insertStatusToken(database, subscriberId, expiresAt) {
   return token;
 }
 
-// The canvas's sample members: the dashboard (wave 2, four confirmed
-// referrals, a settled access-wave upgrade and a held discount at Tier 1,
+// The canvas's sample members: the dashboard (four confirmed referrals,
 // five giveaway entries, marketing on), the zero state (no wave, no
 // referrals, no rewards, one entry), the same dashboard with marketing off
-// (frame 03), a member who left, and an expired link.
+// (frame 03), a member who left, and an expired link. E11.7-04: the canvas's
+// dashboard is in wave 2 with the retired tier's two rewards; under the
+// coupon ladder four confirmed referrals hold coupon 1 at 5% and put a
+// member verified in wave 2 into wave 1.
 async function createFixture() {
   const name = 'valstara_member_final_' + randomUUID().replaceAll('-', '');
   const adminUrl = new URL(databaseUrl);
@@ -148,10 +151,10 @@ async function createFixture() {
     left: randomUUID(),
     other: randomUUID(),
   };
-  const verified = (id, label, code, referrals, wave, marketing) =>
+  const verified = (id, label, code, referrals, wave, marketing, order) =>
     database.query(
-      `INSERT INTO subscriber (id,email,email_normalised,email_domain,status,verified_at,referral_code,confirmed_referrals,access_window,marketing_consent_at,marketing_consent_version,marketing_consent_source)
-       VALUES ($1,$2,$2,'example.test','verified',$3,$4,$5,$6,$7,$8,$9)`,
+      `INSERT INTO subscriber (id,email,email_normalised,email_domain,status,verified_at,referral_code,confirmed_referrals,access_window,marketing_consent_at,marketing_consent_version,marketing_consent_source,verification_order_window)
+       VALUES ($1,$2,$2,'example.test','verified',$3,$4,$5,$6,$7,$8,$9,$10)`,
       [
         id,
         `member-final-${label}@example.test`,
@@ -162,12 +165,21 @@ async function createFixture() {
         marketing ? new Date('2026-10-02T10:05:00Z') : null,
         marketing ? 'v1' : null,
         marketing ? 'member_status' : null,
+        order,
       ],
     );
-  await verified(ids.main, 'main', 'K7QX2MPR9AZB', 4, 'wave-2', true);
-  await verified(ids.zero, 'zero', 'ZERO23456789', 0, null, true);
-  await verified(ids.off, 'off', 'OFFX23456789', 4, 'wave-2', false);
-  await verified(ids.other, 'other', 'OTHER2345678', 9, 'wave-1', true);
+  await verified(ids.main, 'main', 'K7QX2MPR9AZB', 4, 'wave-1', true, 'wave-2');
+  await verified(ids.zero, 'zero', 'ZERO23456789', 0, null, true, null);
+  await verified(ids.off, 'off', 'OFFX23456789', 4, 'wave-1', false, 'wave-2');
+  await verified(
+    ids.other,
+    'other',
+    'OTHER2345678',
+    9,
+    'wave-1',
+    true,
+    'wave-3',
+  );
   await database.query(
     "INSERT INTO subscriber (id,email,email_normalised,email_domain,status,verified_at,unsubscribed_at,referral_code) VALUES ($1,$2,$2,'example.test','unsubscribed',$3,$3,'LEFT23456789')",
     [
@@ -176,11 +188,6 @@ async function createFixture() {
       new Date('2026-10-02T12:00:00Z'),
     ],
   );
-  for (const id of [ids.main, ids.off])
-    await database.query(
-      "INSERT INTO milestone_award (id,subscriber_id,tier,reward_kind,state,awarded_at) VALUES ($1,$3,1,'wave_upgrade','settled',CURRENT_TIMESTAMP),($2,$3,1,'discount','held',CURRENT_TIMESTAMP)",
-      [randomUUID(), randomUUID(), id],
-    );
   const pool = createPool(fixtureUrl.toString());
   try {
     await seedGiveawayEntryRows(pool, ids.main, 5, { rulesVersion: '2026-09' });
@@ -634,32 +641,41 @@ function canvasFor(board, width, state, actual) {
     }
     return expected;
   }
-  if (expected.rewards !== undefined && expected.rewards.rows.length > 0) {
-    // The rows follow ReferralService.status's order, not the board's
-    // sample order, so each is compared with the board's row of its state,
-    // stacked in the build's order.
-    const byState = Object.fromEntries(
-      expected.rewards.states.map((rowState, index) => [
-        rowState,
-        {
-          row: expected.rewards.rows[index],
-          badge: expected.rewards.badges[index],
-        },
-      ]),
-    );
-    let top = expected.rewards.rows[0][1];
-    const rows = [];
-    const badges = [];
-    for (const rowState of actual.rewards.states) {
-      const { row, badge } = byState[rowState];
-      const shift = top - row[1];
-      rows.push([row[0], top, row[2], row[3]]);
-      badges.push([badge[0], badge[1] + shift, badge[2], badge[3]]);
+  if (expected.rewards !== undefined) {
+    // E11.7-04: the canvas's rewards card shows the retired tier's two
+    // rewards, one settled and one held. The build shows one row per coupon,
+    // and every coupon is held, so each row takes the canvas's held row's
+    // x, width and badge position, stacked from the canvas's first row, at
+    // its own text's height. The coupons' held condition follows the rows
+    // (or the empty note) 16px (--space-2) below, as wide as they are.
+    const rows = expected.rewards.rows;
+    const heldIndex = expected.rewards.states.indexOf('held');
+    const template = rows[heldIndex] ?? null;
+    const badge = expected.rewards.badges[heldIndex] ?? null;
+    let top = rows[0]?.[1] ?? null;
+    expected.rewards.rows = actual.rewards.rows.map((row) => {
+      const placed = [template[0], top, template[2], row[3]];
       top += row[3];
-    }
-    expected.rewards.rows = rows;
-    expected.rewards.badges = badges;
+      return placed;
+    });
+    expected.rewards.badges = actual.rewards.rows.map((row, index) => [
+      badge[0],
+      expected.rewards.rows[index][1] + badge[1] - template[1],
+      badge[2],
+      badge[3],
+    ]);
     expected.rewards.states = actual.rewards.states;
+    // The empty note names the first coupon's unlock, so it takes its own
+    // text's height.
+    if (expected.rewards.empty !== null)
+      expected.rewards.empty[3] = actual.rewards.empty[3];
+    const above = expected.rewards.rows.at(-1) ?? expected.rewards.empty;
+    expected.rewards.held = [
+      above[0],
+      above[1] + above[3] + 16,
+      above[2],
+      actual.rewards.held[3],
+    ];
   }
   if (expected.referral) {
     // Copy referral link cross-fades to "Referral link copied." in place
@@ -689,6 +705,78 @@ function canvasFor(board, width, state, actual) {
       builtValue[2],
       value[3],
     ];
+  }
+  if (expected.status && expected.referral && expected.rewards) {
+    // E11.7-04: the ladder's words are longer than the retired tier's. The
+    // meter value keeps its right edge and takes its own height, moving the
+    // track down; the early-access line sits 24px (--space-3) under the
+    // facts, as wide as they are; each card is then its content's height
+    // plus the canvas's padding, cards side by side share the taller's
+    // height, and every card below moves by what the cards above it grew.
+    const bottom = (item) => item[1] + item[3];
+    const referral = expected.referral;
+    const meterGrow = actual.referral.meterValue[3] - referral.meterValue[3];
+    referral.meterValue[3] += meterGrow;
+    referral.track[1] += meterGrow;
+    referral.well[3] += meterGrow;
+    const facts = expected.status.facts;
+    expected.status.access = [
+      facts[0],
+      bottom(facts) + 24,
+      facts[2],
+      actual.status.access[3],
+    ];
+    const sections = [
+      expected.status.card,
+      referral.card,
+      expected.rewards.card,
+      expected.preferences.card,
+      expected.data.card,
+      expected.leave.box,
+    ];
+    // A changed card's natural height is its last box's bottom plus the
+    // card's padding, which is its head's inset.
+    const naturalOf = new Map([
+      [
+        expected.status.card,
+        bottom(expected.status.access) + expected.status.head[0],
+      ],
+      [referral.card, bottom(referral.well) + referral.head[0]],
+      [
+        expected.rewards.card,
+        bottom(expected.rewards.held) + expected.rewards.head[0],
+      ],
+    ]);
+    const old = sections.map((item) => [...item]);
+    const natural = sections.map(
+      (item, index) => naturalOf.get(item) ?? old[index][3],
+    );
+    // Cards in one row (the referral and rewards cards from 64rem) are
+    // stretched to the taller; otherwise each is its own height.
+    sections.forEach((item, index) => {
+      const row = sections
+        .map((other, otherIndex) => otherIndex)
+        .filter((otherIndex) => old[otherIndex][1] === old[index][1]);
+      item[3] =
+        row.length > 1 && item !== expected.leave.box
+          ? Math.max(...row.map((otherIndex) => natural[otherIndex]))
+          : natural[index];
+    });
+    // A card keeps the canvas's gap to the row directly above it.
+    sections.forEach((item, index) => {
+      const above = old
+        .map((before, otherIndex) => [before, sections[otherIndex]])
+        .filter(([before]) => bottom(before) <= old[index][1]);
+      if (above.length === 0) return;
+      const nearest = Math.max(...above.map(([before]) => bottom(before)));
+      item[1] += Math.max(
+        ...above
+          .filter(([before]) => bottom(before) === nearest)
+          .map(([before, after]) => bottom(after) - bottom(before)),
+      );
+    });
+    expected.grid[3] +=
+      Math.max(...sections.map(bottom)) - Math.max(...old.map(bottom));
   }
   return expected;
 }
@@ -769,7 +857,7 @@ test('/me renders only the bearer’s data, every fact from the shared status co
         'accessWindow',
         'ownRank',
         'confirmedReferrals',
-        'tier',
+        'earlyAccess',
         ...(status.giveawayEntries > 0 ? ['giveawayEntries'] : []),
       ];
       // Every fact sits on the status card (E11.5-11r decision 1).
@@ -793,19 +881,40 @@ test('/me renders only the bearer’s data, every fact from the shared status co
       const ladder = verificationReferralFigures(status).ladder;
       assert.equal(
         (await page.locator('[data-meter-text]').textContent()).trim(),
-        memberStatusCopy.referral.progress(
-          ladder.progress,
-          ladder.threshold,
-          ladder.tier,
-        ),
+        ladder.line,
       );
       assert.equal(
         await page.locator('.member-meter__segment').count(),
-        ladder.threshold,
+        ladder.meter.span,
       );
       assert.equal(
         await page.locator('.member-meter__segment.is-filled').count(),
-        ladder.progress,
+        ladder.meter.progress,
+      );
+      // E11.7-04: early access, its reason or what earns it, and every
+      // coupon with its first-order condition.
+      assert.equal(
+        (await page.locator('[data-early-access]').textContent()).trim(),
+        view.earlyAccess.line,
+      );
+      assert.deepEqual(
+        await page
+          .locator('[data-coupon]')
+          .evaluateAll((rows) =>
+            rows.map((row) =>
+              [...row.children]
+                .map((part) => part.textContent.trim())
+                .join(' '),
+            ),
+          ),
+        view.coupons.map(
+          ({ label, state, percent, condition }) =>
+            `${label} ${state} ${percent} ${condition}`,
+        ),
+      );
+      assert.equal(
+        (await page.locator('[data-held-condition]').textContent()).trim(),
+        view.ladder.held,
       );
       assert.equal(
         await page
@@ -836,10 +945,11 @@ test('/me renders only the bearer’s data, every fact from the shared status co
     await globalThis.fetch(`${localOrigin}${mePath(fixture.tokens.other)}`)
   ).text();
   assert.doesNotMatch(otherHtml, /data-member-field="giveawayEntries"/u);
-  assert.match(otherHtml, /data-member-field="tier"/u);
+  assert.match(otherHtml, /data-member-field="earlyAccess"/u);
+  assert.doesNotMatch(otherHtml, /data-member-field="tier"/u);
 });
 
-test('held and settled stay distinguishable without colour: word, icon, fill and outline, in both themes and in forced colours', async () => {
+test('a held coupon is readable without colour: word, icon and a real outline, in both themes and in forced colours', async () => {
   for (const theme of designThemes)
     for (const forced of [false, true]) {
       const { context, page } = await openPage({
@@ -856,11 +966,7 @@ test('held and settled stay distinguishable without colour: word, icon, fill and
               const style = globalThis.getComputedStyle(badge);
               const path = badge.querySelector('svg path');
               return {
-                state: badge.className.includes('--settled')
-                  ? 'settled'
-                  : 'held',
                 text: badge.textContent.trim(),
-                icon: path.getAttribute('d'),
                 hidden: badge.querySelector('svg').getAttribute('aria-hidden'),
                 paint: [path.getAttribute('fill'), path.getAttribute('stroke')],
                 filled: style.backgroundColor !== 'rgba(0, 0, 0, 0)',
@@ -868,33 +974,22 @@ test('held and settled stay distinguishable without colour: word, icon, fill and
                   style.borderTopStyle !== 'none' &&
                   Number.parseFloat(style.borderTopWidth) > 0,
                 why: badge
-                  .closest('[data-reward-key]')
+                  .closest('.member-reward')
                   .querySelector('.member-reward__why')
                   .textContent.trim(),
               };
             }),
           );
-        const settled = shapes.find(({ state }) => state === 'settled');
-        const held = shapes.find(({ state }) => state === 'held');
-        assert.equal(settled.text, memberStatusCopy.rewards.states.settled);
-        assert.equal(held.text, memberStatusCopy.rewards.states.held);
-        assert.notEqual(settled.icon, held.icon);
-        assert.equal(
-          settled.why,
-          memberStatusCopy.rewards.explanations.settled,
-        );
-        assert.equal(held.why, memberStatusCopy.rewards.explanations.held);
-        for (const shape of [settled, held]) {
+        // Four confirmed referrals hold coupon 1, and only coupon 1.
+        assert.equal(shapes.length, 1);
+        for (const shape of shapes) {
+          assert.equal(shape.text, referralLadderCopy.heldState);
+          assert.equal(shape.why, referralLadderCopy.heldShort);
           assert.equal(shape.hidden, 'true');
           assert.ok(shape.paint.includes('currentColor'));
-        }
-        // Held is an outline; settled is not. Forced colours keep the
-        // outline, where fills are dropped.
-        assert.equal(held.outline, true, `${theme} forced ${forced}`);
-        assert.equal(settled.outline, false, `${theme} forced ${forced}`);
-        if (!forced) {
-          assert.equal(settled.filled, true);
-          assert.equal(held.filled, false);
+          // Held is an outline, which forced colours keep.
+          assert.equal(shape.outline, true, `${theme} forced ${forced}`);
+          if (!forced) assert.equal(shape.filled, false);
         }
       } finally {
         await context.close();
@@ -1407,7 +1502,10 @@ test('the status card enters (heading, facts, wave badge) within 600ms, the card
       assert.equal(motion.fill.name, 'member-meter-fill');
       assert.equal(motion.fill.scroll, true);
       assert.equal(motion.fill.keyframes[0], 'scaleX(0)');
-      assert.equal(motion.meterText, '3 of 3 to Tier 1');
+      assert.equal(
+        motion.meterText,
+        'Coupon 1: 5% · 2 more confirmed referrals to 10%.',
+      );
       assert.equal(motion.leave, 0, 'leaving has no motion');
     } finally {
       await context.close();

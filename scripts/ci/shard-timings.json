@@ -102,6 +102,8 @@
   "test/helpers/structured-data.mjs": 0.2,
   "test/interface-primitives.test.mjs": 32.6,
   "test/ip-velocity.test.ts": 1.2,
+  "test/ladder-copy-surfaces.test.mjs": 4.3,
+  "test/ladder-presentation.test.ts": 0.6,
   "test/landing-cache.test.ts": 0.3,
   "test/landing-catalogue-rendered.test.mjs": 48.9,
   "test/landing-closing-rendered.test.mjs": 203.1,

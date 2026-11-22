@@ -20,6 +20,7 @@ export interface ReferralSubscriber {
   readonly referral_code: string | null;
   readonly referral_tier: number;
   readonly status: string;
+  readonly verification_order_window: AccessWindow | null;
 }
 
 export interface ReferralRepository {
@@ -205,7 +206,7 @@ export function createReferralRepository(
       return database.readOne<ReferralSubscriber>({
         text: `
           SELECT status, referral_code, confirmed_referrals, referral_tier,
-                 access_window
+                 access_window, verification_order_window
           FROM subscriber
           WHERE id = $1
         `,
@@ -303,7 +304,7 @@ export function createReferralRepository(
       return database.readOne<ReferralSubscriber>({
         text: `
           SELECT status, referral_code, confirmed_referrals, referral_tier,
-                 access_window
+                 access_window, verification_order_window
           FROM subscriber
           WHERE id = $1
           FOR UPDATE

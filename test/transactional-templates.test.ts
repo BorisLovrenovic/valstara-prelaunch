@@ -15,18 +15,13 @@ const rulesVersion = 'VAL-GW-LAUNCH-20260925-r1';
 const awardId = '11111111-1111-4111-8111-111111111111';
 const deadline = new Date('2027-04-15T09:00:00.000Z');
 const referralStatus: ReferralStatus = {
-  accessWindow: 'wave-2',
-  confirmedReferrals: 3,
+  accessWindow: 'wave-1',
+  confirmedReferrals: 4,
   giveawayEntries: 6,
   ownRank: 4,
   referralLink: 'https://valstara.com/?ref=ABCDEF234567',
-  rewards: [
-    { kind: 'wave_upgrade', state: 'settled', tier: 1 },
-    { kind: 'discount', state: 'held', tier: 1 },
-    { kind: 'entries', state: 'held', tier: 1 },
-  ],
   subscriberStatus: 'verified',
-  tier: 1,
+  verificationOrderWindow: 'wave-2',
 };
 const renderers = createTransactionalRenderers({
   baseUrl,
@@ -131,11 +126,11 @@ test('E8-03 required links and plain-text parity hold for each template', async 
     welcome: [
       emailCopy.welcome.firstLine,
       emailCopy.welcome.body,
-      memberStatusCopy.rewards.intro,
+      presentReferralStatus(referralStatus).ladder.held,
     ],
     milestone_reached: [
-      emailCopy.milestone.firstLine(1),
-      emailCopy.milestone.body,
+      emailCopy.milestone.firstLine,
+      presentReferralStatus(referralStatus).ladder.held,
     ],
     status_link: [emailCopy.statusLink.firstLine, emailCopy.statusLink.body],
     giveaway_entry_receipt: [
@@ -212,7 +207,7 @@ test('E8-03 required links and plain-text parity hold for each template', async 
   }
 });
 
-test('E8-03 verification begins with its purpose; milestone distinguishes held and settled rewards', async () => {
+test('E8-03 verification begins with its purpose; E11.7-04 the milestone mail states the ladder and its held condition', async () => {
   const verification = await renderers.get('verification_test')!.render({
     email: 'reader@example.test',
     payload: { token_id: 'verify-id' },
@@ -229,11 +224,31 @@ test('E8-03 verification begins with its purpose; milestone distinguishes held a
     token,
     unsubscribePageUrl: `${baseUrl}/unsubscribe?t=unsubscribe-signature`,
   });
-  assert.match(milestone.subject, /Referral tier 1 reached/u);
-  assert.match(milestone.text, /Access-wave upgrade — Settled/u);
-  assert.match(milestone.text, /Launch discount — Held/u);
-  assert.doesNotMatch(milestone.text, /Bonus entries/u);
-  assert.match(milestone.text, /within 90 days after store launch/u);
+  assert.equal(milestone.subject, 'Your Valstara referral rewards');
+  assert.ok(
+    milestone.text.includes(
+      'Coupon 1: 5% · 2 more confirmed referrals to 10%.',
+    ),
+  );
+  assert.ok(
+    milestone.text.includes(
+      'Coupons become usable once one of your referred friends places their first order, and last 5 years after launch.',
+    ),
+  );
+  assert.ok(
+    milestone.text.includes(
+      "You're in wave 1, with early access from September 2027, for reaching 3 confirmed referrals.",
+    ),
+  );
+  for (const retired of [
+    /tier/iu,
+    /Access-wave upgrade/u,
+    /Launch discount/u,
+    /Settled/u,
+    /within 90 days/u,
+    /Bonus entries/u,
+  ])
+    assert.doesNotMatch(milestone.text, retired);
 });
 
 test('E8-03 welcome and milestone use the same referral presentation as /me', async () => {
@@ -245,10 +260,10 @@ test('E8-03 welcome and milestone use the same referral presentation as /me', as
         memberStatusCopy.authenticated.status,
         memberStatusCopy.authenticated.statusValues.verified,
       ],
-      [memberStatusCopy.authenticated.confirmedReferrals, '3'],
+      [memberStatusCopy.authenticated.confirmedReferrals, '4'],
       [memberStatusCopy.authenticated.rank, '4'],
-      [memberStatusCopy.authenticated.tier, '1'],
-      [memberStatusCopy.authenticated.wave, 'wave-2'],
+      [memberStatusCopy.authenticated.earlyAccess, 'September 2027'],
+      [memberStatusCopy.authenticated.wave, 'wave-1'],
       [memberStatusCopy.authenticated.entries, '6'],
     ],
   );
@@ -265,13 +280,14 @@ test('E8-03 welcome and milestone use the same referral presentation as /me', as
         message.html?.includes(`<li>${field.label}: ${field.value}</li>`),
       );
     }
-    for (const reward of view.rewards) {
+    for (const line of [view.ladder.line, view.earlyAccess.line]) {
+      assert.ok(message.text.includes(line), `${template} ${line}`);
       assert.ok(
-        message.text.includes(
-          `${reward.tier}: ${reward.label} — ${reward.state}`,
-        ),
+        message.html?.includes(`<li>${line.replaceAll("'", '&#39;')}</li>`),
+        `${template} HTML ${line}`,
       );
     }
+    assert.ok(message.text.includes(view.ladder.held));
     assert.ok(message.text.includes(view.referralLink));
   }
   const memberPage = readFileSync('src/pages/me.astro', 'utf8');

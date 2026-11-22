@@ -241,18 +241,20 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
       'Verified',
       'Confirmed referrals',
       'Your rank',
-      'Referral tier',
       'wave-2',
       'Giveaway entries',
       'Marketing email',
       'Turn on marketing email',
       'https://valstara.com/?ref=STATUS234567',
-      'Settled rewards are already earned',
-      'Held discounts require the referred person’s first order within 90 days after store launch',
-      'Access-wave upgrade',
-      'Settled',
-      'Launch discount',
+      // E11.7-04: the coupon ladder from the 12 confirmed referrals, each
+      // coupon held until a referred friend's first order.
+      'Your coupons',
+      'Coupon 1',
+      '20%',
       'Held',
+      'Coupon 1: 20% · 3 more confirmed referrals to 25%.',
+      'Usable once one of your referred friends places their first order.',
+      'Coupons become usable once one of your referred friends places their first order, and last 5 years after launch.',
       'Update your launch preferences',
       'Leave the waitlist and stop all email',
     ]) {
@@ -261,6 +263,14 @@ test('the status page makes expiry and tampering identical, sets no cookie, and 
         `authenticated dashboard is missing ${expected}`,
       );
     }
+    assert.match(
+      authenticatedBody,
+      /You(?:'|&#39;)re in wave 1, with early access from September 2027, for reaching 3 confirmed referrals\./u,
+    );
+    assert.doesNotMatch(
+      authenticatedBody,
+      /Referral tier|Launch discount|Access-wave upgrade|Settled|90 days/u,
+    );
     assert.match(authenticatedBody, />12<\/dd>/u);
     assert.match(authenticatedBody, />1<\/dd>/u);
     assert.match(authenticatedBody, />8<\/dd>/u);
