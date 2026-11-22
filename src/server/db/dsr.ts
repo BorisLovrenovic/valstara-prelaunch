@@ -1,4 +1,5 @@
 import type { DatabaseConnection } from './pool.ts';
+import { purgedPersonalFields } from './partner.ts';
 
 export const dsrBatchSize = 100;
 export interface ErasureRow {
@@ -156,6 +157,14 @@ export function createDsrRepository(db: DatabaseConnection) {
       }
       await bounded(
         `UPDATE giveaway_entry SET voided_at=$2 WHERE id IN (SELECT id FROM giveaway_entry WHERE subscriber_id=$1 AND voided_at IS NULL LIMIT 100)`,
+        [id, now],
+      );
+      // E11.7-05: the partner applications lose every personal field, the
+      // requested code included, and their member link, before the tokens
+      // their confirmation links were bound to are deleted.
+      await bounded(
+        `UPDATE partner SET ${purgedPersonalFields}, personal_data_purged_at=$2
+          WHERE id IN (SELECT id FROM partner WHERE subscriber_id=$1 LIMIT 100)`,
         [id, now],
       );
       // Mail is removed before its bound tokens. Nothing identifying remains

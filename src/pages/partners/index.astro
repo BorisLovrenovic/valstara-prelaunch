@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DocumentPage from '../../layouts/document-page.astro';
+import { partnerProgrammeContent as programme } from '../../server/partner/programme-content.ts';
+
+// E11.7-05: the public partner programme page. Its prose is the content file
+// `src/content/partner-programme.json`; the apply card sits beside it. Like
+// the trust pages it ships no client JavaScript beyond the page-view emitter.
+export const prerender = true;
+---
+
+<BaseLayout
+  title={programme.title}
+  description={programme.description}
+  themeToggle={false}
+>
+  <DocumentPage kind="partners" summary={programme.description}>
+    <article class="document__prose">
+      <h1>{programme.heading}</h1>
+      {
+        programme.sections.map((section) => (
+          <>
+            <h2>{section.heading}</h2>
+            {section.paragraphs.map((paragraph) => (
+              <p>{paragraph}</p>
+            ))}
+          </>
+        ))
+      }
+    </article>
+  </DocumentPage>
+</BaseLayout>

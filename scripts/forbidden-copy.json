@@ -16,6 +16,11 @@
     { "term": "bypass", "replacement": "key" },
     { "term": "instant delivery", "replacement": "delivered within 24 hours" },
     { "term": "immediate access", "replacement": "delivered within 24 hours" },
-    { "term": "digital products", "replacement": "digital goods" }
+    { "term": "digital products", "replacement": "digital goods" },
+    { "term": "passive income", "replacement": "commission" },
+    { "term": "financial freedom", "replacement": "commission" },
+    { "term": "unlimited", "replacement": "commission" },
+    { "term": "team", "replacement": "partners" },
+    { "term": "downline", "replacement": "referred customers" }
   ]
 }

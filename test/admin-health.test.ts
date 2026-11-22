@@ -139,7 +139,7 @@ test('health view includes every named metric and projects away IDs, secrets and
   assert.equal(health.quota.providers[0]?.todayConsumption, 9);
   assert.equal(health.quota.providers[0]?.forecast, 30);
   assert.equal(health.openFlags, 3);
-  assert.equal(health.purges.length, 4);
+  assert.equal(health.purges.length, 5);
   assert.equal(health.purges[0]?.lastSucceededAt, at);
   assert.equal(health.purges[0]?.lastOutcome, 'succeeded');
   assert.equal(health.purges[0]?.rowsPurged, 6);
@@ -199,7 +199,7 @@ test('health view includes every named metric and projects away IDs, secrets and
     body,
     /203\.0\.113\.47|raw-secret-token|ABCDEFGHJKMN|43f31509-8942-4a26-8771-91d77c4c897f|"subscriberId"|"referralCode"|"token"|"rawIp"/u,
   );
-  assert.equal(JSON.parse(body).purges.length, 4);
+  assert.equal(JSON.parse(body).purges.length, 5);
   assert.equal(JSON.parse(body).maintenanceHeartbeat.length, 2);
 });
 
@@ -314,7 +314,7 @@ test('production health sources read the local database and show never-run purge
     assert.equal(health.emailQueue.queued, 1);
     assert.equal(health.seedTest.state, 'not_run');
     assert.equal(health.quota.providers.length, 2);
-    assert.equal(health.purges.length, 4);
+    assert.equal(health.purges.length, 5);
     assert.ok(health.purges.every((job) => job.stale));
     assert.deepEqual(
       health.maintenanceHeartbeat.map((loop) => [loop.loopKey, loop.stale]),

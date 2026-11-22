@@ -21,7 +21,7 @@ COPY scripts/ci/seo-build-check.ts ./scripts/ci/seo-build-check.ts
 # E11.6-10: the price pages bundle the price data and the price-index
 # package's two site-importable parts (ADR-033); scripts/ci/app-build.mjs
 # lists the same inputs. E11.6-11 adds the Valstara prices.
-COPY config/catalogue.json config/markets.json config/valstara-prices.json ./config/
+COPY config/catalogue.json config/markets.json config/valstara-prices.json config/partner-code-blocklist.json ./config/
 COPY data/price-index ./data/price-index
 COPY packages/price-index/src/publish ./packages/price-index/src/publish
 COPY packages/price-index/src/schema ./packages/price-index/src/schema
@@ -56,10 +56,12 @@ COPY --chown=node:node --from=build /app/src/server/verification-rate ./src/serv
 COPY --chown=node:node --from=build /app/src/server/analytics ./src/server/analytics
 COPY --chown=node:node --from=build /app/src/server/dsr ./src/server/dsr
 COPY --chown=node:node --from=build /app/src/server/leaderboard ./src/server/leaderboard
+COPY --chown=node:node --from=build /app/src/server/partner ./src/server/partner
 COPY --chown=node:node --from=build /app/src/copy ./src/copy
 COPY --chown=node:node --from=build /app/src/styles/tokens.css ./src/styles/tokens.css
 COPY --chown=node:node --from=build /app/src/content/giveaway-rules ./src/content/giveaway-rules
 COPY --chown=node:node --from=build /app/src/content/giveaway-award-catalog.json ./src/content/giveaway-award-catalog.json
+COPY --chown=node:node --from=build /app/src/content/partner-countries.json ./src/content/partner-countries.json
 COPY --chown=node:node package.json ./package.json
 
 USER node

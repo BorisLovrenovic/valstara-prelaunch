@@ -171,7 +171,7 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 149 | E11.7-02 | Voiding a referral, and the founder command line | Epic E11.7 — Pre-launch partner programme | done | auto |
 | 150 | E11.7-03 | The coupon ladder and wave 1 replace the milestone tiers | Epic E11.7 — Pre-launch partner programme | done | auto |
 | 151 | E11.7-04 | Showing the ladder: `/me`, verification, the landing page, emails and the privacy policy | Epic E11.7 — Pre-launch partner programme | done | auto |
-| 152 | E11.7-05 | The programme page and the partner application | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 152 | E11.7-05 | The programme page and the partner application | Epic E11.7 — Pre-launch partner programme | done | auto |
 | 153 | E11.7-06 | Founder review, contract tracking and lifecycle commands | Epic E11.7 — Pre-launch partner programme | todo | auto |
 | 154 | E11.7-07 | Activation: `/r/{CODE}`, partner attribution and retroactive attribution | Epic E11.7 — Pre-launch partner programme | todo | auto |
 | 155 | E11.7-08 | The typed referral code, and partner perks at signup | Epic E11.7 — Pre-launch partner programme | todo | auto |

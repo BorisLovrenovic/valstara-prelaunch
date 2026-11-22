@@ -1,0 +1,143 @@
+import { signupCopy, signupFormCopy } from './signup.ts';
+
+// E11.7-05: the partner programme's customer-visible copy. Partner-facing copy
+// is sentence case, with no exclamation marks, and never uses the brief's
+// banned words, which the forbidden-copy scan refuses (copy-rules.md).
+export const partnersCopy = {
+  programme: {
+    eyebrow: 'Partner programme',
+    cardHeading: 'Apply to be a partner',
+    cardBody:
+      'Tell us where you would share Valstara. The founder reviews every application by hand.',
+    apply: 'Apply to the partner programme',
+  },
+  apply: {
+    title: 'Apply to the partner programme',
+    description:
+      'Apply to promote the Valstara pre-launch campaign with your own link and code.',
+    heading: 'Apply to the partner programme',
+    line: 'Tell us how you would share Valstara. The founder reviews every application by hand.',
+    noJavaScript:
+      'Enable JavaScript to complete the security check and send your application.',
+    summaryLink: 'Read about the partner programme',
+    fields: {
+      fullName: 'Full name',
+      emailAddress: 'Email address',
+      emailAddressDescription: 'We send a confirmation link to this address.',
+      country: 'Country of residence',
+      countryPrompt: 'Choose your country',
+      countryDescription: 'Used for the partner contract only.',
+      partnerType: 'Partner type',
+      typePrompt: 'Choose a type',
+      types: {
+        standard: 'Standard',
+        student_ambassador: 'Student ambassador',
+        creator: 'Creator',
+      },
+      channels: 'Main promotion channels',
+      channelOptions: {
+        tiktok: 'TikTok',
+        youtube: 'YouTube',
+        instagram: 'Instagram',
+        x: 'X',
+        discord: 'Discord',
+        telegram_whatsapp: 'Telegram or WhatsApp groups',
+        newsletter_blog: 'Newsletter or blog',
+        campus_offline: 'Campus or offline',
+        other: 'Other',
+      },
+      handles: 'Handles or links',
+      handlesDescription:
+        'At least one. Separate several with commas or spaces.',
+      audienceSize: 'Approximate audience size',
+      audiencePrompt: 'Choose a range',
+      audienceOptions: {
+        under_1k: 'Under 1,000',
+        '1k_10k': '1,000 to 10,000',
+        '10k_50k': '10,000 to 50,000',
+        '50k_150k': '50,000 to 150,000',
+        '150k_plus': '150,000 or more',
+      },
+      promotionPlan: 'How will you promote Valstara?',
+      promotionPlanDescription: 'Up to 500 characters.',
+      requestedCode: 'Preferred code',
+      requestedCodeDescription:
+        '4 to 16 letters and numbers. The founder may change it at approval.',
+      university: 'University or college',
+      universityDescription: 'Required for student ambassadors.',
+      studentEmail: 'Student email',
+      studentEmailDescription: 'Optional, for student ambassadors.',
+      companyName: 'Company name',
+      companyNameDescription: 'Optional, if you are applying as a business.',
+      age: 'I am 18 or older.',
+      terms: 'I agree to the partner programme summary and the privacy policy.',
+      privacyLink: 'Read the privacy policy',
+    },
+    // D-050 Q2: a member created by an application is a waitlist member.
+    // The giveaway half is said only while the giveaway is open, as the
+    // signup form says it, so every claim matches the rules page.
+    membership: {
+      waitlist: 'Confirming your application also joins the Valstara waitlist.',
+      waitlistAndGiveaway:
+        'Confirming your application also joins the Valstara waitlist and enters you in the giveaway.',
+    },
+    ageStatement: signupFormCopy.ageStatement,
+    freeEntryDisclosure: signupFormCopy.freeEntryDisclosure,
+    giveawayRulesLink: signupFormCopy.giveawayRulesLink,
+    giveawayRulesLinkEnd: signupFormCopy.giveawayRulesLinkEnd,
+    submit: 'Send application',
+    errors: {
+      required: 'Complete this field.',
+      too_long: 'This is longer than the form allows.',
+      invalid: 'Check this field.',
+      blocked_domain: signupCopy.blockedDomain,
+      format: 'Use 4 to 16 letters and numbers, with no spaces.',
+      blocked: 'This code cannot be used.',
+      taken: 'This code is already in use.',
+    },
+    alternatives: 'These codes are available:',
+    refused: 'Check the marked fields and send your application again.',
+    challengeFailed: "We couldn't confirm that request. Please try again.",
+    rateLimited:
+      'Too many applications from this connection. Please wait a few minutes and try again.',
+    unavailable:
+      "We can't take applications right now. Please try again in a few minutes.",
+    paused:
+      'Applications to the partner programme are paused. Please check back later.',
+    pausedHeading: 'Applications are paused',
+    accepted: {
+      heading: 'Check your email',
+      line: 'If this address can apply, we have sent it a confirmation link. Your application counts once you confirm it.',
+    },
+    confirm: {
+      heading: 'Confirm your application',
+      line: 'Confirm to send your application to the founder for review.',
+      button: 'Confirm application',
+    },
+    confirmed: {
+      heading: 'Application received',
+      line: 'Thank you. The founder reviews every application by hand and replies by email.',
+    },
+    invalid: {
+      heading: 'This link is not available',
+      line: 'Apply again for a new confirmation link.',
+      apply: 'Apply again',
+    },
+  },
+  email: {
+    confirm: {
+      subject: 'Confirm your Valstara partner application',
+      preheader: 'Confirm your email address to send your application.',
+      firstLine: 'Confirm your Valstara partner application.',
+      body: 'Use the link below to confirm your email address. Your application counts once you do, and confirming also joins the Valstara waitlist. If you did not apply, ignore this email.',
+      action: 'Confirm application',
+    },
+    received: {
+      subject: 'Your Valstara partner application is received',
+      preheader: 'The founder reviews every application by hand.',
+      firstLine: 'We have your partner application.',
+      body: 'The founder reviews every application by hand and replies by email. Nothing more is needed from you for now.',
+      action: 'Read about the partner programme',
+    },
+  },
+} as const;

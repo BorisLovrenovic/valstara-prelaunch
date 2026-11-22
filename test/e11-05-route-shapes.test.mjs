@@ -209,7 +209,14 @@ async function astroResponseShape(path) {
     if (child !== frontmatter) visitMarkup(child);
   }
   for (const expression of rendered) {
-    if (!(path === 'dsr.astro' && expression.trim() === 'dsrCopy.email'))
+    if (
+      !(path === 'dsr.astro' && expression.trim() === 'dsrCopy.email') &&
+      // E11.7-05's AC: a refused application returns the form with the
+      // values the submitter typed, their own address included, as the
+      // value of its own input in the response to their own POST. No stored
+      // value is rendered: `values` is read from the submitted form only.
+      !(path === 'partners/apply.astro' && expression.trim() === 'values.email')
+    )
       assert.doesNotMatch(
         expression,
         personalValue,
@@ -310,6 +317,8 @@ test('E11-05 generates the registered API inventory and rejects personal fields 
       'dsr.astro',
       'giveaway/award.astro',
       'me.astro',
+      // E11.7-05: the partner application and its link's confirmation.
+      'partners/apply.astro',
       'unsubscribe.astro',
       'verify.astro',
     ],

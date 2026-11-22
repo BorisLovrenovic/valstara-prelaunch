@@ -83,6 +83,34 @@ const relatedPolicyFields = {
   referral_code: {
     'Referral code': ['active', 'code', 'created_at', 'owner_id', 'owner_kind'],
   },
+  // E11.7-05: a partner application, disclosed in its own policy row.
+  partner: {
+    'If you apply to the partner programme': [
+      'id',
+      'subscriber_id',
+      'status',
+      'status_changed_at',
+      'submitted_at',
+      'applied_at',
+      'created_subscriber',
+      'confirmation_token_id',
+      'full_name',
+      'country_of_residence',
+      'partner_type',
+      'channels',
+      'handles',
+      'audience_size',
+      'promotion_plan',
+      'requested_code',
+      'university',
+      'student_email',
+      'company_name',
+      'age_confirmed',
+      'programme_terms_agreed',
+      'personal_data_purged_at',
+      'created_at',
+    ],
+  },
   milestone_award: {
     'Referral code': [
       'id',

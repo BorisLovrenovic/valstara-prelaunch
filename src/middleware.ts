@@ -80,6 +80,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       staticPath === '/terms' ||
       staticPath === '/privacy' ||
       staticPath === '/privacy/storage' ||
+      // E11.7-05: the partner programme page is static content too.
+      staticPath === '/partners' ||
       staticPath === '/giveaway/rules' ||
       staticPath.startsWith('/giveaway/rules/') ||
       staticPath === '/404' ||

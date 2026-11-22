@@ -103,6 +103,11 @@
     "content": "export const line = 'An unbeatable price this month.';\n",
     "diagnostic": "\\[forbidden-copy\\] packages/price-index/copy/ci-forbidden-copy-fixture\\.ts: forbidden copy \"unbeatable\""
   },
+  "partner-copy-forbidden": {
+    "path": "src/copy/partners.ts",
+    "content": "export const line = 'Grow your downline with the partner programme.';\n",
+    "diagnostic": "\\[forbidden-copy\\] src/copy/partners\\.ts: forbidden copy \"downline\""
+  },
   "inline-prose": {
     "path": "src/pages/ci-inline-prose-fixture.astro",
     "content": "<p>Welcome to the Valstara waitlist.</p>\n",

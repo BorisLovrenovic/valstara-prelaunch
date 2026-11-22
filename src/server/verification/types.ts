@@ -4,7 +4,13 @@
  * status link can never be replayed as a verification.
  */
 export type TokenPurpose =
-  'verify' | 'status' | 'unsubscribe' | 'dsr_export' | 'dsr_delete';
+  | 'verify'
+  | 'status'
+  | 'unsubscribe'
+  | 'dsr_export'
+  | 'dsr_delete'
+  // E11.7-05: a partner application's confirmation link (D-050).
+  | 'partner_application';
 
 /**
  * The outcome of consuming a token.
@@ -31,4 +37,6 @@ export type CustomerOutcome = 'ok' | 'rejected';
 export interface VerificationCompletionConsumeResult {
   readonly outcome: ConsumeResult;
   readonly subscriberId: string | null;
+  /** The consumed token's id, for `verified` and `already`; otherwise null. */
+  readonly tokenId?: string | null;
 }

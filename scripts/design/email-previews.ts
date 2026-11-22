@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { dsrRenderers } from '../../src/server/dsr/templates.ts';
+import { partnerApplicationRenderers } from '../../src/server/partner/templates.ts';
 import type {
   Message,
   TemplateRenderer,
@@ -30,6 +31,8 @@ const payloads: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
   giveaway_winner: { token_id: 'status-id', award_id: awardId },
   dsr_export: { token_id: 'dsr-id' },
   dsr_delete: { token_id: 'dsr-id' },
+  partner_application_confirm: { token_id: 'partner-id' },
+  partner_application_received: { status_token_id: 'status-id' },
   weekly_campaign_update: {
     snapshot_id: 'snapshot-id',
     status_token_id: 'status-id',
@@ -69,6 +72,7 @@ export function emailPreviewRenderers(
       },
     }),
     ...dsrRenderers(origin, 'send.valstara.com'),
+    ...partnerApplicationRenderers(origin, 'send.valstara.com'),
     [
       'weekly_campaign_update',
       createWeeklyTemplate({

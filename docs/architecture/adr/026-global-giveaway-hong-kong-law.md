@@ -30,6 +30,8 @@ Valstara is incorporated and operates in Hong Kong, and so does its payment serv
 
 Data protection is unchanged. GDPR and UK GDPR still apply, the Article 27 representatives are still required (ADR-019), and entry is separated from marketing consent (ADR-027).
 
+**Amendment, E11.7-05 (founder-authorised 2026-11-17, partner programme answer 3):** the partner programme's application asks for the applicant's **country of residence, from a plain dropdown, for the partner contract**. It is stored on the `partner` row only, disclosed in the privacy notice, appears in no analytics event and on no dashboard, and decides nothing about the giveaway: entry still never depends on location, and no country is collected at signup. A rejected or unconfirmed application's country is purged after 90 days with its other personal fields.
+
 **Subsequent decision, 2026-10-01:** ADR-029 superseded ADR-019's representative appointment requirement for this campaign. The paragraph above records what was decided when ADR-026 was accepted.
 
 ## Alternatives rejected
@@ -42,4 +44,5 @@ Data protection is unchanged. GDPR and UK GDPR still apply, the Article 27 repre
 - **The accepted risk is real, and it is recorded here so it isn't forgotten.** Some countries regulate or prohibit free chance draws open to their residents (the research found Belgium prohibits them, and Portugal, Italy, Spain and Poland require authorisation or charge taxes). A Hong Kong governing-law clause does not remove consumers' mandatory protections in their home country. The most likely enforcement comes through vendors (email providers, payment provider, Cloudflare) rather than regulators.
 - The prize limits keep several regimes from being triggered at all: the Netherlands' €449-per-prize gaming-tax line, the US$5,000 registration thresholds in New York and Florida, and Austria's duty exemption.
 - The country selector, the region field, `country`, `country_detected`, `region`, `giveaway_eligible` and `giveaway_entry.jurisdiction` are removed by ticket S-01. Without a country header, the landing-page cache key is the flag generation alone.
+- Since E11.7-05, `partner.country_of_residence` is the only other country the site stores, and it is collected from partner applicants only (see the amendment above).
 - **What would reopen this decision:** a regulator or vendor action, a prize pool that needs to exceed the limits above, or a decision to run giveaways after launch.

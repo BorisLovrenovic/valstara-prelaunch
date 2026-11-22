@@ -80,4 +80,6 @@ Replay returns `already` · a `status` token rejected by `consume(_, 'verify')` 
 
 ## E9-05 rights links
 
+`partner_application` (E11.7-05, D-050) is the partner application's confirmation link, with the same seven-day lifetime as `verify`. It is issued in the submit transaction, bound to its `partner` row by `confirmation_token_id`, and consumed only by the token-authenticated `POST /partners/apply`; `GET ?token=` renders an inert confirmation form. Consuming it for a `pending` subscriber runs the same in-transaction completion as `/verify` (`completeVerificationInTransaction` in `src/server/verification/complete.ts`), so the member is verified exactly as a waitlist signup is; for a `verified` subscriber it changes nothing in the member record. `consumeForPurpose` now also returns the consumed token's id, so the caller can find what the token was bound to.
+
 `dsr_export` and `dsr_delete` are separate single-use purposes with a 24-hour lifetime. Emailed links render an inert confirmation form; POST consumes the matching purpose before rate limiting and rights work, in the same transaction. Replay does not repeat fulfilment. Pending or erased subscribers cannot authenticate with any earlier link. Recovery is a fresh request after expiry.

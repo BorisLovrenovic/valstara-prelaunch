@@ -5,6 +5,8 @@ export const purgeJobKeys = [
   'rate_limit_retention',
   'verification_token_retention',
   'leaderboard_snapshot_purge',
+  // E11.7-05: rejected and unconfirmed partner applications.
+  'partner_application_purge',
 ] as const;
 
 export type PurgeJobKey = (typeof purgeJobKeys)[number];
