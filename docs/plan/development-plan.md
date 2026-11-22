@@ -4240,6 +4240,10 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - Pausing changes no past attribution and no fixed discount
 
 **Tests:** `/r/` for active, paused, terminated, unknown and flag-off · the discount boundaries and floor · fixed-at-signup across later changes · void removal · the no-discount-for-members assertion · retroactive idempotency and history · paused member-code behaviour · the welcome email.
+
+**Founder decisions (2026-11-23):**
+1. **Move the complete partner welcome email and its test from E11.7-07 to E11.7-11.** Accepted under the founder's standing rule for high-confidence recommendations (D-057 Q1, option A). E11.7-07 activates the code and member-code attribution and runs retroactive attribution without sending an activation email. E11.7-11 sends the welcome once the E11.7-09 private dashboard and the E11.7-11 asset kit supplied under P10 are live. Include partners already active at that point through a batch-capped, idempotent catch-up, and send on subsequent activations for partners who have yet to receive the welcome. Use one business key per partner, the `partners.enabled` flag, and the existing dispatch suppression check. The email contains the working private dashboard link issued under E11.7-09's link rules, the partner's code and `/r/{CODE}` link, access to the live asset kit, and the three-step checklist from [`docs/features/partner-programme.md`](../features/partner-programme.md). The relocated test verifies the full email, no send before both destinations are live or while the flag is off, one send for an already-active partner across catch-up retries, one send on later activation, and suppression at dispatch.
+
 **Docs:** `docs/features/partner-programme.md` · `docs/architecture/adr/008-server-side-referral-attribution.md` · `docs/modules/referral.md`
 
 ### E11.7-08 — The typed referral code, and partner perks at signup
