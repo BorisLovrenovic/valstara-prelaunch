@@ -29,6 +29,8 @@ const appPassword =
 // Turnstile's siteverify, stubbed inside the app process: every non-empty
 // token passes, so no request leaves the machine.
 const siteverifyStub = `data:text/javascript,${encodeURIComponent(`
+  // Exit normally on teardown so V8 records coverage for the built routes.
+  process.once('SIGTERM', () => process.exit(0));
   const realFetch = globalThis.fetch;
   globalThis.fetch = async (input, init) => {
     const url = input instanceof Request ? input.url : String(input);
