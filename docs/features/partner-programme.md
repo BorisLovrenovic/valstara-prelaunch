@@ -69,7 +69,7 @@ The reward ladder and the wave-1 rule sit behind the existing `referral.enabled`
 - **States that wait on a person** (standing rule 14):
   - an unconfirmed application expires with its token;
   - `applied`, `approved` and `contract_sent` wait on the founder or on the signature. `partners list --stale` shows any that have been in one state for more than 14 days (configurable). Nothing changes automatically;
-  - a dashboard link expires after 30 days, with one-click re-send.
+  - a dashboard link expires after 30 days. An active or paused partner can request a replacement by email. Termination ends both access and replacement.
 
 **As built (E11.7-05; founder decisions D-050, 2026-11-22):**
 - **The application and its confirmation.** `/partners/apply` takes exactly the brief's §3.2 fields, with the country as a plain dropdown (`src/content/partner-countries.json`), and stores them on `partner` (`docs/data/model.md#partner`). A submission runs Turnstile first, then the flag, then the hashed-prefix rate limit, then the fields and the code rules, then signup's normalisation, domain screen and fraud signals (`src/server/partner/application.ts`). It finds or creates a `pending` subscriber for the normalised address: a `pending` or `verified` member is linked, and any other status, a member with a confirmed application, and a repeat within the one-link-per-address window get the same neutral answer with no mail and no row. The row is `unconfirmed`, bound to its own `partner_application` token (seven days, in `verification_token`), whose link is the `partner_application_confirm` email.
@@ -204,7 +204,8 @@ Progress shows on `/me`, on the partner dashboard and in the relevant emails. **
 |---|---|
 | `/partners` | The public programme page, with copy from a content file (`src/content/partner-programme.json`, E11.7-05) |
 | `/partners/apply` | The application form: Turnstile, rate limit, the fields in the brief's §3.2, the country dropdown, the code check on submit |
-| `/partners/dashboard?t=` | The partner's private page. It shows: link and code; QR downloads; counts (confirmed, pending, voided, signups per week); a breakdown by survey category; the ladder and welcome discount; the terms summary; the leaderboard; the asset kit; settings. `noindex`, `no-store`, no page-view emitter, excluded from the sitemap and `robots.txt` |
+| `/partners/dashboard?t=` | The private page for active and paused partners. It shows their link, code, confirmed, pending and voided counts, confirmed signups by UTC week of signup, survey v2 counts, the ladder and applicable welcome discount, signed terms and settings. It sends `noindex`, `no-store` and `no-referrer`. It has no page-view emitter, is excluded from the sitemap and is disallowed in `robots.txt`. The leaderboard and asset kit arrive with E11.7-10 and E11.7-11 |
+| `/partners/apply?operation=dashboard-recovery` | An email-only replacement request. The same conditional acknowledgement applies to eligible and ineligible addresses. Turnstile loads only with the form on the existing allowlisted route |
 | `/partners/dashboard/flyer?t=` | A print-ready flyer for A4 and US Letter |
 | `/r/{CODE}` | The permanent short link |
 
@@ -218,7 +219,9 @@ Progress shows on `/me`, on the partner dashboard and in the relevant emails. **
 - Self-referral (the same normalised email) is blocked by the existing rule. Fraud flags still apply, and flagged signups count until voided.
 - A voided referral is kept for audit with its reason. Voiding removes it from counts, the leaderboard, the ladder, wave 1 and the export's active set. Un-voiding restores it.
 - Pausing a partner does not touch past attributions or the welcome discounts already fixed.
-- Requesting a new dashboard link cancels every earlier link.
+- **Dashboard access and settings (D-063, D-064).** Issuing a dashboard link swaps the current token in the same transaction as queueing the replacement. Cancelled, tampered, expired and terminated links show the same recovery action. The dashboard renders counts only for referrals, with pending and voided signups admitted only into their labelled totals. Confirmed non-voided signups are grouped by UTC signup week and by the current survey's categories. The dashboard uses only the shell's theme code, first-party assets and native HTML controls.
+- Each dashboard GET issues a fresh signed settings token bound to its owner and current dashboard link, with no database write. The native POST accepts it once and saves the change in the same transaction as marking it consumed. The token expires with the link, and replacing the link or terminating the partner invalidates it. The dashboard lets partners choose a display name, opt into showing it on the partner-only leaderboard, and opt into optional programme mail. Both choices start off.
+- The usual exact-origin check runs first. With the dashboard's `no-referrer` policy, a native form can send a literal `Origin: null`. D-064 permits that only on `POST /partners/dashboard` with a valid Host and `Sec-Fetch-Site: same-origin`. Settings still require the signed token. Recovery uses an origin-only referrer policy on its separate view to pass the normal origin check and never carries the bearer.
 
 ## Acceptance criteria
 

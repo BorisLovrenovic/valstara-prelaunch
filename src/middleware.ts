@@ -24,19 +24,23 @@ function configuredMiddleware(): ReturnType<typeof createAdminAuthMiddleware> {
 // only when it matches security.allowedDomains and otherwise reads
 // localhost:<port>, so it cannot stand for the request's origin (D-010). A
 // missing or unparseable Host or Origin is never same-origin.
-function sameOrigin(
-  origin: string | null,
-  protocol: string,
-  host: string | null,
-): boolean {
-  if (origin === null || host === null || host === '') return false;
-  let expected: string;
+function requestOrigin(protocol: string, host: string | null): string | null {
+  if (host === null || host === '' || /[/\\?#@\s]/u.test(host)) return null;
   try {
-    expected = new URL(`${protocol}//${host}`).origin;
+    const url = new URL(`${protocol}//${host}`);
+    if (
+      url.username ||
+      url.password ||
+      url.pathname !== '/' ||
+      url.search ||
+      url.hash
+    ) {
+      return null;
+    }
+    return url.origin;
   } catch {
-    return false;
+    return null;
   }
-  return origin === expected;
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -59,17 +63,25 @@ export const onRequest = defineMiddleware(async (context, next) => {
         'multipart/form-data',
         'text/plain',
       ].some((type) => contentType.toLowerCase().includes(type));
-    if (
-      (formLike || contentType === null) &&
-      !sameOrigin(
-        context.request.headers.get('origin'),
-        context.url.protocol,
-        context.request.headers.get('host'),
-      )
-    ) {
-      return new Response(securityCopy.crossSiteForm, {
-        status: 403,
-      });
+    if (formLike || contentType === null) {
+      const headers = context.request.headers;
+      const origin = headers.get('origin');
+      const expected = requestOrigin(context.url.protocol, headers.get('host'));
+      const exact = expected !== null && origin === expected;
+      // D-064: a native submission under no-referrer sends a literal null
+      // Origin. The dashboard still authenticates its single-use token.
+      if (
+        !exact &&
+        !(
+          expected !== null &&
+          origin === 'null' &&
+          method === 'POST' &&
+          context.url.pathname === '/partners/dashboard' &&
+          headers.get('sec-fetch-site') === 'same-origin'
+        )
+      ) {
+        return new Response(securityCopy.crossSiteForm, { status: 403 });
+      }
     }
   }
   if (

@@ -35,6 +35,7 @@ const payloads: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
   partner_application_received: { status_token_id: 'status-id' },
   partner_approved: { status_token_id: 'status-id' },
   partner_rejected: { status_token_id: 'status-id' },
+  partner_dashboard_link: { token_id: 'dashboard-id' },
   weekly_campaign_update: {
     snapshot_id: 'snapshot-id',
     status_token_id: 'status-id',

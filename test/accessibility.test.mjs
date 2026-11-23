@@ -20,6 +20,7 @@ import {
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { entranceEnded } from './helpers/motion.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import { seedPartnerDashboard } from './helpers/partner-dashboard-fixture.mjs';
 import {
   containerOwnerArguments,
   removeOrphanedContainers,
@@ -120,10 +121,16 @@ async function createDatabaseFixture() {
     `,
     [randomUUID(), subscriberId, randomUUID()],
   );
+  const partnerDashboard = await seedPartnerDashboard(
+    database,
+    subscriberId,
+    process.env.EMAIL_TOKEN_SECRET,
+  );
 
   return {
     applicationUrl: applicationUrl.toString(),
     database,
+    partnerDashboard,
     async dispose() {
       await database.end();
       await admin.query(
@@ -335,6 +342,7 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
     '/me',
     '/partners',
     '/partners/apply',
+    '/partners/dashboard',
     '/price-index',
     '/prices',
     '/privacy',
@@ -392,9 +400,122 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
   }
 });
 
-// E11.5-03: the shell joins the enforced layout-check set. Its header and
-// footer pass the E11.5-01 layout rules on every rendered page, at every test
-// width, in both themes; page bodies join in the ticket that redesigns them.
+test('the authenticated partner dashboard and recovery form pass WCAG 2.2 AA in both themes', async () => {
+  for (const colorScheme of themes) {
+    const context = await browser.newContext({
+      colorScheme,
+      viewport: { width: 320, height: 800 },
+    });
+    try {
+      const page = await context.newPage();
+      const dashboard = await page.goto(
+        `${browserOrigin}/partners/dashboard?t=${databaseFixture.partnerDashboard.token}`,
+      );
+      assert.equal(dashboard?.status(), 200);
+      assert.equal(
+        await page.getByRole('button', { name: 'Save settings' }).count(),
+        1,
+      );
+      assert.deepEqual(
+        await axeViolations(page),
+        [],
+        `partner dashboard in ${colorScheme}`,
+      );
+      assert.ok(
+        await page.evaluate(
+          () =>
+            globalThis.document.documentElement.scrollWidth <=
+            globalThis.innerWidth,
+        ),
+      );
+      await page.getByRole('link', { name: 'Send me a new link' }).click();
+      assert.equal(
+        await page.getByRole('textbox', { name: 'Email address' }).count(),
+        1,
+      );
+      assert.deepEqual(
+        await axeViolations(page),
+        [],
+        `partner recovery in ${colorScheme}`,
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('D-064 saves with Chromium native form submission and JavaScript disabled', async () => {
+  // Chromium includes Fetch Metadata for a trustworthy loopback URL. This
+  // TCP relay forwards its real, unmodified requests to the built app.
+  const relay = spawn(
+    'docker',
+    [
+      'exec',
+      browserContainer,
+      'node',
+      '-e',
+      `
+    const net = require('node:net');
+    const port = Number(process.argv[1]);
+    net.createServer((browser) => {
+      const app = net.connect(port, 'host.docker.internal');
+      browser.pipe(app).pipe(browser);
+      app.on('error', () => browser.destroy());
+      browser.on('error', () => app.destroy());
+    }).listen(port, '127.0.0.1', () => process.stdout.write('ready'));
+  `,
+      String(app.port),
+    ],
+    { stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+  let context;
+  try {
+    await Promise.race([
+      once(relay.stdout, 'data'),
+      once(relay, 'exit').then(() => {
+        throw new Error('The Chromium loopback relay exited before listening.');
+      }),
+    ]);
+    context = await browser.newContext({
+      javaScriptEnabled: false,
+      reducedMotion: 'reduce',
+    });
+    const page = await context.newPage();
+    const dashboard = `${hostOrigin}/partners/dashboard?t=${databaseFixture.partnerDashboard.token}`;
+    const initial = await page.goto(dashboard);
+    assert.equal(initial?.headers()['referrer-policy'], 'no-referrer');
+    await page
+      .getByRole('textbox', { name: 'Display name' })
+      .fill('Native Riley');
+    const show = page.getByRole('checkbox', {
+      name: 'Show my display name on the partner leaderboard',
+    });
+    await show.press('Space');
+    assert.ok(await show.isChecked());
+    const [posted] = await Promise.all([
+      page.waitForResponse(
+        (response) => response.request().method() === 'POST',
+      ),
+      page.getByRole('button', { name: 'Save settings' }).press('Enter'),
+    ]);
+    const headers = await posted.request().allHeaders();
+    assert.equal(headers.origin, 'null');
+    assert.equal(headers['sec-fetch-site'], 'same-origin');
+    assert.equal(headers.referer, undefined);
+    assert.equal(posted.status(), 303);
+    const saved = await databaseFixture.database.query(
+      'SELECT display_name, show_on_leaderboard FROM partner WHERE id = $1',
+      [databaseFixture.partnerDashboard.partnerId],
+    );
+    assert.deepEqual(saved.rows, [
+      { display_name: 'Native Riley', show_on_leaderboard: true },
+    ]);
+  } finally {
+    await context?.close();
+    relay.kill();
+  }
+});
+
 test('the site shell passes the layout checks on every rendered page', async () => {
   await assertShellLayout(browser, browserOrigin, [
     ...(await renderedRoutes()),

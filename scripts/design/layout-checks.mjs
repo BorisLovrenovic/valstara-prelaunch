@@ -32,6 +32,7 @@ export const enforcedPages = Object.freeze([
   // E11.7-05: the partner programme page and the application.
   '/partners',
   '/partners/apply',
+  '/partners/dashboard',
   '/404',
   '/500',
 ]);

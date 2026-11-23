@@ -319,6 +319,7 @@ test('E11-05 generates the registered API inventory and rejects personal fields 
       'me.astro',
       // E11.7-05: the partner application and its link's confirmation.
       'partners/apply.astro',
+      'partners/dashboard.astro',
       'unsubscribe.astro',
       'verify.astro',
     ],

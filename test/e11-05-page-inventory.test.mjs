@@ -10,6 +10,7 @@ import { chromium } from 'playwright';
 import { Pool } from 'pg';
 import { publishedPort, startAppServer } from './helpers/listen-port.mjs';
 import { sourcePagePaths } from './helpers/page-inventory.mjs';
+import { seedPartnerDashboard } from './helpers/partner-dashboard-fixture.mjs';
 import {
   priceFixtureInputs,
   priceFixtureSite,
@@ -292,7 +293,12 @@ async function seedEmailLinkedPages(database) {
        '2026-10-01T00:03:00Z', '2099-01-01T00:00:00Z')`,
     [awardId, drawId, 'cd'.repeat(32), entryId, verifiedId],
   );
-  return { ...tokens, awardId };
+  const dashboard = await seedPartnerDashboard(
+    database,
+    verifiedId,
+    emailTokenSecret,
+  );
+  return { ...tokens, awardId, dashboard: dashboard.token };
 }
 
 async function withServer(databaseUrl, run, cwd = undefined) {
@@ -460,7 +466,17 @@ async function crawl(
       );
       await route.fulfill({
         status: response.status,
-        contentType: response.headers.get('content-type') ?? 'text/plain',
+        headers: Object.fromEntries(
+          [...response.headers].filter(([name]) =>
+            [
+              'content-type',
+              'referrer-policy',
+              'cache-control',
+              'set-cookie',
+              'x-robots-tag',
+            ].includes(name),
+          ),
+        ),
         body: globalThis.Buffer.from(await response.arrayBuffer()),
       });
     });
@@ -625,6 +641,68 @@ async function crawl(
       await page.evaluate(storageMutation);
     }
     const query = pageUrl.searchParams;
+    if (pathname === '/partners/dashboard') {
+      const headers = await response.allHeaders();
+      assert.equal(headers['referrer-policy'], 'no-referrer', path);
+      assert.equal(headers['cache-control'], 'private, no-store', path);
+      assert.equal(headers['x-robots-tag'], 'noindex', path);
+      assert.equal(headers['set-cookie'], undefined, path);
+      assert.doesNotMatch(html, /page-view\.js/u, path);
+      const scripts = await page
+        .locator('script:not([type="application/ld+json"])')
+        .evaluateAll((nodes) =>
+          nodes.map((node) => ({
+            src: node.getAttribute('src'),
+            body: node.textContent,
+          })),
+        );
+      assert.equal(
+        scripts.length,
+        2,
+        `${path} must ship only the theme shell scripts`,
+      );
+      assert.ok(
+        scripts.some(
+          ({ src, body }) => src === null && body.includes('valstara-theme'),
+        ),
+        path,
+      );
+      assert.ok(
+        scripts.some(
+          ({ src, body }) =>
+            src === null &&
+            body.includes('customElements.define') &&
+            body.includes('valstara-theme-toggle'),
+        ),
+        path,
+      );
+      const authenticated = query.has('t') && query.get('t') !== 'invalid';
+      assert.equal(
+        await page.locator('input[name="settings_token"]').count(),
+        authenticated ? 1 : 0,
+      );
+      assert.equal(
+        await page
+          .locator('a[href="/partners/apply?operation=dashboard-recovery"]')
+          .count(),
+        1,
+      );
+    }
+    if (
+      pathname === '/partners/apply' &&
+      query.get('operation') === 'dashboard-recovery'
+    ) {
+      const form = page.locator('form:has(.cf-turnstile)');
+      assert.equal(await form.locator('input[type="email"]').count(), 1);
+      assert.equal(
+        await form
+          .locator(
+            'input[name="settings_token"], input[name="token"], input[name="t"]',
+          )
+          .count(),
+        0,
+      );
+    }
     if (pathname === '/dsr' && query.has('t')) {
       assert.ok(
         !html.includes('challenges.cloudflare.com'),
@@ -822,6 +900,9 @@ test(
           '/dsr?operation=delete',
           '/dsr?operation=delete&t=invalid',
           '/partners/apply?token=invalid',
+          '/partners/apply?operation=dashboard-recovery',
+          '/partners/dashboard?t=invalid',
+          `/partners/dashboard?t=${encodeURIComponent(tokens.dashboard)}`,
         ];
         assert.ok(inventory.routes.includes('/404'));
         assert.ok(inventory.routes.includes('/500'));

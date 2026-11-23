@@ -3,3 +3,4 @@ Disallow: /api/admin/
 Disallow: /api/
 Disallow: /me
 Disallow: /verify
+Disallow: /partners/dashboard

@@ -1,4 +1,5 @@
 import { emailCopy } from '../../copy/email.ts';
+import { partnerDashboardCopy } from '../../copy/partner-dashboard.ts';
 import { partnersCopy } from '../../copy/partners.ts';
 import type { TemplateRenderer } from '../email/service.ts';
 import { renderEmailDocument } from '../email/template-layout.ts';
@@ -7,6 +8,8 @@ import {
   partnerConfirmationTemplate,
   partnerReceivedTemplate,
 } from './application.ts';
+import { dashboardPath } from './dashboard.ts';
+import { partnerDashboardRecoveryTemplate } from './dashboard-recovery.ts';
 import {
   partnerApprovedTemplate,
   partnerRejectedTemplate,
@@ -143,10 +146,33 @@ export function partnerApplicationRenderers(
       });
     },
   };
+  const dashboardLink: TemplateRenderer = {
+    kind: 'transactional',
+    async render({ email, payload, token, unsubscribePageUrl }) {
+      if (typeof payload.token_id !== 'string' || payload.token_id === '') {
+        throw new Error('email_template_reference_missing');
+      }
+      const target = new URL(dashboardPath, origin);
+      target.searchParams.set('t', await token(payload.token_id));
+      const copy = partnerDashboardCopy.mail;
+      return renderEmailDocument({
+        from,
+        to: email,
+        unsubscribePageUrl,
+        document: {
+          subject: copy.subject,
+          preheader: copy.preheader,
+          paragraphs: [copy.body],
+          links: [{ label: copy.action, url: target.toString() }],
+        },
+      });
+    },
+  };
   return new Map([
     [partnerConfirmationTemplate, confirm],
     [partnerReceivedTemplate, received],
     [partnerApprovedTemplate, approved],
     [partnerRejectedTemplate, rejected],
+    [partnerDashboardRecoveryTemplate, dashboardLink],
   ]);
 }

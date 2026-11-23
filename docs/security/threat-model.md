@@ -102,3 +102,9 @@ The dependency allowlist holds one exception, `picomatch` advisory 1247710 (GHSA
 ## Secret handling
 
 Never committed. Documented in `infra/ENV.md` by name and purpose. **A leaked secret means rotate, then purge** — committing over it is not remediation, and it is flagged to the founder immediately. The pgBackRest passphrase and the IP-prefix pepper have named procedures (`docs/engineering/ci-cd.md#secrets`).
+
+## Partner dashboard bearer and native settings form
+
+E11.7-09 puts the 30-day bearer in the emailed URL. It authorises one partner's contract, settings and aggregate referrals. A replacement invalidates the prior link, and termination blocks access and issuance. The dashboard sends `no-referrer` and `no-store`, with no page-view request or widget. The recovery form takes only an address and runs on the existing Turnstile-enabled application route. Eligible and ineligible addresses get one conditional acknowledgement and timing policy. Rate limits apply to both a keyed digest of the normalised address and the hashed IP prefix.
+
+D-064 uses the normal exact-origin check first. Only the dashboard settings POST can then pass for a valid Host, the literal `Origin: null` and browser-supplied `Sec-Fetch-Site: same-origin`. Native form submission under `no-referrer` emits those headers. A missing Origin, foreign Origin or non-same-origin metadata does not pass this fallback. The fallback does not authenticate any write. The signed, purpose-bound nonce is required and is consumed in the same transaction as the settings change, after checking the partner's current link and eligibility. Replays, expired nonces and tokens derived from a replaced or terminated link cannot change settings.

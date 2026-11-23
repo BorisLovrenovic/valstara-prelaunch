@@ -56,7 +56,7 @@ const subscriberPolicyCategory = {
 // its purpose, basis and retention have been reviewed.
 const relatedPolicyFields = {
   verification_token: {
-    'Verification and status link records': [
+    'Verification, status and partner dashboard link and settings records': [
       'id',
       'subscriber_id',
       'token_hash',
@@ -121,6 +121,14 @@ const relatedPolicyFields = {
       'contract_version',
       'contract_reference',
       'notes',
+    ],
+    'Verification, status and partner dashboard link and settings records': [
+      'dashboard_token_id',
+    ],
+    'Partner dashboard settings': [
+      'display_name',
+      'show_on_leaderboard',
+      'nonessential_email_enabled',
     ],
   },
   milestone_award: {

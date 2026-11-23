@@ -10,6 +10,7 @@ import { createPartnerCodeRules } from '../referral/partner-code.ts';
 import { consumeRateLimit } from '../ratelimit/consume.ts';
 import { hashedIpPrefix } from '../ratelimit/ip-prefix.ts';
 import { verifyTurnstileToken } from '../turnstile/verify.ts';
+import { emailTokenSecret } from '../verification/token-derivation.ts';
 
 import {
   createPartnerApplicationHandler,
@@ -21,6 +22,8 @@ import {
   createPartnerConfirmationService,
   type PartnerConfirmationOutcome,
 } from './confirm.ts';
+import { createPartnerDashboardService } from './dashboard.ts';
+import { createPartnerDashboardRecovery } from './dashboard-recovery.ts';
 
 let database: DatabasePool | undefined;
 function getDatabase(): DatabasePool {
@@ -29,6 +32,40 @@ function getDatabase(): DatabasePool {
 }
 
 const isEnabled = () => getFlagService().isEnabled('partners.enabled');
+
+export function partnerDashboard() {
+  return createPartnerDashboardService(getDatabase(), {
+    isEnabled,
+    tokenSecret: emailTokenSecret(),
+  });
+}
+
+interface DashboardFormRequest {
+  readonly request: Request;
+  readonly clientAddress: string;
+}
+
+export async function savePartnerDashboardSettings(
+  context: DashboardFormRequest,
+) {
+  return partnerDashboard().save(
+    await context.request.formData().catch(() => new FormData()),
+    hashedIpPrefix(context.clientAddress, getConfig().ipPrefixPepper),
+  );
+}
+
+export async function runPartnerDashboardRecovery(
+  context: DashboardFormRequest,
+) {
+  const form = await context.request.formData().catch(() => new FormData());
+  return createPartnerDashboardRecovery(getDatabase(), {
+    isEnabled,
+    hashIpPrefix: (address) =>
+      hashedIpPrefix(address, getConfig().ipPrefixPepper),
+    verifyTurnstile: (token) => verifyTurnstileToken(token),
+    tokenSecret: emailTokenSecret(),
+  })(form, context.clientAddress);
+}
 
 /** `/partners/apply`'s submit, wired to the application's services. */
 export function runPartnerApplication(
