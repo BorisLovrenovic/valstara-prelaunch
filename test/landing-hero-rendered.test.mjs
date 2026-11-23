@@ -1159,6 +1159,7 @@ function measureTextColumn(page) {
       surface: resolve('background-color', 'var(--surface)'),
       line: resolve('border-top-color', 'var(--line)'),
       shadow: resolve('box-shadow', 'var(--shadow-1), var(--edge)'),
+      focusOutline: resolve('outline', 'var(--focus-width) solid var(--coral)'),
     };
     probe.remove();
     const card = getComputedStyle(
@@ -1356,10 +1357,10 @@ test('the enabled referral disclosure fits the hero collapsed and expanded at al
           );
           assert.equal(
             await summary.evaluate(
-              (node) => globalThis.getComputedStyle(node).outlineStyle,
+              (node) => globalThis.getComputedStyle(node).outline,
             ),
-            'solid',
-            where,
+            column.tokens.focusOutline,
+            `visible summary focus outline, ${where}`,
           );
           await page.keyboard.press(expanded ? 'Space' : 'Enter');
           assert.equal(

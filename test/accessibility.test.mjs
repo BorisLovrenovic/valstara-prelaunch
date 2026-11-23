@@ -1268,23 +1268,15 @@ test('keyboard-only signup through the sticky bar exposes its error and reaches 
     // E11.5-12 (founder decision 2026-11-13, finding A1): the bar is in the
     // tab order right after the hero form. Tab from the hero form's last
     // control opens it with focus in its field, even with the hero in view.
-    const lastHeroControl = await page.evaluate(() => {
-      const controls = [
-        ...globalThis.document.querySelectorAll(
-          'valstara-signup-form form input, valstara-signup-form form button',
-        ),
-      ].filter(
-        (control) =>
-          control.type !== 'hidden' &&
-          control.closest('[hidden]') === null &&
-          !control.disabled,
-      );
-      const last = controls.at(-1);
-      last.setAttribute('data-audit-last', '');
-      return last.id || last.tagName;
-    });
-    assert.ok(lastHeroControl, 'the hero form has a last control');
-    await page.focus('[data-audit-last]');
+    await page.locator('#signup-marketing').focus();
+    await page.keyboard.press('Tab');
+    assert.equal(
+      await page
+        .locator('.signup-referral > summary')
+        .evaluate((summary) => summary.matches(':focus-visible')),
+      true,
+      'Tab from marketing focuses the referral summary',
+    );
     await page.keyboard.press('Tab');
     let state = await focusState();
     assert.deepEqual(
