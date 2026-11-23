@@ -19,9 +19,6 @@ import {
   partnerConfirmationIpLimit,
 } from './config.ts';
 
-export const dashboardPath = '/partners/dashboard';
-export const dashboardRecoveryPath =
-  '/partners/apply?operation=dashboard-recovery';
 export const displayNameMaxLength = 200;
 
 const uuid = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
@@ -97,8 +94,11 @@ interface DashboardDependencies {
 }
 
 class Rollback extends Error {
-  constructor(readonly kind: 'rate_limited' | 'paused') {
+  readonly kind: 'rate_limited' | 'paused';
+
+  constructor(kind: 'rate_limited' | 'paused') {
     super(kind);
+    this.kind = kind;
   }
 }
 

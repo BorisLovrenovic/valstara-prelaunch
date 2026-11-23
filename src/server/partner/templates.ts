@@ -8,8 +8,7 @@ import {
   partnerConfirmationTemplate,
   partnerReceivedTemplate,
 } from './application.ts';
-import { dashboardPath } from './dashboard.ts';
-import { partnerDashboardRecoveryTemplate } from './dashboard-recovery.ts';
+import { dashboardPath, partnerDashboardRecoveryTemplate } from './config.ts';
 import {
   partnerApprovedTemplate,
   partnerRejectedTemplate,

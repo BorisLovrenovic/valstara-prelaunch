@@ -83,3 +83,8 @@ export const partnerReviewLimits = Object.freeze({
 /** A contract version is a label such as `v1` or `2026-11`, never free text. */
 export const partnerContractVersionPattern =
   /^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$/u;
+
+export const dashboardPath = '/partners/dashboard';
+export const dashboardRecoveryPath =
+  '/partners/apply?operation=dashboard-recovery';
+export const partnerDashboardRecoveryTemplate = 'partner_dashboard_link';

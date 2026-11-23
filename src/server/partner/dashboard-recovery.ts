@@ -21,9 +21,8 @@ import {
   partnerApplicationMailLimit,
   partnerApplicationMailWindowMs,
   partnerApplicationStrictIpLimit,
+  partnerDashboardRecoveryTemplate,
 } from './config.ts';
-
-export const partnerDashboardRecoveryTemplate = 'partner_dashboard_link';
 
 export type DashboardRecoveryOutcome =
   | 'accepted'

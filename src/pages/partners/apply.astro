@@ -15,12 +15,12 @@ import { getConfig } from '../../server/config.ts';
 import { getFlagService } from '../../server/flags/app-service.ts';
 import type { PartnerApplicationOutcome } from '../../server/partner/application.ts';
 import {
+  dashboardRecoveryPath,
   partnerAudienceSizes,
   partnerChannels,
   partnerTypes,
 } from '../../server/partner/config.ts';
 import type { PartnerConfirmationOutcome } from '../../server/partner/confirm.ts';
-import { dashboardRecoveryPath } from '../../server/partner/dashboard.ts';
 import { presentDashboardRecovery } from '../../server/partner/dashboard-presentation.ts';
 import {
   emptyPartnerApplicationValues,
