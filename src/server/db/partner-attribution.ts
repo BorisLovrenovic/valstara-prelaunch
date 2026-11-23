@@ -34,6 +34,16 @@ const partnerCode = `
   JOIN referral_code c ON c.owner_kind = 'partner' AND c.owner_id = p.id
 `;
 
+// Fraud review rejects the referrer's edges for credit. The edge's prior
+// confirmation still establishes what the friend earned.
+export const earnedPartnerPerkEdge = `
+  e.welcome_discount_pct IS NOT NULL AND e.voided_at IS NULL
+  AND (e.state = 'confirmed' OR (
+    e.state = 'rejected' AND e.rejected_reason = 'referrer_disqualified'
+    AND e.state_before_rejection = 'confirmed'
+  ))
+`;
+
 const retroactiveEdges = `
   FROM referral_edge e
   JOIN subscriber friend ON friend.id = e.referred_id
@@ -62,7 +72,7 @@ export function createPartnerAttributionRepository(db: DatabaseConnection) {
             WHERE p.subscriber_id = $1 AND ${eligiblePartner} AND c.active
           ) AS active_partner, COALESCE(
             (SELECT e.welcome_discount_pct FROM referral_edge e
-             WHERE e.referred_id = $1 AND e.state = 'confirmed' AND e.voided_at IS NULL),
+             WHERE e.referred_id = $1 AND ${earnedPartnerPerkEdge}),
             (SELECT r.welcome_discount_pct FROM retained_partner_entitlement r
              WHERE r.subscriber_id = $1 AND r.wave_one)
           ) AS welcome_discount_pct

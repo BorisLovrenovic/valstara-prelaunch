@@ -55,8 +55,6 @@ The ticket lives in `docs/plan/development-plan.md`, which is the **single sourc
 - The ticket depends on an unrecorded founder decision — an unapproved paid service, an unresolved `Proposed` ADR, a missing configuration value.
 - The ticket needs a founder action part-way through (a sign-off, a visual review, an account only the founder holds). Do every part you can, then stop at that point.
 
-**Ask every question in one stop.** Each stop costs the founder a full round of decision and re-run, and a fresh session that stops at its first question leaves the next one for another round. Before you stop for a question found before code exists, finish Step 1's reading and draft Step 3's plan for every acceptance criterion, every Tests-line test and every founder decision on the entry. Collect every question that would stop you anywhere in the ticket, and list them all, numbered, in one `BLOCKED` report. Don't hold back a question because it seems minor, depends on another answer, or might be settled by an earlier one: say how they depend on each other and give your recommendation for each. Only a question that cannot exist until an earlier answer is known may wait for the re-run, and the report says it is expected. A stop part-way through the work still lists every question you can already see in the rest of the ticket.
-
 End the run with:
 
 ```

@@ -1,5 +1,6 @@
 import type { DatabaseConnection } from './pool.ts';
 import { purgedPersonalFields } from './partner.ts';
+import { earnedPartnerPerkEdge } from './partner-attribution.ts';
 
 export const dsrBatchSize = 100;
 export interface ErasureRow {
@@ -206,14 +207,14 @@ export function createDsrRepository(db: DatabaseConnection) {
       do {
         const result = await db.readOne<{ count: number }>({
           text: `WITH edge_batch AS MATERIALIZED (
-            SELECT id, referred_id, state, voided_at, welcome_discount_pct
+            SELECT id, referred_id, state, voided_at, welcome_discount_pct,
+              rejected_reason, state_before_rejection
             FROM referral_edge WHERE referrer_id=$1 ORDER BY id LIMIT 100 FOR UPDATE
           ), preserved AS (
             INSERT INTO retained_partner_entitlement (subscriber_id, welcome_discount_pct, wave_one)
             SELECT e.referred_id, e.welcome_discount_pct, true
             FROM edge_batch e JOIN subscriber friend ON friend.id=e.referred_id
-            WHERE e.state='confirmed' AND e.voided_at IS NULL
-              AND e.welcome_discount_pct IS NOT NULL AND friend.status='verified'
+            WHERE ${earnedPartnerPerkEdge} AND friend.status='verified'
             ON CONFLICT (subscriber_id) DO NOTHING
           ), anonymised AS (
             UPDATE referral_edge e SET referrer_id=NULL, referred_id=NULL,

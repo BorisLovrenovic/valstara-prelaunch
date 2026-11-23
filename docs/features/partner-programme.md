@@ -185,7 +185,7 @@ The count is confirmed, non-voided referrals, including retroactive partner attr
 - **Friends of a student ambassador get the higher of 15% and the ladder value.**
 - **A retroactively attributed friend's discount** uses the confirmed count when the friend originally signed up. Catch-up checks confirmed, non-voided edges from before approval and uses their immutable signup count if present. Legacy edges use the [recorded event-time rule](../modules/referral.md#partner-attribution-and-signup-counts). The ambassador floor applies in both cases.
 - **Erasure of the partner preserves the surviving friend's earned discount and wave-1 place** as a friend-owned entitlement, while the edge loses both endpoints and its partner attribution (D-058). The entitlement is included in the friend's data-subject export and removed by their own erasure.
-- Friends referred earlier keep what they got. **A friend whose own referral is voided loses it.**
+- Friends keep their earned discount and wave-1 place if their partner is disqualified. **A friend whose own referral is voided loses both partner perks.**
 - It expires five years after public launch.
 - No stacking: someone who holds several discounts chooses one per order.
 - It is the friend's own first-order discount, so it can only ever be redeemed by an order, and it creates no reward for the partner.

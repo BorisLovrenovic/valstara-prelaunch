@@ -8,8 +8,10 @@ import { createCampaignFlagRepository } from '../src/server/db/campaign-flags.ts
 import { createPartnerAttributionRepository } from '../src/server/db/partner-attribution.ts';
 import type { DatabaseConnection } from '../src/server/db/pool.ts';
 import { createReferralCouponRepository } from '../src/server/db/referral-coupon.ts';
+import { createReferralRepository } from '../src/server/db/referral.ts';
 import { withTransaction } from '../src/server/db/transaction.ts';
 import { exportSubject } from '../src/server/dsr/export.ts';
+import { createFraudReviewService } from '../src/server/fraud/review.ts';
 import { createPartnerActivationJob } from '../src/server/partner/activation.ts';
 import { createPartnerReviewService } from '../src/server/partner/review.ts';
 import { partnerShortLink } from '../src/server/partner/short-link.ts';
@@ -685,4 +687,78 @@ test('partner erasure preserves only a surviving verified friend’s earned enti
       .then((row) => row?.count),
     0,
   );
+});
+
+test('a disqualified partner’s verified friend keeps earned perks through recomputation and erasure', async (t) => {
+  const f = await createPartnerFixture('partner-attribution-disqualification');
+  t.after(() => f.dispose());
+  const partner = await startPartner(f);
+  await createPartnerReviewService(f.app, clock).contractSigned(
+    partner.id,
+    contract,
+    actor,
+  );
+  const friend = await createFriend(f, partner.code);
+  const voided = await createFriend(f, partner.code);
+  const pending = await createFriend(f, partner.code, false);
+  const referrals = createReferralService(f.app);
+  const perks = createPartnerAttributionRepository(f.app);
+  await createReferralVoidService(f.app, clock).voidReferral(
+    voided,
+    'Not eligible',
+    actor,
+  );
+  const flagId = randomUUID();
+  await f.owner.execute({
+    text: `INSERT INTO fraud_flag (id, subscriber_id, kind, detail, state, created_at)
+      VALUES ($1, $2, 'duplicate_identity', '{}', 'open', $3)`,
+    values: [flagId, partner.subscriberId, clock()],
+  });
+  await createFraudReviewService(f.app).review(flagId, 'upheld', actor);
+  const linked = await f.app.readOne<{ id: string }>({
+    text: `SELECT id FROM referral_edge WHERE referred_id=$1 AND state='rejected'
+      AND rejected_reason='referrer_disqualified' AND state_before_rejection='confirmed'
+      AND voided_at IS NULL`,
+    values: [friend],
+  });
+  assert.ok(linked);
+  assert.equal(
+    await createReferralRepository(f.app).countConfirmedEdges(
+      partner.subscriberId,
+    ),
+    0,
+  );
+  assert.equal(
+    (await perks.findPerks(partner.subscriberId))?.active_partner,
+    false,
+  );
+
+  async function assertFriendPerks() {
+    await referrals.recomputeCounters(100);
+    assert.equal((await perks.findPerks(friend))?.welcome_discount_pct, 10);
+    assert.equal((await referrals.status(friend)).accessWindow, 'wave-1');
+    assert.equal((await perks.findPerks(voided))?.welcome_discount_pct, null);
+    assert.equal((await referrals.status(voided)).accessWindow, 'wave-2');
+    assert.equal((await perks.findPerks(pending))?.welcome_discount_pct, null);
+  }
+  await assertFriendPerks();
+
+  const dsr = partnerErasure(f, async () => {});
+  await (
+    await dsr.signedConfirmation(partner.subscriberId)
+  )();
+  await dsr.fulfil();
+  assert.deepEqual(
+    await f.app.readOne({
+      text: 'SELECT referrer_id,referred_id,partner_id,welcome_discount_pct FROM referral_edge WHERE id=$1',
+      values: [linked.id],
+    }),
+    {
+      referrer_id: null,
+      referred_id: null,
+      partner_id: null,
+      welcome_discount_pct: null,
+    },
+  );
+  await assertFriendPerks();
 });

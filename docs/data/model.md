@@ -164,7 +164,7 @@ Permissions: the application role has `SELECT`, `INSERT` of every column but `ex
 | `welcome_discount_pct` | int not null | The fixed 10, 15 or 20 percent welcome discount the friend earned |
 | `wave_one` | boolean not null | Checked true. The friend keeps their wave-1 place |
 
-The erasure transaction copies both earned perks from an eligible confirmed, non-voided edge and clears both endpoints and partner attribution from that edge. The record carries no partner, code or edge identifier. Wave recomputation and the friend's DSR export read it; the friend's erasure deletes it. The application role has SELECT, INSERT and DELETE. The launch handoff records belong to E11.7-14.
+The erasure transaction copies both earned perks from a non-voided partner edge for a verified friend and clears both endpoints and partner attribution from that edge. An edge qualifies if it is confirmed or if it has `rejected_reason = 'referrer_disqualified'` and `state_before_rejection = 'confirmed'`. The record carries no partner, code or edge identifier. Wave recomputation and the friend's DSR export read it; the friend's erasure deletes it. The application role has SELECT, INSERT and DELETE. The launch handoff records belong to E11.7-14.
 
 ## `partner`
 
