@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createAuditService } from '../audit/service.ts';
 import type { DatabaseConnection } from '../db/pool.ts';
 import { createReferralRepository } from '../db/referral.ts';
+import { createPartnerAttributionRepository } from '../db/partner-attribution.ts';
 import {
   createReferralCouponRepository,
   type ReferralCouponRow,
@@ -140,11 +141,18 @@ export async function recomputeReferralRewards(
   // A member with no recorded verification-order window has not verified
   // through E3-07; their window is assigned at verification, not here.
   if (waves.verification_order_window !== null) {
-    const window = accessWindowForReferrals(
-      waves.verification_order_window,
-      confirmedReferrals,
-      configuration.waveOneReferrals,
-    );
+    const perks =
+      await createPartnerAttributionRepository(connection).findPerks(
+        subscriberId,
+      );
+    const window =
+      perks?.active_partner || perks?.welcome_discount_pct != null
+        ? 'wave-1'
+        : accessWindowForReferrals(
+            waves.verification_order_window,
+            confirmedReferrals,
+            configuration.waveOneReferrals,
+          );
     if (window !== waves.access_window) {
       await requireOne(coupons.setAccessWindow(subscriberId, window));
       await createAuditService(connection).record({

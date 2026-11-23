@@ -43,3 +43,12 @@ export function createCampaignFlagRepository(
     },
   };
 }
+
+/** Serialises partner writes with changes to the live programme override. */
+export async function lockPartnerActivationFlag(
+  database: DatabaseConnection,
+): Promise<void> {
+  await database.readOne({
+    text: "SELECT pg_advisory_xact_lock_shared(hashtext('valstara:partners.enabled'))",
+  });
+}

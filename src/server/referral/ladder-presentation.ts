@@ -13,6 +13,7 @@ import {
   type CouponLadder,
   type LadderCoupon,
 } from './config.ts';
+import type { PartnerWaveReason } from './status.ts';
 
 /**
  * Everything the ladder copy states, as configuration (E11.7-04). Every
@@ -139,7 +140,8 @@ export function ladderProgress(
   };
 }
 
-export type WaveOneReason = 'first_members' | 'referrals' | null;
+export type WaveOneReason =
+  'first_members' | 'referrals' | PartnerWaveReason | null;
 
 export interface EarlyAccess {
   readonly inWaveOne: boolean;
@@ -157,6 +159,7 @@ export interface EarlyAccess {
 export function earlyAccess(
   state: {
     readonly accessWindow: AccessWindow | null;
+    readonly partnerWaveReason?: PartnerWaveReason | undefined;
     readonly verificationOrderWindow: AccessWindow | null;
     readonly confirmedReferrals: number;
   },
@@ -165,13 +168,14 @@ export function earlyAccess(
   const month = earlyAccessMonthLabel(configuration.earlyAccessMonth);
   const threshold = configuration.waveOneReferrals;
   const inWaveOne =
-    state.verificationOrderWindow === null
+    state.partnerWaveReason !== undefined ||
+    (state.verificationOrderWindow === null
       ? state.accessWindow === 'wave-1' || state.confirmedReferrals >= threshold
       : accessWindowForReferrals(
           state.verificationOrderWindow,
           state.confirmedReferrals,
           threshold,
-        ) === 'wave-1';
+        ) === 'wave-1');
   if (!inWaveOne) {
     const remaining = threshold - state.confirmedReferrals;
     return {
@@ -187,7 +191,7 @@ export function earlyAccess(
       ? 'first_members'
       : state.confirmedReferrals >= threshold
         ? 'referrals'
-        : null;
+        : (state.partnerWaveReason ?? null);
   const firstMembers =
     configuration.bands.find(({ window }) => window === 'wave-1')
       ?.maximumVerificationOrder ?? null;
@@ -204,7 +208,11 @@ export function earlyAccess(
           )
         : reason === 'referrals'
           ? referralLadderCopy.waveOne.referrals(month, threshold)
-          : referralLadderCopy.waveOne.other(month),
+          : reason === 'active_partner'
+            ? referralLadderCopy.waveOne.activePartner(month)
+            : reason === 'partner_referral'
+              ? referralLadderCopy.waveOne.partnerReferral(month)
+              : referralLadderCopy.waveOne.other(month),
   };
 }
 

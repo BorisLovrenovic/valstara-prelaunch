@@ -137,6 +137,7 @@
   "test/page-view-rendered.test.mjs": 56.9,
   "test/page-view-unit.test.mjs": 0.2,
   "test/partner-application.test.ts": 6.7,
+  "test/partner-attribution.test.ts": 4.4,
   "test/partner-code.test.ts": 2.2,
   "test/partner-export.test.ts": 2.3,
   "test/partner-pages-rendered.test.mjs": 3.2,

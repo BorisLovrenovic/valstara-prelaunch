@@ -335,11 +335,17 @@ test('the command line takes a partner from review to termination, and streams t
     ),
     [
       `Partner ${partner.id}: contract_sent -> active.`,
-      'Code: MAYA2026 (not live).',
+      'Code: MAYA2026 (live).',
     ],
   );
-  await run('partners', 'pause', partner.id);
-  await run('partners', 'reactivate', partner.id);
+  assert.deepEqual(await run('partners', 'pause', partner.id), [
+    `Partner ${partner.id}: active -> paused.`,
+    'Code: MAYA2026 (not live).',
+  ]);
+  assert.deepEqual(await run('partners', 'reactivate', partner.id), [
+    `Partner ${partner.id}: paused -> active.`,
+    'Code: MAYA2026 (live).',
+  ]);
   assert.deepEqual(
     await run(
       'partners',

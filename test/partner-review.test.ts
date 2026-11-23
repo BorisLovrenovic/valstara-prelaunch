@@ -363,8 +363,7 @@ test('contract fields: contract-sent records the time, and contract-signed recor
       (row.contract_sent_at as Date).toISOString(),
       now.toISOString(),
     );
-    // The code stays inactive: E11.7-07 owns activation.
-    assert.equal(signed.after.code_active, false);
+    assert.equal(signed.after.code_active, true);
 
     // A reference is optional.
     const second = await insertPartner(fixture, { status: 'contract_sent' });

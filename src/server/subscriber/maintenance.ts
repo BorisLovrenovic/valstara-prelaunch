@@ -3,6 +3,7 @@ import { setTimeout as systemSleep } from 'node:timers/promises';
 import type { ReferralAttributionConfiguration } from '../config.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import type { FlagService } from '../flags/types.ts';
+import { partnerActivationBatchLimit } from '../partner/activation.ts';
 import { createReferralAttributionMaintenanceJob } from '../referral/attribution-maintenance.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 
@@ -27,6 +28,7 @@ export type MaintenanceJobName =
   | 'weekly_campaign'
   | 'leaderboard_snapshot'
   | 'leaderboard_snapshot_purge'
+  | 'partner_activation'
   | 'partner_application_purge'
   | 'email_quota';
 
@@ -55,6 +57,7 @@ export interface VerificationMaintenanceJobs {
   readonly weeklyCampaign?: MaintenanceJob;
   readonly leaderboardSnapshotPurge?: MaintenanceJob;
   readonly partnerApplicationPurge?: MaintenanceJob;
+  readonly partnerActivation?: MaintenanceJob;
   readonly emailQuota?: VerificationRateJob;
 }
 
@@ -193,6 +196,13 @@ export function createVerificationMaintenanceScheduler(
   async function runCycle(): Promise<void> {
     const now = clock();
     await runJob('reminder', jobs.reminder);
+    if (jobs.partnerActivation !== undefined) {
+      await runJob(
+        'partner_activation',
+        jobs.partnerActivation,
+        partnerActivationBatchLimit,
+      );
+    }
     if (jobs.giveawayEntryReconciliation !== undefined) {
       await runJob(
         'giveaway_entry_reconciliation',

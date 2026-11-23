@@ -36,6 +36,10 @@ export const referralLadderCopy = {
       `You're in wave 1, with early access from ${month}, as one of the first ${firstMembers} verified members.`,
     referrals: (month: string, threshold: number) =>
       `You're in wave 1, with early access from ${month}, for reaching ${threshold} confirmed referrals.`,
+    activePartner: (month: string) =>
+      `You're in wave 1, with early access from ${month}, as an active partner.`,
+    partnerReferral: (month: string) =>
+      `You're in wave 1, with early access from ${month}, through a partner referral.`,
     other: (month: string) =>
       `You're in wave 1, with early access from ${month}.`,
     notYet: (month: string, remaining: number) =>

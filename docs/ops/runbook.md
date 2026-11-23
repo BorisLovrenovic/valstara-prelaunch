@@ -181,7 +181,10 @@ npm run --silent admin -- partners export > partners.csv
   The registered code stays taken and inactive, and the person may apply again.
 - **Contract-signed** records the signing date (not in the future, not before
   the contract went out), the version and an optional signfree reference, and
-  makes the partner `active`.
+  makes the partner `active`. While `partners.enabled` is off, signing and
+  reactivation still record their audited status changes. The maintenance
+  worker resumes deferred activation effects in batches of up to 100
+  after reopening. Pause and termination take the code out of use at once.
 - **Only the documented transitions exist**, and the database refuses every
   other one: nothing leaves `rejected` or `terminated`. A paused partner can be
   terminated directly.
@@ -320,6 +323,6 @@ The final founder decision of 2026-10-02 replaces the earlier P2 fallback. Signe
 npx tsx scripts/complete-erasure.ts --subscriber-id <uuid> --actor <operator>
 ```
 
-The command requires a pending request and audits the actor. It atomically erases personal fields, deletes suppression, appends the erasure ledger and records fulfilment. It is safe to repeat after success. Never place the email address in a command argument, log, alert or task. Do not widen the Resend key or call a Resend deletion API.
+The command requires a pending request and audits the actor. It atomically erases personal fields, deletes suppression, appends the erasure ledger and records fulfilment. Partner erasure also preserves each eligible friend's earned welcome discount and wave-1 place in the same transaction that clears the referral endpoints. The friend's own erasure removes that record. It is safe to repeat after success. Never place the email address in a command argument, log, alert or task. Do not widen the Resend key or call a Resend deletion API.
 
 `dsr_deadline_operator_task` re-alerts P1 from day 28, daily until resolved. **The hard deadline is 30 days from confirmation:** act before it; an alert is not a deadline extension. A restart resumes unfinished requests from the original pending row. If the provider DELETE succeeded but local fulfilment failed, a repeated DELETE returning 404 permits completion. A fulfilment audit failure rolls back local erasure, so never mark an external task resolved until the command or worker succeeds.

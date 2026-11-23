@@ -11,8 +11,8 @@ export const campaignFlagRegistry = Object.freeze({
   // E11.6-11: the Valstara price on the price pages. Off until the founder
   // turns it on, because a Valstara price shown is a public price commitment.
   'prices.valstara_comparison': false,
-  // E11.7-05: the partner application. Off pauses applications honestly and
-  // accepts nothing (docs/features/partner-programme.md#feature-flag).
+  // The partner programme incident lever. Off pauses applications and
+  // defers activation effects (docs/features/partner-programme.md#feature-flag).
   'partners.enabled': true,
 } as const);
 
