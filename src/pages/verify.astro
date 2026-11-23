@@ -21,6 +21,7 @@ import {
 } from '../server/verification/complete.ts';
 import { currentSurveyVersion } from '../server/survey/questions.ts';
 import { accessWindows } from '../server/referral/config.ts';
+import { presentPartnerWelcomePerk } from '../server/referral/partner-welcome-presentation.ts';
 import { verificationReferralFigures } from '../server/referral/verification-presentation.ts';
 import { createAnalyticsService } from '../server/analytics/service.ts';
 import {
@@ -91,6 +92,9 @@ const referralFigures =
     ? null
     : verificationReferralFigures(completion.referralStatus);
 const ladderFigures = referralFigures?.ladder ?? null;
+const welcomePerk = referralEnabled
+  ? presentPartnerWelcomePerk(completion.referralStatus?.partnerWelcomePerk)
+  : null;
 const accessWindow = referralFigures?.accessWindow ?? null;
 // The badge's bars: one per access wave, filled up to the visitor's own,
 // so the four-wave set and the wave come from their sources.
@@ -209,6 +213,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
                     : verificationCopy.completeNextNoReferral}
                 </p>
               </div>
+              {welcomePerk !== null && (
+                <p class="verification-hero__perk" data-partner-welcome>
+                  {welcomePerk.lead}
+                  {welcomePerk.code !== null && <span>{welcomePerk.code}</span>}
+                  {welcomePerk.benefits}
+                </p>
+              )}
               {accessWindow !== null ? (
                 <div class="verification-hero__meta">
                   <span
@@ -1109,12 +1120,17 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     margin-block-end: var(--space-1);
   }
 
-  .verification-hero__head p {
+  .verification-hero__head p,
+  .verification-hero__perk {
     max-inline-size: calc(var(--space-6) * 12);
     color: var(--ink-600);
     font-size: var(--step-2);
     line-height: var(--leading-2);
     text-wrap: pretty;
+  }
+
+  .verification-hero__perk span {
+    font-family: var(--font-mono);
   }
 
   .verification-hero__meta {

@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { normaliseReferralCodeForLookup } from './code-registry.ts';
 
 /** A referral field is a landing-request handoff, not a visitor identifier. */
 export const referralCaptureTtlMs = 24 * 60 * 60 * 1_000;
@@ -39,6 +40,33 @@ export interface ReferralCaptureService {
 
 export interface ReferralCaptureDependencies {
   readonly clock?: () => Date;
+}
+
+/** Only registry-shaped codes can be carried into rendered form attributes. */
+export function referralPrefill(ref: string | null): string {
+  return ref !== null && /^[A-Za-z0-9]{4,16}$/u.test(ref)
+    ? normaliseReferralCodeForLookup(ref)
+    : '';
+}
+
+export function submittedReferral(
+  form: FormData,
+  capture: ReferralCapture | null,
+): { code: string | null; method: 'link' | 'code' } {
+  const signedCode = capture?.ref ?? null;
+  const value = form.get('referral_code');
+  if (typeof value !== 'string') return { code: signedCode, method: 'link' };
+
+  const typed = normaliseReferralCodeForLookup(value.trim());
+  // The original value lets an untouched field fail closed even if its
+  // capture is missing or expired. It can veto attribution, never grant it.
+  const original = form.get('referral_prefill');
+  if (typed !== '' && typed === referralPrefill(signedCode)) {
+    return { code: signedCode, method: 'link' };
+  }
+  if (typed === '' || typeof original !== 'string' || typed === original)
+    return { code: null, method: 'link' };
+  return { code: typed, method: 'code' };
 }
 
 /** Server-only query capture and signed-form verification. */

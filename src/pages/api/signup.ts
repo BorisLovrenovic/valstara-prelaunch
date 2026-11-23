@@ -18,6 +18,7 @@ import {
 } from '../../server/fraud/service.ts';
 import {
   createReferralCaptureService,
+  submittedReferral,
   type ReferralCapture,
 } from '../../server/referral/capture.ts';
 import { createReferralService } from '../../server/referral/service.ts';
@@ -283,6 +284,7 @@ export function createSignupRoute(
       dependencies.verifyReferralCapture?.(
         typeof rawReferralCapture === 'string' ? rawReferralCapture : null,
       ) ?? null;
+    const referral = submittedReferral(formData, referralCapture);
 
     // Every syntactically valid request that can reveal subscriber membership
     // shares the same minimum response boundary. Unknown, pending, and verified
@@ -297,7 +299,9 @@ export function createSignupRoute(
       outcome = await dependencies.signup({
         email: body.email,
         marketingOptInVersion: body.marketingOptInVersion,
-        referralCode: referralCapture?.ref ?? null,
+        referralCode: referral.code,
+        referralMethod: referral.method,
+        hadSignedReferral: referralCapture?.ref != null,
         signupIpPrefixHash: prefixHash,
         utm: referralCapture?.utm ?? null,
         verificationUrl: (token) => {
@@ -342,7 +346,9 @@ export function createSignupRoute(
     // by email to that address, never through this public route.
     return jsonResponse(200, {
       status: 'pending',
-      message: signupCopy.pending,
+      message: outcome.referralUnavailable
+        ? signupCopy.referralUnavailable
+        : signupCopy.pending,
     });
   };
 }
@@ -401,11 +407,12 @@ function defaultDependencies(): SignupRouteDependencies {
     },
     signup: (input) =>
       createSignupService(getDatabase(), {
-        attributeReferral: (referredId, code, allowAttribution) =>
+        attributeReferral: (referredId, code, allowAttribution, method) =>
           createReferralService(getDatabase()).attribute(
             referredId,
             code,
             allowAttribution,
+            method,
           ),
         isReferralEnabled: () => getFlagService().isEnabled('referral.enabled'),
         flagDuplicateIdentity: (subscriberId) =>

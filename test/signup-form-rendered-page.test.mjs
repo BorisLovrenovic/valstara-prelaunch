@@ -704,6 +704,52 @@ test('dock and hero submit the same form body, including signed capture and opt-
   assert.equal(bodies[0].get('marketing_opt_in'), 'v1');
 });
 
+test('an unavailable typed code shows a neutral note in the existing success panel', async () => {
+  const { context, page } = await openForm();
+  try {
+    await page.route('**/api/signup', (route) => {
+      assert.match(
+        route.request().postData() ?? '',
+        /name="referral_code"\r\n\r\nUNKNOWN\r\n/u,
+      );
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'pending',
+          message: signupCopy.referralUnavailable,
+        }),
+      });
+    });
+    await page
+      .getByText(signupFormCopy.referralToggle, { exact: true })
+      .click();
+    await page
+      .getByLabel(signupFormCopy.referralLabel, { exact: true })
+      .fill('UNKNOWN');
+    await page.fill('#signup-email', 'typed@example.com');
+    await page.click('[data-submit]');
+    const panel = page.locator('[data-success]:visible');
+    await panel.waitFor();
+    const note = panel.getByText(signupCopy.referralUnavailable);
+    assert.equal(await note.isVisible(), true);
+    assert.equal(
+      await panel.getByText(signupFormCopy.successHeading).isVisible(),
+      true,
+    );
+    assert.deepEqual(await context.cookies(), []);
+    assert.deepEqual(
+      await page.evaluate(() => [
+        Object.keys(globalThis.localStorage),
+        Object.keys(globalThis.sessionStorage),
+      ]),
+      [[], []],
+    );
+  } finally {
+    await context.close();
+  }
+});
+
 test('success is identical for unknown, pending and verified responses and echoes only client input', async () => {
   const results = [];
   for (const membership of ['unknown', 'pending', 'verified']) {

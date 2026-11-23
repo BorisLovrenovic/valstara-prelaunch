@@ -1,6 +1,9 @@
 import { campaignFlagRegistry } from '../flags/registry.ts';
 import type { Flag } from '../flags/types.ts';
-import type { ReferralCaptureService } from '../referral/capture.ts';
+import {
+  referralPrefill,
+  type ReferralCaptureService,
+} from '../referral/capture.ts';
 
 import { landingFlagGeneration } from './landing.ts';
 
@@ -30,6 +33,8 @@ export interface RenderCacheReport {
   readonly generation: string;
   /** The signed referral field the page rendered, or null for none. */
   readonly field: string | null;
+  /** The landing's two matching referral inputs, when the hero renders them. */
+  readonly prefill?: string;
 }
 
 export interface RenderCacheLocals {
@@ -41,6 +46,7 @@ interface CachedRender {
   readonly headers: readonly (readonly [string, string])[];
   /** One part when the page has no field; else the body around the field. */
   readonly parts: readonly [string] | readonly [string, string];
+  readonly hasPrefill: boolean;
 }
 
 /** A bound well above the five variants one flag generation can produce. */
@@ -117,6 +123,16 @@ export function landingReferralField(
 // A signed field is base64url, a dot and base64url: it needs no escaping in
 // the attribute it fills, and the cache refuses anything else.
 const signedFieldPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u;
+const prefillPattern =
+  /(\bname="referral_(?:code|prefill)"[^>]*\bvalue=")[A-Z0-9]{0,16}(")/gu;
+
+/** The cache stores empty form attributes, never the first request's code. */
+function bindPrefill(body: string, code: string): string {
+  return body.replace(
+    prefillPattern,
+    (_match, start, end) => start + code + end,
+  );
+}
 
 export interface RenderCacheRequest {
   readonly method: string;
@@ -186,7 +202,11 @@ export async function serveCachedRender(
       cached.parts.length === 1
         ? cached.parts[0]
         : `${cached.parts[0]}${field ?? ''}${cached.parts[1]}`;
-    return new Response(body, {
+    const prefill =
+      cached.hasPrefill && field !== null
+        ? referralPrefill(request.url.searchParams.get('ref'))
+        : '';
+    return new Response(prefill === '' ? body : bindPrefill(body, prefill), {
       status: cached.status,
       headers: toHeaders(cached.headers),
     });
@@ -213,15 +233,29 @@ export async function serveCachedRender(
   const report = request.locals.renderCache;
   if (report === undefined || report.generation !== generation) return rendered;
   if ((report.field === null) !== (field === null)) return rendered;
+  if (
+    report.prefill !== undefined &&
+    [...body.matchAll(prefillPattern)].length !== 2
+  )
+    return rendered;
+  const cacheBody =
+    report.prefill !== undefined && report.prefill !== ''
+      ? bindPrefill(body, '')
+      : body;
   let parts: CachedRender['parts'];
   if (report.field === null) {
-    parts = [body];
+    parts = [cacheBody];
   } else {
     if (!signedFieldPattern.test(report.field)) return rendered;
-    const split = body.split(report.field);
+    const split = cacheBody.split(report.field);
     if (split.length !== 2) return rendered;
     parts = [split[0] ?? '', split[1] ?? ''];
   }
-  cache.set(key, { status: response.status, headers, parts });
+  cache.set(key, {
+    status: response.status,
+    headers,
+    parts,
+    hasPrefill: report.prefill !== undefined,
+  });
   return rendered;
 }

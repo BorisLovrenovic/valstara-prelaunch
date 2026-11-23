@@ -6,15 +6,16 @@ import Icon from '../components/icon.astro';
 import Input from '../components/input.astro';
 import TextLink from '../components/text-link.astro';
 import { landingCopy } from '../copy/landing.ts';
-import { signupFormCopy } from '../copy/signup.ts';
+import { signupCopy, signupFormCopy } from '../copy/signup.ts';
 import { getConfig } from '../server/config.ts';
 
 interface Props {
   signedReferralCapture: string | null;
+  referralPrefill?: string | undefined;
   giveawayEnabled: boolean;
 }
 
-const { signedReferralCapture, giveawayEnabled } = Astro.props;
+const { signedReferralCapture, giveawayEnabled, referralPrefill } = Astro.props;
 
 // The public Turnstile site key is rendered into the page so the widget can
 // mount client-side (ADR-006). It is public, not a secret — a temporary
@@ -155,6 +156,33 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       </div>
 
       {
+        referralPrefill !== undefined && (
+          <details class="signup-referral">
+            <summary>{signupFormCopy.referralToggle}</summary>
+            <Field
+              controlId="signup-referral"
+              label={signupFormCopy.referralLabel}
+            >
+              <Input
+                id="signup-referral"
+                name="referral_code"
+                type="text"
+                value={referralPrefill}
+                maxlength={16}
+                autocomplete="off"
+                spellcheck={false}
+              />
+            </Field>
+            <input
+              name="referral_prefill"
+              type="hidden"
+              value={referralPrefill}
+            />
+          </details>
+        )
+      }
+
+      {
         /*
       The signed ref (E4-02) rides through as a hidden field the server renders;
       the island never reads or writes it — it simply posts the whole form, so
@@ -200,6 +228,13 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       <Icon name="mail" size="sm" /><span data-address></span>
     </p>
     <p class="signup-success__step">{signupFormCopy.successStep}</p>
+    {
+      referralPrefill !== undefined && (
+        <p class="signup-success__note" data-signup-note hidden>
+          {signupCopy.referralUnavailable}
+        </p>
+      )
+    }
     <p
       class="signup-success__resent"
       data-resend-status
@@ -351,7 +386,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     type SignupClientError,
     type SignupFieldName,
   } from './signup-form.ts';
-  import { signupFormCopy } from '../copy/signup.ts';
+  import { signupCopy, signupFormCopy } from '../copy/signup.ts';
 
   interface TurnstileApi {
     render(
@@ -873,6 +908,9 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
 
       const status = record.status;
       if (status === 'pending') {
+        const note = this.querySelector<HTMLElement>('[data-signup-note]');
+        if (note !== null)
+          note.hidden = record.message !== signupCopy.referralUnavailable;
         this.#showSuccess();
         return;
       }
@@ -1349,7 +1387,8 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
       'micro'
       'check'
       'facts'
-      'consent';
+      'consent'
+      'referral';
   }
 
   /*
@@ -1435,7 +1474,7 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     display: contents;
   }
 
-  valstara-signup-form form .field__head {
+  valstara-signup-form form > .field > .field__head {
     grid-area: head;
   }
 
@@ -1509,6 +1548,42 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     margin-block-start: var(--space-2);
   }
 
+  valstara-signup-form .signup-referral {
+    grid-area: referral;
+    min-inline-size: var(--space-0);
+    margin-block-start: var(--space-1);
+  }
+
+  valstara-signup-form .signup-referral summary {
+    display: list-item;
+    list-style-position: inside;
+    align-content: center;
+    min-block-size: var(--tap-min);
+    border-radius: var(--radius-control);
+    color: var(--ink);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+  }
+
+  valstara-signup-form .signup-referral summary:focus-visible {
+    outline: var(--focus-width) solid var(--coral);
+    outline-offset: var(--focus-offset);
+  }
+
+  valstara-signup-form .signup-referral > .field {
+    margin-block-start: var(--space-1);
+  }
+
+  valstara-signup-form .signup-referral:not([open]) > .field {
+    display: none;
+  }
+
+  valstara-signup-form #signup-referral {
+    font-family: var(--font-mono);
+  }
+
   @media (min-width: 48rem) {
     valstara-signup-form form:not([hidden]) {
       grid-template-columns: minmax(0, 1fr) auto;
@@ -1522,7 +1597,8 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         'micro micro'
         'check check'
         'facts facts'
-        'consent consent';
+        'consent consent'
+        'referral referral';
     }
 
     valstara-signup-form form > .button[data-submit] {
@@ -1652,7 +1728,8 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
     overflow-wrap: anywhere;
   }
 
-  valstara-signup-form .signup-success .signup-success__step:not([hidden]) {
+  valstara-signup-form .signup-success .signup-success__step:not([hidden]),
+  valstara-signup-form .signup-success .signup-success__note:not([hidden]) {
     max-inline-size: calc(var(--space-8) * 8);
     margin-block-start: var(--space-1-5);
     color: var(--ink-600);

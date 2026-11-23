@@ -1,5 +1,6 @@
 import { emailCopy } from '../../copy/email.ts';
 import type { ReferralStatus } from '../referral/status.ts';
+import { presentPartnerWelcomePerk } from '../referral/partner-welcome-presentation.ts';
 import { presentReferralStatus } from '../referral/status-presentation.ts';
 
 import {
@@ -145,6 +146,7 @@ export function createTransactionalRenderers(
         dependencies.data.referralStatus(statusTokenId),
         token(statusTokenId),
       ]);
+      const perk = presentPartnerWelcomePerk(status.partnerWelcomePerk);
       return render(
         {
           subject: emailCopy.welcome.subject,
@@ -152,6 +154,9 @@ export function createTransactionalRenderers(
           paragraphs: [
             emailCopy.welcome.firstLine,
             emailCopy.welcome.body,
+            ...(perk === null
+              ? []
+              : [perk.lead + (perk.code ?? '') + perk.benefits]),
             presentReferralStatus(status).ladder.held,
           ],
           facts: referralFacts(status),

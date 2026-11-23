@@ -5,6 +5,8 @@ import {
   captureUtm,
   createReferralCaptureService,
   referralCaptureTtlMs,
+  referralPrefill,
+  submittedReferral,
 } from '../src/server/referral/capture.ts';
 
 const secret = 'referral-capture-test-secret';
@@ -25,6 +27,38 @@ test('a server-captured referral and UTM envelope verifies until its 24-hour exp
   });
   now = new Date(now.getTime() + referralCaptureTtlMs + 1);
   assert.equal(service.verifyRef(signed), null);
+});
+
+test('the original referral input can veto an untouched prefill but cannot authenticate it', () => {
+  const form = new FormData();
+  form.set('referral_code', ' maya ');
+  form.set('referral_prefill', 'MAYA');
+  assert.deepEqual(submittedReferral(form, null), {
+    code: null,
+    method: 'link',
+  });
+  assert.deepEqual(submittedReferral(form, { ref: 'MAYA', utm: null }), {
+    code: 'MAYA',
+    method: 'link',
+  });
+  form.set('referral_prefill', 'OTHER');
+  assert.deepEqual(submittedReferral(form, { ref: 'MAYA', utm: null }), {
+    code: 'MAYA',
+    method: 'link',
+  });
+  form.set('referral_code', ' Brand123 ');
+  assert.deepEqual(submittedReferral(form, { ref: 'MAYA', utm: null }), {
+    code: 'BRAND123',
+    method: 'code',
+  });
+  form.delete('referral_prefill');
+  assert.deepEqual(submittedReferral(form, null), {
+    code: null,
+    method: 'link',
+  });
+  assert.equal(referralPrefill('aBcD1234'), 'ABCD1234');
+  assert.equal(referralPrefill('MAYA"><input'), '');
+  assert.equal(referralPrefill('a'.repeat(17)), '');
 });
 
 test('tampered, absent, and forged fields return null rather than throwing', () => {

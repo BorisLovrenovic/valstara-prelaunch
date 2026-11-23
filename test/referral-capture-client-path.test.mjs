@@ -23,7 +23,7 @@ const executableExtensions = new Set([
 ]);
 const astroScriptPattern = /<script\b[^>]*>([\s\S]*?)<\/script>/gu;
 const clientAttributionPattern =
-  /\b(?:URLSearchParams|searchParams|referral_capture|utm_(?:source|medium|campaign|content|term))\b|(?:[?&]|[.#])ref(?:=|\b)|\blocation\s*\.\s*(?:search|href)\b/iu;
+  /\b(?:URLSearchParams|searchParams|referral_(?:capture|code|prefill)|utm_(?:source|medium|campaign|content|term))\b|(?:[?&]|[.#])ref(?:=|\b)|\blocation\s*\.\s*(?:search|href)\b/iu;
 
 async function filesIn(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -116,6 +116,13 @@ test('the repository scan rejects a ref reader mutated into a page client script
       `<script>const ref = new URL(window.location.href).searchParams.get('ref');</script>`,
     );
 
+    await assert.rejects(async () =>
+      assertNoClientAttributionPath(await browserDeliveredSources(root)),
+    );
+    await writeFile(
+      join(root, 'src/pages/index.astro'),
+      `<script>const ref = new FormData(form).get('referral_code');</script>`,
+    );
     await assert.rejects(async () =>
       assertNoClientAttributionPath(await browserDeliveredSources(root)),
     );

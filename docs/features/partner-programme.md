@@ -213,7 +213,8 @@ Progress shows on `/me`, on the partner dashboard and in the relevant emails. **
 ## Edge cases and error states
 
 - A code that is taken, blocklisted or malformed returns the form with the reason and up to three available alternatives.
-- If the link's code and a typed code differ, the typed code wins. An unknown typed code is ignored with a neutral note, and the signup still completes.
+- The landing hero's native disclosure prefills the signed link's code. An untouched prefill requires a valid, unexpired capture and uses `link` attribution. A replacement uses `code` attribution. For an unknown or inactive replacement, signup still completes without a referral or partner perks and shows a neutral note (D-062).
+- The verification success page and transactional welcome email show the confirmed friend's fixed perk in the founder's form, using the registered partner code and September 2027 early access. A void on the friend's edge hides the line. If partner erasure leaves the friend-owned entitlement, the line states the retained perks without the partner code.
 - Self-referral (the same normalised email) is blocked by the existing rule. Fraud flags still apply, and flagged signups count until voided.
 - A voided referral is kept for audit with its reason. Voiding removes it from counts, the leaderboard, the ladder, wave 1 and the export's active set. Un-voiding restores it.
 - Pausing a partner does not touch past attributions or the welcome discounts already fixed.

@@ -1,5 +1,6 @@
 import { createEmailTemplateRepository } from '../db/email-template.ts';
 import type { DatabasePool } from '../db/pool.ts';
+import { createFlagService } from '../flags/service.ts';
 import { createReferralService } from '../referral/service.ts';
 
 import type { TransactionalTemplateData } from './transactional-templates.ts';
@@ -8,6 +9,7 @@ export function createTransactionalTemplateData(
   database: DatabasePool,
 ): TransactionalTemplateData {
   const repository = createEmailTemplateRepository(database);
+  const flags = createFlagService(database);
   async function subject(statusTokenId: string): Promise<string> {
     const subscriberId = await repository.statusTokenSubject(statusTokenId);
     if (subscriberId === null)
@@ -16,9 +18,15 @@ export function createTransactionalTemplateData(
   }
   return {
     async referralStatus(statusTokenId) {
-      return createReferralService(database).status(
+      const status = await createReferralService(database).status(
         await subject(statusTokenId),
       );
+      if (
+        status.partnerWelcomePerk === undefined ||
+        (await flags.isEnabled('referral.enabled'))
+      )
+        return status;
+      return { ...status, partnerWelcomePerk: undefined };
     },
     async receiptEntries(statusTokenId, rulesVersion) {
       return repository.receiptEntries(

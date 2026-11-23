@@ -16,6 +16,8 @@ The service × market price pages (E11.6-10, founder decision D1 of 2026-11-17) 
 
 E11.7-07 adds the permanent server-side partner short link. A live, eligible code answers `302` to `/?ref={CODE}` with the registered uppercase code. Unavailable codes and the off flag answer `302` to `/`; redirects are never cached and add no browser script or storage write. Signup resolves the signed code again against current eligibility. A partner's member code continues to attribute as an ordinary member code while partner attribution is unavailable.
 
+**E11.7-08 amendment (D-062).** The landing hero exposes a native, optional referral field under `referral.enabled`. The server prefills a registry-shaped code from the same request it signs and renders the original value beside it as hidden input. An untouched prefill requires a valid, unexpired signed capture for link attribution. The original-value field by itself grants no attribution. A replacement is first-party form input, resolved against the registry on the server after the existing challenge and rate limit. The replacement takes precedence even when unavailable, in which case signup succeeds with a neutral note and no edge. Clearing the prefill removes the referral. Signed UTM remains independent of code selection. The origin render cache substitutes the current request's signed field and both prefill values. Browser code submits the form as a whole. The existing write-once edge records `link` or `code`.
+
 ## Alternatives rejected
 - **A first-party cookie** — brings Article 5(3) into scope and is arguably not "strictly necessary".
 - **`localStorage`** — the same analysis, plus it fails when storage is blocked.
