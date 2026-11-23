@@ -79,6 +79,12 @@ const relatedPolicyFields = {
       'created_at',
     ],
     'Fraud review decisions': ['voided_at', 'void_reason', 'voided_by'],
+    'Partner referral details': [
+      'partner_id',
+      'attribution_method',
+      'signup_confirmed_count',
+      'welcome_discount_pct',
+    ],
   },
   referral_code: {
     'Referral code': ['active', 'code', 'created_at', 'owner_id', 'owner_kind'],
@@ -138,6 +144,13 @@ const relatedPolicyFields = {
       'expiry_basis',
       'created_at',
       'updated_at',
+    ],
+  },
+  retained_partner_entitlement: {
+    'Earned partner referral benefits kept': [
+      'subscriber_id',
+      'welcome_discount_pct',
+      'wave_one',
     ],
   },
   survey_response: {

@@ -192,13 +192,39 @@ export function createDsrRepository(db: DatabaseConnection) {
         [id, subject.email_normalised],
       );
       await bounded(
-        `UPDATE referral_edge SET referred_id=NULL WHERE id IN (SELECT id FROM referral_edge WHERE referred_id=$1 LIMIT 100)`,
+        `UPDATE referral_edge SET referred_id=NULL, partner_id=NULL, welcome_discount_pct=NULL WHERE id IN (SELECT id FROM referral_edge WHERE referred_id=$1 LIMIT 100)`,
         [id],
       );
-      await bounded(
-        `UPDATE referral_edge SET referrer_id=NULL,referred_id=NULL WHERE id IN (SELECT id FROM referral_edge WHERE referrer_id=$1 LIMIT 100)`,
-        [id],
-      );
+      await db.execute({
+        text: 'DELETE FROM retained_partner_entitlement WHERE subscriber_id=$1',
+        values: [id],
+      });
+      // Lock each edge before copying its earned perks. A simultaneous
+      // friend's erasure clears the incoming edge before deleting their own
+      // entitlement, so neither ordering can leave that entitlement behind.
+      let anonymisedEdges: number;
+      do {
+        const result = await db.readOne<{ count: number }>({
+          text: `WITH edge_batch AS MATERIALIZED (
+            SELECT id, referred_id, state, voided_at, welcome_discount_pct
+            FROM referral_edge WHERE referrer_id=$1 ORDER BY id LIMIT 100 FOR UPDATE
+          ), preserved AS (
+            INSERT INTO retained_partner_entitlement (subscriber_id, welcome_discount_pct, wave_one)
+            SELECT e.referred_id, e.welcome_discount_pct, true
+            FROM edge_batch e JOIN subscriber friend ON friend.id=e.referred_id
+            WHERE e.state='confirmed' AND e.voided_at IS NULL
+              AND e.welcome_discount_pct IS NOT NULL AND friend.status='verified'
+            ON CONFLICT (subscriber_id) DO NOTHING
+          ), anonymised AS (
+            UPDATE referral_edge e SET referrer_id=NULL, referred_id=NULL,
+              partner_id=NULL, welcome_discount_pct=NULL
+            FROM edge_batch WHERE e.id=edge_batch.id RETURNING e.id
+          )
+          SELECT count(*)::int AS count FROM anonymised`,
+          values: [id],
+        });
+        anonymisedEdges = result?.count ?? 0;
+      } while (anonymisedEdges === dsrBatchSize);
       await bounded(
         `UPDATE subscriber SET referred_by_id=NULL WHERE id IN (SELECT id FROM subscriber WHERE referred_by_id=$1 LIMIT 100)`,
         [id],

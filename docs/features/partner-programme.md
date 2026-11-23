@@ -52,7 +52,7 @@ Commission is **shown in copy and never calculated here** (founder, 2026-11-22):
 
 | Flag | Default | Off means |
 |---|---|---|
-| `partners.enabled` | **on** | `/partners/apply` shows an honest "applications are paused" message. `/r/{CODE}` still redirects to `/`, without attributing. Partner dashboards say the programme is paused. Existing data is untouched. The incident lever |
+| `partners.enabled` | **on** | `/partners/apply` shows an honest "applications are paused" message. `/r/{CODE}` still redirects to `/`, without attributing. Partner dashboards say the programme is paused. Contract signing and reactivation still record their audited transitions. Code activation, partner-mode member codes, retroactive attribution and new activation-based wave-1 grants wait for reopening. Earned perks and historical attribution are preserved |
 | `partners.digest` | **off** | No partner digest is sent. It stays off until the founder turns it on |
 
 The reward ladder and the wave-1 rule sit behind the existing `referral.enabled`.
@@ -63,11 +63,9 @@ The reward ladder and the wave-1 rule sit behind the existing `referral.enabled`
 
 - **An application counts only once its email is confirmed.** Submitting sends a confirmation link to the address. For someone not yet on the waitlist, confirming it is also their double opt-in, and creates or links their member record. An unconfirmed application expires with the verification token, and is never shown for review.
 - **Contracts live outside this system.** The founder sends each one through signfree.io. This system stores only `contract_sent_at`, `contract_signed_at`, `contract_version`, an optional signfree reference and notes, set by founder command.
-- **Recording a signed contract activates the partner.** At that moment:
-  - the code and `/r/{CODE}` go live;
-  - the welcome email is sent;
-  - retroactive attribution runs.
-- **A paused or terminated partner's** link and code stop attributing. Visitors land on `/` normally, with no referrer recorded. Existing attributions stay unless voided one by one.
+- **Recording a signed contract or reactivating a paused partner sets their status to active and audits the change.** While `partners.enabled` is on, the partner's code goes live, their member code attributes to the same partner, and they qualify for wave 1. The maintenance worker checks every cycle and applies any deferred code activations and eligible retroactive edges in a batch of at most 100 combined. It rechecks the flag and eligibility before each write and resumes automatically after reopening.
+- **The partner welcome email is delivered by E11.7-11 (D-057).** It waits until both the E11.7-09 dashboard and the E11.7-11 asset kit are live. E11.7-11 owns the once-per-partner catch-up and subsequent activation sends, the flag and dispatch suppression checks, and the full welcome message with its three-step checklist.
+- **A paused or terminated partner's** link and code stop attributing. Visitors land on `/` normally, with no referrer recorded. Their member code works as a plain member referral. Existing attributions and fixed discounts stay, and a friend’s own void suspends the edge-derived benefits. The partner keeps wave 1 only if another reason qualifies them.
 - **States that wait on a person** (standing rule 14):
   - an unconfirmed application expires with its token;
   - `applied`, `approved` and `contract_sent` wait on the founder or on the signature. `partners list --stale` shows any that have been in one state for more than 14 days (configurable). Nothing changes automatically;
@@ -185,7 +183,8 @@ The count is confirmed, non-voided referrals, including retroactive partner attr
   | 39 or more (coupon 3 unlocked) | **20%** |
 
 - **Friends of a student ambassador get the higher of 15% and the ladder value.**
-- **A retroactively attributed friend's discount** is set from the partner's confirmed count at that friend's original signup, with the ambassador floor applied.
+- **A retroactively attributed friend's discount** uses the confirmed count when the friend originally signed up. Catch-up checks confirmed, non-voided edges from before approval and uses their immutable signup count if present. Legacy edges use the [recorded event-time rule](../modules/referral.md#partner-attribution-and-signup-counts). The ambassador floor applies in both cases.
+- **Erasure of the partner preserves the surviving friend's earned discount and wave-1 place** as a friend-owned entitlement, while the edge loses both endpoints and its partner attribution (D-058). The entitlement is included in the friend's data-subject export and removed by their own erasure.
 - Friends referred earlier keep what they got. **A friend whose own referral is voided loses it.**
 - It expires five years after public launch.
 - No stacking: someone who holds several discounts chooses one per order.

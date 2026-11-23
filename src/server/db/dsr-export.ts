@@ -14,6 +14,7 @@ export const subjectExportTables = {
   milestone_award: 'subscriber_id=$1',
   // E11.7-03: the member's coupon ladder. Erasure deletes it.
   referral_coupon: 'subscriber_id=$1',
+  retained_partner_entitlement: 'subscriber_id=$1',
   // E11.7-01: the member's code in the shared registry, and since E11.7-06
   // the partner code registered for any of the member's applications.
   // Erasure retires both rows and clears their owners, so an erased subject

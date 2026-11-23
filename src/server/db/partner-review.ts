@@ -106,6 +106,7 @@ export interface PartnerContractSigning {
 
 export interface PartnerReviewRepository {
   /** Locks the partner row for a command. Unconfirmed applications are never returned. */
+  lockActivationSubscriber(id: string): Promise<void>;
   lock(id: string): Promise<PartnerReviewRow | null>;
   /** Registers the partner's code, inactive (D-044). False if the code is taken. */
   registerCode(code: string, partnerId: string): Promise<boolean>;
@@ -156,6 +157,13 @@ export function createPartnerReviewRepository(
   database: DatabaseConnection,
 ): PartnerReviewRepository {
   return {
+    async lockActivationSubscriber(id) {
+      await database.readOne({
+        text: `SELECT s.id FROM partner p JOIN subscriber s ON s.id = p.subscriber_id
+          WHERE p.id = $1 FOR NO KEY UPDATE OF s`,
+        values: [id],
+      });
+    },
     lock(id) {
       return database.readOne<PartnerReviewRow>({
         text: `

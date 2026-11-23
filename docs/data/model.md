@@ -96,11 +96,11 @@ The same table shape backs the signed status link for `/me` with a longer expiry
 
 Constraints: `owner_id` may be null only when `active` is false · one member code per subscriber (partial unique index on `owner_id` where `owner_kind = 'member'`) · one partner code per partner (`uq_referral_code_partner_owner`, E11.7-06) · `code`, `owner_kind` and `created_at` are immutable, and an owner can only be cleared, never set or changed (trigger) · **an active member row must be its subscriber's current `referral_code`** (deferred constraint trigger, checked at commit) · **a partner row is inserted inactive** (`BEFORE INSERT` trigger, migration 0059; member rows still insert active).
 
-Permissions: the application role has `SELECT`, and `INSERT` on `code`, `owner_kind` and `owner_id` only, with no `UPDATE` or `DELETE`. Nothing in the application can therefore make a partner code live; E11.7-07 adds the activation path and the narrow permission it needs (an `UPDATE (active)` grant or a definer function). The one write the application can cause is E11.7-06's purge trigger on `partner`, a definer function that only **retires** the purged partner's own row (inactive, owner cleared) and can never make a code live.
+Permissions: the application role can read and insert codes, with no direct `UPDATE` or `DELETE`. E11.7-07 grants execution of `set_partner_code_active`, a narrowly scoped definer function that only toggles a partner's registered code and activates it only for an eligible, active partner with a verified subscriber. E11.7-06's purge trigger retires a partner's code by clearing its owner and deactivating it.
 
 **Member codes are mirrored, never written separately.** Generation (E4-01) claims the registry row first, with `ON CONFLICT DO NOTHING`, then writes `subscriber.referral_code` in the same transaction. A collision with any existing code, member or partner, regenerates without aborting the verification transaction. A trigger on `subscriber` mirrors every other write of `referral_code` in the same transaction and refuses, with `unique_violation`, a code another owner already holds in any case. When the subscriber's code is cleared (E9-05 erasure), the trigger **retires** the row: `active` false and `owner_id` null. A retired code no longer resolves, holds no link to the person, and is never reissued. Codes cleared by an erasure before this table existed were never registered.
 
-Permissions: the application role may `SELECT`, and `INSERT` only `code`, `owner_kind` and `owner_id`. It cannot update or delete a row. Migration `0058` backfilled every member code that existed when it ran.
+Migration `0058` backfilled every member code that existed when it ran.
 
 ---
 
@@ -119,8 +119,14 @@ Permissions: the application role may `SELECT`, and `INSERT` only `code`, `owner
 | `void_reason` | text null | The founder's reason: one line of 1–200 characters, refused if it holds an email or IP address |
 | `voided_by` | text null | The authenticated human actor (`admin.operator`); never a `system:` actor |
 | `confirmed_at` `created_at` | timestamptz | |
+| `partner_id` | uuid null → `partner` | Partner credited for the edge. Present only while both endpoints are linked |
+| `attribution_method` | text not null, default `link` | `link` · `code` · `retroactive`. Existing rows default to `link`; the typed signup code is introduced by E11.7-08 |
+| `welcome_discount_pct` | int null | Exactly 10, 15 or 20 for a linked partner edge. Held fixed after assignment; voiding suspends use without overwriting the percentage |
+| `signup_confirmed_count` | int null | Immutable, nonnegative confirmed, non-voided count captured when the edge is created, including plain member referrals and confirmed evidence retained after a friend’s erasure. Null on legacy edges; zero is a captured count |
 
-**A void is a flag over the edge, not a state** (E11.7-02). The check `referral_edge_void_recorded` requires all three void columns together, a non-blank reason of at most 200 characters and a non-`system:` actor, or none of them. `state` and `reward_state` are never changed by a void, so the reward-gating transitions are untouched. **Every consumer of the confirmed count reads only `state = 'confirmed' AND voided_at IS NULL`**: `confirmed_referrals` and its daily repair, the coupon ladder and wave 1 (E11.7-03), giveaway referral entitlement and accrual, and the handoff's confirmed referral pairs. The leaderboard, `/me`, rank and the admin CSV read the recomputed `confirmed_referrals`, which the void transaction recomputes. The application role may update only the three void columns. Every void and un-void is audited as `referral.voided` or `referral.unvoided` with before and after values.
+**A void is a flag over the edge, not a state** (E11.7-02). The check `referral_edge_void_recorded` requires all three void columns together, a non-blank reason of at most 200 characters and a non-`system:` actor, or none of them. `state` and `reward_state` are never changed by a void, so the reward-gating transitions are untouched. **Every consumer of the confirmed count reads only `state = 'confirmed' AND voided_at IS NULL`**: `confirmed_referrals` and its daily repair, the coupon ladder and wave 1 (E11.7-03), giveaway referral entitlement and accrual, and the handoff's confirmed referral pairs. The leaderboard, `/me`, rank and the admin CSV read the recomputed `confirmed_referrals`, which the void transaction recomputes. The void command updates only the three void columns. Every void and un-void is audited as `referral.voided` or `referral.unvoided` with before and after values.
+
+Migration 0067 grants column-scoped inserts and updates for attribution. A trigger keeps the signup count immutable. Attribution may change only when an eligible confirmed member edge is upgraded retroactively, or its partner identity and discount are cleared on erasure. The friend’s DSR export redacts the other person’s partner identifier and count. See the [recorded-time fallback](../modules/referral.md#partner-attribution-and-signup-counts) for legacy edges.
 
 **Cheap rewards settle on confirmation; coupons are `held`, and become usable only when any one of the owner's confirmed referred people places a first order, until five years after the configured public launch** (ADR-012, as amended by E11.7-03). The pre-launch repository carries export-set owners' held coupons at handoff with that expiry. The main platform owns making them usable. Nothing here settles a coupon.
 
@@ -149,6 +155,16 @@ Permissions: the application role may `SELECT`, and `INSERT` only `code`, `owner
 A coupon row is created when the count first reaches its unlock and is never deleted except by erasure, so a void coupon stays visible as `void`. The only transitions are `none → held`, `held → held` (a percent step), `held → void` and `void → held` (`couponTransitions` in `src/server/referral/reward-state.ts`). The ladder's figures are configuration in `src/server/referral/config.ts` (ADR-025, as amended), so changing a threshold, the step or the launch date needs no migration. The launch date is read when the handoff export computes the expiry. A changed threshold or step reaches an owner's stored rows only at that owner's next recompute — a confirmation, void or un-void — or at the daily repair, which checks at most 1,000 verified subscribers per run, lowest IDs first, and so does not reach every owner. The handoff first recomputes everyone: before its snapshot it recomputes every verified subscriber's coupons and wave under the configured ladder, in batches of at most 1,000, and audits each change as `handoff.rewards_recomputed` (D-047), so the export follows the configured ladder.
 
 Permissions: the application role has `SELECT`, `INSERT` of every column but `expiry_basis`, `UPDATE (percent, state, updated_at)` and `DELETE` (erasure only). It cannot change a row's owner, number or basis. Personal data: a member's rewards, covered by the privacy policy's referral row, the E9-05 export and erasure.
+
+## `retained_partner_entitlement`
+
+| Column | Type | Notes |
+|---|---|---|
+| `subscriber_id` | uuid primary key → `subscriber` | The surviving friend, who owns the entitlement |
+| `welcome_discount_pct` | int not null | The fixed 10, 15 or 20 percent welcome discount the friend earned |
+| `wave_one` | boolean not null | Checked true. The friend keeps their wave-1 place |
+
+The erasure transaction copies both earned perks from an eligible confirmed, non-voided edge and clears both endpoints and partner attribution from that edge. The record carries no partner, code or edge identifier. Wave recomputation and the friend's DSR export read it; the friend's erasure deletes it. The application role has SELECT, INSERT and DELETE. The launch handoff records belong to E11.7-14.
 
 ## `partner`
 

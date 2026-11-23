@@ -32,7 +32,13 @@ export function ownData(
   const result = { ...data };
   if (table === 'subscriber') result.referred_by_id = null;
   if (table === 'referral_edge') {
-    if (result.referrer_id !== id) result.referrer_id = null;
+    if (result.referrer_id !== id) {
+      result.referrer_id = null;
+      result.partner_id = null;
+      // The referrer's historical count is their data, even when it fixed
+      // the exporting friend's own discount.
+      result.signup_confirmed_count = null;
+    }
     if (result.referred_id !== id) result.referred_id = null;
     // E11.7-02: the operator who voided the referral is an operator identity.
     if (result.voided_by !== null && result.voided_by !== undefined)

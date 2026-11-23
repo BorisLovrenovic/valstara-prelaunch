@@ -14,6 +14,8 @@ There is no cookie, no `localStorage`, and **no client-side attribution path any
 
 The service × market price pages (E11.6-10, founder decision D1 of 2026-11-17) are server-rendered on request for exactly this reason: each signs the same field from its own `?ref=` and UTM parameters, through the landing's own function, and a signup from one is attributed exactly as from `/`.
 
+E11.7-07 adds the permanent server-side partner short link. A live, eligible code answers `302` to `/?ref={CODE}` with the registered uppercase code. Unavailable codes and the off flag answer `302` to `/`; redirects are never cached and add no browser script or storage write. Signup resolves the signed code again against current eligibility. A partner's member code continues to attribute as an ordinary member code while partner attribution is unavailable.
+
 ## Alternatives rejected
 - **A first-party cookie** — brings Article 5(3) into scope and is arguably not "strictly necessary".
 - **`localStorage`** — the same analysis, plus it fails when storage is blocked.

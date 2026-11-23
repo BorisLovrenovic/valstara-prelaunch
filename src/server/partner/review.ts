@@ -4,6 +4,7 @@ import { createAuditService } from '../audit/service.ts';
 import { redactAuditDetail } from '../audit/redact-detail.ts';
 import type { AuditAction } from '../audit/actions.ts';
 import type { AuditDetail } from '../audit/types.ts';
+import { createPartnerAttributionRepository } from '../db/partner-attribution.ts';
 import {
   createPartnerReviewRepository,
   partnerFlaggedReferralLimit,
@@ -23,8 +24,10 @@ import {
   createPartnerCodeRules,
   type PartnerCodeRefusalReason,
 } from '../referral/partner-code.ts';
+import { recomputeReferralRewards } from '../referral/rewards.ts';
 import { createVerificationService } from '../verification/service.ts';
 
+import { activatePartnerCode } from './activation.ts';
 import {
   partnerApprovedBusinessKey,
   partnerApprovedTemplate,
@@ -435,6 +438,9 @@ export function createPartnerReviewService(
     const actor = assertHumanActor(rawActor);
     return withTransaction(database, async (connection) => {
       const repository = createPartnerReviewRepository(connection);
+      const changesActivation =
+        to === 'active' || to === 'paused' || to === 'terminated';
+      if (changesActivation) await repository.lockActivationSubscriber(rawId);
       const row = await lockForCommand(connection, rawId);
       if (!from.includes(row.status)) {
         throw new PartnerReviewRefusedError('wrong_status', {
@@ -453,6 +459,26 @@ export function createPartnerReviewService(
       );
       if (updated !== 1) {
         throw new Error('The partner transition could not be recorded.');
+      }
+      if (changesActivation && row.subscriber_id !== null) {
+        if (to === 'active') {
+          await activatePartnerCode(
+            connection,
+            row.id,
+            row.subscriber_id,
+            now,
+            actor,
+          );
+        } else {
+          await createPartnerAttributionRepository(connection).setCodeActive(
+            row.id,
+            false,
+          );
+          await recomputeReferralRewards(connection, row.subscriber_id, {
+            actor,
+            now,
+          });
+        }
       }
       const changed = await repository.lock(row.id);
       if (changed === null) {

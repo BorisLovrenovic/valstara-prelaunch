@@ -1,5 +1,7 @@
 import type { AccessWindow } from './config.ts';
 
+export type PartnerWaveReason = 'active_partner' | 'partner_referral';
+
 const referralLandingUrl = 'https://valstara.com/';
 
 export interface ReferralStatus {
@@ -7,6 +9,7 @@ export interface ReferralStatus {
   readonly confirmedReferrals: number;
   readonly giveawayEntries: number;
   readonly ownRank: number | null;
+  readonly partnerWaveReason?: PartnerWaveReason | undefined;
   readonly referralLink: string;
   readonly subscriberStatus: 'verified';
   /**
@@ -20,6 +23,7 @@ export interface ReferralStatusDetails {
   readonly accessWindow: AccessWindow | null;
   readonly giveawayEntries: number;
   readonly ownRank: number | null;
+  readonly partnerWaveReason?: PartnerWaveReason | undefined;
   readonly verificationOrderWindow: AccessWindow | null;
 }
 
@@ -41,6 +45,9 @@ export function computeReferralStatus(
     confirmedReferrals,
     giveawayEntries: details.giveawayEntries,
     ownRank: details.ownRank,
+    ...(details.partnerWaveReason === undefined
+      ? {}
+      : { partnerWaveReason: details.partnerWaveReason }),
     referralLink: referralLink.toString(),
     subscriberStatus: 'verified',
     verificationOrderWindow: details.verificationOrderWindow,

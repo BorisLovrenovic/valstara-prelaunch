@@ -6,6 +6,7 @@ import { countedSubscriberStatus } from './subscriber-maintenance.ts';
 export interface ReferralEdgeForConfirmation {
   readonly id: string;
   readonly referrer_id: string;
+  readonly partner_id: string | null;
 }
 
 export interface ReferralStatusAward {
@@ -43,8 +44,6 @@ export interface ReferralRepository {
     referredId: string,
   ): Promise<ReferralEdgeForConfirmation | null>;
   findSubscriber(subscriberId: string): Promise<ReferralSubscriber | null>;
-  /** The active member owner of an upper-case code from the shared registry. */
-  findSubscriberIdByCode(code: string): Promise<string | null>;
   findSettledReferralTier(subscriberId: string): Promise<number>;
   findSubscriberIdsForCounterRepair(limit: number): Promise<readonly string[]>;
   findStrandedVerifiedReferralIds(limit: number): Promise<readonly string[]>;
@@ -52,6 +51,8 @@ export interface ReferralRepository {
     id: string,
     referrerId: string,
     referredId: string,
+    signupConfirmedCount: number,
+    partner: { readonly id: string; readonly discount: number } | null,
   ): Promise<number>;
   lockAccessWindowAssignment(): Promise<void>;
   lockSubscriber(subscriberId: string): Promise<ReferralSubscriber | null>;
@@ -191,7 +192,7 @@ export function createReferralRepository(
     async findEdgeForConfirmation(referredId) {
       return database.readOne<ReferralEdgeForConfirmation>({
         text: `
-          SELECT edge.id, edge.referrer_id
+          SELECT edge.id, edge.referrer_id, edge.partner_id
           FROM referral_edge edge
           JOIN subscriber referred ON referred.id = edge.referred_id
           WHERE edge.referred_id = $1
@@ -212,20 +213,6 @@ export function createReferralRepository(
         `,
         values: [subscriberId],
       });
-    },
-
-    async findSubscriberIdByCode(code) {
-      // The shared registry (E11.7-01) holds each member's code upper case
-      // while the subscriber holds it; callers pass the normalised code.
-      const row = await database.readOne<{ owner_id: string }>({
-        text: `
-          SELECT owner_id
-          FROM referral_code
-          WHERE code = $1 AND owner_kind = 'member' AND active
-        `,
-        values: [code],
-      });
-      return row?.owner_id ?? null;
     },
 
     async findSettledReferralTier(subscriberId) {
@@ -281,16 +268,30 @@ export function createReferralRepository(
       return rows.map((row) => row.referred_id);
     },
 
-    async insertAttributedEdge(id, referrerId, referredId) {
+    async insertAttributedEdge(
+      id,
+      referrerId,
+      referredId,
+      signupConfirmedCount,
+      partner,
+    ) {
       return database.execute({
         text: `
           INSERT INTO referral_edge (
-            id, referrer_id, referred_id, state, reward_state
+            id, referrer_id, referred_id, state, reward_state,
+            signup_confirmed_count, partner_id, welcome_discount_pct
           )
-          VALUES ($1, $2, $3, 'attributed', 'none')
+          VALUES ($1, $2, $3, 'attributed', 'none', $4, $5, $6)
           ON CONFLICT (referred_id) DO NOTHING
         `,
-        values: [id, referrerId, referredId],
+        values: [
+          id,
+          referrerId,
+          referredId,
+          signupConfirmedCount,
+          partner?.id ?? null,
+          partner?.discount ?? null,
+        ],
       });
     },
 

@@ -3,6 +3,7 @@ import { redactAuditDetail } from '../audit/redact-detail.ts';
 import type { AuditDetail } from '../audit/types.ts';
 import { createGiveawayDrawRepository } from '../db/giveaway-draw.ts';
 import type { DatabasePool } from '../db/pool.ts';
+import { createReferralRepository } from '../db/referral.ts';
 import { createReferralCouponRepository } from '../db/referral-coupon.ts';
 import {
   createReferralVoidRepository,
@@ -177,9 +178,10 @@ export function createReferralVoidService(
       }
       const referrerId = found.referrer_id;
 
-      // The lock order matches the verification transaction: referrer row,
-      // then the edge, then the entry ledger. Confirmations for this referrer
-      // therefore serialise with the void, and the recount sees both.
+      // Match confirmation and signup: friend before referrer before edge.
+      // The referrer lock serialises the count with concurrent signups.
+      const friend =
+        await createReferralRepository(connection).lockSubscriber(referredId);
       const referrer = await voids.lockReferrer(referrerId);
       if (referrer === null) throw new ReferralVoidRefusedError('not_found');
       const edge = await voids.lockEdge(found.id);
@@ -250,6 +252,13 @@ export function createReferralVoidService(
         referrerId,
         { actor, configuration: rewards, now },
       );
+      if (edge.partner_id !== null && friend?.status === 'verified') {
+        await recomputeReferralRewards(connection, referredId, {
+          actor,
+          configuration: rewards,
+          now,
+        });
+      }
       const confirmedReferrals = recomputed.confirmedReferrals;
 
       const before: AuditState = {

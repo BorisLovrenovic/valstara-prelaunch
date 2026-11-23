@@ -7,6 +7,7 @@ export interface ReferralVoidEdgeRow {
   readonly id: string;
   readonly referrer_id: string | null;
   readonly referred_id: string | null;
+  readonly partner_id: string | null;
   readonly state: 'attributed' | 'confirmed' | 'rejected';
   readonly voided_at: Date | null;
   readonly void_reason: string | null;
@@ -38,7 +39,7 @@ export interface ReferralVoidRepository {
   restoreEdgeEntry(edgeId: string): Promise<number>;
 }
 
-const edgeColumns = `id::text, referrer_id::text, referred_id::text, state,
+const edgeColumns = `id::text, referrer_id::text, referred_id::text, partner_id::text, state,
   voided_at, void_reason, voided_by`;
 
 export function createReferralVoidRepository(

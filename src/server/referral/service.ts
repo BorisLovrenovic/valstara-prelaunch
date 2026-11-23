@@ -13,12 +13,18 @@ import {
 } from '../db/referral.ts';
 import { createFraudFlagRepository } from '../db/fraud-flag.ts';
 import { createReferralCodeRepository } from '../db/referral-code.ts';
+import { createPartnerAttributionRepository } from '../db/partner-attribution.ts';
 import type { DatabaseConnection, DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
 import { createFlagServiceWithDependencies } from '../flags/service.ts';
 
 import { referralCodeAlphabet, referralCodeLength } from './config.ts';
 import { normaliseReferralCodeForLookup } from './code-registry.ts';
+import {
+  partnerAttributionEnabled,
+  partnerAttributionEnabledForWrite,
+  partnerWelcomeDiscount,
+} from './partner-perks.ts';
 import { rewardStateAtConfirmation } from './reward-state.ts';
 import {
   recomputeReferralRewards,
@@ -144,13 +150,23 @@ function createReferralServiceWithRepository(
     async attribute(referredId, code, allowAttribution = true) {
       return runTransaction(async (connection) => {
         const transactionalRepository = createReferralRepository(connection);
-        const referrerId = await transactionalRepository.findSubscriberIdByCode(
-          normaliseReferralCodeForLookup(code),
-        );
-        if (referrerId === null) {
+        const attribution = createPartnerAttributionRepository(connection);
+        const normalised = normaliseReferralCodeForLookup(code);
+        const owner = await attribution.findCodeOwner(normalised);
+        if (owner === null) {
           return { kind: 'unattributed' };
         }
+        const referrerId = owner.referrer_id;
+        const partnerCode = owner.owner_kind === 'partner' ? normalised : null;
         if (referrerId === referredId) {
+          if (
+            partnerCode !== null &&
+            (!(await partnerAttributionEnabled(connection)) ||
+              (await attribution.findLivePartner(referrerId, partnerCode)) ===
+                null)
+          ) {
+            return { kind: 'unattributed' };
+          }
           await createFraudFlagRepository(connection).insertSelfReferralFlag({
             id: randomUUID(),
             subscriberId: referredId,
@@ -161,10 +177,39 @@ function createReferralServiceWithRepository(
           return { kind: 'unattributed' };
         }
 
+        // Verification takes the referred row before the referrer. Hold that
+        // order here, then take the same referrer lock as confirms and voids.
+        const referred =
+          await transactionalRepository.lockSubscriber(referredId);
+        if (referred?.status !== 'pending') return { kind: 'unattributed' };
+        const referrer =
+          await transactionalRepository.lockSubscriber(referrerId);
+        if (
+          referrer === null ||
+          referrer.status === 'erasure_pending' ||
+          referrer.status === 'erased'
+        ) {
+          return { kind: 'unattributed' };
+        }
+        const partner = (await partnerAttributionEnabledForWrite(connection))
+          ? await attribution.findLivePartner(referrerId, partnerCode)
+          : null;
+        if (partnerCode !== null && partner === null)
+          return { kind: 'unattributed' };
+
+        const count =
+          await transactionalRepository.countConfirmedEdges(referrerId);
         const inserted = await transactionalRepository.insertAttributedEdge(
           randomUUID(),
           referrerId,
           referredId,
+          count,
+          partner === null
+            ? null
+            : {
+                id: partner.id,
+                discount: partnerWelcomeDiscount(count, partner.partner_type),
+              },
         );
         if (inserted === 0) {
           return { kind: 'unattributed' };
@@ -185,21 +230,28 @@ function createReferralServiceWithRepository(
     async confirm(referredId, now) {
       return runTransaction(async (connection) => {
         const transactionalRepository = createReferralRepository(connection);
-        const edge =
+        const referred =
+          await transactionalRepository.lockSubscriber(referredId);
+        if (referred?.status !== 'verified') return null;
+        const candidate =
           await transactionalRepository.findEdgeForConfirmation(referredId);
-        if (edge === null) {
+        if (candidate === null) {
           return null;
         }
 
         // Serialising confirmations for one referrer ensures two real people
         // verifying together each see the other's edge in the recompute.
         const current = await transactionalRepository.lockSubscriber(
-          edge.referrer_id,
+          candidate.referrer_id,
         );
         if (current === null) {
           throw new Error('The referral edge referrer could not be read.');
         }
 
+        // Outgoing erasure may have cleared this edge while the lock waited.
+        const edge =
+          await transactionalRepository.findEdgeForConfirmation(referredId);
+        if (edge === null) return null;
         const confirmed = await transactionalRepository.confirmEdge(
           referredId,
           rewardStateAtConfirmation('cheap'),
@@ -216,6 +268,13 @@ function createReferralServiceWithRepository(
           configuration: rewards,
           now,
         });
+        if (edge.partner_id !== null) {
+          await recomputeReferralRewards(connection, referredId, {
+            actor: 'system:referral-confirmation',
+            configuration: rewards,
+            now,
+          });
+        }
         return transactionalRepository.findSettledReferralTier(
           edge.referrer_id,
         );
@@ -267,9 +326,19 @@ function createReferralServiceWithRepository(
     },
 
     async lookupCode(code) {
-      return repository.findSubscriberIdByCode(
-        normaliseReferralCodeForLookup(code),
-      );
+      return runTransaction(async (connection) => {
+        const attribution = createPartnerAttributionRepository(connection);
+        const normalised = normaliseReferralCodeForLookup(code);
+        const owner = await attribution.findCodeOwner(normalised);
+        if (owner === null || owner.owner_kind === 'member')
+          return owner?.referrer_id ?? null;
+        if (!(await partnerAttributionEnabled(connection))) return null;
+        const partner = await attribution.findLivePartner(
+          owner.referrer_id,
+          normalised,
+        );
+        return partner === null ? null : owner.referrer_id;
+      });
     },
 
     async recomputeCounters(limit) {
@@ -319,9 +388,14 @@ function createReferralServiceWithRepository(
         );
       }
 
-      const [giveawayEntries, ownRank] = await Promise.all([
+      const [giveawayEntries, ownRank, perks] = await Promise.all([
         repository.findGiveawayEntryTotal(subscriberId),
         repository.findOwnReferralRank(subscriberId),
+        runTransaction((connection) =>
+          createPartnerAttributionRepository(connection).findPerks(
+            subscriberId,
+          ),
+        ),
       ]);
 
       return computeReferralStatus(
@@ -332,6 +406,11 @@ function createReferralServiceWithRepository(
           giveawayEntries,
           ownRank,
           verificationOrderWindow: subscriber.verification_order_window,
+          partnerWaveReason: perks?.active_partner
+            ? 'active_partner'
+            : perks?.welcome_discount_pct != null
+              ? 'partner_referral'
+              : undefined,
         },
       );
     },
