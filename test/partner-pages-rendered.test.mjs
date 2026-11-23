@@ -326,6 +326,22 @@ test('dashboard recovery is Turnstile-first and returns the same rendered acknow
     subscriberId,
     process.env.EMAIL_TOKEN_SECRET,
   );
+  const referredId = randomUUID();
+  const referredEmail = 'dashboard-referred@example.test';
+  await database.query(
+    `INSERT INTO subscriber (id, email, email_normalised, email_domain, status,
+      verified_at, referral_code, referred_by_id)
+     VALUES ($1, $2, $2, 'example.test', 'verified', '2026-11-05T10:01:00Z',
+      'DBFRIEND2345', $3)`,
+    [referredId, referredEmail, subscriberId],
+  );
+  await database.query(
+    `INSERT INTO referral_edge (id, referrer_id, referred_id, state, reward_state,
+      created_at, confirmed_at, partner_id, welcome_discount_pct, signup_confirmed_count)
+     VALUES ($1, $2, $3, 'confirmed', 'none', '2026-11-05T10:00:00Z',
+      '2026-11-05T10:01:00Z', $4, 15, 0)`,
+    [randomUUID(), subscriberId, referredId, original.partnerId],
+  );
   const recoveryPath = '/partners/apply?operation=dashboard-recovery';
   const dashboardPath = '/partners/dashboard';
   const form = await (
@@ -404,6 +420,18 @@ test('dashboard recovery is Turnstile-first and returns the same rendered acknow
     /Earnings start with early access in September 2027\./u,
   );
   assert.match(visibleText(html), /fixture-v1/u);
+  assert.match(
+    visibleText(html),
+    /\bConfirmed 1 Pending confirmation 0 Voided 0\b/u,
+  );
+  assert.ok(
+    !html.includes(referredId),
+    'the referred subscriber ID stays private',
+  );
+  assert.ok(
+    !html.includes(referredEmail),
+    'the referred subscriber email stays private',
+  );
   assert.doesNotMatch(
     html,
     /page-view\.js|challenges\.cloudflare\.com|rendereddashboard@gmail|Dashboard Fixture/u,
