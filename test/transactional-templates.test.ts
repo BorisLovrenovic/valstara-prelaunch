@@ -6,6 +6,7 @@ import type { QueuedEmailRow } from '../src/server/db/email.ts';
 import { emailCopy } from '../src/copy/email.ts';
 import { memberStatusCopy } from '../src/copy/member-status.ts';
 import { presentReferralStatus } from '../src/server/referral/status-presentation.ts';
+import { presentPartnerWelcomePerk } from '../src/server/referral/partner-welcome-presentation.ts';
 import type { ReferralStatus } from '../src/server/referral/status.ts';
 import { prepareDispatchMessage } from '../src/server/email/service.ts';
 import { createTransactionalRenderers } from '../src/server/email/transactional-templates.ts';
@@ -37,6 +38,15 @@ const renderers = createTransactionalRenderers({
       return { deadline, rulesVersion };
     },
   },
+});
+
+test('a retained friend entitlement presents the perks without the erased partner code', () => {
+  assert.equal(presentPartnerWelcomePerk(undefined), null);
+  assert.deepEqual(presentPartnerWelcomePerk({ code: null, discount: 20 }), {
+    lead: 'Your partner referral gives you early access from September 2027 and 20% off your first order.',
+    code: null,
+    benefits: '',
+  });
 });
 
 const cases = [

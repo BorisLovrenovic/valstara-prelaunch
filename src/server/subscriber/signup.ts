@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { DatabasePool } from '../db/pool.ts';
 import type { UtmParameters } from '../referral/capture.ts';
+import type { AttributeResult } from '../referral/service.ts';
 import type { FraudScreenFlag, ScreenResult } from '../fraud/service.ts';
 import { createSubscriberRepository } from '../db/subscriber.ts';
 import { withTransaction } from '../db/transaction.ts';
@@ -43,9 +44,11 @@ export interface SignupSubscriber {
  * same neutral accepted response, so the throttle never leaks.
  */
 export type SignupOutcome =
-  | { readonly kind: 'created'; readonly subscriber: SignupSubscriber }
-  | { readonly kind: 'existing'; readonly subscriber: SignupSubscriber }
-  | { readonly kind: 'already_verified'; readonly subscriber: SignupSubscriber }
+  | {
+      readonly kind: 'created' | 'existing' | 'already_verified';
+      readonly subscriber: SignupSubscriber;
+      readonly referralUnavailable?: true;
+    }
   | { readonly kind: 'invalid_email' }
   | { readonly kind: 'blocked_domain' };
 
@@ -53,6 +56,8 @@ export interface SignupInput {
   readonly email: string;
   readonly marketingOptInVersion?: string | null;
   readonly referralCode?: string | null;
+  readonly referralMethod?: 'link' | 'code';
+  readonly hadSignedReferral?: boolean;
   readonly utm?: UtmParameters | null;
   readonly signupIpPrefixHash?: Buffer | null;
   readonly verificationUrl: (token: string) => string;
@@ -69,7 +74,8 @@ export interface SignupServiceDependencies {
     referredId: string,
     code: string,
     allowAttribution: boolean,
-  ) => Promise<unknown>;
+    method: 'link' | 'code',
+  ) => Promise<AttributeResult | void>;
   readonly isReferralEnabled?: () => Promise<boolean>;
   readonly flagDuplicateIdentity?: (subscriberId: string) => Promise<boolean>;
   readonly flagIpVelocity?: (
@@ -157,20 +163,20 @@ export function createSignupService(
       return { kind: screen.reject };
     }
 
+    const hasValidRef = input.hadSignedReferral ?? input.referralCode != null;
     const subscriber = await upsertSubscriber(
       database,
       normalised,
       input.marketingOptInVersion ?? null,
       input.utm ?? null,
-      input.referralCode !== undefined && input.referralCode !== null,
+      hasValidRef,
       input.signupIpPrefixHash ?? null,
     );
     if (subscriber.created) {
       try {
         dependencies.onCreated?.({
           utm: input.utm ?? null,
-          hasValidRef:
-            input.referralCode !== undefined && input.referralCode !== null,
+          hasValidRef,
           marketingOptIn: input.marketingOptInVersion != null,
         });
       } catch {
@@ -194,17 +200,21 @@ export function createSignupService(
     // Only the initial row can receive attribution. Existing subscribers are
     // still checked for self-referral, but their original referrer is never
     // reassigned.
+    let referralUnavailable: { readonly referralUnavailable?: true } = {};
     if (
       input.referralCode !== undefined &&
       input.referralCode !== null &&
       dependencies.attributeReferral !== undefined &&
       (await (dependencies.isReferralEnabled?.() ?? Promise.resolve(false)))
     ) {
-      await dependencies.attributeReferral(
+      const attribution = await dependencies.attributeReferral(
         subscriber.id,
         input.referralCode,
         subscriber.created,
+        input.referralMethod ?? 'link',
       );
+      if (attribution?.kind === 'unavailable_code')
+        referralUnavailable = { referralUnavailable: true };
     }
 
     // E5-02: this signal applies only to the newly inserted identity. Repeats
@@ -239,12 +249,12 @@ export function createSignupService(
     }
 
     if (subscriber.status === 'verified') {
-      return { kind: 'already_verified', subscriber };
+      return { kind: 'already_verified', subscriber, ...referralUnavailable };
     }
     if (subscriber.status !== 'pending') {
       // Reachable only once later tickets introduce expired/unsubscribed/
       // bounced/disqualified rows; none re-sends a verification mail here.
-      return { kind: 'existing', subscriber };
+      return { kind: 'existing', subscriber, ...referralUnavailable };
     }
 
     const now = clock();
@@ -272,6 +282,7 @@ export function createSignupService(
     return {
       kind: subscriber.created ? 'created' : 'existing',
       subscriber,
+      ...referralUnavailable,
     };
   };
 }

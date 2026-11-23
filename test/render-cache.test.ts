@@ -16,7 +16,10 @@ import {
   campaignFlagRegistry,
 } from '../src/server/flags/registry.ts';
 import type { Flag } from '../src/server/flags/types.ts';
-import { createReferralCaptureService } from '../src/server/referral/capture.ts';
+import {
+  createReferralCaptureService,
+  referralPrefill,
+} from '../src/server/referral/capture.ts';
 import { renderLanding } from './helpers/landing-render.mjs';
 
 // QA gate 7 (G7-1-I4), founder decision 2026-11-14 on E11-01: the origin
@@ -58,7 +61,7 @@ function withFlag(
  * A stand-in for the Astro page: it reads the same flags, signs the same
  * field, reports both through locals and counts its renders.
  */
-function fakeSite(initialFlags: readonly Flag[]) {
+function fakeSite(initialFlags: readonly Flag[], includePrefill = false) {
   let flags = initialFlags;
   let tick = 0;
   // Each signature gets a later issue time, as each real request would.
@@ -76,9 +79,13 @@ function fakeSite(initialFlags: readonly Flag[]) {
       async () => {
         renders += 1;
         const field = landingReferralField(referral, url, flags);
+        const prefill = includePrefill
+          ? referralPrefill(url.searchParams.get('ref'))
+          : undefined;
         locals.renderCache = {
           generation: landingFlagGeneration(flags),
           field,
+          ...(prefill === undefined ? {} : { prefill }),
         };
         const leaderboard = flags.find(
           (flag) => flag.key === 'leaderboard.public',
@@ -88,6 +95,10 @@ function fakeSite(initialFlags: readonly Flag[]) {
             field === null
               ? ''
               : `<input name="referral_capture" type="hidden" value="${field}" />`
+          }${
+            prefill === undefined
+              ? ''
+              : `<input name="referral_code" value="${prefill}"><input name="referral_prefill" value="${prefill}">`
           }</main>`,
           {
             headers: {
@@ -201,6 +212,40 @@ test('requests with different codes each get their own valid field', async () =>
       fieldPattern.exec(responses[1]?.body ?? '')?.[1] ?? null,
     ),
     { ref: 'PQRSTUVWXYZ2', utm: null },
+  );
+});
+
+test('one cached hero render binds both signup prefills to the current signed request', async () => {
+  const site = fakeSite(defaults, true);
+  for (const [ref, expected] of [
+    ['MAYA', 'MAYA'],
+    ['2ndcode', '2NDCODE'],
+    ['bad-ref', ''],
+  ]) {
+    const response = await site.request(`/?ref=${ref}`);
+    const body = await response.text();
+    assert.match(
+      body,
+      new RegExp(`name="referral_code" value="${expected}"`, 'u'),
+    );
+    assert.match(
+      body,
+      new RegExp(`name="referral_prefill" value="${expected}"`, 'u'),
+    );
+    assert.deepEqual(
+      site.referral.verifyRef(fieldPattern.exec(body)?.[1] ?? null),
+      {
+        ref,
+        utm: null,
+      },
+    );
+  }
+  assert.equal(site.renders, 1);
+  assert.doesNotMatch(
+    site.cache
+      .get(`landing|field|ref|${landingFlagGeneration(defaults)}`)
+      ?.parts.join('') ?? '',
+    /MAYA|2NDCODE/u,
   );
 });
 

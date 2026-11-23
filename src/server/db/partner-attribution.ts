@@ -23,6 +23,7 @@ interface RetroactiveEdge extends PartnerWork {
 export interface PartnerPerks {
   readonly active_partner: boolean;
   readonly welcome_discount_pct: number | null;
+  readonly welcome_partner_code: string | null;
 }
 
 const eligiblePartner = `
@@ -70,12 +71,19 @@ export function createPartnerAttributionRepository(db: DatabaseConnection) {
             SELECT 1 FROM partner p JOIN subscriber s ON s.id = p.subscriber_id
             ${partnerCode}
             WHERE p.subscriber_id = $1 AND ${eligiblePartner} AND c.active
-          ) AS active_partner, COALESCE(
-            (SELECT e.welcome_discount_pct FROM referral_edge e
-             WHERE e.referred_id = $1 AND ${earnedPartnerPerkEdge}),
-            (SELECT r.welcome_discount_pct FROM retained_partner_entitlement r
-             WHERE r.subscriber_id = $1 AND r.wave_one)
-          ) AS welcome_discount_pct
+          ) AS active_partner, COALESCE(earned.welcome_discount_pct,
+            retained.welcome_discount_pct) AS welcome_discount_pct,
+            earned.code AS welcome_partner_code
+          FROM (SELECT $1::uuid AS subscriber_id) subject
+          LEFT JOIN LATERAL (
+            SELECT e.welcome_discount_pct, c.code
+            FROM referral_edge e
+            LEFT JOIN referral_code c
+              ON c.owner_kind = 'partner' AND c.owner_id = e.partner_id
+            WHERE e.referred_id = subject.subscriber_id AND ${earnedPartnerPerkEdge}
+          ) earned ON true
+          LEFT JOIN retained_partner_entitlement retained
+            ON retained.subscriber_id = subject.subscriber_id AND retained.wave_one
         `,
         values: [subscriberId],
       });
@@ -84,13 +92,14 @@ export function createPartnerAttributionRepository(db: DatabaseConnection) {
     findCodeOwner(code: string) {
       return db.readOne<CodeOwner>({
         text: `
-          SELECT c.owner_kind, CASE WHEN c.owner_kind = 'member' THEN c.owner_id
-            ELSE p.subscriber_id END AS referrer_id
+          SELECT c.owner_kind, s.id AS referrer_id
           FROM referral_code c
           LEFT JOIN partner p ON c.owner_kind = 'partner' AND c.owner_id = p.id
+          JOIN subscriber s ON s.id = CASE WHEN c.owner_kind = 'member'
+            THEN c.owner_id ELSE p.subscriber_id END
           WHERE c.code = $1 AND c.active AND (
-            c.owner_kind = 'member' OR (p.status = 'active' AND p.subscriber_id IS NOT NULL)
-          )
+            c.owner_kind = 'member' OR p.status = 'active'
+          ) AND s.status NOT IN ('erasure_pending', 'erased')
         `,
         values: [code],
       });

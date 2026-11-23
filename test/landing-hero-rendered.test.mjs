@@ -3,7 +3,7 @@ import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { Buffer } from 'node:buffer';
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, URLSearchParams } from 'node:url';
 import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
 
@@ -65,6 +65,7 @@ let browserServer;
 let browserServerError;
 let giveawayOpenPage;
 let signupsPausedPage;
+let referralsOffPage;
 
 async function startBrowserServer() {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -161,14 +162,19 @@ before(async () => {
   // The flag variants are rendered by a server reading real campaign_flag
   // rows; the browser then loads that HTML at this app's origin, so its
   // stylesheets and island come from the same build.
-  [giveawayOpenPage, signupsPausedPage] = [
-    (await renderLanding({ flags: [{ key: 'giveaway.open', enabled: true }] }))
-      .body,
+  const referralsOff = { key: 'referral.enabled', enabled: false };
+  [giveawayOpenPage, signupsPausedPage, referralsOffPage] = [
+    (
+      await renderLanding({
+        flags: [{ key: 'giveaway.open', enabled: true }, referralsOff],
+      })
+    ).body,
     (
       await renderLanding({
         flags: [{ key: 'signup.enabled', enabled: false }],
       })
     ).body,
+    (await renderLanding({ flags: [referralsOff] })).body,
   ];
   // No reachable database: every flag falls back to its registered default
   // (signup on, giveaway off).
@@ -216,10 +222,17 @@ after(async () => {
 });
 
 // Opens the landing page, or a flag variant's HTML served at the app origin.
-async function openHero({ width, height = 900, colorScheme = 'light', html }) {
+async function openHero({
+  width,
+  height = 900,
+  colorScheme = 'light',
+  html,
+  reducedMotion,
+}) {
   const context = await browser.newContext({
     viewport: { width, height },
     colorScheme,
+    reducedMotion,
   });
   await context.route('https://challenges.cloudflare.com/**', (route) =>
     route.abort(),
@@ -377,10 +390,11 @@ function columns(container) {
 // widths; the default page carries only the 18+ line. Both must fit.
 test('above the fold matches Fold.dc.html at 1440 × 900, 390 × 844 and 320, in both themes and both microline states', async () => {
   for (const [colorScheme, html] of themes.flatMap((theme) => [
-    [theme, undefined],
+    [theme, referralsOffPage],
     [theme, giveawayOpenPage],
   ])) {
-    const variant = html === undefined ? 'giveaway off' : 'giveaway open';
+    const variant =
+      html === referralsOffPage ? 'giveaway off' : 'giveaway open';
     const desktop = await openHero({
       width: 1440,
       height: 900,
@@ -456,7 +470,11 @@ test('above the fold matches Fold.dc.html at 1440 × 900, 390 × 844 and 320, in
 
 test('the large hero matches Main.dc.html at 1440, in both themes', async () => {
   for (const colorScheme of themes) {
-    const { context, page } = await openHero({ width: 1440, colorScheme });
+    const { context, page } = await openHero({
+      width: 1440,
+      colorScheme,
+      html: referralsOffPage,
+    });
     const hero = await measureHero(page);
     const grid = columns(hero.container);
 
@@ -550,7 +568,11 @@ test('the large hero matches Main.dc.html at 1440, in both themes', async () => 
 
 test('the medium hero matches Tablet.dc.html at 768, in both themes', async () => {
   for (const colorScheme of themes) {
-    const { context, page } = await openHero({ width: 768, colorScheme });
+    const { context, page } = await openHero({
+      width: 768,
+      colorScheme,
+      html: referralsOffPage,
+    });
     const hero = await measureHero(page);
     const grid = columns(hero.container);
 
@@ -602,6 +624,7 @@ test('the small hero matches Phone.dc.html at 390, in both themes', async () => 
       width: 390,
       height: 844,
       colorScheme,
+      html: referralsOffPage,
     });
     const hero = await measureHero(page);
 
@@ -982,6 +1005,24 @@ test('with the giveaway open, the hero passes the layout checks at every design 
   }
 });
 
+async function heroAxeViolations(page) {
+  return page.evaluate(async () => {
+    const result = await globalThis.axe.run(
+      globalThis.document.querySelector('#join'),
+      {
+        runOnly: {
+          type: 'tag',
+          values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'],
+        },
+      },
+    );
+    return result.violations.map((violation) => ({
+      id: violation.id,
+      targets: violation.nodes.map((node) => node.target),
+    }));
+  });
+}
+
 test('the hero and its flag variants pass WCAG axe in both themes', async () => {
   for (const [variant, html] of [
     ['default', undefined],
@@ -992,29 +1033,8 @@ test('the hero and its flag variants pass WCAG axe in both themes', async () => 
       for (const width of [1440, 390]) {
         const { context, page } = await openHero({ width, colorScheme, html });
         await page.addScriptTag({ content: axe.source });
-        const violations = await page.evaluate(async () => {
-          const result = await globalThis.axe.run(
-            globalThis.document.querySelector('#join'),
-            {
-              runOnly: {
-                type: 'tag',
-                values: [
-                  'wcag2a',
-                  'wcag2aa',
-                  'wcag21a',
-                  'wcag21aa',
-                  'wcag22aa',
-                ],
-              },
-            },
-          );
-          return result.violations.map((violation) => ({
-            id: violation.id,
-            targets: violation.nodes.map((node) => node.target),
-          }));
-        });
         assert.deepEqual(
-          violations,
+          await heroAxeViolations(page),
           [],
           `hero axe, ${variant}, ${colorScheme}, ${width}px`,
         );
@@ -1139,6 +1159,7 @@ function measureTextColumn(page) {
       surface: resolve('background-color', 'var(--surface)'),
       line: resolve('border-top-color', 'var(--line)'),
       shadow: resolve('box-shadow', 'var(--shadow-1), var(--edge)'),
+      focusOutline: resolve('outline', 'var(--focus-width) solid var(--coral)'),
     };
     probe.remove();
     const card = getComputedStyle(
@@ -1185,7 +1206,9 @@ test('the text column matches Hero.dc.html at 1440, 1024, 768, 390 and 320, in b
       const { context, page } = await openHero({
         width: Number(width),
         colorScheme,
+        html: referralsOffPage,
       });
+      assert.equal(await page.locator('.signup-referral').count(), 0);
       const where = `${width}px, ${colorScheme}`;
       const column = await measureTextColumn(page);
       near(column.top, frame.top, `H1 below the header, ${where}`);
@@ -1212,6 +1235,220 @@ test('the text column matches Hero.dc.html at 1440, 1024, 768, 390 and 320, in b
       assert.ok(column.scrollWidth <= Number(width), `no overflow, ${where}`);
       await context.close();
     }
+  }
+});
+
+test('the enabled referral disclosure fits the hero collapsed and expanded at all five canvas widths in both themes', async () => {
+  for (const colorScheme of themes) {
+    for (const [fixtureWidth, frame] of Object.entries(canvasText)) {
+      const width = Number(fixtureWidth);
+      const options = { width, colorScheme, reducedMotion: 'reduce' };
+      const off = await openHero({ ...options, html: referralsOffPage });
+      const baseline = await measureHero(off.page);
+      await off.context.close();
+      const { context, page } = await openHero(options);
+      try {
+        const summary = page.locator('.signup-referral > summary');
+        const disclosure = page.locator('.signup-referral');
+        const field = page.getByRole('textbox', {
+          name: signupFormCopy.referralLabel,
+          exact: true,
+        });
+        await page.addScriptTag({ content: axe.source });
+
+        for (const expanded of [false, true]) {
+          const where = `${width}px, ${colorScheme}, ${expanded ? 'expanded' : 'collapsed'}`;
+          const column = await measureTextColumn(page);
+          const hero = await measureHero(page);
+          const box = await summary.boundingBox();
+          const padding = width < 768 ? 20 : 24;
+          // --space-1, --tap-min, then (when open) --space-1 + the
+          // Field label's --leading-1, --space-1 and --control-height.
+          const extra = 8 + 44 + (expanded ? 8 + 20 + 8 + 48 : 0);
+          near(column.top, frame.top, `H1 below header, ${where}`);
+          frame.card.forEach((value, axis) =>
+            near(
+              column.card[axis],
+              value + (axis === 3 ? extra : 0),
+              `card ${'xywh'[axis]}, ${where}`,
+            ),
+          );
+          near(box.x, hero.card.left + padding, `summary alignment, ${where}`);
+          near(
+            box.width,
+            hero.card.width - 2 * padding,
+            `summary width, ${where}`,
+          );
+          near(box.height, 44, `summary target, ${where}`);
+          near(
+            box.y +
+              (await page.evaluate(() => globalThis.scrollY)) -
+              hero.consent.bottom,
+            8,
+            `space below the marketing field, ${where}`,
+          );
+          const last = expanded ? await field.boundingBox() : box;
+          near(
+            hero.card.bottom -
+              last.y -
+              last.height -
+              (await page.evaluate(() => globalThis.scrollY)),
+            padding,
+            `card bottom padding, ${where}`,
+          );
+          near(hero.card.width, baseline.card.width, `card width, ${where}`);
+          near(
+            hero.catalogueHeading.top - baseline.catalogueHeading.top,
+            extra,
+            `catalogue position, ${where}`,
+          );
+          if (width < 768) {
+            near(
+              hero.strip.top - baseline.strip.top,
+              extra,
+              `logo strip position, ${where}`,
+            );
+          } else {
+            near(
+              hero.stack.top - baseline.stack.top,
+              extra / 2,
+              `centred logo stack, ${where}`,
+            );
+          }
+          assert.ok(
+            column.scrollWidth <= width,
+            `no horizontal overflow, ${where}`,
+          );
+          if (expanded) {
+            const label = await page
+              .locator('label[for="signup-referral"]')
+              .boundingBox();
+            const input = await field.boundingBox();
+            near(label.x, box.x, `label alignment, ${where}`);
+            near(
+              label.y - box.y - box.height,
+              8,
+              `space above label, ${where}`,
+            );
+            near(input.x, box.x, `input alignment, ${where}`);
+            near(input.width, box.width, `input width, ${where}`);
+            near(
+              input.y - label.y - label.height,
+              8,
+              `spacing inside Field, ${where}`,
+            );
+            near(input.height, 48, `input target, ${where}`);
+          } else {
+            assert.equal(
+              await field.count(),
+              0,
+              `collapsed field excluded, ${where}`,
+            );
+          }
+          assert.deepEqual(await checkRegionLayout(page, ['#join']), [], where);
+          assert.deepEqual(await heroAxeViolations(page), [], where);
+
+          await page.locator('#signup-marketing').focus();
+          await page.keyboard.press('Tab');
+          assert.equal(
+            await summary.evaluate((node) => node.matches(':focus-visible')),
+            true,
+            where,
+          );
+          assert.equal(
+            await summary.evaluate(
+              (node) => globalThis.getComputedStyle(node).outline,
+            ),
+            column.tokens.focusOutline,
+            `visible summary focus outline, ${where}`,
+          );
+          await page.keyboard.press(expanded ? 'Space' : 'Enter');
+          assert.equal(
+            await disclosure.evaluate((node) => node.open),
+            !expanded,
+            where,
+          );
+          if (!expanded) {
+            await page.keyboard.press('Tab');
+            assert.equal(
+              await field.evaluate((node) => node.matches(':focus-visible')),
+              true,
+              where,
+            );
+            assert.notEqual(
+              await field.evaluate(
+                (node) => globalThis.getComputedStyle(node).boxShadow,
+              ),
+              'none',
+              where,
+            );
+            await page.keyboard.press('Shift+Tab');
+            assert.equal(
+              await summary.evaluate((node) => node.matches(':focus-visible')),
+              true,
+              where,
+            );
+          }
+        }
+      } finally {
+        await context.close();
+      }
+    }
+  }
+});
+
+test('the cached hero prefills each request and the no-JS native POST reaches the real Turnstile rejection', async () => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  try {
+    await context.route('https://challenges.cloudflare.com/**', (route) =>
+      route.abort(),
+    );
+    const page = await context.newPage();
+    for (const code of ['MAYA', 'OTHER']) {
+      const landing = await page.goto(`${browserOrigin}/?ref=${code}`);
+      assert.ok(landing?.ok());
+      assert.equal((await landing.allHeaders())['set-cookie'], undefined);
+      assert.equal(
+        await page.locator('input[name="referral_prefill"]').inputValue(),
+        code,
+      );
+      assert.equal(await page.locator('#signup-referral').inputValue(), code);
+      assert.equal(
+        await page.locator('.signup-referral').getAttribute('open'),
+        null,
+      );
+    }
+    const notice = page.locator('noscript > .signup-notice');
+    assert.equal(await notice.isVisible(), true);
+    assert.equal(
+      (await notice.textContent()).trim(),
+      signupFormCopy.javaScriptRequired,
+    );
+    assert.equal(await page.locator('[data-dock]').isHidden(), true);
+    await page
+      .getByText(signupFormCopy.referralToggle, { exact: true })
+      .click();
+    await page
+      .getByLabel(signupFormCopy.referralLabel, { exact: true })
+      .fill('TYPED');
+    await page.locator('#signup-email').fill('no-script@example.test');
+    const [response] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url() === `${browserOrigin}/api/signup` &&
+          response.request().method() === 'POST',
+      ),
+      page.locator('[data-submit]').click(),
+    ]);
+    const submitted = new URLSearchParams(response.request().postData());
+    assert.equal(submitted.get('referral_code'), 'TYPED');
+    assert.equal(submitted.get('referral_prefill'), 'OTHER');
+    assert.ok(submitted.get('referral_capture'));
+    assert.equal(submitted.get('turnstile_token'), '');
+    assert.equal(response.status(), 400);
+    assert.equal((await response.json()).error.code, 'challenge_failed');
+  } finally {
+    await context.close();
   }
 });
 

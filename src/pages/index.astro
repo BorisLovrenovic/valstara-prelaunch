@@ -33,7 +33,10 @@ import { campaignFlagRegistry } from '../server/flags/registry.ts';
 import { currentRules } from '../server/giveaway/rules-catalog.ts';
 import { accessWindows } from '../server/referral/config.ts';
 import { landingLadder } from '../server/referral/ladder-presentation.ts';
-import { createReferralCaptureService } from '../server/referral/capture.ts';
+import {
+  createReferralCaptureService,
+  referralPrefill,
+} from '../server/referral/capture.ts';
 
 const flags = await getFlagService().list();
 const enabled = (key: keyof typeof campaignFlagRegistry) =>
@@ -79,12 +82,17 @@ const signedReferralCapture = landingReferralField(
   Astro.url,
   flags,
 );
+const prefill =
+  signupEnabled && referralEnabled
+    ? referralPrefill(Astro.url.searchParams.get('ref'))
+    : undefined;
 const flagGeneration = landingFlagGeneration(flags);
 // The origin render cache (G7-1-I4) stores this render under the generation
 // it was rendered for, and substitutes each request's own signed field.
 Astro.locals.renderCache = {
   generation: flagGeneration,
   field: signedReferralCapture,
+  ...(prefill === undefined ? {} : { prefill }),
 };
 const hasReferralQuery = Astro.url.searchParams.has('ref');
 const bypassLandingCache = hasReferralQuery || hasNonDefaultFlagState(flags);
@@ -132,6 +140,7 @@ Astro.response.headers.set('X-Valstara-Flag-Generation', flagGeneration);
               signupEnabled ? (
                 <SignupForm
                   signedReferralCapture={signedReferralCapture}
+                  referralPrefill={prefill}
                   giveawayEnabled={giveawayEnabled}
                 >
                   <ul class="landing-facts" slot="facts">

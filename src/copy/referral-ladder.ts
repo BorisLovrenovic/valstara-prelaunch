@@ -31,6 +31,13 @@ export const referralLadderCopy = {
   nextAt: (target: number) => `At ${target} confirmed referrals`,
   // A drawn pill is one unbroken line, so the month is stated beside it.
   earlyAccessPill: 'Early access',
+  partnerWelcome: {
+    named: 'You joined through ',
+    namedBenefits: (month: string, percent: number) =>
+      `: early access from ${month} and ${percent}% off your first order.`,
+    retained: (month: string, percent: number) =>
+      `Your partner referral gives you early access from ${month} and ${percent}% off your first order.`,
+  },
   waveOne: {
     firstMembers: (month: string, firstMembers: string) =>
       `You're in wave 1, with early access from ${month}, as one of the first ${firstMembers} verified members.`,

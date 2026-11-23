@@ -53,6 +53,7 @@ export interface ReferralRepository {
     referredId: string,
     signupConfirmedCount: number,
     partner: { readonly id: string; readonly discount: number } | null,
+    method?: 'link' | 'code',
   ): Promise<number>;
   lockAccessWindowAssignment(): Promise<void>;
   lockSubscriber(subscriberId: string): Promise<ReferralSubscriber | null>;
@@ -274,14 +275,15 @@ export function createReferralRepository(
       referredId,
       signupConfirmedCount,
       partner,
+      method = 'link',
     ) {
       return database.execute({
         text: `
           INSERT INTO referral_edge (
             id, referrer_id, referred_id, state, reward_state,
-            signup_confirmed_count, partner_id, welcome_discount_pct
+            signup_confirmed_count, partner_id, welcome_discount_pct, attribution_method
           )
-          VALUES ($1, $2, $3, 'attributed', 'none', $4, $5, $6)
+          VALUES ($1, $2, $3, 'attributed', 'none', $4, $5, $6, $7)
           ON CONFLICT (referred_id) DO NOTHING
         `,
         values: [
@@ -291,6 +293,7 @@ export function createReferralRepository(
           signupConfirmedCount,
           partner?.id ?? null,
           partner?.discount ?? null,
+          method,
         ],
       });
     },

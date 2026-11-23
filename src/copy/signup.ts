@@ -4,6 +4,7 @@ export const signupCopy = {
   // Identical accepted copy for unknown, pending, and verified addresses: no
   // membership or position signal leaves the public route.
   pending: 'Thanks — any next step will arrive by email.',
+  referralUnavailable: 'This referral code could not be applied.',
   // Flag-off: an honest paused response, never a form that fails on submit.
   paused:
     "We're not taking new signups right now. Check back in a little while — the waitlist will reopen soon.",
@@ -36,6 +37,8 @@ export const signupFormCopy = {
   connection:
     "We couldn't reach the waitlist just now — check your connection and try again.",
   emailRequired: 'Enter your email address.',
+  referralToggle: 'Have a referral code?',
+  referralLabel: 'Referral code',
   marketing: marketingOptInCopy,
   ageStatement: 'Open to people aged 18 and over.',
   freeEntryDisclosure: 'No purchase necessary.',

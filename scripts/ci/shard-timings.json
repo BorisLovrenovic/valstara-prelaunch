@@ -258,6 +258,7 @@
   "test/trustpilot.test.mjs": 6.1,
   "test/turnstile-timeout-route.test.ts": 2.6,
   "test/turnstile.test.ts": 0.4,
+  "test/typed-referral-signup.test.ts": 3.5,
   "test/unsubscribe-rendered-page.test.ts": 1.7,
   "test/unsubscribe.test.ts": 6.9,
   "test/verification-completion.test.ts": 6.9,

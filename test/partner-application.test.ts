@@ -847,6 +847,13 @@ test('an unconfirmed application expires with its link, gets no waitlist reminde
       '192.0.2.40',
     );
     const applicant = await subscriberRow(fixture, 'unconfirmed@example.test');
+    assert.ok(applicant);
+    // The subscriber insert uses PostgreSQL's wall clock. Align the row with
+    // the test clock before running the jobs that age it by created_at.
+    await fixture.owner.execute({
+      text: 'UPDATE subscriber SET created_at = $2 WHERE id = $1',
+      values: [applicant.id, submittedAt],
+    });
     const token = await confirmationToken(fixture, 'unconfirmed@example.test');
 
     const dayLater = () => new Date(submittedAt.getTime() + 4 * DAY_MS);
@@ -854,7 +861,7 @@ test('an unconfirmed application expires with its link, gets no waitlist reminde
       clock: dayLater,
     }).run(100);
     assert.ok(reminders.queued > 0);
-    assert.deepEqual(await templates(fixture, applicant!.id), [
+    assert.deepEqual(await templates(fixture, applicant.id), [
       'partner_application_confirm',
     ]);
     assert.ok(
@@ -867,7 +874,7 @@ test('an unconfirmed application expires with its link, gets no waitlist reminde
       100,
     );
     assert.equal(final.queued, 1);
-    assert.deepEqual(await templates(fixture, applicant!.id), [
+    assert.deepEqual(await templates(fixture, applicant.id), [
       'partner_application_confirm',
     ]);
     const finalKeys = await fixture.owner.list<{ subscriber_id: string }>(
@@ -894,7 +901,7 @@ test('an unconfirmed application expires with its link, gets no waitlist reminde
       'pending',
     );
     assert.equal(
-      (await partnerRows(fixture, applicant!.id))[0]?.status,
+      (await partnerRows(fixture, applicant.id))[0]?.status,
       'unconfirmed',
     );
     // It is never listed for review: nothing past unconfirmed exists.

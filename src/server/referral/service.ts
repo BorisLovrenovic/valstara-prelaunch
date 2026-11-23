@@ -19,6 +19,7 @@ import { withTransaction } from '../db/transaction.ts';
 import { createFlagServiceWithDependencies } from '../flags/service.ts';
 
 import { referralCodeAlphabet, referralCodeLength } from './config.ts';
+import { referralPrefill } from './capture.ts';
 import { normaliseReferralCodeForLookup } from './code-registry.ts';
 import {
   partnerAttributionEnabled,
@@ -57,6 +58,7 @@ export interface ReferralCounterRepairResult {
 export type AttributeResult =
   | { readonly kind: 'attributed' }
   | { readonly kind: 'self_referral' }
+  | { readonly kind: 'unavailable_code' }
   | { readonly kind: 'unattributed' };
 
 export interface ReferralService {
@@ -65,6 +67,7 @@ export interface ReferralService {
     referredId: string,
     code: string,
     allowAttribution?: boolean,
+    method?: 'link' | 'code',
   ): Promise<AttributeResult>;
   /** New confirmed edge's settled referrer tier; null on a no-op. */
   confirm(referredId: string, now: Date): Promise<number | null>;
@@ -147,34 +150,43 @@ function createReferralServiceWithRepository(
 ): ReferralService {
   return {
     attributionHealth,
-    async attribute(referredId, code, allowAttribution = true) {
+    async attribute(
+      referredId,
+      code,
+      allowAttribution = true,
+      method = 'link',
+    ) {
+      const unavailable = {
+        kind: method === 'code' ? 'unavailable_code' : 'unattributed',
+      } as const;
+      if (method === 'code' && referralPrefill(code) === '') return unavailable;
       return runTransaction(async (connection) => {
         const transactionalRepository = createReferralRepository(connection);
         const attribution = createPartnerAttributionRepository(connection);
         const normalised = normaliseReferralCodeForLookup(code);
         const owner = await attribution.findCodeOwner(normalised);
         if (owner === null) {
-          return { kind: 'unattributed' };
+          return unavailable;
         }
         const referrerId = owner.referrer_id;
         const partnerCode = owner.owner_kind === 'partner' ? normalised : null;
-        if (referrerId === referredId) {
+        const selfReferral = referrerId === referredId;
+        if (selfReferral || !allowAttribution) {
           if (
+            (selfReferral || method === 'code') &&
             partnerCode !== null &&
             (!(await partnerAttributionEnabled(connection)) ||
               (await attribution.findLivePartner(referrerId, partnerCode)) ===
                 null)
           ) {
-            return { kind: 'unattributed' };
+            return unavailable;
           }
+          if (!selfReferral) return { kind: 'unattributed' };
           await createFraudFlagRepository(connection).insertSelfReferralFlag({
             id: randomUUID(),
             subscriberId: referredId,
           });
           return { kind: 'self_referral' };
-        }
-        if (!allowAttribution) {
-          return { kind: 'unattributed' };
         }
 
         // Verification takes the referred row before the referrer. Hold that
@@ -189,13 +201,12 @@ function createReferralServiceWithRepository(
           referrer.status === 'erasure_pending' ||
           referrer.status === 'erased'
         ) {
-          return { kind: 'unattributed' };
+          return unavailable;
         }
         const partner = (await partnerAttributionEnabledForWrite(connection))
           ? await attribution.findLivePartner(referrerId, partnerCode)
           : null;
-        if (partnerCode !== null && partner === null)
-          return { kind: 'unattributed' };
+        if (partnerCode !== null && partner === null) return unavailable;
 
         const count =
           await transactionalRepository.countConfirmedEdges(referrerId);
@@ -210,6 +221,7 @@ function createReferralServiceWithRepository(
                 id: partner.id,
                 discount: partnerWelcomeDiscount(count, partner.partner_type),
               },
+          method,
         );
         if (inserted === 0) {
           return { kind: 'unattributed' };
@@ -411,6 +423,13 @@ function createReferralServiceWithRepository(
             : perks?.welcome_discount_pct != null
               ? 'partner_referral'
               : undefined,
+          partnerWelcomePerk:
+            perks?.welcome_discount_pct == null
+              ? undefined
+              : {
+                  code: perks.welcome_partner_code,
+                  discount: perks.welcome_discount_pct,
+                },
         },
       );
     },

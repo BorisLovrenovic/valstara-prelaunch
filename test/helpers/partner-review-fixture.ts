@@ -18,6 +18,7 @@ export const applicationRolePassword =
 export interface PartnerFixture {
   readonly owner: DatabasePool;
   readonly app: DatabasePool;
+  readonly appDatabaseUrl: string;
   dispose(): Promise<void>;
 }
 
@@ -73,6 +74,7 @@ export async function createPartnerFixture(
   return {
     owner,
     app,
+    appDatabaseUrl: appUrl.toString(),
     async dispose() {
       await app.close();
       await owner.close();

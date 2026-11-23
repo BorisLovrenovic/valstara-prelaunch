@@ -51,13 +51,13 @@ A path under `/api/` that matches no route gets the branded HTML 404 page, and a
 ## Public routes
 
 ### `POST /api/signup`
-Body: `email`, `ref` (the **signed** hidden field), `turnstile_token`, `utm?`, `marketing_opt_in?`.
+Body: `email`, `turnstile_token`, optional `marketing_opt_in`, and optional `referral_capture` (the signed ref and UTM envelope). The landing hero also sends `referral_code` and `referral_prefill` while `referral.enabled` is on. Their precedence and validation follow ADR-008 and D-062.
 
 **No country, region or other location is accepted** (ADR-026). A request that still carries `country` or `region` is handled exactly like one that does not, and neither value is stored. `marketing_opt_in` is the separate, optional, unticked marketing checkbox (ADR-027); its checked value is the version of the wording shown. The route accepts the current version and retained rendered versions from the copy layer, so a form left open across a wording deployment still submits. Ticked, it records a *pending* opt-in and the submitted version, replacing an earlier pending version on a repeat ticked submission. Verification copies the stored version into consent and clears both pending fields. Whether it is ticked never changes the response, the waitlist place or the giveaway.
 
 Order of operations, and it is load-bearing: verify Turnstile → rate-limit → validate → **normalise the email** → blocklist and MX → upsert the subscriber and record a pending marketing opt-in if ticked → attribute the referral edge → run fraud signals (flag only) → queue the verification mail → respond. Giveaway entry happens at verification (E7-01, E7-03), not here.
 
-Returns `{ status: "pending" }`. The status code, response keys and values are identical whether the normalised address is unknown, pending or already verified. **Never returns a position, a count, a rank or an address-membership signal** — a public response cannot disclose another person's status.
+Returns `{ status: "pending", message }`. An unknown or inactive typed override returns a neutral note in `message` and leaves a new signup unattributed. Given the same submitted referral inputs, the status code, response keys and values are identical whether the normalised address is unknown, pending or already verified. **Never returns a position, a count, a rank or an address-membership signal** — a public response cannot disclose another person's status.
 
 Idempotent on `email_normalised`: a repeat signup for a `pending` row re-sends the verification mail subject to its own rate limit; a repeat for a `verified` row sends no second verification mail. Both return the same accepted response as an unknown address. Any status-link affordance is sent only to the submitted address, never returned by this route or rendered on its response page.
 
