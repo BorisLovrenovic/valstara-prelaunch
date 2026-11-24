@@ -5,6 +5,9 @@ import type {
   PartnerFormError,
 } from './application.ts';
 import type { PartnerConfirmationOutcome } from './confirm.ts';
+import { normaliseEmail } from '../subscriber/normalise-email.ts';
+
+import { partnerApplicationLimits } from './config.ts';
 import {
   emptyPartnerApplicationValues,
   type PartnerApplicationField,
@@ -67,6 +70,23 @@ const paused: PartnerApplyView = {
 };
 
 /**
+ * E11.7-12: the auto-invite's link pre-fills the email field from its
+ * `email` query value. Only a well-formed address is used, as typed; anything
+ * else leaves the field empty. It fills nothing else and is never stored.
+ */
+export function partnerApplyPrefillEmail(value: string | null): string {
+  if (value === null) return '';
+  const email = value.trim();
+  if (
+    email.length === 0 ||
+    email.length > partnerApplicationLimits.email ||
+    normaliseEmail(email) === null
+  )
+    return '';
+  return email;
+}
+
+/**
  * What `/partners/apply` shows (E11.7-05): the application, the emailed
  * link's confirmation, or an outcome. A refused application comes back with
  * what was typed, each field's reason and the code's alternatives, all
@@ -77,6 +97,8 @@ export function partnerApplyView(input: {
   readonly token: string | null;
   readonly application: PartnerApplicationOutcome | null;
   readonly confirmation: PartnerConfirmationOutcome | null;
+  /** E11.7-12: the invite link's address, already checked; empty for none. */
+  readonly prefillEmail?: string;
 }): PartnerApplyView {
   const { application, confirmation } = input;
   if (confirmation !== null) {
@@ -215,6 +237,10 @@ export function partnerApplyView(input: {
     line: copy.line,
     notice: null,
     form: 'application',
+    values:
+      input.prefillEmail === undefined || input.prefillEmail === ''
+        ? emptyPartnerApplicationValues
+        : { ...emptyPartnerApplicationValues, email: input.prefillEmail },
     status: 200,
   };
 }

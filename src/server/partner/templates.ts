@@ -10,8 +10,11 @@ import {
 } from './application.ts';
 import {
   dashboardPath,
+  dashboardRecoveryPath,
   flyerPath,
   partnerDashboardRecoveryTemplate,
+  partnerFirstSignupTemplate,
+  partnerInviteThreshold,
   partnerWelcomeTemplate,
 } from './config.ts';
 import { hasKitDownloads, partnerKit, type PartnerKit } from './kit.ts';
@@ -224,6 +227,33 @@ export function partnerApplicationRenderers(
       });
     },
   };
+  // E11.7-12: the first confirmed partner signup. It carries no new
+  // dashboard link, because issuing one would cancel the welcome's link; the
+  // replacement request is the partner's own choice.
+  const firstSignup: TemplateRenderer = {
+    kind: 'transactional',
+    async render({ email, payload, token, unsubscribePageUrl }) {
+      const status = await statusUrl(payload, token);
+      const copy = partnersCopy.email.firstSignup;
+      return renderEmailDocument({
+        from,
+        to: email,
+        unsubscribePageUrl,
+        document: {
+          subject: copy.subject,
+          preheader: copy.preheader,
+          paragraphs: [copy.firstLine, copy.body, copy.dashboard],
+          links: [
+            {
+              label: copy.action,
+              url: new URL(dashboardRecoveryPath, origin).toString(),
+            },
+            { label: emailCopy.status, url: status },
+          ],
+        },
+      });
+    },
+  };
   return new Map([
     [partnerConfirmationTemplate, confirm],
     [partnerReceivedTemplate, received],
@@ -231,5 +261,60 @@ export function partnerApplicationRenderers(
     [partnerRejectedTemplate, rejected],
     [partnerDashboardRecoveryTemplate, dashboardLink],
     [partnerWelcomeTemplate, welcome],
+    [partnerFirstSignupTemplate, firstSignup],
   ]);
+}
+
+/**
+ * E11.7-12: the auto-invite. It is marketing (ADR-027), so it is a broadcast
+ * from the Brevo domain: dispatch sends it only while `email.broadcast` is on
+ * and re-checks verification, marketing consent and suppression, and its
+ * unsubscribe withdraws marketing consent only. The application link carries
+ * the recipient's own address, added at render time, so the queued payload
+ * stays references only.
+ */
+export function partnerInviteRenderer(
+  baseUrl: string,
+  sendingDomain: string,
+): TemplateRenderer {
+  const origin = new URL(baseUrl).origin;
+  const from = `${emailCopy.senderName} <hello@${sendingDomain}>`;
+  return {
+    kind: 'broadcast',
+    async render({ email, payload, token, unsubscribePageUrl }) {
+      if (
+        typeof payload.status_token_id !== 'string' ||
+        payload.status_token_id === ''
+      ) {
+        throw new Error('email_template_reference_missing');
+      }
+      const status = new URL('/me', origin);
+      status.searchParams.set('t', await token(payload.status_token_id));
+      const apply = new URL('/partners/apply', origin);
+      apply.searchParams.set('email', email);
+      const copy = partnersCopy.email.invite;
+      return renderEmailDocument({
+        from,
+        to: email,
+        unsubscribePageUrl,
+        document: {
+          subject: copy.subject,
+          preheader: copy.preheader,
+          paragraphs: [
+            copy.firstLine(partnerInviteThreshold),
+            copy.body,
+            copy.review,
+          ],
+          links: [
+            { label: copy.action, url: apply.toString() },
+            {
+              label: copy.programme,
+              url: new URL('/partners', origin).toString(),
+            },
+            { label: emailCopy.status, url: status.toString() },
+          ],
+        },
+      });
+    },
+  };
 }

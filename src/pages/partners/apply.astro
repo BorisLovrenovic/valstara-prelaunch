@@ -26,7 +26,10 @@ import {
   emptyPartnerApplicationValues,
   partnerCountries,
 } from '../../server/partner/fields.ts';
-import { partnerApplyView } from '../../server/partner/page-presentation.ts';
+import {
+  partnerApplyPrefillEmail,
+  partnerApplyView,
+} from '../../server/partner/page-presentation.ts';
 import {
   runPartnerApplication,
   runPartnerConfirmation,
@@ -103,6 +106,8 @@ const view = partnerApplyView({
   token: tokenParameter,
   application,
   confirmation,
+  // E11.7-12: the auto-invite's link fills in the email field only.
+  prefillEmail: partnerApplyPrefillEmail(Astro.url.searchParams.get('email')),
 });
 Astro.response.status = recoveryView?.status ?? view.status;
 const confirmToken = postedToken ?? tokenParameter ?? '';

@@ -234,6 +234,47 @@ test('/partners/apply renders exactly the field schema’s controls, with Turnst
   assert.ok(!text.includes(partnersCopy.apply.freeEntryDisclosure));
 });
 
+// E11.7-12: the auto-invite's link fills in the invited member's address.
+test('the auto-invite link pre-fills the email field only, and a malformed value fills nothing', async () => {
+  const address = 'invited.member+tag@example.test';
+  const response = await get(
+    `/partners/apply?email=${encodeURIComponent(address)}`,
+  );
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('set-cookie'), null);
+  assert.equal(response.headers.get('cache-control'), 'private, no-store');
+  // The address in the URL never leaves in a referrer.
+  assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
+  const form = applicationForm(await response.text());
+  const values = [
+    ...form.matchAll(/<input\b[^>]*\bname="([^"]+)"[^>]*\bvalue="([^"]*)"/gu),
+  ]
+    .filter(([, , value]) => value !== '')
+    .map(([, name, value]) => [name, decode(value)]);
+  // Checkbox options carry their own fixed values; no typed field but the
+  // address is filled.
+  const typed = values.filter(
+    ([name]) =>
+      !['channels', 'age_confirmed', 'programme_terms_agreed'].includes(name),
+  );
+  assert.deepEqual(typed, [['email_address', address]]);
+
+  for (const malformed of [
+    'not-an-address',
+    '"><b>x</b>@',
+    'a'.repeat(250) + '@example.test',
+  ]) {
+    const html = await (
+      await get(`/partners/apply?email=${encodeURIComponent(malformed)}`)
+    ).text();
+    assert.doesNotMatch(
+      applicationForm(html),
+      /name="email_address"[^>]*\bvalue="[^"]+"/u,
+      malformed,
+    );
+  }
+});
+
 test('a refused code returns the form with the typed values and the alternatives, with no JavaScript', async () => {
   const response = await post(
     '/partners/apply',

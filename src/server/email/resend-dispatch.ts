@@ -9,7 +9,11 @@ import { maintenanceLoopIntervalMs } from '../subscriber/heartbeat-file.ts';
 
 import { createPartnerWelcomeRepository } from '../db/partner-welcome.ts';
 import { dsrRenderers } from '../dsr/templates.ts';
-import { partnerApplicationRenderers } from '../partner/templates.ts';
+import { partnerInviteTemplate } from '../partner/config.ts';
+import {
+  partnerApplicationRenderers,
+  partnerInviteRenderer,
+} from '../partner/templates.ts';
 import { createResendProvider } from './providers/resend.ts';
 import type { BrevoContactProvider } from './providers/brevo.ts';
 import { createTransactionalTemplateData } from './transactional-template-data.ts';
@@ -79,6 +83,14 @@ export function createResendDispatcher(
                       clock,
                     ).byId(id),
                 }),
+              ] as const,
+              // E11.7-12: the auto-invite is a marketing broadcast.
+              [
+                partnerInviteTemplate,
+                partnerInviteRenderer(
+                  config.emailBaseUrl,
+                  broadcast.provider.sendingDomain,
+                ),
               ] as const,
             ]
           : []),

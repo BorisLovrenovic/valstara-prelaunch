@@ -4,6 +4,7 @@ import type { ReferralAttributionConfiguration } from '../config.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import type { FlagService } from '../flags/types.ts';
 import { partnerActivationBatchLimit } from '../partner/activation.ts';
+import { partnerMilestoneMailBatchLimit } from '../partner/milestone-mail.ts';
 import { partnerWelcomeBatchLimit } from '../partner/welcome.ts';
 import { createReferralAttributionMaintenanceJob } from '../referral/attribution-maintenance.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
@@ -32,6 +33,8 @@ export type MaintenanceJobName =
   | 'partner_leaderboard_snapshot'
   | 'partner_activation'
   | 'partner_welcome'
+  | 'partner_first_signup'
+  | 'partner_invite'
   | 'partner_application_purge'
   | 'email_quota';
 
@@ -62,6 +65,8 @@ export interface VerificationMaintenanceJobs {
   readonly partnerApplicationPurge?: MaintenanceJob;
   readonly partnerActivation?: MaintenanceJob;
   readonly partnerWelcome?: MaintenanceJob;
+  readonly partnerFirstSignup?: MaintenanceJob;
+  readonly partnerInvite?: MaintenanceJob;
   readonly partnerLeaderboard?: MaintenanceJob;
   readonly emailQuota?: VerificationRateJob;
 }
@@ -216,6 +221,22 @@ export function createVerificationMaintenanceScheduler(
         'partner_welcome',
         jobs.partnerWelcome,
         partnerWelcomeBatchLimit,
+      );
+    }
+    // E11.7-12: after the welcome, so a partner's first-signup email follows
+    // their welcome; then the members' auto-invite.
+    if (jobs.partnerFirstSignup !== undefined) {
+      await runJob(
+        'partner_first_signup',
+        jobs.partnerFirstSignup,
+        partnerMilestoneMailBatchLimit,
+      );
+    }
+    if (jobs.partnerInvite !== undefined) {
+      await runJob(
+        'partner_invite',
+        jobs.partnerInvite,
+        partnerMilestoneMailBatchLimit,
       );
     }
     if (jobs.partnerLeaderboard !== undefined) {
