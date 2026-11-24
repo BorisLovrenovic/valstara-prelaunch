@@ -7,6 +7,7 @@ import { createSharedLeaderboardSnapshotStore } from '../leaderboard/persisted.t
 import { createRankingIntegrityService } from '../referral/ranking.ts';
 import { maintenanceLoopIntervalMs } from '../subscriber/heartbeat-file.ts';
 
+import { createPartnerWelcomeRepository } from '../db/partner-welcome.ts';
 import { dsrRenderers } from '../dsr/templates.ts';
 import { partnerApplicationRenderers } from '../partner/templates.ts';
 import { createResendProvider } from './providers/resend.ts';
@@ -52,6 +53,12 @@ export function createResendDispatcher(
         ...partnerApplicationRenderers(
           config.emailBaseUrl,
           config.resendSendingDomain,
+          {
+            welcomeCode: (tokenId) =>
+              createPartnerWelcomeRepository(database).codeForDashboardToken(
+                tokenId,
+              ),
+          },
         ),
         ...createTransactionalRenderers({
           baseUrl: config.emailBaseUrl,

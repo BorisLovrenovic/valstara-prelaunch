@@ -19,6 +19,7 @@
 | **P8** | Launch provider list and logo files | ✅ Supplied 2026-10-25 | E11.5-04: the provider showcase | Done |
 | **P6** | Provision the production VPS | ⚪ Deferred (by design) | Epic E12 | Before E12 |
 | **P3a** | Brand token values | ✅ Satisfied | — | Done |
+| **P10** | Partner asset kit files and video links | ⚪ Optional; none supplied yet | Nothing (E11.7-11 shipped without them) | Any time |
 
 **P1 is complete; sender-reputation warming continues through E11-08/E12-07. P2 is waived by the founder under ADR-029. P3b is complete: the final copy is in `docs/prerequisites/p3b-trust-pages-copy.md` and the three content files. P8 is supplied: the provider list is in `docs/prerequisites/p8-provider-list.md` and the logos in `docs/prerequisites/p8-logos/`.**
 
@@ -281,6 +282,28 @@ E11.5-04 validates `src/content/provider-showcase.json` at build time. A missing
 
 ### Source docs
 `docs/prerequisites/p8-provider-list.md` · `docs/plan/development-plan.md` §2 (P8), E11.5-04 · `docs/brand/identity-guidelines.md` §5.3, §7
+
+---
+
+## P10 — Partner asset kit files and video links
+
+- **Status:** ⚪ **Optional; none supplied yet.** E11.7-11 shipped the kit without them (founder, 2026-11-24: "Build it, add files later"). The QR codes, message templates and print flyer are the live kit, and the downloads section stays hidden while nothing is listed. No placeholder file ever ships.
+
+### Exactly what to do
+Adding a file or video is a content change, through an ordinary pull request with CI:
+1. Commit each file directly under `public/partners/kit/` with a lowercase name: a PNG, JPEG, WebP or PDF. SVG and HTML are refused because they can load other resources.
+2. List it in `src/content/partner-kit.json` with its `path` (`partners/kit/<name>`), a `title`, and its `sharingRight`: who made it and the right partners have to share it. A video is listed with a `title` and a plain `https://` `url`; it is shown as a link and never embedded.
+3. Record each file's or video's sharing right in the table below, in the same pull request.
+
+| File or video | Sharing right | Recorded |
+|---|---|---|
+| — | — | — |
+
+### How the build confirms it
+`scripts/ci/partner-kit-check.ts` runs before every build. A listed file that is missing, whose bytes are not the type its name says, or that has no sharing right, a video link that is not a plain `https://` URL, and any file in the folder that the list does not name each fail the build.
+
+### Source docs
+`docs/plan/development-plan.md` §2 (P10), E11.7-11 · `docs/features/partner-programme.md#the-asset-kit`
 
 ---
 

@@ -641,7 +641,10 @@ async function crawl(
       await page.evaluate(storageMutation);
     }
     const query = pageUrl.searchParams;
-    if (pathname === '/partners/dashboard') {
+    if (
+      pathname === '/partners/dashboard' ||
+      pathname === '/partners/dashboard/flyer'
+    ) {
       const headers = await response.allHeaders();
       assert.equal(headers['referrer-policy'], 'no-referrer', path);
       assert.equal(headers['cache-control'], 'private, no-store', path);
@@ -677,16 +680,36 @@ async function crawl(
         path,
       );
       const authenticated = query.has('t') && query.get('t') !== 'invalid';
-      assert.equal(
-        await page.locator('input[name="settings_token"]').count(),
-        authenticated ? 1 : 0,
-      );
-      assert.equal(
-        await page
-          .locator('a[href="/partners/apply?operation=dashboard-recovery"]')
-          .count(),
-        1,
-      );
+      if (pathname === '/partners/dashboard') {
+        assert.equal(
+          await page.locator('input[name="settings_token"]').count(),
+          authenticated ? 1 : 0,
+        );
+        assert.equal(
+          await page
+            .locator('a[href="/partners/apply?operation=dashboard-recovery"]')
+            .count(),
+          1,
+        );
+        // E11.7-11: the asset kit renders for the authenticated partner.
+        assert.equal(
+          await page.locator('#partner-kit').count(),
+          authenticated ? 1 : 0,
+        );
+      } else {
+        assert.equal(
+          await page.locator('[data-flyer]').count(),
+          authenticated ? 1 : 0,
+        );
+        assert.equal(
+          await page
+            .locator('a[href="/partners/apply?operation=dashboard-recovery"]')
+            .count(),
+          authenticated ? 0 : 1,
+        );
+      }
+      // P10 ships empty: no downloads section on either page.
+      assert.equal(await page.locator('[data-kit-downloads]').count(), 0);
     }
     if (
       pathname === '/partners/apply' &&
@@ -903,6 +926,9 @@ test(
           '/partners/apply?operation=dashboard-recovery',
           '/partners/dashboard?t=invalid',
           `/partners/dashboard?t=${encodeURIComponent(tokens.dashboard)}`,
+          // E11.7-11: the print flyer, behind the same private link.
+          '/partners/dashboard/flyer?t=invalid',
+          `/partners/dashboard/flyer?t=${encodeURIComponent(tokens.dashboard)}`,
         ];
         assert.ok(inventory.routes.includes('/404'));
         assert.ok(inventory.routes.includes('/500'));

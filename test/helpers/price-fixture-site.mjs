@@ -48,6 +48,8 @@ const buildInputs = [
   'tsconfig.json',
   'scripts/ci/seo-build-check.ts',
   'scripts/ci/provider-showcase-check.ts',
+  // E11.7-11: the partner kit check runs before the build.
+  'scripts/ci/partner-kit-check.ts',
   'config',
   'packages/price-index/src/publish',
   'packages/price-index/src/schema',

@@ -1,0 +1,20 @@
+{
+  "_comment": "E11.7-11: the copy-paste message templates in the partner asset kit. Each body holds {link} and {code} exactly once; the dashboard fills them with the partner's own /r/{CODE} link and code. Partner copy rules: sentence case, no exclamation marks, none of the brief's banned words, no reward figure or date (those come from configuration), and every template says that the partner earns commission.",
+  "templates": [
+    {
+      "id": "short-post",
+      "title": "Short post",
+      "body": "I'm a Valstara partner. Valstara is a direct seller of digital goods backed by the Triple Guarantee, and its waitlist is open. Join through my link and confirm your email to get early access and a welcome discount on your first order: {link} (or enter code {code}). I may earn a commission on what you buy."
+    },
+    {
+      "id": "direct-message",
+      "title": "Direct message",
+      "body": "Hi, I've joined Valstara's partner programme. Valstara is a direct seller of digital goods backed by the Triple Guarantee. If you join the waitlist through my link and confirm your email, you get early access and a welcome discount on your first order: {link}\n\nYou can also enter my code, {code}, under \"Have a referral code?\" on the signup form. I may earn a commission on what you buy."
+    },
+    {
+      "id": "community-post",
+      "title": "Community post",
+      "body": "Valstara, a direct seller of digital goods backed by the Triple Guarantee, has opened its waitlist. People who join through my partner link and confirm their email get early access and a welcome discount on their first order.\n\nLink: {link}\nCode: {code}\n\nDisclosure: I'm a Valstara partner and may earn a commission on purchases."
+    }
+  ]
+}

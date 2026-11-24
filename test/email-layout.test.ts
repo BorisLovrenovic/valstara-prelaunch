@@ -36,6 +36,7 @@ const preheaders: Readonly<Record<string, string>> = {
   partner_approved: partnersCopy.email.approved.preheader,
   partner_rejected: partnersCopy.email.rejected.preheader,
   partner_dashboard_link: partnerDashboardCopy.mail.preheader,
+  partner_welcome: partnerDashboardCopy.welcome.preheader,
   weekly_campaign_update: emailCopy.weekly.preheader,
 };
 
@@ -59,6 +60,7 @@ const mainActions: Readonly<Record<string, string>> = {
   partner_approved: '/partners',
   partner_rejected: '/me',
   partner_dashboard_link: '/partners/dashboard',
+  partner_welcome: '/partners/dashboard',
   weekly_campaign_update: '/me',
 };
 
@@ -73,6 +75,8 @@ const firstPartyPaths = new Set([
   '/partners',
   '/partners/apply',
   '/partners/dashboard',
+  // E11.7-11: the welcome's second link, the print flyer.
+  '/partners/dashboard/flyer',
   rulesPath,
 ]);
 
@@ -334,8 +338,9 @@ test('E11.5-11 every template carries its hidden preheader from the copy layer',
     emailCopy.verify.firstLine,
   );
   // E11.7-05 added the partner application's two emails, and E11.7-06 the
-  // "approved" and "rejected" emails. E11.7-09 adds dashboard recovery.
-  assert.equal(new Set(Object.values(preheaders)).size, 15);
+  // "approved" and "rejected" emails. E11.7-09 adds dashboard recovery, and
+  // E11.7-11 the partner welcome.
+  assert.equal(new Set(Object.values(preheaders)).size, 16);
 });
 
 test('E11.5-11 the layout is at most 600px wide and its one button is at least 44px tall', () => {

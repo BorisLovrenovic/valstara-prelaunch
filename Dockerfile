@@ -18,6 +18,8 @@ COPY src ./src
 COPY public ./public
 COPY scripts/ci/provider-showcase-check.ts ./scripts/ci/provider-showcase-check.ts
 COPY scripts/ci/seo-build-check.ts ./scripts/ci/seo-build-check.ts
+# E11.7-11: the partner kit's content and folder checks run before the build.
+COPY scripts/ci/partner-kit-check.ts ./scripts/ci/partner-kit-check.ts
 # E11.6-10: the price pages bundle the price data and the price-index
 # package's two site-importable parts (ADR-033); scripts/ci/app-build.mjs
 # lists the same inputs. E11.6-11 adds the Valstara prices.
@@ -62,6 +64,9 @@ COPY --chown=node:node --from=build /app/src/styles/tokens.css ./src/styles/toke
 COPY --chown=node:node --from=build /app/src/content/giveaway-rules ./src/content/giveaway-rules
 COPY --chown=node:node --from=build /app/src/content/giveaway-award-catalog.json ./src/content/giveaway-award-catalog.json
 COPY --chown=node:node --from=build /app/src/content/partner-countries.json ./src/content/partner-countries.json
+# E11.7-11: the welcome email, rendered by the maintenance worker, reads the kit.
+COPY --chown=node:node --from=build /app/src/content/partner-kit.json ./src/content/partner-kit.json
+COPY --chown=node:node --from=build /app/src/content/partner-message-templates.json ./src/content/partner-message-templates.json
 COPY --chown=node:node package.json ./package.json
 
 USER node

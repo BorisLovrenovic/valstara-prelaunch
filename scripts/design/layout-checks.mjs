@@ -33,6 +33,8 @@ export const enforcedPages = Object.freeze([
   '/partners',
   '/partners/apply',
   '/partners/dashboard',
+  // E11.7-11: the print flyer, behind the same private link.
+  '/partners/dashboard/flyer',
   '/404',
   '/500',
 ]);

@@ -52,6 +52,7 @@ import { createVerificationTokenRetentionJob } from '../verification/retention.t
 import { createPartnerActivationJob } from '../partner/activation.ts';
 import { createPartnerLeaderboardJob } from '../partner/leaderboard.ts';
 import { createPartnerApplicationPurgeJob } from '../partner/retention.ts';
+import { createPartnerWelcomeJob } from '../partner/welcome.ts';
 import { createFlagService } from '../flags/service.ts';
 import { createGiveawayEntryReconciliationJob } from '../giveaway/reconcile.ts';
 import { currentRulesFromFiles } from '../giveaway/current-rules-file.ts';
@@ -215,6 +216,10 @@ const scheduler = createReferralAttributionMaintenanceScheduler(
       clock,
     ),
     partnerActivation: createPartnerActivationJob(database, clock),
+    partnerWelcome: createPartnerWelcomeJob(database, {
+      clock,
+      email: createEmailQueue(database, clock),
+    }),
     partnerApplicationPurge: createRecordedPurgeJob(
       createPartnerApplicationPurgeJob(database, { clock }),
       purgeRuns,

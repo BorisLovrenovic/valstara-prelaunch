@@ -125,6 +125,7 @@ test('closed widths and themes, with the redesigned pages enforced', () => {
     '/partners',
     '/partners/apply',
     '/partners/dashboard',
+    '/partners/dashboard/flyer',
     '/404',
     '/500',
   ]);

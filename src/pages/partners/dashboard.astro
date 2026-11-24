@@ -3,6 +3,7 @@ import Button from '../../components/button.astro';
 import Field from '../../components/field.astro';
 import Icon from '../../components/icon.astro';
 import Input from '../../components/input.astro';
+import PartnerKitDownloads from '../../components/partner-kit-downloads.astro';
 import TextLink from '../../components/text-link.astro';
 import { partnerDashboardCopy as copy } from '../../copy/partner-dashboard.ts';
 import BaseLayout from '../../layouts/BaseLayout.astro';
@@ -15,6 +16,7 @@ import {
 } from '../../server/partner/config.ts';
 import { displayNameMaxLength } from '../../server/partner/dashboard.ts';
 import { presentPartnerDashboard } from '../../server/partner/dashboard-presentation.ts';
+import { presentPartnerKit } from '../../server/partner/kit-presentation.ts';
 import {
   partnerDashboard,
   savePartnerDashboardSettings,
@@ -52,14 +54,21 @@ const view =
     .read(Astro.url.searchParams.get('t') ?? '')
     .catch(() => ({ kind: 'unavailable' }) as const));
 const row = view.kind === 'authenticated' ? view.row : null;
+const referralEnabled =
+  row !== null &&
+  (await getFlagService()
+    .isEnabled('referral.enabled')
+    .catch(() => false));
 const content =
+  row === null ? null : presentPartnerDashboard(row, referralEnabled);
+// E11.7-11: the asset kit, for a partner whose link credits signups.
+const kit =
   row === null
     ? null
-    : presentPartnerDashboard(
+    : presentPartnerKit(
         row,
-        await getFlagService()
-          .isEnabled('referral.enabled')
-          .catch(() => false),
+        Astro.url.searchParams.get('t') ?? '',
+        referralEnabled,
       );
 const feedback = Astro.url.searchParams.get('settings');
 const notice =
@@ -111,6 +120,56 @@ Astro.response.status =
             </dl>
             {content.linkNotice !== null && <p>{content.linkNotice}</p>}
           </section>
+          {kit !== null && (
+            <section
+              class="dashboard__section"
+              id="partner-kit"
+              aria-labelledby="partner-kit-heading"
+            >
+              <h2 id="partner-kit-heading">{copy.kit.heading}</h2>
+              <p>{copy.kit.line}</p>
+              <div class="dashboard__kit-part">
+                <h3>{copy.kit.qrHeading}</h3>
+                <div class="dashboard__qr" set:html={kit.qr} />
+                <ul class="dashboard__links">
+                  <li>
+                    <TextLink
+                      href={kit.qrPng}
+                      download={`${kit.qrFileName}.png`}
+                    >
+                      {copy.kit.downloadPng}
+                    </TextLink>
+                  </li>
+                  <li>
+                    <TextLink
+                      href={kit.qrSvg}
+                      download={`${kit.qrFileName}.svg`}
+                    >
+                      {copy.kit.downloadSvg}
+                    </TextLink>
+                  </li>
+                </ul>
+              </div>
+              <div class="dashboard__kit-part">
+                <h3>{copy.kit.flyerHeading}</h3>
+                <p>{copy.kit.flyerLine}</p>
+                <TextLink href={kit.flyerHref} arrow>
+                  {copy.kit.flyerAction}
+                </TextLink>
+              </div>
+              <div class="dashboard__kit-part">
+                <h3>{copy.kit.messagesHeading}</h3>
+                <p>{copy.kit.messagesLine}</p>
+                {kit.messages.map(({ id, title, body }) => (
+                  <figure class="dashboard__message" data-message-template={id}>
+                    <figcaption>{title}</figcaption>
+                    <p class="dashboard__message-body">{body}</p>
+                  </figure>
+                ))}
+              </div>
+              <PartnerKitDownloads downloads={kit.downloads} />
+            </section>
+          )}
           <section class="dashboard__section">
             <h2>{copy.stats.heading}</h2>
             <dl class="dashboard__facts dashboard__counts">
@@ -395,6 +454,66 @@ Astro.response.status =
 
   .dashboard__share {
     font-size: var(--step-3);
+    user-select: all;
+  }
+
+  .dashboard__kit-part {
+    display: grid;
+    min-inline-size: 0;
+    gap: var(--space-1);
+  }
+
+  .dashboard__kit-part h3,
+  .dashboard__message,
+  .dashboard__links {
+    margin: 0;
+  }
+
+  .dashboard__kit-part h3,
+  .dashboard__message figcaption {
+    font-size: var(--step-2);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-2);
+  }
+
+  /* The QR image carries its own white quiet zone, so it scans in either
+     theme. */
+  .dashboard__qr {
+    inline-size: 100%;
+    max-inline-size: calc(var(--space-10) * 3);
+  }
+
+  .dashboard__qr :global(svg) {
+    display: block;
+    inline-size: 100%;
+    block-size: auto;
+    border-radius: var(--radius-control);
+  }
+
+  .dashboard__links {
+    display: grid;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Stacked links each keep a full tap target. */
+  .dashboard__links :global(.text-link) {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+  }
+
+  .dashboard__message {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .dashboard__message-body {
+    padding: var(--space-2);
+    border-radius: var(--radius-control);
+    background: var(--wash);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
     user-select: all;
   }
 

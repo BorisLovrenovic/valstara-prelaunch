@@ -211,6 +211,7 @@ export function sitemapPaths(
       route !== '/me' &&
       route !== '/verify' &&
       route !== '/partners/dashboard' &&
+      route !== '/partners/dashboard/flyer' &&
       // The branded error pages are noindex (E11.5-10).
       route !== '/404' &&
       route !== '/500' &&

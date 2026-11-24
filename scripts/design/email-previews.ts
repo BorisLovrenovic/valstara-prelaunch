@@ -36,6 +36,7 @@ const payloads: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
   partner_approved: { status_token_id: 'status-id' },
   partner_rejected: { status_token_id: 'status-id' },
   partner_dashboard_link: { token_id: 'dashboard-id' },
+  partner_welcome: { token_id: 'dashboard-id' },
   weekly_campaign_update: {
     snapshot_id: 'snapshot-id',
     status_token_id: 'status-id',
@@ -75,7 +76,9 @@ export function emailPreviewRenderers(
       },
     }),
     ...dsrRenderers(origin, 'send.valstara.com'),
-    ...partnerApplicationRenderers(origin, 'send.valstara.com'),
+    ...partnerApplicationRenderers(origin, 'send.valstara.com', {
+      welcomeCode: async () => 'DASHBOARD2345',
+    }),
     [
       'weekly_campaign_update',
       createWeeklyTemplate({

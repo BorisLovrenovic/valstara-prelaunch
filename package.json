@@ -7,7 +7,7 @@
     "admin": "node ./src/server/admin/cli.ts",
     "build": "astro build",
     "check": "npm run price-index -- validate && npm run lint && npm run format && npm run typecheck && npm run security && node scripts/ci/app-build.mjs",
-    "prebuild": "tsx scripts/ci/provider-showcase-check.ts && tsx scripts/ci/seo-build-check.ts --sitemap",
+    "prebuild": "tsx scripts/ci/provider-showcase-check.ts && tsx scripts/ci/partner-kit-check.ts && tsx scripts/ci/seo-build-check.ts --sitemap",
     "postbuild": "tsx scripts/ci/seo-build-check.ts --check",
     "backup:drill": "sh infra/backups/restore-drill.sh",
     "coverage": "RESEND_WEBHOOK_SECRET=whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk= BREVO_WEBHOOK_TOKEN=local-only-brevo-webhook-token-32-chars EMAIL_TOKEN_SECRET=local-only-email-token-secret-32-chars EMAIL_BASE_URL=http://localhost:4321 node scripts/ci/run-coverage.mjs",
@@ -40,6 +40,7 @@
     "imapflow": "2.1.2",
     "mailparser": "3.12.4",
     "pg": "8.23.0",
+    "qrcode-generator": "2.0.4",
     "zod": "4.6.7"
   },
   "devDependencies": {
@@ -55,6 +56,7 @@
     "eslint-plugin-astro": "3.1.0",
     "fast-check": "4.5.3",
     "htmlparser2": "10.1.0",
+    "jsqr": "1.4.0",
     "playwright": "1.62.1",
     "prettier": "3.9.6",
     "prettier-plugin-astro": "0.14.1",

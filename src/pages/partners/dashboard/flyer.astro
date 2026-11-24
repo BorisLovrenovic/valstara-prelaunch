@@ -1,0 +1,207 @@
+---
+// E11.7-11: the partner's print flyer, behind the same private dashboard
+// link as `/partners/dashboard`. On screen it is a task card with the print
+// instructions and the flyer; in print only the flyer remains, sized to fit
+// one page of A4 or US Letter. Zero JavaScript: printing is the browser's own.
+import PartnerKitDownloads from '../../../components/partner-kit-downloads.astro';
+import TextLink from '../../../components/text-link.astro';
+import { partnerDashboardCopy as copy } from '../../../copy/partner-dashboard.ts';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import TaskCard from '../../../layouts/task-card.astro';
+import { getFlagService } from '../../../server/flags/app-service.ts';
+import {
+  dashboardPath,
+  dashboardRecoveryPath,
+} from '../../../server/partner/config.ts';
+import { presentPartnerDashboard } from '../../../server/partner/dashboard-presentation.ts';
+import { presentPartnerKit } from '../../../server/partner/kit-presentation.ts';
+import { partnerDashboard } from '../../../server/partner/runtime.ts';
+
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+Astro.response.headers.set('X-Robots-Tag', 'noindex');
+
+const bearer = Astro.url.searchParams.get('t') ?? '';
+const view = await partnerDashboard()
+  .read(bearer)
+  .catch(() => ({ kind: 'unavailable' }) as const);
+const row = view.kind === 'authenticated' ? view.row : null;
+const referralEnabled =
+  row !== null &&
+  (await getFlagService()
+    .isEnabled('referral.enabled')
+    .catch(() => false));
+const kit =
+  row === null ? null : presentPartnerKit(row, bearer, referralEnabled);
+const dashboard = new URLSearchParams({ t: bearer });
+const line =
+  kit !== null
+    ? copy.flyer.printLine
+    : row !== null
+      ? (presentPartnerDashboard(row, referralEnabled).linkNotice ??
+        copy.sharing.inactive)
+      : view.kind === 'paused'
+        ? copy.paused
+        : view.kind === 'unavailable'
+          ? copy.unavailable
+          : copy.invalid;
+Astro.response.status =
+  view.kind === 'paused' || view.kind === 'unavailable' ? 503 : 200;
+---
+
+<BaseLayout title={copy.flyer.title} description={copy.flyer.description}>
+  <meta slot="head" name="robots" content="noindex" />
+  <TaskCard
+    heading={kit === null ? copy.flyer.title : copy.flyer.printHeading}
+    icon="link"
+    state={view.kind}
+    line={line}
+  >
+    {
+      kit !== null && (
+        <>
+          <article class="flyer" aria-labelledby="flyer-heading" data-flyer>
+            <h2 id="flyer-heading" class="flyer__heading">
+              {copy.flyer.heading}
+            </h2>
+            <p class="flyer__line">{copy.flyer.line}</p>
+            <div class="flyer__qr" set:html={kit.qr} />
+            <p class="flyer__label">{copy.flyer.scan}</p>
+            <p class="flyer__link">{kit.link}</p>
+            <p class="flyer__label">{copy.flyer.code}</p>
+            <p class="flyer__code">{kit.code}</p>
+            {kit.perk !== null && <p class="flyer__perk">{kit.perk}</p>}
+          </article>
+          <div class="flyer-screen">
+            <PartnerKitDownloads downloads={kit.downloads} headingLevel="h2" />
+          </div>
+        </>
+      )
+    }
+    <div class="flyer-screen">
+      {
+        row !== null ? (
+          <TextLink
+            class="task-card__link"
+            href={`${dashboardPath}?${dashboard}`}
+            arrow
+          >
+            {copy.flyer.back}
+          </TextLink>
+        ) : (
+          <TextLink class="task-card__link" href={dashboardRecoveryPath} arrow>
+            {copy.recoveryLink}
+          </TextLink>
+        )
+      }
+    </div>
+  </TaskCard>
+</BaseLayout>
+
+<style>
+  .flyer {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    border: var(--border-thin) solid var(--line);
+    border-radius: var(--radius-card);
+    /* The printed sheet's colours: the same in both themes. */
+    background: var(--banner-white);
+    color: var(--midnight);
+  }
+
+  .flyer > * {
+    margin: 0;
+  }
+
+  .flyer__heading {
+    font-size: var(--step-5);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-tight);
+    line-height: var(--leading-5);
+  }
+
+  .flyer__qr {
+    inline-size: 100%;
+    max-inline-size: calc(var(--space-10) * 3);
+    margin-block: var(--space-2);
+  }
+
+  .flyer__qr :global(svg) {
+    display: block;
+    inline-size: 100%;
+    block-size: auto;
+  }
+
+  .flyer__label {
+    font-weight: var(--weight-semibold);
+  }
+
+  .flyer__link,
+  .flyer__code {
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
+  }
+
+  .flyer__code {
+    font-size: var(--step-5);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-5);
+  }
+
+  .flyer__perk {
+    margin-block-start: var(--space-2);
+    font-size: var(--step-3);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-3);
+  }
+
+  .flyer-screen {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  /* Print: only the flyer, edge to edge inside the browser's own page
+     margins, which fit both A4 and US Letter. The shell and the task card
+     style themselves with scoped selectors, so the print overrides are
+     marked important: this stylesheet applies to print media only. */
+  @media print {
+    :global(.site-header),
+    :global(.site-footer),
+    :global(.skip-link),
+    :global(.task-card__head),
+    :global(.task-card__line),
+    .flyer-screen {
+      display: none !important;
+    }
+
+    :global(.site-main),
+    :global(.task-page),
+    :global(.task-container),
+    :global(.task),
+    :global(.task-card) {
+      display: block !important;
+      max-inline-size: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      background: var(--banner-white) !important;
+    }
+
+    .flyer {
+      justify-items: center;
+      padding: 0;
+      border: 0;
+      text-align: center;
+      break-inside: avoid;
+    }
+
+    .flyer__qr {
+      inline-size: 60%;
+      max-inline-size: none;
+      margin-block: var(--space-4);
+    }
+  }
+</style>
