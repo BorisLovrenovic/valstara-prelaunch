@@ -265,6 +265,7 @@ test('verification states, exact figures, native actions and flags render access
       '/partners',
       '/partners/apply',
       '/partners/dashboard',
+      '/partners/dashboard/flyer',
       '/404',
       '/500',
     ]);
