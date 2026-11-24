@@ -60,7 +60,7 @@ Items no agent can complete. Each gates something, and the gate is stated so it 
 | **P8** | **Launch provider list and logo files** — for each provider shown on the landing page: display name, category (E11.5-02's v2 taxonomy), confirmation that its goods are on the launch catalogue, the official SVG logo (plus a dark-theme variant where the provider supplies one) from the provider's published brand resources with its source URL, and its brand colour (founder-authorised 2026-10-19). **SUPPLIED 2026-10-25** for 34 providers across four categories (AI tools, Streaming and subscriptions, Software, In-game currency), recorded in `docs/prerequisites/p8-provider-list.md`. Founder-authorised amendments 2026-10-25: a logo without a source URL records its source as `founder-supplied` with the supply date, and a brand colour may be derived from the supplied logo by the rule in that record. AION2's logo is a WebP raster, the only non-SVG logo, by founder exception (no SVG exists) | Founder input | **E11.5-04** only. A showcase with placeholder logos is not a deliverable | Done |
 | **P9** | **Price-index answers and source capture.** The brief's open questions and D1–D6 were **answered 2026-11-17** (the brief amendments are verbatim in `docs/features/price-index.md#founder-amendments-17-november-2026-verbatim`; D1–D6 are recorded on E11.6-04, E11.6-05, E11.6-10, E11.6-12 and E11.6-13). **Still to do: the founder captures the source pages for E11.6-01** by `docs/prerequisites/p9-source-capture.md` | A founder capture | E11.6-01 | Before E11.6-01 |
 | **P11** | **The Trust Ledger's "How we count" text and its first entry's founder sections**: build progress, supply readiness counts with the founder's definitions of an evaluated, verified and rejected supplier, partner-programme counts, policy changes, corrections, launch status and the three closing sections; plus the line that links `/guarantee` to the Ledger (founder-authorised 2026-11-24) | Founder input | **E11.8-01** only. A Ledger page with placeholder text is not a deliverable | Before E11.8-01 |
-| **P12** | **A lawyer's review of the age change**: the reviewed wording of the 16+ marketing box, the 18+ giveaway box, the rules revision's entry sentence, and the privacy notice and terms for members aged 13–17; and whether a referred member aged 13–17 earns their referrer a giveaway entry (founder-authorised 2026-11-24) | Founder input (lawyer) | **E11.8-06** only. ADR-030's waiver does not cover this change | Before E11.8-06 |
+| **P12** | **A lawyer's review of the age change**: the reviewed wording of the 16+ marketing box, the 18+ giveaway box (at signup and on `/me`), the rules revision's entry sentence, and the privacy notice and terms for members aged 13–17; and whether a referred member aged 13–17 earns their referrer a giveaway entry (founder-authorised 2026-11-24) | Founder input (lawyer) | **E11.8-06** only. ADR-030's waiver does not cover this change | Before E11.8-06 |
 | **P10** | **Partner asset kit files** — the images and PDFs partners download (committed under `public/partners/kit/`), and the links to any videos, each with the right to share it (founder-authorised 2026-11-17) | Founder input | **E11.7-11** only. A kit with placeholder files is not a deliverable | Before E11.7-11 |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
@@ -4472,6 +4472,8 @@ Also the "approved" and "rejected" emails, and a database check that only the do
    - (b) giveaway entry needs **a separate, unticked "I'm 18 or over, enter me in the giveaway" box**; without it, a member holds no entries;
    - (c) **a lawyer reviews the age change** (P12) before it ships. ADR-030's waiver does not cover a material change to its scope.
 
+   **Added 2026-11-24 (founder: "Yes, add it"):** a member who did not tick the 18+ box at signup can enter later from `/me`.
+
 **Goal:**
 - **the Trust Ledger:** a public, monthly, append-only record of Valstara's real numbers, at a permanent URL, live before the campaign opens;
 - **the per-platform report:** a founder-only report of signups by source, medium and campaign, so TikTok, Instagram and every other platform are counted separately;
@@ -4632,6 +4634,10 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - **The marketing opt-in at 16 or over.** A new consent wording version says the box is for people aged 16 or over, in P12's reviewed wording. It is recorded as a new version, as every wording change is (ADR-027).
 - **The giveaway box.** Every signup form (the SignupForm island in all its placements; no new island) gains a separate, unticked box, "I'm 18 or over, enter me in the giveaway", in P12's reviewed wording. It is not needed to join, and it is independent of the marketing box. The subscriber row records when it was ticked; a database check rejects a value without a signup.
 - **Entries need the box.** With the flag on, a member's base and referral entries accrue only if they ticked it. Whether a referred member aged 13–17 earns their referrer an entry follows P12. `/me` shows a member without the box as not entered, never as holding entries.
+- **Entering later from `/me`** (founder, 2026-11-24). A member without the box sees the same 18+ box on `/me`, in P12's reviewed wording, as a Turnstile-protected form posting `POST /api/me/giveaway`, following the `POST /api/me/marketing` pattern: the signed status link identifies the member, Turnstile is verified server-side first, the route is rate-limited, and the change is audited.
+  - It **only enters**: it records the box and changes nothing else, not marketing consent and not the referral record (ADR-027).
+  - On entering, the member holds their base entry and one per confirmed referral they hold at that moment, each stamped with the rules revision then in force, exactly as if they had ticked at signup.
+  - A repeat submission changes nothing and returns the same success. After entries close, the box is not shown and the route refuses with the closed state.
 - **Members who joined before the flag** joined under an 18+ statement and keep their entries.
 - **A new rules revision** states the box as the way to enter, copying the current revision and changing only that, in P12's reviewed wording, with the E11-04 archive treatment.
 - **The privacy notice and terms** take P12's reviewed wording for the new age range. A new ADR records the decision, the conditions and the review.
@@ -4643,11 +4649,12 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - **No member holds an entry without the giveaway box**, asserted for base and referral entries, under real concurrency against a real database
 - The marketing box carries the 16+ wording and records its new version
 - Both boxes are unticked by default and independent of each other, and neither is needed to join
+- **Entering from `/me`** verifies Turnstile first, is audited, grants exactly the entries ticking at signup would have, changes nothing else, is idempotent, and is refused after entries close
 - Earlier members keep their entries, and `/me` states each member's real entry status
 - The new revision is hash-valid, and every earlier one is unchanged and archived
 - The flag-off path is tested, and the privacy, accessibility, copy and layout checks pass on every signup placement
 
-**Tests:** The age statement on every surface · the giveaway box at accrual · the referral-entry rule per P12 · the opt-in wording version · default-unticked boxes · earlier members · `/me` entry status · the rules revision · flag off · the privacy, accessibility and layout suites on the form.
+**Tests:** The age statement on every surface · the giveaway box at accrual · the referral-entry rule per P12 · the opt-in wording version · default-unticked boxes · entering from `/me`, with its Turnstile, idempotency and closed-state red paths · earlier members · `/me` entry status · the rules revision · flag off · the privacy, accessibility and layout suites on the form.
 **Docs:** `docs/features/signup.md` · `docs/features/giveaway.md` · `docs/features/member-status.md` · `docs/legal/compliance.md` · a new ADR
 
 ## Epic E12 — Production bring-up
@@ -4898,8 +4905,8 @@ The founder's brief targeted 40–60 hours for the partner programme. The founde
 | E11.8-03 The founder note in the weekly update | E8-07 (the weekly send) | 4 h |
 | E11.8-04 The referral reminder in the welcome email | E11.7-08 (the partner welcome line) | 2 h |
 | E11.8-05 The giveaway rules revision with the new dates | E11-04 (the revision pattern) | 3 h |
-| E11.8-06 The waitlist at 13 and over, with an 18+ giveaway box | E11.8-05; P12 | 8 h |
-| **E11.8 total** | | **28 h** |
+| E11.8-06 The waitlist at 13 and over, with an 18+ giveaway box | E11.8-05; P12 | 10 h |
+| **E11.8 total** | | **30 h** |
 
 ---
 

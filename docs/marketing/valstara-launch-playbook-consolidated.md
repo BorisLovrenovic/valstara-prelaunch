@@ -487,7 +487,7 @@ It starts reporting real operations, with **fixed definitions that are never cha
 - **Prefer creators whose audience is mostly in our 20 price-index markets and over 18.** Do not rule out creators with younger audiences (founder, 21 Nov 2026). Many of our products are used by teenagers (Netflix and Spotify, for example), and in-game currency such as Roblox's Robux is being considered. Teenagers are future customers even though they cannot enter the giveaway.
   - **Decided (founder, 24 Nov 2026): the waitlist opens to people aged 13 and over; the giveaway stays 18 and over, and says so plainly.** It is ticket E11.8-06, behind `waitlist.age_13`. Until it ships, the site still says "Open to people aged 18 and over", and no campaign may invite under-18s to join. The three conditions the founder accepted:
     - **Marketing email is for people aged 16 or over**, and the box says so. The age for marketing consent without a parent's authorisation is 13 to 16 depending on the country (GDPR Article 8; for example 16 in Germany, Ireland, the Netherlands and Poland, and 13 in the UK, Sweden and Denmark), and the site collects neither age nor country.
-    - **Giveaway entry needs a separate, unticked "I'm 18 or over, enter me in the giveaway" box.** Without it, a member holds no entries, so `/me` never shows a 15-year-old entries they could not win.
+    - **Giveaway entry needs a separate, unticked "I'm 18 or over, enter me in the giveaway" box.** Without it, a member holds no entries, so `/me` never shows a 15-year-old entries they could not win. A member who skips it, or turns 18 during the campaign, can tick it later on `/me` (founder, 24 Nov 2026).
     - **A lawyer reviews the age change first (P12).** Inviting under-18s brings in the UK Age Appropriate Design Code, and ADR-030's waiver of legal review does not cover "a material change to this scope".
   - **For creators with teen audiences, after E11.8-06 ships:** say "join the waitlist" to everyone, and say the giveaway is for 18 and over in the same breath. Never "join and win" to a teen audience.
     - Partner applicants stay 18 or over.
@@ -910,7 +910,7 @@ Kept, with changes. Hooks that named and attacked competitors were rewritten to 
 | **24 Nov:** the `/me` early-access fact | Shows the short month, "Sep 2027"; sentences keep "September 2027". Recorded on E11.7-04's plan entry, replacing D-049's smaller type step | — |
 | **24 Nov:** where the two new tickets go | Epic E11.8 (E11.8-01 the Trust Ledger page, E11.8-02 the per-platform report), after E11.7-15 and before GATE-8, which now audits E11.6 + E11.7 + E11.8; P11 added for the Ledger's founder text | 3.6, 0.7 |
 | **24 Nov:** after public launch | Partners on case-by-case terms; a separate affiliate system with uniform or laddered rates. Neither is decided here | 0.4 |
-| **24 Nov:** age | The waitlist opens to 13 and over; the giveaway is 18 and over only; marketing email 16 or over; a separate unticked 18+ box to enter; a lawyer's review first (P12). Ticket E11.8-06 | 0.3, 4.2, 5.4 |
+| **24 Nov:** age | The waitlist opens to 13 and over; the giveaway is 18 and over only; marketing email 16 or over; a separate unticked 18+ box to enter, also offered later on `/me`; a lawyer's review first (P12). Ticket E11.8-06 | 0.3, 4.2, 5.4 |
 | **24 Nov:** the founder note to members | A short note in the weekly update, from a content file, with the send-time consent and suppression checks. No Brevo-editor campaigns to members. Ticket E11.8-03 | 3.6, 9.2 |
 | **24 Nov:** the referral reminder | A welcome-email line for members referred by another member, naming no one (E11.8-04), plus the storefront's day-7 email after launch | 2.2 |
 | **24 Nov:** giveaway dates | Entries close 31 Aug 2027, 23:59:59 UTC; draw 1 Sep 2027. A new rules revision before `giveaway.open` (E11.8-05) | 0.2, 3.4 |
@@ -967,12 +967,12 @@ The founder authorised the changes in 11.1 "everywhere in all documents", and th
 | Q2 (was D4) | The "a friend invited you" reminder | A welcome-email line for member-referred members (E11.8-04), plus the storefront's day-7 email after launch |
 | Q3 (was D8) | The giveaway's dates | Entries close 31 Aug 2027; draw 1 Sep 2027 (E11.8-05) |
 | Q4 (was D9) | The three conditions for 13+ | Marketing 16+; a required, unticked 18+ giveaway box; a lawyer's review (P12, E11.8-06) |
+| Q5 | A later way into the giveaway for a member who skipped the 18+ box | Yes: the same box on `/me`, giving the base entry plus one per confirmed referral held (E11.8-06) |
 
 ### Still open
 
 | # | Question | Why it is open |
 |---|---|---|
-| Q5 | **A later way into the giveaway.** A member who skips the 18+ box at signup can't enter later, because E11.8-06 builds the box at signup only. Should `/me` offer it? | It would be a new write on `/me`, authenticated by the status link. Without it, someone who turns 18 during the campaign, or simply missed the box, stays out |
 | Q6 | **Does a referred 13–17-year-old earn their referrer an entry?** | Today every verified referral earns one. Part of P12: the lawyer's answer decides it, because counting minors could reward adults for recruiting them |
 
 ### Moved to the marketing to-do list (founder, 24 Nov 2026)
@@ -987,5 +987,5 @@ These are tasks, not decisions. Each is settled when its task is worked on, and 
 - every founder input: P10, P5, P6, P7, P11, P12 (the lawyer's review of the age change), the weekly founder notes, the partner and creator contract template, the giveaway bundle contents and sanctions list, the ten approved buyer answers, the digest's founder note, and the dated competitor-rate captures;
 - every research task: platform giveaway rules, direct-message and link rules, ambassador and campus rules per country, creator targeting, audience research, journalist lists, the GEO prompt set, and Loom's limits.
 
-**Settled, no longer open:** Q1–Q4 (above); where the new tickets go (Epic E11.8); post-launch rates (case-by-case partners plus a separate affiliate system, decided outside this repository); same-network signups (review only); the Discord response time and moderation; the supplier register (none).
+**Settled, no longer open:** Q1–Q5 (above); where the new tickets go (Epic E11.8); post-launch rates (case-by-case partners plus a separate affiliate system, decided outside this repository); same-network signups (review only); the Discord response time and moderation; the supplier register (none).
 

@@ -108,6 +108,10 @@ cards, with no confirmation step and no plea.
 3. **Act** — re-answer the survey, switch marketing email on or off (ADR-027; switching off never affects the waitlist place or giveaway entries), or unsubscribe.
 4. **Refresh** — an expired link offers a Turnstile-protected, one-click re-send to the address it was issued for. E6-04 verifies the challenge server-side before recovery work and queues the `status_link` send request; E8-01/E8-03 own provider dispatch and the status-link template.
 
+## Planned: entering the giveaway from `/me` (E11.8-06)
+
+**Founder decision, 2026-11-24.** Once the waitlist opens to people aged 13 and over, giveaway entry needs an 18+ box. A member who skipped it at signup sees the same box on `/me`, as a Turnstile-protected form posting `POST /api/me/giveaway` on the `POST /api/me/marketing` pattern. It only enters: the member gets their base entry and one per confirmed referral they hold, and nothing else changes. It is audited, idempotent, and hidden and refused once entries close. Behind `waitlist.age_13`, default off.
+
 ## Edge cases and error states
 Token expired → a re-request page, never an error page. Token tampered → **the same re-request page**; the failure must not distinguish a forged token from an expired one. The recovery submission also returns the same acknowledgement whether the expired token was recognised or not. Link forwarded to someone else → they see the original subscriber's status. **This is an accepted risk, stated plainly**: possession of the bearer link is the authentication boundary; the alternative is a password on a waitlist, which costs more conversion than the exposure is worth, and the page carries nothing more sensitive than the subscriber's waitlist status. Marketing switched off → broadcasts stop at the next dispatch; the waitlist place, referrals, wave and entries are untouched.
 
