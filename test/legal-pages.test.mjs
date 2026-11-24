@@ -127,6 +127,7 @@ const relatedPolicyFields = {
     ],
     'Partner dashboard settings': [
       'display_name',
+      'display_name_disclosure_version',
       'show_on_leaderboard',
       'nonessential_email_enabled',
     ],

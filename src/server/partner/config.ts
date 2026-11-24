@@ -88,3 +88,6 @@ export const dashboardPath = '/partners/dashboard';
 export const dashboardRecoveryPath =
   '/partners/apply?operation=dashboard-recovery';
 export const partnerDashboardRecoveryTemplate = 'partner_dashboard_link';
+
+// Increment when the leaderboard name disclosure changes.
+export const displayNameDisclosureVersion = 1;

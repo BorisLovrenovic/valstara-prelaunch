@@ -13,9 +13,13 @@ import test, { after, before } from 'node:test';
 import { Pool } from 'pg';
 import { partnersCopy } from '../src/copy/partners.ts';
 import { partnerApplicationFieldNames } from '../src/server/partner/fields.ts';
+import { createPool } from '../src/server/db/pool.ts';
+import { displayNameDisclosureVersion } from '../src/server/partner/config.ts';
+import { createPartnerLeaderboardJob } from '../src/server/partner/leaderboard.ts';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { seedPartnerDashboard } from './helpers/partner-dashboard-fixture.mjs';
+import { insertPartner } from './helpers/partner-review-fixture.ts';
 import { startAppServer } from './helpers/listen-port.mjs';
 
 const executeFile = promisify(execFile);
@@ -344,6 +348,35 @@ test('dashboard recovery is Turnstile-first and returns the same rendered acknow
       '2026-11-05T10:01:00Z', $4, 15, 0)`,
     [randomUUID(), subscriberId, referredId, original.partnerId],
   );
+  await database.query(
+    "UPDATE partner SET display_name = 'Earlier Name', show_on_leaderboard = true WHERE id = $1",
+    [original.partnerId],
+  );
+  const ownerUrl = new URL(databaseUrl);
+  ownerUrl.pathname = '/' + name;
+  const owner = createPool(ownerUrl.toString());
+  const rankingPool = createPool(appUrl);
+  let otherPartner;
+  try {
+    otherPartner = await insertPartner(
+      { owner },
+      {
+        status: 'active',
+        fullName: 'Private Application Name',
+      },
+    );
+    await owner.execute({
+      text: "UPDATE partner SET display_name = 'Current Nickname', display_name_disclosure_version = $2 WHERE id = $1",
+      values: [otherPartner.id, displayNameDisclosureVersion],
+    });
+    await createPartnerLeaderboardJob(
+      rankingPool,
+      async () => true,
+      () => new Date('2026-11-24T08:00:00Z'),
+    ).run();
+  } finally {
+    await Promise.all([rankingPool.close(), owner.close()]);
+  }
   const recoveryPath = '/partners/apply?operation=dashboard-recovery';
   const dashboardPath = '/partners/dashboard';
   const form = await (
@@ -424,6 +457,24 @@ test('dashboard recovery is Turnstile-first and returns the same rendered acknow
   assert.match(visibleText(html), /fixture-v1/u);
   assert.match(
     visibleText(html),
+    /Partner leaderboard As of 2026-11-24T08:00:00.000Z Your rank 1 Rank Partner Confirmed signups 1 Partner 1 2 C\. N\. 0/u,
+  );
+  assert.match(html, /value="Earlier Name"/u);
+  assert.match(
+    visibleText(html),
+    /Saving a display name lets other partners see your initials on the leaderboard\./u,
+  );
+  assert.match(visibleText(html), /Use this name for leaderboard sharing/u);
+  for (const control of ['confirm_leaderboard_name', 'show_on_leaderboard']) {
+    const checkbox = html.match(
+      new RegExp(`<input[^>]*name="${control}"[^>]*>`, 'u'),
+    );
+    assert.ok(checkbox, control);
+    assert.doesNotMatch(checkbox[0], /\bchecked\b/u);
+  }
+
+  assert.match(
+    visibleText(html),
     /\bConfirmed 1 Pending confirmation 0 Voided 0\b/u,
   );
   assert.ok(
@@ -438,6 +489,23 @@ test('dashboard recovery is Turnstile-first and returns the same rendered acknow
     html,
     /page-view\.js|challenges\.cloudflare\.com|rendereddashboard@gmail|Dashboard Fixture/u,
   );
+  const oldClaims = `${original.partnerId}.${replacementId}.${randomUUID()}`;
+  const oldSignature = deriveEmailToken(
+    `partner_dashboard_settings:${oldClaims}`,
+    process.env.EMAIL_TOKEN_SECRET,
+  );
+  const earlier = await post(dashboardPath, {
+    settings_token: `${oldClaims}.${oldSignature}`,
+    display_name: 'Old form overwrite',
+    show_on_leaderboard: 'yes',
+  });
+  assert.equal(earlier.status, 400);
+  assert.match(await earlier.text(), /settings form has expired/u);
+  assert.match(await (await show(replacement)).text(), /value="Earlier Name"/u);
+  assert.ok(!html.includes(otherPartner.id));
+  assert.ok(!html.includes(otherPartner.subscriberId));
+  assert.ok(!html.includes(otherPartner.email));
+  assert.doesNotMatch(html, /Private Application Name|Current Nickname/u);
   const getRobots = await get('/robots.txt');
   assert.match(await getRobots.text(), /^Disallow: \/partners\/dashboard$/mu);
   const sitemap = await get('/sitemaps/pages.xml');
@@ -447,6 +515,18 @@ test('dashboard recovery is Turnstile-first and returns the same rendered acknow
   const retired = await show(original.token);
   assert.equal(retired.status, invalid.status);
   const invalidHtml = await invalid.text();
+  assert.doesNotMatch(
+    invalidHtml,
+    /Partner leaderboard|Earlier Name|Your rank/u,
+  );
+  const noBearer = await get(dashboardPath);
+  assert.equal(await noBearer.text(), invalidHtml);
+  for (const path of ['/partners/leaderboard', '/api/partners/leaderboard']) {
+    const outside = await get(`${path}?t=${replacement}`);
+    assert.equal(outside.status, 404, path);
+    assert.doesNotMatch(await outside.text(), /Partner leaderboard|Your rank/u);
+  }
+
   assert.equal(await retired.text(), invalidHtml);
   await database.query(
     "UPDATE verification_token SET expires_at = '2026-01-01T00:00:00Z' WHERE id = $1",

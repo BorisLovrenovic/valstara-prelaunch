@@ -11,13 +11,17 @@ export interface SqlStatement {
   readonly values?: readonly unknown[];
 }
 
+interface SqlCursor {
+  readonly cursor: string;
+}
+
 export interface DatabaseConnection {
   execute(statement: SqlStatement): Promise<number>;
   readOne<Row extends QueryResultRow>(
     statement: SqlStatement,
   ): Promise<Row | null>;
   list<Row extends QueryResultRow>(
-    statement: SqlStatement,
+    statement: SqlStatement | SqlCursor,
     limit: number,
   ): Promise<readonly Row[]>;
 }
@@ -31,9 +35,17 @@ export interface DatabasePool extends DatabaseConnection {
   close(): Promise<void>;
 }
 
-function withLimit(statement: SqlStatement, limit: number): SqlStatement {
-  if (!Number.isInteger(limit) || limit < 1) {
+function withLimit(
+  statement: SqlStatement | SqlCursor,
+  limit: number,
+): SqlStatement {
+  if (!Number.isSafeInteger(limit) || limit < 1) {
     throw new RangeError('A query list limit must be a positive integer.');
+  }
+
+  if ('cursor' in statement) {
+    const cursor = statement.cursor.replaceAll('"', '""');
+    return { text: `FETCH FORWARD ${limit} FROM "${cursor}"` };
   }
 
   const values = statement.values ? [...statement.values] : [];
@@ -254,7 +266,7 @@ class PostgresConnection implements DatabaseClient {
   }
 
   public async list<Row extends QueryResultRow>(
-    statement: SqlStatement,
+    statement: SqlStatement | SqlCursor,
     limit: number,
   ): Promise<readonly Row[]> {
     const limitedStatement = withLimit(statement, limit);
@@ -305,7 +317,7 @@ class PostgresPool implements DatabasePool {
   }
 
   public async list<Row extends QueryResultRow>(
-    statement: SqlStatement,
+    statement: SqlStatement | SqlCursor,
     limit: number,
   ): Promise<readonly Row[]> {
     const limitedStatement = withLimit(statement, limit);

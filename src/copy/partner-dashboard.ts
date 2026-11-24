@@ -35,6 +35,18 @@ export const partnerDashboardCopy = {
     category: 'Category',
     responses: 'Responses',
   },
+  leaderboard: {
+    heading: 'Partner leaderboard',
+    rank: 'Rank',
+    partner: 'Partner',
+    confirmed: 'Confirmed signups',
+    genericName: 'Partner',
+    asOf: 'As of',
+    ownRank: 'Your rank',
+    unranked: 'You do not have a rank in this snapshot.',
+    empty: 'No partner ranks are available in this snapshot.',
+    unavailable: 'The leaderboard is currently unavailable.',
+  },
   rewards: {
     heading: 'Your referral rewards',
     welcome: (discount: number) =>
@@ -54,6 +66,9 @@ export const partnerDashboardCopy = {
   settings: {
     heading: 'Settings',
     displayName: 'Display name',
+    nameDisclosure:
+      'Saving a display name lets other partners see your initials on the leaderboard. They see your full display name only if you choose to share it. Clear the name and save to hide both.',
+    confirmName: 'Use this name for leaderboard sharing',
     showOnLeaderboard: 'Show my display name on the partner leaderboard',
     nonessentialMail: 'Send me optional partner programme emails',
     save: 'Save settings',

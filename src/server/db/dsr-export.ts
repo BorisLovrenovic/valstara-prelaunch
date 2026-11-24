@@ -26,6 +26,8 @@ export const subjectExportTables = {
   // and the contract record since E11.7-06. Erasure clears every personal
   // field and the member link, so an erased subject has none here.
   partner: 'subscriber_id=$1',
+  partner_leaderboard_rank:
+    'partner_id IN (SELECT id FROM partner WHERE subscriber_id=$1::uuid)',
   giveaway_entry: 'subscriber_id=$1',
   giveaway_draw_snapshot_row: 'subscriber_id=$1',
   giveaway_draw_selection: 'subscriber_id=$1',
