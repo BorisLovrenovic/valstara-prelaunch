@@ -31,6 +31,7 @@ Status: authoritative. This describes the **store launch**, which happens after 
 |---|---|---|
 | `/` | Waitlist landing page | Storefront home — **same URL, new content** |
 | `/legit`, `/guarantee`, `/about` | Trust content | Ported, same URLs; `200` |
+| `/trust-ledger` (E11.8-01) | The Trust Ledger and every past entry | Ported, same URL; `200`; past entries never edited |
 | `/terms`, `/privacy`, `/privacy/storage` | Legal and storage inventory | Ported and revised in place; `200` |
 | `/giveaway/rules`, `/giveaway/rules/<rules_version>` | The global rules page and all three immutable revisions (ADR-026) | **Kept live** with `200` for 12 months after the final award, then `410`; revisions kept internally for 6 years |
 | `/waitlist`, `/leaderboard` | Campaign mechanics | `301` to storefront `/` |
