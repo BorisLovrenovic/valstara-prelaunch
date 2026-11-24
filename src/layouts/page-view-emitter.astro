@@ -6,6 +6,7 @@ const path = Astro.url.pathname;
 // arbitrary visitor input, so they never send a page view (E11.5-10).
 const excluded =
   /^\/(?:me|verify|unsubscribe|404|500)(?:\/|$)/u.test(path) ||
+  /^\/partners\/dashboard(?:\/|$)/u.test(path) ||
   /^\/(?:api\/)?admin(?:\/|$)/u.test(path);
 ---
 

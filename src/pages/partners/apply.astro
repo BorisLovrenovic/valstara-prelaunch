@@ -1,5 +1,6 @@
 ---
 import Button from '../../components/button.astro';
+import { partnerDashboardCopy } from '../../copy/partner-dashboard.ts';
 import Field from '../../components/field.astro';
 import Icon from '../../components/icon.astro';
 import Input from '../../components/input.astro';
@@ -9,15 +10,18 @@ import TaskCard from '../../layouts/task-card.astro';
 import TaskNotice from '../../layouts/task-notice.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { partnersCopy } from '../../copy/partners.ts';
+import { verificationCopy } from '../../copy/verification.ts';
 import { getConfig } from '../../server/config.ts';
 import { getFlagService } from '../../server/flags/app-service.ts';
 import type { PartnerApplicationOutcome } from '../../server/partner/application.ts';
 import {
+  dashboardRecoveryPath,
   partnerAudienceSizes,
   partnerChannels,
   partnerTypes,
 } from '../../server/partner/config.ts';
 import type { PartnerConfirmationOutcome } from '../../server/partner/confirm.ts';
+import { presentDashboardRecovery } from '../../server/partner/dashboard-presentation.ts';
 import {
   emptyPartnerApplicationValues,
   partnerCountries,
@@ -26,6 +30,7 @@ import { partnerApplyView } from '../../server/partner/page-presentation.ts';
 import {
   runPartnerApplication,
   runPartnerConfirmation,
+  runPartnerDashboardRecovery,
 } from '../../server/partner/runtime.ts';
 
 // E11.7-05: the partner application. The page handles its own POST, as /dsr
@@ -34,8 +39,17 @@ import {
 // never consumes a token. A refused application renders back with what was
 // typed and the code's alternatives, with no JavaScript (Turnstile aside).
 Astro.response.headers.set('Cache-Control', 'private, no-store');
-Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+const recovery =
+  Astro.url.searchParams.get('operation') === 'dashboard-recovery';
+// This view carries no bearer. An origin-only referrer lets its native POST
+// pass the normal origin guard, with no path or query in the referrer.
+Astro.response.headers.set(
+  'Referrer-Policy',
+  recovery ? 'strict-origin' : 'no-referrer',
+);
 const copy = partnersCopy.apply;
+const recoveryCopy = partnerDashboardCopy.recovery;
+const pageCopy = recovery ? recoveryCopy : copy;
 const fields = copy.fields;
 const tokenParameter = Astro.url.searchParams.get('token');
 const flags = getFlagService();
@@ -45,7 +59,18 @@ const isOn = (key: 'partners.enabled' | 'giveaway.open') =>
 let application: PartnerApplicationOutcome | null = null;
 let confirmation: PartnerConfirmationOutcome | null = null;
 let postedToken: string | null = null;
-if (Astro.request.method === 'POST') {
+const recoveryView = recovery
+  ? presentDashboardRecovery(
+      Astro.request.method === 'POST'
+        ? await runPartnerDashboardRecovery(Astro).catch(
+            () => 'unavailable' as const,
+          )
+        : (await isOn('partners.enabled'))
+          ? null
+          : 'paused',
+    )
+  : null;
+if (!recovery && Astro.request.method === 'POST') {
   const form = await Astro.request.formData().catch(() => new FormData());
   if (form.has('token')) {
     const value = form.get('token');
@@ -70,7 +95,7 @@ if (Astro.request.method === 'POST') {
   }
 }
 const enabled =
-  application === null && confirmation === null
+  !recovery && application === null && confirmation === null
     ? await isOn('partners.enabled')
     : true;
 const view = partnerApplyView({
@@ -79,10 +104,12 @@ const view = partnerApplyView({
   application,
   confirmation,
 });
-Astro.response.status = view.status;
+Astro.response.status = recoveryView?.status ?? view.status;
 const confirmToken = postedToken ?? tokenParameter ?? '';
 const giveawayOpen =
-  view.form === 'application' ? await isOn('giveaway.open') : false;
+  !recovery && view.form === 'application'
+    ? await isOn('giveaway.open')
+    : false;
 const values = view.values;
 const errors = view.errors;
 const errorId = (field: string) =>
@@ -92,18 +119,57 @@ const errorId = (field: string) =>
 const outcome = Astro.request.method === 'POST';
 ---
 
-<BaseLayout title={copy.title} description={copy.description}>
+<BaseLayout title={pageCopy.title} description={pageCopy.description}>
   <TaskCard
-    heading={view.heading}
-    icon={view.icon}
-    tone={view.tone}
-    state={view.state}
-    line={view.line}
-    notice={view.notice}
+    heading={recoveryView === null ? view.heading : recoveryCopy.title}
+    icon={recoveryView === null ? view.icon : 'mail'}
+    tone={recoveryView === null ? view.tone : 'neutral'}
+    state={recoveryView === null ? view.state : 'dashboard-recovery'}
+    line={recoveryView?.line ?? view.line}
+    notice={recoveryView === null ? view.notice : null}
     outcome={outcome}
   >
     {
-      view.form === 'confirm' ? (
+      recoveryView !== null ? (
+        recoveryView.form && (
+          <>
+            <noscript>
+              <TaskNotice
+                tone="info"
+                message={verificationCopy.resend.javaScriptRequired}
+              />
+            </noscript>
+            <form
+              class="task-card__form"
+              method="post"
+              action={dashboardRecoveryPath}
+            >
+              <Field
+                controlId="dashboard-recovery-address"
+                label={recoveryCopy.address}
+              >
+                <Input
+                  id="dashboard-recovery-address"
+                  name="email_address"
+                  type="email"
+                  autocomplete="email"
+                  required
+                  maxlength="254"
+                />
+              </Field>
+              <div
+                class="cf-turnstile"
+                data-sitekey={getConfig().turnstileSiteKey}
+                data-size="compact"
+                data-response-field-name="turnstile_token"
+              />
+              <div class="task-card__actions">
+                <Button type="submit">{recoveryCopy.submit}</Button>
+              </div>
+            </form>
+          </>
+        )
+      ) : view.form === 'confirm' ? (
         <form class="task-card__form" method="post" action="/partners/apply">
           <input type="hidden" name="token" value={confirmToken} />
           <div class="task-card__actions">
@@ -515,21 +581,23 @@ const outcome = Astro.request.method === 'POST';
       ) : null
     }
     {
-      view.applyAgain ? (
+      recoveryView === null && view.applyAgain ? (
         <TextLink class="task-card__link" href="/partners/apply" arrow>
           {copy.invalid.apply}
         </TextLink>
       ) : null
     }
     {
-      view.form === 'application' ? (
+      (recoveryView === null
+        ? view.form === 'application'
+        : recoveryView.form) && (
         <script
           is:inline
           src="https://challenges.cloudflare.com/turnstile/v0/api.js"
           async
           defer
         />
-      ) : null
+      )
     }
   </TaskCard>
 </BaseLayout>

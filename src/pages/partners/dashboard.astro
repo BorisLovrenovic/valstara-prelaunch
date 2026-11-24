@@ -1,0 +1,346 @@
+---
+import Button from '../../components/button.astro';
+import Field from '../../components/field.astro';
+import Icon from '../../components/icon.astro';
+import Input from '../../components/input.astro';
+import TextLink from '../../components/text-link.astro';
+import { partnerDashboardCopy as copy } from '../../copy/partner-dashboard.ts';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import TaskCard from '../../layouts/task-card.astro';
+import TaskNotice from '../../layouts/task-notice.astro';
+import { getFlagService } from '../../server/flags/app-service.ts';
+import {
+  dashboardPath,
+  dashboardRecoveryPath,
+} from '../../server/partner/config.ts';
+import { displayNameMaxLength } from '../../server/partner/dashboard.ts';
+import { presentPartnerDashboard } from '../../server/partner/dashboard-presentation.ts';
+import {
+  partnerDashboard,
+  savePartnerDashboardSettings,
+} from '../../server/partner/runtime.ts';
+
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+Astro.response.headers.set('X-Robots-Tag', 'noindex');
+
+const posted = Astro.request.method === 'POST';
+const result = posted
+  ? await savePartnerDashboardSettings(Astro).catch(
+      () => ({ kind: 'unavailable' }) as const,
+    )
+  : null;
+
+if (result?.kind === 'saved' || result?.kind === 'invalid_input') {
+  const query = new URLSearchParams({
+    t: result.bearer,
+    settings: result.kind,
+  });
+  const redirect = Astro.redirect(
+    `${dashboardPath}?${query}#partner-settings`,
+    303,
+  );
+  Astro.response.headers.forEach((value, key) =>
+    redirect.headers.set(key, value),
+  );
+  return redirect;
+}
+
+const view =
+  result ??
+  (await partnerDashboard()
+    .read(Astro.url.searchParams.get('t') ?? '')
+    .catch(() => ({ kind: 'unavailable' }) as const));
+const row = view.kind === 'authenticated' ? view.row : null;
+const content =
+  row === null
+    ? null
+    : presentPartnerDashboard(
+        row,
+        await getFlagService()
+          .isEnabled('referral.enabled')
+          .catch(() => false),
+      );
+const feedback = Astro.url.searchParams.get('settings');
+const notice =
+  view.kind === 'paused'
+    ? copy.paused
+    : view.kind === 'unavailable'
+      ? copy.unavailable
+      : view.kind === 'rate_limited'
+        ? copy.limitedSettings
+        : posted
+          ? copy.invalidSettings
+          : copy.invalid;
+Astro.response.status =
+  view.kind === 'paused' || view.kind === 'unavailable'
+    ? 503
+    : view.kind === 'rate_limited'
+      ? 429
+      : posted
+        ? 400
+        : 200;
+---
+
+<BaseLayout title={copy.title} description={copy.description}>
+  <meta slot="head" name="robots" content="noindex" />
+  <TaskCard
+    heading={copy.title}
+    icon="link"
+    state={view.kind}
+    line={content === null ? notice : null}
+  >
+    {
+      view.kind === 'authenticated' && row !== null && content !== null && (
+        <div class="dashboard">
+          <section class="dashboard__section">
+            <h2>{copy.sharing.heading}</h2>
+            <dl class="dashboard__facts">
+              <div>
+                <>
+                  <dt>{copy.sharing.link}</dt>
+                  <dd class="dashboard__share">{content.link}</dd>
+                </>
+              </div>
+              <div>
+                <>
+                  <dt>{copy.sharing.code}</dt>
+                  <dd class="dashboard__share">{row.code}</dd>
+                </>
+              </div>
+            </dl>
+            {content.linkNotice !== null && <p>{content.linkNotice}</p>}
+          </section>
+          <section class="dashboard__section">
+            <h2>{copy.stats.heading}</h2>
+            <dl class="dashboard__facts dashboard__counts">
+              {content.counts.map(({ label, count }) => (
+                <div>
+                  <dt>{label}</dt>
+                  <dd>{count}</dd>
+                </div>
+              ))}
+            </dl>
+            {row.weeks.length === 0 ? (
+              <p>{copy.stats.noWeeks}</p>
+            ) : (
+              <table>
+                <caption>{copy.stats.weekly}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">{copy.stats.week}</th>
+                    <th scope="col">{copy.stats.signups}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {row.weeks.map(({ week, count }) => (
+                    <tr>
+                      <th scope="row">
+                        <time datetime={week}>{week}</time>
+                      </th>
+                      <td>{count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <table>
+              <caption>{copy.stats.survey}</caption>
+              <thead>
+                <tr>
+                  <>
+                    <th scope="col">{copy.stats.category}</th>
+                    <th scope="col">{copy.stats.responses}</th>
+                  </>
+                </tr>
+              </thead>
+              <tbody>
+                {content.categories.map(({ label, count }) => (
+                  <tr>
+                    <th scope="row">{label}</th>
+                    <td>{count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+          {content.rewards !== null && (
+            <section class="dashboard__section">
+              <h2>{copy.rewards.heading}</h2>
+              <p>
+                {content.rewards.ladder.line} {content.rewards.welcome}
+              </p>
+              <p>{content.rewards.ladder.held}</p>
+              <p>{content.rewards.wave.line}</p>
+            </section>
+          )}
+          <section class="dashboard__section">
+            <h2>{copy.terms.heading}</h2>
+            <p>
+              {copy.terms.commission} {copy.terms.level} {copy.terms.lock}
+            </p>
+            <p>{copy.terms.timing}</p>
+            <dl class="dashboard__facts">
+              <div>
+                <>
+                  <dt>{copy.terms.date}</dt>
+                  <dd>
+                    <time datetime={row.contract_signed_at}>
+                      {row.contract_signed_at}
+                    </time>
+                  </dd>
+                </>
+              </div>
+              <div>
+                <>
+                  <dt>{copy.terms.version}</dt>
+                  <dd>{row.contract_version}</dd>
+                </>
+              </div>
+            </dl>
+          </section>
+          <section class="dashboard__section" id="partner-settings">
+            <h2>{copy.settings.heading}</h2>
+            {feedback === 'saved' && (
+              <TaskNotice tone="success" message={copy.saved} />
+            )}
+            {feedback === 'invalid_input' && (
+              <TaskNotice tone="error" message={copy.badName} />
+            )}
+            <form class="task-card__form" method="post" action={dashboardPath}>
+              <input
+                type="hidden"
+                name="settings_token"
+                value={view.settingsToken}
+              />
+              <Field
+                controlId="partner-display-name"
+                label={copy.settings.displayName}
+              >
+                <Input
+                  id="partner-display-name"
+                  name="display_name"
+                  maxlength={displayNameMaxLength}
+                  autocomplete="off"
+                  value={row.display_name ?? ''}
+                />
+              </Field>
+              <label class="task-card__choice">
+                <span class="task-card__control">
+                  <input
+                    type="checkbox"
+                    name="show_on_leaderboard"
+                    value="yes"
+                    checked={row.show_on_leaderboard}
+                  />
+                  <span class="task-card__box" aria-hidden="true">
+                    <Icon name="check" size="sm" />
+                  </span>
+                </span>
+                <span>{copy.settings.showOnLeaderboard}</span>
+              </label>
+              <label class="task-card__choice">
+                <span class="task-card__control">
+                  <input
+                    type="checkbox"
+                    name="nonessential_email_enabled"
+                    value="yes"
+                    checked={row.nonessential_email_enabled}
+                  />
+                  <span class="task-card__box" aria-hidden="true">
+                    <Icon name="check" size="sm" />
+                  </span>
+                </span>
+                <span>{copy.settings.nonessentialMail}</span>
+              </label>
+              <div class="task-card__actions">
+                <Button type="submit">{copy.settings.save}</Button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )
+    }
+    <TextLink class="task-card__link" href={dashboardRecoveryPath} arrow>
+      {copy.recoveryLink}
+    </TextLink>
+  </TaskCard>
+</BaseLayout>
+
+<style>
+  .dashboard,
+  .dashboard__section {
+    display: grid;
+    min-inline-size: 0;
+    gap: var(--space-2);
+  }
+
+  .dashboard {
+    gap: var(--space-4);
+  }
+
+  .dashboard__section h2,
+  .dashboard__section p,
+  .dashboard__facts,
+  .dashboard__facts dd {
+    margin: 0;
+  }
+
+  .dashboard__section h2 {
+    font-size: var(--step-4);
+    line-height: var(--leading-3);
+  }
+
+  .dashboard__facts {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .dashboard__counts {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--space-3);
+  }
+
+  .dashboard__facts dt,
+  caption,
+  thead th {
+    font-weight: var(--weight-semibold);
+  }
+
+  .dashboard__facts dd,
+  td,
+  time {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  .dashboard__share {
+    font-size: var(--step-3);
+    user-select: all;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  caption,
+  th {
+    text-align: start;
+  }
+
+  th,
+  td {
+    padding-block: var(--space-1);
+    border-block-end: var(--border-thin) solid var(--field);
+    overflow-wrap: anywhere;
+  }
+
+  th:last-child,
+  td {
+    text-align: end;
+  }
+</style>

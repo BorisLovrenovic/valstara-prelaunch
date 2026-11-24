@@ -1,5 +1,5 @@
 /**
- * The three token purposes (ADR-011, `docs/modules/verification.md`). A token
+ * The verification token purposes (ADR-011, `docs/modules/verification.md`). A token
  * is bound to exactly one purpose at issue and is invalid for any other, so a
  * status link can never be replayed as a verification.
  */
@@ -10,7 +10,8 @@ export type TokenPurpose =
   | 'dsr_export'
   | 'dsr_delete'
   // E11.7-05: a partner application's confirmation link (D-050).
-  | 'partner_application';
+  | 'partner_application'
+  | 'partner_dashboard';
 
 /**
  * The outcome of consuming a token.

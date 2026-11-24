@@ -925,6 +925,16 @@ function taskEntries() {
     task('partners-apply-paused', '/partners/apply', '/partners/apply', {
       flags: { 'partners.enabled': false },
     }),
+    task(
+      'partners-dashboard-invalid',
+      '/partners/dashboard',
+      '/partners/dashboard',
+      {
+        flags: { 'partners.enabled': true },
+        status: 200,
+        record: true,
+      },
+    ),
     task('dsr-export-request', '/dsr', exportPath, { record: true }),
     task('dsr-delete-request', '/dsr', deletePath),
     task('dsr-export-confirm', '/dsr', `${exportPath}&t=emailed-link`),

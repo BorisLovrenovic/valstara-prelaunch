@@ -30,6 +30,7 @@ export const purposeLifetimeMs: Readonly<Record<TokenPurpose, number>> = {
   dsr_delete: DAY_MS,
   // E11.7-05: the same week as a waitlist verification link.
   partner_application: 7 * DAY_MS,
+  partner_dashboard: 30 * DAY_MS,
 };
 
 export interface IssuedToken {

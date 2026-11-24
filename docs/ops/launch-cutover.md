@@ -36,6 +36,7 @@ Status: authoritative. This describes the **store launch**, which happens after 
 | `/waitlist`, `/leaderboard` | Campaign mechanics | `301` to storefront `/` |
 | `/me` | Member status | `301` to the storefront account area |
 | `/partners`, `/partners/apply` | The pre-launch partner programme page and its application (E11.7-05), behind `partners.enabled` | Campaign mechanics: applications close at the freeze, then both `301` to storefront `/`. Partner attribution and codes are handed over through E11.7-14's export, not through these pages |
+| `/partners/dashboard` | Private pre-launch dashboard with expiring links (E11.7-09), behind `partners.enabled` | The host swap ends access to the waitlist dashboard and its signed settings form. E11.7-14 hands partner attribution over to the storefront |
 | `/r/[code]` | Permanent partner short link (E11.7-07) | Storefront serves the same URL with the [existing redirect behaviour](../features/partner-programme.md#links-and-codes) |
 | `/dsr` | Privacy-rights request | `301` to storefront privacy-rights page |
 | `/unsubscribe`, `/api/unsubscribe` | Email preference and RFC 8058 one-click endpoint | Storefront handles every imported, unexpired token at these paths, hashing the presented token and applying marketing withdrawal; a transactional-origin token also suppresses non-essential mail. After the token expires, both paths `301` to storefront email preferences |

@@ -96,3 +96,5 @@ The transactional registry includes `dsr_export` and `dsr_delete`, carrying only
 ## Partner programme contact workflow
 
 D-056 defers the dedicated Brevo partner sync. The E11.7-06 CSV is for founder review only. All manual Brevo uploads are retired, including uploads from previously saved files. The existing Brevo marketing contact sync and E9-05 signed erasure continue. Promotional broadcasts check verification, current marketing consent and suppression at dispatch under ADR-027.
+
+**Partner dashboard recovery (E11.7-09).** The transactional `partner_dashboard_link` template sends the private replacement link in HTML and plain text. Each issuance uses `partner-dashboard-link:{token_id}` as the business key, and the payload contains only the token reference. The queue and current-link change commit together. Recovery checks suppression before issuance and the email service checks again before dispatch. Optional partner email settings do not govern the requested link.

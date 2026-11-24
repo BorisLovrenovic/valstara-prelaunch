@@ -21,6 +21,7 @@ import { landingCopy } from '../../src/copy/landing.ts';
 import { leaderboardCopy } from '../../src/copy/leaderboard.ts';
 import { legalPageCopy } from '../../src/copy/legal.ts';
 import { memberStatusCopy } from '../../src/copy/member-status.ts';
+import { partnerDashboardCopy } from '../../src/copy/partner-dashboard.ts';
 import { partnersCopy } from '../../src/copy/partners.ts';
 import { pricesCopy } from '../../src/copy/prices.ts';
 import { seoCopy } from '../../src/copy/seo.ts';
@@ -62,7 +63,8 @@ const pageBindings: Record<string, string> = {
   '/me': 'memberStatusCopy.meta',
   // E11.7-05: the programme page from its content file, and the application.
   '/partners': 'programme',
-  '/partners/apply': 'copy',
+  '/partners/apply': 'pageCopy',
+  '/partners/dashboard': 'copy',
   '/privacy': 'legalPageCopy.privacy',
   '/privacy/storage': 'legalPageCopy.storage',
   '/terms': 'legalPageCopy.terms',
@@ -193,6 +195,7 @@ export async function collectSeoPages(
     page('/giveaway/award', giveawayAwardCopy.meta),
     page('/partners', partnerProgrammeContent),
     page('/partners/apply', partnersCopy.apply),
+    page('/partners/dashboard', partnerDashboardCopy),
     page('/404', errorPagesCopy.notFound.meta),
     page('/500', errorPagesCopy.serverError.meta),
     page('/giveaway/rules', rulesPageMetadata(current, true)),

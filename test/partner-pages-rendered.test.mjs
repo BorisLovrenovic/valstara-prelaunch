@@ -15,6 +15,7 @@ import { partnersCopy } from '../src/copy/partners.ts';
 import { partnerApplicationFieldNames } from '../src/server/partner/fields.ts';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import { seedPartnerDashboard } from './helpers/partner-dashboard-fixture.mjs';
 import { startAppServer } from './helpers/listen-port.mjs';
 
 const executeFile = promisify(execFile);
@@ -28,6 +29,8 @@ const appPassword =
 // Turnstile's siteverify, stubbed inside the app process: every non-empty
 // token passes, so no request leaves the machine.
 const siteverifyStub = `data:text/javascript,${encodeURIComponent(`
+  // Exit normally on teardown so V8 records coverage for the built routes.
+  process.once('SIGTERM', () => process.exit(0));
   const realFetch = globalThis.fetch;
   globalThis.fetch = async (input, init) => {
     const url = input instanceof Request ? input.url : String(input);
@@ -312,6 +315,185 @@ test('a refused code returns the form with the typed values and the alternatives
   assert.match(await invalid.text(), /data-task-state="link-invalid"/u);
 });
 
+test('dashboard recovery is Turnstile-first and returns the same rendered acknowledgement for eligible and unknown addresses', async () => {
+  const subscriberId = randomUUID();
+  const address = 'rendereddashboard@gmail.com';
+  await database.query(
+    `INSERT INTO subscriber (id, email, email_normalised, email_domain, status, verified_at, referral_code)
+      VALUES ($1, $2, $2, 'gmail.com', 'verified', CURRENT_TIMESTAMP, 'DBVIEWER2345')`,
+    [subscriberId, address],
+  );
+  const original = await seedPartnerDashboard(
+    database,
+    subscriberId,
+    process.env.EMAIL_TOKEN_SECRET,
+  );
+  const referredId = randomUUID();
+  const referredEmail = 'dashboard-referred@example.test';
+  await database.query(
+    `INSERT INTO subscriber (id, email, email_normalised, email_domain, status,
+      verified_at, referral_code, referred_by_id)
+     VALUES ($1, $2, $2, 'example.test', 'verified', '2026-11-05T10:01:00Z',
+      'DBFRIEND2345', $3)`,
+    [referredId, referredEmail, subscriberId],
+  );
+  await database.query(
+    `INSERT INTO referral_edge (id, referrer_id, referred_id, state, reward_state,
+      created_at, confirmed_at, partner_id, welcome_discount_pct, signup_confirmed_count)
+     VALUES ($1, $2, $3, 'confirmed', 'none', '2026-11-05T10:00:00Z',
+      '2026-11-05T10:01:00Z', $4, 15, 0)`,
+    [randomUUID(), subscriberId, referredId, original.partnerId],
+  );
+  const recoveryPath = '/partners/apply?operation=dashboard-recovery';
+  const dashboardPath = '/partners/dashboard';
+  const form = await (
+    await get(recoveryPath + '&t=never-render-this-bearer')
+  ).text();
+  assert.match(form, /name="email_address"/u);
+  assert.match(form, /challenges\.cloudflare\.com\/turnstile\/v0\/api\.js/u);
+  assert.doesNotMatch(
+    form,
+    /never-render-this-bearer|name="token"|name="full_name"/u,
+  );
+
+  const bucketCount = () =>
+    database.query(
+      "SELECT count(*)::int AS count FROM rate_limit_bucket WHERE key LIKE 'partner-dashboard:recover:%'",
+    );
+  const startBuckets = await bucketCount();
+  const challengeFailed = await post(recoveryPath, { email_address: address });
+  assert.equal(challengeFailed.status, 400);
+  assert.match(
+    visibleText(await challengeFailed.text()),
+    /confirm that request/u,
+  );
+  assert.deepEqual((await bucketCount()).rows, startBuckets.rows);
+
+  const known = await post(recoveryPath, {
+    email_address: 'R.E.N.D.E.R.E.D.DASHBOARD+alias@gmail.com',
+    turnstile_token: 'ok',
+  });
+  const unknown = await post(recoveryPath, {
+    email_address: 'unknown-rendered@example.test',
+    turnstile_token: 'ok',
+  });
+  assert.equal(known.status, 200);
+  assert.equal(unknown.status, known.status);
+  const acknowledgement = await known.text();
+  assert.equal(await unknown.text(), acknowledgement);
+  assert.match(
+    acknowledgement,
+    /match your address to an eligible partnership/u,
+  );
+  assert.doesNotMatch(
+    acknowledgement,
+    /challenges\.cloudflare\.com|rendereddashboard@gmail/u,
+  );
+  assert.equal(known.headers.get('set-cookie'), null);
+
+  const limited = await post(recoveryPath, {
+    email_address: address,
+    turnstile_token: 'ok',
+  });
+  assert.equal(limited.status, 429);
+  const sends = await database.query(
+    "SELECT payload FROM email_send WHERE template = 'partner_dashboard_link' AND subscriber_id = $1",
+    [subscriberId],
+  );
+  assert.equal(sends.rows.length, 1);
+  const replacementId = sends.rows[0].payload.token_id;
+  assert.deepEqual(sends.rows[0].payload, { token_id: replacementId });
+  const replacement = deriveEmailToken(
+    replacementId,
+    process.env.EMAIL_TOKEN_SECRET,
+  );
+
+  const show = (token) => get(`${dashboardPath}?t=${token}`);
+  const valid = await show(replacement);
+  assert.equal(valid.status, 200);
+  assert.equal(valid.headers.get('set-cookie'), null);
+  assert.equal(valid.headers.get('referrer-policy'), 'no-referrer');
+  assert.equal(valid.headers.get('cache-control'), 'private, no-store');
+  assert.equal(valid.headers.get('x-robots-tag'), 'noindex');
+  const html = await valid.text();
+  assert.match(visibleText(html), /https:\/\/valstara\.com\/r\/DASHBOARD2345/u);
+  assert.match(
+    visibleText(html),
+    /Earnings start with early access in September 2027\./u,
+  );
+  assert.match(visibleText(html), /fixture-v1/u);
+  assert.match(
+    visibleText(html),
+    /\bConfirmed 1 Pending confirmation 0 Voided 0\b/u,
+  );
+  assert.ok(
+    !html.includes(referredId),
+    'the referred subscriber ID stays private',
+  );
+  assert.ok(
+    !html.includes(referredEmail),
+    'the referred subscriber email stays private',
+  );
+  assert.doesNotMatch(
+    html,
+    /page-view\.js|challenges\.cloudflare\.com|rendereddashboard@gmail|Dashboard Fixture/u,
+  );
+  const getRobots = await get('/robots.txt');
+  assert.match(await getRobots.text(), /^Disallow: \/partners\/dashboard$/mu);
+  const sitemap = await get('/sitemaps/pages.xml');
+  assert.doesNotMatch(await sitemap.text(), /\/partners\/dashboard/u);
+
+  const invalid = await show('invalid');
+  const retired = await show(original.token);
+  assert.equal(retired.status, invalid.status);
+  const invalidHtml = await invalid.text();
+  assert.equal(await retired.text(), invalidHtml);
+  await database.query(
+    "UPDATE verification_token SET expires_at = '2026-01-01T00:00:00Z' WHERE id = $1",
+    [replacementId],
+  );
+  const expired = await show(replacement);
+  assert.equal(expired.status, invalid.status);
+  assert.equal(await expired.text(), invalidHtml);
+  await database.query(
+    "UPDATE partner SET status = 'terminated', status_changed_at = CURRENT_TIMESTAMP WHERE id = $1",
+    [original.partnerId],
+  );
+  const terminated = await show(replacement);
+  assert.equal(terminated.status, invalid.status);
+  assert.equal(await terminated.text(), invalidHtml);
+});
+
+test('D-064 rejects other origins and metadata and still requires a valid settings token', async () => {
+  const send = (headers, path = '/partners/dashboard') =>
+    globalThis.fetch(origin() + path, {
+      method: 'POST',
+      headers,
+      body: new globalThis.URLSearchParams({
+        display_name: 'Blocked',
+        settings_token: 'invalid',
+      }),
+    });
+  for (const headers of [
+    { 'Sec-Fetch-Site': 'same-origin' },
+    { Origin: 'https://foreign.example', 'Sec-Fetch-Site': 'same-origin' },
+    { Origin: 'null' },
+    { Origin: 'null', 'Sec-Fetch-Site': 'same-site' },
+    { Origin: 'null', 'Sec-Fetch-Site': 'cross-site' },
+  ]) {
+    assert.equal((await send(headers)).status, 403, JSON.stringify(headers));
+  }
+  const matched = { Origin: 'null', 'Sec-Fetch-Site': 'same-origin' };
+  assert.equal(
+    (await send(matched, '/partners/apply?operation=dashboard-recovery'))
+      .status,
+    403,
+  );
+  const invalidToken = await send(matched);
+  assert.equal(invalidToken.status, 400);
+  assert.match(await invalidToken.text(), /settings form has expired/u);
+});
+
 test('flag off shows an honest paused message and accepts nothing', async () => {
   await app.stop();
   await database.query(
@@ -342,4 +524,10 @@ test('flag off shows an honest paused message and accepts nothing', async () => 
     await confirm.text(),
     /data-task-state="(?:paused|link-invalid)"/u,
   );
+  const dashboard = await get('/partners/dashboard?t=invalid');
+  assert.equal(dashboard.status, 503);
+  assert.match(await dashboard.text(), /The partner programme is paused/u);
+  const recovery = await get('/partners/apply?operation=dashboard-recovery');
+  assert.equal(recovery.status, 503);
+  assert.doesNotMatch(await recovery.text(), /challenges\.cloudflare\.com/u);
 });

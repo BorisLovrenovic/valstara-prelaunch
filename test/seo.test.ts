@@ -184,6 +184,7 @@ test('sitemap routes reconcile with page files and include only the current rule
       file.startsWith('src/pages/api/') ||
       file.endsWith('/me.astro') ||
       file.endsWith('/verify.astro') ||
+      file === 'src/pages/partners/dashboard.astro' ||
       file.endsWith('/404.astro') ||
       file.endsWith('/500.astro') ||
       // The price routes have their own child sitemaps (E11.6-10, E11.6-12).
@@ -223,6 +224,8 @@ test('sitemap routes reconcile with page files and include only the current rule
   );
   assert.ok(!routes.includes('/me'));
   assert.ok(!routes.includes('/verify'));
+  assert.ok(pageFiles.includes('src/pages/partners/dashboard.astro'));
+  assert.ok(!routes.includes('/partners/dashboard'));
   // E11.5-10: the branded error pages are noindex and never in the sitemap.
   assert.ok(pageFiles.includes('src/pages/404.astro'));
   assert.ok(pageFiles.includes('src/pages/500.astro'));
@@ -251,6 +254,7 @@ test('robots excludes only the named private and API route prefixes', async () =
     'Disallow: /api/',
     'Disallow: /me',
     'Disallow: /verify',
+    'Disallow: /partners/dashboard',
   ]);
   // The noindex error pages stay crawlable: a disallowed page's noindex is
   // never read (E11.5-10).

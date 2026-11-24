@@ -255,6 +255,7 @@ test('every /verify, /me, leaderboard, task and error state is on the sheet', ()
     'partners-apply',
     'partners-apply-confirm',
     'partners-apply-paused',
+    'partners-dashboard-invalid',
     'dsr-export-request',
     'dsr-delete-request',
     'dsr-export-confirm',
