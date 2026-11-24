@@ -1,6 +1,6 @@
 # Valstara Launch Playbook — Consolidated Brief
 
-**Version:** 2.4 · **Updated:** 24 November 2026 (2.1 applied the founder's answers of 21 Nov; 2.2 the founder's authorisations of 22 Nov; 2.3 a full review against everything merged through E11.7-08; 2.4 the founder's answers to that review, logged in Part 11) · **Owner:** founder
+**Version:** 2.5 · **Updated:** 24 November 2026 (2.1 applied the founder's answers of 21 Nov; 2.2 the founder's authorisations of 22 Nov; 2.3 a full review against everything merged through E11.7-08; 2.4 the founder's answers to that review; 2.5 the founder's acceptance of the four remaining recommendations, all logged in Part 11) · **Owner:** founder
 
 This playbook began as a synthesis of three independent go-to-market reports (August 2026). Since then the founder has made decisions and the pre-launch site has been built. **Version 2 brings the playbook into line with both.** Where the reports and the project disagree, the project wins.
 
@@ -45,11 +45,10 @@ These are decided or built. A marketing action that contradicts one of them is w
 | Now → 1 Sep 2027 | Pre-launch campaign: waitlist, referrals, giveaway, partner programme |
 | **December 2026 (planned)** | The pre-launch website goes live. First Trust Ledger entry (3.6) |
 | **1 Oct 2026, or the day the waitlist goes live if later** | Giveaway entries open (in practice, at go-live) |
-| **1 Mar 2027** | Giveaway entries close |
-| **1 Apr 2027** | Giveaway draw |
 | April–June 2027 | Most active partner recruiting. Partner email ramps up from about April |
 | July–August 2027 | Latest useful window for creator content (it must land before early access) |
-| **1 Sep 2027** | **Early access** opens on the main platform for wave 1. First real orders. Pre-launch partner commission starts, and the post-launch partner competition opens |
+| **31 Aug 2027, 23:59:59 UTC** | Giveaway entries close (decided 24 Nov 2026; the current rules still say 1 Mar 2027 until E11.8-05 publishes the new revision) |
+| **1 Sep 2027** | Giveaway draw. **Early access** opens on the main platform for wave 1. First real orders. Pre-launch partner commission starts, and the post-launch partner competition opens |
 | **1 Oct 2027** | **Public launch.** Main student-ambassador push in the first weeks of the academic year |
 | 31 Dec 2027 | Post-launch partner competition closes |
 | **1 Oct 2028** | The pre-launch 10% commission window ends (0.4) |
@@ -60,7 +59,7 @@ These are decided or built. A marketing action that contradicts one of them is w
 
 ## 0.3 What a member gets (decided 17 Nov 2026; on the site since E11.7-04)
 
-- **Joining:** email only, with a separate, **unticked** marketing opt-in. **No country is asked.** The site says "Open to people aged 18 and over." **The founder decided on 24 Nov 2026 to open the waitlist to people aged 13 and over, with the giveaway for people aged 18 and over only.** It is not built yet: three questions come first (11.4, Q4), then a ticket. Double opt-in: **nothing counts until the address is verified.**
+- **Joining:** email only, with a separate, **unticked** marketing opt-in. **No country is asked.** The site says "Open to people aged 18 and over." **The founder decided on 24 Nov 2026 to open the waitlist to people aged 13 and over, with the giveaway for people aged 18 and over only**: the marketing box becomes 16 or over, a separate unticked 18+ box is needed to enter the giveaway, and a lawyer reviews the wording first (P12). It is ticket E11.8-06, not built yet. Double opt-in: **nothing counts until the address is verified.**
 - **Early access (wave 1, 1 Sep 2027):**
   - the **first 1,000 verified members**, by signup order, whatever their referrals; that place is never lost;
   - after them, **any member with 3 or more confirmed, non-voided referrals**;
@@ -210,7 +209,7 @@ Rules for using the line:
    - the price index, its pages and its monthly report;
    - organic content.
 
-   **The giveaway is a referral accelerator with a fixed end** (entries close 1 Mar 2027), not the proposition.
+   **The giveaway is a referral accelerator with a fixed end** (entries close 31 Aug 2027, once E11.8-05 publishes the new rules revision), not the proposition.
 5. **The growth engine (locked):** the Trust Ledger and building in public, the monthly price index, the programmatic price pages, and the overpay calculator. The *Trust Ledger* was defined by the founder on 22 Nov 2026 (Part 3.6). The overpay calculator is later scope, outside this repository, and reads the same price data.
 6. **Honesty is the marketing.** Real counts, held coupons said to be held, no countdowns, no scarcity beyond the one approved line, no fake testimonials and no astroturfing. For a suspicious buyer, each of these is a tell that sends them away, and one discovered lie undoes the brand.
 7. **A two-person team owns few channels deeply.** Secure every handle, run two or three channels properly, and let the rest carry repurposed content (Part 3).
@@ -236,7 +235,7 @@ Rules for using the line:
   - **"No card needed" is accurate:** the signup asks for an email only.
   - **Say "a month before everyone else" or "before public launch", not "2 months before everyone else".** Early access on 1 Sep 2027 and public launch on 1 Oct 2027 are one month apart.
 - **Referral reminders work** (founder, 21 Nov 2026: adopted). Field research (Journal of Marketing Research, 2025) found that merely reminding referred customers they had joined through a referral raised their own referral likelihood. Tell referred members that a friend brought them in.
-  - **Where it can go today:** the verification success page already names the partner for a partner-referred person. **The weekly update cannot carry it:** E11.7-04's founder decision (D-048) keeps the weekly free of per-recipient lines (its payload is only the snapshot and a status token), and "a friend brought you here" is true only for some recipients. **[Open] (11.4, Q2)** A line in the welcome email for every referred member, the storefront's post-purchase emails after launch (9.2, step 3), or both.
+  - **Where it can go today:** the verification success page already names the partner for a partner-referred person. **The weekly update cannot carry it:** E11.7-04's founder decision (D-048) keeps the weekly free of per-recipient lines (its payload is only the snapshot and a status token), and "a friend brought you here" is true only for some recipients. **Decided (founder, 24 Nov 2026):** both. A line in the welcome email for every member referred by another member, naming no one (ticket E11.8-04), and the storefront's day-7 email after launch (9.2, step 3).
 - **Survey completion is the leading quality signal.** Target 35%+ of verified members (a report benchmark, not our data). The category answers decide which products and stories lead each launch email.
 
 ## 2.3 Benchmarks to beat (report benchmarks; replace them with our own medians after 4–6 weeks)
@@ -389,7 +388,7 @@ Record the date and the source for each. The partner kit's giveaway wording must
 - **It is the trust promise, shown with proof.** Anyone can say "we're the accountable ones". Publishing the refund count every month shows it, and a marketplace cannot easily copy it.
 - **It answers what this category is criticised for.** The founder's research found the category's reputation was damaged by secrecy, slow dispute handling and undisclosed paid promotion (the G2A controversies of 2016 and 2019). The Ledger is the opposite of each.
 - **It gives partners something to point to.** A partner puts their own reputation on the line. *"Here are Valstara's real numbers, refunds included"* is their best answer to "is this legit?"
-- **It is ready-made content every month.** One entry feeds the partner digest's founder note, a building-in-public post and, once a channel exists (11.4, Q1), a member email.
+- **It is ready-made content every month.** One entry feeds the partner digest's founder note, a building-in-public post and the founder note in the weekly update (E11.8-03).
 
 ### Phase 1: pre-launch (December 2026 → September 2027)
 
@@ -457,7 +456,7 @@ It starts reporting real operations, with **fixed definitions that are never cha
 **Distribution:**
 
 - links from the guarantee page, `/partners` and the site footer;
-- a summary in the partner digest's founder note, and in a member email once there is one to carry it: **there is no monthly member email today**, only the weekly update, which carries no editorial content (11.4, Q1);
+- a summary in the partner digest's founder note, and as the founder note in the weekly update to consented members (E11.8-03, decided 24 Nov 2026; until it ships, the weekly update carries no editorial content);
 - one building-in-public post per month.
 
 **Risks:**
@@ -486,10 +485,11 @@ It starts reporting real operations, with **fixed definitions that are never cha
 - **Audiences that buy digital goods, in any niche** (brand guidelines §10.3): AI and productivity, students and study tools, streaming and entertainment, software and design, tech deals, personal finance and "save money" creators, and gaming for in-game currency.
 - **Never associate with** gambling, casino, skin-gambling or case-opening, nicotine, alcohol, or adult content (guidelines §10.1).
 - **Prefer creators whose audience is mostly in our 20 price-index markets and over 18.** Do not rule out creators with younger audiences (founder, 21 Nov 2026). Many of our products are used by teenagers (Netflix and Spotify, for example), and in-game currency such as Roblox's Robux is being considered. Teenagers are future customers even though they cannot enter the giveaway.
-  - **Decided (founder, 24 Nov 2026): the waitlist opens to people aged 13 and over; the giveaway stays 18 and over, and says so plainly.** It needs a ticket, after three questions (11.4, Q4). Until it ships, the site still says "Open to people aged 18 and over", and no campaign may invite under-18s to join. The facts behind the questions:
-    - The minimum age for **marketing consent** without a parent's authorisation is 13 to 16 depending on the country (GDPR Article 8; for example 16 in Germany, Ireland, the Netherlands and Poland, and 13 in the UK, Sweden and Denmark). The site collects neither age nor country.
-    - **Giveaway entries** currently accrue for every verified member, and age is checked only with provisional winners at award time.
-    - Inviting under-18s brings in the UK Age Appropriate Design Code. Under ADR-030, the founder's waiver of legal review does not cover "a material change to this scope".
+  - **Decided (founder, 24 Nov 2026): the waitlist opens to people aged 13 and over; the giveaway stays 18 and over, and says so plainly.** It is ticket E11.8-06, behind `waitlist.age_13`. Until it ships, the site still says "Open to people aged 18 and over", and no campaign may invite under-18s to join. The three conditions the founder accepted:
+    - **Marketing email is for people aged 16 or over**, and the box says so. The age for marketing consent without a parent's authorisation is 13 to 16 depending on the country (GDPR Article 8; for example 16 in Germany, Ireland, the Netherlands and Poland, and 13 in the UK, Sweden and Denmark), and the site collects neither age nor country.
+    - **Giveaway entry needs a separate, unticked "I'm 18 or over, enter me in the giveaway" box.** Without it, a member holds no entries, so `/me` never shows a 15-year-old entries they could not win.
+    - **A lawyer reviews the age change first (P12).** Inviting under-18s brings in the UK Age Appropriate Design Code, and ADR-030's waiver of legal review does not cover "a material change to this scope".
+  - **For creators with teen audiences, after E11.8-06 ships:** say "join the waitlist" to everyone, and say the giveaway is for 18 and over in the same breath. Never "join and win" to a teen audience.
     - Partner applicants stay 18 or over.
     - Advertising to minors is restricted in the UK, the EU and the US (COPPA for under-13s), and so is content placed in children's media.
     - **Roblox (Robux) is not on the P8 launch provider list.** It cannot be shown or promised as "coming" until it is added there.
@@ -599,7 +599,7 @@ This is advice for the onboarding video, the guide and the kit, not a plan Valst
 2. **No incentives beyond the official perks.** No paying, gifting or raffling to get signups. Bought signups do not buy, and the founder can void any referral.
 3. **Only real, verified people count.** Duplicate or throwaway addresses are flagged and voided, and voided referrals drop out of the ladder, wave 1 and the dashboard.
 4. **Expect campus Wi-Fi to trigger velocity flags.** Many signups from one campus network share an IP prefix, so a busy event can raise IP-velocity flags. Flags never auto-ban and the founder reviews them (review only, see below). Ask ambassadors to tell the founder the date and place of each event, so flags from it can be judged in context.
-5. **Ambassadors must be 18 or over**, as every partner must. The waitlist itself says 18+ today. Once the founder's 13+ decision is built (11.4, Q4), friends aged 13–17 may join, but they cannot enter the giveaway, and nothing may promise them that they can.
+5. **Ambassadors must be 18 or over**, as every partner must. The waitlist itself says 18+ today. Once the founder's 13+ decision is built (E11.8-06), friends aged 13–17 may join, but they cannot enter the giveaway, and nothing may promise them that they can.
 6. **Disclose.** "I'm a Valstara partner and earn commission on purchases" on posts. In person, saying it plainly is enough and is the honest thing to do.
 7. **No university names, crests or logos** on flyers or posts, and no implication of official endorsement.
 
@@ -614,7 +614,7 @@ This is advice for the onboarding video, the guide and the kit, not a plan Valst
 
 ## 5.5 Timing and measurement
 
-- **Recruit now, through spring term 2027**, so ambassadors build their referral count before early access (wave 1 for their friends) and before the giveaway closes on 1 March 2027.
+- **Recruit now, through spring term 2027**, so ambassadors build their referral count before early access (wave 1 for their friends) and before the giveaway closes on 31 August 2027.
 - **Main push: the start of the academic year, around public launch** (1 Oct 2027). The `/r/{CODE}` links and codes keep working on the main platform, so autumn flyers can be printed with them. **Customers an ambassador refers after public launch fall under post-launch terms (0.4),** and the onboarding video must say so.
 - **Measurement is per ambassador, not per event.** One code per partner, and no sub-IDs, by design. To judge an event, compare that ambassador's signups-per-week before and after it on their dashboard. Judge ambassadors on confirmed signups, their survey categories, and, after early access, first orders.
 
@@ -854,7 +854,7 @@ Kept, with changes. Hooks that named and attacked competitors were rewritten to 
 | Milestone ladder: 1 referral → earlier window; 3 → locked discount; 5 → higher draw | **Retired.** The first 1,000 or 3 referrals give wave 1; coupons at 3/21/39 stepping to 30%; held until a friend's first order | E11.7-03; ADR-025 amendment |
 | "Founding Price Lock" for members | Not adopted. Founding vouchers and prepaid sales were **dropped**. "Founding" applies only to the **partner terms**, which are pre-launch only (0.4) | Growth decisions; founder 21 Nov 2026 |
 | Fraud rules on device, IP and payment identity; cap referrals per account | **No device fingerprinting, ever.** Email normalisation, disposable/MX checks, self-referral flags, and hashed IP-prefix velocity flags. Flags only; humans decide. No referral cap (coupons end at 54; referrals keep counting) | ADR-013; E5; standing rules |
-| Giveaway rules list eligible territories and void locations | **One global draw under Hong Kong law, no country excluded or collected at entry.** Prize: 5 × €300 bundles; entries close 1 Mar 2027; draw 1 Apr 2027 | ADR-026, ADR-027 |
+| Giveaway rules list eligible territories and void locations | **One global draw under Hong Kong law, no country excluded or collected at entry.** Prize: 5 × €300 bundles; entries close 31 Aug 2027 and the draw is on 1 Sep 2027 (founder, 24 Nov 2026; E11.8-05) | ADR-026, ADR-027 |
 | Initial form: email → country → product | **Email only.** No country. The survey comes after verification: categories plus buying frequency | ADR-026; ADR-031 |
 | Hero: "Digital subscriptions, sold with accountability"; CTA "Join Founding Access"; country selector | Live: eyebrow "Digital goods you know are real.", H1 "Premium digital goods, for less.", CTA "Join the waitlist". No country selector | E11.5 final design; landing copy |
 | Waitlist tools: LaunchList, KickoffLabs, Viral Loops | **Built, not bought.** Hosted waitlist and referral SaaS is permanently out of scope (it sells ranking inflation and taxes success) | ADR-020; AGENTS.md |
@@ -910,7 +910,10 @@ Kept, with changes. Hooks that named and attacked competitors were rewritten to 
 | **24 Nov:** the `/me` early-access fact | Shows the short month, "Sep 2027"; sentences keep "September 2027". Recorded on E11.7-04's plan entry, replacing D-049's smaller type step | — |
 | **24 Nov:** where the two new tickets go | Epic E11.8 (E11.8-01 the Trust Ledger page, E11.8-02 the per-platform report), after E11.7-15 and before GATE-8, which now audits E11.6 + E11.7 + E11.8; P11 added for the Ledger's founder text | 3.6, 0.7 |
 | **24 Nov:** after public launch | Partners on case-by-case terms; a separate affiliate system with uniform or laddered rates. Neither is decided here | 0.4 |
-| **24 Nov:** age | The waitlist opens to 13 and over; the giveaway is 18 and over only. Not built yet (11.4, Q4) | 0.3, 4.2, 5.4 |
+| **24 Nov:** age | The waitlist opens to 13 and over; the giveaway is 18 and over only; marketing email 16 or over; a separate unticked 18+ box to enter; a lawyer's review first (P12). Ticket E11.8-06 | 0.3, 4.2, 5.4 |
+| **24 Nov:** the founder note to members | A short note in the weekly update, from a content file, with the send-time consent and suppression checks. No Brevo-editor campaigns to members. Ticket E11.8-03 | 3.6, 9.2 |
+| **24 Nov:** the referral reminder | A welcome-email line for members referred by another member, naming no one (E11.8-04), plus the storefront's day-7 email after launch | 2.2 |
+| **24 Nov:** giveaway dates | Entries close 31 Aug 2027, 23:59:59 UTC; draw 1 Sep 2027. A new rules revision before `giveaway.open` (E11.8-05) | 0.2, 3.4 |
 | **24 Nov:** same-network signups | Review only: flag, never block; judge partners on post-launch activity | 5.4 |
 | **24 Nov:** support response time | "Within 24–48 hours; up to 7 days for investigations or high volume". The founder moderates Discord | 3.5 |
 | **24 Nov:** no supplier register | Supplier counts only in the Ledger; "the Supplier Register" removed from the brand guidelines | 3.6 |
@@ -934,7 +937,8 @@ The founder authorised the changes in 11.1 "everywhere in all documents", and th
 - the spec `docs/features/trust-ledger.md`, with the founder's definition verbatim;
 - the report's section in `docs/features/analytics.md`;
 - `/trust-ledger` in the SEO route plan and the cutover route table;
-- the brand guidelines' programme example amended.
+- the brand guidelines' programme example amended;
+- after the founder accepted the four recommendations: **E11.8-03** (the founder note in the weekly update), **E11.8-04** (the referral reminder), **E11.8-05** (the rules revision with the new dates) and **E11.8-06** (the 13+ waitlist with the 18+ giveaway box), **prerequisite P12** (the lawyer's review), the superseded dates on P4, and "planned" notes in the signup, giveaway and email specs.
 
 ## 11.3 Tasks that stay open after their first decision
 
@@ -955,14 +959,21 @@ The founder authorised the changes in 11.1 "everywhere in all documents", and th
 
 ## 11.4 Still open, and what moved to the to-do list (24 November 2026)
 
-### Questions that still need the founder's answer
+### Answered on 24 November 2026 ("Use recommendations")
+
+| # | Question | Answer, and where it is recorded |
+|---|---|---|
+| Q1 (was D3) | How Valstara sends members a written message | A founder note in the weekly update, from a content file (E11.8-03). No Brevo-editor campaigns to members |
+| Q2 (was D4) | The "a friend invited you" reminder | A welcome-email line for member-referred members (E11.8-04), plus the storefront's day-7 email after launch |
+| Q3 (was D8) | The giveaway's dates | Entries close 31 Aug 2027; draw 1 Sep 2027 (E11.8-05) |
+| Q4 (was D9) | The three conditions for 13+ | Marketing 16+; a required, unticked 18+ giveaway box; a lawyer's review (P12, E11.8-06) |
+
+### Still open
 
 | # | Question | Why it is open |
 |---|---|---|
-| Q1 (was D3) | **Editorial email to members.** How Valstara sends members a written message, e.g. the monthly Trust Ledger summary, the price report, the partner-programme invitation or launch news | The system sends only per-person emails, the fixed weekly update (leaderboard and `/me` link, D-048) and one launch announcement. Options: (a) an editorial block in the weekly update, written in a content file and shipped with a deploy (a new ticket); (b) manual campaigns in the Brevo dashboard, which bypass the site's send-time consent and suppression re-check and its one-click unsubscribe, so they bend hard rule 5; (c) no member newsletter before launch |
-| Q2 (was D4) | **The "a friend invited you" reminder** to people who joined through a referral (2.2) | Partner-referred people already see "You joined through MAYA" on the verification page and in the confirmation email. People referred by an ordinary member see nothing. Options: (a) a line in the welcome email for every referred member (a small ticket); (b) only in the storefront's post-purchase emails after launch; (c) both |
-| Q3 (was D8) | **The giveaway's dates** | The published rules (P4, founder-supplied 2026-09-25, revision `VAL-GW-LAUNCH-20261009-r1`) open entries at go-live, close them on **1 March 2027** and draw on **1 April 2027**. With go-live in December 2026, that is a three-month giveaway that ends six months before early access, with prizes due before the store exists. A published revision can't be edited, but a new revision can be published with new dates; entries keep the revision they accrued under |
-| Q4 (was D9) | **Three questions before the 13+ change can be built** | (a) **Marketing email for under-16s:** limit the marketing opt-in to people aged 16 or over, with the box saying so? (b) **Giveaway entries for 13–17s:** add an "I'm 18 or over" tick that is required to enter, or keep entries for everyone and exclude under-18s only at award time, as today? (c) **Legal:** a lawyer's review of the changed privacy notice and terms, or a new founder risk acceptance? ADR-030's waiver does not cover a material change to its scope |
+| Q5 | **A later way into the giveaway.** A member who skips the 18+ box at signup can't enter later, because E11.8-06 builds the box at signup only. Should `/me` offer it? | It would be a new write on `/me`, authenticated by the status link. Without it, someone who turns 18 during the campaign, or simply missed the box, stays out |
+| Q6 | **Does a referred 13–17-year-old earn their referrer an entry?** | Today every verified referral earns one. Part of P12: the lawyer's answer decides it, because counting minors could reward adults for recruiting them |
 
 ### Moved to the marketing to-do list (founder, 24 Nov 2026)
 
@@ -973,8 +984,8 @@ These are tasks, not decisions. Each is settled when its task is worked on, and 
 - creator review subscriptions before the store exists: delivery, timing, what the review shows (was D7; goes with the asset kit);
 - trademark clearance for "Valstara" (was D12);
 - the definitions of an evaluated, verified and rejected supplier for the Ledger (was D13, part of P11);
-- every founder input: P10, P5, P6, P7, P11, the partner and creator contract template, the giveaway bundle contents and sanctions list, the ten approved buyer answers, the digest's founder note, and the dated competitor-rate captures;
+- every founder input: P10, P5, P6, P7, P11, P12 (the lawyer's review of the age change), the weekly founder notes, the partner and creator contract template, the giveaway bundle contents and sanctions list, the ten approved buyer answers, the digest's founder note, and the dated competitor-rate captures;
 - every research task: platform giveaway rules, direct-message and link rules, ambassador and campus rules per country, creator targeting, audience research, journalist lists, the GEO prompt set, and Loom's limits.
 
-**Settled, no longer open:** where the two new tickets go (Epic E11.8); post-launch rates (case-by-case partners plus a separate affiliate system, decided outside this repository); same-network signups (review only); the Discord response time and moderation; the supplier register (none).
+**Settled, no longer open:** Q1–Q4 (above); where the new tickets go (Epic E11.8); post-launch rates (case-by-case partners plus a separate affiliate system, decided outside this repository); same-network signups (review only); the Discord response time and moderation; the supplier register (none).
 
