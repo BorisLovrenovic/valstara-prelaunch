@@ -4341,6 +4341,11 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - The snapshot is recomputed on schedule and served from cache
 
 **Tests:** No public route · ranking with voids · the name opt-in · the snapshot schedule and cache.
+
+**Founder decisions (2026-11-24):**
+1. **Use the optional leaderboard display name as the sole source of initials (D-066 Q1, option A).** Explain in the dashboard settings before saving that other partners may see initials from the optional name even when the choice to show the full display name is off. Show a generic label if the optional name is blank or yields no usable initials. Show the full display name only with current opt-in. Keep the application name out of the leaderboard. See `docs/features/partner-programme.md#pages-and-surfaces` and `docs/legal/compliance.md#2-lawful-basis-and-the-record-of-processing`. *(Accepted under the founder's standing rule for high-confidence recommendations.)*
+2. **Serve cached ranks and counts with current eligibility and name settings checked on every authenticated render (D-066 Q2, option A).** Keep the hourly, batch-capped ranking and its timestamp in the snapshot, with internal partner references for the current checks. Read current eligibility, display name and opt-in in a bounded lookup for the cached rows being served, including the viewer's own rank. Omit ineligible rows and suppress a withdrawn full name on the first request after the change commits. A partner whose signed erasure confirmation has committed is omitted while erasure is pending and after erasure completes. Apply the same checks to the last good snapshot if refresh fails, and withhold rows whose current eligibility or name settings cannot be verified. Serve the remaining cached ranks and counts with their snapshot timestamp, without re-ranking or refilling on the request path. E11.7-13 can use the same snapshot as its source of rank. See `docs/features/leaderboard.md#edge-cases-and-error-states` and `docs/legal/compliance.md#2-lawful-basis-and-the-record-of-processing`. *(Accepted under the founder's standing rule for high-confidence recommendations.)*
+
 **Docs:** `docs/features/leaderboard.md` · `docs/features/partner-programme.md`
 
 ### E11.7-11 — The asset kit: QR codes, message templates and the print flyer
