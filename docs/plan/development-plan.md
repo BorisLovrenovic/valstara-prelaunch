@@ -147,6 +147,8 @@ flowchart TD
 
 **E11.7 runs after E11.6 and before E12 (founder-authorised 2026-11-17).** It adds the temporary partner programme and replaces the campaign's reward rules with wave 1 and the coupon ladder, so E12 deploys and gates the site with them.
 
+**E11.7-11 runs after E11.7-14 and before E11.7-15 (founder-authorised 2026-11-24, D-068).** It waits on P10; E11.7-12, E11.7-13 and E11.7-14 do not depend on it and run first. The ticket is not split and its scope is unchanged.
+
 **E11.8 runs after E11.7 and before E12 (founder-authorised 2026-11-24).** It adds the Trust Ledger page, whose first entry is due when the site goes live in December 2026, the founder's per-platform signup report, the founder note in the weekly update, the referral reminder, the giveaway's new dates and the 13+ waitlist, so E12 deploys and gates the site with them. E11.8-06 waits on a lawyer (P12) and may move after E12 if P12 is late.
 
 **Everything through E11 is built and verified locally.** The VPS is provisioned once, at the end, and **E12 collects every piece of evidence that needs real infrastructure** — the rollback RTO, a restore from R2, capacity on the actual box (founder decision, 2026-08-27).
@@ -4374,6 +4376,10 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - **No third-party request is made**, and the video links are plain links
 
 **Tests:** QR decoding · template filling · print layout at both sizes · the third-party gate.
+
+**Founder decisions (2026-11-24):**
+1. **Run E11.7-11 after E11.7-14, unsplit, once P10 is supplied.** (D-068 Q1, option C.) The ticket keeps its full scope: the QR codes, message templates, flyer and the P10 kit files under `public/partners/kit/` with video links from a content file. It also owns the partner welcome email, its catch-up and later-activation sends and the relocated welcome-email test exactly as recorded under D-057 on [E11.7-07](#e117-07--activation-rcode-partner-attribution-and-retroactive-attribution); that test is part of this ticket's Tests line. No placeholder kit file ships. When P10 is supplied, record it in `docs/prerequisites/founder-prerequisites.md` with each file's sharing right.
+
 **Docs:** `docs/features/partner-programme.md` · `docs/brand/page-design.md`
 
 ### E11.7-12 — The auto-invite and the first-signup email
