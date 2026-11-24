@@ -379,7 +379,8 @@ test('suppression is checked before queueing and again at dispatch', async () =>
     text: "INSERT INTO suppression (email_normalised, reason, source) VALUES ($1, 'bounce_hard', 'resend')",
     values: [during.email],
   });
-  const summary = await emailService(sent.splice(0)).dispatch(100);
+  sent.length = 0;
+  const summary = await emailService(sent).dispatch(100);
   assert.equal(summary.suppressed, 1);
   assert.equal(summary.sent, 0);
   assert.deepEqual(sent, []);

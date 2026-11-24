@@ -111,7 +111,9 @@ Astro.response.status =
     color: var(--midnight);
   }
 
-  .flyer > * {
+  /* Zero specificity on the parent, so the element rules below set
+     their own margins over this reset. */
+  :where(.flyer) > * {
     margin: 0;
   }
 
