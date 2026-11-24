@@ -25,8 +25,9 @@ import { readPartnerLeaderboard } from './leaderboard.ts';
 export const displayNameMaxLength = 200;
 
 const uuid = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const digest = '[A-Za-z0-9_-]{43}';
 const settingsShape = new RegExp(
-  `^(${uuid})[.](${uuid})[.](${uuid})[.]${displayNameDisclosureVersion}[.]([01])[.]([A-Za-z0-9_-]{43})$`,
+  `^(${uuid})[.](${uuid})[.](${uuid})[.]${displayNameDisclosureVersion}[.](${digest})[.](${digest})$`,
   'u',
 );
 const bearerShape = /^[A-Za-z0-9_-]{43}$/u;
@@ -35,27 +36,45 @@ function signaturesMatch(expected: string, supplied: string) {
   return timingSafeEqual(Buffer.from(expected), Buffer.from(supplied));
 }
 
+function nameSettingsTag(
+  nonce: string,
+  settings: LeaderboardNameSettings,
+  secret: string,
+) {
+  const nameSettings = JSON.stringify([
+    settings.display_name,
+    settings.display_name_disclosure_version,
+    settings.show_on_leaderboard,
+  ]);
+  return deriveEmailToken(
+    `partner_dashboard_name_settings:${nonce}:${nameSettings}`,
+    secret,
+  );
+}
+
 function signSettings(
   partnerId: string,
   linkId: string,
-  needsNameConfirmation: boolean,
+  settings: LeaderboardNameSettings,
   secret: string,
 ) {
-  const claims = `${partnerId}.${linkId}.${randomUUID()}.${displayNameDisclosureVersion}.${needsNameConfirmation ? '1' : '0'}`;
+  const nonce = randomUUID();
+  const tag = nameSettingsTag(nonce, settings, secret);
+  const claims = `${partnerId}.${linkId}.${nonce}.${displayNameDisclosureVersion}.${tag}`;
   return `${claims}.${deriveEmailToken(`partner_dashboard_settings:${claims}`, secret)}`;
 }
 
 function verifySettings(token: string, secret: string) {
   const match = settingsShape.exec(token);
   if (match === null) return null;
-  const [, partnerId, linkId, nonce, confirmation, signature] =
+  const [, partnerId, linkId, nonce, tag, signature] =
     match as RegExpExecArray & [string, string, string, string, string, string];
   const expected = deriveEmailToken(
-    `partner_dashboard_settings:${partnerId}.${linkId}.${nonce}.${displayNameDisclosureVersion}.${confirmation}`,
+    `partner_dashboard_settings:${partnerId}.${linkId}.${nonce}.${displayNameDisclosureVersion}.${tag}`,
     secret,
   );
   return signaturesMatch(expected, signature)
-    ? { partnerId, linkId, nonce, needsNameConfirmation: confirmation === '1' }
+    ? { partnerId, linkId, nonce, tag }
     : null;
 }
 
@@ -106,30 +125,22 @@ function qualifyName(
     ...settings
   }: NonNullable<ReturnType<typeof readPartnerSettings>>,
   stored: LeaderboardNameSettings,
-  issuedWithConfirmation: boolean,
 ): PartnerSettings {
-  const needsConfirmation =
-    issuedWithConfirmation || needsLeaderboardNameConfirmation(stored);
   if (
-    settings.displayName === null ||
-    !needsConfirmation ||
-    confirmLeaderboardName
+    settings.displayName === stored.display_name &&
+    needsLeaderboardNameConfirmation(stored) &&
+    !confirmLeaderboardName
   ) {
     return {
       ...settings,
-      displayNameDisclosureVersion:
-        settings.displayName === null ? null : displayNameDisclosureVersion,
+      showOnLeaderboard: stored.show_on_leaderboard,
+      displayNameDisclosureVersion: stored.display_name_disclosure_version,
     };
   }
-  // An open form that asked for confirmation cannot publish a name after
-  // another form clears it. An email-only save preserves current name consent.
-  const unchanged = settings.displayName === stored.display_name;
   return {
     ...settings,
-    showOnLeaderboard: unchanged && stored.show_on_leaderboard,
-    displayNameDisclosureVersion: unchanged
-      ? stored.display_name_disclosure_version
-      : null,
+    displayNameDisclosureVersion:
+      settings.displayName === null ? null : displayNameDisclosureVersion,
   };
 }
 
@@ -179,12 +190,7 @@ export function createPartnerDashboardService(
       return {
         kind: 'authenticated',
         row,
-        settingsToken: signSettings(
-          row.id,
-          row.link_id,
-          needsNameConfirmation,
-          tokenSecret,
-        ),
+        settingsToken: signSettings(row.id, row.link_id, row, tokenSecret),
         needsNameConfirmation,
         leaderboard: await readPartnerLeaderboard(database, row.id),
       } as const;
@@ -244,13 +250,21 @@ export function createPartnerDashboardService(
           if (!consumed || link === null || claims === null)
             return { kind: 'invalid' };
 
+          if (
+            !signaturesMatch(
+              nameSettingsTag(claims.nonce, link, tokenSecret),
+              claims.tag,
+            )
+          ) {
+            return { kind: 'invalid' };
+          }
           const bearer = deriveEmailToken(link.link_id, tokenSecret);
           const settings = readPartnerSettings(form);
           if (settings === null) return { kind: 'invalid_input', bearer };
           if (
             (await repository.saveSettings(
               link.id,
-              qualifyName(settings, link, claims.needsNameConfirmation),
+              qualifyName(settings, link),
             )) !== 1
           ) {
             throw new Error('The partner settings could not be updated.');

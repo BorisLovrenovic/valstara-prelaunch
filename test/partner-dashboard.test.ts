@@ -769,19 +769,29 @@ test('legacy names stay private through email-only saves, then qualify and withd
   assert.deepEqual(await readBoard(), ['L. A.', 'Legacy Beta']);
   assert.equal((await settingsRow(first.id))?.show_on_leaderboard, false);
 
+  const staleFullNameForm = await settingsFor(state, secondLink.bearer);
+  const withdrawFullName = settingsForm(
+    await settingsFor(state, secondLink.bearer),
+    'Legacy Beta',
+  );
+  withdrawFullName.set('nonessential_email_enabled', 'yes');
   assert.equal(
-    (
-      await state.dashboard.save(
-        settingsForm(
-          await settingsFor(state, secondLink.bearer),
-          'Legacy Beta',
-        ),
-        'withdraw-full-name',
-      )
-    ).kind,
+    (await state.dashboard.save(withdrawFullName, 'withdraw-full-name')).kind,
     'saved',
   );
   assert.deepEqual(await readBoard(), ['L. A.', 'L. B.']);
+  const staleEmailOnly = settingsForm(staleFullNameForm, 'Legacy Beta', true);
+  staleEmailOnly.delete('nonessential_email_enabled');
+  assert.deepEqual(
+    await state.dashboard.save(staleEmailOnly, 'stale-email-only'),
+    { kind: 'invalid' },
+  );
+  assert.deepEqual(await readBoard(), ['L. A.', 'L. B.']);
+  assert.equal((await settingsRow(second.id))?.show_on_leaderboard, false);
+  assert.equal(
+    (await settingsRow(second.id))?.nonessential_email_enabled,
+    true,
+  );
   assert.equal(
     (
       await state.dashboard.save(
@@ -797,16 +807,15 @@ test('legacy names stay private through email-only saves, then qualify and withd
     null,
   );
 
-  assert.equal(
-    (
-      await state.dashboard.save(
-        settingsForm(staleEarlierForm, 'Legacy Beta'),
-        'earlier-form-after-clear',
-      )
-    ).kind,
-    'saved',
+  assert.deepEqual(
+    await state.dashboard.save(
+      settingsForm(staleEarlierForm, 'Legacy Beta'),
+      'earlier-form-after-clear',
+    ),
+    { kind: 'invalid' },
   );
   assert.deepEqual(await readBoard(), ['L. A.', 'Partner']);
+  assert.equal((await settingsRow(second.id))?.display_name, null);
   assert.equal(
     (await settingsRow(second.id))?.display_name_disclosure_version,
     null,
@@ -826,6 +835,53 @@ test('legacy names stay private through email-only saves, then qualify and withd
   assert.equal(
     (await settingsRow(first.id))?.display_name_disclosure_version,
     null,
+  );
+});
+
+test('a replacement for an earlier name qualifies under the current wording on the cached board', async () => {
+  const state = scenario();
+  const partner = await insertPartner(fixture, { status: 'active' });
+  await insertReferral(fixture, partner.subscriberId);
+  await fixture.owner.execute({
+    text: "UPDATE partner SET display_name = 'Earlier Name', show_on_leaderboard = true WHERE id = $1",
+    values: [partner.id],
+  });
+  const link = await requestLink(state, partner);
+  state.advance(60 * 60 * 1000);
+  await createPartnerLeaderboardJob(
+    fixture.app,
+    async () => true,
+    state.clock,
+  ).run();
+  const before = await state.dashboard.read(link.bearer);
+  assert.equal(before.kind, 'authenticated');
+  assert.equal(before.needsNameConfirmation, true);
+  assert.ok(before.leaderboard);
+  const ownEntry = before.leaderboard.entries.find(
+    ({ rank }) => rank === before.leaderboard?.ownRank,
+  );
+  assert.equal(ownEntry?.label, 'Partner');
+
+  assert.equal(
+    (
+      await state.dashboard.save(
+        settingsForm(before.settingsToken, 'Replacement Name', true),
+        'replace-earlier-name',
+      )
+    ).kind,
+    'saved',
+  );
+  assert.equal(
+    (await settingsRow(partner.id))?.display_name_disclosure_version,
+    displayNameDisclosureVersion,
+  );
+  const after = await state.dashboard.read(link.bearer);
+  assert.equal(after.kind, 'authenticated');
+  assert.equal(after.needsNameConfirmation, false);
+  assert.equal(after.leaderboard?.asOf, before.leaderboard.asOf);
+  assert.deepEqual(
+    after.leaderboard?.entries.find(({ rank }) => rank === ownEntry.rank),
+    { ...ownEntry, label: 'Replacement Name' },
   );
 });
 

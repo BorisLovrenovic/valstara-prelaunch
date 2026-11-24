@@ -46,10 +46,12 @@ export function createPartnerLeaderboardRepository(db: DatabaseConnection) {
           FROM partner p JOIN subscriber s ON s.id = p.subscriber_id
           CROSS JOIN LATERAL (
             SELECT count(*)::int AS confirmed_signups
-            FROM referral_edge e JOIN subscriber friend ON friend.id = e.referred_id
+            FROM referral_edge e LEFT JOIN subscriber friend ON friend.id = e.referred_id
             WHERE e.referrer_id = s.id AND e.state = 'confirmed' AND e.voided_at IS NULL
-              AND friend.verified_at IS NOT NULL
-              AND friend.status NOT IN ('erasure_pending', 'erased')
+              AND (
+                friend.verified_at IS NOT NULL
+                OR (e.referred_id IS NULL AND e.confirmed_at IS NOT NULL)
+              )
           ) totals
           WHERE ${eligible}
           ORDER BY totals.confirmed_signups DESC, s.verified_at ASC NULLS LAST, p.id`,

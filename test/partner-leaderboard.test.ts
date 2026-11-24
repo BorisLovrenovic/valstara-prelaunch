@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import test from 'node:test';
+import { setTimeout as sleep } from 'node:timers/promises';
 
+import { createCampaignFlagRepository } from '../src/server/db/campaign-flags.ts';
 import { displayNameDisclosureVersion as version } from '../src/server/partner/config.ts';
 import {
   createPartnerLeaderboardJob,
@@ -16,6 +20,7 @@ import {
   createPartnerFixture,
   insertPartner,
   insertReferral,
+  partnerErasure,
 } from './helpers/partner-review-fixture.ts';
 
 test('leaderboard labels use only the current optional name and support Unicode initials', () => {
@@ -41,6 +46,82 @@ test('leaderboard labels use only the current optional name and support Unicode 
   );
 });
 
+test('the production maintenance scheduler publishes the partner snapshot', async (t) => {
+  const f = await createPartnerFixture('partner-leaderboard-production');
+  t.after(() => f.dispose());
+  const partner = await insertPartner(f, { status: 'active' });
+  await insertReferral(f, partner.subscriberId);
+  await createCampaignFlagRepository(f.app).set(
+    'partners.enabled',
+    true,
+    'admin.operator',
+  );
+  assert.equal(await readPartnerLeaderboard(f.app, partner.id), null);
+
+  const child = spawn(
+    process.execPath,
+    ['src/server/subscriber/run-maintenance.ts'],
+    {
+      cwd: new URL('..', import.meta.url),
+      env: {
+        DATABASE_URL: f.appDatabaseUrl,
+        EMAIL_BASE_URL: 'http://localhost:4321',
+        EMAIL_TOKEN_SECRET: 'local-only-email-token-secret-32-chars',
+        BREVO_WEBHOOK_TOKEN: 'local-only-brevo-webhook-token-32-chars',
+        P1_ALERT_WEBHOOK_TOKEN: 'maintenance-test-token',
+        P1_ALERT_WEBHOOK_URL: 'http://127.0.0.1:9/local-only-alert-sink',
+        RESEND_API_KEY: 'maintenance-test-resend-key',
+        RESEND_DKIM_EXPECTED_VALUE: 'p=test-public-key',
+        RESEND_KEY_MODE: 'test',
+        RESEND_RSEND_CNAME_EXPECTED_TARGET: 'rsend-euw1.forge.rmta.net',
+        RESEND_SEND_CNAME_EXPECTED_TARGET: 'send.forge.rmta.net',
+        RESEND_SENDING_DOMAIN: 'send.valstara.com',
+        RESEND_WEBHOOK_SECRET: 'whsec_bG9jYWwtb25seS1yZXNlbmQtd2ViaG9vay1rZXk=',
+        NODE_ENV: 'test',
+        NODE_V8_COVERAGE: process.env.NODE_V8_COVERAGE,
+        WEEKLY_SEND_UTC: '2@09:00',
+      },
+      stdio: ['ignore', 'ignore', 'pipe'],
+      timeout: 15_000,
+      killSignal: 'SIGKILL',
+    },
+  );
+  let errors = '';
+  child.stderr.setEncoding('utf8');
+  child.stderr.on('data', (chunk: string) => {
+    errors += chunk;
+  });
+  try {
+    const heartbeat = async () =>
+      f.owner.readOne({
+        text: `SELECT last_beat_at FROM maintenance_heartbeat
+          WHERE loop_key = 'scheduler_cycle' AND last_beat_at IS NOT NULL`,
+      });
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      assert.equal(child.exitCode, null, errors);
+      assert.equal(child.signalCode, null, errors);
+      if ((await heartbeat()) !== null) break;
+      await sleep(50);
+    }
+    assert.ok(await heartbeat(), `maintenance cycle did not finish: ${errors}`);
+    const snapshot = await readPartnerLeaderboard(f.app, partner.id);
+    assert.equal(
+      snapshot?.ownRank,
+      1,
+      'production cycle did not publish a rank',
+    );
+    assert.deepEqual(snapshot.entries, [
+      { rank: 1, confirmedSignups: 1, label: 'Partner' },
+    ]);
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) {
+      const exit = once(child, 'exit');
+      child.kill('SIGTERM');
+      await exit;
+    }
+  }
+});
+
 test('scheduled snapshots rank confirmed signups in batches and retain the last complete cache on failure', async (t) => {
   const f = await createPartnerFixture('partner-leaderboard');
   t.after(() => f.dispose());
@@ -53,11 +134,13 @@ test('scheduled snapshots rank confirmed signups in batches and retain the last 
   const first = await insertPartner(f, { status: 'active' });
   const second = await insertPartner(f, { status: 'active' });
   const paused = await insertPartner(f, { status: 'paused' });
-  await insertReferral(f, first.subscriberId);
+  const confirmed = await insertReferral(f, first.subscriberId);
   await insertReferral(f, first.subscriberId);
   await insertReferral(f, second.subscriberId);
-  await insertReferral(f, second.subscriberId, { state: 'attributed' });
-  await insertReferral(f, second.subscriberId, { voided: true });
+  const attributed = await insertReferral(f, first.subscriberId, {
+    state: 'attributed',
+  });
+  const voided = await insertReferral(f, first.subscriberId, { voided: true });
   await insertReferral(f, paused.subscriberId);
   await f.owner.execute({
     text: "UPDATE subscriber SET verified_at = '2026-11-03Z' WHERE id = $1",
@@ -163,6 +246,43 @@ test('scheduled snapshots rank confirmed signups in batches and retain the last 
   assert.equal(refreshed.entries[0]?.confirmedSignups, 3);
   assert.equal(refreshed.ownRank, 102);
 
+  const erasure = partnerErasure(f, async () => {});
+  for (const referral of [confirmed, attributed, voided]) {
+    const confirm = await erasure.signedConfirmation(referral.referredId);
+    assert.deepEqual(await confirm(), { kind: 'pending' });
+  }
+  now = new Date(now.getTime() + hour);
+  await scheduler.runCycle();
+  assert.deepEqual(
+    await readPartnerLeaderboard(f.app, viewer.id),
+    {
+      ...refreshed,
+      asOf: now.toISOString(),
+    },
+    'signed confirmation preserves only the confirmed, non-voided credit',
+  );
+  await erasure.fulfil();
+  for (const referral of [confirmed, attributed, voided]) {
+    assert.deepEqual(
+      await f.owner.readOne({
+        text: 'SELECT referred_id FROM referral_edge WHERE id = $1',
+        values: [referral.edgeId],
+      }),
+      { referred_id: null },
+    );
+  }
+  now = new Date(now.getTime() + hour);
+  await scheduler.runCycle();
+  const afterErasure = {
+    ...refreshed,
+    asOf: now.toISOString(),
+  };
+  assert.deepEqual(
+    await readPartnerLeaderboard(f.app, viewer.id),
+    afterErasure,
+    'fulfilment preserves only the confirmed, non-voided credit',
+  );
+
   await f.owner.execute({
     text: 'ALTER TABLE partner_leaderboard_rank ADD CONSTRAINT test_refresh_failure CHECK (confirmed_signups <> 4)',
   });
@@ -173,7 +293,10 @@ test('scheduled snapshots rank confirmed signups in batches and retain the last 
     alerts.map(({ detail, severity }) => ({ detail, severity })),
     [{ detail: { job: 'partner_leaderboard_snapshot' }, severity: 'P2' }],
   );
-  assert.deepEqual(await readPartnerLeaderboard(f.app, viewer.id), refreshed);
+  assert.deepEqual(
+    await readPartnerLeaderboard(f.app, viewer.id),
+    afterErasure,
+  );
 
   await f.owner.execute({
     text: "UPDATE partner SET status = 'paused', status_changed_at = $2 WHERE id = $1",
@@ -181,8 +304,8 @@ test('scheduled snapshots rank confirmed signups in batches and retain the last 
   });
   const withoutPaused = await readPartnerLeaderboard(f.app, viewer.id);
   assert.deepEqual(withoutPaused, {
-    ...refreshed,
-    entries: refreshed.entries.slice(1),
+    ...afterErasure,
+    entries: afterErasure.entries.slice(1),
   });
   assert.equal((await readPartnerLeaderboard(f.app, second.id))?.ownRank, null);
 
