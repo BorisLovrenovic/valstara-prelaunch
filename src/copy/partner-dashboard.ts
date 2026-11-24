@@ -113,8 +113,10 @@ export const partnerDashboardCopy = {
     line: 'Valstara is a direct seller of digital goods backed by the Triple Guarantee.',
     scan: 'Scan the code or visit',
     code: 'Referral code',
+    // A printed flyer outlives the ladder stage it was printed at, so it
+    // states the guaranteed floor, never the current value (D-069).
     perk: (month: string, percent: number) =>
-      `Join with this code and confirm your email for early access from ${month} and ${percent}% off your first order.`,
+      `Join with this code and confirm your email for early access from ${month} and at least ${percent}% off your first order.`,
     printHeading: 'Print this flyer',
     printLine:
       'Print this page on A4 or US Letter paper. The flyer fits on one page, and nothing else on this page is printed.',

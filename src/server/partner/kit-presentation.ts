@@ -51,7 +51,7 @@ export function presentKitDownloads(
 export function presentPartnerKit(
   row: Pick<
     PartnerDashboardRow,
-    'status' | 'active_code' | 'code' | 'confirmed' | 'partner_type'
+    'status' | 'active_code' | 'code' | 'partner_type'
   >,
   bearer: string,
   referralEnabled: boolean,
@@ -79,7 +79,10 @@ export function presentPartnerKit(
     perk: referralEnabled
       ? copy.flyer.perk(
           earlyAccessMonthLabel(waveOneEarlyAccessMonth),
-          partnerWelcomeDiscount(row.confirmed, row.partner_type),
+          // The floor at a count of zero, never the current value: the
+          // friend's discount is fixed at their own signup, and a printed
+          // flyer outlives the stage it was printed at (D-069 Q1, option C).
+          partnerWelcomeDiscount(0, row.partner_type),
         )
       : null,
     downloads: presentKitDownloads(kit),

@@ -65,6 +65,8 @@ let browserServer;
 let browser;
 let active;
 let paused;
+let ladder;
+let ambassador;
 
 const decode = (value) =>
   value
@@ -93,7 +95,11 @@ function fromDataUri(uri, type) {
   return Buffer.from(uri.slice(prefix.length), 'base64');
 }
 
-async function seedPartner(code, status) {
+async function seedPartner(
+  code,
+  status,
+  { partnerType = 'creator', confirmed = 0 } = {},
+) {
   const subscriberId = randomUUID();
   const partnerId = randomUUID();
   const linkId = randomUUID();
@@ -109,12 +115,18 @@ async function seedPartner(code, status) {
       submitted_at, applied_at, full_name, country_of_residence, partner_type,
       channels, handles, audience_size, promotion_plan, requested_code,
       age_confirmed, programme_terms_agreed, contract_sent_at, contract_signed_at,
-      contract_version)
+      contract_version, university)
     VALUES ($1, $2, 'active', '2026-11-02Z', '2026-11-02Z', '2026-11-02Z',
-      'Flyer Fixture', 'SE', 'creator', ARRAY['tiktok'], ARRAY['@fixture'],
+      'Flyer Fixture', 'SE', $4, ARRAY['tiktok'], ARRAY['@fixture'],
       'under_1k', 'A video', $3, true, true, '2026-11-02Z', '2026-11-02',
-      'fixture-v1')`,
-    [partnerId, subscriberId, code],
+      'fixture-v1', $5)`,
+    [
+      partnerId,
+      subscriberId,
+      code,
+      partnerType,
+      partnerType === 'student_ambassador' ? 'Fixture University' : null,
+    ],
   );
   await database.query(
     "INSERT INTO referral_code (code, owner_kind, owner_id) VALUES ($1, 'partner', $2)",
@@ -125,6 +137,38 @@ async function seedPartner(code, status) {
     await database.query("UPDATE partner SET status = 'paused' WHERE id = $1", [
       partnerId,
     ]);
+  }
+  // Confirmed, non-voided partner referrals: the dashboard's count.
+  for (let index = 0; index < confirmed; index += 1) {
+    const referredId = randomUUID();
+    const referred = `f${index}-${email}`;
+    await database.query(
+      `INSERT INTO subscriber (id, email, email_normalised, email_domain, status,
+        created_at, verified_at, referral_code, referred_by_id)
+       VALUES ($1, $2, $2, 'example.test', 'verified', '2026-11-03Z',
+        '2026-11-03Z', $3, $4)`,
+      [
+        referredId,
+        referred,
+        `F${String(index).padStart(2, '0')}${code}`.slice(0, 12),
+        subscriberId,
+      ],
+    );
+    await database.query(
+      `INSERT INTO referral_edge (id, referrer_id, referred_id, state,
+        reward_state, created_at, confirmed_at, partner_id,
+        welcome_discount_pct, signup_confirmed_count)
+       VALUES ($1, $2, $3, 'confirmed', 'none', '2026-11-03Z', '2026-11-03Z',
+        $4, $5, $6)`,
+      [
+        randomUUID(),
+        subscriberId,
+        referredId,
+        partnerId,
+        index >= 21 ? 15 : 10,
+        index,
+      ],
+    );
   }
   const token = deriveEmailToken(linkId, secret);
   await database.query(
@@ -189,6 +233,13 @@ before(async () => {
   );
   active = await seedPartner('FLYER2345', 'active');
   paused = await seedPartner('PAUSED2345', 'paused');
+  ladder = await seedPartner('LADDER2345', 'active', {
+    partnerType: 'standard',
+    confirmed: 22,
+  });
+  ambassador = await seedPartner('AMBASSADOR2345', 'active', {
+    partnerType: 'student_ambassador',
+  });
   app = await startApp();
 
   await removeOrphanedContainers();
@@ -361,7 +412,7 @@ test('the flyer shows the QR code, code, link and welcome perk; invalid, paused 
   const text = visibleText(flyer);
   assert.ok(text.includes(siteLink(active.code)));
   assert.ok(text.includes(active.code));
-  // No confirmed referrals yet: friends get 10%.
+  // A creator's guaranteed floor: at least 10%.
   assert.ok(text.includes(copy.flyer.perk('September 2027', 10)));
   const svg = /<svg\b[\s\S]*?<\/svg>/u.exec(flyer)?.[0];
   assert.equal(await scan(Buffer.from(svg)), siteLink(active.code));
@@ -398,6 +449,30 @@ test('the flyer shows the QR code, code, link and welcome perk; invalid, paused 
   const pausedDashboard = await (await get(dashboardPath(paused.token))).text();
   assert.match(pausedDashboard, /data-task-state="authenticated"/u);
   assert.doesNotMatch(pausedDashboard, /id="partner-kit"/u);
+});
+
+test('the flyer prints the guaranteed floor of the welcome discount, never the current value; the dashboard keeps the current value', async () => {
+  const flyerText = async (partner) => {
+    const html = await (await get(flyerPath(partner.token))).text();
+    const flyer = /<article[^>]*data-flyer[\s\S]*?<\/article>/u.exec(html)?.[0];
+    assert.ok(flyer, `${partner.code} has a flyer`);
+    return visibleText(flyer);
+  };
+  // A standard partner past 21 confirmed referrals: friends signing up now
+  // get 15%, but the printed flyer states the standard floor (D-069).
+  const ladderFlyer = await flyerText(ladder);
+  assert.ok(ladderFlyer.includes('at least 10% off your first order'));
+  assert.ok(ladderFlyer.includes(copy.flyer.perk('September 2027', 10)));
+  assert.doesNotMatch(ladderFlyer, /15%|20%|\b22\b/u);
+  const ladderDashboard = visibleText(
+    await (await get(dashboardPath(ladder.token))).text(),
+  );
+  assert.ok(ladderDashboard.includes(copy.rewards.welcome(15)));
+
+  // A student ambassador's floor is 15%.
+  const ambassadorFlyer = await flyerText(ambassador);
+  assert.ok(ambassadorFlyer.includes('at least 15% off your first order'));
+  assert.ok(ambassadorFlyer.includes(copy.flyer.perk('September 2027', 15)));
 });
 
 test('the flyer prints on exactly one page at A4 and US Letter, and its printed QR code scans', async () => {
@@ -555,8 +630,8 @@ test('the welcome email’s dashboard and flyer links open live pages', async ()
         email,
         tokenSecret: secret,
       }).run(100),
-      2,
-      'both active partners are welcomed; the paused one is not',
+      4,
+      'the four active partners are welcomed; the paused one is not',
     );
     await email.dispatch(100);
     const message = sent.find((entry) => entry.to === welcomed.email);

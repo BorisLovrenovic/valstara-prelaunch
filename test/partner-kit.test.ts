@@ -326,9 +326,18 @@ test('only a partner whose link credits signups gets a kit; the perk follows the
     true,
   );
   assert.equal(kit?.flyerHref, '/partners/dashboard/flyer?t=bearer+value');
-  // 22 confirmed referrals: coupon 2 is unlocked, so friends get 15%.
+  // 22 confirmed referrals unlock 15% for friends signing up now, but the
+  // flyer prints the creator's floor, 10% (D-069).
   assert.equal(
     kit?.perk,
+    partnerDashboardCopy.flyer.perk('September 2027', 10),
+  );
+  assert.equal(
+    presentPartnerKit(
+      { ...activeRow, code: 'ABCD', partner_type: 'student_ambassador' },
+      'b',
+      true,
+    )?.perk,
     partnerDashboardCopy.flyer.perk('September 2027', 15),
   );
   assert.equal(
