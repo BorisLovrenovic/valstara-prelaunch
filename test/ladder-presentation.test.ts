@@ -5,6 +5,7 @@ import { couponLadder } from '../src/server/referral/config.ts';
 import {
   earlyAccess,
   earlyAccessMonthLabel,
+  earlyAccessMonthShortLabel,
   ladderPresentationConfiguration,
   ladderProgress,
   landingLadder,
@@ -205,6 +206,19 @@ test('the early-access month label is validated', () => {
   assert.equal(earlyAccessMonthLabel('2027-07'), 'July 2027');
   for (const invalid of ['2027-13', '2027-7', 'July 2027', ''])
     assert.throws(() => earlyAccessMonthLabel(invalid), RangeError, invalid);
+});
+
+test('the early-access fact uses the short month, validated like the full label', () => {
+  // The founder's choice (2026-11-24): "Sep 2027", never en-GB's "Sept 2027".
+  assert.equal(earlyAccessMonthShortLabel('2027-09'), 'Sep 2027');
+  assert.equal(earlyAccessMonthShortLabel('2027-07'), 'Jul 2027');
+  assert.equal(earlyAccessMonthShortLabel('2028-05'), 'May 2028');
+  for (const invalid of ['2027-13', '2027-7', 'Sep 2027', ''])
+    assert.throws(
+      () => earlyAccessMonthShortLabel(invalid),
+      RangeError,
+      invalid,
+    );
 });
 
 test('the landing ladder states the first unlock, the steps and wave 1 from configuration', () => {

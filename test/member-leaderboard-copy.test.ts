@@ -74,7 +74,7 @@ test('E11.5-08 the shared presentation keys every field and coupon without chang
       ],
       ['confirmedReferrals', '25'],
       ['ownRank', '7'],
-      ['earlyAccess', 'September 2027'],
+      ['earlyAccess', 'Sep 2027'],
       ['accessWindow', 'wave-1'],
       ['giveawayEntries', '5'],
     ],

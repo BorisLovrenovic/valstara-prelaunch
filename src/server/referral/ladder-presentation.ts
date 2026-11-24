@@ -57,6 +57,23 @@ export function earlyAccessMonthLabel(month: string): string {
   }).format(date);
 }
 
+/**
+ * "Sep 2027", from the configured `YYYY-MM`: the short month for the early-access
+ * fact, whose box holds one line (founder, 2026-11-24). Sentences keep the full
+ * month from `earlyAccessMonthLabel`.
+ */
+export function earlyAccessMonthShortLabel(month: string): string {
+  // Validates the month exactly as the full label does.
+  earlyAccessMonthLabel(month);
+  const [year, monthNumber] = month.split('-').map(Number);
+  // en-US, because en-GB abbreviates September as "Sept".
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
+}
+
 /** Every count at which the ladder changes, ascending. */
 function ladderMarks(ladder: CouponLadder): readonly number[] {
   assertCouponLadder(ladder);
