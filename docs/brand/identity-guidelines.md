@@ -159,7 +159,7 @@ The left column is accurate **and** is what a legitimate company sounds like. Th
 ### 3.3 Naming conventions
  
 - **Products** take the provider's name plainly: "Spotify Premium — 12 months." Never rename or obscure what someone is buying.
-- **Programmes** take plain English names: the Triple Guarantee, the Supplier Register.
+- **Programmes** take plain English names: the Triple Guarantee, the Trust Ledger. *(Amended 2026-11-24, founder-authorised: "the Supplier Register" removed. Valstara publishes no supplier register; suppliers are chosen and switched in the background.)*
 - **No sub-brands.** One brand across every category is the strategic point. Categories are navigation, not brands. Resist "Valstara Games," "Valstara AI."
 ### 3.4 Boilerplate
  
