@@ -101,12 +101,14 @@ const enabled =
   !recovery && application === null && confirmation === null
     ? await isOn('partners.enabled')
     : true;
+// E11.7-12 (D-070): the auto-invite's link pre-fills one form field from its
+// own query value, checked and never stored. The E11-05 guard exempts only
+// this exact call on this page.
 const view = partnerApplyView({
   enabled,
   token: tokenParameter,
   application,
   confirmation,
-  // E11.7-12: the auto-invite's link fills in the email field only.
   prefillEmail: partnerApplyPrefillEmail(Astro.url.searchParams.get('email')),
 });
 Astro.response.status = recoveryView?.status ?? view.status;
