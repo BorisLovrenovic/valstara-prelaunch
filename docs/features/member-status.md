@@ -43,7 +43,7 @@ that step brings: the coupon and, for a member not yet in wave 1 whose next
 step reaches the wave-1 threshold, early access. When that threshold falls
 before the next ladder step, the meter ends at the threshold and names early
 access alone. On `/me`, the status card's
-referral-tier fact is replaced by **Early access** ("September 2027" or "Not
+referral-tier fact is replaced by **Early access** ("Sep 2027", the short month, or "Not
 yet"), the early-access line follows the facts, the referral card's meter is
 `/verify`'s, and the rewards card ("Your coupons") lists each held coupon with
 its percent and condition, or says what unlocks the first, and always ends

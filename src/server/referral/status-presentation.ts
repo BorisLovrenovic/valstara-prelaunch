@@ -3,6 +3,7 @@ import { referralLadderCopy } from '../../copy/referral-ladder.ts';
 
 import {
   earlyAccess,
+  earlyAccessMonthShortLabel,
   ladderPresentationConfiguration,
   ladderProgress,
   type LadderPresentationConfiguration,
@@ -28,9 +29,10 @@ export function presentReferralStatus(
   };
   const ladder = ladderProgress(status.confirmedReferrals, configuration);
   const access = earlyAccess(status, configuration);
-  // In wave 1 the fact is the month early access opens.
+  // In wave 1 the fact is the month early access opens, in its short form
+  // ("Sep 2027") so the fact keeps one line (founder, 2026-11-24).
   const earlyAccessValue = access.inWaveOne
-    ? access.month
+    ? earlyAccessMonthShortLabel(configuration.earlyAccessMonth)
     : memberStatusCopy.authenticated.earlyAccessNotYet;
   return {
     values,
