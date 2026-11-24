@@ -1,6 +1,6 @@
 # Feature Specs
 
-Sixteen pre-launch features, one spec each. `price-index.md` was added with Epic E11.6 and `partner-programme.md` with Epic E11.7 (both founder-authorised 2026-11-17); their flags join the registry below when their tickets register them (`partners.enabled` since E11.7-05). Every spec uses the same headings so tickets can reference stable anchors: **Summary · Feature flag · User flows · Edge cases and error states · Acceptance criteria · Telemetry.** `price-index-source-findings.md` is not a spec: it is E11.6-01's record of the price-index source site, which the later E11.6 tickets read.
+Seventeen pre-launch features, one spec each. `price-index.md` was added with Epic E11.6 and `partner-programme.md` with Epic E11.7 (both founder-authorised 2026-11-17), and `trust-ledger.md` with Epic E11.8 (founder-authorised 2026-11-24); their flags join the registry below when their tickets register them (`partners.enabled` since E11.7-05; `trust_ledger.page` with E11.8-01). Every spec uses the same headings so tickets can reference stable anchors: **Summary · Feature flag · User flows · Edge cases and error states · Acceptance criteria · Telemetry.** `price-index-source-findings.md` is not a spec: it is E11.6-01's record of the price-index source site, which the later E11.6 tickets read.
 
 Scope is the 8–12 week campaign on `valstara.com`. Anything that belongs to the store belongs to the storefront repository.
 

@@ -14,6 +14,7 @@ Founder-authorised 2026-10-10, superseding the widget decision of 2026-10-05: th
 |---|---|---|
 | `/` | Waitlist landing page | Storefront home. **Same URL, new content** |
 | `/legit`, `/guarantee`, `/about` | Trust content | Ported to the storefront, same URLs |
+| `/trust-ledger` (E11.8-01, planned) | The Trust Ledger, one entry per month | Ported to the storefront, same URL; every entry kept |
 | `/terms`, `/privacy` | Legal | Ported and revised in place |
 | `/giveaway/rules` and `/giveaway/rules/<rules_version>` | The global rules page and its immutable revisions (ADR-026) | Public for 12 months after the final award, then `410` |
 | `/waitlist`, `/leaderboard`, `/me` | Campaign mechanics | `301` to `/` and the account area |

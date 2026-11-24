@@ -59,6 +59,7 @@ Items no agent can complete. Each gates something, and the gate is stated so it 
 | **P7** | **Create the four seed mailboxes** — one each at Gmail, Outlook.com, GMX and Web.de, IMAP access enabled, used for seed tests and nothing else. Outlook.com allows IMAP only through OAuth, not a password. Credentials go to the production secret manager; none is committed (founder-authorised 2026-09-29) | Account setup, free | **E12-07:** the first live seed run and the rendering check | Before E12 |
 | **P8** | **Launch provider list and logo files** — for each provider shown on the landing page: display name, category (E11.5-02's v2 taxonomy), confirmation that its goods are on the launch catalogue, the official SVG logo (plus a dark-theme variant where the provider supplies one) from the provider's published brand resources with its source URL, and its brand colour (founder-authorised 2026-10-19). **SUPPLIED 2026-10-25** for 34 providers across four categories (AI tools, Streaming and subscriptions, Software, In-game currency), recorded in `docs/prerequisites/p8-provider-list.md`. Founder-authorised amendments 2026-10-25: a logo without a source URL records its source as `founder-supplied` with the supply date, and a brand colour may be derived from the supplied logo by the rule in that record. AION2's logo is a WebP raster, the only non-SVG logo, by founder exception (no SVG exists) | Founder input | **E11.5-04** only. A showcase with placeholder logos is not a deliverable | Done |
 | **P9** | **Price-index answers and source capture.** The brief's open questions and D1–D6 were **answered 2026-11-17** (the brief amendments are verbatim in `docs/features/price-index.md#founder-amendments-17-november-2026-verbatim`; D1–D6 are recorded on E11.6-04, E11.6-05, E11.6-10, E11.6-12 and E11.6-13). **Still to do: the founder captures the source pages for E11.6-01** by `docs/prerequisites/p9-source-capture.md` | A founder capture | E11.6-01 | Before E11.6-01 |
+| **P11** | **The Trust Ledger's "How we count" text and its first entry's founder sections**: build progress, supply readiness counts with the founder's definitions of an evaluated, verified and rejected supplier, partner-programme counts, policy changes, corrections, launch status and the three closing sections; plus the line that links `/guarantee` to the Ledger (founder-authorised 2026-11-24) | Founder input | **E11.8-01** only. A Ledger page with placeholder text is not a deliverable | Before E11.8-01 |
 | **P10** | **Partner asset kit files** — the images and PDFs partners download (committed under `public/partners/kit/`), and the links to any videos, each with the right to share it (founder-authorised 2026-11-17) | Founder input | **E11.7-11** only. A kit with placeholder files is not a deliverable | Before E11.7-11 |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
@@ -135,7 +136,8 @@ flowchart TD
   E11 --> E115[E11.5 Frontend design]
   E115 --> E116[E11.6 Price index and price pages]
   E116 --> E117[E11.7 Pre-launch partner programme]
-  E117 --> E12[E12 Production bring-up]
+  E117 --> E118[E11.8 Trust Ledger and per-platform reporting]
+  E118 --> E12[E12 Production bring-up]
 ```
 
 **E11.5 runs after E11 and before E12 (founder-authorised 2026-10-19).** It redesigns every surface a visitor sees without changing behaviour, then re-runs E11's accessibility, claims and privacy audits on the new surfaces, so E12 deploys and measures the final build.
@@ -143,6 +145,8 @@ flowchart TD
 **E11.6 runs after E11.5 and before E12 (founder-authorised 2026-11-17).** It adds the price index — a separate tool the founder runs by hand once a month — and the price pages built from its data, in local currency only, so E12 deploys, load-tests and gates the site with them.
 
 **E11.7 runs after E11.6 and before E12 (founder-authorised 2026-11-17).** It adds the temporary partner programme and replaces the campaign's reward rules with wave 1 and the coupon ladder, so E12 deploys and gates the site with them.
+
+**E11.8 runs after E11.7 and before E12 (founder-authorised 2026-11-24).** It adds the Trust Ledger page, whose first entry is due when the site goes live in December 2026, and the founder's per-platform signup report, so E12 deploys and gates the site with them.
 
 **Everything through E11 is built and verified locally.** The VPS is provisioned once, at the end, and **E12 collects every piece of evidence that needs real infrastructure** — the rollback RTO, a restore from R2, capacity on the actual box (founder decision, 2026-08-27).
 
@@ -167,9 +171,9 @@ A gate runs after the listed epics, in a fresh session on `main`, using the inte
 | 5 | E8 | Opus 5.5 — Extra High |
 | 6 | E9 + E10 | Opus 5.5 — High |
 | 7 | E11 + E11.5 | Opus 5.5 — Extra High |
-| 8 | E11.6 + E11.7 | Opus 5.5 — Extra High |
+| 8 | E11.6 + E11.7 + E11.8 | Opus 5.5 — Extra High |
 
-**Gates 2, 3, 4, 5, 7 and 8 run at Extra High because each covers something unrecoverable**: the privacy properties, the fraud invariants, the prize draw, the sending reputation, the launch surface with its privacy re-audit, and, in gate 8, hundreds of new public pages carrying the signup island and published price claims (E11.6) together with partners' personal data and the rewritten reward rules under the reward-gating invariant (E11.7) (founder-authorised 2026-11-17). **Gate 8 runs once, after E11.7, and audits E11.6 and E11.7 together** (founder-authorised 2026-11-17); it replaces the separate gates 8 and 9 first planned for them. A gate added with new epics names its model here, at Extra High when it covers personal data, privacy, security, money or email, and at High otherwise.
+**Gates 2, 3, 4, 5, 7 and 8 run at Extra High because each covers something unrecoverable**: the privacy properties, the fraud invariants, the prize draw, the sending reputation, the launch surface with its privacy re-audit, and, in gate 8, hundreds of new public pages carrying the signup island and published price claims (E11.6) together with partners' personal data and the rewritten reward rules under the reward-gating invariant (E11.7) (founder-authorised 2026-11-17). **Gate 8 runs once, after E11.8, and audits E11.6, E11.7 and E11.8 together** (founder-authorised 2026-11-17; E11.8 added 2026-11-24); it replaces the separate gates 8 and 9 first planned for them. A gate added with new epics names its model here, at Extra High when it covers personal data, privacy, security, money or email, and at High otherwise.
 
 ---
 
@@ -4453,6 +4457,90 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 
 ---
 
+## Epic E11.8 — The Trust Ledger and per-platform reporting
+
+**Founder-authorised 2026-11-24.** Added after E11.7 and before GATE-8 and E12. The founder decided both features (the Trust Ledger on 2026-11-22, the per-platform report on 2026-11-22) and left their place in the plan to a high-confidence recommendation ("Just place it at the most logical place", 2026-11-24). They share an epic because both turn the campaign's own data into evidence, and neither belongs to the partner programme. Branches follow the usual pattern, e.g. `feat/E11.8-01-the-trust-ledger-page`; commits carry `[E11.8-01]`.
+
+**Goal:**
+- **the Trust Ledger:** a public, monthly, append-only record of Valstara's real numbers, at a permanent URL, live before the campaign opens;
+- **the per-platform report:** a founder-only report of signups by source, medium and campaign, so TikTok, Instagram and every other platform are counted separately.
+
+*2 tickets.*
+
+**Why it runs here.** The Trust Ledger's first entry is due in December 2026, when the pre-launch site goes live (founder, 2026-11-22). Placing the epic before GATE-8 and E12 means GATE-8 audits it, and E12 deploys, load-tests and gates it with everything else. The per-platform report must exist from go-live: UTM values are kept for 12 months, and only links that carry them can be counted.
+
+**Exit criteria:**
+
+- `/trust-ledger` renders every committed entry, newest first, from validated data files. A published entry cannot change.
+- The founder can draft a month's waitlist figures with one audited command.
+- The founder can read signups by source, medium and campaign for any date range with one audited command.
+- No new cookie, island, third-party request or personal data appears in any public response or analytics event.
+
+### Rules for every E11.8 ticket
+
+1. **Counts only.** Every figure is an exact aggregate. No email, code, IP address, country or other personal data reaches a page, a report or an event.
+2. **Founder actions go through the existing admin API** (secret key and authenticator code, E5-03a) and founder commands, and every run is audited.
+3. **Copy lives in the copy layer and content files**, under the copy rules and the forbidden-copy scan. No literal design values.
+
+### E11.8-01 — The Trust Ledger page
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** `trust_ledger.page` · **Area:** frontend
+**Why this model:** a public page that publishes figures from the database, at a URL the storefront must keep, under an append-only guarantee.
+
+**Build:**
+- **Register `trust_ledger.page`** (default off). Off: `/trust-ledger` answers `404`, is left out of the sitemap, and no link to it renders.
+- **Entries as data files.** One file per month in `src/content/trust-ledger/` (`YYYY-MM`), validated at build against a schema for Phase 1's sections (`docs/features/trust-ledger.md#phase-1-pre-launch-december-2026--september-2027`) and the three closing sections. The schema has no field for supplier names, prices, revenue, margins or any individual's data. **A published entry never changes:** CI fails when an entry file on the merge base differs on the branch, as the giveaway rules revisions are guarded.
+- **"How we count"** is a content file rendered on the page. A change to it is allowed only together with a new entry that announces the change.
+- **The page.** `/trust-ledger`, prerendered from the committed files: the newest month at the top, the full archive below, and "How we count". It uses the trust-page document layout (E11.5-11s), with metadata, a sitemap entry while the flag is on, and the typed `trust` social card. It adds no island and no script beyond the page-view emitter.
+- **Links**, rendered only while the flag is on:
+  - from `/guarantee`, as a line beside the content, never inside `src/content/guarantee.md`'s prose;
+  - from `/partners`;
+  - from the site footer.
+- **The waitlist figures.**
+  - An admin route returns, for a given month (UTC): verified subscribers in total at the run, those verified during the month, and the share of those whose verification confirmed a referral edge.
+  - It is authenticated, audited, and returns counts only.
+  - The founder command `trust-ledger draft --month YYYY-MM` writes a new entry file holding those figures and empty sections for the founder to complete. It refuses to overwrite an existing entry.
+- **The port checklist and the cutover route table** list `/trust-ledger` as a permanent URL the storefront keeps.
+- **BLOCKED until P11 is supplied.**
+
+**Acceptance criteria:**
+- **A changed published entry fails CI**, asserted with a planted change
+- Every entry renders, newest first, and an entry that fails its schema fails the build
+- The schema cannot represent a supplier name, revenue, margin or person, asserted against the schema
+- The admin route and the command are refused without the authenticator code, are audited, and return exact counts reconciled against a seeded database, with no personal data
+- The flag-off path is tested: `404`, absent from the sitemap, no link anywhere
+- The page passes the privacy, accessibility, copy and final-design layout checks at every width, in both themes
+
+**Tests:** The append-only guard · schema validation red paths · ordering and archive · the waitlist figures against seeded data · admin authentication and audit · flag off · the third-party and storage gates · accessibility and layout checks on the page.
+**Docs:** `docs/features/trust-ledger.md` · `docs/brand/copy-rules.md#claims-that-must-stay-true` · `docs/features/trust-pages.md` · `docs/ops/launch-cutover.md`
+
+### E11.8-02 — The per-platform signup report
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** — · **Area:** admin
+**Why this model:** it reads visitor-supplied values stored against every subscriber, and must never turn one into personal data in its output.
+
+**Build:**
+- **The convention as configuration.** `config/utm-convention.json` lists the recognised `utm_source` values (`tiktok`, `instagram`, `youtube`, `x`, `reddit`, `telegram`, `discord`, `linkedin`, `facebook`, `threads`, `newsletter`, `press`) and `utm_medium` values (`social`, `email`, `referral`, `paid`). It is validated by `npm run check`. Adding a platform is a configuration change.
+- **The report.**
+  - An admin route and the founder command `report:sources --from YYYY-MM-DD --to YYYY-MM-DD [--csv]` count, per `utm_source`, `utm_medium` and `utm_campaign`, over signups created in the range:
+    - signups;
+    - verified signups;
+    - confirmed referrals those subscribers went on to make;
+    - first survey completions.
+  - Values are compared lower-cased and trimmed. A source or medium not on the convention list, and a campaign not matching `^[a-z0-9-]{1,64}$`, is counted under `other`, never printed. Visitor-supplied text therefore never reaches the output.
+  - Signups without UTMs are split into `referral link or code` (a valid signed ref) and `none`.
+  - One aggregate query per run, bounded by the date range and indexed, with no row-by-row read.
+  - Each run is audited with the actor, the range and the row count.
+- **Retention.** The report covers only data still held: UTM values are kept 12 months (`docs/legal/compliance.md`). The output says so.
+
+**Acceptance criteria:**
+- Every count reconciles with a seeded database, per source, medium and campaign
+- **An unlisted or malformed value never appears in the output**, asserted with planted values, including an email address
+- No-UTM signups split exactly into the two buckets
+- Refused without the authenticator code, and audited with actor, range and row count
+- No analytics event changes, and no public response carries any of it
+
+**Tests:** Reconciliation against seeded data · the unlisted-value red path · normalisation · the no-UTM split · range bounds · authentication and audit · the convention file's validation.
+**Docs:** `docs/features/analytics.md` · `docs/features/admin.md` · `docs/data/model.md` · `docs/legal/compliance.md`
+
 ## Epic E12 — Production bring-up
 
 **Goal:** provision the VPS, put the whole system on it, and collect every piece of evidence that could not be gathered locally. *7 tickets.*
@@ -4463,7 +4551,7 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 
 **Exit criteria:** the site serves from the VPS behind Cloudflare, a rollback has been timed under five minutes, a restore from R2 has been verified, the drills have run against real limits, and the launch gate passes on the real host.
 
-**Prerequisite: the VPS is provisioned and reachable, and E11.5, E11.6 and E11.7 are merged.** No ticket here starts before both hold, so E12 deploys, load-tests and gates the final build (founder-authorised 2026-10-19; E11.6 and E11.7 added 2026-11-17).
+**Prerequisite: the VPS is provisioned and reachable, and E11.5, E11.6, E11.7 and E11.8 are merged.** No ticket here starts before both hold, so E12 deploys, load-tests and gates the final build (founder-authorised 2026-10-19; E11.6 and E11.7 added 2026-11-17; E11.8 added 2026-11-24).
 
 ### E12-01 — Provision the host and run the production stack on it
 **Model:** Opus 5.5 — Low · **Priority:** Highest · **Flag:** — · **Area:** infra
@@ -4689,6 +4777,16 @@ The founder's brief targeted 40–60 hours for the partner programme. The founde
 **A cut requires founder authorisation and is recorded here before it is implemented.** Cutting is a legitimate response to schedule pressure; cutting silently is not.
 
 **Never cut:** the signup form · double opt-in deliverability · referral attribution · trust pages · legal and giveaway rules pages · funnel analytics. **If one of these is unfinished, delay the campaign rather than launch without it.**
+
+---
+
+### E11.8 estimate and dependencies
+
+| Ticket | Depends on | Estimate |
+|---|---|---:|
+| E11.8-01 The Trust Ledger page | E11.7-05 (the `/partners` link); P11 | 6 h |
+| E11.8-02 The per-platform signup report | E10-03 (the stored UTM capture) | 5 h |
+| **E11.8 total** | | **11 h** |
 
 ---
 

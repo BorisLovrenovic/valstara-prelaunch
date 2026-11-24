@@ -4,7 +4,7 @@
 
 ## Rules
 
-1. **Rows are in execution order**, not ID order. E6-06 runs inside Epic E8, S-01 runs before E7, E11.5 ran in the order its founder authorisations set (plan, Epic E11.5), E11.6 and E11.7 run between GATE-7 and E12 (both founder-authorised 2026-11-17), E11.6-11a (test and CI tooling) runs between E11.6-11 and E11.6-12 (founder-authorised 2026-11-19), with one gate, GATE-8, after E11.7 that audits both epics together (founder-authorised 2026-11-17).
+1. **Rows are in execution order**, not ID order. E6-06 runs inside Epic E8, S-01 runs before E7, E11.5 ran in the order its founder authorisations set (plan, Epic E11.5), E11.6 and E11.7 run between GATE-7 and E12 (both founder-authorised 2026-11-17), E11.6-11a (test and CI tooling) runs between E11.6-11 and E11.6-12 (founder-authorised 2026-11-19), E11.8 runs after E11.7 (founder-authorised 2026-11-24), with one gate, GATE-8, after E11.8 that audits E11.6, E11.7 and E11.8 together (founder-authorised 2026-11-17; E11.8 added 2026-11-24).
 2. **Two kinds of row.** A ticket row's ID and Title match a `### <ID> — <Title>` heading in the plan exactly. A gate row (`GATE-<n>`) is a QA gate from plan §6; it audits every ticket row between the previous gate row and itself, and its Epic column is the `{EPICS}` value for `03-integrated-qa.md`.
 3. **Status** is `todo`, `done` or `removed`. **Mode** is `auto` (the orchestrator may run it, with the founder approving each step) or `manual` (the founder runs it; the orchestrator stops and says so).
 4. **Who changes a row:**
@@ -182,11 +182,13 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 160 | E11.7-13 | The partner digest | Epic E11.7 — Pre-launch partner programme | todo | auto |
 | 161 | E11.7-14 | The attribution export and the hand-over document | Epic E11.7 — Pre-launch partner programme | todo | auto |
 | 162 | E11.7-15 | Seed data, the partner-programme audit and founder sign-off | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 163 | GATE-8 | QA gate 8 — E11.6 + E11.7 | E11.6 + E11.7 | todo | auto |
-| 164 | E12-01 | Provision the host and run the production stack on it | Epic E12 — Production bring-up | todo | manual |
-| 165 | E12-02 | Deploy from GHCR against the real host, with the migration audit | Epic E12 — Production bring-up | todo | manual |
-| 166 | E12-03 | The timed rollback drill | Epic E12 — Production bring-up | todo | manual |
-| 167 | E12-04 | Backups to R2, and a restore proven from the remote | Epic E12 — Production bring-up | todo | manual |
-| 168 | E12-05 | Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics | Epic E12 — Production bring-up | todo | manual |
-| 169 | E12-06 | Chaos drills and the capacity run on the real box | Epic E12 — Production bring-up | todo | manual |
-| 170 | E12-07 | Production readiness gate | Epic E12 — Production bring-up | todo | manual |
+| 163 | E11.8-01 | The Trust Ledger page | Epic E11.8 — The Trust Ledger and per-platform reporting | todo | auto |
+| 164 | E11.8-02 | The per-platform signup report | Epic E11.8 — The Trust Ledger and per-platform reporting | todo | auto |
+| 165 | GATE-8 | QA gate 8 — E11.6 + E11.7 + E11.8 | E11.6 + E11.7 + E11.8 | todo | auto |
+| 166 | E12-01 | Provision the host and run the production stack on it | Epic E12 — Production bring-up | todo | manual |
+| 167 | E12-02 | Deploy from GHCR against the real host, with the migration audit | Epic E12 — Production bring-up | todo | manual |
+| 168 | E12-03 | The timed rollback drill | Epic E12 — Production bring-up | todo | manual |
+| 169 | E12-04 | Backups to R2, and a restore proven from the remote | Epic E12 — Production bring-up | todo | manual |
+| 170 | E12-05 | Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics | Epic E12 — Production bring-up | todo | manual |
+| 171 | E12-06 | Chaos drills and the capacity run on the real box | Epic E12 — Production bring-up | todo | manual |
+| 172 | E12-07 | Production readiness gate | Epic E12 — Production bring-up | todo | manual |
