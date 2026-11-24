@@ -50,7 +50,7 @@ export function createPartnerLeaderboardRepository(db: DatabaseConnection) {
             WHERE e.referrer_id = s.id AND e.state = 'confirmed' AND e.voided_at IS NULL
               AND (
                 friend.verified_at IS NOT NULL
-                OR (e.referred_id IS NULL AND e.confirmed_at IS NOT NULL)
+                OR (e.referred_id IS NULL AND e.referred_verified_on_detachment)
               )
           ) totals
           WHERE ${eligible}

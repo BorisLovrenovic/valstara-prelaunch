@@ -16,6 +16,7 @@ import {
   createVerificationMaintenanceScheduler,
 } from '../src/server/subscriber/maintenance.ts';
 import { exportSubjectPage } from '../src/server/db/dsr-export.ts';
+import { exportSubject } from '../src/server/dsr/export.ts';
 import {
   createPartnerFixture,
   insertPartner,
@@ -247,7 +248,8 @@ test('scheduled snapshots rank confirmed signups in batches and retain the last 
   assert.equal(refreshed.ownRank, 102);
 
   const erasure = partnerErasure(f, async () => {});
-  for (const referral of [confirmed, attributed, voided]) {
+  const erasedReferrals = [confirmed, attributed, voided, unverified];
+  for (const referral of erasedReferrals) {
     const confirm = await erasure.signedConfirmation(referral.referredId);
     assert.deepEqual(await confirm(), { kind: 'pending' });
   }
@@ -262,7 +264,7 @@ test('scheduled snapshots rank confirmed signups in batches and retain the last 
     'signed confirmation preserves only the confirmed, non-voided credit',
   );
   await erasure.fulfil();
-  for (const referral of [confirmed, attributed, voided]) {
+  for (const referral of erasedReferrals) {
     assert.deepEqual(
       await f.owner.readOne({
         text: 'SELECT referred_id FROM referral_edge WHERE id = $1',
@@ -280,8 +282,18 @@ test('scheduled snapshots rank confirmed signups in batches and retain the last 
   assert.deepEqual(
     await readPartnerLeaderboard(f.app, viewer.id),
     afterErasure,
-    'fulfilment preserves only the confirmed, non-voided credit',
+    'fulfilment preserves verified, non-voided credit and excludes the malformed unverified edge',
   );
+
+  let exportedDetachedEdge = false;
+  for await (const line of exportSubject(f.app, first.subscriberId)) {
+    const row = JSON.parse(line);
+    if (row.table === 'referral_edge' && row.data.id === confirmed.edgeId) {
+      assert.equal(row.data.referred_verified_on_detachment, null);
+      exportedDetachedEdge = true;
+    }
+  }
+  assert.ok(exportedDetachedEdge);
 
   await f.owner.execute({
     text: 'ALTER TABLE partner_leaderboard_rank ADD CONSTRAINT test_refresh_failure CHECK (confirmed_signups <> 4)',

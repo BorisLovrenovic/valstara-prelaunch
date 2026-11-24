@@ -76,6 +76,7 @@ const relatedPolicyFields = {
       'rejected_reason',
       'state_before_rejection',
       'confirmed_at',
+      'referred_verified_on_detachment',
       'created_at',
     ],
     'Fraud review decisions': ['voided_at', 'void_reason', 'voided_by'],
