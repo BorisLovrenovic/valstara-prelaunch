@@ -182,13 +182,17 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 160 | E11.7-13 | The partner digest | Epic E11.7 — Pre-launch partner programme | todo | auto |
 | 161 | E11.7-14 | The attribution export and the hand-over document | Epic E11.7 — Pre-launch partner programme | todo | auto |
 | 162 | E11.7-15 | Seed data, the partner-programme audit and founder sign-off | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 163 | E11.8-01 | The Trust Ledger page | Epic E11.8 — The Trust Ledger and per-platform reporting | todo | auto |
-| 164 | E11.8-02 | The per-platform signup report | Epic E11.8 — The Trust Ledger and per-platform reporting | todo | auto |
-| 165 | GATE-8 | QA gate 8 — E11.6 + E11.7 + E11.8 | E11.6 + E11.7 + E11.8 | todo | auto |
-| 166 | E12-01 | Provision the host and run the production stack on it | Epic E12 — Production bring-up | todo | manual |
-| 167 | E12-02 | Deploy from GHCR against the real host, with the migration audit | Epic E12 — Production bring-up | todo | manual |
-| 168 | E12-03 | The timed rollback drill | Epic E12 — Production bring-up | todo | manual |
-| 169 | E12-04 | Backups to R2, and a restore proven from the remote | Epic E12 — Production bring-up | todo | manual |
-| 170 | E12-05 | Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics | Epic E12 — Production bring-up | todo | manual |
-| 171 | E12-06 | Chaos drills and the capacity run on the real box | Epic E12 — Production bring-up | todo | manual |
-| 172 | E12-07 | Production readiness gate | Epic E12 — Production bring-up | todo | manual |
+| 163 | E11.8-01 | The Trust Ledger page | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
+| 164 | E11.8-02 | The per-platform signup report | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
+| 165 | E11.8-03 | The founder note in the weekly update | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
+| 166 | E11.8-04 | The referral reminder in the welcome email | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
+| 167 | E11.8-05 | The giveaway rules revision with the new dates | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
+| 168 | E11.8-06 | The waitlist at 13 and over, with an 18+ giveaway box | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
+| 169 | GATE-8 | QA gate 8 — E11.6 + E11.7 + E11.8 | E11.6 + E11.7 + E11.8 | todo | auto |
+| 170 | E12-01 | Provision the host and run the production stack on it | Epic E12 — Production bring-up | todo | manual |
+| 171 | E12-02 | Deploy from GHCR against the real host, with the migration audit | Epic E12 — Production bring-up | todo | manual |
+| 172 | E12-03 | The timed rollback drill | Epic E12 — Production bring-up | todo | manual |
+| 173 | E12-04 | Backups to R2, and a restore proven from the remote | Epic E12 — Production bring-up | todo | manual |
+| 174 | E12-05 | Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics | Epic E12 — Production bring-up | todo | manual |
+| 175 | E12-06 | Chaos drills and the capacity run on the real box | Epic E12 — Production bring-up | todo | manual |
+| 176 | E12-07 | Production readiness gate | Epic E12 — Production bring-up | todo | manual |
