@@ -264,6 +264,7 @@ test('verification states, exact figures, native actions and flags render access
       '/giveaway/award',
       '/partners',
       '/partners/apply',
+      '/partners/dashboard',
       '/404',
       '/500',
     ]);

@@ -358,6 +358,7 @@ test('the member page and the leaderboard render every state from their sources,
       '/giveaway/award',
       '/partners',
       '/partners/apply',
+      '/partners/dashboard',
       '/404',
       '/500',
     ]);

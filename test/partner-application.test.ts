@@ -438,11 +438,21 @@ test('the field schema is exactly the brief’s fields, with no address, phone, 
       'contract_reference',
       'notes',
     ];
+    const dashboardColumns = [
+      // E11.7-09: link binding and preferences set on the private dashboard.
+      'dashboard_token_id',
+      'display_name',
+      'nonessential_email_enabled',
+      'show_on_leaderboard',
+    ];
     // The form's controls, less the email (the linked subscriber's own).
     const applicationColumns = partnerApplicationFieldNames.filter(
       (field) => field !== 'email_address',
     );
-    assert.deepEqual(columns, [...lifecycle, ...applicationColumns].sort());
+    assert.deepEqual(
+      columns,
+      [...lifecycle, ...applicationColumns, ...dashboardColumns].sort(),
+    );
     for (const column of columns)
       assert.doesNotMatch(
         column,
