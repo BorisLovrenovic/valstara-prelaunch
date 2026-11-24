@@ -6,6 +6,7 @@
 // no downloads section; a paused partner gets no kit; and the welcome email's
 // two links open live pages.
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdir, writeFile } from 'node:fs/promises';

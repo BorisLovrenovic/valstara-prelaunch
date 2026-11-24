@@ -164,30 +164,30 @@ Astro.response.status =
 
   /* Print: only the flyer, edge to edge inside the browser's own page
      margins, which fit both A4 and US Letter. The shell and the task card
-     style themselves with scoped selectors, so the print overrides are
-     marked important: this stylesheet applies to print media only. */
+     style themselves with scoped (class and attribute) selectors, so the
+     print overrides start from the main region's id to outrank them. */
   @media print {
     :global(.site-header),
     :global(.site-footer),
     :global(.skip-link),
-    :global(.task-card__head),
-    :global(.task-card__line),
+    :global(#main .task-card__head),
+    :global(#main .task-card__line),
     .flyer-screen {
-      display: none !important;
+      display: none;
     }
 
-    :global(.site-main),
-    :global(.task-page),
-    :global(.task-container),
-    :global(.task),
-    :global(.task-card) {
-      display: block !important;
-      max-inline-size: none !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: 0 !important;
-      box-shadow: none !important;
-      background: var(--banner-white) !important;
+    :global(#main),
+    :global(#main .task-page),
+    :global(#main .task-container),
+    :global(#main .task),
+    :global(#main .task-card) {
+      display: block;
+      max-inline-size: none;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      box-shadow: none;
+      background: var(--banner-white);
     }
 
     .flyer {

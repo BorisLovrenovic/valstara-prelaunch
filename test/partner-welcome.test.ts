@@ -315,9 +315,7 @@ test('a later activation and a reactivation each get the welcome once; issuing i
   await welcomeJob().run(partnerWelcomeBatchLimit);
   const review = createPartnerReviewService(fixture.app, clock);
   const partner = await insertPartner(fixture, { status: 'applied' });
-  const approved = await review.approve(partner.id, null, actor);
-  const code = approved.after.code;
-  assert.ok(code);
+  assert.ok((await review.approve(partner.id, null, actor)).after.code);
   await review.contractSent(partner.id, actor);
   assert.equal(await welcomeJob().run(partnerWelcomeBatchLimit), 0);
 
@@ -338,7 +336,7 @@ test('a later activation and a reactivation each get the welcome once; issuing i
     values: [partner.id, earlier.id],
   });
   assert.equal(await welcomeJob().run(partnerWelcomeBatchLimit), 1);
-  const row = await queuedWelcome({ id: partner.id, code });
+  const row = await queuedWelcome(partner);
   assert.notEqual(row.payload.token_id, earlier.id);
   assert.equal(await currentLinkId(partner.id), row.payload.token_id);
 
