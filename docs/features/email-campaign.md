@@ -25,6 +25,13 @@ Broadcasts (Brevo) are composed from a shared layout: the **weekly update** (inc
 
 **Who receives what (ADR-027).** The weekly update and any other marketing go **only to verified, unsuppressed subscribers with current marketing consent**, re-checked at dispatch. The single launch-access notification that joining the waitlist promises goes to every verified, unsuppressed subscriber as a message they requested (the privacy audit, E11-05, confirms this classification). Unsubscribing from a marketing message withdraws marketing consent only; the person keeps their waitlist place and giveaway entries.
 
+## Planned: the founder note and the referral reminder (E11.8-03, E11.8-04)
+
+**Founder decisions, 2026-11-24.**
+
+- **The founder note.** The founder's own words reach members only as a short note in the weekly update: one content file per ISO week, at most 120 words and one own-origin link, shipped by deploy, behind `email.weekly_note`. The E8-07 consent and suppression re-checks still apply at dispatch. No Brevo-editor campaign is sent to members.
+- **The referral reminder.** A member who joined through another member's link or code gets one line in the welcome email, "You joined because a friend invited you…", naming no one, behind `email.referred_welcome_line`. Partner-referred members keep their partner line.
+
 ## The SubSlush announcement
 **Not part of this system (ADR-028).** The founder sends the one announcement to existing SubSlush customers manually. `subslush.com` is not authenticated in Resend or Brevo, no Valstara system sends from it, and the SubSlush list is not loaded into either provider. Recipients who want to join sign up through the normal double opt-in.
 

@@ -53,13 +53,14 @@ Items no agent can complete. Each gates something, and the gate is stated so it 
 | **P2** | **EU and UK Article 27 representatives waived by founder decision, 2026-10-01** (ADR-029) | Founder decision | No representative gate | Done |
 | **P3a** | ~~Brand token values~~ — **SATISFIED.** In the repository at `docs/brand/identity-guidelines.md` §5 (colour) and §6 (typography), LOCKED | — | Nothing. E2-01 is unblocked | Done |
 | **P3b** | **Trust-page prose** — `/legit`, `/guarantee`, `/about` | Founder input from the brand and store documentation | E9-02. **A page shell with placeholder text is not a deliverable** | Before E9 |
-| **P4** | **Giveaway prize and the final text of the single global rules page (Hong Kong law)** — **supplied 2026-09-25:** 5 bundles at €300 (€1,500), entries 1 Oct 2026 – 1 Mar 2027, draw 1 Apr 2027, the promoter **3NITY DIGITAL LIMITED** (Business Registration No. 79886556) with its registered address and contacts, and the layered substitution rule. The approved text is in `docs/prerequisites/p4-rules-page-draft.md`. **P4 is complete.** Bundle contents (due before the draw) and the sanctions list (due before the first award) are deliberately **not** blockers (ADR-026) | Founder input. One global page under Hong Kong law — no per-country rules or local review (founder decision, 2026-09-25, ADR-026) | Nothing now — satisfied | Done |
+| **P4** | **Giveaway prize and the final text of the single global rules page (Hong Kong law)** — **supplied 2026-09-25:** 5 bundles at €300 (€1,500), entries 1 Oct 2026 – 1 Mar 2027, draw 1 Apr 2027, the promoter **3NITY DIGITAL LIMITED** (Business Registration No. 79886556) with its registered address and contacts, and the layered substitution rule. The approved text is in `docs/prerequisites/p4-rules-page-draft.md`. **P4 is complete.** **Dates superseded 2026-11-24 (founder):** entries close 31 Aug 2027 and the draw is on 1 Sep 2027, published by E11.8-05. Bundle contents (due before the draw) and the sanctions list (due before the first award) are deliberately **not** blockers (ADR-026) | Founder input. One global page under Hong Kong law — no per-country rules or local review (founder decision, 2026-09-25, ADR-026) | Nothing now — satisfied | Done |
 | **P6** | **Provision the production VPS** | Purchase and provisioning | **E12 entirely.** Nothing before E12 requires it — founder decision, 2026-08-27: the site is built and verified locally first, then the host is provisioned once | Before E12 |
 | **P5** | **Upgrade Resend and Brevo past the free tiers** | Purchase — Resend free is 100/day, Brevo 300/day | **Turning `giveaway.open` on.** Upgrade *before* the giveaway opens, not when the limits hit | Before E7 exit |
 | **P7** | **Create the four seed mailboxes** — one each at Gmail, Outlook.com, GMX and Web.de, IMAP access enabled, used for seed tests and nothing else. Outlook.com allows IMAP only through OAuth, not a password. Credentials go to the production secret manager; none is committed (founder-authorised 2026-09-29) | Account setup, free | **E12-07:** the first live seed run and the rendering check | Before E12 |
 | **P8** | **Launch provider list and logo files** — for each provider shown on the landing page: display name, category (E11.5-02's v2 taxonomy), confirmation that its goods are on the launch catalogue, the official SVG logo (plus a dark-theme variant where the provider supplies one) from the provider's published brand resources with its source URL, and its brand colour (founder-authorised 2026-10-19). **SUPPLIED 2026-10-25** for 34 providers across four categories (AI tools, Streaming and subscriptions, Software, In-game currency), recorded in `docs/prerequisites/p8-provider-list.md`. Founder-authorised amendments 2026-10-25: a logo without a source URL records its source as `founder-supplied` with the supply date, and a brand colour may be derived from the supplied logo by the rule in that record. AION2's logo is a WebP raster, the only non-SVG logo, by founder exception (no SVG exists) | Founder input | **E11.5-04** only. A showcase with placeholder logos is not a deliverable | Done |
 | **P9** | **Price-index answers and source capture.** The brief's open questions and D1–D6 were **answered 2026-11-17** (the brief amendments are verbatim in `docs/features/price-index.md#founder-amendments-17-november-2026-verbatim`; D1–D6 are recorded on E11.6-04, E11.6-05, E11.6-10, E11.6-12 and E11.6-13). **Still to do: the founder captures the source pages for E11.6-01** by `docs/prerequisites/p9-source-capture.md` | A founder capture | E11.6-01 | Before E11.6-01 |
 | **P11** | **The Trust Ledger's "How we count" text and its first entry's founder sections**: build progress, supply readiness counts with the founder's definitions of an evaluated, verified and rejected supplier, partner-programme counts, policy changes, corrections, launch status and the three closing sections; plus the line that links `/guarantee` to the Ledger (founder-authorised 2026-11-24) | Founder input | **E11.8-01** only. A Ledger page with placeholder text is not a deliverable | Before E11.8-01 |
+| **P12** | **A lawyer's review of the age change**: the reviewed wording of the 16+ marketing box, the 18+ giveaway box, the rules revision's entry sentence, and the privacy notice and terms for members aged 13–17; and whether a referred member aged 13–17 earns their referrer a giveaway entry (founder-authorised 2026-11-24) | Founder input (lawyer) | **E11.8-06** only. ADR-030's waiver does not cover this change | Before E11.8-06 |
 | **P10** | **Partner asset kit files** — the images and PDFs partners download (committed under `public/partners/kit/`), and the links to any videos, each with the right to share it (founder-authorised 2026-11-17) | Founder input | **E11.7-11** only. A kit with placeholder files is not a deliverable | Before E11.7-11 |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
@@ -136,7 +137,7 @@ flowchart TD
   E11 --> E115[E11.5 Frontend design]
   E115 --> E116[E11.6 Price index and price pages]
   E116 --> E117[E11.7 Pre-launch partner programme]
-  E117 --> E118[E11.8 Trust Ledger and per-platform reporting]
+  E117 --> E118[E11.8 Trust Ledger, reporting and pre-launch revisions]
   E118 --> E12[E12 Production bring-up]
 ```
 
@@ -146,7 +147,7 @@ flowchart TD
 
 **E11.7 runs after E11.6 and before E12 (founder-authorised 2026-11-17).** It adds the temporary partner programme and replaces the campaign's reward rules with wave 1 and the coupon ladder, so E12 deploys and gates the site with them.
 
-**E11.8 runs after E11.7 and before E12 (founder-authorised 2026-11-24).** It adds the Trust Ledger page, whose first entry is due when the site goes live in December 2026, and the founder's per-platform signup report, so E12 deploys and gates the site with them.
+**E11.8 runs after E11.7 and before E12 (founder-authorised 2026-11-24).** It adds the Trust Ledger page, whose first entry is due when the site goes live in December 2026, the founder's per-platform signup report, the founder note in the weekly update, the referral reminder, the giveaway's new dates and the 13+ waitlist, so E12 deploys and gates the site with them. E11.8-06 waits on a lawyer (P12) and may move after E12 if P12 is late.
 
 **Everything through E11 is built and verified locally.** The VPS is provisioned once, at the end, and **E12 collects every piece of evidence that needs real infrastructure** — the rollback RTO, a restore from R2, capacity on the actual box (founder decision, 2026-08-27).
 
@@ -4457,29 +4458,44 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 
 ---
 
-## Epic E11.8 — The Trust Ledger and per-platform reporting
+## Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions
 
-**Founder-authorised 2026-11-24.** Added after E11.7 and before GATE-8 and E12. The founder decided both features (the Trust Ledger on 2026-11-22, the per-platform report on 2026-11-22) and left their place in the plan to a high-confidence recommendation ("Just place it at the most logical place", 2026-11-24). They share an epic because both turn the campaign's own data into evidence, and neither belongs to the partner programme. Branches follow the usual pattern, e.g. `feat/E11.8-01-the-trust-ledger-page`; commits carry `[E11.8-01]`.
+**Founder-authorised 2026-11-24.** Added after E11.7 and before GATE-8 and E12. The founder decided the Trust Ledger and the per-platform report on 2026-11-22, and left their place in the plan to a high-confidence recommendation ("Just place it at the most logical place", 2026-11-24). On 2026-11-24 the founder accepted four further recommendations ("Use recommendations"), recorded below as E11.8-03 to E11.8-06. They share this epic because each must ship before the campaign opens and none belongs to the partner programme. Branches follow the usual pattern, e.g. `feat/E11.8-01-the-trust-ledger-page`; commits carry `[E11.8-01]`.
+
+**Founder decisions (2026-11-24), accepted as recommended:**
+
+1. **A founder note in the weekly update (E11.8-03).** Members can be sent the founder's own words only as a short note inside the weekly update, written in a content file and shipped by deploy, so consent and suppression are still re-checked at dispatch (hard rule 5). No Brevo-editor campaign is sent to members.
+2. **The "a friend invited you" line (E11.8-04).** The welcome email of a member who joined through another member's link or code says so, and offers their own link. It names no one. The storefront repeats the reminder in a day-7 email after launch, which is outside this repository.
+3. **New giveaway dates (E11.8-05).** Entries close at **23:59:59 UTC on 31 August 2027** and winners are drawn on **1 September 2027**, the first day of early access. This replaces the P4 dates of 1 March and 1 April 2027, set before go-live moved to December 2026 and the launch to September 2027.
+4. **The waitlist opens to people aged 13 and over; the giveaway stays 18 and over (E11.8-06).** Founder decision 2026-11-24, with three accepted conditions:
+   - (a) the marketing opt-in is for people aged **16 or over**, and its box says so;
+   - (b) giveaway entry needs **a separate, unticked "I'm 18 or over, enter me in the giveaway" box**; without it, a member holds no entries;
+   - (c) **a lawyer reviews the age change** (P12) before it ships. ADR-030's waiver does not cover a material change to its scope.
 
 **Goal:**
 - **the Trust Ledger:** a public, monthly, append-only record of Valstara's real numbers, at a permanent URL, live before the campaign opens;
-- **the per-platform report:** a founder-only report of signups by source, medium and campaign, so TikTok, Instagram and every other platform are counted separately.
+- **the per-platform report:** a founder-only report of signups by source, medium and campaign, so TikTok, Instagram and every other platform are counted separately;
+- **member messages:** the founder's monthly note in the weekly update, and the referral reminder in the welcome email;
+- **the giveaway's dates** moved to the new launch timeline, and **the waitlist opened to 13–17-year-olds** without inviting them into the giveaway or marketing below 16.
 
-*2 tickets.*
+*6 tickets.*
 
-**Why it runs here.** The Trust Ledger's first entry is due in December 2026, when the pre-launch site goes live (founder, 2026-11-22). Placing the epic before GATE-8 and E12 means GATE-8 audits it, and E12 deploys, load-tests and gates it with everything else. The per-platform report must exist from go-live: UTM values are kept for 12 months, and only links that carry them can be counted.
+**Why it runs here.** The Trust Ledger's first entry is due in December 2026, when the pre-launch site goes live (founder, 2026-11-22). Placing the epic before GATE-8 and E12 means GATE-8 audits it, and E12 deploys, load-tests and gates it with everything else. The per-platform report must exist from go-live: UTM values are kept for 12 months, and only links that carry them can be counted. The giveaway's rules revision must be current before `giveaway.open` is switched on. **E11.8-06 runs last because it waits on a lawyer (P12).** If P12 is not ready when E11.8-05 is done, the founder may move E11.8-06's register row after E12; until it ships, the site stays 18 and over.
 
 **Exit criteria:**
 
 - `/trust-ledger` renders every committed entry, newest first, from validated data files. A published entry cannot change.
 - The founder can draft a month's waitlist figures with one audited command.
 - The founder can read signups by source, medium and campaign for any date range with one audited command.
+- A deployed note appears in the weekly update for its week only, and never reaches anyone the dispatch checks refuse.
+- The current giveaway rules revision states the new dates, and the code accrues entries and runs the draw on those dates.
+- The site says "13 and over", and no one holds a giveaway entry without the 18+ box or receives marketing without the 16+ opt-in.
 - No new cookie, island, third-party request or personal data appears in any public response or analytics event.
 
 ### Rules for every E11.8 ticket
 
 1. **Counts only.** Every figure is an exact aggregate. No email, code, IP address, country or other personal data reaches a page, a report or an event.
-2. **Founder actions go through the existing admin API** (secret key and authenticator code, E5-03a) and founder commands, and every run is audited.
+2. **Founder actions go through the existing admin API** (secret key and authenticator code, E5-03a) and founder commands, and every run is audited. Founder words reach members only through committed content files and the existing send paths.
 3. **Copy lives in the copy layer and content files**, under the copy rules and the forbidden-copy scan. No literal design values.
 
 ### E11.8-01 — The Trust Ledger page
@@ -4540,6 +4556,99 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 
 **Tests:** Reconciliation against seeded data · the unlisted-value red path · normalisation · the no-UTM split · range bounds · authentication and audit · the convention file's validation.
 **Docs:** `docs/features/analytics.md` · `docs/features/admin.md` · `docs/data/model.md` · `docs/legal/compliance.md`
+
+### E11.8-03 — The founder note in the weekly update
+**Model:** Opus 5.5 — High · **Priority:** High · **Flag:** `email.weekly_note` · **Area:** email
+**Why this model:** founder-written words go to every consented member, inside a send whose consent and suppression re-checks must stay intact.
+
+**Build:**
+- **Register `email.weekly_note`** (default off). Off: the weekly update is exactly what it is today.
+- **Notes as content files.** One file per ISO week in `src/content/weekly-notes/` (`YYYY-Www.md`), validated at build:
+  - plain prose of at most 120 words, with at most one link, and that link on the site's own origin;
+  - no image, no HTML, no merge field and no personalisation of any kind;
+  - covered by the copy rules and the forbidden-copy scan.
+- **The send.** When the flag is on and a note exists for the send's ISO week, the weekly update carries it in both the HTML and the plain-text part, through the shared email layout, after the top-10 block. Without a note for that week, the email is unchanged. A note for any other week is never used.
+- **One note per run.** The weekly run records the note's content hash when queueing starts, and dispatch renders only a deployed note with that hash. A note changed by a deploy during the send window is left out of the rest of that run, which raises a P3, so one run never mixes two notes.
+- **Who receives it is unchanged.** Queueing and dispatch keep the E8-07 checks: `email.broadcast`, verified, unsuppressed and marketing-consented, re-checked at dispatch.
+
+**Acceptance criteria:**
+- A note renders for its own week only, in both parts, and a week without a note sends the unchanged email
+- **A note that fails validation fails the build**, asserted for length, an off-origin link, an image, HTML and a merge field
+- A note changed during the send window is left out of the rest of the run, with a P3, and no run mixes two notes
+- **The dispatch re-check still refuses** an unsubscribed or suppressed member while a note is present
+- The flag-off path is tested
+
+**Tests:** Rendering in both parts · validation red paths · week matching · the mid-run change · the dispatch re-check with a note present · flag off.
+**Docs:** `docs/features/email-campaign.md` · `docs/modules/email.md` · `docs/brand/copy-rules.md`
+
+### E11.8-04 — The referral reminder in the welcome email
+**Model:** Opus 5.5 — Medium · **Priority:** Medium · **Flag:** `email.referred_welcome_line` · **Area:** email
+**Why this model:** one conditional line in a transactional template, which must never reveal who referred the member.
+
+**Build:**
+- **Register `email.referred_welcome_line`** (default off). Off: the welcome email is exactly what it is today.
+- **The line.** A member whose confirmed referral edge points to another member, not a partner, gets one short paragraph in the welcome email, in both parts, placed directly before their own referral link. The copy is in the copy layer, for example "You joined because a friend invited you. If you'd like to do the same, here's your own link." **It names no one**, and no detail of the referrer reaches the email (hard rule 11).
+- **A partner-referred member keeps the existing "You joined through {CODE}" line** (E11.7-08) and does not also get this one. A member who joined directly gets neither.
+
+**Acceptance criteria:**
+- The line appears for a member-referred member only, in both parts, before their own link
+- A partner-referred member gets only the partner line, and a direct member gets neither
+- **No part of the email carries any data about the referrer**, asserted against a seeded referrer
+- The flag-off path is tested
+
+**Tests:** The three referral cases · both parts · no referrer data · flag off.
+**Docs:** `docs/features/email-campaign.md` · `docs/features/referral.md`
+
+### E11.8-05 — The giveaway rules revision with the new dates
+**Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** backend
+**Why this model:** the prize draw's legal terms and the code that enforces them must state the same dates, under immutable, hashed revisions.
+
+**Build:**
+- **Publish a new revision** `VAL-GW-LAUNCH-<publication date>-r1` by copying the current revision and changing only:
+  - Section 4: entries close at **23:59:59 UTC on 31 August 2027**;
+  - the draw section: winners are drawn on **1 September 2027**;
+  - `publishedOn` and `rulesVersion`, and the rendered-article SHA-256, recomputed.
+  The opening sentence, every other section and every earlier revision stay unchanged. Earlier revisions get the E11-04 archive treatment. The revision is published before `giveaway.open` is switched on, so no one has entered under the old dates.
+- **The code follows the revision.** `giveawayEntryPeriodEnd` becomes `2027-09-01T00:00:00Z` and the draw's earliest start becomes `2027-09-01T00:00:00Z`. A test asserts that both equal the dates the current revision states, so the prose and the code cannot drift apart again.
+- **Every other surface** that states a giveaway date reads it from the current revision or matches it: the copy layer, the entry receipt, `/me`, the port checklist, the cutover rehearsal and the design previews.
+
+**Acceptance criteria:**
+- The new revision's hash matches its served article, and every earlier revision is unchanged, hash-valid and archived
+- The current revision states 31 August 2027 and 1 September 2027 and changes nothing else, asserted by a diff against its source revision
+- **Entries accrue up to the new close and not after it, and the draw refuses to start before 1 September 2027**, asserted with an injected clock
+- The code dates equal the current revision's dates, asserted by a test
+- The claim-to-rules reconciliation (E11-04) passes, and no surface states the old dates
+
+**Tests:** Revision hash and immutability · the archive treatment · the diff-only-dates check · accrual at the boundary · the draw's earliest start · the code-to-rules date test · the claims reconciliation.
+**Docs:** `docs/features/giveaway.md` · `docs/modules/giveaway.md` · `docs/ops/launch-cutover.md` · plan §2 (P4 dates superseded)
+
+### E11.8-06 — The waitlist at 13 and over, with an 18+ giveaway box
+**Model:** Opus 5.5 — Extra High · **Priority:** High · **Flag:** `waitlist.age_13` · **Area:** frontend, backend
+**Why this model:** it opens a site that holds personal data to minors, and changes who holds giveaway entries and who may receive marketing.
+
+**Build:**
+- **Register `waitlist.age_13`** (default off). Off: the site says "Open to people aged 18 and over", and entries accrue exactly as today.
+- **The age statement.** Every surface that states the joining age says "13 and over", from the copy layer; every surface that describes the giveaway says it is for people aged 18 and over.
+- **The marketing opt-in at 16 or over.** A new consent wording version says the box is for people aged 16 or over, in P12's reviewed wording. It is recorded as a new version, as every wording change is (ADR-027).
+- **The giveaway box.** Every signup form (the SignupForm island in all its placements; no new island) gains a separate, unticked box, "I'm 18 or over, enter me in the giveaway", in P12's reviewed wording. It is not needed to join, and it is independent of the marketing box. The subscriber row records when it was ticked; a database check rejects a value without a signup.
+- **Entries need the box.** With the flag on, a member's base and referral entries accrue only if they ticked it. Whether a referred member aged 13–17 earns their referrer an entry follows P12. `/me` shows a member without the box as not entered, never as holding entries.
+- **Members who joined before the flag** joined under an 18+ statement and keep their entries.
+- **A new rules revision** states the box as the way to enter, copying the current revision and changing only that, in P12's reviewed wording, with the E11-04 archive treatment.
+- **The privacy notice and terms** take P12's reviewed wording for the new age range. A new ADR records the decision, the conditions and the review.
+- **Partners and ambassadors stay 18 and over**, unchanged.
+- **BLOCKED until P12 is supplied.**
+
+**Acceptance criteria:**
+- With the flag on, the site says "13 and over" everywhere it states the joining age, and every giveaway mention says 18 and over
+- **No member holds an entry without the giveaway box**, asserted for base and referral entries, under real concurrency against a real database
+- The marketing box carries the 16+ wording and records its new version
+- Both boxes are unticked by default and independent of each other, and neither is needed to join
+- Earlier members keep their entries, and `/me` states each member's real entry status
+- The new revision is hash-valid, and every earlier one is unchanged and archived
+- The flag-off path is tested, and the privacy, accessibility, copy and layout checks pass on every signup placement
+
+**Tests:** The age statement on every surface · the giveaway box at accrual · the referral-entry rule per P12 · the opt-in wording version · default-unticked boxes · earlier members · `/me` entry status · the rules revision · flag off · the privacy, accessibility and layout suites on the form.
+**Docs:** `docs/features/signup.md` · `docs/features/giveaway.md` · `docs/features/member-status.md` · `docs/legal/compliance.md` · a new ADR
 
 ## Epic E12 — Production bring-up
 
@@ -4786,7 +4895,11 @@ The founder's brief targeted 40–60 hours for the partner programme. The founde
 |---|---|---:|
 | E11.8-01 The Trust Ledger page | E11.7-05 (the `/partners` link); P11 | 6 h |
 | E11.8-02 The per-platform signup report | E10-03 (the stored UTM capture) | 5 h |
-| **E11.8 total** | | **11 h** |
+| E11.8-03 The founder note in the weekly update | E8-07 (the weekly send) | 4 h |
+| E11.8-04 The referral reminder in the welcome email | E11.7-08 (the partner welcome line) | 2 h |
+| E11.8-05 The giveaway rules revision with the new dates | E11-04 (the revision pattern) | 3 h |
+| E11.8-06 The waitlist at 13 and over, with an 18+ giveaway box | E11.8-05; P12 | 8 h |
+| **E11.8 total** | | **28 h** |
 
 ---
 
