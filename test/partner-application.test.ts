@@ -442,6 +442,8 @@ test('the field schema is exactly the brief’s fields, with no address, phone, 
       // E11.7-09: link binding and preferences set on the private dashboard.
       'dashboard_token_id',
       'display_name',
+      // E11.7-10: the disclosure version accepted with the display name.
+      'display_name_disclosure_version',
       'nonessential_email_enabled',
       'show_on_leaderboard',
     ];
