@@ -61,7 +61,7 @@ Items no agent can complete. Each gates something, and the gate is stated so it 
 | **P9** | **Price-index answers and source capture.** The brief's open questions and D1–D6 were **answered 2026-11-17** (the brief amendments are verbatim in `docs/features/price-index.md#founder-amendments-17-november-2026-verbatim`; D1–D6 are recorded on E11.6-04, E11.6-05, E11.6-10, E11.6-12 and E11.6-13). **Still to do: the founder captures the source pages for E11.6-01** by `docs/prerequisites/p9-source-capture.md` | A founder capture | E11.6-01 | Before E11.6-01 |
 | **P11** | **The Trust Ledger's "How we count" text and its first entry's founder sections**: build progress, supply readiness counts with the founder's definitions of an evaluated, verified and rejected supplier, partner-programme counts, policy changes, corrections, launch status and the three closing sections; plus the line that links `/guarantee` to the Ledger (founder-authorised 2026-11-24) | Founder input | **E11.8-01** only. A Ledger page with placeholder text is not a deliverable | Before E11.8-01 |
 | **P12** | **A lawyer's review of the age change**: the reviewed wording of the 16+ marketing box, the 18+ giveaway box (at signup and on `/me`), the rules revision's entry sentence, and the privacy notice and terms for members aged 13–17; and whether a referred member aged 13–17 earns their referrer a giveaway entry (founder-authorised 2026-11-24) | Founder input (lawyer) | **E11.8-06** only. ADR-030's waiver does not cover this change | Before E11.8-06 |
-| **P10** | **Partner asset kit files** — the images and PDFs partners download (committed under `public/partners/kit/`), and the links to any videos, each with the right to share it (founder-authorised 2026-11-17) | Founder input | **E11.7-11** only. A kit with placeholder files is not a deliverable | Before E11.7-11 |
+| **P10** | **Partner asset kit files** — the images and PDFs partners download (committed under `public/partners/kit/`), and the links to any videos, each with the right to share it (founder-authorised 2026-11-17) | Founder input | **Nothing.** E11.7-11 ships without them, and the founder adds files and video links later as a content change (founder, 2026-11-24, amending D-068). No placeholder file ever ships | Any time |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
 
@@ -147,7 +147,7 @@ flowchart TD
 
 **E11.7 runs after E11.6 and before E12 (founder-authorised 2026-11-17).** It adds the temporary partner programme and replaces the campaign's reward rules with wave 1 and the coupon ladder, so E12 deploys and gates the site with them.
 
-**E11.7-11 runs after E11.7-14 and before E11.7-15 (founder-authorised 2026-11-24, D-068).** It waits on P10; E11.7-12, E11.7-13 and E11.7-14 do not depend on it and run first. The ticket is not split and its scope is unchanged.
+**E11.7-11 runs after E11.7-14 and before E11.7-15 (founder-authorised 2026-11-24, D-068).** D-068 placed it there to wait on P10. Later the same day the founder decided it no longer waits on P10 (E11.7-11, founder decision 2); it keeps its place in the register.
 
 **E11.8 runs after E11.7 and before E12 (founder-authorised 2026-11-24).** It adds the Trust Ledger page, whose first entry is due when the site goes live in December 2026, the founder's per-platform signup report, the founder note in the weekly update, the referral reminder, the giveaway's new dates and the 13+ waitlist, so E12 deploys and gates the site with them. E11.8-06 waits on a lawyer (P12) and may move after E12 if P12 is late.
 
@@ -3976,7 +3976,7 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 2. **Partner commission.** 10% of order value, on all products, applies only to partners accepted during the pre-launch campaign, and only to the customers they referred during it. It counts every order those customers place from early access (1 September 2027) until one year after public launch (1 October 2028). After that, the customer is no longer attributed to the partner under these terms. **The founding rate lock lasts that one year; there is no lifetime lock.** Customers a partner refers after public launch fall under the post-launch rates, which are agreed separately. This replaces "12 months from each customer's first order" and "the founding rate lock for the life of the programme". This repository still calculates no commission; it shows the terms in copy and carries them in the hand-over document.
 3. **The positioning line.** Replacing the brief's "about double what the large marketplaces pay", partner-facing copy leads with "more than triple GameSeal's commission rate", followed by "double the rate of G2A and Eneba". Copy compares with each programme's standard rate, and the claim is used only for the pre-launch terms.
 
-**Founder inputs.** P10 (the asset kit files) gates E11.7-11. D1 was answered on 2026-11-17 and is recorded on E11.7-03. **The founder's growth decisions record is `docs/prerequisites/valstara-prelaunch-growth-decisions.md`.** Where it and the answers recorded in `docs/features/partner-programme.md` disagree, the later answers recorded there win.
+**Founder inputs.** P10 (the asset kit files) no longer gates E11.7-11: the founder adds them later as a content change (2026-11-24). D1 was answered on 2026-11-17 and is recorded on E11.7-03. **The founder's growth decisions record is `docs/prerequisites/valstara-prelaunch-growth-decisions.md`.** Where it and the answers recorded in `docs/features/partner-programme.md` disagree, the later answers recorded there win.
 
 ### Rules for every E11.7 ticket
 
@@ -4366,8 +4366,7 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - **QR codes.** Server-generated PNG and SVG QR codes of the partner's `/r/{CODE}` link. Record the dependency (name, licence, why), which is server-side only.
 - **Message templates** in content files, filled with the partner's code and link.
 - **The flyer.** `/partners/dashboard/flyer?t=`, a print stylesheet for A4 and US Letter with the QR code, the code and the welcome perk.
-- **Files.** The kit files committed under `public/partners/kit/` (P10), plus video links from a content file.
-- **BLOCKED until P10 is supplied.**
+- **Files.** The kit files under `public/partners/kit/` (P10) and the video links, both listed in one content file. It ships empty, and the downloads section stays hidden until it lists something (founder decision 2 below).
 
 **Acceptance criteria:**
 - **Every QR code decodes to exactly the partner's `/r/{CODE}` URL**, asserted by decoding in the test
@@ -4379,6 +4378,12 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 
 **Founder decisions (2026-11-24):**
 1. **Run E11.7-11 after E11.7-14, unsplit, once P10 is supplied.** (D-068 Q1, option C.) The ticket keeps its full scope: the QR codes, message templates, flyer and the P10 kit files under `public/partners/kit/` with video links from a content file. It also owns the partner welcome email, its catch-up and later-activation sends and the relocated welcome-email test exactly as recorded under D-057 on [E11.7-07](#e117-07--activation-rcode-partner-attribution-and-retroactive-attribution); that test is part of this ticket's Tests line. No placeholder kit file ships. When P10 is supplied, record it in `docs/prerequisites/founder-prerequisites.md` with each file's sharing right.
+2. **Build it without P10; the founder adds the files later** (founder, 2026-11-24, after D-068: "Build it, add files later"). This replaces decision 1's "once P10 is supplied"; the ticket keeps its place after E11.7-14 and is no longer blocked.
+   - **The kit content file** lists each downloadable file (its path under `public/partners/kit/`, a title and the founder's recorded sharing right) and each video link (a title and a plain `https://` URL). It ships **with both lists empty**.
+   - **Build-time validation:** every listed file exists, is an image or a PDF, and has a sharing right; every video link is a plain link that loads nothing on the page. A file under `public/partners/kit/` that the list does not name fails the build.
+   - **An empty list renders nothing:** no heading, no empty state, no "coming soon". The QR codes, message templates and flyer are the live kit, and the partner welcome email (D-057) sends once they and the dashboard are live, without waiting for P10.
+   - **Adding P10 later is a content change, not a ticket:** the founder commits the files, lists them in the content file and records each sharing right in `docs/prerequisites/founder-prerequisites.md`, through an ordinary pull request with CI.
+   - **Tests added to this ticket:** the empty lists render no downloads section on the dashboard or the flyer page and no kit-files line in the welcome email; a planted listed file renders as a same-origin download; a listed file that is missing, of another type or without a sharing right, and an unlisted file in the folder, each fail the validation.
 
 **Docs:** `docs/features/partner-programme.md` · `docs/brand/page-design.md`
 
@@ -4901,7 +4906,7 @@ The founder's brief targeted 40–60 hours for the partner programme. The founde
 | E11.7-08 Typed code, perks at signup | 07 | 5 h | |
 | E11.7-09 Partner dashboard | 07 | 7 h | |
 | E11.7-10 Partner leaderboard | 09 | 3 h | |
-| E11.7-11 Asset kit | 09; P10 | 5 h | |
+| E11.7-11 Asset kit | 09 (P10 optional, added later) | 5 h | |
 | E11.7-12 Auto-invite, first-signup email | 07 | 3 h | |
 | E11.7-13 Partner digest | 09, 10 | 4 h | |
 | E11.7-14 Attribution export, hand-over | 07, 03 | 5 h | |

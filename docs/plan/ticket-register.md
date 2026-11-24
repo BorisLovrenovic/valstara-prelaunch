@@ -4,7 +4,7 @@
 
 ## Rules
 
-1. **Rows are in execution order**, not ID order. E6-06 runs inside Epic E8, S-01 runs before E7, E11.5 ran in the order its founder authorisations set (plan, Epic E11.5), E11.6 and E11.7 run between GATE-7 and E12 (both founder-authorised 2026-11-17), E11.6-11a (test and CI tooling) runs between E11.6-11 and E11.6-12 (founder-authorised 2026-11-19), E11.8 runs after E11.7 (founder-authorised 2026-11-24), with one gate, GATE-8, after E11.8 that audits E11.6, E11.7 and E11.8 together (founder-authorised 2026-11-17; E11.8 added 2026-11-24).
+1. **Rows are in execution order**, not ID order. E6-06 runs inside Epic E8, S-01 runs before E7, E11.5 ran in the order its founder authorisations set (plan, Epic E11.5), E11.6 and E11.7 run between GATE-7 and E12 (both founder-authorised 2026-11-17), E11.6-11a (test and CI tooling) runs between E11.6-11 and E11.6-12 (founder-authorised 2026-11-19), E11.7-11 runs after E11.7-14 (founder-authorised 2026-11-24, D-068), E11.8 runs after E11.7 (founder-authorised 2026-11-24), with one gate, GATE-8, after E11.8 that audits E11.6, E11.7 and E11.8 together (founder-authorised 2026-11-17; E11.8 added 2026-11-24).
 2. **Two kinds of row.** A ticket row's ID and Title match a `### <ID> — <Title>` heading in the plan exactly. A gate row (`GATE-<n>`) is a QA gate from plan §6; it audits every ticket row between the previous gate row and itself, and its Epic column is the `{EPICS}` value for `03-integrated-qa.md`.
 3. **Status** is `todo`, `done` or `removed`. **Mode** is `auto` (the orchestrator may run it, with the founder approving each step) or `manual` (the founder runs it; the orchestrator stops and says so).
 4. **Who changes a row:**
@@ -177,10 +177,10 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 155 | E11.7-08 | The typed referral code, and partner perks at signup | Epic E11.7 — Pre-launch partner programme | done | auto |
 | 156 | E11.7-09 | The partner dashboard: private link, stats and settings | Epic E11.7 — Pre-launch partner programme | done | auto |
 | 157 | E11.7-10 | The partner leaderboard | Epic E11.7 — Pre-launch partner programme | done | auto |
-| 158 | E11.7-11 | The asset kit: QR codes, message templates and the print flyer | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 159 | E11.7-12 | The auto-invite and the first-signup email | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 160 | E11.7-13 | The partner digest | Epic E11.7 — Pre-launch partner programme | todo | auto |
-| 161 | E11.7-14 | The attribution export and the hand-over document | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 158 | E11.7-12 | The auto-invite and the first-signup email | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 159 | E11.7-13 | The partner digest | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 160 | E11.7-14 | The attribution export and the hand-over document | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 161 | E11.7-11 | The asset kit: QR codes, message templates and the print flyer | Epic E11.7 — Pre-launch partner programme | todo | auto |
 | 162 | E11.7-15 | Seed data, the partner-programme audit and founder sign-off | Epic E11.7 — Pre-launch partner programme | todo | auto |
 | 163 | E11.8-01 | The Trust Ledger page | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
 | 164 | E11.8-02 | The per-platform signup report | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
