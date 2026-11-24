@@ -343,6 +343,8 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
     '/partners',
     '/partners/apply',
     '/partners/dashboard',
+    // E11.7-11: the print flyer, behind the same private link.
+    '/partners/dashboard/flyer',
     '/price-index',
     '/prices',
     '/privacy',

@@ -88,6 +88,59 @@ export const partnerDashboardCopy = {
     unavailable:
       'We can’t take link requests right now. Please try again in a few minutes.',
   },
+  kit: {
+    heading: 'Your asset kit',
+    line: 'Share your link with a QR code, a printed flyer or a ready-made message. Each one carries your own link and code.',
+    qrHeading: 'QR code',
+    qrLabel: (link: string) => `QR code for ${link}`,
+    downloadPng: 'Download the QR code as PNG',
+    downloadSvg: 'Download the QR code as SVG',
+    flyerHeading: 'Print flyer',
+    flyerLine:
+      'A one-page flyer with your QR code, code and welcome offer, for A4 or US Letter paper.',
+    flyerAction: 'Open your print flyer',
+    messagesHeading: 'Message templates',
+    messagesLine:
+      'Copy a message and post it wherever you share. Your link and code are already filled in.',
+    downloadsHeading: 'Files and videos',
+    fileKind: { image: 'Image', pdf: 'PDF' },
+    video: 'Video',
+  },
+  flyer: {
+    title: 'Partner flyer',
+    description: 'Print your Valstara partner flyer.',
+    heading: 'Join the Valstara waitlist',
+    line: 'Valstara is a direct seller of digital goods backed by the Triple Guarantee.',
+    scan: 'Scan the code or visit',
+    code: 'Referral code',
+    // A printed flyer outlives the ladder stage it was printed at, so it
+    // states the guaranteed floor, never the current value (D-069).
+    perk: (month: string, percent: number) =>
+      `Join with this code and confirm your email for early access from ${month} and at least ${percent}% off your first order.`,
+    printHeading: 'Print this flyer',
+    printLine:
+      'Print this page on A4 or US Letter paper. The flyer fits on one page, and nothing else on this page is printed.',
+    back: 'Back to your dashboard',
+  },
+  welcome: {
+    subject: 'Your Valstara partnership is active',
+    preheader: 'Your dashboard, link, code and asset kit.',
+    firstLine:
+      'Your Valstara partnership is active, and your link and code now credit new signups.',
+    dashboard:
+      'Your private dashboard shows your confirmed signups, your asset kit and your settings. This link is valid for 30 days, and you can request a new one from the dashboard at any time.',
+    checklist: 'Three steps to get started:',
+    steps: [
+      '1. Get your code: it is below and on your dashboard.',
+      '2. Share it once: post a message from your asset kit, or print your flyer.',
+      '3. See your first confirmed signup: it shows on your dashboard once your friend confirms their email.',
+    ],
+    kitFiles: 'Your dashboard also has files and videos to share.',
+    code: (code: string) => `Code: ${code}`,
+    link: (link: string) => `Link: ${link}`,
+    action: 'Open your partner dashboard',
+    flyer: 'Open your print flyer',
+  },
   mail: {
     subject: 'Your new Valstara partner dashboard link',
     preheader: 'Open your private partner dashboard.',

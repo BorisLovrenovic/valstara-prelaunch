@@ -935,6 +935,17 @@ function taskEntries() {
         record: true,
       },
     ),
+    // E11.7-11: the print flyer, behind the same private link.
+    task(
+      'partners-dashboard-flyer-invalid',
+      '/partners/dashboard/flyer',
+      '/partners/dashboard/flyer',
+      {
+        flags: { 'partners.enabled': true },
+        status: 200,
+        record: true,
+      },
+    ),
     task('dsr-export-request', '/dsr', exportPath, { record: true }),
     task('dsr-delete-request', '/dsr', deletePath),
     task('dsr-export-confirm', '/dsr', `${exportPath}&t=emailed-link`),

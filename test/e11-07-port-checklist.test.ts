@@ -57,6 +57,10 @@ test('the checklist maps every portable Markdown source to one known storefront 
       // programme page's prose, which is campaign mechanics with no
       // storefront port target (docs/brand/tokens.md).
       'src/content/partner-countries.json',
+      // E11.7-11: the partner asset kit's files list (shipped empty) and its
+      // message templates; campaign mechanics with no storefront port target.
+      'src/content/partner-kit.json',
+      'src/content/partner-message-templates.json',
       'src/content/partner-programme.json',
       'src/content/provider-showcase.json',
       'src/content/provider-showcase.ts',

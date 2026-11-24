@@ -359,6 +359,7 @@ test('the member page and the leaderboard render every state from their sources,
       '/partners',
       '/partners/apply',
       '/partners/dashboard',
+      '/partners/dashboard/flyer',
       '/404',
       '/500',
     ]);

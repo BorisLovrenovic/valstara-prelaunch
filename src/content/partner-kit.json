@@ -1,0 +1,5 @@
+{
+  "_comment": "E11.7-11: the partner asset kit's downloadable files and video links (P10). Ships with both lists empty (founder decision 2, 2026-11-24); an empty list renders nothing. To add one, commit the file under public/partners/kit/, list it here as { \"path\": \"partners/kit/<name>.<png|jpg|jpeg|webp|pdf>\", \"title\": \"...\", \"sharingRight\": \"...\" } and record its sharing right in docs/prerequisites/founder-prerequisites.md (P10). A video is { \"title\": \"...\", \"url\": \"https://...\" }, shown as a plain link. The build fails on a listed file that is missing, of another type or without a sharing right, and on any file in the folder this list does not name.",
+  "files": [],
+  "videos": []
+}

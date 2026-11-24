@@ -185,6 +185,7 @@ test('sitemap routes reconcile with page files and include only the current rule
       file.endsWith('/me.astro') ||
       file.endsWith('/verify.astro') ||
       file === 'src/pages/partners/dashboard.astro' ||
+      file === 'src/pages/partners/dashboard/flyer.astro' ||
       file.endsWith('/404.astro') ||
       file.endsWith('/500.astro') ||
       // The price routes have their own child sitemaps (E11.6-10, E11.6-12).
@@ -226,6 +227,9 @@ test('sitemap routes reconcile with page files and include only the current rule
   assert.ok(!routes.includes('/verify'));
   assert.ok(pageFiles.includes('src/pages/partners/dashboard.astro'));
   assert.ok(!routes.includes('/partners/dashboard'));
+  // E11.7-11: the print flyer is private too.
+  assert.ok(pageFiles.includes('src/pages/partners/dashboard/flyer.astro'));
+  assert.ok(!routes.includes('/partners/dashboard/flyer'));
   // E11.5-10: the branded error pages are noindex and never in the sitemap.
   assert.ok(pageFiles.includes('src/pages/404.astro'));
   assert.ok(pageFiles.includes('src/pages/500.astro'));

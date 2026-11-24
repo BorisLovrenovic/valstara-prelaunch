@@ -8,7 +8,13 @@ import {
   partnerConfirmationTemplate,
   partnerReceivedTemplate,
 } from './application.ts';
-import { dashboardPath, partnerDashboardRecoveryTemplate } from './config.ts';
+import {
+  dashboardPath,
+  flyerPath,
+  partnerDashboardRecoveryTemplate,
+  partnerWelcomeTemplate,
+} from './config.ts';
+import { hasKitDownloads, partnerKit, type PartnerKit } from './kit.ts';
 import {
   partnerApprovedTemplate,
   partnerRejectedTemplate,
@@ -20,11 +26,22 @@ import {
  * application reaches `applied`. E11.7-06: "approved" at `approve`, and
  * "rejected" only when `reject --template` asks for it (D-052 Q2). None
  * carries an application field; each links the member's own status page.
+ * E11.7-11 (D-057): the partner welcome, with a fresh private dashboard link,
+ * the code and `/r/{CODE}` link, the print flyer and the three-step checklist.
  */
+export interface PartnerRendererDependencies {
+  /** The partner code of a welcome's dashboard link, read at dispatch. */
+  readonly welcomeCode?: (tokenId: string) => Promise<string | null>;
+  readonly kit?: PartnerKit;
+}
+
 export function partnerApplicationRenderers(
   baseUrl: string,
   sendingDomain: string,
+  dependencies: PartnerRendererDependencies = {},
 ): ReadonlyMap<string, TemplateRenderer> {
+  const kit = dependencies.kit ?? partnerKit;
+  const welcomeCode = dependencies.welcomeCode ?? (async () => null);
   const origin = new URL(baseUrl).origin;
   const from = `${emailCopy.senderName} <hello@${sendingDomain}>`;
   const programmeUrl = new URL('/partners', origin).toString();
@@ -167,11 +184,52 @@ export function partnerApplicationRenderers(
       });
     },
   };
+  const welcome: TemplateRenderer = {
+    kind: 'transactional',
+    async render({ email, payload, token, unsubscribePageUrl }) {
+      if (typeof payload.token_id !== 'string' || payload.token_id === '') {
+        throw new Error('email_template_reference_missing');
+      }
+      const bearer = await token(payload.token_id);
+      const code = await welcomeCode(payload.token_id);
+      if (code === null || !/^[A-Z0-9]{4,16}$/u.test(code)) {
+        throw new Error('email_token_missing');
+      }
+      const dashboard = new URL(dashboardPath, origin);
+      dashboard.searchParams.set('t', bearer);
+      const flyer = new URL(flyerPath, origin);
+      flyer.searchParams.set('t', bearer);
+      const link = new URL(`/r/${code}`, origin).toString();
+      const copy = partnerDashboardCopy.welcome;
+      return renderEmailDocument({
+        from,
+        to: email,
+        unsubscribePageUrl,
+        document: {
+          subject: copy.subject,
+          preheader: copy.preheader,
+          paragraphs: [
+            copy.firstLine,
+            copy.dashboard,
+            copy.checklist,
+            ...copy.steps,
+            ...(hasKitDownloads(kit) ? [copy.kitFiles] : []),
+          ],
+          facts: [copy.code(code), copy.link(link)],
+          links: [
+            { label: copy.action, url: dashboard.toString() },
+            { label: copy.flyer, url: flyer.toString() },
+          ],
+        },
+      });
+    },
+  };
   return new Map([
     [partnerConfirmationTemplate, confirm],
     [partnerReceivedTemplate, received],
     [partnerApprovedTemplate, approved],
     [partnerRejectedTemplate, rejected],
     [partnerDashboardRecoveryTemplate, dashboardLink],
+    [partnerWelcomeTemplate, welcome],
   ]);
 }

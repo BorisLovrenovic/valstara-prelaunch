@@ -88,6 +88,12 @@ export const dashboardPath = '/partners/dashboard';
 export const dashboardRecoveryPath =
   '/partners/apply?operation=dashboard-recovery';
 export const partnerDashboardRecoveryTemplate = 'partner_dashboard_link';
+// E11.7-11 (D-057): the partner welcome, one per partner, ever.
+export const flyerPath = '/partners/dashboard/flyer';
+export const partnerWelcomeTemplate = 'partner_welcome';
+export function partnerWelcomeBusinessKey(partnerId: string): string {
+  return `partner-welcome:${partnerId}`;
+}
 
 // Increment when the leaderboard name disclosure changes.
 export const displayNameDisclosureVersion = 1;

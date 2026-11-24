@@ -65,6 +65,8 @@ const pageBindings: Record<string, string> = {
   '/partners': 'programme',
   '/partners/apply': 'pageCopy',
   '/partners/dashboard': 'copy',
+  // E11.7-11: the print flyer, behind the same private link.
+  '/partners/dashboard/flyer': 'copy.flyer',
   '/privacy': 'legalPageCopy.privacy',
   '/privacy/storage': 'legalPageCopy.storage',
   '/terms': 'legalPageCopy.terms',
@@ -196,6 +198,7 @@ export async function collectSeoPages(
     page('/partners', partnerProgrammeContent),
     page('/partners/apply', partnersCopy.apply),
     page('/partners/dashboard', partnerDashboardCopy),
+    page('/partners/dashboard/flyer', partnerDashboardCopy.flyer),
     page('/404', errorPagesCopy.notFound.meta),
     page('/500', errorPagesCopy.serverError.meta),
     page('/giveaway/rules', rulesPageMetadata(current, true)),

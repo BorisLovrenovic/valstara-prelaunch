@@ -1,0 +1,75 @@
+---
+// E11.7-11: the asset kit's files and video links. Renders nothing at all
+// when the kit lists none (founder decision 2, 2026-11-24). A file is a
+// same-origin download; a video is a plain link that loads nothing here.
+import { partnerDashboardCopy as copy } from '../copy/partner-dashboard.ts';
+import type { PartnerKitDownloads } from '../server/partner/kit-presentation.ts';
+import TextLink from './text-link.astro';
+
+interface Props {
+  downloads: PartnerKitDownloads | null;
+  headingLevel?: 'h2' | 'h3';
+}
+
+const { downloads, headingLevel = 'h3' } = Astro.props;
+const Heading = headingLevel;
+---
+
+{
+  downloads !== null && (
+    <section class="kit-downloads" data-kit-downloads>
+      <Heading>{copy.kit.downloadsHeading}</Heading>
+      <ul>
+        {downloads.files.map(({ href, title, kind }) => (
+          <li>
+            <TextLink href={href} download>
+              {title}
+            </TextLink>{' '}
+            <span class="kit-downloads__kind">{kind}</span>
+          </li>
+        ))}
+        {downloads.videos.map(({ href, title }) => (
+          <li>
+            <TextLink href={href} rel="noopener noreferrer">
+              {title}
+            </TextLink>{' '}
+            <span class="kit-downloads__kind">{copy.kit.video}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+<style>
+  .kit-downloads {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .kit-downloads :is(h2, h3, ul) {
+    margin: var(--space-0);
+  }
+
+  .kit-downloads h3 {
+    font-size: var(--step-2);
+    line-height: var(--leading-2);
+  }
+
+  .kit-downloads ul {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-0);
+    list-style: none;
+  }
+
+  .kit-downloads :global(.text-link) {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap-min);
+  }
+
+  .kit-downloads__kind {
+    color: var(--ink-600);
+  }
+</style>

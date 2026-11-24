@@ -4,6 +4,7 @@ import type { ReferralAttributionConfiguration } from '../config.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import type { FlagService } from '../flags/types.ts';
 import { partnerActivationBatchLimit } from '../partner/activation.ts';
+import { partnerWelcomeBatchLimit } from '../partner/welcome.ts';
 import { createReferralAttributionMaintenanceJob } from '../referral/attribution-maintenance.ts';
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 
@@ -30,6 +31,7 @@ export type MaintenanceJobName =
   | 'leaderboard_snapshot_purge'
   | 'partner_leaderboard_snapshot'
   | 'partner_activation'
+  | 'partner_welcome'
   | 'partner_application_purge'
   | 'email_quota';
 
@@ -59,6 +61,7 @@ export interface VerificationMaintenanceJobs {
   readonly leaderboardSnapshotPurge?: MaintenanceJob;
   readonly partnerApplicationPurge?: MaintenanceJob;
   readonly partnerActivation?: MaintenanceJob;
+  readonly partnerWelcome?: MaintenanceJob;
   readonly partnerLeaderboard?: MaintenanceJob;
   readonly emailQuota?: VerificationRateJob;
 }
@@ -204,6 +207,15 @@ export function createVerificationMaintenanceScheduler(
         'partner_activation',
         jobs.partnerActivation,
         partnerActivationBatchLimit,
+      );
+    }
+    // E11.7-11 (D-057): after activation, so a code made live this cycle is
+    // welcomed in the same cycle.
+    if (jobs.partnerWelcome !== undefined) {
+      await runJob(
+        'partner_welcome',
+        jobs.partnerWelcome,
+        partnerWelcomeBatchLimit,
       );
     }
     if (jobs.partnerLeaderboard !== undefined) {
