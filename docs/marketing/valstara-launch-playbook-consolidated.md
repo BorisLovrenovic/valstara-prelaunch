@@ -1,6 +1,6 @@
 # Valstara Launch Playbook — Consolidated Brief
 
-**Version:** 2.3 · **Updated:** 24 November 2026 (2.1 applied the founder's answers of 21 Nov; 2.2 the founder's authorisations of 22 Nov; 2.3 a full review against everything merged through E11.7-08, logged in Part 11) · **Owner:** founder
+**Version:** 2.4 · **Updated:** 24 November 2026 (2.1 applied the founder's answers of 21 Nov; 2.2 the founder's authorisations of 22 Nov; 2.3 a full review against everything merged through E11.7-08; 2.4 the founder's answers to that review, logged in Part 11) · **Owner:** founder
 
 This playbook began as a synthesis of three independent go-to-market reports (August 2026). Since then the founder has made decisions and the pre-launch site has been built. **Version 2 brings the playbook into line with both.** Where the reports and the project disagree, the project wins.
 
@@ -60,7 +60,7 @@ These are decided or built. A marketing action that contradicts one of them is w
 
 ## 0.3 What a member gets (decided 17 Nov 2026; on the site since E11.7-04)
 
-- **Joining:** email only, with a separate, **unticked** marketing opt-in. **No country is asked.** Open to people aged 18 and over. Double opt-in: **nothing counts until the address is verified.**
+- **Joining:** email only, with a separate, **unticked** marketing opt-in. **No country is asked.** The site says "Open to people aged 18 and over." **The founder decided on 24 Nov 2026 to open the waitlist to people aged 13 and over, with the giveaway for people aged 18 and over only.** It is not built yet: three questions come first (11.4, Q4), then a ticket. Double opt-in: **nothing counts until the address is verified.**
 - **Early access (wave 1, 1 Sep 2027):**
   - the **first 1,000 verified members**, by signup order, whatever their referrals; that place is never lost;
   - after them, **any member with 3 or more confirmed, non-voided referrals**;
@@ -92,7 +92,7 @@ These are decided or built. A marketing action that contradicts one of them is w
 | | All partners |
 |---|---|
 | **Commission: pre-launch terms** (founder, 21 Nov 2026) | **10% of order value, on all products**, for customers referred **during the pre-launch campaign** only. It counts every order those customers place **from early access (1 Sep 2027) until one year after public launch (1 Oct 2028)**. After that window, the customer is no longer attributed to the partner under these terms. Paid by the main platform. **Nothing is earned before real orders exist** |
-| **Commission after public launch** | Customers a partner refers **after public launch** earn the **post-launch rate**, which is not yet set. A pre-launch partner who carries on after launch agrees those rates then. A customer whose window has ended can be referred again only under the post-launch terms |
+| **After public launch** (founder, 24 Nov 2026) | This pre-launch partner programme ends, and two separate things replace it on the main platform. **Partners** (creators, influencers and community owners) get terms **agreed case by case**, by their size and what they ask for. **Affiliates** join a separate, more comprehensive **affiliate system** with the same rates for every affiliate, possibly on a ladder they climb. Customers a pre-launch partner refers after public launch fall under whichever of these the partner then has. A customer whose pre-launch window has ended can be referred again only under those terms. Neither is decided in this repository |
 | **Levels** | **One only.** No commission for recruiting other partners |
 | **Founding terms** | The 10% applies only to partners accepted during the pre-launch campaign, and only to the customers they referred in it. **It is not a lifetime rate lock.** **The founding rate lock lasts one year** (founder, 22 Nov 2026): orders until 1 Oct 2028. This replaced "the life of the programme" in the plan, the spec and the growth decisions |
 | **Contract** | Every partner signs a short, plain-English contract, sent by the founder through **signfree.io**. Recording the signature (`contract-signed`) activates the partner: the code and `/r/{CODE}` go live and retroactive attribution runs. While `partners.enabled` is off, the signature is recorded and activation waits until it is on |
@@ -102,20 +102,20 @@ These are decided or built. A marketing action that contradicts one of them is w
 | **Retroactive attribution** | When a member becomes a partner, everyone they already referred is attributed to them as a partner, and those friends gain the perks |
 | **Dashboard** | A private emailed link (30 days; asking for a new one cancels the old). It shows **counts only**: confirmed, pending, voided, signups per week, a breakdown by survey category, the ladder, the welcome discount, the terms summary, a partners-only leaderboard (top 20 plus own rank, anonymous unless they opt in) and the asset kit. **Partners never see who they referred** |
 | **Asset kit** | Message templates pre-filled with their code and link, **a print-ready flyer (A4 and US Letter) with their QR code, code and the welcome perk**, and downloadable images and PDFs (prerequisite P10). Videos are plain links |
-| **Emails** | A confirmation link on applying (confirming it also joins the waitlist and enters the giveaway, E11.7-05); application received; approved; rejected (only when the founder chooses to send it); **welcome** with the dashboard link, code, link, asset kit and a 3-step checklist (get your code → share once → see your first confirmed signup); first confirmed signup; and a monthly digest with one founder note (off until the founder turns it on; it can switch to weekly from April 2027). **The welcome is sent only once the dashboard (E11.7-09) and the asset kit (E11.7-11, P10) are live**; partners activated earlier get it then, by catch-up (D-057). **There is no partner broadcast list:** the quarterly CSV import into Brevo was retired and the dedicated Brevo partner sync deferred (E11.7-06, D-056), so the digest's founder note is today the only channel to every partner at once (11.4) |
+| **Emails** | A confirmation link on applying (confirming it also joins the waitlist and enters the giveaway, E11.7-05); application received; approved; rejected (only when the founder chooses to send it); **welcome** with the dashboard link, code, link, asset kit and a 3-step checklist (get your code → share once → see your first confirmed signup); first confirmed signup; and a monthly digest with one founder note (off until the founder turns it on; it can switch to weekly from April 2027). **The welcome is sent only once the dashboard (E11.7-09) and the asset kit (E11.7-11, P10) are live**; partners activated earlier get it then, by catch-up (D-057). **There is no partner broadcast list:** the quarterly CSV import into Brevo was retired and the dedicated Brevo partner sync deferred (E11.7-06, D-056), so the digest's founder note is today the only channel to every partner at once. A proper partner-announcement channel is a to-do item that needs its own ticket (11.4) |
 | **Auto-invite** | A member who reaches **10 confirmed referrals** gets one invitation to apply, **only if they opted in to marketing** |
 | **Who decides** | **The founder reviews every application by hand**, approves (and may edit the code), rejects, pauses, terminates and voids any single referral with a reason. Every action is audited |
 
 **What the programme deliberately does not do before launch:** calculate commission or earnings, pay out, take payout or tax details, track orders, offer sub-IDs, deep links, UTM builders or click analytics, or run pre-launch partner competitions (dropped: signups are too easy to fake).
 
-**A post-launch partner competition** runs on the main platform from **1 September 2027 (early access) to 31 December 2027** (founder, 21 Nov 2026). It is ranked on real referred order value after refunds, with prizes for the top 3 and a bonus for everyone who passes a set amount. **Announce it before launch so it motivates partners now.**
+**A post-launch partner competition** runs on the main platform from **1 September 2027 (early access) to 31 December 2027** (founder, 21 Nov 2026). It is ranked on real referred order value after refunds, with prizes for the top 3 and a bonus for everyone who passes a set amount. **Announce it before launch so it motivates partners now.** Its prizes, bonus threshold, written rules and announcement date are a to-do item, settled when that task is worked on (founder, 24 Nov 2026).
 
 **Positioning lines (founder, 21–22 Nov 2026; recorded in the plan for E11.7-05).** Compare only with **GameSeal, G2A and Eneba**:
 
 - **Lead line:** *"More than triple GameSeal's commission rate."*
 - **Second line:** *"Double the rate of G2A and Eneba."*
 
-They replace "about double what the big marketplaces pay". Use them **only during the pre-launch campaign**, because the post-launch rate will be different. Every use is scoped, dated and sourced.
+They replace "about double what the big marketplaces pay". Use them **only during the pre-launch campaign**, because post-launch terms will be different. Every use is scoped, dated and sourced.
 
 | Competitor | Rate found (checked 21 Nov 2026) | Valstara's 10% is | Evidence |
 |---|---|---|---|
@@ -167,7 +167,7 @@ Rules for using the line:
   - **Events carry only a source bucket** (direct, referral, email, social, paid, organic, other), never the raw `utm_source`. **No built report breaks signups down by platform or campaign today.** The analytics can say "120 signups came from social", but not "80 from TikTok and 40 from Instagram". Per-platform comparison comes from platform link clicks plus Umami's referrer origins (page views, not signups).
   - **Decided (founder, 22 Nov 2026): a per-platform signup report, as detailed as possible.** TikTok, Instagram, YouTube, X, Reddit, Telegram, Discord, LinkedIn, Facebook, Threads, email and each campaign are shown separately, never grouped as "social".
   - **What it would show:** founder-only aggregate counts per source, medium and campaign, of signups, verifications, confirmed referrals and survey completions. It reads the UTM values already stored on each subscriber (kept 12 months, analytics-only). No analytics event changes, nothing new is collected, and nothing changes on the page.
-  - **[Open]** It needs a plan ticket (11.2).
+  - **In the plan (founder-authorised 2026-11-24): ticket E11.8-02**, with the convention list as `config/utm-convention.json`.
   - **What it can and cannot see:**
     - It sees every visit that arrived on a link carrying our UTMs, so every link we control must follow the UTM convention in 3.1.
     - Someone who watches a TikTok and then types valstara.com shows as `direct`.
@@ -236,7 +236,7 @@ Rules for using the line:
   - **"No card needed" is accurate:** the signup asks for an email only.
   - **Say "a month before everyone else" or "before public launch", not "2 months before everyone else".** Early access on 1 Sep 2027 and public launch on 1 Oct 2027 are one month apart.
 - **Referral reminders work** (founder, 21 Nov 2026: adopted). Field research (Journal of Marketing Research, 2025) found that merely reminding referred customers they had joined through a referral raised their own referral likelihood. Tell referred members that a friend brought them in.
-  - **Where it can go today:** the verification success page already names the partner for a partner-referred person. **The weekly update cannot carry it:** E11.7-04's founder decision (D-048) keeps the weekly free of per-recipient lines (its payload is only the snapshot and a status token), and "a friend brought you here" is true only for some recipients. **[Open] (11.4)** Either a plan change adds it to the weekly or the welcome email, or it waits for the storefront's post-purchase emails (9.2, step 3).
+  - **Where it can go today:** the verification success page already names the partner for a partner-referred person. **The weekly update cannot carry it:** E11.7-04's founder decision (D-048) keeps the weekly free of per-recipient lines (its payload is only the snapshot and a status token), and "a friend brought you here" is true only for some recipients. **[Open] (11.4, Q2)** A line in the welcome email for every referred member, the storefront's post-purchase emails after launch (9.2, step 3), or both.
 - **Survey completion is the leading quality signal.** Target 35%+ of verified members (a report benchmark, not our data). The category answers decide which products and stories lead each launch email.
 
 ## 2.3 Benchmarks to beat (report benchmarks; replace them with our own medians after 4–6 weeks)
@@ -366,6 +366,7 @@ Record the date and the source for each. The partner kit's giveaway wording must
 - **Telegram: a broadcast-only channel** (founder, 21 Nov 2026). Only Valstara posts; there is no member discussion. It suits price-change alerts, the monthly report and building-in-public notes, and it costs nothing.
 - **Discord: open it small, with a narrow purpose** (founder, 21 Nov 2026: accepted). For example: announcements, price changes, a feedback channel, and a separate partners channel for active partners (useful for kit updates and questions). **Open general chat only once the posting cadence is steady and someone can moderate daily.** A small, high-trust server beats a large, dead or spam-filled one. The reports' post-launch structure (`#deals-alerts`, `#price-drops`, `#support`, `#vault-help`, roles by purchase tier, member-exclusive drops) applies from early access.
 - **Brand rules (guidelines §8.2):** a named support presence with stated response times, no hype posting, no spam drops, and no @everyone for promotions.
+- **Support response time and moderation (founder, 24 Nov 2026).** The founder moderates Discord. The stated response time, for Discord and every other channel, is: *"We aim to answer every message within 24–48 hours. It can take up to 7 days when a question needs investigation or we're handling a high volume."* Keep the wording identical everywhere it appears.
 - **Privacy:** these are third-party platforms. The site never embeds them, and joining one is never a condition of anything.
 
 ## 3.6 The Trust Ledger (defined by the founder, 22 Nov 2026)
@@ -378,7 +379,8 @@ Record the date and the source for each. The partner kit's giveaway wording must
 
 **Founder decisions:**
 
-1. The name is **"Trust Ledger"**. It follows the brand's plain-English programme names, like the Triple Guarantee and the Supplier Register (identity guidelines §3.3).
+1. The name is **"Trust Ledger"**. It follows the brand's plain-English programme names, like the Triple Guarantee (identity guidelines §3.3).
+4. **No supplier register is published** (founder, 24 Nov 2026). Valstara may use several suppliers for the same product and switches between them in the background. The Ledger shows supplier counts only. "The Supplier Register" has been removed from the brand guidelines.
 2. **Operations numbers only. No revenue figures.**
 3. **The first entry (Phase 1) is published in December 2026,** when the pre-launch website goes live.
 
@@ -387,7 +389,7 @@ Record the date and the source for each. The partner kit's giveaway wording must
 - **It is the trust promise, shown with proof.** Anyone can say "we're the accountable ones". Publishing the refund count every month shows it, and a marketplace cannot easily copy it.
 - **It answers what this category is criticised for.** The founder's research found the category's reputation was damaged by secrecy, slow dispute handling and undisclosed paid promotion (the G2A controversies of 2016 and 2019). The Ledger is the opposite of each.
 - **It gives partners something to point to.** A partner puts their own reputation on the line. *"Here are Valstara's real numbers, refunds included"* is their best answer to "is this legit?"
-- **It is ready-made content every month.** One entry feeds the partner digest's founder note, a building-in-public post and, once a channel exists (11.4), a member email.
+- **It is ready-made content every month.** One entry feeds the partner digest's founder note, a building-in-public post and, once a channel exists (11.4, Q1), a member email.
 
 ### Phase 1: pre-launch (December 2026 → September 2027)
 
@@ -440,21 +442,22 @@ It starts reporting real operations, with **fixed definitions that are never cha
 
 **Format.** One URL, with the newest month at the top, a full archive below, and the "How we count" section. Each month is one small data file, and the site builds the page from those files. The waitlist count can be read from the database automatically. On the code side, it is a small static page, a few hours of work.
 
-**[Open] The page has no ticket in the plan yet.** It needs a ticket and a register row, added with founder authorisation, scheduled so that it ships before the first entry is due in December 2026. The ticket must keep every site rule:
+**In the plan (founder-authorised 2026-11-24): ticket E11.8-01**, in the new Epic E11.8, after E11.7-15 and before GATE-8 and E12, so it is live before the December go-live. The spec is `docs/features/trust-ledger.md`. In short:
 
-- a content-file and data-file pipeline, not prose in markup;
-- no third-party request;
-- no personal data, with aggregate counts only;
-- the claims rules (every figure traceable).
+- one validated data file per month; a published entry can never change (CI-enforced);
+- a founder command drafts the month's waitlist figures from the database;
+- the flag `trust_ledger.page` is off until the first entry is merged;
+- links from `/guarantee`, `/partners` and the footer;
+- `/trust-ledger` is a permanent URL the storefront keeps.
 
-Its links from `/guarantee`, `/partners` and the footer are copy changes inside that ticket. `/guarantee`'s prose is founder input (P3b), so the founder supplies the line it carries.
+**It waits on P11:** the "How we count" text, the first entry's founder sections (with the definitions of an evaluated, verified and rejected supplier) and the `/guarantee` link line.
 
 **The founder's monthly work:** about 1–2 hours to fill in the numbers and write the three short sections.
 
 **Distribution:**
 
 - links from the guarantee page, `/partners` and the site footer;
-- a summary in the partner digest's founder note, and in a member email once there is one to carry it: **there is no monthly member email today**, only the weekly update, which carries no editorial content (11.4);
+- a summary in the partner digest's founder note, and in a member email once there is one to carry it: **there is no monthly member email today**, only the weekly update, which carries no editorial content (11.4, Q1);
 - one building-in-public post per month.
 
 **Risks:**
@@ -475,7 +478,7 @@ Its links from `/guarantee`, `/partners` and the footer are copy changes inside 
 - The creator becomes a **partner** at once (`creator` type): their own code and link, the pre-launch 10% commission (0.4) on referred customers' orders from early access until 1 Oct 2028, and friends get the welcome discount and wave 1.
 - **The brief is to demonstrate and give an honest opinion, not to praise the brand.** After early access, the strongest content shows a real checkout, the real delivery time, real activation and real support.
 - **The 12-month reuse right needs the original file.** Part 3.2 rules out watermarked reposts, which lose reach, so the creator contract should require delivery of the original video without platform watermarks, a licence to repost it natively on Valstara's Instagram and TikTok for 12 months, and the disclosure kept on every reuse.
-- **[Open] (11.4) How a review subscription reaches a creator before the store exists,** and what the review can show. Before early access there is no Valstara checkout or order, so a pre-launch review can cover the product and Valstara's delivery and support, but not the buying experience.
+- **To-do (11.4): how a review subscription reaches a creator before the store exists,** and what the review can show. It goes hand in hand with the asset kit files. Before early access there is no Valstara checkout or order, so a pre-launch review can cover the product and Valstara's delivery and support, but not the buying experience.
 
 ## 4.2 Who to target
 
@@ -483,9 +486,11 @@ Its links from `/guarantee`, `/partners` and the footer are copy changes inside 
 - **Audiences that buy digital goods, in any niche** (brand guidelines §10.3): AI and productivity, students and study tools, streaming and entertainment, software and design, tech deals, personal finance and "save money" creators, and gaming for in-game currency.
 - **Never associate with** gambling, casino, skin-gambling or case-opening, nicotine, alcohol, or adult content (guidelines §10.1).
 - **Prefer creators whose audience is mostly in our 20 price-index markets and over 18.** Do not rule out creators with younger audiences (founder, 21 Nov 2026). Many of our products are used by teenagers (Netflix and Spotify, for example), and in-game currency such as Roblox's Robux is being considered. Teenagers are future customers even though they cannot enter the giveaway.
-  - **[Open] Teen audiences: work out the approach when this task is worked on.** The facts to start from:
-    - **The site says "Open to people aged 18 and over."** on the signup form, so under-18s cannot pre-register under the current copy. Partner applicants must be 18 or over.
-    - Admitting under-18s to the waitlist would be a founder decision and a plan change. It touches the signup copy, and the minimum age for marketing consent, which varies from 13 to 16 by country under GDPR Article 8. The giveaway would also need to exclude them, while today age is checked only with provisional winners at award time.
+  - **Decided (founder, 24 Nov 2026): the waitlist opens to people aged 13 and over; the giveaway stays 18 and over, and says so plainly.** It needs a ticket, after three questions (11.4, Q4). Until it ships, the site still says "Open to people aged 18 and over", and no campaign may invite under-18s to join. The facts behind the questions:
+    - The minimum age for **marketing consent** without a parent's authorisation is 13 to 16 depending on the country (GDPR Article 8; for example 16 in Germany, Ireland, the Netherlands and Poland, and 13 in the UK, Sweden and Denmark). The site collects neither age nor country.
+    - **Giveaway entries** currently accrue for every verified member, and age is checked only with provisional winners at award time.
+    - Inviting under-18s brings in the UK Age Appropriate Design Code. Under ADR-030, the founder's waiver of legal review does not cover "a material change to this scope".
+    - Partner applicants stay 18 or over.
     - Advertising to minors is restricted in the UK, the EU and the US (COPPA for under-13s), and so is content placed in children's media.
     - **Roblox (Robux) is not on the P8 launch provider list.** It cannot be shown or promised as "coming" until it is added there.
 - **Measure creators** on confirmed signups through their code, the survey categories of those signups, and reusable content. Never on follower count. After launch, measure on first orders.
@@ -502,7 +507,7 @@ Its links from `/guarantee`, `/partners` and the footer are copy changes inside 
 
   No wall of text, no hype, no countdown, no "exclusive opportunity", no income claims. Never use *passive income*, *unlimited*, *financial freedom*, *team* or *downline*.
 - **One polite follow-up after about a week, then stop** (founder, 21 Nov 2026). Silence is an answer.
-- **Give them time.** No deadline pressure. The pre-launch terms are open to anyone accepted during the campaign, so there is no false urgency to use, and we do not invent any. **[Recommendation]** It is true that customers referred after public launch fall under the post-launch rate. Say so plainly when asked, never as a pressure line.
+- **Give them time.** No deadline pressure. The pre-launch terms are open to anyone accepted during the campaign, so there is no false urgency to use, and we do not invent any. **[Recommendation]** It is true that customers referred after public launch fall under post-launch terms. Say so plainly when asked, never as a pressure line.
 - **A "no" is accepted at once,** with thanks and no counter-offer, leaving the door open.
 
 ### 4.3a Personal video outreach (Loom)
@@ -524,7 +529,7 @@ Its links from `/guarantee`, `/partners` and the footer are copy changes inside 
 | "What's your rate?" / "I charge $X per post" | We don't pay upfront fees. What we offer is the subscription to review, honest content on your terms, and a partner code that earns 10% of what the customers you refer during pre-launch buy, from early access until one year after public launch. That is more than triple GameSeal's base commission rate. If that doesn't fit, no problem |
 | "Can I get paid now for the signups I bring?" | Commission comes from real orders, and orders start with early access. Before then there is nothing to pay commission on, so there is no early payout. Your signups are recorded from day one and carried to the main platform |
 | "Can you raise the rate / give me a special rate?" | The pre-launch 10% is the same for every partner. We keep one rate so it stays fair. The variable part is the review product and term, which the founder decides per creator |
-| "What happens after launch?" | Customers you referred during pre-launch keep earning you 10% until one year after public launch. Customers you refer after launch earn the post-launch rate, which we agree with you then |
+| "What happens after launch?" | Customers you referred during pre-launch keep earning you 10% until one year after public launch. Customers you refer after launch fall under post-launch terms: for partners these are agreed case by case, and there will also be a separate affiliate programme |
 | "Is this legit? Will I actually get paid?" | Name the company (3NITY Digital Limited, Hong Kong, registration number), the founder by name, and the trust pages. Explain that there is a signed, plain-English contract they can read in their own time and show a lawyer if they like. Privately, the founder may mention the earlier store and its Trustpilot reviews (0.6) |
 | "Is this a pyramid scheme / MLM?" | No. One level only: no one earns anything for recruiting other partners. Commission comes only from customers' own purchases |
 | A small creator expects cash on top | Thank them, restate the offer plainly, and say it is the offer. Each case is handled individually, but the structure does not change. Let them decide |
@@ -593,32 +598,24 @@ This is advice for the onboarding video, the guide and the kit, not a plan Valst
 1. **Every signup goes through the site** — the link, the QR code or the typed code — **and is verified by the person themself.** Ambassadors **never collect emails on paper or in a spreadsheet, and never sign anyone up on their behalf.** A paper list would be personal data outside our system and our privacy notice. It also has no double opt-in, and typing a friend's email is not their consent.
 2. **No incentives beyond the official perks.** No paying, gifting or raffling to get signups. Bought signups do not buy, and the founder can void any referral.
 3. **Only real, verified people count.** Duplicate or throwaway addresses are flagged and voided, and voided referrals drop out of the ladder, wave 1 and the dashboard.
-4. **Expect campus Wi-Fi to trigger velocity flags.** Many signups from one campus network share an IP prefix, so a busy event can raise IP-velocity flags. Flags never auto-ban and the founder reviews them. Ask ambassadors to tell the founder the date and place of each event, so flags from it can be judged in context. **[Open] A better guard is a task for later** (see "Same-network signups" below).
-5. **18+ only.** The waitlist is for people aged 18 and over. Do not target school students or under-18 first-years.
+4. **Expect campus Wi-Fi to trigger velocity flags.** Many signups from one campus network share an IP prefix, so a busy event can raise IP-velocity flags. Flags never auto-ban and the founder reviews them (review only, see below). Ask ambassadors to tell the founder the date and place of each event, so flags from it can be judged in context.
+5. **Ambassadors must be 18 or over**, as every partner must. The waitlist itself says 18+ today. Once the founder's 13+ decision is built (11.4, Q4), friends aged 13–17 may join, but they cannot enter the giveaway, and nothing may promise them that they can.
 6. **Disclose.** "I'm a Valstara partner and earn commission on purchases" on posts. In person, saying it plainly is enough and is the honest thing to do.
 7. **No university names, crests or logos** on flyers or posts, and no implication of official endorsement.
 
-### Same-network signups: the founder's options, to research later [Open]
+### Same-network signups: review only (founder, 24 Nov 2026)
 
-**The concern** (founder, 21 Nov 2026). A partner with, for example, 200 referred users, 180 of them from one network, is either a campus or a fraud. A student ambassador can explain a campus. A random partner usually cannot.
+**Decided: flag and review; never block.** Signups from one network keep raising velocity flags as they do today. Nothing is blocked automatically. The founder reviews them later, partner by partner.
 
-**The founder's options:**
-
-- **(a) Review, don't block.** At the end of pre-launch, when new partner attribution stops, review each partner's referrals for concentration, and ask the partner where they came from before approving.
-- **(b) A tailored guard.** Block repeated signups from the *same* address while allowing the same *range*, with looser limits for links and codes belonging to student ambassadors.
-
-**What the current system can and cannot do.** Any of this must be worked out with these facts:
-
-- **The site never stores or sees a full IP address.** Standing rule 9 is CI-enforced. At the signup boundary the address is cut to its network range (IPv4 /24, IPv6 /64) and hashed with a secret pepper. **An "exact same IP" check is therefore not possible without changing a standing rule,** which is a founder-level privacy decision and a change to the privacy notice.
-- **The IP hashes are purged after 90 days** (a compliance rule), **but the velocity flags raised from them are kept.** Option (a) can therefore rely on the flags recorded at signup time. It cannot rely on re-reading IP data a year later. A review run within the 90 days sees more.
-- **Fraud signals flag; humans decide.** Nothing auto-bans, and VPNs are not blocked. Option (b) blocks signups automatically, which reverses that design. It would need a plan change, an ADR and its own ticket.
-  - Per-partner-type thresholds are possible in principle, because the partner type is known at signup now that E11.7-07 and E11.7-08 are built. They would still be a new ticket.
-- **A middle path to evaluate** [Recommendation]: keep blocking out, but surface concentration to the founder. For example, a founder command showing each partner's flagged share, and the number of their signups that share a range. Read it alongside the partner type and the event dates the ambassadors report. That stays inside "flag, humans decide" and needs no new personal data.
+- **Why:** most same-network signups are expected to be genuine, such as student ambassadors' classmates on campus Wi-Fi.
+- **The real test comes after launch:** how many of a partner's referred people buy or do anything at all. A partner with 500 referrals, 450 of whom signed up once and never came back, shows up in that review, and the decision is based on it.
+- **What the review can use:** the velocity flags raised at signup are kept. The hashed network prefixes behind them are deleted after 90 days, so the review relies on the flags and on post-launch activity, not on IP data. The site never stores a full IP address.
+- **Ask ambassadors to report their event dates and places,** so flags from them can be read in context.
 
 ## 5.5 Timing and measurement
 
 - **Recruit now, through spring term 2027**, so ambassadors build their referral count before early access (wave 1 for their friends) and before the giveaway closes on 1 March 2027.
-- **Main push: the start of the academic year, around public launch** (1 Oct 2027). The `/r/{CODE}` links and codes keep working on the main platform, so autumn flyers can be printed with them. **Customers an ambassador refers after public launch fall under the post-launch rate (0.4),** and the onboarding video must say so.
+- **Main push: the start of the academic year, around public launch** (1 Oct 2027). The `/r/{CODE}` links and codes keep working on the main platform, so autumn flyers can be printed with them. **Customers an ambassador refers after public launch fall under post-launch terms (0.4),** and the onboarding video must say so.
 - **Measurement is per ambassador, not per event.** One code per partner, and no sub-IDs, by design. To judge an event, compare that ambassador's signups-per-week before and after it on their dashboard. Judge ambassadors on confirmed signups, their survey categories, and, after early access, first orders.
 
 ---
@@ -911,6 +908,13 @@ Kept, with changes. Hooks that named and attacked competitors were rewritten to 
 | **22 Nov:** brand-defence search | A small Google Ads campaign on our own name, after launch | 8.1 |
 | **22 Nov:** per-platform signup report | Wanted, as detailed as possible: TikTok, Instagram and the rest each shown separately | 0.7 |
 | **24 Nov:** the `/me` early-access fact | Shows the short month, "Sep 2027"; sentences keep "September 2027". Recorded on E11.7-04's plan entry, replacing D-049's smaller type step | — |
+| **24 Nov:** where the two new tickets go | Epic E11.8 (E11.8-01 the Trust Ledger page, E11.8-02 the per-platform report), after E11.7-15 and before GATE-8, which now audits E11.6 + E11.7 + E11.8; P11 added for the Ledger's founder text | 3.6, 0.7 |
+| **24 Nov:** after public launch | Partners on case-by-case terms; a separate affiliate system with uniform or laddered rates. Neither is decided here | 0.4 |
+| **24 Nov:** age | The waitlist opens to 13 and over; the giveaway is 18 and over only. Not built yet (11.4, Q4) | 0.3, 4.2, 5.4 |
+| **24 Nov:** same-network signups | Review only: flag, never block; judge partners on post-launch activity | 5.4 |
+| **24 Nov:** support response time | "Within 24–48 hours; up to 7 days for investigations or high volume". The founder moderates Discord | 3.5 |
+| **24 Nov:** no supplier register | Supplier counts only in the Ledger; "the Supplier Register" removed from the brand guidelines | 3.6 |
+| **24 Nov:** to-do items, not decisions | A partner-wide announcement channel; the competition's prizes and rules; creator subscriptions before the store; trademark clearance; supplier-status definitions; every founder input and research task | 11.4 |
 
 ## 11.2 Recorded in the project on 22 November 2026
 
@@ -922,12 +926,15 @@ The founder authorised the changes in 11.1 "everywhere in all documents", and th
 - **The other docs.** ADR-012, ADR-025, `docs/data/model.md`, `docs/modules/referral.md`, `docs/features/member-status.md`, `docs/brand/page-design.md` and `docs/ops/launch-cutover.md` now show the new expiry date and month.
 - **Configuration.** `waveOneEarlyAccessMonth` is `'2027-09'` and `couponLadder.publicLaunchDate` is `'2027-10-01'` (coupons expire on 2032-10-01). The tests that assert those values were updated with them.
 
-**Still to add to the plan [Open]:**
+**Added on 24 November 2026 (founder-authorised):**
 
-1. **A ticket for the Trust Ledger page (3.6).** It must ship before the December 2026 first entry.
-2. **A ticket for the per-platform signup report (0.7).** It needs the UTM naming convention in Part 3 to be useful.
-
-Both need a ticket entry and a register row, added with founder authorisation.
+- **Epic E11.8** in the plan, with **E11.8-01, the Trust Ledger page**, and **E11.8-02, the per-platform signup report**;
+- their register rows after E11.7-15, with GATE-8 now auditing E11.6 + E11.7 + E11.8;
+- **prerequisite P11**, the Ledger's founder text;
+- the spec `docs/features/trust-ledger.md`, with the founder's definition verbatim;
+- the report's section in `docs/features/analytics.md`;
+- `/trust-ledger` in the SEO route plan and the cutover route table;
+- the brand guidelines' programme example amended.
 
 ## 11.3 Tasks that stay open after their first decision
 
@@ -939,57 +946,35 @@ Both need a ticket entry and a register row, added with founder authorisation.
 | Platform DM and link rules (4.3a) | Required | Researched before outreach starts |
 | Video outreach (4.3a) | Adopted as a hypothesis | Reply and acceptance rates, with and without video, show whether it works |
 | Teen audiences (4.2) | Facts listed | Approach decided when creator targeting is worked on |
-| Same-network signups (5.4) | Options and constraints listed | Researched and decided |
+| Same-network signups (5.4) | Decided: review only | The partner-by-partner review is done, using the kept flags and post-launch activity |
 | Competitor commission evidence (0.4) | Network listings found | Dated captures of official terms before first public use; re-checked each quarter |
 | GEO prompt set (7.3) | Approach agreed | The set is built; then tracked monthly, indefinitely |
 | The ten buyer questions (9.5) | Starting set agreed | Answers written and approved; added to as new questions surface |
-| The Trust Ledger (3.6) | Defined and decided | Its page ticket is added and built; first entry December 2026; then monthly, indefinitely |
-| Per-platform signup report (0.7) | Wanted | Its ticket is added and built, and the UTM convention is in use on every link we control |
+| The Trust Ledger (3.6) | Defined; ticket E11.8-01 placed | P11 is supplied, E11.8-01 is built, the first entry ships in December 2026; then monthly, indefinitely |
+| Per-platform signup report (0.7) | Ticket E11.8-02 placed | E11.8-02 is built, and the UTM convention is in use on every link we control |
 
-## 11.4 Open before the marketing to-do list is complete (review of 24 November 2026)
+## 11.4 Still open, and what moved to the to-do list (24 November 2026)
 
-Everything else in this playbook is decided or is plain work. The items below still need a founder decision, a founder input or a finished piece of research. **Blocking** means a to-do item cannot be completed, or a channel cannot start, without it.
+### Questions that still need the founder's answer
 
-### Decisions the founder still has to make
-
-| # | Question | Why it is open | Blocks |
-|---|---|---|---|
-| D1 | **Where the two new tickets go in the plan**: the Trust Ledger page (3.6) and the per-platform signup report (0.7) | Both are decided, but neither has a plan entry or register row. The Ledger page must ship before go-live in December 2026, so it has to come before or during Epic E12 | **Blocking:** the Trust Ledger's December start, and every per-platform measurement |
-| D2 | **How Valstara reaches every partner at once**: quarterly founder updates, the competition announcement, kit updates, the Trust Ledger | The quarterly Brevo CSV import was retired and the dedicated Brevo partner sync deferred (E11.7-06, D-056). The only channel is the digest's founder note: monthly, and off until the founder turns it on (E11.7-13). Options: (a) the digest only, switched on when the first partner is active; (b) resume the Brevo partner sync through a plan change that meets D-056's erasure-ordering condition; (c) a new transactional "partner announcement" email (a new ticket) | **Blocking:** quarterly partner updates and the competition announcement |
-| D3 | **How Valstara sends editorial email to members**: the Trust Ledger summary, the monthly price report, the partner-programme invitation, launch news | The system sends only the weekly update (fixed content: the leaderboard and the `/me` link, D-048), the single launch-access notice and the launch announcement. There is no monthly member email. Options: (a) an editorial block in the weekly update (a plan change); (b) manual campaigns from the Brevo dashboard to the marketing-consented list. That would bypass the site's own dispatch-time consent and suppression re-check (hard rule 5) and its one-click unsubscribe, so it needs an explicit founder decision; (c) no editorial member email before launch | **Blocking:** every member-email item in this playbook |
-| D4 | **Where the referral reminder goes** (2.2) | D-048 keeps per-recipient lines out of the weekly update, and the welcome email has no such line yet. Options: a plan change for the welcome or weekly email, or wait for the storefront's post-purchase emails | The referral-reminder item |
-| D5 | **The post-launch partner competition's prizes and rules**: the top-3 prizes, the bonus threshold and its amount, the written rules, and when it is announced | Only the window (1 Sep – 31 Dec 2027) and the ranking basis (referred order value after refunds) are decided. It must be announced pre-launch to motivate partners | **Blocking:** the competition announcement |
-| D6 | **The post-launch partner rate** | Pre-launch terms say customers referred after public launch "fall under the post-launch rates, agreed separately". Partners will ask, and recruiting for autumn 2027 needs an answer | Not blocking now; needed before about August 2027 |
-| D7 | **Creator review subscriptions before the store exists**: how they are delivered (by hand, by the founder?), when (before the July–August content window), and what the creator is asked to show | No Valstara checkout or order exists before 1 Sep 2027 (4.1) | **Blocking:** the creator outreach offer and contract |
-| D8 | **The giveaway's entry window if go-live is December 2026** | The published, immutable rules revision closes entries on 1 Mar 2027 and draws on 1 Apr 2027, so the giveaway would run about three months. Keep it, or publish a new rules revision with later dates (P4-level text) before go-live | Giveaway promotion timing |
-| D9 | **Teen audiences** (4.2) | The signup says "Open to people aged 18 and over." Admitting under-18s, or targeting creators with young audiences, has legal and plan consequences | Creator targeting |
-| D10 | **Same-network signups** (5.4) | Review-only, a tailored guard or the middle path | Not blocking go-live; needed before handoff |
-| D11 | **Discord's stated support response time, and who moderates** (3.5) | The brand rules require a named support presence with stated response times | **Blocking:** opening Discord |
-| D12 | **Trademark clearance for "Valstara"** (identity guidelines §12, priority 1) | Valstar, an Italian outerwear brand, trades in our markets. The guidelines say to clear the mark before spending on brand, and before merchandise | Merchandise and any large brand spend |
-| D13 | **The Trust Ledger's "Supply readiness" counts** (3.6) | The brand names a "Supplier Register" programme that is not defined anywhere. The Ledger needs a fixed "How we count" definition of an evaluated, verified and rejected supplier | The first Trust Ledger entry |
-
-### Inputs only the founder can supply
-
-| # | Input | Gates |
+| # | Question | Why it is open |
 |---|---|---|
-| F1 | **P10: the partner asset kit files** (images, PDFs, video links with sharing rights) | E11.7-11, and with it **the partner welcome email** (D-057) |
-| F2 | **P5: the paid Resend and Brevo plans** (Brevo's is not purchased) | Opening the giveaway |
-| F3 | **P6: the production server**, and **P7: the four seed mailboxes** | Epic E12 and the December go-live |
-| F4 | **The partner contract template** for signfree.io: the 22 Nov terms, the one-year window, one level, disclosure wording, the no-spam rule, pause and termination, and for creators the review, the 12-month reuse licence and the original-file delivery | Every partner activation |
-| F5 | **The giveaway bundle contents** (before the 1 Apr 2027 draw) and **the sanctions list** (before the first award) | The draw; naming prize products in posts |
-| F6 | **Approved answers to the ten buyer questions** (9.5) | Every template, script, FAQ reply and support macro |
-| F7 | **The first Trust Ledger entry, the digest's founder note, and the `/guarantee` line linking to the Ledger** (P3b-style prose) | The Ledger's December start; the first digest |
-| F8 | **Dated captures of GameSeal's, G2A's and Eneba's current affiliate terms**, ideally from their official pages | First public use of the positioning lines outside `/partners` |
+| Q1 (was D3) | **Editorial email to members.** How Valstara sends members a written message, e.g. the monthly Trust Ledger summary, the price report, the partner-programme invitation or launch news | The system sends only per-person emails, the fixed weekly update (leaderboard and `/me` link, D-048) and one launch announcement. Options: (a) an editorial block in the weekly update, written in a content file and shipped with a deploy (a new ticket); (b) manual campaigns in the Brevo dashboard, which bypass the site's send-time consent and suppression re-check and its one-click unsubscribe, so they bend hard rule 5; (c) no member newsletter before launch |
+| Q2 (was D4) | **The "a friend invited you" reminder** to people who joined through a referral (2.2) | Partner-referred people already see "You joined through MAYA" on the verification page and in the confirmation email. People referred by an ordinary member see nothing. Options: (a) a line in the welcome email for every referred member (a small ticket); (b) only in the storefront's post-purchase emails after launch; (c) both |
+| Q3 (was D8) | **The giveaway's dates** | The published rules (P4, founder-supplied 2026-09-25, revision `VAL-GW-LAUNCH-20261009-r1`) open entries at go-live, close them on **1 March 2027** and draw on **1 April 2027**. With go-live in December 2026, that is a three-month giveaway that ends six months before early access, with prizes due before the store exists. A published revision can't be edited, but a new revision can be published with new dates; entries keep the revision they accrued under |
+| Q4 (was D9) | **Three questions before the 13+ change can be built** | (a) **Marketing email for under-16s:** limit the marketing opt-in to people aged 16 or over, with the box saying so? (b) **Giveaway entries for 13–17s:** add an "I'm 18 or over" tick that is required to enter, or keep entries for everyone and exclude under-18s only at award time, as today? (c) **Legal:** a lawyer's review of the changed privacy notice and terms, or a new founder risk acceptance? ADR-030's waiver does not cover a material change to its scope |
 
-### Research that must be finished before its item is done
+### Moved to the marketing to-do list (founder, 24 Nov 2026)
 
-- **Platform rules:** giveaway mentions (3.4), and direct messages and links (4.3a), for every platform we use.
-- **Ambassadors:** universities, campus posting and stall rules, and recruiting channels, per country (5.2).
-- **Creators:** targets per niche and market, contact routes, and audience age and geography (4.2).
-- **Audience research:** buyer language and objections per market (feeds the content plan and the buyer questions).
-- **PR:** journalist and newsletter lists per market (7.4).
-- **GEO:** the prompt set (7.3).
-- **Tooling:** Loom's plan limits (4.3a).
+These are tasks, not decisions. Each is settled when its task is worked on, and several also need a development ticket at that point:
 
-Each research task records its date and sources, and the platform-rule research is re-checked each quarter.
+- a channel for announcements to every partner at once (was D2; needs a ticket);
+- the post-launch partner competition: prizes, bonus threshold, written rules, announcement date (was D5);
+- creator review subscriptions before the store exists: delivery, timing, what the review shows (was D7; goes with the asset kit);
+- trademark clearance for "Valstara" (was D12);
+- the definitions of an evaluated, verified and rejected supplier for the Ledger (was D13, part of P11);
+- every founder input: P10, P5, P6, P7, P11, the partner and creator contract template, the giveaway bundle contents and sanctions list, the ten approved buyer answers, the digest's founder note, and the dated competitor-rate captures;
+- every research task: platform giveaway rules, direct-message and link rules, ambassador and campus rules per country, creator targeting, audience research, journalist lists, the GEO prompt set, and Loom's limits.
+
+**Settled, no longer open:** where the two new tickets go (Epic E11.8); post-launch rates (case-by-case partners plus a separate affiliate system, decided outside this repository); same-network signups (review only); the Discord response time and moderation; the supplier register (none).
 
