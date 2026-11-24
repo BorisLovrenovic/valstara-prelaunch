@@ -303,6 +303,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0066-retire-brevo-partner-sync.sql',
       '0067-partner-attribution.sql',
       '0068-partner-dashboard.sql',
+      '0069-partner-leaderboard.sql',
+      '0070-detached-referral-verification.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -376,6 +378,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0066-retire-brevo-partner-sync.sql',
         '0067-partner-attribution.sql',
         '0068-partner-dashboard.sql',
+        '0069-partner-leaderboard.sql',
+        '0070-detached-referral-verification.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -413,6 +417,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         'migration_ledger',
         'milestone_award',
         'partner',
+        'partner_leaderboard_rank',
+        'partner_leaderboard_snapshot',
         'purge_job_run',
         'rate_limit_bucket',
         'referral_code',
@@ -528,7 +534,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
           100,
         );
 
-        assert.equal(appliedCount, 68);
+        assert.equal(appliedCount, 70);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -600,6 +606,8 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0066-retire-brevo-partner-sync.sql',
             '0067-partner-attribution.sql',
             '0068-partner-dashboard.sql',
+            '0069-partner-leaderboard.sql',
+            '0070-detached-referral-verification.sql',
           ],
         );
       } finally {

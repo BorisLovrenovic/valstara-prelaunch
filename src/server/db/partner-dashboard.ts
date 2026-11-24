@@ -6,10 +6,17 @@ interface DashboardOwner {
   readonly subscriber_id: string;
 }
 
+export interface LeaderboardNameSettings {
+  readonly display_name: string | null;
+  readonly display_name_disclosure_version: number | null;
+  readonly show_on_leaderboard: boolean;
+}
+
 export interface PartnerSettings {
   readonly displayName: string | null;
   readonly showOnLeaderboard: boolean;
   readonly nonessentialEmailEnabled: boolean;
+  readonly displayNameDisclosureVersion: number | null;
 }
 
 interface CurrentLink extends DashboardOwner {
@@ -17,14 +24,13 @@ interface CurrentLink extends DashboardOwner {
   readonly link_id: string;
 }
 
-export interface PartnerDashboardRow extends CurrentLink {
+export interface PartnerDashboardRow
+  extends CurrentLink, LeaderboardNameSettings {
   readonly status: 'active' | 'paused';
   readonly code: string;
   readonly partner_type: string;
   readonly contract_signed_at: string;
   readonly contract_version: string;
-  readonly display_name: string | null;
-  readonly show_on_leaderboard: boolean;
   readonly nonessential_email_enabled: boolean;
   readonly access_window: AccessWindow | null;
   readonly verification_order_window: AccessWindow | null;
@@ -80,7 +86,8 @@ export function createPartnerDashboardRepository(database: DatabaseConnection) {
           WITH owner AS (
             SELECT p.id, p.subscriber_id, p.status, p.partner_type, c.code,
               p.contract_signed_at::text, p.contract_version,
-              p.display_name, p.show_on_leaderboard, p.nonessential_email_enabled,
+              p.display_name, p.display_name_disclosure_version,
+              p.show_on_leaderboard, p.nonessential_email_enabled,
               s.access_window, s.verification_order_window,
               (c.active AND s.status = 'verified') AS active_code,
               t.id AS link_id, t.expires_at,
@@ -137,8 +144,9 @@ export function createPartnerDashboardRepository(database: DatabaseConnection) {
     },
 
     lockCurrentLink(partnerId: string, linkId: string) {
-      return database.readOne<CurrentLink>({
-        text: `SELECT p.id, p.subscriber_id, t.id AS link_id, t.expires_at
+      return database.readOne<CurrentLink & LeaderboardNameSettings>({
+        text: `SELECT p.id, p.subscriber_id, t.id AS link_id, t.expires_at,
+          p.display_name, p.display_name_disclosure_version, p.show_on_leaderboard
           ${currentLink}
           WHERE p.id = $1 AND t.id = $2 AND ${eligible}
           FOR UPDATE OF p`,
@@ -171,12 +179,14 @@ export function createPartnerDashboardRepository(database: DatabaseConnection) {
     saveSettings(partnerId: string, settings: PartnerSettings) {
       return database.execute({
         text: `UPDATE partner SET display_name = $2, show_on_leaderboard = $3,
-          nonessential_email_enabled = $4 WHERE id = $1`,
+          nonessential_email_enabled = $4, display_name_disclosure_version = $5
+          WHERE id = $1`,
         values: [
           partnerId,
           settings.displayName,
           settings.showOnLeaderboard,
           settings.nonessentialEmailEnabled,
+          settings.displayNameDisclosureVersion,
         ],
       });
     },

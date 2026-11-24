@@ -159,6 +159,7 @@ Jobs only ever **materialise, remind, expire and repair.** Nothing a customer is
 | Unverified expiry sweep | daily, in the maintenance process | yes | Rows linger; no counter is affected, since nothing counts unverified rows |
 | Rate-limit bucket retention | daily, in the maintenance process | yes | Buckets exceed seven days; failure takes the compliance P1 path |
 | Leaderboard snapshot refresh | 5 min, in maintenance | Top 10 | The last persisted snapshot keeps serving on the site and in the weekly email, with its timestamp shown |
+| Partner leaderboard snapshot refresh | hourly, in the maintenance scheduler | 100 per batch | Keep the last complete snapshot and apply current eligibility and privacy settings on each authenticated render. P2 on refresh failure |
 | Leaderboard snapshot retention | daily | 100 rows per delete | Old anonymised snapshots linger; P2 alerts on sweep failure |
 | Weekly campaign queue | hourly | 100 recipients per batch | A missed 24-hour window is recorded and raises P2; no late send |
 | Referral counter repair | daily | yes | Counters drift from edges; the edges remain correct and authoritative |

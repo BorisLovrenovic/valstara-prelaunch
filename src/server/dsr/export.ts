@@ -40,6 +40,8 @@ export function ownData(
       result.signup_confirmed_count = null;
     }
     if (result.referred_id !== id) result.referred_id = null;
+    // The detached verification marker is used only for aggregate rank.
+    result.referred_verified_on_detachment = null;
     // E11.7-02: the operator who voided the referral is an operator identity.
     if (result.voided_by !== null && result.voided_by !== undefined)
       result.voided_by = 'redacted';

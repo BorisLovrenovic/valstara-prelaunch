@@ -28,6 +28,7 @@ export type MaintenanceJobName =
   | 'weekly_campaign'
   | 'leaderboard_snapshot'
   | 'leaderboard_snapshot_purge'
+  | 'partner_leaderboard_snapshot'
   | 'partner_activation'
   | 'partner_application_purge'
   | 'email_quota';
@@ -58,6 +59,7 @@ export interface VerificationMaintenanceJobs {
   readonly leaderboardSnapshotPurge?: MaintenanceJob;
   readonly partnerApplicationPurge?: MaintenanceJob;
   readonly partnerActivation?: MaintenanceJob;
+  readonly partnerLeaderboard?: MaintenanceJob;
   readonly emailQuota?: VerificationRateJob;
 }
 
@@ -93,7 +95,8 @@ export function createMaintenanceFailureReporter(
       job === 'email_reconciliation' ||
       job === 'weekly_campaign' ||
       job === 'leaderboard_snapshot' ||
-      job === 'leaderboard_snapshot_purge'
+      job === 'leaderboard_snapshot_purge' ||
+      job === 'partner_leaderboard_snapshot'
         ? 'P2'
         : job === 'verification_rate' ||
             job === 'referral_attribution' ||
@@ -202,6 +205,9 @@ export function createVerificationMaintenanceScheduler(
         jobs.partnerActivation,
         partnerActivationBatchLimit,
       );
+    }
+    if (jobs.partnerLeaderboard !== undefined) {
+      await runJob('partner_leaderboard_snapshot', jobs.partnerLeaderboard);
     }
     if (jobs.giveawayEntryReconciliation !== undefined) {
       await runJob(

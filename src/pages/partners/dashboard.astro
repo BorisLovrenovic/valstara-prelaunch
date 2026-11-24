@@ -164,6 +164,58 @@ Astro.response.status =
               </tbody>
             </table>
           </section>
+          <section
+            class="dashboard__section"
+            aria-labelledby="partner-leaderboard"
+          >
+            <h2 id="partner-leaderboard">{copy.leaderboard.heading}</h2>
+            {view.leaderboard === null ? (
+              <p>{copy.leaderboard.unavailable}</p>
+            ) : (
+              <>
+                <p>
+                  {copy.leaderboard.asOf}{' '}
+                  <time datetime={view.leaderboard.asOf}>
+                    {view.leaderboard.asOf}
+                  </time>
+                </p>
+                {view.leaderboard.ownRank === null ? (
+                  <p>{copy.leaderboard.unranked}</p>
+                ) : (
+                  <dl class="dashboard__facts dashboard__counts">
+                    <div>
+                      <dt>{copy.leaderboard.ownRank}</dt>
+                      <dd>{view.leaderboard.ownRank}</dd>
+                    </div>
+                  </dl>
+                )}
+                {view.leaderboard.entries.length === 0 ? (
+                  <p>{copy.leaderboard.empty}</p>
+                ) : (
+                  <table aria-labelledby="partner-leaderboard">
+                    <thead>
+                      <tr>
+                        <th scope="col">{copy.leaderboard.rank}</th>
+                        <th scope="col">{copy.leaderboard.partner}</th>
+                        <th scope="col">{copy.leaderboard.confirmed}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {view.leaderboard.entries.map(
+                        ({ rank, label, confirmedSignups }) => (
+                          <tr>
+                            <th scope="row">{rank}</th>
+                            <td class="dashboard__partner-label">{label}</td>
+                            <td>{confirmedSignups}</td>
+                          </tr>
+                        ),
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </>
+            )}
+          </section>
           {content.rewards !== null && (
             <section class="dashboard__section">
               <h2>{copy.rewards.heading}</h2>
@@ -216,22 +268,42 @@ Astro.response.status =
               <Field
                 controlId="partner-display-name"
                 label={copy.settings.displayName}
+                description={copy.settings.nameDisclosure}
+                descriptionId="partner-name-disclosure"
               >
                 <Input
                   id="partner-display-name"
                   name="display_name"
+                  aria-describedby="partner-name-disclosure"
                   maxlength={displayNameMaxLength}
                   autocomplete="off"
                   value={row.display_name ?? ''}
                 />
               </Field>
+              {view.needsNameConfirmation && (
+                <label class="task-card__choice">
+                  <span class="task-card__control">
+                    <input
+                      type="checkbox"
+                      name="confirm_leaderboard_name"
+                      value="yes"
+                    />
+                    <span class="task-card__box" aria-hidden="true">
+                      <Icon name="check" size="sm" />
+                    </span>
+                  </span>
+                  <span>{copy.settings.confirmName}</span>
+                </label>
+              )}
               <label class="task-card__choice">
                 <span class="task-card__control">
                   <input
                     type="checkbox"
                     name="show_on_leaderboard"
                     value="yes"
-                    checked={row.show_on_leaderboard}
+                    checked={
+                      !view.needsNameConfirmation && row.show_on_leaderboard
+                    }
                   />
                   <span class="task-card__box" aria-hidden="true">
                     <Icon name="check" size="sm" />
@@ -314,6 +386,11 @@ Astro.response.status =
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
+  }
+
+  .dashboard__partner-label {
+    font-family: var(--font-sans);
+    text-align: start;
   }
 
   .dashboard__share {

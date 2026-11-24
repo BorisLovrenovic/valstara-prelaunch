@@ -50,6 +50,7 @@ import { createAlertWebhookTransport } from '../verification-rate/p1-webhook.ts'
 import { createVerificationRateMonitor } from '../verification-rate/service.ts';
 import { createVerificationTokenRetentionJob } from '../verification/retention.ts';
 import { createPartnerActivationJob } from '../partner/activation.ts';
+import { createPartnerLeaderboardJob } from '../partner/leaderboard.ts';
 import { createPartnerApplicationPurgeJob } from '../partner/retention.ts';
 import { createFlagService } from '../flags/service.ts';
 import { createGiveawayEntryReconciliationJob } from '../giveaway/reconcile.ts';
@@ -206,6 +207,11 @@ const scheduler = createReferralAttributionMaintenanceScheduler(
       createVerificationTokenRetentionJob(database, { clock }),
       purgeRuns,
       'verification_token_retention',
+      clock,
+    ),
+    partnerLeaderboard: createPartnerLeaderboardJob(
+      database,
+      () => broadcastFlags.isEnabled('partners.enabled'),
       clock,
     ),
     partnerActivation: createPartnerActivationJob(database, clock),

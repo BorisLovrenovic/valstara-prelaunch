@@ -3,6 +3,7 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { redactAuditDetail } from '../audit/redact-detail.ts';
 import {
   createPartnerDashboardRepository,
+  type LeaderboardNameSettings,
   type PartnerSettings,
 } from '../db/partner-dashboard.ts';
 import type { DatabasePool } from '../db/pool.ts';
@@ -15,15 +16,18 @@ import {
 } from '../verification/token-derivation.ts';
 
 import {
+  displayNameDisclosureVersion,
   partnerApplicationIpWindowMs,
   partnerConfirmationIpLimit,
 } from './config.ts';
+import { readPartnerLeaderboard } from './leaderboard.ts';
 
 export const displayNameMaxLength = 200;
 
 const uuid = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const digest = '[A-Za-z0-9_-]{43}';
 const settingsShape = new RegExp(
-  `^(${uuid})[.](${uuid})[.](${uuid})[.]([A-Za-z0-9_-]{43})$`,
+  `^(${uuid})[.](${uuid})[.](${uuid})[.]${displayNameDisclosureVersion}[.](${digest})[.](${digest})$`,
   'u',
 );
 const bearerShape = /^[A-Za-z0-9_-]{43}$/u;
@@ -32,54 +36,111 @@ function signaturesMatch(expected: string, supplied: string) {
   return timingSafeEqual(Buffer.from(expected), Buffer.from(supplied));
 }
 
-function signSettings(partnerId: string, linkId: string, secret: string) {
-  const claims = `${partnerId}.${linkId}.${randomUUID()}`;
+function nameSettingsTag(
+  nonce: string,
+  settings: LeaderboardNameSettings,
+  secret: string,
+) {
+  const nameSettings = JSON.stringify([
+    settings.display_name,
+    settings.display_name_disclosure_version,
+    settings.show_on_leaderboard,
+  ]);
+  return deriveEmailToken(
+    `partner_dashboard_name_settings:${nonce}:${nameSettings}`,
+    secret,
+  );
+}
+
+function signSettings(
+  partnerId: string,
+  linkId: string,
+  settings: LeaderboardNameSettings,
+  secret: string,
+) {
+  const nonce = randomUUID();
+  const tag = nameSettingsTag(nonce, settings, secret);
+  const claims = `${partnerId}.${linkId}.${nonce}.${displayNameDisclosureVersion}.${tag}`;
   return `${claims}.${deriveEmailToken(`partner_dashboard_settings:${claims}`, secret)}`;
 }
 
 function verifySettings(token: string, secret: string) {
   const match = settingsShape.exec(token);
   if (match === null) return null;
-  const [, partnerId, linkId, nonce, signature] = match as RegExpExecArray &
-    [string, string, string, string, string];
+  const [, partnerId, linkId, nonce, tag, signature] =
+    match as RegExpExecArray & [string, string, string, string, string, string];
   const expected = deriveEmailToken(
-    `partner_dashboard_settings:${partnerId}.${linkId}.${nonce}`,
+    `partner_dashboard_settings:${partnerId}.${linkId}.${nonce}.${displayNameDisclosureVersion}.${tag}`,
     secret,
   );
   return signaturesMatch(expected, signature)
-    ? { partnerId, linkId, nonce }
+    ? { partnerId, linkId, nonce, tag }
     : null;
 }
 
-export function readPartnerSettings(form: FormData): PartnerSettings | null {
+export function readPartnerSettings(form: FormData) {
   const names = form.getAll('display_name');
   const raw = names[0];
   const show = form.getAll('show_on_leaderboard');
+  const confirm = form.getAll('confirm_leaderboard_name');
   const nonessential = form.getAll('nonessential_email_enabled');
   if (
     names.length !== 1 ||
     typeof raw !== 'string' ||
     show.length > 1 ||
     (show.length === 1 && show[0] !== 'yes') ||
+    confirm.length > 1 ||
+    (confirm.length === 1 && confirm[0] !== 'yes') ||
     nonessential.length > 1 ||
     (nonessential.length === 1 && nonessential[0] !== 'yes')
   ) {
     return null;
   }
   const name = raw.trim();
-  const showOnLeaderboard = show.length === 1;
   if (
     name.length > displayNameMaxLength ||
     /[\p{Cc}\p{Bidi_Control}]/u.test(name) ||
-    redactAuditDetail({ value: name }).value !== name ||
-    (showOnLeaderboard && name === '')
+    redactAuditDetail({ value: name }).value !== name
   ) {
     return null;
   }
   return {
     displayName: name || null,
-    showOnLeaderboard,
+    showOnLeaderboard: name !== '' && show.length === 1,
+    confirmLeaderboardName: confirm.length === 1,
     nonessentialEmailEnabled: nonessential.length === 1,
+  };
+}
+
+function needsLeaderboardNameConfirmation(settings: LeaderboardNameSettings) {
+  return (
+    settings.display_name !== null &&
+    settings.display_name_disclosure_version !== displayNameDisclosureVersion
+  );
+}
+
+function qualifyName(
+  {
+    confirmLeaderboardName,
+    ...settings
+  }: NonNullable<ReturnType<typeof readPartnerSettings>>,
+  stored: LeaderboardNameSettings,
+): PartnerSettings {
+  if (
+    settings.displayName === stored.display_name &&
+    needsLeaderboardNameConfirmation(stored) &&
+    !confirmLeaderboardName
+  ) {
+    return {
+      ...settings,
+      showOnLeaderboard: stored.show_on_leaderboard,
+      displayNameDisclosureVersion: stored.display_name_disclosure_version,
+    };
+  }
+  return {
+    ...settings,
+    displayNameDisclosureVersion:
+      settings.displayName === null ? null : displayNameDisclosureVersion,
   };
 }
 
@@ -125,10 +186,13 @@ export function createPartnerDashboardService(
       ) {
         return { kind: 'invalid' } as const;
       }
+      const needsNameConfirmation = needsLeaderboardNameConfirmation(row);
       return {
         kind: 'authenticated',
         row,
-        settingsToken: signSettings(row.id, row.link_id, tokenSecret),
+        settingsToken: signSettings(row.id, row.link_id, row, tokenSecret),
+        needsNameConfirmation,
+        leaderboard: await readPartnerLeaderboard(database, row.id),
       } as const;
     },
 
@@ -183,12 +247,26 @@ export function createPartnerDashboardService(
             throw new Rollback('rate_limited');
           }
           if (!(await isEnabled())) throw new Rollback('paused');
-          if (!consumed || link === null) return { kind: 'invalid' };
+          if (!consumed || link === null || claims === null)
+            return { kind: 'invalid' };
 
+          if (
+            !signaturesMatch(
+              nameSettingsTag(claims.nonce, link, tokenSecret),
+              claims.tag,
+            )
+          ) {
+            return { kind: 'invalid' };
+          }
           const bearer = deriveEmailToken(link.link_id, tokenSecret);
           const settings = readPartnerSettings(form);
           if (settings === null) return { kind: 'invalid_input', bearer };
-          if ((await repository.saveSettings(link.id, settings)) !== 1) {
+          if (
+            (await repository.saveSettings(
+              link.id,
+              qualifyName(settings, link),
+            )) !== 1
+          ) {
             throw new Error('The partner settings could not be updated.');
           }
           return { kind: 'saved', bearer };

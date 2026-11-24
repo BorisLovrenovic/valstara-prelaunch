@@ -114,7 +114,9 @@ test('E6-01 production route reads only the flag and supplied snapshot and expos
       return 0;
     },
     async list(statement) {
-      databaseOperations.push(`list: ${statement.text}`);
+      databaseOperations.push(
+        `list: ${'cursor' in statement ? statement.cursor : statement.text}`,
+      );
       return [];
     },
     async readOne(statement) {

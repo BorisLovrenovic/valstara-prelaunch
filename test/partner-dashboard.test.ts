@@ -6,12 +6,15 @@ import {
   createEmailService,
   type EmailProvider,
 } from '../src/server/email/service.ts';
+import { displayNameDisclosureVersion } from '../src/server/partner/config.ts';
 import {
   createPartnerDashboardService,
   readPartnerSettings,
 } from '../src/server/partner/dashboard.ts';
 import { createPartnerDashboardRecovery } from '../src/server/partner/dashboard-recovery.ts';
+import { createPartnerLeaderboardJob } from '../src/server/partner/leaderboard.ts';
 import { presentPartnerDashboard } from '../src/server/partner/dashboard-presentation.ts';
+import { createPartnerApplicationPurgeJob } from '../src/server/partner/retention.ts';
 import { partnerApplicationRenderers } from '../src/server/partner/templates.ts';
 import {
   deriveEmailToken,
@@ -146,7 +149,7 @@ async function settingsFor(state: ReturnType<typeof scenario>, bearer: string) {
 
 async function settingsRow(partnerId: string) {
   return fixture.owner.readOne({
-    text: 'SELECT display_name, show_on_leaderboard, nonessential_email_enabled FROM partner WHERE id = $1',
+    text: 'SELECT display_name, display_name_disclosure_version, show_on_leaderboard, nonessential_email_enabled FROM partner WHERE id = $1',
     values: [partnerId],
   });
 }
@@ -154,11 +157,13 @@ async function settingsRow(partnerId: string) {
 test('settings parsing trims names and rejects identifiers, control characters and ambiguous controls', () => {
   assert.deepEqual(readPartnerSettings(settingsForm('', '  Riley  ', true)), {
     displayName: 'Riley',
+    confirmLeaderboardName: false,
     showOnLeaderboard: true,
     nonessentialEmailEnabled: true,
   });
   assert.deepEqual(readPartnerSettings(settingsForm('', '')), {
     displayName: null,
+    confirmLeaderboardName: false,
     showOnLeaderboard: false,
     nonessentialEmailEnabled: false,
   });
@@ -167,10 +172,16 @@ test('settings parsing trims names and rejects identifiers, control characters a
     '192.0.2.90',
     'Ali\nce',
     'a'.repeat(201),
-    '',
   ]) {
     assert.equal(readPartnerSettings(settingsForm('', name, true)), null);
   }
+  assert.equal(
+    readPartnerSettings(settingsForm('', '', true))?.showOnLeaderboard,
+    false,
+  );
+  const ambiguousConfirmation = settingsForm('', 'Riley');
+  ambiguousConfirmation.set('confirm_leaderboard_name', 'no');
+  assert.equal(readPartnerSettings(ambiguousConfirmation), null);
   const duplicate = settingsForm('', 'Riley', true);
   duplicate.append('show_on_leaderboard', 'yes');
   assert.equal(readPartnerSettings(duplicate), null);
@@ -311,11 +322,13 @@ test('settings are purpose-bound, fresh per load and single-use under real concu
   ]);
   assert.deepEqual(await settingsRow(one.id), {
     display_name: results[0]?.kind === 'saved' ? 'Riley' : 'Morgan',
+    display_name_disclosure_version: displayNameDisclosureVersion,
     show_on_leaderboard: true,
     nonessential_email_enabled: true,
   });
   assert.deepEqual(await settingsRow(two.id), {
     display_name: null,
+    display_name_disclosure_version: null,
     show_on_leaderboard: false,
     nonessential_email_enabled: false,
   });
@@ -615,7 +628,12 @@ test('saved settings enter subject export and erasure clears settings and both t
     partner.subscriberId,
     0,
   );
-  assert.ok(JSON.stringify(rows).includes('Erasure Riley'));
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]?.data.display_name, 'Erasure Riley');
+  assert.equal(
+    rows[0]?.data.display_name_disclosure_version,
+    displayNameDisclosureVersion,
+  );
   const erasure = partnerErasure(fixture, async () => {});
   await (
     await erasure.signedConfirmation(partner.subscriberId)
@@ -623,6 +641,7 @@ test('saved settings enter subject export and erasure clears settings and both t
   await erasure.fulfil();
   assert.deepEqual(await settingsRow(partner.id), {
     display_name: null,
+    display_name_disclosure_version: null,
     show_on_leaderboard: false,
     nonessential_email_enabled: false,
   });
@@ -634,4 +653,258 @@ test('saved settings enter subject export and erasure clears settings and both t
     }),
     { count: 0 },
   );
+});
+
+test('legacy names stay private through email-only saves, then qualify and withdraw against the retained board', async () => {
+  const state = scenario();
+  const viewer = await insertPartner(fixture, { status: 'active' });
+  const first = await insertPartner(fixture, {
+    status: 'active',
+    fullName: 'Application Alpha',
+  });
+  const second = await insertPartner(fixture, {
+    status: 'active',
+    fullName: 'Application Beta',
+  });
+  for (let i = 0; i < 3; i += 1) {
+    await insertReferral(fixture, first.subscriberId);
+    await insertReferral(fixture, second.subscriberId);
+  }
+  await insertReferral(fixture, first.subscriberId);
+  await fixture.owner.execute({
+    text: `UPDATE partner SET display_name = CASE WHEN id = $1 THEN 'Legacy Alpha' ELSE 'Legacy Beta' END,
+      show_on_leaderboard = (id = $1) WHERE id IN ($1, $2)`,
+    values: [first.id, second.id],
+  });
+  const viewerLink = await requestLink(state, viewer);
+  const firstLink = await requestLink(state, first);
+  const secondLink = await requestLink(state, second);
+  const boardJob = createPartnerLeaderboardJob(
+    fixture.app,
+    async () => true,
+    state.clock,
+  );
+  await boardJob.run();
+  state.advance(60 * 60 * 1000);
+  await fixture.owner.execute({
+    text: `ALTER TABLE partner_leaderboard_rank
+      ADD CONSTRAINT reject_next_rank CHECK (confirmed_signups < 3) NOT VALID`,
+  });
+  try {
+    await assert.rejects(boardJob.run(), /reject_next_rank/u);
+  } finally {
+    await fixture.owner.execute({
+      text: 'ALTER TABLE partner_leaderboard_rank DROP CONSTRAINT reject_next_rank',
+    });
+  }
+
+  async function readBoard() {
+    const view = await state.dashboard.read(viewerLink.bearer);
+    assert.equal(view.kind, 'authenticated');
+    assert.equal(view.leaderboard?.asOf, initialTime.toISOString());
+    return view.leaderboard.entries
+      .filter((row) => row.confirmedSignups >= 3)
+      .map((row) => row.label)
+      .sort();
+  }
+  assert.deepEqual(await readBoard(), ['Partner', 'Partner']);
+  const legacy = await state.dashboard.read(firstLink.bearer);
+  assert.equal(legacy.kind, 'authenticated');
+  assert.equal(legacy.row.display_name, 'Legacy Alpha');
+  assert.equal(legacy.needsNameConfirmation, true);
+
+  const claims = `${first.id}.${firstLink.id}.${randomUUID()}`;
+  const oldToken = `${claims}.${deriveEmailToken(`partner_dashboard_settings:${claims}`, secret)}`;
+  assert.deepEqual(
+    await state.dashboard.save(
+      settingsForm(oldToken, 'Old form', true),
+      'version',
+    ),
+    { kind: 'invalid' },
+  );
+  const tamperedVersion = legacy.settingsToken.replace('.1.', '.2.');
+  assert.deepEqual(
+    await state.dashboard.save(
+      settingsForm(tamperedVersion, 'Tampered form', true),
+      'version',
+    ),
+    { kind: 'invalid' },
+  );
+  assert.equal((await settingsRow(first.id))?.display_name, 'Legacy Alpha');
+
+  const emailOnly = settingsForm(legacy.settingsToken, 'Legacy Alpha');
+  emailOnly.set('nonessential_email_enabled', 'yes');
+  assert.equal(
+    (await state.dashboard.save(emailOnly, 'email-only')).kind,
+    'saved',
+  );
+  assert.deepEqual(await settingsRow(first.id), {
+    display_name: 'Legacy Alpha',
+    display_name_disclosure_version: null,
+    show_on_leaderboard: true,
+    nonessential_email_enabled: true,
+  });
+  assert.deepEqual(await readBoard(), ['Partner', 'Partner']);
+
+  const staleEarlierForm = await settingsFor(state, secondLink.bearer);
+  const firstConfirmed = settingsForm(
+    await settingsFor(state, firstLink.bearer),
+    'Legacy Alpha',
+  );
+  firstConfirmed.set('confirm_leaderboard_name', 'yes');
+  const secondConfirmed = settingsForm(
+    await settingsFor(state, secondLink.bearer),
+    'Legacy Beta',
+    true,
+  );
+  secondConfirmed.set('confirm_leaderboard_name', 'yes');
+  assert.equal(
+    (await state.dashboard.save(firstConfirmed, 'first-confirmed')).kind,
+    'saved',
+  );
+  assert.equal(
+    (await state.dashboard.save(secondConfirmed, 'second-confirmed')).kind,
+    'saved',
+  );
+  assert.deepEqual(await readBoard(), ['L. A.', 'Legacy Beta']);
+  assert.equal((await settingsRow(first.id))?.show_on_leaderboard, false);
+
+  const staleFullNameForm = await settingsFor(state, secondLink.bearer);
+  const withdrawFullName = settingsForm(
+    await settingsFor(state, secondLink.bearer),
+    'Legacy Beta',
+  );
+  withdrawFullName.set('nonessential_email_enabled', 'yes');
+  assert.equal(
+    (await state.dashboard.save(withdrawFullName, 'withdraw-full-name')).kind,
+    'saved',
+  );
+  assert.deepEqual(await readBoard(), ['L. A.', 'L. B.']);
+  const staleEmailOnly = settingsForm(staleFullNameForm, 'Legacy Beta', true);
+  staleEmailOnly.delete('nonessential_email_enabled');
+  assert.deepEqual(
+    await state.dashboard.save(staleEmailOnly, 'stale-email-only'),
+    { kind: 'invalid' },
+  );
+  assert.deepEqual(await readBoard(), ['L. A.', 'L. B.']);
+  assert.equal((await settingsRow(second.id))?.show_on_leaderboard, false);
+  assert.equal(
+    (await settingsRow(second.id))?.nonessential_email_enabled,
+    true,
+  );
+  assert.equal(
+    (
+      await state.dashboard.save(
+        settingsForm(await settingsFor(state, secondLink.bearer), '', true),
+        'withdraw-all',
+      )
+    ).kind,
+    'saved',
+  );
+  assert.deepEqual(await readBoard(), ['L. A.', 'Partner']);
+  assert.equal(
+    (await settingsRow(second.id))?.display_name_disclosure_version,
+    null,
+  );
+
+  assert.deepEqual(
+    await state.dashboard.save(
+      settingsForm(staleEarlierForm, 'Legacy Beta'),
+      'earlier-form-after-clear',
+    ),
+    { kind: 'invalid' },
+  );
+  assert.deepEqual(await readBoard(), ['L. A.', 'Partner']);
+  assert.equal((await settingsRow(second.id))?.display_name, null);
+  assert.equal(
+    (await settingsRow(second.id))?.display_name_disclosure_version,
+    null,
+  );
+
+  const erase = partnerErasure(fixture, async () => {});
+  await (
+    await erase.signedConfirmation(first.subscriberId)
+  )();
+  assert.deepEqual(await readBoard(), ['Partner']);
+  assert.equal(
+    (await settingsRow(first.id))?.display_name_disclosure_version,
+    displayNameDisclosureVersion,
+  );
+  await erase.fulfil();
+  assert.deepEqual(await readBoard(), ['Partner']);
+  assert.equal(
+    (await settingsRow(first.id))?.display_name_disclosure_version,
+    null,
+  );
+});
+
+test('a replacement for an earlier name qualifies under the current wording on the cached board', async () => {
+  const state = scenario();
+  const partner = await insertPartner(fixture, { status: 'active' });
+  await insertReferral(fixture, partner.subscriberId);
+  await fixture.owner.execute({
+    text: "UPDATE partner SET display_name = 'Earlier Name', show_on_leaderboard = true WHERE id = $1",
+    values: [partner.id],
+  });
+  const link = await requestLink(state, partner);
+  state.advance(60 * 60 * 1000);
+  await createPartnerLeaderboardJob(
+    fixture.app,
+    async () => true,
+    state.clock,
+  ).run();
+  const before = await state.dashboard.read(link.bearer);
+  assert.equal(before.kind, 'authenticated');
+  assert.equal(before.needsNameConfirmation, true);
+  assert.ok(before.leaderboard);
+  const ownEntry = before.leaderboard.entries.find(
+    ({ rank }) => rank === before.leaderboard?.ownRank,
+  );
+  assert.equal(ownEntry?.label, 'Partner');
+
+  assert.equal(
+    (
+      await state.dashboard.save(
+        settingsForm(before.settingsToken, 'Replacement Name', true),
+        'replace-earlier-name',
+      )
+    ).kind,
+    'saved',
+  );
+  assert.equal(
+    (await settingsRow(partner.id))?.display_name_disclosure_version,
+    displayNameDisclosureVersion,
+  );
+  const after = await state.dashboard.read(link.bearer);
+  assert.equal(after.kind, 'authenticated');
+  assert.equal(after.needsNameConfirmation, false);
+  assert.equal(after.leaderboard?.asOf, before.leaderboard.asOf);
+  assert.deepEqual(
+    after.leaderboard?.entries.find(({ rank }) => rank === ownEntry.rank),
+    { ...ownEntry, label: 'Replacement Name' },
+  );
+});
+
+test('application retention clears a display name and its disclosure version together', async () => {
+  const partner = await insertPartner(fixture, {
+    status: 'rejected',
+    at: new Date('2026-07-01T12:00:00Z'),
+  });
+  await fixture.owner.execute({
+    text: "UPDATE partner SET display_name = 'Purged Name', display_name_disclosure_version = $2 WHERE id = $1",
+    values: [partner.id, displayNameDisclosureVersion],
+  });
+  assert.equal(
+    (await settingsRow(partner.id))?.display_name_disclosure_version,
+    displayNameDisclosureVersion,
+  );
+  assert.equal(
+    await createPartnerApplicationPurgeJob(fixture.app, {
+      clock: () => initialTime,
+    }).run(100),
+    1,
+  );
+  const row = await settingsRow(partner.id);
+  assert.equal(row?.display_name, null);
+  assert.equal(row.display_name_disclosure_version, null);
 });

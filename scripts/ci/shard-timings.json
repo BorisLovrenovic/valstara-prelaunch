@@ -142,6 +142,7 @@
   "test/partner-code.test.ts": 2.2,
   "test/partner-dashboard.test.ts": 1.4,
   "test/partner-export.test.ts": 2.3,
+  "test/partner-leaderboard.test.ts": 3,
   "test/partner-pages-rendered.test.mjs": 3.2,
   "test/partner-review-cli.test.ts": 7.0,
   "test/partner-review.test.ts": 14.0,
