@@ -12,7 +12,7 @@
 2. **The partner counts.** They read 0, which is right at go-live. The founder checks `partners list` before publishing.
 3. **The giveaway line.** Build progress says the giveaway is done. If entries are not open when the entry is published (`giveaway.open` needs the paid email plans, P5), the line reads "The giveaway and its rules: built; entries open soon".
 
-**The launch list changes.** It was 34 providers (P8) and is 33 on 2026-11-25. It will keep changing until early access, up or down, as products come and go. Each entry states the count on that day, which is never a promise about the store's range. The landing page's provider showcase still shows P8's 34 providers; which provider left the list is not recorded here, and the showcase is a separate change.
+**The launch list changes.** It was 34 providers (P8) and is 33 on 2026-11-25. It will keep changing until early access, up or down, as products come and go. Each entry states the count on that day, which is never a promise about the store's range. The provider that left is **Perplexity Pro** (founder, 2026-11-25). The landing page's provider showcase still shows P8's 34 providers, Perplexity included; taking it out is a separate change.
 
 ---
 
