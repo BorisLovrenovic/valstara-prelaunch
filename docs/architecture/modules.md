@@ -85,6 +85,7 @@ valstara-prelaunch/
   scripts/
     export-handoff.ts              the launch-day export (E11-06)
     import-rehearsal.ts            idempotent import against a scratch database
+    export-attribution.ts          the partner attribution export, `npm run export:attribution` (E11.7-14)
   .github/workflows/
 ```
 
@@ -102,7 +103,7 @@ valstara-prelaunch/
 | **verification** | Single-use verification tokens, hashed at rest, with an expiry and a consumption record | A token is consumed exactly once; a replay is a no-op, never an error the visitor sees | `docs/modules/verification.md` |
 | **referral** | Referral codes, the referral **edge** table, tier and milestone state, reward state | `confirmed_referrals` is **derived from edges and recomputable**, never blindly incremented | `docs/modules/referral.md` |
 | **giveaway** | Entry eligibility (no location), the entry ledger, the draw record, the award-time checks; maps an award page outcome and state to its message and icon (`server/giveaway/award-presentation.ts`, E11.5-10) | Every entry stamps the global rules version and hash; location is collected only from provisional winners (ADR-026) | `docs/modules/giveaway.md` |
-| **partner** (`server/partner/`, E11.7-05) | The partner application: its fields, the `partner` row, its confirmation link and emails, its retention purge, and the `/partners/apply` page outcome. Since E11.7-06, the founder's review, contract and lifecycle commands (`review.ts`, `review-http.ts`), and the review-only CSV (`export.ts`). Since E11.7-11, the asset kit (`qr.ts`, `kit.ts`, `kit-presentation.ts`) and the partner welcome job (`welcome.ts`) | A submission finds or creates a `pending` subscriber with signup's own domain screen and fraud signals; **only a confirmed application reaches `applied`**, and confirming verifies a pending member through the verification module's completion | `docs/features/partner-programme.md` |
+| **partner** (`server/partner/`, E11.7-05) | The partner application: its fields, the `partner` row, its confirmation link and emails, its retention purge, and the `/partners/apply` page outcome. Since E11.7-06, the founder's review, contract and lifecycle commands (`review.ts`, `review-http.ts`), and the review-only CSV (`export.ts`). Since E11.7-11, the asset kit (`qr.ts`, `kit.ts`, `kit-presentation.ts`) and the partner welcome job (`welcome.ts`). Since E11.7-14, the attribution export for the main platform (`attribution-export.ts`, its reads in `server/db/attribution-export.ts`, run by `scripts/export-attribution.ts`) | A submission finds or creates a `pending` subscriber with signup's own domain screen and fraud signals; **only a confirmed application reaches `applied`**, and confirming verifies a pending member through the verification module's completion | `docs/features/partner-programme.md` |
 | **fraud** | Blocklist, MX results, velocity and self-referral signals, flags and their review state | Signals **flag, never auto-ban.** Every disqualification is a human decision and is audited | `docs/modules/fraud.md` |
 
 ### Cross-cutting services — no domain data of their own

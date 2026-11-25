@@ -44,6 +44,7 @@ docs/
     *.md                           one spec per feature
   modules/*.md                     one detail file per server module
   data/model.md                    schema, retention, and the launch-day handoff contract
+  data/attribution-export.md       the partner attribution export's schema (E11.7-14)
   api/README.md                    route surface, error envelope, closed code set
   brand/
     tokens.md                      the portable token contract (ADR-015)
@@ -62,7 +63,7 @@ docs/
   price-index-runbook.md           the founder's monthly price-index run, from a clean clone to a merged data PR
   ops/
     runbook.md                     by symptom
-    launch-cutover.md              the host swap and the trust-page port
+    launch-cutover.md              the host swap, the trust-page port and the attribution hand-over
     founder-later-actions.md       things the founder must do later (features shipped switched off)
   prerequisites/
     founder-prerequisites.md       what the founder must supply, with instructions
