@@ -15,7 +15,10 @@ import {
   dashboardRecoveryPath,
 } from '../../server/partner/config.ts';
 import { displayNameMaxLength } from '../../server/partner/dashboard.ts';
-import { presentPartnerDashboard } from '../../server/partner/dashboard-presentation.ts';
+import {
+  presentPartnerDashboard,
+  presentSnapshotTime,
+} from '../../server/partner/dashboard-presentation.ts';
 import { presentPartnerKit } from '../../server/partner/kit-presentation.ts';
 import {
   partnerDashboard,
@@ -197,7 +200,7 @@ Astro.response.status =
                       <th scope="row">
                         <time datetime={week}>{week}</time>
                       </th>
-                      <td>{count}</td>
+                      <td>{copy.count(count)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -235,7 +238,7 @@ Astro.response.status =
                 <p>
                   {copy.leaderboard.asOf}{' '}
                   <time datetime={view.leaderboard.asOf}>
-                    {view.leaderboard.asOf}
+                    {presentSnapshotTime(view.leaderboard.asOf)}
                   </time>
                 </p>
                 {view.leaderboard.ownRank === null ? (
@@ -265,7 +268,7 @@ Astro.response.status =
                           <tr>
                             <th scope="row">{rank}</th>
                             <td class="dashboard__partner-label">{label}</td>
-                            <td>{confirmedSignups}</td>
+                            <td>{copy.count(confirmedSignups)}</td>
                           </tr>
                         ),
                       )}

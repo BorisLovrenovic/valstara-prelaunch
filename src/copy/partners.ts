@@ -202,20 +202,24 @@ export const partnersCopy = {
         'December',
       ],
       noteHeading: 'A note from the founder:',
+      // E11.7-15 (D-074): counts are grouped as /me groups figures, "1,830".
       confirmedInPeriod: (period: string, count: number) =>
-        `Confirmed signups in ${period}: ${count}`,
-      confirmedTotal: (count: number) => `Confirmed signups in total: ${count}`,
+        `Confirmed signups in ${period}: ${count.toLocaleString('en-US')}`,
+      confirmedTotal: (count: number) =>
+        `Confirmed signups in total: ${count.toLocaleString('en-US')}`,
+      // asOf arrives formatted for people (formatSnapshotTimestamp).
       rank: (rank: number, asOf: string) =>
         `Your partner leaderboard rank: ${rank} (as of ${asOf})`,
       unranked: (asOf: string) =>
         `You do not have a rank in the partner leaderboard (as of ${asOf}).`,
       rankUnavailable: 'The partner leaderboard is currently unavailable.',
       categories: 'Survey categories among your confirmed signups:',
-      category: (label: string, count: number) => `${label}: ${count}`,
+      category: (label: string, count: number) =>
+        `${label}: ${count.toLocaleString('en-US')}`,
       waitlistInPeriod: (period: string, count: number) =>
-        `People who confirmed their place on the waitlist in ${period}: ${count}`,
+        `People who confirmed their place on the waitlist in ${period}: ${count.toLocaleString('en-US')}`,
       waitlistTotal: (count: number) =>
-        `People with a confirmed place on the waitlist: ${count}`,
+        `People with a confirmed place on the waitlist: ${count.toLocaleString('en-US')}`,
       dashboard:
         'Your private dashboard shows your counts, at the link in your partner welcome email. If you no longer have that link, you can ask for a new one.',
       choice:

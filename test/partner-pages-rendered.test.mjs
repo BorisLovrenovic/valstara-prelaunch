@@ -498,7 +498,11 @@ test('dashboard recovery is Turnstile-first and returns the same rendered acknow
   assert.match(visibleText(html), /fixture-v1/u);
   assert.match(
     visibleText(html),
-    /Partner leaderboard As of 2026-11-24T08:00:00.000Z Your rank 1 Rank Partner Confirmed signups 1 Partner 1 2 C\. N\. 0/u,
+    /Partner leaderboard As of Nov 24, 2026, 08:00 AM UTC Your rank 1 Rank Partner Confirmed signups 1 Partner 1 2 C\. N\. 0/u,
+  );
+  assert.match(
+    html,
+    /<time datetime="2026-11-24T08:00:00\.000Z"[^>]*>\s*Nov 24, 2026, 08:00 AM UTC\s*<\/time>/u,
   );
   assert.match(html, /value="Earlier Name"/u);
   assert.match(
@@ -583,6 +587,68 @@ test('dashboard recovery is Turnstile-first and returns the same rendered acknow
   const terminated = await show(replacement);
   assert.equal(terminated.status, invalid.status);
   assert.equal(await terminated.text(), invalidHtml);
+});
+
+// E11.7-15 (D-074 Q1, review R1-N2): the page itself groups the weekly
+// signups and the leaderboard's confirmed signups, so a count past 999 reads
+// "1,200" in both tables, never "1200".
+test('the dashboard groups weekly and leaderboard counts of 1,000 or more', async () => {
+  const subscriberId = randomUUID();
+  await database.query(
+    `INSERT INTO subscriber (id, email, email_normalised, email_domain, status, verified_at, referral_code)
+      VALUES ($1, $2, $2, 'example.test', 'verified', '2026-11-01T00:00:00Z', 'FIGVIEWER2345')`,
+    [subscriberId, 'figures-partner@example.test'],
+  );
+  const { partnerId, token } = await seedPartnerDashboard(
+    database,
+    subscriberId,
+    process.env.EMAIL_TOKEN_SECRET,
+    'FIGURES2345',
+  );
+  await database.query(
+    `INSERT INTO subscriber (id, email, email_normalised, email_domain, status,
+      verified_at, referral_code, referred_by_id)
+     SELECT gen_random_uuid(), 'figures-' || n || '@example.test',
+      'figures-' || n || '@example.test', 'example.test', 'verified',
+      '2026-11-17T10:01:00Z', 'FIGFRIEND' || n, $1
+     FROM generate_series(1, 1200) n`,
+    [subscriberId],
+  );
+  await database.query(
+    `INSERT INTO referral_edge (id, referrer_id, referred_id, state, reward_state,
+      created_at, confirmed_at, partner_id, welcome_discount_pct, signup_confirmed_count)
+     SELECT gen_random_uuid(), $1, id, 'confirmed', 'none', '2026-11-17T10:00:00Z',
+      '2026-11-17T10:01:00Z', $2, 15, 0
+     FROM subscriber WHERE referred_by_id = $1`,
+    [subscriberId, partnerId],
+  );
+  const rankingPool = createPool(appUrl);
+  try {
+    await createPartnerLeaderboardJob(
+      rankingPool,
+      async () => true,
+      () => new Date('2026-11-25T08:00:00Z'),
+    ).run();
+  } finally {
+    await rankingPool.close();
+  }
+
+  const response = await get(`/partners/dashboard?t=${token}`);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  const table = (marker) => {
+    const found = html
+      .match(/<table\b[\s\S]*?<\/table>/gu)
+      ?.find((candidate) => candidate.includes(marker));
+    assert.ok(found, marker);
+    return visibleText(found);
+  };
+  const weekly = table('Confirmed signups per week');
+  assert.match(weekly, /\b2026-11-16 1,200\b/u);
+  assert.doesNotMatch(weekly, /1200/u);
+  const leaderboard = table('aria-labelledby="partner-leaderboard"');
+  assert.match(leaderboard, /Confirmed signups 1 Partner 1,200\b/u);
+  assert.doesNotMatch(leaderboard, /1200/u);
 });
 
 test('D-064 rejects other origins and metadata and still requires a valid settings token', async () => {

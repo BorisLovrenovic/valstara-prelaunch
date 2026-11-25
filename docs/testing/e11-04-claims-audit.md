@@ -49,3 +49,13 @@ Recorded in [`e11-5-design-qa.md`](e11-5-design-qa.md#e11-04-claims-on-the-new-c
 - no Valstara price with its flag off.
 
 Its number-trace sweep holds every figure to the published record, ranking, change or report entry it came from. The monthly report's spread ratio, the one figure computed from the source's USD figures, was finding P1. The report page no longer shows it (D-040), and the sweep asserts that no report page contains it, as recorded in [`e11-6-price-pages-audit.md`](e11-6-price-pages-audit.md#9-findings).
+
+## The partner programme (E11.7-15, 2026-11-25)
+
+The partner programme's copy is checked as a person reads it: the rendered text of 44 states of the seeded programme (`test/e11-7-15-partner-browser.test.mjs`), and 206 emails of the eleven new and changed templates rendered through the dispatch path (`test/e11-7-15-partner-audit.test.ts`). The checks are:
+
+- the never-use terms of `scripts/forbidden-copy.json`, the brief's "passive income", "unlimited", "financial freedom", "team" and "downline" among them, word-bounded as the gate matches;
+- no exclamation mark, unfilled placeholder or urgency wording;
+- sentence case in every heading, button and label.
+
+Each partner-referred friend's welcome states the partner's code and the friend's own fixed discount, and no other welcome carries the line. No finding concerns a claim. Finding C1 concerned two machine-formatted values, a raw timestamp and ungrouped counts, and is fixed under the founder's decision (D-074): [`e11-7-partner-programme-audit.md`](e11-7-partner-programme-audit.md#9-findings).

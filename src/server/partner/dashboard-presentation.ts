@@ -1,5 +1,6 @@
 import { partnerDashboardCopy } from '../../copy/partner-dashboard.ts';
 import { verificationCopy } from '../../copy/verification.ts';
+import { formatSnapshotTimestamp } from '../../islands/leaderboard.ts';
 import type { PartnerDashboardRow } from '../db/partner-dashboard.ts';
 import {
   earlyAccess,
@@ -24,14 +25,14 @@ export function presentPartnerDashboard(
         ? copy.sharing.paused
         : copy.sharing.inactive,
     counts: [
-      { label: copy.stats.confirmed, count: row.confirmed },
-      { label: copy.stats.pending, count: row.pending },
-      { label: copy.stats.voided, count: row.voided },
+      { label: copy.stats.confirmed, count: copy.count(row.confirmed) },
+      { label: copy.stats.pending, count: copy.count(row.pending) },
+      { label: copy.stats.voided, count: copy.count(row.voided) },
     ],
     categories: verificationCopy.survey.categoryOptions.map(
       ({ label, value }) => ({
         label,
-        count: row.categories[value] ?? 0,
+        count: copy.count(row.categories[value] ?? 0),
       }),
     ),
     rewards: referralEnabled
@@ -55,6 +56,15 @@ export function presentPartnerDashboard(
         }
       : null,
   };
+}
+
+/**
+ * The partner leaderboard's snapshot time as people read it, in the public
+ * leaderboard's own format, "Nov 24, 2026, 08:00 AM UTC" (E11.7-15, D-074).
+ * The page keeps the ISO-8601 value in its <time datetime>.
+ */
+export function presentSnapshotTime(asOf: string): string {
+  return formatSnapshotTimestamp(asOf);
 }
 
 export function presentDashboardRecovery(

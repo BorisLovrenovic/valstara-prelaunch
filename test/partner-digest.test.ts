@@ -1050,7 +1050,7 @@ test('the rendered digest reports the closed period from confirmed people only a
     }
     assert.match(
       message.text,
-      /Your partner leaderboard rank: 2 \(as of 2028-05-01T09:00:00\.000Z\)/u,
+      /Your partner leaderboard rank: 2 \(as of May 1, 2028, 09:00 AM UTC\)/u,
     );
     // It links the replacement request and /me, and issues no dashboard link.
     assert.ok(

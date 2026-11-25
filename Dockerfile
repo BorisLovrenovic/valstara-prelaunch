@@ -71,6 +71,9 @@ COPY --chown=node:node --from=build /app/src/content/partner-message-templates.j
 # founder's note and the survey version its category counts use.
 COPY --chown=node:node --from=build /app/src/content/partner-digest-note.json ./src/content/partner-digest-note.json
 COPY --chown=node:node --from=build /app/src/server/survey/questions.ts ./src/server/survey/questions.ts
+# E11.7-15 (D-074): the partner digest formats its rank line's snapshot time
+# with the public leaderboard's formatter.
+COPY --chown=node:node --from=build /app/src/islands/leaderboard.ts ./src/islands/leaderboard.ts
 COPY --chown=node:node package.json ./package.json
 
 USER node

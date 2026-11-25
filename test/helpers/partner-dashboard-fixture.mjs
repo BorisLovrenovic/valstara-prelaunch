@@ -6,7 +6,12 @@ import {
 
 // Attach a separately authenticated partner surface to an existing verified
 // subscriber in the accessibility and rendered-privacy fixtures.
-export async function seedPartnerDashboard(database, subscriberId, secret) {
+export async function seedPartnerDashboard(
+  database,
+  subscriberId,
+  secret,
+  code = 'DASHBOARD2345',
+) {
   const partnerId = randomUUID();
   const linkId = randomUUID();
   const token = deriveEmailToken(linkId, secret);
@@ -18,13 +23,13 @@ export async function seedPartnerDashboard(database, subscriberId, secret) {
       contract_version)
     VALUES ($1, $2, 'active', '2026-11-02Z', '2026-11-02Z', '2026-11-02Z',
       'Dashboard Fixture', 'SE', 'creator', ARRAY['tiktok'], ARRAY['@fixture'],
-      'under_1k', 'A video', 'DASHBOARD2345', true, true, '2026-11-02Z',
+      'under_1k', 'A video', $3, true, true, '2026-11-02Z',
       '2026-11-02', 'fixture-v1')`,
-    [partnerId, subscriberId],
+    [partnerId, subscriberId, code],
   );
   await database.query(
-    "INSERT INTO referral_code (code, owner_kind, owner_id) VALUES ('DASHBOARD2345', 'partner', $1)",
-    [partnerId],
+    "INSERT INTO referral_code (code, owner_kind, owner_id) VALUES ($2, 'partner', $1)",
+    [partnerId, code],
   );
   await database.query('SELECT set_partner_code_active($1, true)', [partnerId]);
   await database.query(

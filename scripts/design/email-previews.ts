@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { dsrRenderers } from '../../src/server/dsr/templates.ts';
+import { partnerDigestRenderer } from '../../src/server/partner/digest-template.ts';
 import {
   partnerApplicationRenderers,
   partnerInviteRenderer,
@@ -42,6 +43,7 @@ const payloads: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
   partner_welcome: { token_id: 'dashboard-id' },
   partner_first_signup: { status_token_id: 'status-id' },
   partner_invite: { status_token_id: 'status-id' },
+  partner_digest: { period: '2026-10', status_token_id: 'status-id' },
   weekly_campaign_update: {
     snapshot_id: 'snapshot-id',
     status_token_id: 'status-id',
@@ -85,6 +87,27 @@ export function emailPreviewRenderers(
       welcomeCode: async () => 'DASHBOARD2345',
     }),
     ['partner_invite', partnerInviteRenderer(origin, 'mail.valstara.com')],
+    // E11.7-13's digest, registered on the broadcast domain (E11.7-15
+    // audit finding E1: it was missing here, so no sheet or layout check
+    // rendered it). The founder's note is the content file's once written.
+    [
+      'partner_digest',
+      partnerDigestRenderer({
+        baseUrl: origin,
+        sendingDomain: 'mail.valstara.com',
+        note: () => 'A short note from the founder about the month.',
+        async data() {
+          return {
+            confirmedInPeriod: 7,
+            confirmedTotal: 24,
+            rank: { kind: 'ranked', rank: 3, asOf: '2026-11-01T09:00:00.000Z' },
+            categories: { ai: 6, subscriptions: 9, software: 3, game_keys: 6 },
+            waitlistVerifiedInPeriod: 412,
+            waitlistVerifiedTotal: 1_830,
+          };
+        },
+      }),
+    ],
     [
       'weekly_campaign_update',
       createWeeklyTemplate({

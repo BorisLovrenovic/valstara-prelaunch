@@ -1,6 +1,7 @@
 import { emailCopy } from '../../copy/email.ts';
 import { partnersCopy } from '../../copy/partners.ts';
 import { verificationCopy } from '../../copy/verification.ts';
+import { formatSnapshotTimestamp } from '../../islands/leaderboard.ts';
 import { createPartnerDigestRepository } from '../db/partner-digest.ts';
 import { createPartnerLeaderboardRepository } from '../db/partner-leaderboard.ts';
 import type { DatabaseConnection } from '../db/pool.ts';
@@ -111,9 +112,9 @@ function rankLine(rank: PartnerDigestData['rank']): string {
   const copy = partnersCopy.email.digest;
   switch (rank.kind) {
     case 'ranked':
-      return copy.rank(rank.rank, rank.asOf);
+      return copy.rank(rank.rank, formatSnapshotTimestamp(rank.asOf));
     case 'unranked':
-      return copy.unranked(rank.asOf);
+      return copy.unranked(formatSnapshotTimestamp(rank.asOf));
     case 'unavailable':
       return copy.rankUnavailable;
   }

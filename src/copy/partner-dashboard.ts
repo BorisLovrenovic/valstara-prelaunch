@@ -1,5 +1,8 @@
 export const partnerDashboardCopy = {
   title: 'Partner dashboard',
+  // E11.7-15 (D-074): every count the dashboard shows is grouped as /me
+  // groups figures, "1,830".
+  count: (count: number) => count.toLocaleString('en-US'),
   description: 'View your Valstara partner referrals, terms and settings.',
   recoveryLink: 'Send me a new link',
   invalid:
