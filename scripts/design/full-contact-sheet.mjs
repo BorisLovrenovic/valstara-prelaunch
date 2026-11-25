@@ -129,6 +129,8 @@ export const flagAnalysis = Object.freeze({
     'not read by the landing; /partners/apply only (the paused card, E11.7-05)',
   'partners.digest':
     "not read by any page; the maintenance worker's partner digest only (E11.7-13)",
+  'partners.announcements':
+    'not read by any page; the founder command and the partner announcement email only (E11.7-16)',
 });
 
 const on = (value) => (value ? 'on' : 'off');

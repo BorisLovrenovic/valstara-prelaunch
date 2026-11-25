@@ -389,6 +389,43 @@ const partnerCommands: Readonly<Record<string, AdminCommand>> = {
       return [`Notes replaced for partner ${String(record(body.partner).id)}.`];
     },
   },
+  // E11.7-16: one announcement to every eligible partner. --dry-run prints
+  // only the number of partners it would reach, and queues nothing.
+  'partners announce': {
+    usage: 'partners announce --id <announcement id> [--dry-run]',
+    build(args) {
+      const { positional, values, flags } = readOptions(
+        args,
+        ['--id'],
+        ['--dry-run'],
+      );
+      if (positional.length !== 0) throw usageError('Unexpected argument.');
+      const id = values['--id'];
+      if (id === undefined) throw usageError('Name the announcement: --id.');
+      return {
+        method: 'POST',
+        path: '/api/admin/partners/announce',
+        body: flags.has('--dry-run') ? { id, dry_run: true } : { id },
+      };
+    },
+    describe(body) {
+      const announcement = record(body.announcement);
+      if (announcement.dry_run === true) {
+        return [
+          `${String(body.partners_due)} partners would receive announcement ${String(announcement.id)}. Nothing was sent.`,
+        ];
+      }
+      const lines = [
+        `Announcement ${String(announcement.id)}: ${String(body.queued)} queued now, ${String(body.already_queued)} queued before.`,
+      ];
+      lines.push(
+        body.remaining === 0
+          ? 'Every eligible partner has it.'
+          : `${String(body.remaining)} partners remain: run the command again to continue.`,
+      );
+      return lines;
+    },
+  },
   // Streams the CSV to standard output, unchanged; redirect it to a file:
   // `npm run --silent admin -- partners export > partners.csv`.
   'partners export': {

@@ -35,13 +35,14 @@ export interface PartnerDigestCounts {
  * is verified and who chose optional programme email (E11.7-09's setting).
  * Marketing consent is neither required nor read (D-071). Suppression is
  * checked by the callers, and again by the email service at dispatch.
+ * E11.7-16's partner announcements use exactly this audience.
  */
-const audience = `p.status = 'active'
+export const partnerOptionalMailAudience = `p.status = 'active'
   AND p.personal_data_purged_at IS NULL
   AND p.nonessential_email_enabled
   AND s.status = 'verified'`;
 
-const unsuppressed = `NOT EXISTS (SELECT 1 FROM suppression x
+export const partnerOptionalMailUnsuppressed = `NOT EXISTS (SELECT 1 FROM suppression x
   WHERE x.email_normalised = s.email_normalised)`;
 
 function assertLimit(limit: number): void {
@@ -155,7 +156,7 @@ export function createPartnerDigestRepository(db: DatabaseConnection) {
         {
           text: `SELECT p.id AS partner_id, p.subscriber_id
             FROM partner p JOIN subscriber s ON s.id = p.subscriber_id
-            WHERE ${audience} AND ${unsuppressed}
+            WHERE ${partnerOptionalMailAudience} AND ${partnerOptionalMailUnsuppressed}
               AND NOT EXISTS (SELECT 1 FROM email_send e
                 WHERE e.business_key = 'partner-digest:' || $1 || ':' || p.id::text)
             ORDER BY p.id`,
@@ -178,7 +179,7 @@ export function createPartnerDigestRepository(db: DatabaseConnection) {
     lockEligible(partnerId: string, subscriberId: string) {
       return db.readOne<{ id: string }>({
         text: `SELECT p.id FROM partner p JOIN subscriber s ON s.id = p.subscriber_id
-          WHERE p.id = $1 AND p.subscriber_id = $2 AND ${audience} AND ${unsuppressed}
+          WHERE p.id = $1 AND p.subscriber_id = $2 AND ${partnerOptionalMailAudience} AND ${partnerOptionalMailUnsuppressed}
           FOR UPDATE OF p`,
         values: [partnerId, subscriberId],
       });
@@ -193,7 +194,7 @@ export function createPartnerDigestRepository(db: DatabaseConnection) {
       return (
         (await db.readOne({
           text: `SELECT p.id FROM partner p JOIN subscriber s ON s.id = p.subscriber_id
-            WHERE s.id = $1 AND ${audience}`,
+            WHERE s.id = $1 AND ${partnerOptionalMailAudience}`,
           values: [subscriberId],
         })) !== null
       );
@@ -218,7 +219,7 @@ export function createPartnerDigestRepository(db: DatabaseConnection) {
             FROM verification_token t
             JOIN subscriber s ON s.id = t.subscriber_id
             JOIN partner p ON p.subscriber_id = s.id
-            WHERE t.id = $1 AND t.purpose = 'status' AND ${audience}
+            WHERE t.id = $1 AND t.purpose = 'status' AND ${partnerOptionalMailAudience}
           ), confirmed AS (
             SELECT e.referred_id, e.confirmed_at
             FROM referral_edge e JOIN owner o ON o.subscriber_id = e.referrer_id

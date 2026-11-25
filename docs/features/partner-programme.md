@@ -54,6 +54,7 @@ Commission is **shown in copy and never calculated here** (founder, 2026-11-22):
 |---|---|---|
 | `partners.enabled` | **on** | `/partners/apply` shows an honest "applications are paused" message. `/r/{CODE}` still redirects to `/`, without attributing. Partner dashboards say the programme is paused. Contract signing and reactivation still record their audited transitions. Code activation, partner-mode member codes, retroactive attribution and new activation-based wave-1 grants wait for reopening. Earned perks and historical attribution are preserved |
 | `partners.digest` | **off** | No partner digest is queued, and a digest already queued is not sent (E11.7-13). It stays off until the founder turns it on. The digest also needs `partners.enabled` and `email.broadcast` on |
+| `partners.announcements` | **off** | The `partners announce` command refuses, even with `--dry-run`, nothing is queued, and an announcement already queued is not sent (E11.7-16). It stays off until the founder turns it on. Announcements also need `partners.enabled` and `email.broadcast` on, and the command names whichever of the three is off |
 
 The reward ladder and the wave-1 rule sit behind the existing `referral.enabled`.
 
@@ -231,9 +232,28 @@ Progress shows on `/me`, on the partner dashboard and in the relevant emails. **
 - **The first-signup email.** A partner gets one email, ever, when the first confirmed, non-voided signup is credited to them as a partner, by link, code or retroactive attribution, once their welcome has been queued. It names no one. It does not issue a new dashboard link, because that would cancel the welcome's link; it links the replacement request instead. It is transactional, a programme milestone like the members' referral updates, so the optional-email setting does not govern it.
 - Both are queued by the maintenance worker, at most 100 a cycle, and nothing is queued while `partners.enabled` is off. Suppression is checked before queueing and again at dispatch (`docs/modules/email.md#partner-programme-contact-workflow`).
 
-## Partner announcements (E11.7-16, planned)
+## Partner announcements
 
-**Founder decision, 2026-11-25.** The founder writes to every partner at once through a content file in `src/content/partner-announcements/` and the command `partners announce --id <id> [--dry-run]`. It uses the digest's audience and dispatch re-checks exactly, including the optional-email setting, sends one email per partner per announcement, and is audited, behind `partners.announcements`. Contractual notices go through the contract route instead.
+**As built (E11.7-16, founder decision 2026-11-25).** The founder's one way to write to every partner at once, for programme news, rule reminders and the competition. There is no partner broadcast list (D-056); announcements use the digest's send path. **Contractual notices, such as a change to a partner's terms, go through the contract route, never through an announcement.**
+
+- **The content file.** One file per announcement in `src/content/partner-announcements/`, named `YYYY-MM-DD-<slug>.md` (a real date; a slug of lowercase letters, digits and single hyphens; at most 80 characters before `.md`). The name without `.md` is the announcement's id. The file holds exactly one frontmatter line, the subject, and then plain prose in paragraphs separated by a blank line:
+
+  ```markdown
+  ---
+  subject: Programme news for December
+  ---
+
+  The partner leaderboard now updates every hour.
+
+  Read the [programme page](/partners) for the details.
+  ```
+
+- **The rules, checked before every build** (`scripts/ci/partner-announcements-check.ts`, so a file that breaks one fails the build) and again whenever the command or the renderer reads a file: a subject of at most 80 characters, in sentence case and starting with a capital letter or digit; at most 300 words of plain prose; at most three links, each written as a path on the site's own origin (`/partners`, never a full or off-site address); no image, no HTML or HTML entity, no merge field (`{{ }}`, `*| |*`, `%NAME%` and the like), no markdown beyond those links (no headings, lists, emphasis or code), and no web or email address in the text. The copy rules apply: no exclamation mark, and no term on the forbidden-copy list, which the build check reads and the CI scan of `src/content/` covers as well. The folder holds only announcement files and its `.gitkeep`.
+- **A published announcement never changes.** The security gates fail when an announcement file that is on the merge base is edited or deleted on the branch (`scripts/ci/partner-announcements-append-only.mjs`, run by `npm run security` against the pull request's base). A correction is a new file.
+- **The send.** `npm run admin -- partners announce --id <id> [--dry-run]`, through the admin API with the secret key and a fresh authenticator code (E5-03a). `--dry-run` prints only the number of partners a run would reach now and queues nothing. A run queues one email per eligible partner, in batches of at most 100, under `partner-announcement:{id}:{partner_id}`, so a repeat run, a concurrent run or a run after a restart queues only the partners still due and never sends twice. One run queues at most 5 batches (500 partners), well inside the command line's 30-second request timeout; if partners remain it says how many, and running the command again continues. Each queue re-checks the flags and the audience inside its own transaction, under the subscriber, programme-flag-row and partner locks the digest takes. **Every run, dry or not, is audited** as `partner.announcement_run` with the actor, the announcement id and the counts; a run that stops part-way is audited with what it queued. An unknown or invalid announcement, or any of the three flags off, is refused before anything is queued.
+- **Who receives it:** exactly the digest's audience (founder decision 1 on E11.7-13): `partners.enabled`, `partners.announcements` and `email.broadcast` on, an active, unpurged partner with a verified member record, an unsuppressed address and `nonessential_email_enabled = true`. Marketing consent is neither required nor checked. Dispatch re-checks all of it for every send, so a partner who opts out, is paused or terminated, or is suppressed between queueing and dispatch receives nothing.
+- **The email.** A `partner_announcement` Brevo broadcast through the shared email layout, in HTML and plain text: the announcement's subject and paragraphs, a line on the dashboard with its replacement request (the digest's), and a line on the optional-email choice. The announcement's first link is the button; without links of its own, the replacement request is. It also carries the member's `/me` link. It names no one. The subject and text are read from the content file at dispatch, so the queued payload holds only the id and a status-token reference.
+- **Opting out.** Its unsubscribe turns off only the optional-email choice, as the digest's does, audited as `partner.optional_email_withdrawn`; marketing consent, the waitlist place and the partner's transactional mail are unchanged.
 
 ## The partner digest
 

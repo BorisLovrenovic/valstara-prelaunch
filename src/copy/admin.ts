@@ -51,4 +51,16 @@ export const adminCopy = {
       : `Available instead: ${alternatives.join(', ')}.`,
   partnerUnavailable: 'The partner command is temporarily unavailable.',
   partnerExportUnavailable: 'The partners export is temporarily unavailable.',
+  // E11.7-16: partners announce.
+  partnerAnnouncement: {
+    bodyInvalid:
+      'Send { "id": "<announcement id>" } and, for a dry run, "dry_run": true.',
+    notFound:
+      'No announcement exists with that id in src/content/partner-announcements/.',
+    invalid: (problems: readonly string[]) =>
+      `That announcement breaks its rules: ${problems.join('; ')}.`,
+    flagsOff: (flags: readonly string[]) =>
+      `Nothing was queued: these flags are off: ${flags.join(', ')}.`,
+    unavailable: 'The announcement command is temporarily unavailable.',
+  },
 } as const;

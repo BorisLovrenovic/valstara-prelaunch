@@ -20,6 +20,10 @@ COPY scripts/ci/provider-showcase-check.ts ./scripts/ci/provider-showcase-check.
 COPY scripts/ci/seo-build-check.ts ./scripts/ci/seo-build-check.ts
 # E11.7-11: the partner kit's content and folder checks run before the build.
 COPY scripts/ci/partner-kit-check.ts ./scripts/ci/partner-kit-check.ts
+# E11.7-16: every partner announcement is validated before the build, with the
+# forbidden-copy list.
+COPY scripts/ci/partner-announcements-check.ts ./scripts/ci/partner-announcements-check.ts
+COPY scripts/forbidden-copy.json ./scripts/forbidden-copy.json
 # E11.6-10: the price pages bundle the price data and the price-index
 # package's two site-importable parts (ADR-033); scripts/ci/app-build.mjs
 # lists the same inputs. E11.6-11 adds the Valstara prices.
@@ -71,6 +75,9 @@ COPY --chown=node:node --from=build /app/src/content/partner-message-templates.j
 # founder's note and the survey version its category counts use.
 COPY --chown=node:node --from=build /app/src/content/partner-digest-note.json ./src/content/partner-digest-note.json
 COPY --chown=node:node --from=build /app/src/server/survey/questions.ts ./src/server/survey/questions.ts
+# E11.7-16: the founder command (the app) and the renderer (the maintenance
+# worker) read the partner announcements validated at build.
+COPY --chown=node:node --from=build /app/src/content/partner-announcements ./src/content/partner-announcements
 # E11.7-15 (D-074): the partner digest formats its rank line's snapshot time
 # with the public leaderboard's formatter.
 COPY --chown=node:node --from=build /app/src/islands/leaderboard.ts ./src/islands/leaderboard.ts

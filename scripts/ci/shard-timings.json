@@ -143,6 +143,7 @@
   "test/p1-alert.test.ts": 0.5,
   "test/page-view-rendered.test.mjs": 56.9,
   "test/page-view-unit.test.mjs": 0.2,
+  "test/partner-announcements.test.ts": 3.4,
   "test/partner-application.test.ts": 6.7,
   "test/partner-attribution.test.ts": 4.4,
   "test/partner-code.test.ts": 2.2,

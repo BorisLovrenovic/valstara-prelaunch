@@ -169,6 +169,8 @@ npm run admin -- partners pause|reactivate|terminate <partner-id>
 npm run admin -- partners set-type <partner-id> student_ambassador --university "<name>"
 npm run admin -- partners note <partner-id> --text "<notes>"
 npm run --silent admin -- partners export > partners.csv
+npm run admin -- partners announce --id 2026-12-01-programme-news --dry-run
+npm run admin -- partners announce --id 2026-12-01-programme-news
 ```
 
 - **Approve** re-runs the code rules on the requested code, or on `--code`.
@@ -215,6 +217,27 @@ npm run --silent admin -- partners export > partners.csv
   time) or `note_missing` (the note was empty when the run would start). The
   period is not sent late. Check the maintenance heartbeat for a missed window,
   or add the note before the next period.
+
+### Partner announcements (E11.7-16)
+
+- **Write the announcement** as a new file in
+  `src/content/partner-announcements/`, `YYYY-MM-DD-<slug>.md`, with one
+  `subject:` frontmatter line and plain prose (at most 300 words, at most
+  three links written as site paths such as `/partners`). The build fails on a
+  file that breaks a rule and names the rule. Merge and deploy it through an
+  ordinary pull request. **A published file never changes:** CI refuses an
+  edit or deletion, so a correction is a new announcement.
+- **Never use an announcement for a contractual notice**, such as a change to
+  a partner's terms. Those go through the contract route.
+- **Send it** once `partners.announcements` is on (with `partners.enabled`
+  and `email.broadcast`): run the dry run first, which prints how many
+  partners it would reach and queues nothing, then the run. Both are audited
+  as `partner.announcement_run`. A run reaches only partners who chose
+  optional partner programme emails.
+- **If the run reports partners remaining**, or stopped with an error, run the
+  same command again: it queues only the partners still due, so nobody gets it
+  twice. A refusal names its cause: an unknown id, a broken file, or the flags
+  that are off.
 
 ---
 

@@ -38,8 +38,21 @@ test('the checklist maps every portable Markdown source to one known storefront 
   const rulesFiles = (await readdir(source('src/content/giveaway-rules')))
     .filter((file) => file.endsWith('.md'))
     .map((file) => `src/content/giveaway-rules/${file}`);
+  // E11.7-16: partner announcements are founder mail to partners, sent by
+  // the `partners announce` command and never rendered as a page, so they
+  // have no storefront port target. Every file there is an announcement.
+  const announcementFolder = 'src/content/partner-announcements/';
+  for (const file of allContentFiles.filter((path) =>
+    path.startsWith(announcementFolder),
+  ))
+    assert.match(
+      file.slice(announcementFolder.length),
+      /^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u,
+    );
   const markdownFiles = allContentFiles
-    .filter((file) => file.endsWith('.md'))
+    .filter(
+      (file) => file.endsWith('.md') && !file.startsWith(announcementFolder),
+    )
     .sort();
   assert.deepEqual(
     allContentFiles.filter((file) => !file.endsWith('.md')),

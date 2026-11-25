@@ -118,5 +118,16 @@ export function partnerDigestBusinessKey(
   return `partner-digest:${period}:${partnerId}`;
 }
 
+// E11.7-16: partner announcements, optional programme mail on the digest's
+// audience and send path. One per partner per announcement, ever; the id is
+// the content file's name without `.md`.
+export const partnerAnnouncementTemplate = 'partner_announcement';
+export function partnerAnnouncementBusinessKey(
+  announcementId: string,
+  partnerId: string,
+): string {
+  return `partner-announcement:${announcementId}:${partnerId}`;
+}
+
 // Increment when the leaderboard name disclosure changes.
 export const displayNameDisclosureVersion = 1;

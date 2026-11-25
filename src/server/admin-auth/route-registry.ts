@@ -93,6 +93,12 @@ export const adminRouteRegistry = defineAdminRouteRegistry([
     pathname: '/api/admin/partners/export.csv',
     methods: [{ method: 'GET', audit: 'required' }],
   },
+  // E11.7-16: partners announce.
+  {
+    source: 'src/pages/api/admin/partners/announce.ts',
+    pathname: '/api/admin/partners/announce',
+    methods: [{ method: 'POST', audit: 'required' }],
+  },
   {
     source: 'src/pages/api/admin/partners/[id].ts',
     pathname: '/api/admin/partners/:id',

@@ -22,6 +22,10 @@ const inputPaths = [
   'scripts/ci/provider-showcase-check.ts',
   // E11.7-11: the partner kit check runs before the build.
   'scripts/ci/partner-kit-check.ts',
+  // E11.7-16: the partner announcements check runs before the build, with the
+  // forbidden-copy list.
+  'scripts/ci/partner-announcements-check.ts',
+  'scripts/forbidden-copy.json',
   // E11.6-10: the price pages bundle the price data and the price-index
   // package's two site-importable parts (ADR-033).
   'config/catalogue.json',

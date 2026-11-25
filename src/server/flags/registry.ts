@@ -17,6 +17,10 @@ export const campaignFlagRegistry = Object.freeze({
   // E11.7-13: the partner digest. Off until the founder turns it on; off, no
   // digest is queued or sent (docs/features/partner-programme.md#feature-flag).
   'partners.digest': false,
+  // E11.7-16: partner announcements. Off until the founder turns it on; off,
+  // nothing is queued or sent and the command refuses
+  // (docs/features/partner-programme.md#partner-announcements).
+  'partners.announcements': false,
 } as const);
 
 export type FlagKey = keyof typeof campaignFlagRegistry;

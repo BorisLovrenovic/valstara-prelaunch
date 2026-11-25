@@ -3,6 +3,10 @@ import { getConfig } from '../config.ts';
 import { createPool, type DatabasePool } from '../db/pool.ts';
 
 import {
+  createPartnerAnnouncementService,
+  type PartnerAnnouncementService,
+} from './announcement.ts';
+import {
   createPartnerExportService,
   type PartnerExportService,
 } from './export.ts';
@@ -22,6 +26,14 @@ function getDatabase(): DatabasePool {
 
 export function getPartnerReviewService(): PartnerReviewService {
   return createPartnerReviewService(getDatabase());
+}
+
+// E11.7-16: partners announce. The real clock is read here, at the route's
+// edge; the service and its tests inject one.
+export function getPartnerAnnouncementService(): PartnerAnnouncementService {
+  return createPartnerAnnouncementService(getDatabase(), {
+    clock: () => new Date(),
+  });
 }
 
 export function getPartnerExportService(): PartnerExportService {
