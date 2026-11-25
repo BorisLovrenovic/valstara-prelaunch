@@ -149,7 +149,7 @@ flowchart TD
 
 **E11.7-11 runs after E11.7-14 and before E11.7-15 (founder-authorised 2026-11-24, D-068).** D-068 placed it there to wait on P10. Later the same day the founder decided it no longer waits on P10 (E11.7-11, founder decision 2); it keeps its place in the register.
 
-**E11.8 runs after E11.7 and before E12 (founder-authorised 2026-11-24).** It adds the Trust Ledger page, whose first entry is due when the site goes live in December 2026, the founder's per-platform signup report, the founder note in the weekly update, the referral reminder, the giveaway's new dates and the 13+ waitlist mechanics, so E12 deploys and gates the site with them. **E11.8-07, the lawyer's reviewed wording (P12), runs after E12-07** and is the only ticket that waits on the lawyer (founder, 2026-11-25).
+**E11.8 runs after E11.7 and before E12 (founder-authorised 2026-11-24).** It adds the Trust Ledger page, whose first entry is due when the site goes live in December 2026, the founder's per-platform signup report, the founder note in the weekly update, the referral reminder, the giveaway's new dates and the 13+ waitlist mechanics, so E12 deploys and gates the site with them. **E11.8-08** (added 2026-11-25) takes Perplexity Pro off the site's launch list and runs after E11.8-06, before GATE-8. **E11.8-07, the lawyer's reviewed wording (P12), runs after E12-07** and is the only ticket that waits on the lawyer (founder, 2026-11-25).
 
 **Everything through E11 is built and verified locally.** The VPS is provisioned once, at the end, and **E12 collects every piece of evidence that needs real infrastructure** — the rollback RTO, a restore from R2, capacity on the actual box (founder decision, 2026-08-27).
 
@@ -4563,13 +4563,16 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 
    **Added 2026-11-24 (founder: "Yes, add it"):** a member who did not tick the 18+ box at signup can enter later from `/me`.
 
+5. **Perplexity Pro leaves the launch list (E11.8-08).** Founder, 2026-11-25: the launch list is 33 providers, and Perplexity Pro is no longer on it (recorded with P11). The founder accepted a ticket to take it off the site ("Yes, add the ticket"), and chose to keep its price pages ("Keep them").
+
 **Goal:**
 - **the Trust Ledger:** a public, monthly, append-only record of Valstara's real numbers, at a permanent URL, live before the campaign opens;
 - **the per-platform report:** a founder-only report of signups by source, medium and campaign, so TikTok, Instagram and every other platform are counted separately;
 - **member messages:** the founder's monthly note in the weekly update, and the referral reminder in the welcome email;
-- **the giveaway's dates** moved to the new launch timeline, and **the waitlist opened to 13–17-year-olds** without inviting them into the giveaway or marketing below 16.
+- **the giveaway's dates** moved to the new launch timeline, and **the waitlist opened to 13–17-year-olds** without inviting them into the giveaway or marketing below 16;
+- **the launch list:** the landing page shows the same 33 launch providers the Trust Ledger counts.
 
-*7 tickets.*
+*8 tickets.*
 
 **Why it runs here.** The Trust Ledger's first entry is due in December 2026, when the pre-launch site goes live (founder, 2026-11-22). Placing the epic before GATE-8 and E12 means GATE-8 audits it, and E12 deploys, load-tests and gates it with everything else. The per-platform report must exist from go-live: UTM values are kept for 12 months, and only links that carry them can be counted. The giveaway's rules revision must be current before `giveaway.open` is switched on. **No ticket before E12 waits on the lawyer (P12).** E11.8-06 builds the 13+ mechanics behind a flag that stays off; E11.8-07, which applies the lawyer's reviewed wording, runs after E12-07 and is the only ticket P12 blocks (founder, 2026-11-25).
 
@@ -4581,6 +4584,7 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - A deployed note appears in the weekly update for its week only, and never reaches anyone the dispatch checks refuse.
 - The current giveaway rules revision states the new dates, and the code accrues entries and runs the draw on those dates.
 - With `waitlist.age_13` on (after E11.8-07), the site says "13 and over", and no one holds a giveaway entry without the 18+ box or receives marketing without the 16+ opt-in.
+- The landing page's provider showcase shows only providers on the current launch list, and Perplexity Pro is not among them.
 - No new cookie, island, third-party request or personal data appears in any public response or analytics event.
 
 ### Rules for every E11.8 ticket
@@ -4771,6 +4775,32 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 
 **Tests:** The reviewed strings · the consent wording version · the rules revision's hash and immutability · the claims reconciliation · the enable command with the setting true · flag on and off · the privacy, accessibility and layout suites.
 **Docs:** `docs/legal/compliance.md` · `docs/features/signup.md` · `docs/features/giveaway.md` · a new ADR · ADR-030
+
+### E11.8-08 — Perplexity Pro leaves the launch list
+**Model:** Opus 5.5 — Medium · **Priority:** High · **Flag:** — · **Area:** frontend, content
+**Why this model:** a content removal whose risk is in the layout checks and the claims audit, not in new logic.
+
+**Founder decisions (2026-11-25):** Perplexity Pro is no longer on the launch list, which is now 33 providers (P11). Asked what happens to its price pages, the founder chose **"Keep them"**: they stay published with list prices only, and the catalogue marks the service as `planned`.
+
+**Runs after E11.8-06 and before GATE-8**, so GATE-8 audits it and the site goes live with the showcase and the Trust Ledger stating the same launch list.
+
+**Build:**
+- **The showcase.** Remove Perplexity from `src/content/provider-showcase.json`, and its served logo files from `public/images/providers/`. The AI tools group shows six banners through the existing rail and grid rules. No new layout and no new component.
+- **The P8 record.** `docs/prerequisites/p8-provider-list.md` keeps Perplexity's row and marks it withdrawn on 2026-11-25 (founder), so the 25 October confirmation stays readable. The claims audit (E11-04) checks that every showcased provider is confirmed and not withdrawn, and expects 33.
+- **The geometry fixture.** `test/fixtures/final-ui/catalogue-geometry.json` is re-measured by its measure script from the pinned canvas, with Perplexity's banner removed before measuring. The canvas snapshot and its pin stay unchanged, and every other group's geometry is unchanged.
+- **The price index.** `config/catalogue.json` sets Perplexity's `status` to `planned`. Its price pages, URLs, published-URL ledger entries and report rows are unchanged.
+- **The partner code blocklist keeps `PERPLEXITY`.** It blocks a brand name, not a launch product.
+- **Every other surface that counts or lists launch providers** reads 33 or leaves Perplexity out: the copy layer, the content files and the design previews.
+
+**Acceptance criteria:**
+- The landing page renders 33 provider banners, none of them Perplexity, at every width in both themes
+- No served file, copy string or content file presents Perplexity as a launch provider, and its price pages still render with list prices only
+- The claims audit passes with Perplexity marked withdrawn, and **fails with a planted withdrawn provider in the showcase**
+- The catalogue geometry and layout checks pass against the re-measured fixture, with every other group unchanged
+- `price-index validate` passes with Perplexity `planned`, and its published URLs still resolve
+
+**Tests:** The showcase validation and the rendered banner count · the claims audit, with a planted withdrawn provider · the catalogue geometry and layout suites · `price-index validate` and a Perplexity price page.
+**Docs:** `docs/prerequisites/p8-provider-list.md` · `docs/prerequisites/founder-prerequisites.md` (P8) · ADR-032 (a dated note) · `docs/features/price-index.md` · `docs/marketing/valstara-launch-playbook-consolidated.md` (0.1, the launch providers)
 
 ## Epic E12 — Production bring-up
 
@@ -5023,6 +5053,7 @@ The founder's brief targeted 40–60 hours for the partner programme. The founde
 | E11.8-05 The giveaway rules revision with the new dates | E11-04 (the revision pattern) | 3 h |
 | E11.8-06 The waitlist at 13 and over, with an 18+ giveaway box | E11.8-05 | 9 h |
 | E11.8-07 Apply the lawyer's review: privacy, terms and the age change | E11.8-06; E12-07; P12 | 4 h |
+| E11.8-08 Perplexity Pro leaves the launch list | E11.5-04 (the showcase); E11.6-02 (the catalogue) | 3 h |
 | **E11.8 total** | | **33 h** |
 
 ---
