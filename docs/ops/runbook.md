@@ -206,9 +206,10 @@ npm run --silent admin -- partners export > partners.csv
   through an ordinary pull request. The file ships with no note text, and an
   empty note skips the period.
 - **The cadence** is `PARTNER_DIGEST_CADENCE` (`monthly` or `weekly`) and the
-  send time `PARTNER_DIGEST_SEND_UTC` (`HH:MM`, UTC) on the maintenance
-  service. Changing either is a configuration change and a restart; any other
-  value stops the worker at boot. The new schedule applies from its next window.
+  send time `PARTNER_DIGEST_SEND_UTC` (`HH:MM`, UTC), passed to the app and
+  maintenance services, which both validate them at boot. Changing either is a
+  configuration change and a restart; any other value stops either service at
+  boot. The new schedule applies from its next window.
 - **A `partner_digest_period_skipped` P2** names the period and the reason:
   `missed_window` (the worker did not queue within the 24 hours after the send
   time) or `note_missing` (the note was empty when the run would start). The
