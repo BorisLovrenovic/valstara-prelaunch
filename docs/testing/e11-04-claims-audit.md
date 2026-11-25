@@ -58,4 +58,4 @@ The partner programme's copy is checked as a person reads it: the rendered text 
 - no exclamation mark, unfilled placeholder or urgency wording;
 - sentence case in every heading, button and label.
 
-Each partner-referred friend's welcome states the partner's code and the friend's own fixed discount, and no other welcome carries the line. No finding concerns a claim. Finding C1 concerns two machine-formatted values, a raw timestamp and ungrouped counts, and waits on the founder: [`e11-7-partner-programme-audit.md`](e11-7-partner-programme-audit.md#9-findings).
+Each partner-referred friend's welcome states the partner's code and the friend's own fixed discount, and no other welcome carries the line. No finding concerns a claim. Finding C1 concerned two machine-formatted values, a raw timestamp and ungrouped counts, and is fixed under the founder's decision (D-074): [`e11-7-partner-programme-audit.md`](e11-7-partner-programme-audit.md#9-findings).
