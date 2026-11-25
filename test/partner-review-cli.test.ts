@@ -211,6 +211,8 @@ test('authentication refusal: every partner command refuses without the authenti
     'partners set-type': [partner.id, 'standard'],
     'partners note': [partner.id, '--text', 'A note'],
     'partners export': [],
+    // E11.7-16.
+    'partners announce': ['--id', '2026-12-01-programme-news', '--dry-run'],
   };
   // Every partner command the command line has is covered here.
   assert.deepEqual(
@@ -235,7 +237,8 @@ test('authentication refusal: every partner command refuses without the authenti
 
   // At the API, a missing or wrong code is the same 401 on every partner
   // route, and nothing is read, written or audited.
-  assert.equal(partnerRoutes.length, 12);
+  // E11.7-16 adds POST /api/admin/partners/announce.
+  assert.equal(partnerRoutes.length, 13);
   for (const route of partnerRoutes) {
     const path = route.pathname.replace(':id', partner.id);
     for (const method of route.methods) {

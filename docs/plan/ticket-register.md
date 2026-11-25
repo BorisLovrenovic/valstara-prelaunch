@@ -182,7 +182,7 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 160 | E11.7-14 | The attribution export and the hand-over document | Epic E11.7 — Pre-launch partner programme | done | auto |
 | 161 | E11.7-11 | The asset kit: QR codes, message templates and the print flyer | Epic E11.7 — Pre-launch partner programme | done | auto |
 | 162 | E11.7-15 | Seed data, the partner-programme audit and founder sign-off | Epic E11.7 — Pre-launch partner programme | done | auto |
-| 163 | E11.7-16 | Partner announcements | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 163 | E11.7-16 | Partner announcements | Epic E11.7 — Pre-launch partner programme | done | auto |
 | 164 | E11.8-01 | The Trust Ledger page | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
 | 165 | E11.8-02 | The per-platform signup report | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
 | 166 | E11.8-03 | The founder note in the weekly update | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |

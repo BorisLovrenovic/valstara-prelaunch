@@ -226,5 +226,16 @@ export const partnersCopy = {
         'You receive this digest because you chose optional partner programme emails. Unsubscribing from it turns off only that choice: your partnership, your waitlist place and your other partner emails are unchanged.',
       action: 'Ask for a new dashboard link',
     },
+    // E11.7-16: a partner announcement, optional programme mail on the
+    // digest's audience. The subject and text come from the founder's content
+    // file in src/content/partner-announcements/; it names no one.
+    announcement: {
+      preheader: 'An announcement from the Valstara partner programme.',
+      dashboard:
+        'Your private dashboard shows your counts, at the link in your partner welcome email. If you no longer have that link, you can ask for a new one.',
+      choice:
+        'You receive this announcement because you chose optional partner programme emails. Unsubscribing from it turns off only that choice: your partnership, your waitlist place and your other partner emails are unchanged.',
+      action: 'Ask for a new dashboard link',
+    },
   },
 } as const;

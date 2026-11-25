@@ -320,6 +320,8 @@ E11.7-12 adds `partner-invite:{subscriber_id}` (the auto-invite, provider `brevo
 
 E11.7-13 adds `partner-digest:{YYYY-MM}:{partner_id}` (monthly) and `partner-digest:{YYYY-Www}:{partner_id}` (weekly), the reported period of the partner digest, provider `brevo`. Its payload is `{ period, status_token_id }`; migration 0071 adds the `period` key to the payload check, which accepts only a `YYYY-MM` or `YYYY-Www` label. `expires_at` is the digest's send time plus 24 hours.
 
+E11.7-16 adds `partner-announcement:{announcement_id}:{partner_id}`, provider `brevo`: one partner announcement per partner, ever. Its payload is `{ announcement_id, status_token_id }`; migration 0072 adds the `announcement_id` key to the payload check, which accepts only a reference in the content-file form `YYYY-MM-DD-<slug>` of at most 80 characters, never copy. The subject and text stay in the committed content file and are read at dispatch. `expires_at` is null. No table is added.
+
 E8-07 adds `weekly:{ISO-8601 UTC week}:{subscriber_id}`. Its payload is `{ snapshot_id, status_token_id }`, both UUID references. `expires_at` is the weekly schedule plus 24 hours; dispatch fails an expired row before any provider call. The other templates leave it null.
 
 ## `leaderboard_snapshot`

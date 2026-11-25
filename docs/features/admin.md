@@ -61,6 +61,7 @@ TOTP, token, raw IP address or configuration detail.
 - `partners set-type <partner-id> <standard|student_ambassador|creator> [--university "<name>"]`
 - `partners note <partner-id> --text "<notes>"`
 - `partners export`, which streams the CSV to standard output as it arrives; redirect it (`npm run --silent admin -- partners export > partners.csv`). The command itself writes nothing to disk. Follow the text-only review procedure below.
+- `partners announce --id <announcement id> [--dry-run]` (E11.7-16): queues one committed announcement from `src/content/partner-announcements/` to every eligible partner, or with `--dry-run` prints only how many partners it would reach. A run that leaves partners due says so; run it again to continue (`docs/features/partner-programme.md#partner-announcements`).
 
 An unknown, repeated or valueless option is refused before anything is asked or sent (E11.7-06).
 

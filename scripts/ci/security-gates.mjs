@@ -8,6 +8,7 @@ import {
   scanStylesheetLiteralValues,
 } from './literal-values.mjs';
 import { scanMotionProperties as scanMotionSource } from './motion-properties.mjs';
+import { scanPartnerAnnouncementsAppendOnly } from './partner-announcements-append-only.mjs';
 import { scanPriceIndexAppendOnly } from './price-index-append-only.mjs';
 import { scanPriceIndexEvasion } from './price-index-evasion-scan.mjs';
 import { scanPriceIndexFloats } from './price-index-float-scan.mjs';
@@ -771,6 +772,11 @@ export async function runSecurityGates(
       scanPriceIndexEvasion(files, packageJson),
     ),
     scanPriceIndexAppendOnly({ root: projectRoot, base: options.base }),
+    // E11.7-16: a published partner announcement never changes.
+    scanPartnerAnnouncementsAppendOnly({
+      root: projectRoot,
+      base: options.base,
+    }),
   ]);
   return scans.flat();
 }

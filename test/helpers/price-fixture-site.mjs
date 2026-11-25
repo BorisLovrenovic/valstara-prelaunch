@@ -50,6 +50,9 @@ const buildInputs = [
   'scripts/ci/provider-showcase-check.ts',
   // E11.7-11: the partner kit check runs before the build.
   'scripts/ci/partner-kit-check.ts',
+  // E11.7-16: the partner announcements check runs before the build.
+  'scripts/ci/partner-announcements-check.ts',
+  'scripts/forbidden-copy.json',
   'config',
   'packages/price-index/src/publish',
   'packages/price-index/src/schema',
