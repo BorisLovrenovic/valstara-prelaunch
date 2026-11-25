@@ -149,6 +149,7 @@
   "test/partner-dashboard.test.ts": 1.4,
   "test/partner-digest.test.ts": 2.1,
   "test/partner-export.test.ts": 2.3,
+  "test/partner-figures.test.ts": 0.4,
   "test/partner-flyer-rendered.test.mjs": 13.5,
   "test/partner-kit-downloads-render.test.mjs": 2.5,
   "test/partner-kit.test.ts": 4.1,
