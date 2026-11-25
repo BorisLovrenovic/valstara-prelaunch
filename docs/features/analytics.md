@@ -1,7 +1,7 @@
 # Feature: Analytics
 
 ## Summary
-**Umami self-hosted** plus Cloudflare Web Analytics. Page views use Valstara's minimal first-party emitter, not Umami's tracker (founder-authorised 2026-10-05). Cookieless by construction, which means no consent banner — and on a page targeting 20–35% signup, that is better measurement, not worse: a banner costs conversion directly and corrupts the numbers it was added for, since consented analytics only ever sees a self-selected subset (ADR-007).
+**Umami self-hosted**, and nothing else (Cloudflare Web Analytics dropped by the founder on 2026-11-25, ADR-007). Page views use Valstara's minimal first-party emitter, not Umami's tracker (founder-authorised 2026-10-05). Cookieless by construction, which means no consent banner — and on a page targeting 20–35% signup, that is better measurement, not worse: a banner costs conversion directly and corrupts the numbers it was added for, since consented analytics only ever sees a self-selected subset (ADR-007).
 
 GA4 and a consent-management platform return at store launch, when ads and ecommerce attribution matter.
 

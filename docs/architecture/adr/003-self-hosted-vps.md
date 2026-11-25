@@ -8,7 +8,7 @@
 v1 assumed Vercel Pro at $20/month. With Astro and a Node adapter, the site can run in Docker Compose beside the services already on the €15 VPS, and the Cloudflare zone already exists.
 
 ## Decision
-**Self-host on the existing VPS**, under Docker Compose with hard memory limits and no swap, behind a Caddy reverse proxy, with **Cloudflare proxying and caching in front**. Turnstile and Web Analytics come from the same zone.
+**Self-host on the existing VPS**, under Docker Compose with hard memory limits and no swap, behind a Caddy reverse proxy, with **Cloudflare proxying and caching in front**. Turnstile comes from the same zone. (Cloudflare Web Analytics is not used, founder decision 2026-11-25, ADR-007.)
 
 Caddy is the only service that publishes origin ports. It terminates TLS with
 a Cloudflare Origin CA certificate, rejects socket peers outside Cloudflare's

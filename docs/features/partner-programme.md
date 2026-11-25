@@ -231,6 +231,10 @@ Progress shows on `/me`, on the partner dashboard and in the relevant emails. **
 - **The first-signup email.** A partner gets one email, ever, when the first confirmed, non-voided signup is credited to them as a partner, by link, code or retroactive attribution, once their welcome has been queued. It names no one. It does not issue a new dashboard link, because that would cancel the welcome's link; it links the replacement request instead. It is transactional, a programme milestone like the members' referral updates, so the optional-email setting does not govern it.
 - Both are queued by the maintenance worker, at most 100 a cycle, and nothing is queued while `partners.enabled` is off. Suppression is checked before queueing and again at dispatch (`docs/modules/email.md#partner-programme-contact-workflow`).
 
+## Partner announcements (E11.7-16, planned)
+
+**Founder decision, 2026-11-25.** The founder writes to every partner at once through a content file in `src/content/partner-announcements/` and the command `partners announce --id <id> [--dry-run]`. It uses the digest's audience and dispatch re-checks exactly, including the optional-email setting, sends one email per partner per announcement, and is audited, behind `partners.announcements`. Contractual notices go through the contract route instead.
+
 ## The partner digest
 
 **As built (E11.7-13, D-071).**

@@ -8,9 +8,11 @@
 The site must measure a funnel it is optimising hard — a 20–35% signup target — and it operates in markets where analytics consent is strictly enforced. GA4 requires opt-in consent in Germany with no analytics exemption at all, and CNIL's French exemption is narrow and conditional.
 
 ## Decision
-**Umami self-hosted plus Cloudflare Web Analytics. No GA4, no consent banner.** Cookieless by construction, and enforced by three CI gates rather than by intention: the cookie/storage rule, the fingerprinting rule, and the third-party request rule.
+**Umami self-hosted. No GA4, no consent banner.** (Cloudflare Web Analytics was dropped on 2026-11-25; see the amendment below.) Cookieless by construction, and enforced by three CI gates rather than by intention: the cookie/storage rule, the fingerprinting rule, and the third-party request rule.
 
 **E10-01 amendment, founder-authorised 2026-10-05:** Umami's stock 3.3.0 tracker reads `localStorage.getItem("umami.disabled")`. No stock or patched Umami tracker is served. A minimal static first-party script sends one pageview per page load to Umami's collector through `/analytics/api/send`. Its payload contains only the public website ID, hostname, URL path, referrer origin, page title and HTML language. The collector request suppresses the browser's `Referer` header so it cannot carry a query token. The emitter omits `/me`, `/verify`, `/unsubscribe` and admin routes; it reads or writes no browser storage and sends no screen or other device property. The proxy exposes only the collector endpoint, never Umami's `/script.js`.
+
+**Amendment, founder decision 2026-11-25: Umami only.** Cloudflare Web Analytics is not used. Its beacon loads from `static.cloudflareinsights.com`, an off-origin request on every page that the third-party request rule does not allow, and its page-view counts would duplicate Umami's. E12-05 keeps it switched off for the zone, including automatic injection, and the live privacy gate asserts that no page loads it.
 
 Referral attribution is captured **server-side** (ADR-008) so the one mechanic that would otherwise need a cookie does not.
 

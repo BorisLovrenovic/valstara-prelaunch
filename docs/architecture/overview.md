@@ -42,7 +42,7 @@ C4Context
 
   System(prelaunch, "Valstara pre-launch site", "Astro + Node adapter. Waitlist, referral engine, giveaway, trust and legal pages")
 
-  System_Ext(cf, "Cloudflare", "DNS, CDN, proxy, Turnstile, Web Analytics")
+  System_Ext(cf, "Cloudflare", "DNS, CDN, proxy, Turnstile")
   System_Ext(resend, "Resend", "Transactional email on send.valstara.com")
   System_Ext(brevo, "Brevo", "Broadcast email on mail.valstara.com")
   System_Ext(umami, "Umami", "Self-hosted, cookieless product analytics")
@@ -222,7 +222,7 @@ flowchart TD
 | **Bot defence** | Cloudflare Turnstile, verified **server-side** on every public write route. Article 5(3): no device storage/access; the site runs no device-fingerprinting API; Cloudflare processes IP/TLS/UA server-side as security processor | 006 |
 | **Feature flags** | A small `campaign_flag` table with **code-registered fail-safe defaults**. Exists so the leaderboard or the giveaway can be switched off during an incident without a deploy | 023 |
 | **Audit** | Append-only `audit_log`, enforced by database permissions. Records disqualifications, flag decisions, exports, draw execution, admin actions and consent-relevant events | — |
-| **Analytics** | Umami self-hosted plus Cloudflare Web Analytics. Cookieless by construction; **a test asserts no non-essential cookie and no browser-storage identifier is ever set** | 007 |
+| **Analytics** | Umami self-hosted only (Cloudflare Web Analytics dropped 2026-11-25). Cookieless by construction; **a test asserts no non-essential cookie and no browser-storage identifier is ever set** | 007 |
 | **Geo** | **None.** No country is collected and `CF-IPCountry` is not read. Location is collected only from provisional giveaway winners at award time | 026 |
 | **Rate limiting** | Per-IP-prefix and per-normalised-email limits on every write route, ahead of the database, with honest error copy | — |
 | **Retention** | Truncated hashed IP prefixes purge at 90 days; unverified rows expire; the whole database goes read-only 90 days after handoff | 011, 022 |

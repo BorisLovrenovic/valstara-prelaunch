@@ -1,6 +1,6 @@
 # Valstara Launch Playbook — Consolidated Brief
 
-**Version:** 2.5 · **Updated:** 24 November 2026 (2.1 applied the founder's answers of 21 Nov; 2.2 the founder's authorisations of 22 Nov; 2.3 a full review against everything merged through E11.7-08; 2.4 the founder's answers to that review; 2.5 the founder's acceptance of the four remaining recommendations, all logged in Part 11) · **Owner:** founder
+**Version:** 2.6 · **Updated:** 25 November 2026 (2.1 applied the founder's answers of 21 Nov; 2.2 the founder's authorisations of 22 Nov; 2.3 a full review against everything merged through E11.7-08; 2.4 the founder's answers to that review; 2.5 the founder's acceptance of the four remaining recommendations; 2.6 Umami only, the widened lawyer's review and partner announcements, all logged in Part 11) · **Owner:** founder
 
 This playbook began as a synthesis of three independent go-to-market reports (August 2026). Since then the founder has made decisions and the pre-launch site has been built. **Version 2 brings the playbook into line with both.** Where the reports and the project disagree, the project wins.
 
@@ -53,7 +53,7 @@ These are decided or built. A marketing action that contradicts one of them is w
 | 31 Dec 2027 | Post-launch partner competition closes |
 | **1 Oct 2028** | The pre-launch 10% commission window ends (0.4) |
 
-**Where the build stands today (24 Nov 2026):** the site is built and audited locally. The partner programme (Epic E11.7) is more than half built: tickets 01–08 are merged (the `/partners` page and application, founder review, `/r/{CODE}`, retroactive attribution, the typed code), 09 (the partner dashboard) is in progress, and 10–15 are to do (partner leaderboard, asset kit and welcome email, auto-invite, digest, export, audit). **Production bring-up (Epic E12) has not started, so the site is not live yet.** Going live in December 2026 needs, in order: the production server (P6), Epic E12 through E12-07, and the four seed mailboxes (P7). Marketing that sends people to valstara.com must not start before E12-07 passes. The giveaway cannot open until the paid Resend and Brevo plans are bought (P5); Brevo's paid plan is not yet purchased.
+**Where the build stands today (25 Nov 2026):** the site is built and audited locally. The partner programme (Epic E11.7) is almost done: tickets 01–15 are merged (the `/partners` page and application, founder review, `/r/{CODE}`, retroactive attribution, the typed code, the dashboard, the leaderboard, the asset kit and welcome email, the auto-invite, the digest, the export, and the audit with founder sign-off), and 16 (partner announcements) is to do. Epic E11.8 follows, then GATE-8. **Production bring-up (Epic E12) has not started, so the site is not live yet.** Going live in December 2026 needs, in order: the production server (P6), Epic E12 through E12-07, and the four seed mailboxes (P7). Marketing that sends people to valstara.com must not start before E12-07 passes. The giveaway cannot open until the paid Resend and Brevo plans are bought (P5); Brevo's paid plan is not yet purchased.
 
 **Public timing copy:** the site's FAQ says *"we won't promise a date we can't hold."* Say "early access in September 2027" and "public launch in October 2027". Use an exact day only where the plan can hold it, and never as a countdown.
 
@@ -101,7 +101,7 @@ These are decided or built. A marketing action that contradicts one of them is w
 | **Retroactive attribution** | When a member becomes a partner, everyone they already referred is attributed to them as a partner, and those friends gain the perks |
 | **Dashboard** | A private emailed link (30 days; asking for a new one cancels the old). It shows **counts only**: confirmed, pending, voided, signups per week, a breakdown by survey category, the ladder, the welcome discount, the terms summary, a partners-only leaderboard (top 20 plus own rank, anonymous unless they opt in) and the asset kit. **Partners never see who they referred** |
 | **Asset kit** | Message templates pre-filled with their code and link, **a print-ready flyer (A4 and US Letter) with their QR code, code and the welcome perk**, and downloadable images and PDFs (P10). Videos are plain links. **E11.7-11 ships without the files** (founder, 24 Nov 2026); the downloads section stays hidden until the founder adds them as a content change |
-| **Emails** | A confirmation link on applying (confirming it also joins the waitlist and enters the giveaway, E11.7-05); application received; approved; rejected (only when the founder chooses to send it); **welcome** with the dashboard link, code, link, asset kit and a 3-step checklist (get your code → share once → see your first confirmed signup); first confirmed signup; and a monthly digest with one founder note (off until the founder turns it on; it can switch to weekly from April 2027). **The welcome is sent once the dashboard (E11.7-09) and the asset kit (E11.7-11) are live**, without waiting for the P10 files; partners activated earlier get it then, by catch-up (D-057). **There is no partner broadcast list:** the quarterly CSV import into Brevo was retired and the dedicated Brevo partner sync deferred (E11.7-06, D-056), so the digest's founder note is today the only channel to every partner at once. A proper partner-announcement channel is a to-do item that needs its own ticket (11.4) |
+| **Emails** | A confirmation link on applying (confirming it also joins the waitlist and enters the giveaway, E11.7-05); application received; approved; rejected (only when the founder chooses to send it); **welcome** with the dashboard link, code, link, asset kit and a 3-step checklist (get your code → share once → see your first confirmed signup); first confirmed signup; and a monthly digest with one founder note (off until the founder turns it on; it can switch to weekly from April 2027). **The welcome is sent once the dashboard (E11.7-09) and the asset kit (E11.7-11) are live**, without waiting for the P10 files; partners activated earlier get it then, by catch-up (D-057). **There is no partner broadcast list:** the quarterly CSV import into Brevo was retired and the dedicated Brevo partner sync deferred (E11.7-06, D-056), so the digest's founder note is today the only channel to every partner at once. **Partner announcements** to every partner at once are ticket E11.7-16 (founder, 25 Nov 2026), on the digest's audience and opt-out |
 | **Auto-invite** | A member who reaches **10 confirmed referrals** gets one invitation to apply, **only if they opted in to marketing** |
 | **Who decides** | **The founder reviews every application by hand**, approves (and may edit the code), rejects, pauses, terminates and voids any single referral with a reason. Every action is audited |
 
@@ -161,7 +161,7 @@ Rules for using the line:
 
 - **The site has no consent banner because it sets nothing that needs one.** No GA4, no Meta or TikTok pixel, no advertising cookie, no fingerprinting and no third-party script except Cloudflare Turnstile on forms. **These are permanently out of scope for the pre-launch site.** GA4 and a consent platform return at store launch.
   - **Consequence: there is no retargeting audience built from site visitors before launch.** Warm audiences can only be the platforms' own engagement audiences (video viewers, profile engagers) or email.
-- **Analytics:** self-hosted, cookieless Umami page views (estimates: ad blockers lose some), Cloudflare Web Analytics, and server-side funnel events (`signup_submitted`, `verified`, `referral_confirmed`, `survey_completed`, `giveaway_entered`, `unsubscribed`).
+- **Analytics:** self-hosted, cookieless Umami page views (estimates: ad blockers lose some) and server-side funnel events. **No Cloudflare Web Analytics** (founder, 25 Nov 2026: its beacon is a third-party request) (`signup_submitted`, `verified`, `referral_confirmed`, `survey_completed`, `giveaway_entered`, `unsubscribed`).
   - UTM parameters are captured server-side and stored per subscriber.
   - **Events carry only a source bucket** (direct, referral, email, social, paid, organic, other), never the raw `utm_source`. **No built report breaks signups down by platform or campaign today.** The analytics can say "120 signups came from social", but not "80 from TikTok and 40 from Instagram". Per-platform comparison comes from platform link clicks plus Umami's referrer origins (page views, not signups).
   - **Decided (founder, 22 Nov 2026): a per-platform signup report, as detailed as possible.** TikTok, Instagram, YouTube, X, Reddit, Telegram, Discord, LinkedIn, Facebook, Threads, email and each campaign are shown separately, never grouped as "social".
@@ -178,7 +178,7 @@ Rules for using the line:
   - **Marketing goes only to verified members who opted in**, re-checked at dispatch. The weekly update goes out on Tuesday at 09:00 UTC and includes the top-10 leaderboard. The single launch-access notification goes to every verified member, as a service message with no promotion in it.
   - Open and click tracking are **disabled**. There are no pixels and no rewritten links.
 - **Legal posture:**
-  - The founder waived lawyer review of the draft `/privacy` and `/terms` and of the Turnstile storage basis (ADR-030).
+  - The founder waived lawyer review of the draft `/privacy` and `/terms` and of the Turnstile storage basis (ADR-030). **On 25 Nov 2026 the founder widened the lawyer's review (P12) to read the whole of both pages with the age change.** It gates switching 13+ on (E11.8-07, after E12), never development or launch.
   - The giveaway runs under Hong Kong law, and the residual foreign promotion-law risk is accepted (ADR-026). Belgium prohibits free chance draws; Portugal, Italy, Spain and Poland require authorisation or charge taxes.
   - **Advertising-disclosure law (FTC, ASA/CAP, EU UCPD) is not waived by anything above and binds every partner and creator.**
 
@@ -488,7 +488,7 @@ It starts reporting real operations, with **fixed definitions that are never cha
   - **Decided (founder, 24 Nov 2026): the waitlist opens to people aged 13 and over; the giveaway stays 18 and over, and says so plainly.** It is ticket E11.8-06, behind `waitlist.age_13`. Until it ships, the site still says "Open to people aged 18 and over", and no campaign may invite under-18s to join. The three conditions the founder accepted:
     - **Marketing email is for people aged 16 or over**, and the box says so. The age for marketing consent without a parent's authorisation is 13 to 16 depending on the country (GDPR Article 8; for example 16 in Germany, Ireland, the Netherlands and Poland, and 13 in the UK, Sweden and Denmark), and the site collects neither age nor country.
     - **Giveaway entry needs a separate, unticked "I'm 18 or over, enter me in the giveaway" box.** Without it, a member holds no entries, so `/me` never shows a 15-year-old entries they could not win. A member who skips it, or turns 18 during the campaign, can tick it later on `/me` (founder, 24 Nov 2026).
-    - **A lawyer reviews the age change first (P12).** Inviting under-18s brings in the UK Age Appropriate Design Code, and ADR-030's waiver of legal review does not cover "a material change to this scope".
+    - **A lawyer reviews the age change, together with the whole privacy notice and terms (P12), before 13+ is switched on.** It does not hold up development or the 18+ launch: E11.8-06 builds the mechanics behind a flag that stays off, and E11.8-07 applies the reviewed wording after E12. Inviting under-18s brings in the UK Age Appropriate Design Code, and ADR-030's waiver of legal review does not cover "a material change to this scope".
   - **For creators with teen audiences, after E11.8-06 ships:** say "join the waitlist" to everyone, and say the giveaway is for 18 and over in the same breath. Never "join and win" to a teen audience.
     - Partner applicants stay 18 or over.
     - Advertising to minors is restricted in the UK, the EU and the US (COPPA for under-13s), and so is content placed in children's media.
@@ -858,7 +858,7 @@ Kept, with changes. Hooks that named and attacked competitors were rewritten to 
 | Initial form: email → country → product | **Email only.** No country. The survey comes after verification: categories plus buying frequency | ADR-026; ADR-031 |
 | Hero: "Digital subscriptions, sold with accountability"; CTA "Join Founding Access"; country selector | Live: eyebrow "Digital goods you know are real.", H1 "Premium digital goods, for less.", CTA "Join the waitlist". No country selector | E11.5 final design; landing copy |
 | Waitlist tools: LaunchList, KickoffLabs, Viral Loops | **Built, not bought.** Hosted waitlist and referral SaaS is permanently out of scope (it sells ranking inflation and taxes success) | ADR-020; AGENTS.md |
-| GA4, a consent platform, server-side conversion tracking; retarget site visitors | **Cookieless Umami plus Cloudflare Web Analytics, no banner, no pixels.** GA4 and a CMP return at store launch. No site-visitor retargeting pre-launch | ADR-007; compliance §3 |
+| GA4, a consent platform, server-side conversion tracking; retarget site visitors | **Cookieless Umami only, no banner, no pixels.** GA4 and a CMP return at store launch. No site-visitor retargeting pre-launch | ADR-007; compliance §3 |
 | Affiliate: 5–10% on first order, 30-day cookie, Rewardful or Tolt | **10% on all orders by customers referred during pre-launch, from early access until 1 Oct 2028; one level; a contract per partner** (founder, 21 Nov 2026). No cookie: server-side attribution fixed at signup, with a permanent `/r/{CODE}`. Built in-house pre-launch; the main platform's system after | Partner-programme spec |
 | Creator rate card ($10–800 per post) | **No upfront fees.** A free 3/6/12-month subscription, an honest review, 12-month reuse rights, partner status | Growth decisions (creator seeding) |
 | Don't programmatically generate country pages | Programmatic **price** pages exist by founder decision, justified by genuinely different data per page. The warning still applies to product pages | Growth decisions; E11.6 |
@@ -917,7 +917,10 @@ Kept, with changes. Hooks that named and attacked competitors were rewritten to 
 | **24 Nov:** same-network signups | Review only: flag, never block; judge partners on post-launch activity | 5.4 |
 | **24 Nov:** support response time | "Within 24–48 hours; up to 7 days for investigations or high volume". The founder moderates Discord | 3.5 |
 | **24 Nov:** no supplier register | Supplier counts only in the Ledger; "the Supplier Register" removed from the brand guidelines | 3.6 |
-| **24 Nov:** to-do items, not decisions | A partner-wide announcement channel; the competition's prizes and rules; creator subscriptions before the store; trademark clearance; supplier-status definitions; every founder input and research task | 11.4 |
+| **25 Nov:** Umami only | Cloudflare Web Analytics dropped: its beacon is a third-party request. E12-05 keeps it off | 0.7 |
+| **25 Nov:** the lawyer's review | P12 widened to the whole `/privacy` and `/terms` with the age change. Only E11.8-07, after E12, waits on it | 0.3, 4.2 |
+| **25 Nov:** partner announcements | Ticket E11.7-16: one email to every partner, on the digest's audience and opt-out | 0.4 |
+| **24 Nov:** to-do items, not decisions | A partner-wide announcement channel (now E11.7-16); the competition's prizes and rules; creator subscriptions before the store; trademark clearance; supplier-status definitions; every founder input and research task | 11.4 |
 
 ## 11.2 Recorded in the project on 22 November 2026
 
@@ -966,25 +969,23 @@ The founder authorised the changes in 11.1 "everywhere in all documents", and th
 | Q1 (was D3) | How Valstara sends members a written message | A founder note in the weekly update, from a content file (E11.8-03). No Brevo-editor campaigns to members |
 | Q2 (was D4) | The "a friend invited you" reminder | A welcome-email line for member-referred members (E11.8-04), plus the storefront's day-7 email after launch |
 | Q3 (was D8) | The giveaway's dates | Entries close 31 Aug 2027; draw 1 Sep 2027 (E11.8-05) |
-| Q4 (was D9) | The three conditions for 13+ | Marketing 16+; a required, unticked 18+ giveaway box; a lawyer's review (P12, E11.8-06) |
+| Q4 (was D9) | The three conditions for 13+ | Marketing 16+; a required, unticked 18+ giveaway box; a lawyer's review (P12, applied by E11.8-07 after E12) |
 | Q5 | A later way into the giveaway for a member who skipped the 18+ box | Yes: the same box on `/me`, giving the base entry plus one per confirmed referral held (E11.8-06) |
 
 ### Still open
 
-| # | Question | Why it is open |
-|---|---|---|
-| Q6 | **Does a referred 13–17-year-old earn their referrer an entry?** | Today every verified referral earns one. Part of P12: the lawyer's answer decides it, because counting minors could reward adults for recruiting them |
+Nothing. **Q6** (does a referral by a member who did not tick the 18+ box earn their referrer an entry?) is part of the lawyer's review, P12, a to-do task. Until it is answered, the system's setting defaults to no.
 
 ### Moved to the marketing to-do list (founder, 24 Nov 2026)
 
 These are tasks, not decisions. Each is settled when its task is worked on, and several also need a development ticket at that point:
 
-- a channel for announcements to every partner at once (was D2; needs a ticket);
+- a channel for announcements to every partner at once (was D2; now ticket E11.7-16);
 - the post-launch partner competition: prizes, bonus threshold, written rules, announcement date (was D5);
 - creator review subscriptions before the store exists: delivery, timing, what the review shows (was D7; goes with the asset kit);
 - trademark clearance for "Valstara" (was D12);
 - the definitions of an evaluated, verified and rejected supplier for the Ledger (was D13, part of P11);
-- every founder input: P10, P5, P6, P7, P11, P12 (the lawyer's review of the age change), the weekly founder notes, the partner and creator contract template, the giveaway bundle contents and sanctions list, the ten approved buyer answers, the digest's founder note, and the dated competitor-rate captures;
+- every founder input: P10, P5, P6, P7, P11, P12 (the lawyer's review of the privacy notice, the terms and the age change, including Q6), the weekly founder notes, the partner and creator contract template, the giveaway bundle contents and sanctions list, the ten approved buyer answers, the digest's founder note, and the dated competitor-rate captures;
 - every research task: platform giveaway rules, direct-message and link rules, ambassador and campus rules per country, creator targeting, audience research, journalist lists, the GEO prompt set, and Loom's limits.
 
 **Settled, no longer open:** Q1–Q5 (above); where the new tickets go (Epic E11.8); post-launch rates (case-by-case partners plus a separate affiliate system, decided outside this repository); same-network signups (review only); the Discord response time and moderation; the supplier register (none).

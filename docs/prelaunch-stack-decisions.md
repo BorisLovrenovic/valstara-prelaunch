@@ -36,7 +36,7 @@
 | Bot defence | Cloudflare Turnstile — free, unmetered; Article 5(3) basis is no device storage/access, with IP/TLS/UA processed server-side under Cloudflare's security-processor role | $0 |
 | Transactional email | **Resend** on `send.valstara.com` | $0 → $60 |
 | Broadcast email | **Brevo** on `mail.valstara.com` (+$9/mo to remove branding) | $0 → ~$165 |
-| Analytics | **Umami self-hosted** + Cloudflare Web Analytics. No GA4, no consent banner. | $0 |
+| Analytics | **Umami self-hosted** only (Cloudflare Web Analytics dropped 2026-11-25, ADR-007). No GA4, no consent banner. | $0 |
 | Forms, survey, referral, fraud | Custom | $0 |
 | Type | Instrument Sans + JetBrains Mono (OFL, self-hosted). Söhne deferred to store launch. | $0 |
 
@@ -174,7 +174,7 @@ With separate repos, launch is a **host cutover at the DNS/proxy layer** on `val
 | Line | 2k visitors | 20k visitors | 200k visitors |
 |---|---|---|---|
 | Hosting (VPS, existing capacity) | $0 | $0 | $0 |
-| Cloudflare DNS / Turnstile / Web Analytics | $0 | $0 | $0 |
+| Cloudflare DNS / Turnstile | $0 | $0 | $0 |
 | Resend — transactional | $0 | $40 | $60 |
 | Brevo — broadcast (+$9 unbranding) | $0 | $76 | ~$165 |
 | Umami (self-hosted) | $0 | $0 | $0 |
