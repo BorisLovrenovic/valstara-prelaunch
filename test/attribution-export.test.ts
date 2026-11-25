@@ -288,6 +288,8 @@ async function seedGraph(f: PartnerFixture): Promise<Graph> {
       partnerId: suppressedPartner.id,
       discount: 15,
     }),
+    // D-073 Q1: still attributed, though the referred person is verified.
+    await edge(f, memberId, await member(f), { state: 'attributed' }),
   ];
   const departedPartnerFriend = (await f.owner.readOne<{ referred_id: string }>(
     {
