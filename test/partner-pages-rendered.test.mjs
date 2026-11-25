@@ -498,7 +498,11 @@ test('dashboard recovery is Turnstile-first and returns the same rendered acknow
   assert.match(visibleText(html), /fixture-v1/u);
   assert.match(
     visibleText(html),
-    /Partner leaderboard As of 2026-11-24T08:00:00.000Z Your rank 1 Rank Partner Confirmed signups 1 Partner 1 2 C\. N\. 0/u,
+    /Partner leaderboard As of Nov 24, 2026, 08:00 AM UTC Your rank 1 Rank Partner Confirmed signups 1 Partner 1 2 C\. N\. 0/u,
+  );
+  assert.match(
+    html,
+    /<time datetime="2026-11-24T08:00:00\.000Z"[^>]*>\s*Nov 24, 2026, 08:00 AM UTC\s*<\/time>/u,
   );
   assert.match(html, /value="Earlier Name"/u);
   assert.match(
