@@ -7,7 +7,10 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { dsrRenderers } from '../../src/server/dsr/templates.ts';
-import { partnerApplicationRenderers } from '../../src/server/partner/templates.ts';
+import {
+  partnerApplicationRenderers,
+  partnerInviteRenderer,
+} from '../../src/server/partner/templates.ts';
 import type {
   Message,
   TemplateRenderer,
@@ -37,6 +40,8 @@ const payloads: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
   partner_rejected: { status_token_id: 'status-id' },
   partner_dashboard_link: { token_id: 'dashboard-id' },
   partner_welcome: { token_id: 'dashboard-id' },
+  partner_first_signup: { status_token_id: 'status-id' },
+  partner_invite: { status_token_id: 'status-id' },
   weekly_campaign_update: {
     snapshot_id: 'snapshot-id',
     status_token_id: 'status-id',
@@ -79,6 +84,7 @@ export function emailPreviewRenderers(
     ...partnerApplicationRenderers(origin, 'send.valstara.com', {
       welcomeCode: async () => 'DASHBOARD2345',
     }),
+    ['partner_invite', partnerInviteRenderer(origin, 'mail.valstara.com')],
     [
       'weekly_campaign_update',
       createWeeklyTemplate({

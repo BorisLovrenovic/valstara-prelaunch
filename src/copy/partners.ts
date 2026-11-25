@@ -153,5 +153,28 @@ export const partnersCopy = {
       firstLine: 'Thank you for applying to the Valstara partner programme.',
       body: 'We are not able to offer you a partnership this time. Your waitlist place is unchanged, and you are welcome to apply again later.',
     },
+    // E11.7-12: the auto-invite, a marketing message (ADR-027). The count
+    // comes from configuration.
+    invite: {
+      subject: 'An invitation to apply to the Valstara partner programme',
+      preheader: 'You can apply to promote Valstara with your own code.',
+      firstLine: (threshold: number) =>
+        `${threshold} people you referred have confirmed their place on the Valstara waitlist.`,
+      body: 'You are invited to apply to the Valstara partner programme. Partners promote Valstara with their own link and code, and can earn a commission once early access opens. The programme page sets out the terms.',
+      review:
+        'The application link fills in your email address. The founder reviews every application by hand.',
+      action: 'Apply to the partner programme',
+      programme: 'Read about the partner programme',
+    },
+    // E11.7-12: the partner's first confirmed partner signup. It names no one.
+    firstSignup: {
+      subject: 'Your first confirmed partner signup',
+      preheader: 'Someone you referred has confirmed their email address.',
+      firstLine: 'Your first confirmed partner signup is in.',
+      body: 'Someone who signed up through your partner link or code has confirmed their email address, so they now count in your confirmed signups.',
+      dashboard:
+        'Your private dashboard shows your counts, at the link in your partner welcome email. If you no longer have that link, you can ask for a new one.',
+      action: 'Ask for a new dashboard link',
+    },
   },
 } as const;

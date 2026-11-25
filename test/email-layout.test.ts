@@ -37,6 +37,8 @@ const preheaders: Readonly<Record<string, string>> = {
   partner_rejected: partnersCopy.email.rejected.preheader,
   partner_dashboard_link: partnerDashboardCopy.mail.preheader,
   partner_welcome: partnerDashboardCopy.welcome.preheader,
+  partner_first_signup: partnersCopy.email.firstSignup.preheader,
+  partner_invite: partnersCopy.email.invite.preheader,
   weekly_campaign_update: emailCopy.weekly.preheader,
 };
 
@@ -61,6 +63,8 @@ const mainActions: Readonly<Record<string, string>> = {
   partner_rejected: '/me',
   partner_dashboard_link: '/partners/dashboard',
   partner_welcome: '/partners/dashboard',
+  partner_first_signup: '/partners/apply',
+  partner_invite: '/partners/apply',
   weekly_campaign_update: '/me',
 };
 
@@ -165,6 +169,7 @@ test('E11.5-11 previews cover every template the dispatcher registers', () => {
   assert.match(dispatch, /\.\.\.partnerApplicationRenderers\(/u);
   assert.match(dispatch, /\.\.\.createTransactionalRenderers\(/u);
   assert.match(dispatch, /'weekly_campaign_update',\s*createWeeklyTemplate\(/u);
+  assert.match(dispatch, /partnerInviteTemplate,\s*partnerInviteRenderer\(/u);
   assert.deepEqual(
     [...emailPreviewRenderers(baseUrl).keys()].sort(),
     Object.keys(preheaders).sort(),
@@ -339,8 +344,9 @@ test('E11.5-11 every template carries its hidden preheader from the copy layer',
   );
   // E11.7-05 added the partner application's two emails, and E11.7-06 the
   // "approved" and "rejected" emails. E11.7-09 adds dashboard recovery, and
-  // E11.7-11 the partner welcome.
-  assert.equal(new Set(Object.values(preheaders)).size, 16);
+  // E11.7-11 the partner welcome. E11.7-12 adds the first-signup email and
+  // the auto-invite.
+  assert.equal(new Set(Object.values(preheaders)).size, 18);
 });
 
 test('E11.5-11 the layout is at most 600px wide and its one button is at least 44px tall', () => {

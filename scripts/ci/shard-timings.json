@@ -146,6 +146,7 @@
   "test/partner-kit-downloads-render.test.mjs": 2.5,
   "test/partner-kit.test.ts": 4.1,
   "test/partner-leaderboard.test.ts": 3,
+  "test/partner-milestone-mail.test.ts": 3.9,
   "test/partner-pages-rendered.test.mjs": 3.2,
   "test/partner-review-cli.test.ts": 7.0,
   "test/partner-review.test.ts": 14.0,

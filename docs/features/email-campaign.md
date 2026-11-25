@@ -25,6 +25,13 @@ Broadcasts (Brevo) are composed from a shared layout: the **weekly update** (inc
 
 **Who receives what (ADR-027).** The weekly update and any other marketing go **only to verified, unsuppressed subscribers with current marketing consent**, re-checked at dispatch. The single launch-access notification that joining the waitlist promises goes to every verified, unsuppressed subscriber as a message they requested (the privacy audit, E11-05, confirms this classification). Unsubscribing from a marketing message withdraws marketing consent only; the person keeps their waitlist place and giveaway entries.
 
+## The partner programme's milestone emails (E11.7-12)
+
+- **The auto-invite** goes once to a member who reaches 10 confirmed, non-voided referrals, **only with current marketing consent** (ADR-027). It is a marketing message, so it is sent as a Brevo broadcast from `mail.valstara.com`, only while `email.broadcast` and `partners.enabled` are on. Dispatch re-checks verification, consent and suppression, and its unsubscribe withdraws marketing consent only. Its link opens `/partners/apply` with the member's email filled in. A member who already applied is not invited, and a void that drops a member below 10 neither re-sends nor retracts it.
+- **The first-signup email** goes once to a partner when their first confirmed partner signup arrives, after their welcome. It is transactional (Resend), names no one, and stops at dispatch if the address is suppressed.
+
+Both are queued by the maintenance worker in batches of at most 100 and are one email per business key (`docs/modules/email.md#partner-programme-contact-workflow`).
+
 ## Planned: the founder note and the referral reminder (E11.8-03, E11.8-04)
 
 **Founder decisions, 2026-11-24.**

@@ -177,7 +177,7 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 155 | E11.7-08 | The typed referral code, and partner perks at signup | Epic E11.7 — Pre-launch partner programme | done | auto |
 | 156 | E11.7-09 | The partner dashboard: private link, stats and settings | Epic E11.7 — Pre-launch partner programme | done | auto |
 | 157 | E11.7-10 | The partner leaderboard | Epic E11.7 — Pre-launch partner programme | done | auto |
-| 158 | E11.7-12 | The auto-invite and the first-signup email | Epic E11.7 — Pre-launch partner programme | todo | auto |
+| 158 | E11.7-12 | The auto-invite and the first-signup email | Epic E11.7 — Pre-launch partner programme | done | auto |
 | 159 | E11.7-13 | The partner digest | Epic E11.7 — Pre-launch partner programme | todo | auto |
 | 160 | E11.7-14 | The attribution export and the hand-over document | Epic E11.7 — Pre-launch partner programme | todo | auto |
 | 161 | E11.7-11 | The asset kit: QR codes, message templates and the print flyer | Epic E11.7 — Pre-launch partner programme | done | auto |

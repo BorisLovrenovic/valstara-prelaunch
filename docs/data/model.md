@@ -316,6 +316,8 @@ The unsubscribe binding is unique per send and subject-bound. When the token-ret
 
 E8-03a's producer keys are `welcome:{subscriber_id}`, `milestone:{subscriber_id}:{tier}`, and `giveaway-receipt:{subscriber_id}:{rules_version}`. The database uniqueness constraint applies to all three.
 
+E11.7-12 adds `partner-invite:{subscriber_id}` (the auto-invite, provider `brevo`) and `partner-first-signup:{partner_id}` (provider `resend`), each with the payload `{ status_token_id }`. Each is one email per member or partner, ever; no column or migration is added.
+
 E8-07 adds `weekly:{ISO-8601 UTC week}:{subscriber_id}`. Its payload is `{ snapshot_id, status_token_id }`, both UUID references. `expires_at` is the weekly schedule plus 24 hours; dispatch fails an expired row before any provider call. The other templates leave it null.
 
 ## `leaderboard_snapshot`

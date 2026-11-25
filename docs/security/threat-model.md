@@ -108,3 +108,16 @@ Never committed. Documented in `infra/ENV.md` by name and purpose. **A leaked se
 E11.7-09 puts the 30-day bearer in the emailed URL. It authorises one partner's contract, settings and aggregate referrals. A replacement invalidates the prior link, and termination blocks access and issuance. The dashboard sends `no-referrer` and `no-store`, with no page-view request or widget. The recovery form takes only an address and runs on the existing Turnstile-enabled application route. Eligible and ineligible addresses get one conditional acknowledgement and timing policy. Rate limits apply to both a keyed digest of the normalised address and the hashed IP prefix.
 
 D-064 uses the normal exact-origin check first. Only the dashboard settings POST can then pass for a valid Host, the literal `Origin: null` and browser-supplied `Sec-Fetch-Site: same-origin`. Native form submission under `no-referrer` emits those headers. A missing Origin, foreign Origin or non-same-origin metadata does not pass this fallback. The fallback does not authenticate any write. The signed, purpose-bound nonce is required and is consumed in the same transaction as the settings change, after checking the partner's current link and eligibility. Replays, expired nonces and tokens derived from a replaced or terminated link cannot change settings.
+
+## The auto-invite's address in its own link (E11.7-12, D-070)
+
+The E11.7-12 auto-invite links to `/partners/apply?email=<the member's own address>`, so the address shows in the visitor's own URL and fills in the application form. The address is added only when the email is rendered for sending; the queued payload holds no address. No other emailed link carries an address.
+
+This is acceptable because the address goes back only to the person who already holds the link, and nothing along the way keeps it:
+
+- **No storage.** On a GET with no `token`, `partnerApplyPrefillEmail` accepts only a well-formed address of at most 254 characters and passes it to the form's email field. It fills no other field, looks nothing up, stores nothing and authenticates nothing. Anything else leaves the field empty. A submitted application still goes through Turnstile and double opt-in, the same as one typed by hand.
+- **No access log.** The Caddyfile has no access-log directive, and the application logs no request URL ([E11-05 privacy audit](../testing/e11-05-privacy-audit.md)).
+- **Path-only beacon.** The page-view emitter and the canonical URL use `Astro.url.pathname`, so the query value reaches no analytics event. The page sends `Referrer-Policy: no-referrer` and `Cache-Control: private, no-store`.
+- **Provider link tracking off.** Open and click tracking stay off in both provider accounts ([email module](../modules/email.md)), so the link is not rewritten through a provider redirect that would record it.
+
+The remaining exposure is the visitor's own browser history and their mailbox, which already hold the address. The E11-05 route-shape guard exempts only this one exact call on this one page; any other email-bearing value rendered there still fails it.

@@ -94,6 +94,18 @@ export const partnerWelcomeTemplate = 'partner_welcome';
 export function partnerWelcomeBusinessKey(partnerId: string): string {
   return `partner-welcome:${partnerId}`;
 }
+// E11.7-12: the auto-invite, one per member, ever, and only with marketing
+// consent (ADR-027). It is a marketing message, so it is a Brevo broadcast.
+export const partnerInviteTemplate = 'partner_invite';
+export const partnerInviteThreshold = 10;
+export function partnerInviteBusinessKey(subscriberId: string): string {
+  return `partner-invite:${subscriberId}`;
+}
+// E11.7-12: the partner's first confirmed partner signup, once per partner.
+export const partnerFirstSignupTemplate = 'partner_first_signup';
+export function partnerFirstSignupBusinessKey(partnerId: string): string {
+  return `partner-first-signup:${partnerId}`;
+}
 
 // Increment when the leaderboard name disclosure changes.
 export const displayNameDisclosureVersion = 1;

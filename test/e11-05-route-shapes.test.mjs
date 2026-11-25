@@ -66,7 +66,40 @@ function objectFields(object) {
 const personalValue =
   /\b(?:clientAddress|rawEmail|email|emailNormalised|ipAddress|subscriber)\b|\.(?:email|email_normalised|ip|token_hash)\b/u;
 
-function responseTaints(source) {
+// D-070 (E11.7-12): the auto-invite's link pre-fills the application form's
+// email field from the visitor's own query value, checked and never stored.
+// Only this exact call, on this page only, is disregarded by the taint pass.
+const prefillExemption = {
+  path: 'partners/apply.astro',
+  call: "partnerApplyPrefillEmail(Astro.url.searchParams.get('email'))",
+};
+
+function initializerText(initializer, source, path) {
+  const text = initializer.getText(source);
+  if (path !== prefillExemption.path) return text;
+  const start = initializer.getStart(source);
+  const exempt = [];
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      node.getText(source) === prefillExemption.call
+    ) {
+      exempt.push([node.getStart(source) - start, node.getEnd() - start]);
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(initializer);
+  let kept = '';
+  let from = 0;
+  for (const [begin, end] of exempt) {
+    kept += text.slice(from, begin);
+    from = end;
+  }
+  return kept + text.slice(from);
+}
+
+function responseTaints(source, path) {
   const declarations = [];
   const visit = (node) => {
     if (
@@ -74,7 +107,10 @@ function responseTaints(source) {
       ts.isIdentifier(node.name) &&
       node.initializer
     )
-      declarations.push([node.name.text, node.initializer.getText(source)]);
+      declarations.push([
+        node.name.text,
+        initializerText(node.initializer, source, path),
+      ]);
     ts.forEachChild(node, visit);
   };
   visit(source);
@@ -115,7 +151,7 @@ function assertSafeValue(value, source, path, tainted) {
 
 function responseObjectFields(source, path) {
   const bodies = [];
-  const tainted = responseTaints(source);
+  const tainted = responseTaints(source, path);
   let wrapperSerializations = 0;
   const visit = (node) => {
     if (
@@ -194,7 +230,10 @@ async function astroResponseShape(path) {
   const methods = ['GET'];
   if (/Astro\.request\.method\s*===\s*['"]POST['"]/u.test(frontmatter.value))
     methods.push('POST');
-  const personalAliases = new Set(['clientAddress', ...responseTaints(source)]);
+  const personalAliases = new Set([
+    'clientAddress',
+    ...responseTaints(source, path),
+  ]);
   const rendered = [];
   const visitMarkup = (node) => {
     if (node.type === 'expression')
@@ -324,6 +363,38 @@ test('E11-05 generates the registered API inventory and rejects personal fields 
       'verify.astro',
     ],
   );
+  // D-070: the exemption is the exact prefill call on partners/apply.astro.
+  // Any other email-bearing argument or initializer there still taints, and
+  // the same call on any other page still taints.
+  const frontmatter = (text, path) =>
+    responseTaints(
+      ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true),
+      path,
+    );
+  const exemptCall = `const view = partnerApplyView({ enabled, prefillEmail: ${prefillExemption.call} });`;
+  assert.deepEqual(
+    [
+      ...frontmatter(
+        `${exemptCall}\nconst values = view.values;`,
+        'partners/apply.astro',
+      ),
+    ],
+    [],
+  );
+  for (const leaked of [
+    "const view = partnerApplyView({ prefillEmail: partnerApplyPrefillEmail(Astro.url.searchParams.get('rawEmail')) });",
+    'const view = partnerApplyView({ prefillEmail: partnerApplyPrefillEmail(subscriber.email) });',
+    "const view = partnerApplyView({ prefillEmail: partnerApplyPrefillEmail(Astro.url.searchParams.get('email')).trim() || email });",
+    `const view = partnerApplyView({ enabled, prefillEmail: ${prefillExemption.call}, other: email });`,
+    "const view = partnerApplyView({ prefillEmail: Astro.url.searchParams.get('email') });",
+    "const prefill = Astro.url.searchParams.get('email');\nconst view = partnerApplyView({ prefillEmail: partnerApplyPrefillEmail(prefill) });",
+  ])
+    assert.ok(
+      frontmatter(leaked, 'partners/apply.astro').has('view'),
+      `partners/apply.astro must still taint: ${leaked}`,
+    );
+  assert.ok(frontmatter(exemptCall, 'dsr.astro').has('view'));
+  assert.ok(frontmatter(exemptCall, 'partners/dashboard.astro').has('view'));
 });
 
 test('E11-05 response-shape guard fails on personal, dynamic and raw response bodies', () => {

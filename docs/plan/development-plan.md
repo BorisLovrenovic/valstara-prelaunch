@@ -4403,6 +4403,14 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - Both render correctly in the E8-04 seed checks
 
 **Tests:** The consent gate · once per business key · suppression at dispatch · rendering.
+
+**Founder decisions (2026-11-24):**
+1. **The auto-invite's link pre-fills the email field from its `email` query value, and D-051's exemption extends to that GET prefill only.** The invite links to `/partners/apply?email=<the member's own address>`, built when the email is rendered, so the queued payload holds no address. On a GET with no `token`, the empty application form shows the value through `values.email` only, and only when it is a well-formed address of at most 254 characters (`partnerApplyPrefillEmail`); anything else leaves the field empty. It fills no other field, looks up and stores nothing, authenticates nothing; the page stays `private, no-store` with `Referrer-Policy: no-referrer`, and the page-view beacon sends the path only. This returns the visitor's own link value to them, never stored data (hard rule 11). No other emailed link carries an address. (D-070.)
+2. **The first-signup email is a transactional programme milestone, so the partner's optional-email setting does not govern it.** ADR-027 lists milestone updates as service messages; the setting governs the E11.7-13 digest and the D-052 export filter. (Accepted under the founder's standing rule for high-confidence recommendations, D-070.)
+3. **The built defaults stand.** The auto-invite skips any member with a `partner` row of their own, in any status, purged included. The first-signup email counts every confirmed, non-voided edge credited to the partner, retroactive attribution included, and is queued only after the partner's welcome email is queued. (Accepted under the founder's standing rule for high-confidence recommendations, D-070.)
+
+**Named test rewrite (founder-authorised 2026-11-24):** `test/e11-05-route-shapes.test.mjs`, test "E11-05 generates the registered API inventory and rejects personal fields in public response shapes": on `partners/apply.astro` only, the taint pass disregards the exact call `partnerApplyPrefillEmail(Astro.url.searchParams.get('email'))` when deciding whether a frontmatter initializer is personal, so it does not taint `view` or `values`. A synthetic-source assertion shows that any other email-bearing argument or initializer on that page still taints. Every other expression, every other page, the `personalValue` and personal-alias assertions, and the existing `values.email` and `dsr.astro` exemptions stay unchanged. (D-070.)
+
 **Docs:** `docs/features/email-campaign.md` · `docs/architecture/adr/027-entry-separate-from-marketing-consent.md`
 
 ### E11.7-13 — The partner digest
