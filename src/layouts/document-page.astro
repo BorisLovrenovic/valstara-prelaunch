@@ -6,7 +6,9 @@ import { documentPagesCopy } from '../copy/document-pages.ts';
 import { landingCopy } from '../copy/landing.ts';
 import { layoutCopy } from '../copy/layout.ts';
 import { partnersCopy } from '../copy/partners.ts';
+import { trustLedgerCopy } from '../copy/trust-ledger.ts';
 import type { ContentsEntry } from '../server/content/contents.ts';
+import { bundledTrustLedger } from '../server/trust-ledger/bundled.ts';
 
 interface Props {
   kind: 'trust' | 'legal' | 'rules' | 'partners';
@@ -21,6 +23,12 @@ const { kind, summary, contents = [] } = Astro.props;
 const eyebrow = documentPagesCopy.eyebrow[kind];
 const onGuarantee = Astro.url.pathname.replace(/\/+$/u, '') === '/guarantee';
 const hasAside = kind === 'trust' || kind === 'partners' || contents.length > 0;
+// E11.8-01 (D-076 Q1): /guarantee and /partners link to the Trust Ledger with
+// P11 Part 3's line, in the side card beside the content, only once an entry
+// is committed. The line follows the committed entries, not the flag, and is
+// never written into a page's own content.
+const trustLedgerLine =
+  bundledTrustLedger().published && (onGuarantee || kind === 'partners');
 ---
 
 {
@@ -72,6 +80,15 @@ const hasAside = kind === 'trust' || kind === 'partners' || contents.length > 0;
                   </li>
                 ))}
               </ol>
+              {trustLedgerLine && (
+                <p class="document__card-body" data-trust-ledger-link>
+                  {trustLedgerCopy.link.lead}
+                  <TextLink class="document__ledger-link" href="/trust-ledger">
+                    {trustLedgerCopy.link.label}
+                  </TextLink>
+                  {trustLedgerCopy.link.end}
+                </p>
+              )}
               <div class="document__card-actions">
                 {!onGuarantee && (
                   <TextLink class="document__card-link" href="/guarantee" arrow>
@@ -105,6 +122,15 @@ const hasAside = kind === 'trust' || kind === 'partners' || contents.length > 0;
               <p class="document__card-body">
                 {partnersCopy.programme.cardBody}
               </p>
+              {trustLedgerLine && (
+                <p class="document__card-body" data-trust-ledger-link>
+                  {trustLedgerCopy.link.lead}
+                  <TextLink class="document__ledger-link" href="/trust-ledger">
+                    {trustLedgerCopy.link.label}
+                  </TextLink>
+                  {trustLedgerCopy.link.end}
+                </p>
+              )}
               <div class="document__card-actions">
                 <Button href="/partners/apply" full>
                   {partnersCopy.programme.apply}
@@ -616,6 +642,15 @@ const hasAside = kind === 'trust' || kind === 'partners' || contents.length > 0;
 
   .document__card-link {
     align-self: start;
+  }
+
+  /* E11.8-01: the Trust Ledger link inside its card line is one atomic box,
+     so it never breaks across lines (its centre is always the link) and,
+     below 48rem, its 44px hit area sets its own line's height rather than
+     spilling out of the paragraph. */
+  .document__ledger-link {
+    display: inline-flex;
+    align-items: center;
   }
 
   /* The contents list: 14/20 ink-600 links, 44px tall below 64rem and 36px

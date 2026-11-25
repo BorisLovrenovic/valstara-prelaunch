@@ -1,0 +1,71 @@
+---
+import { getEntry, render } from 'astro:content';
+import TrustPage from '../layouts/trust-page.astro';
+import { getFlagService } from '../server/flags/app-service.ts';
+import { bundledTrustLedger } from '../server/trust-ledger/bundled.ts';
+import { trustLedgerView } from '../server/trust-ledger/presentation.ts';
+import {
+  trustLedgerCacheControl,
+  trustLedgerVisible,
+} from '../server/trust-ledger/route.ts';
+
+// `/trust-ledger` (E11.8-01): rendered on request, so it follows
+// `trust_ledger.page` (founder decision D-076 Q1). It reads only what the
+// build validated: the entries bundled from src/content/trust-ledger/ and
+// "How we count", src/content/trust-ledger-how-we-count.md. While the flag
+// is off, or no entry is committed, it answers the branded 404. It uses the
+// trust document layout and ships no script beyond the page-view emitter.
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', trustLedgerCacheControl);
+const ledger = bundledTrustLedger();
+if (!trustLedgerVisible(await getFlagService().list(), ledger)) {
+  return new Response(null, { status: 404 });
+}
+const entry = await getEntry('trustLedger', 'trust-ledger-how-we-count');
+if (!entry || entry.data.portTarget !== '/trust-ledger') {
+  throw new Error('Missing or misrouted /trust-ledger content.');
+}
+const entries = trustLedgerView(ledger);
+const { Content } = await render(entry);
+---
+
+<TrustPage
+  title={entry.data.title}
+  description={entry.data.description}
+  kind="trust"
+  summary={entry.data.description}
+  renderedHtml={entry.rendered?.html ?? ''}
+>
+  <h1>{entry.data.title}</h1>
+  {
+    entries.map((month) => (
+      <>
+        <h2
+          id={month.id}
+          data-trust-ledger-entry={month.month}
+          data-trust-ledger-newest={month.newest ? '' : undefined}
+        >
+          {month.heading}
+        </h2>
+        {month.sections.map((section) => (
+          <>
+            <h3 id={section.id}>{section.heading}</h3>
+            {section.blocks.map((block) =>
+              block.kind === 'paragraphs' ? (
+                block.paragraphs.map((paragraph) => <p>{paragraph}</p>)
+              ) : (
+                <ul>
+                  {block.items.map((item) => (
+                    <li>{item}</li>
+                  ))}
+                </ul>
+              ),
+            )}
+          </>
+        ))}
+      </>
+    ))
+  }
+  <Content />
+</TrustPage>

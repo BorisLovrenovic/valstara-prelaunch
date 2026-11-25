@@ -23,6 +23,8 @@ COPY scripts/ci/partner-kit-check.ts ./scripts/ci/partner-kit-check.ts
 # E11.7-16: every partner announcement is validated before the build, with the
 # forbidden-copy list.
 COPY scripts/ci/partner-announcements-check.ts ./scripts/ci/partner-announcements-check.ts
+# E11.8-01: the Trust Ledger entries check runs before the build too.
+COPY scripts/ci/trust-ledger-check.ts ./scripts/ci/trust-ledger-check.ts
 COPY scripts/forbidden-copy.json ./scripts/forbidden-copy.json
 # E11.6-10: the price pages bundle the price data and the price-index
 # package's two site-importable parts (ADR-033); scripts/ci/app-build.mjs

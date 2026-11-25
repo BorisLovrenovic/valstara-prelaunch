@@ -7,6 +7,7 @@ import ThemeToggle from '../islands/ThemeToggle.astro';
 import PageViewEmitter from './page-view-emitter.astro';
 import { themeBootstrapScript } from '../islands/theme-toggle.ts';
 import { seoCopy } from '../copy/seo.ts';
+import { bundledTrustLedger } from '../server/trust-ledger/bundled.ts';
 import {
   canonicalUrl,
   jsonLd,
@@ -30,9 +31,20 @@ const { title, description, themeToggle = true } = Astro.props;
 // Header anchors target the landing sections; elsewhere they lead back to them.
 const isLanding = Astro.url.pathname === '/';
 const sectionPrefix = isLanding ? '' : '/';
+// E11.8-01 (D-076 Q1): the Trust Ledger link follows the entries committed at
+// build, not its flag, because most pages carrying this footer are
+// prerendered. With no entry committed there is no link.
+type FooterLink = { group: string; href: string; label: string };
+const footerLinks: readonly FooterLink[] = bundledTrustLedger().published
+  ? layoutCopy.footerLinks.flatMap((link): FooterLink[] =>
+      link.href === '/guarantee'
+        ? [link, layoutCopy.trustLedgerFooterLink]
+        : [link],
+    )
+  : layoutCopy.footerLinks;
 const footerGroups = layoutCopy.footerGroups.map((group) => ({
   ...group,
-  links: layoutCopy.footerLinks.filter((link) => link.group === group.id),
+  links: footerLinks.filter((link) => link.group === group.id),
 }));
 const canonical = canonicalUrl(Astro.url.pathname);
 const image = socialImageUrl(Astro.url.pathname);

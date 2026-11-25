@@ -21,6 +21,11 @@ export const campaignFlagRegistry = Object.freeze({
   // nothing is queued or sent and the command refuses
   // (docs/features/partner-programme.md#partner-announcements).
   'partners.announcements': false,
+  // E11.8-01: the Trust Ledger page and its child sitemap. Off until the
+  // founder turns it on after the first entry is merged; off, /trust-ledger
+  // answers 404 and /sitemaps/trust-ledger.xml lists nothing
+  // (docs/features/trust-ledger.md#feature-flag).
+  'trust_ledger.page': false,
 } as const);
 
 export type FlagKey = keyof typeof campaignFlagRegistry;

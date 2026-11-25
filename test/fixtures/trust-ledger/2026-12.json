@@ -1,0 +1,73 @@
+{
+  "month": "2026-12",
+  "introduction": [
+    "This is our first entry. We take no orders until early access, so there are no deliveries, claims or refunds to report yet. Those figures start in September 2027."
+  ],
+  "waitlist": {
+    "countedOn": "2027-01-01",
+    "total": 1287,
+    "newThisMonth": 1287,
+    "joinedThroughReferral": 412
+  },
+  "buildProgress": [
+    { "item": "The waitlist, with email confirmation", "status": "done" },
+    { "item": "Referral links and codes", "status": "done" },
+    { "item": "Referral rewards and the member page", "status": "done" },
+    { "item": "The public leaderboard", "status": "done" },
+    { "item": "The giveaway and its rules", "status": "done" },
+    { "item": "The Triple Guarantee, published in full", "status": "done" },
+    { "item": "The privacy notice and the waitlist terms", "status": "done" },
+    {
+      "item": "The price index, covering 19 services in 20 markets and updated monthly",
+      "status": "done"
+    },
+    {
+      "item": "The partner programme, with applications, partner dashboards and the partner leaderboard",
+      "status": "done"
+    },
+    { "item": "The Trust Ledger", "status": "done" },
+    {
+      "item": "The Valstara store, where early access opens",
+      "status": "in progress"
+    },
+    {
+      "item": "Warranty terms for each kind of product, published when the store opens",
+      "status": "next"
+    }
+  ],
+  "supplyReadiness": {
+    "note": [
+      "These are totals since we started checking suppliers. From January 2027, each entry also gives that month's figures."
+    ],
+    "total": { "evaluated": 207, "verified": 27, "rejected": 180 },
+    "thisMonth": null,
+    "launchProducts": 33,
+    "launchProductsWithVerifiedSupply": 33
+  },
+  "partnerProgramme": { "applicationsReceived": 0, "approved": 0, "active": 0 },
+  "policyChanges": {
+    "items": [
+      { "date": "2026-12-01", "text": "we published the Triple Guarantee." },
+      {
+        "date": "2026-12-01",
+        "text": "we published the privacy notice and the waitlist terms."
+      },
+      { "date": "2026-12-01", "text": "we published the giveaway rules." },
+      {
+        "date": "2026-12-01",
+        "text": "we published the partner programme terms."
+      }
+    ]
+  },
+  "corrections": { "none": "None. This is our first entry." },
+  "launchStatus": ["On track for early access in September 2027."],
+  "whatWentWrong": [
+    "Nothing has gone wrong for a customer yet, because we take no orders until early access. When something does, it goes here."
+  ],
+  "whatWeChanged": ["Nothing yet. This is our first entry."],
+  "focusForNextMonth": [
+    "Building the store, where early access opens in September 2027.",
+    "Checking suppliers for any product we add to the launch list, so every launch product keeps verified supply.",
+    "Inviting creators to join the partner programme, and approving our first partners."
+  ]
+}

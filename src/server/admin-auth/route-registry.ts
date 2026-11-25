@@ -149,4 +149,10 @@ export const adminRouteRegistry = defineAdminRouteRegistry([
     pathname: '/api/admin/partners/:id/note',
     methods: [{ method: 'POST', audit: 'required' }],
   },
+  // E11.8-01: the Trust Ledger's waitlist figures; the read is audited.
+  {
+    source: 'src/pages/api/admin/trust-ledger/waitlist.ts',
+    pathname: '/api/admin/trust-ledger/waitlist',
+    methods: [{ method: 'GET', audit: 'required' }],
+  },
 ]);

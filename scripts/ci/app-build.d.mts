@@ -1,5 +1,7 @@
 export const stampName: string;
 
+export const inputPaths: readonly string[];
+
 export function buildEnvironment(
   environment: Record<string, string | undefined>,
 ): [string, string | undefined][];

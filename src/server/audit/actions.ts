@@ -51,6 +51,7 @@ export const auditActions = [
   'partner.exported',
   'partner.optional_email_withdrawn',
   'partner.announcement_run',
+  'trust_ledger.waitlist_counted',
 ] as const;
 
 export type AuditAction = (typeof auditActions)[number];

@@ -32,7 +32,8 @@ Status: authoritative. This describes the **store launch**, which happens after 
 |---|---|---|
 | `/` | Waitlist landing page | Storefront home — **same URL, new content** |
 | `/legit`, `/guarantee`, `/about` | Trust content | Ported, same URLs; `200` |
-| `/trust-ledger` (E11.8-01) | The Trust Ledger and every past entry | Ported, same URL; `200`; past entries never edited |
+| `/trust-ledger` (E11.8-01) | The Trust Ledger and every past entry, rendered on request from the entries in `src/content/trust-ledger/` and `src/content/trust-ledger-how-we-count.md`, behind `trust_ledger.page` (`404` while the flag is off or no entry is committed) | A permanent URL the storefront keeps: ported, same URL; `200`; past entries never edited |
+| `/sitemaps/trust-ledger.xml` (E11.8-01) | The Trust Ledger's child sitemap, rendered on request: `/trust-ledger` while `trust_ledger.page` is on and an entry is committed, else an empty `<urlset>`. `/sitemap.xml` and the other `/sitemaps/*.xml` are static files, not routes | Not ported as a file; the storefront's own sitemap lists `/trust-ledger` |
 | `/terms`, `/privacy`, `/privacy/storage` | Legal and storage inventory | Ported and revised in place; `200` |
 | `/giveaway/rules`, `/giveaway/rules/<rules_version>` | The global rules page and all three immutable revisions (ADR-026) | **Kept live** with `200` for 12 months after the final award, then `410`; revisions kept internally for 6 years |
 | `/waitlist`, `/leaderboard` | Campaign mechanics | `301` to storefront `/` |
@@ -52,7 +53,19 @@ Status: authoritative. This describes the **store launch**, which happens after 
 
 Port the versioned Markdown sources from `src/content/giveaway-rules/` and preserve the recorded SHA-256 of each rendered rules article. The current revision is `VAL-GW-LAUNCH-20261009-r1`; the earlier `VAL-GW-LAUNCH-20260925-r1` and `VAL-GW-LAUNCH-20261001-r1` revisions remain directly served at their permanent URLs as archived records, with the E11-04 notice, `noindex`, and sitemap exclusion. The current URL and all three permanent URLs must remain directly served after cutover. The port-checklist reconciliation must assert that the revision named here equals `currentRules()`.
 
-The retired API inventory is explicit: `/api/signup`, `/api/resend-verification`, `/api/survey`, `/api/leaderboard`, `/api/me/leave`, `/api/me/marketing`, `/api/dsr/export`, `/api/dsr/delete`, `/api/webhooks/<provider>`, `/api/admin/draw`, `/api/admin/export.csv`, `/api/admin/fraud`, `/api/admin/fraud/<id>`, `/api/admin/health`, `/api/admin/referrals/void`, `/api/admin/referrals/unvoid`, `/api/admin/partners`, `/api/admin/partners/export.csv`, `/api/admin/partners/<id>`, `/api/admin/partners/<id>/approve`, `/api/admin/partners/<id>/reject`, `/api/admin/partners/<id>/contract-sent`, `/api/admin/partners/<id>/contract-signed`, `/api/admin/partners/<id>/pause`, `/api/admin/partners/<id>/terminate`, `/api/admin/partners/<id>/reactivate`, `/api/admin/partners/<id>/type`, `/api/admin/partners/<id>/note` and `/api/admin/partners/announce` (E11.7-16) all return `410` after cutover. `/api/unsubscribe` is the sole retained campaign API path, transferred to the storefront under the token contract above. Every path in `src/pages/` is represented by the route table or this API inventory; the port-checklist test reconciles that set in both directions.
+The retired API inventory is explicit: `/api/signup`, `/api/resend-verification`, `/api/survey`, `/api/leaderboard`, `/api/me/leave`, `/api/me/marketing`, `/api/dsr/export`, `/api/dsr/delete`, `/api/webhooks/<provider>`, `/api/admin/draw`, `/api/admin/export.csv`, `/api/admin/fraud`, `/api/admin/fraud/<id>`, `/api/admin/health`, `/api/admin/referrals/void`, `/api/admin/referrals/unvoid`, `/api/admin/partners`, `/api/admin/partners/export.csv`, `/api/admin/partners/<id>`, `/api/admin/partners/<id>/approve`, `/api/admin/partners/<id>/reject`, `/api/admin/partners/<id>/contract-sent`, `/api/admin/partners/<id>/contract-signed`, `/api/admin/partners/<id>/pause`, `/api/admin/partners/<id>/terminate`, `/api/admin/partners/<id>/reactivate`, `/api/admin/partners/<id>/type`, `/api/admin/partners/<id>/note`, `/api/admin/partners/announce` (E11.7-16) and `/api/admin/trust-ledger/waitlist` (E11.8-01) all return `410` after cutover. `/api/unsubscribe` is the sole retained campaign API path, transferred to the storefront under the token contract above. Every path in `src/pages/` is represented by the route table or this API inventory; the port-checklist test reconciles that set in both directions.
+
+### The Trust Ledger (E11.8-01)
+
+**At go-live, December 2026.** This repository commits no entry before then (founder decision D-076 Q2), so `/trust-ledger` answers `404` and no link to it renders. The founder publishes the first entry:
+
+1. Run `npm run trust-ledger -- draft --month 2026-12` (the secret key and a fresh authenticator code, against the production admin API). It writes `src/content/trust-ledger/2026-12.json` with the month's waitlist counts and every other section empty.
+2. Paste in the founder sections, P11 Part 2 (`docs/prerequisites/p11-trust-ledger-text.md`), as `docs/features/trust-ledger.md#the-monthly-entry` shows.
+3. Confirm P11's three checks: the go-live date in the policy changes, the partner counts (`partners list`), and the giveaway line in build progress.
+4. Merge it through the ordinary pull request, CI and deploy. The links from `/guarantee`, `/partners` and the footer appear with that deploy.
+5. Turn `trust_ledger.page` on with the flag command (`node ./src/server/flags/cli.ts set trust_ledger.page on --actor <operator>`, audited, `docs/ops/runbook.md`). The page and its child sitemap follow within five seconds.
+
+**At cutover**, the storefront ports `/trust-ledger` at the same URL with every entry unedited, and keeps publishing monthly entries there.
 
 ---
 

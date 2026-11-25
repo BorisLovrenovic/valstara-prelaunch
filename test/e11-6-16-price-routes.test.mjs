@@ -265,7 +265,15 @@ test('each child sitemap lists exactly the indexable price routes of its kind', 
 // The internal-link graph.
 
 const { routes: siteRouteList } = await sourcePagePaths();
-const siteRoutes = new Set(siteRouteList);
+// E11.8-01: `/trust-ledger` is a data route, a page of the site exactly once
+// a Trust Ledger entry is committed, when the footer links it.
+const trustLedgerPublished = (
+  await readdir(new URL('../src/content/trust-ledger/', import.meta.url))
+).some((name) => name.endsWith('.json'));
+const siteRoutes = new Set([
+  ...siteRouteList,
+  ...(trustLedgerPublished ? ['/trust-ledger'] : []),
+]);
 
 /** Every link on a page goes to a generated price route or a page of the site. */
 function assertLinksResolve(path, document) {

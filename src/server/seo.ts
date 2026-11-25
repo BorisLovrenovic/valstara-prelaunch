@@ -23,7 +23,9 @@ function socialPathname(pathname: string): string {
 export function socialPageKind(pathname: string): SocialPageKind {
   const path = socialPathname(pathname);
   if (path === '/') return 'landing';
-  if (['/legit', '/guarantee', '/about'].includes(path)) return 'trust';
+  // E11.8-01: the Trust Ledger is a trust page, with the typed trust card.
+  if (['/legit', '/guarantee', '/about', '/trust-ledger'].includes(path))
+    return 'trust';
   if (['/terms', '/privacy', '/privacy/storage'].includes(path)) return 'legal';
   if (path === '/giveaway/rules' || path.startsWith('/giveaway/rules/')) {
     return 'rules';
@@ -156,6 +158,9 @@ export function routeFromPageFile(file: string): string | null {
  * kind of hub has its own (E11.6-12): `/prices`, the service hubs and the
  * market hubs, each dated from the newest verification it shows. The monthly
  * reports have their own (E11.6-13), each dated by its snapshot's build.
+ * The Trust Ledger's (E11.8-01) is the one served on request
+ * (src/pages/sitemaps/trust-ledger.xml.ts): it lists `/trust-ledger` only
+ * while `trust_ledger.page` is on and an entry is committed.
  */
 export const childSitemaps = {
   pages: '/sitemaps/pages.xml',
@@ -164,6 +169,7 @@ export const childSitemaps = {
   pricesServiceHubs: '/sitemaps/prices-service-hubs.xml',
   pricesMarketHubs: '/sitemaps/prices-market-hubs.xml',
   priceIndexMonthly: '/sitemaps/price-index-monthly.xml',
+  trustLedger: '/sitemaps/trust-ledger.xml',
 } as const;
 
 function xmlText(value: string): string {
@@ -219,6 +225,9 @@ export function sitemapPaths(
       // sitemaps (E11.6-10, E11.6-12).
       route !== '/prices' &&
       !route.startsWith('/prices/') &&
+      // E11.8-01: the Trust Ledger follows its flag, so it is listed only in
+      // its own child sitemap, served on request.
+      route !== '/trust-ledger' &&
       !route.startsWith('/api/') &&
       !route.includes('['),
   );

@@ -1,6 +1,6 @@
 # Feature: The Trust Ledger
 
-Founder-defined 2026-11-22; placed in the plan as Epic E11.8 on 2026-11-24. Built by E11.8-01 (`docs/plan/development-plan.md`). **This spec is the in-repository record of the founder's definition and decisions.** The definition has no other source, and it is recorded verbatim at the end. Where this spec and the verbatim definition differ, the later founder decisions recorded here win.
+Founder-defined 2026-11-22; placed in the plan as Epic E11.8 on 2026-11-24. Built by E11.8-01 (`docs/plan/development-plan.md`), with the founder decisions of 2026-11-25 (D-076): the page and its sitemap follow the flag on every request, the links follow the committed entries, and the ticket commits no entry. **This spec is the in-repository record of the founder's definition and decisions.** The definition has no other source, and it is recorded verbatim at the end. Where this spec and the verbatim definition differ, the later founder decisions recorded here win.
 
 ## Summary
 
@@ -18,7 +18,11 @@ A public, monthly record of how Valstara is actually doing on the things buyers 
 
 | Flag | Default | Off means |
 |---|---|---|
-| `trust_ledger.page` | **off** | `/trust-ledger` answers `404` and is left out of the sitemap, and no link to it renders on `/guarantee`, `/partners` or in the footer. The founder turns it on once the first entry is merged. **Once it is on, it stays on**: the page is a commitment, and switching it off is for an incident only, such as a wrong figure in a published entry |
+| `trust_ledger.page` | **off** | `/trust-ledger` answers `404`, and its child sitemap `/sitemaps/trust-ledger.xml` is an empty `<urlset>`. The founder turns it on once the first entry is merged. **Once it is on, it stays on**: the page is a commitment, and switching it off is for an incident only, such as a wrong figure in a published entry |
+
+The page and the sitemap are rendered on request and read the flag on every request (through the flag service's five-second cache; a lookup failure reads as off). **They also answer as if off while no entry is committed**, so an empty Ledger is never shown, whatever the flag.
+
+**The links follow the committed entries, not the flag** (D-076 Q1). The line beside `/guarantee`'s content, the line on `/partners` and the footer link are rendered at build, and only once an entry is committed: the pages that carry them are prerendered (flags are runtime values, ADR-023), and no page changes its rendering mode. With no entry committed, no link renders anywhere. **If the flag is switched off in an incident, the links stay and lead to `404` until the next deploy removes them**, or until the flag is back on.
 
 ## What it contains
 
@@ -51,18 +55,59 @@ Customer personal data (totals only); supplier names, supplier prices or any sup
 - **Exact numbers.** A rounded figure is labelled as one (`docs/brand/copy-rules.md#claims-that-must-stay-true`).
 - **Plain brand voice:** sentence case, no exclamation marks, no spin. The forbidden-copy scan covers the entries.
 
+## The entries
+
+One data file per month, `src/content/trust-ledger/YYYY-MM.json`, validated at build against the entry schema (`src/server/trust-ledger/entry-schema.ts`). The file's name is its month. Every object in it is closed, so a field the schema does not name is refused, and it has **no field for a supplier's name, a price, revenue, a margin, profit, earnings or any person**; every figure is a non-negative integer count. Each piece of text is one paragraph or list item of the founder's plain words, rendered as text, never as Markdown or HTML: an email, IP or web address, markup, a line break or an exclamation mark is refused.
+
+| Field | Section | What it holds |
+|---|---|---|
+| `month` | — | `YYYY-MM`, the file's own name |
+| `introduction` | Introduction | Paragraphs |
+| `waitlist` | Waitlist | `countedOn` (the day the counts were read), `total`, `newThisMonth`, `joinedThroughReferral`. **Written by `trust-ledger draft`, never typed by hand.** Shown as "Counted on …", "Total: …", "New this month: …" and "Joined through a referral: X of Y" |
+| `buildProgress` | Build progress | Items, each `{ item, status }`, status `done`, `in progress` or `next`; shown as "item: status" |
+| `supplyReadiness` | Supply readiness | `note` (paragraphs, may be empty), `total` and `thisMonth` (`{ evaluated, verified, rejected }`, with verified + rejected = evaluated; `thisMonth` is `null` before January 2027, when P11 says each entry starts giving the month's figures), `launchProducts`, `launchProductsWithVerifiedSupply` (shown as "X of Y") |
+| `partnerProgramme` | Partner programme | `applicationsReceived`, `approved`, `active` (active ≤ approved ≤ applications) |
+| `policyChanges`, `corrections` | Policy changes, Corrections | Either `{ items: [{ date, text }] }`, shown as "1 December 2026: text", or `{ none: "<one paragraph>" }` |
+| `howWeCountChanges` (optional) | Changes to how we count | Paragraphs: what changed in "How we count" and why. Required, by CI, in the entry that ships a changed "How we count" |
+| `launchStatus`, `whatWentWrong`, `whatWeChanged` | Launch status and the closing sections | Paragraphs |
+| `focusForNextMonth` | Focus for next month | Items |
+
+**A published entry never changes.** CI's append-only check (`scripts/ci/trust-ledger-append-only.mjs`, in `npm run security`) fails a pull request that edits or deletes an entry present at its merge base, byte for byte, as the giveaway rules revisions and partner announcements are guarded. **"How we count"** is the content file `src/content/trust-ledger-how-we-count.md`, P11 Part 1 as written; the same check fails a change to it unless the branch also adds an entry whose `howWeCountChanges` announces it. An entry that breaks its schema, its file name or the copy rules fails the build: `scripts/ci/trust-ledger-check.ts` runs before every build, and the site's bundled ledger (`src/server/trust-ledger/bundled.ts`) validates every entry again when the prerendered pages render.
+
+**This ticket committed no entry** (D-076 Q2): December's waitlist figures exist only on the production database in December, and a committed entry never changes. P11 Part 2 is a test fixture (`test/fixtures/trust-ledger/2026-12.json`) that proves the schema holds it word for word and the page renders it.
+
+## The waitlist figures
+
+`GET /api/admin/trust-ledger/waitlist?month=YYYY-MM` (behind the E5-03a admin boundary: the secret key and an authenticator code) returns, for one calendar month in UTC, exact counts only:
+
+- **`verified_total`**: subscribers whose status is `verified` when the request runs (the entry's "Total", on its "Counted on" day). Unverified, expired, unsubscribed, bounced, disqualified and erased rows are never counted (standing rule 2).
+- **`verified_in_month`**: of those, the ones verified during the month ("New this month").
+- **`verified_in_month_through_referral`**: of those, the ones whose referral edge is `confirmed` and not voided, the definition every consumer of the confirmed count uses ("Joined through a referral"). **A partner's link or code makes such an edge too, so partner referrals are counted**, as P11 Part 1 defines. A rejected, voided or unconfirmed edge is not.
+
+It is one aggregate query (`src/server/db/trust-ledger.ts`), and it refuses a malformed month and a month that has not begun. Every read is audited as `trust_ledger.waitlist_counted` with the actor, the month and the three counts, in the transaction that reads them.
+
+## The monthly entry
+
+1. **Draft.** In the month after the one reported: `npm run trust-ledger -- draft --month 2026-12` (`src/server/trust-ledger/cli.ts`). It uses the admin command line's key, code and origin rules to call the route above, and writes `src/content/trust-ledger/2026-12.json` with the waitlist counts and every other section empty. It refuses a month that already has an entry before asking for anything or sending a request, and never overwrites a file. An empty section fails the schema, so a draft cannot be built until it is complete.
+2. **Complete.** Write the other sections and the three closing sections (about 1–2 hours a month).
+3. **Publish.** A pull request, CI, merge and deploy. The page is built from the committed entry files.
+
+**December 2026, the first entry (D-076 Q2):** run `npm run trust-ledger -- draft --month 2026-12`; paste in P11 Part 2 (`docs/prerequisites/p11-trust-ledger-text.md`) into the sections above, word for word, as the test fixture `test/fixtures/trust-ledger/2026-12.json` shows (each build-progress line as `{ "item", "status" }`, each policy change as `{ "date": "2026-12-01", "text": "we published …" }`, Corrections as `{ "none": "None. This is our first entry." }`); confirm P11's three checks (the go-live date in the policy changes, the partner counts against `partners list`, and the giveaway line in build progress); merge; then turn `trust_ledger.page` on. The links appear with that entry's deploy; the page and its sitemap follow the flag. The same steps are in `docs/ops/launch-cutover.md` and `docs/ops/runbook.md`.
+
 ## User flows
 
-1. **The founder drafts a month.** A founder command asks the admin API for that month's waitlist figures and writes them into a new entry file. The founder then writes the other sections and the three closing sections by hand (about 1–2 hours a month).
-2. **The entry is published** through the ordinary path: a pull request, CI, merge and deploy. The page is built from the committed entry files.
-3. **A visitor reads it** at `/trust-ledger`: the newest month at the top, the full archive below, and the "How we count" section. It is linked from `/guarantee`, `/partners` and the footer while the flag is on.
+1. **The founder drafts a month** with `trust-ledger draft`, completes it and publishes it, as above.
+2. **A visitor reads it** at `/trust-ledger` (rendered on request, the trust document layout of E11.5-11s, the typed `trust` social card, no script beyond the page-view emitter): the page's H1, the newest month at the top, the full archive below, each month's sections in the fixed order, and the "How we count" section. It is linked from `/guarantee` (P11 Part 3's line, in the side card beside the content, never in `src/content/guarantee.md`), from `/partners` (the same line, in its side card) and from the footer, once an entry is committed.
 
 ## Edge cases and error states
 
-- **An entry file fails its schema:** the build fails.
-- **A published entry's file changes:** CI fails. Entries are append-only against the merge base.
+- **An entry file fails its schema, is misnamed, or breaks the copy rules:** the build fails.
+- **A published entry's file changes or is deleted:** CI fails. Entries are append-only against the merge base.
+- **"How we count" changes without a new entry that announces it:** CI fails.
+- **No entry is committed** (before December 2026): `/trust-ledger` answers `404` even with the flag on, its sitemap lists nothing, and no link renders.
+- **An existing month is drafted again:** the command refuses before asking for anything, and writes nothing.
 - **A month is missed:** nothing is generated automatically. The next entry says the month was missed; a skipped month is stated, never hidden.
-- **A wrong published figure:** a correction in the next entry. For a serious error, the flag can also be turned off until the correction ships.
+- **A wrong published figure:** a correction in the next entry. For a serious error, the flag can also be turned off until the correction ships; the links stay and lead to `404` until a deploy, because they follow the committed entries.
 
 ## Acceptance criteria
 
