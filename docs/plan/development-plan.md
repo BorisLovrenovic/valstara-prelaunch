@@ -60,7 +60,7 @@ Items no agent can complete. Each gates something, and the gate is stated so it 
 | **P8** | **Launch provider list and logo files** — for each provider shown on the landing page: display name, category (E11.5-02's v2 taxonomy), confirmation that its goods are on the launch catalogue, the official SVG logo (plus a dark-theme variant where the provider supplies one) from the provider's published brand resources with its source URL, and its brand colour (founder-authorised 2026-10-19). **SUPPLIED 2026-10-25** for 34 providers across four categories (AI tools, Streaming and subscriptions, Software, In-game currency), recorded in `docs/prerequisites/p8-provider-list.md`. Founder-authorised amendments 2026-10-25: a logo without a source URL records its source as `founder-supplied` with the supply date, and a brand colour may be derived from the supplied logo by the rule in that record. AION2's logo is a WebP raster, the only non-SVG logo, by founder exception (no SVG exists) | Founder input | **E11.5-04** only. A showcase with placeholder logos is not a deliverable | Done |
 | **P9** | **Price-index answers and source capture.** The brief's open questions and D1–D6 were **answered 2026-11-17** (the brief amendments are verbatim in `docs/features/price-index.md#founder-amendments-17-november-2026-verbatim`; D1–D6 are recorded on E11.6-04, E11.6-05, E11.6-10, E11.6-12 and E11.6-13). **Still to do: the founder captures the source pages for E11.6-01** by `docs/prerequisites/p9-source-capture.md` | A founder capture | E11.6-01 | Before E11.6-01 |
 | **P11** | **The Trust Ledger's "How we count" text and its first entry's founder sections**: build progress, supply readiness counts with the founder's definitions of an evaluated, verified and rejected supplier, partner-programme counts, policy changes, corrections, launch status and the three closing sections; plus the line that links `/guarantee` to the Ledger (founder-authorised 2026-11-24) | Founder input | **E11.8-01** only. A Ledger page with placeholder text is not a deliverable | Before E11.8-01 |
-| **P12** | **A lawyer's review of the age change**: the reviewed wording of the 16+ marketing box, the 18+ giveaway box (at signup and on `/me`), the rules revision's entry sentence, and the privacy notice and terms for members aged 13–17; and whether a referred member aged 13–17 earns their referrer a giveaway entry (founder-authorised 2026-11-24) | Founder input (lawyer) | **E11.8-06** only. ADR-030's waiver does not cover this change | Before E11.8-06 |
+| **P12** | **A lawyer's review of the privacy notice, the terms and the age change** (widened by the founder, 2026-11-25): the whole of `/privacy` and `/terms`, which ADR-030 waived; and, for the age change, the wording of the 13+ age statement, the 16+ marketing box, the 18+ giveaway box (at signup and on `/me`), the rules revision's entry sentence, and whether a referral by a member who did not tick the 18+ box earns their referrer a giveaway entry | Founder input (lawyer) | **Only E11.8-07, which runs after E12.** No development before it waits on P12 (founder, 2026-11-25): E11.8-06 builds the mechanics with draft wording behind a flag that stays off | Before `waitlist.age_13` is switched on |
 | **P10** | **Partner asset kit files** — the images and PDFs partners download (committed under `public/partners/kit/`), and the links to any videos, each with the right to share it (founder-authorised 2026-11-17) | Founder input | **Nothing.** E11.7-11 ships without them, and the founder adds files and video links later as a content change (founder, 2026-11-24, amending D-068). No placeholder file ever ships | Any time |
 
 **A ticket blocked on one of these reports `BLOCKED:` and stops.** It does not invent a placeholder and it does not build around it.
@@ -149,7 +149,7 @@ flowchart TD
 
 **E11.7-11 runs after E11.7-14 and before E11.7-15 (founder-authorised 2026-11-24, D-068).** D-068 placed it there to wait on P10. Later the same day the founder decided it no longer waits on P10 (E11.7-11, founder decision 2); it keeps its place in the register.
 
-**E11.8 runs after E11.7 and before E12 (founder-authorised 2026-11-24).** It adds the Trust Ledger page, whose first entry is due when the site goes live in December 2026, the founder's per-platform signup report, the founder note in the weekly update, the referral reminder, the giveaway's new dates and the 13+ waitlist, so E12 deploys and gates the site with them. E11.8-06 waits on a lawyer (P12) and may move after E12 if P12 is late.
+**E11.8 runs after E11.7 and before E12 (founder-authorised 2026-11-24).** It adds the Trust Ledger page, whose first entry is due when the site goes live in December 2026, the founder's per-platform signup report, the founder note in the weekly update, the referral reminder, the giveaway's new dates and the 13+ waitlist mechanics, so E12 deploys and gates the site with them. **E11.8-07, the lawyer's reviewed wording (P12), runs after E12-07** and is the only ticket that waits on the lawyer (founder, 2026-11-25).
 
 **Everything through E11 is built and verified locally.** The VPS is provisioned once, at the end, and **E12 collects every piece of evidence that needs real infrastructure** — the rollback RTO, a restore from R2, capacity on the actual box (founder decision, 2026-08-27).
 
@@ -3938,7 +3938,7 @@ None of these is built or scaffolded.
 - **for every member:** wave 1 and the coupon ladder replace the 3-referral milestone, and `/me` says plainly whether they get early access;
 - **for the main platform:** an attribution export it can import at launch.
 
-It ends at early access, when the main platform's affiliate system takes over. *15 tickets.*
+It ends at early access, when the main platform's affiliate system takes over. *16 tickets.*
 
 **Why this epic exists.** Partners reach audiences the waitlist cannot reach alone. Commission is the main platform's job, so this repository only records who referred whom, cleanly enough to import. The founder also replaced the campaign's reward rules (2026-11-17). Rather than a single 3-referral milestone, members now get wave 1 at 3 referrals and a ladder of up to three coupons. It is built here because the referral engine is here.
 
@@ -3969,7 +3969,8 @@ Those tickets' entries stay as history. **The reward-gating invariant does not c
 - E11.7-05 to E11.7-08 cover the partner application, its review and activation, and the signup changes;
 - E11.7-09 to E11.7-13 build the partner's own surfaces and emails;
 - E11.7-14 builds the export and hand-over;
-- E11.7-15 is the audit.
+- E11.7-15 is the audit;
+- E11.7-16 adds partner announcements, after the audit (founder, 2026-11-25); GATE-8 audits it.
 
 **Founder decisions (2026-11-22): dates, partner terms and the positioning line.** These amend the brief, the founder's 2026-11-17 answers and `docs/prerequisites/valstara-prelaunch-growth-decisions.md` wherever they differ, and every ticket in this epic builds to them. The founder's words are recorded verbatim in `docs/features/partner-programme.md#founder-amendments-22-november-2026-verbatim`.
 1. **Dates.** "The most updated early access date will be 1st September 2027 and the public launch will be on 1st October 2027." Wave 1's early-access month is therefore September 2027 (`waveOneEarlyAccessMonth = '2027-09'`), and the configured public-launch date defaults to 2027-10-01, so coupons and welcome discounts expire on 2032-10-01. The founder still sets the real launch date in configuration at handoff.
@@ -4511,6 +4512,37 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 
 **Docs:** `docs/testing/strategy.md` · E11-03 · E11-04 · E11-05
 
+### E11.7-16 — Partner announcements
+**Model:** Opus 5.5 — High · **Priority:** Medium · **Flag:** `partners.announcements` · **Area:** backend
+**Why this model:** founder-written mail to every partner at once, on the digest's consent and dispatch rules, where a mistake reaches the whole programme.
+
+**Founder decision (2026-11-25):** the founder needs one way to write to every partner at once, for programme news, rule reminders and the competition. There is no partner broadcast list (D-056), so this ticket adds one on the digest's send path. It runs after E11.7-15 because E11.7-15 was already running; GATE-8 audits it with the rest of E11.7.
+
+**Build:**
+- **Register `partners.announcements`** (default off). Off: nothing is queued or sent, and the command refuses.
+- **Announcements as content files.** One file per announcement in `src/content/partner-announcements/` (`YYYY-MM-DD-<slug>.md`), validated at build:
+  - a subject of at most 80 characters and plain prose of at most 300 words;
+  - at most three links, each on the site's own origin;
+  - no image, no HTML and no merge field;
+  - covered by the copy rules and the forbidden-copy scan.
+  A published announcement never changes: CI fails when an announcement file that is on the merge base differs on the branch.
+- **The send.** The founder command `partners announce --id <file id> [--dry-run]`, through the admin API with the authenticator code:
+  - `--dry-run` prints only the number of partners it would reach;
+  - a run queues one email per eligible partner, in batches of at most 100, resumable, with business key `partner-announcement:{id}:{partner_id}`, so a repeat run or a restart never sends twice;
+  - each run is audited with the actor, the announcement ID and the counts.
+- **Who receives it:** exactly the digest's audience and dispatch re-checks (E11.7-13, founder decision 1): `partners.enabled` and `email.broadcast` on, an active, unpurged partner with a verified member record, an unsuppressed address and `nonessential_email_enabled = true`, all re-checked at dispatch. Its unsubscribe turns off only that setting, as the digest's does. Contractual notices, such as a change to a partner's terms, go through the contract route, never through an announcement.
+- **Rendering:** a `partner_announcement` Brevo broadcast renderer through the shared email layout, in both parts, with the partner's dashboard-request link as the digest has. It names no one.
+
+**Acceptance criteria:**
+- **One email per partner per announcement**, across a repeat run and a restart
+- The audience matches the digest's exactly, and a partner who opts out between queueing and dispatch receives nothing
+- **An announcement that fails validation fails the build**, and a changed published announcement fails CI
+- The command is refused without the authenticator code, `--dry-run` sends nothing, and every run is audited
+- The flag-off path is tested
+
+**Tests:** Once per partner per announcement across a restart · audience and dispatch re-checks · opt-out between queueing and dispatch · validation red paths · the append-only guard · dry run · authentication and audit · flag off · rendering in both parts.
+**Docs:** `docs/features/partner-programme.md` · `docs/modules/email.md` · `docs/features/email-campaign.md`
+
 ---
 
 ## Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions
@@ -4525,7 +4557,9 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 4. **The waitlist opens to people aged 13 and over; the giveaway stays 18 and over (E11.8-06).** Founder decision 2026-11-24, with three accepted conditions:
    - (a) the marketing opt-in is for people aged **16 or over**, and its box says so;
    - (b) giveaway entry needs **a separate, unticked "I'm 18 or over, enter me in the giveaway" box**; without it, a member holds no entries;
-   - (c) **a lawyer reviews the age change** (P12) before it ships. ADR-030's waiver does not cover a material change to its scope.
+   - (c) **a lawyer reviews the age change** (P12) before it is switched on. ADR-030's waiver does not cover a material change to its scope.
+
+   **Amended 2026-11-25 (founder):** the lawyer reads the whole privacy notice and terms together with the age change, and **the review gates switching 13+ on, never development.** E11.8-06 builds the mechanics with draft wording behind `waitlist.age_13`, which stays off; **E11.8-07**, after E12, applies the reviewed wording, publishes the rules revision and the reviewed pages, and only then may the flag be switched on.
 
    **Added 2026-11-24 (founder: "Yes, add it"):** a member who did not tick the 18+ box at signup can enter later from `/me`.
 
@@ -4535,9 +4569,9 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - **member messages:** the founder's monthly note in the weekly update, and the referral reminder in the welcome email;
 - **the giveaway's dates** moved to the new launch timeline, and **the waitlist opened to 13–17-year-olds** without inviting them into the giveaway or marketing below 16.
 
-*6 tickets.*
+*7 tickets.*
 
-**Why it runs here.** The Trust Ledger's first entry is due in December 2026, when the pre-launch site goes live (founder, 2026-11-22). Placing the epic before GATE-8 and E12 means GATE-8 audits it, and E12 deploys, load-tests and gates it with everything else. The per-platform report must exist from go-live: UTM values are kept for 12 months, and only links that carry them can be counted. The giveaway's rules revision must be current before `giveaway.open` is switched on. **E11.8-06 runs last because it waits on a lawyer (P12).** If P12 is not ready when E11.8-05 is done, the founder may move E11.8-06's register row after E12; until it ships, the site stays 18 and over.
+**Why it runs here.** The Trust Ledger's first entry is due in December 2026, when the pre-launch site goes live (founder, 2026-11-22). Placing the epic before GATE-8 and E12 means GATE-8 audits it, and E12 deploys, load-tests and gates it with everything else. The per-platform report must exist from go-live: UTM values are kept for 12 months, and only links that carry them can be counted. The giveaway's rules revision must be current before `giveaway.open` is switched on. **No ticket before E12 waits on the lawyer (P12).** E11.8-06 builds the 13+ mechanics behind a flag that stays off; E11.8-07, which applies the lawyer's reviewed wording, runs after E12-07 and is the only ticket P12 blocks (founder, 2026-11-25).
 
 **Exit criteria:**
 
@@ -4546,7 +4580,7 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - The founder can read signups by source, medium and campaign for any date range with one audited command.
 - A deployed note appears in the weekly update for its week only, and never reaches anyone the dispatch checks refuse.
 - The current giveaway rules revision states the new dates, and the code accrues entries and runs the draw on those dates.
-- The site says "13 and over", and no one holds a giveaway entry without the 18+ box or receives marketing without the 16+ opt-in.
+- With `waitlist.age_13` on (after E11.8-07), the site says "13 and over", and no one holds a giveaway entry without the 18+ box or receives marketing without the 16+ opt-in.
 - No new cookie, island, third-party request or personal data appears in any public response or analytics event.
 
 ### Rules for every E11.8 ticket
@@ -4683,21 +4717,21 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 **Model:** Opus 5.5 — Extra High · **Priority:** High · **Flag:** `waitlist.age_13` · **Area:** frontend, backend
 **Why this model:** it opens a site that holds personal data to minors, and changes who holds giveaway entries and who may receive marketing.
 
+**Founder amendment (2026-11-25): this ticket does not wait on P12.** It builds the mechanics with **draft wording** in the copy layer (the wording in the founder decisions above), behind `waitlist.age_13`, which stays off. The rules revision, the privacy notice and the terms are **not** changed here; E11.8-07 applies the lawyer's reviewed wording to all of them after E12.
+
 **Build:**
-- **Register `waitlist.age_13`** (default off). Off: the site says "Open to people aged 18 and over", and entries accrue exactly as today.
+- **Register `waitlist.age_13`** (default off). Off: the site says "Open to people aged 18 and over", and entries accrue exactly as today. **The flag cannot be switched on until a server setting records that E11.8-07's reviewed wording is in place**; the enable command refuses otherwise, and this ticket ships that setting as false.
 - **The age statement.** Every surface that states the joining age says "13 and over", from the copy layer; every surface that describes the giveaway says it is for people aged 18 and over.
-- **The marketing opt-in at 16 or over.** A new consent wording version says the box is for people aged 16 or over, in P12's reviewed wording. It is recorded as a new version, as every wording change is (ADR-027).
-- **The giveaway box.** Every signup form (the SignupForm island in all its placements; no new island) gains a separate, unticked box, "I'm 18 or over, enter me in the giveaway", in P12's reviewed wording. It is not needed to join, and it is independent of the marketing box. The subscriber row records when it was ticked; a database check rejects a value without a signup.
-- **Entries need the box.** With the flag on, a member's base and referral entries accrue only if they ticked it. Whether a referred member aged 13–17 earns their referrer an entry follows P12. `/me` shows a member without the box as not entered, never as holding entries.
-- **Entering later from `/me`** (founder, 2026-11-24). A member without the box sees the same 18+ box on `/me`, in P12's reviewed wording, as a Turnstile-protected form posting `POST /api/me/giveaway`, following the `POST /api/me/marketing` pattern: the signed status link identifies the member, Turnstile is verified server-side first, the route is rate-limited, and the change is audited.
+- **The marketing opt-in at 16 or over.** A new consent wording version says the box is for people aged 16 or over, in draft wording. It is recorded as a new version, as every wording change is (ADR-027), and is used only while the flag is on.
+- **The giveaway box.** Every signup form (the SignupForm island in all its placements; no new island) gains a separate, unticked box, "I'm 18 or over, enter me in the giveaway", in draft wording, rendered only while the flag is on. It is not needed to join, and it is independent of the marketing box. The subscriber row records when it was ticked; a database check rejects a value without a signup.
+- **Entries need the box.** With the flag on, a member's base and referral entries accrue only if they ticked it. Whether a referral by a member who did not tick the box earns their referrer an entry is a validated server setting, **default no** (the conservative choice); E11.8-07 sets it from P12. `/me` shows a member without the box as not entered, never as holding entries.
+- **Entering later from `/me`** (founder, 2026-11-24). A member without the box sees the same 18+ box on `/me`, in draft wording, as a Turnstile-protected form posting `POST /api/me/giveaway`, following the `POST /api/me/marketing` pattern: the signed status link identifies the member, Turnstile is verified server-side first, the route is rate-limited, and the change is audited.
   - It **only enters**: it records the box and changes nothing else, not marketing consent and not the referral record (ADR-027).
   - On entering, the member holds their base entry and one per confirmed referral they hold at that moment, each stamped with the rules revision then in force, exactly as if they had ticked at signup.
   - A repeat submission changes nothing and returns the same success. After entries close, the box is not shown and the route refuses with the closed state.
 - **Members who joined before the flag** joined under an 18+ statement and keep their entries.
-- **A new rules revision** states the box as the way to enter, copying the current revision and changing only that, in P12's reviewed wording, with the E11-04 archive treatment.
-- **The privacy notice and terms** take P12's reviewed wording for the new age range. A new ADR records the decision, the conditions and the review.
 - **Partners and ambassadors stay 18 and over**, unchanged.
-- **BLOCKED until P12 is supplied.**
+- **Not in this ticket:** the rules revision, the privacy notice and terms, and the final wording, all in E11.8-07.
 
 **Acceptance criteria:**
 - With the flag on, the site says "13 and over" everywhere it states the joining age, and every giveaway mention says 18 and over
@@ -4706,11 +4740,37 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - Both boxes are unticked by default and independent of each other, and neither is needed to join
 - **Entering from `/me`** verifies Turnstile first, is audited, grants exactly the entries ticking at signup would have, changes nothing else, is idempotent, and is refused after entries close
 - Earlier members keep their entries, and `/me` states each member's real entry status
-- The new revision is hash-valid, and every earlier one is unchanged and archived
+- **The flag's enable command refuses** while the reviewed-wording setting is false
+- The referral-entry setting is validated, defaults to no, and both values are tested
 - The flag-off path is tested, and the privacy, accessibility, copy and layout checks pass on every signup placement
 
-**Tests:** The age statement on every surface · the giveaway box at accrual · the referral-entry rule per P12 · the opt-in wording version · default-unticked boxes · entering from `/me`, with its Turnstile, idempotency and closed-state red paths · earlier members · `/me` entry status · the rules revision · flag off · the privacy, accessibility and layout suites on the form.
-**Docs:** `docs/features/signup.md` · `docs/features/giveaway.md` · `docs/features/member-status.md` · `docs/legal/compliance.md` · a new ADR
+**Tests:** The age statement on every surface · the giveaway box at accrual · the referral-entry setting, both values · the opt-in wording version · default-unticked boxes · entering from `/me`, with its Turnstile, idempotency and closed-state red paths · earlier members · `/me` entry status · the enable-command refusal · flag off · the privacy, accessibility and layout suites on the form.
+**Docs:** `docs/features/signup.md` · `docs/features/giveaway.md` · `docs/features/member-status.md`
+
+### E11.8-07 — Apply the lawyer's review: privacy, terms and the age change
+**Model:** Opus 5.5 — High · **Priority:** Medium · **Flag:** `waitlist.age_13` · **Area:** frontend, backend
+**Why this model:** it replaces legal text on public pages and publishes an immutable giveaway rules revision.
+
+**Runs after E12-07 (founder, 2026-11-25).** It is the only ticket that waits on the lawyer, so the site can be built, deployed and launched at 18+ without it. No QA gate follows it: its acceptance criteria and CI's privacy, accessibility and copy gates are its audit.
+
+**Build:**
+- **The reviewed wording,** from P12, replaces E11.8-06's draft wording for the age statement, the 16+ marketing box (a new consent wording version) and the 18+ giveaway box at signup and on `/me`.
+- **The referral-entry setting** takes P12's answer.
+- **A new rules revision** states the 18+ box as the way to enter, copying the current revision and changing only that, in P12's reviewed wording, with the E11-04 archive treatment.
+- **`/privacy` and `/terms`** take P12's reviewed wording in full, for the whole pages and the new age range. A reviewed point that needs a change in behaviour, not wording, is reported to the founder for its own ticket, never built here.
+- **A new ADR** records the review, its scope and the age decision, and states which part of ADR-030's waiver it replaces.
+- **The reviewed-wording setting** becomes true, so the founder can switch `waitlist.age_13` on.
+- **BLOCKED until P12 is supplied.**
+
+**Acceptance criteria:**
+- Every age and box string matches P12 exactly, from the copy layer, with the new consent wording version recorded
+- The new revision is hash-valid, changes only the entry sentence, and every earlier revision is unchanged and archived
+- `/privacy` and `/terms` match P12 exactly, and the claims reconciliation (E11-04) passes
+- With the flag on, the site says "13 and over" and every giveaway mention says 18 and over; the flag-off path still says 18 and over
+- The privacy, accessibility, copy and layout checks pass on every changed page
+
+**Tests:** The reviewed strings · the consent wording version · the rules revision's hash and immutability · the claims reconciliation · the enable command with the setting true · flag on and off · the privacy, accessibility and layout suites.
+**Docs:** `docs/legal/compliance.md` · `docs/features/signup.md` · `docs/features/giveaway.md` · a new ADR · ADR-030
 
 ## Epic E12 — Production bring-up
 
@@ -4788,18 +4848,18 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 **Tests:** The restore drill is the test.
 **Docs:** `docs/engineering/ci-cd.md#backups` · `docs/architecture/adr/003-self-hosted-vps.md`
 
-### E12-05 — Cloudflare: proxy, origin lock-down, Turnstile and Web Analytics
+### E12-05 — Cloudflare: proxy, origin lock-down and Turnstile, with Web Analytics off
 **Model:** Opus 5.5 — High · **Priority:** Highest · **Flag:** — · **Area:** security
 **Why this model:** an origin reachable around the proxy defeats the caching the spike plan depends on and exposes the box directly.
 
-**Build:** Put the zone in front of the host, proxied. Restrict the origin to Cloudflare. Move Turnstile and Web Analytics to production keys. Implement and verify the recorded landing-cache contract: a ref-less/default-flag response is cached with `X-Valstara-Flag-Generation` in the custom key (no country since ADR-026); `?ref=` and non-default flag states remain `private, no-store`. Verify static-asset cache behaviour as well.
+**Build:** Put the zone in front of the host, proxied. Restrict the origin to Cloudflare. Move Turnstile to production keys. **Keep Cloudflare Web Analytics switched off for the zone, including its automatic beacon injection** (founder, 2026-11-25: Umami is the only analytics; the beacon loads from `static.cloudflareinsights.com`, an off-origin request standing rule 1 does not allow). Implement and verify the recorded landing-cache contract: a ref-less/default-flag response is cached with `X-Valstara-Flag-Generation` in the custom key (no country since ADR-026); `?ref=` and non-default flag states remain `private, no-store`. Verify static-asset cache behaviour as well.
 
 **Acceptance criteria:**
 - **The origin is not reachable except through Cloudflare** — verified by attempting a direct connection, from outside
 - TLS terminates correctly; no mixed content; security headers as documented
 - **Turnstile verifies server-side with production keys**, and a failure still fails closed
 - **The anonymous/default landing page and static assets are served from Cloudflare's cache** — cache-status and cache-key assertions cover two flag generations and prove the key does not vary by country; `?ref=` and a non-default flag state are confirmed misses with `private, no-store`
-- Cloudflare Web Analytics reports, and **still sets no cookie** — the privacy gate re-run against the live site
+- **No page loads the Cloudflare Web Analytics beacon or calls `/cdn-cgi/rum`**, and nothing sets a cookie or writes storage — the privacy gate re-run against the live site, with the zone's Web Analytics setting recorded as off
 
 **Founder-authorised 2026-11-17:** the same cache contract covers the price routes of E11.6-10 to E11.6-13 — a ref-less, default-flag price page is served from Cloudflare's cache, and a `?ref=` or non-default flag state is a confirmed miss with `private, no-store`, asserted on one route of each price page kind.
 
@@ -4941,7 +5001,8 @@ The founder's brief targeted 40–60 hours for the partner programme. The founde
 | E11.7-13 Partner digest | 09, 10 | 4 h | |
 | E11.7-14 Attribution export, hand-over | 07, 03 | 5 h | |
 | E11.7-15 Seed data, audit, sign-off | 01–14 | 5 h | |
-| **E11.7 total: 78 h** | | **63 h** | **15 h** |
+| E11.7-16 Partner announcements | 13 | 4 h | |
+| **E11.7 total: 82 h** | | **67 h** | **15 h** |
 
 **The partner programme lands at 63 h, 3 h over the brief's 60-hour ceiling.** The overrun is the repository's standing rules: personal-data export and erasure for every new table, the audit, and the flag-off paths. If it must come down, the next cut is the digest (E11.7-13, 4 h): the founder sends a quarterly update from the partners CSV instead.
 
@@ -4960,8 +5021,9 @@ The founder's brief targeted 40–60 hours for the partner programme. The founde
 | E11.8-03 The founder note in the weekly update | E8-07 (the weekly send) | 4 h |
 | E11.8-04 The referral reminder in the welcome email | E11.7-08 (the partner welcome line) | 2 h |
 | E11.8-05 The giveaway rules revision with the new dates | E11-04 (the revision pattern) | 3 h |
-| E11.8-06 The waitlist at 13 and over, with an 18+ giveaway box | E11.8-05; P12 | 10 h |
-| **E11.8 total** | | **30 h** |
+| E11.8-06 The waitlist at 13 and over, with an 18+ giveaway box | E11.8-05 | 9 h |
+| E11.8-07 Apply the lawyer's review: privacy, terms and the age change | E11.8-06; E12-07; P12 | 4 h |
+| **E11.8 total** | | **33 h** |
 
 ---
 
