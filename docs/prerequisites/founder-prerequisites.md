@@ -20,6 +20,7 @@
 | **P6** | Provision the production VPS | ⚪ Deferred (by design) | Epic E12 | Before E12 |
 | **P3a** | Brand token values | ✅ Satisfied | — | Done |
 | **P10** | Partner asset kit files and video links | ⚪ Optional; none supplied yet | Nothing (E11.7-11 shipped without them) | Any time |
+| **P11** | The Trust Ledger's founder text | ✅ Supplied 2026-11-25 | E11.8-01: the Trust Ledger page | Done |
 
 **P1 is complete; sender-reputation warming continues through E11-08/E12-07. P2 is waived by the founder under ADR-029. P3b is complete: the final copy is in `docs/prerequisites/p3b-trust-pages-copy.md` and the three content files. P8 is supplied: the provider list is in `docs/prerequisites/p8-provider-list.md` and the logos in `docs/prerequisites/p8-logos/`.**
 
@@ -304,6 +305,21 @@ Adding a file or video is a content change, through an ordinary pull request wit
 
 ### Source docs
 `docs/plan/development-plan.md` §2 (P10), E11.7-11 · `docs/features/partner-programme.md#the-asset-kit`
+
+---
+
+## P11 — The Trust Ledger's founder text
+
+- **Status:** ✅ **Supplied 2026-11-25.** The text is in `docs/prerequisites/p11-trust-ledger-text.md`: the "How we count" section with the definitions of an evaluated, verified and rejected supplier, the December 2026 entry's founder sections, and the line that links `/guarantee` to the Ledger.
+- **Nature:** Founder input (founder-authorised 2026-11-24)
+- **Gates:** nothing any more; E11.8-01 can use it.
+- **Deadline:** Done.
+
+### Before the first entry is published
+A published entry never changes, so check the three items at the top of the P11 record first: the go-live date (the policy dates read 1 December 2026), the partner counts (`partners list`), and whether giveaway entries are open.
+
+### Source docs
+`docs/prerequisites/p11-trust-ledger-text.md` · `docs/plan/development-plan.md` §2 (P11), E11.8-01 · `docs/features/trust-ledger.md`
 
 ---
 
