@@ -161,6 +161,7 @@ interface Graph {
     readonly active: string;
     readonly paused: string;
     readonly terminated: string;
+    readonly suppressed: string;
     readonly excluded: readonly string[];
   };
   readonly exportedEdges: {
@@ -170,6 +171,7 @@ interface Graph {
     readonly ambassador: string;
     readonly member: string;
     readonly memberVoided: string;
+    readonly suppressedPartnerEdge: string;
   };
   readonly excludedEdges: readonly string[];
   readonly memberId: string;
@@ -181,8 +183,9 @@ interface Graph {
 
 /**
  * One attribution graph covering every inclusion rule: partner edges by each
- * method, member edges, voids, edges and people outside the export set, held
- * and void coupons, and both kinds of separately carried welcome discount.
+ * method, member edges, voids, edges and people outside the export set, a
+ * contracted partner whose address is suppressed (D-073 Q3), held and void
+ * coupons, and both kinds of separately carried welcome discount.
  */
 async function seedGraph(f: PartnerFixture): Promise<Graph> {
   const active = await partner(f, 'active');
@@ -201,6 +204,12 @@ async function seedGraph(f: PartnerFixture): Promise<Graph> {
     text: `UPDATE subscriber SET status = 'disqualified', disqualified_at = '2026-11-08T10:00:00Z',
       disqualification_previous_status = 'verified' WHERE id = $1`,
     values: [disqualifiedPartner.subscriberId],
+  });
+  // A contracted partner whose member record left the waitlist.
+  const departedPartner = await partner(f, 'active');
+  await f.owner.execute({
+    text: `UPDATE subscriber SET status = 'unsubscribed' WHERE id = $1`,
+    values: [departedPartner.subscriberId],
   });
 
   const memberId = await member(f, { wave: 'wave-2' });
@@ -231,9 +240,23 @@ async function seedGraph(f: PartnerFixture): Promise<Graph> {
   const memberVoided = await edge(f, memberId, await member(f), {
     voided: true,
   });
+  // D-073 Q3: the partner contract, not mail consent, carries the partner
+  // edge of a verified partner whose address is suppressed; the friend's
+  // discount travels on the edge.
+  const suppressedFriend = await friend();
+  const suppressedPartnerEdge = await edge(
+    f,
+    suppressedPartner.subscriberId,
+    suppressedFriend,
+    { partnerId: suppressedPartner.id, discount: 20 },
+  );
 
   const pending = await member(f, { status: 'pending' });
   const unsubscribed = await member(f, { status: 'unsubscribed' });
+  const departedFriend = await member(f, {
+    status: 'unsubscribed',
+    wave: 'wave-1',
+  });
   const excludedEdges = [
     // Waiting on the referred person's confirmation.
     await edge(f, memberId, pending, { state: 'attributed' }),
@@ -245,9 +268,9 @@ async function seedGraph(f: PartnerFixture): Promise<Graph> {
     }),
     // The referred person left the waitlist.
     await edge(f, memberId, unsubscribed),
-    // The partner's address is suppressed: the friend keeps the discount.
-    await edge(f, suppressedPartner.subscriberId, await friend(), {
-      partnerId: suppressedPartner.id,
+    // The partner left the waitlist: the friend keeps the discount.
+    await edge(f, departedPartner.subscriberId, await friend(), {
+      partnerId: departedPartner.id,
       discount: 20,
     }),
     // The partner was disqualified: the edge is rejected, the perk kept.
@@ -258,11 +281,20 @@ async function seedGraph(f: PartnerFixture): Promise<Graph> {
       partnerId: disqualifiedPartner.id,
       discount: 10,
     }),
+    // A suppressed partner's member edge follows the member rule: out.
+    await edge(f, suppressedPartner.subscriberId, await member(f)),
+    // A suppressed partner's partner edge to a friend outside the set.
+    await edge(f, suppressedPartner.subscriberId, departedFriend, {
+      partnerId: suppressedPartner.id,
+      discount: 15,
+    }),
   ];
-  const suppressedFriend = (await f.owner.readOne<{ referred_id: string }>({
-    text: 'SELECT referred_id FROM referral_edge WHERE id = $1',
-    values: [excludedEdges[3]],
-  }))!.referred_id;
+  const departedPartnerFriend = (await f.owner.readOne<{ referred_id: string }>(
+    {
+      text: 'SELECT referred_id FROM referral_edge WHERE id = $1',
+      values: [excludedEdges[3]],
+    },
+  ))!.referred_id;
   const disqualifiedFriend = (await f.owner.readOne<{ referred_id: string }>({
     text: 'SELECT referred_id FROM referral_edge WHERE id = $1',
     values: [excludedEdges[4]],
@@ -298,11 +330,12 @@ async function seedGraph(f: PartnerFixture): Promise<Graph> {
       active: active.id,
       paused: paused.id,
       terminated: terminated.id,
+      suppressed: suppressedPartner.id,
       excluded: [
         approved.id,
         rejected.id,
-        suppressedPartner.id,
         disqualifiedPartner.id,
+        departedPartner.id,
       ],
     },
     exportedEdges: {
@@ -312,22 +345,24 @@ async function seedGraph(f: PartnerFixture): Promise<Graph> {
       ambassador,
       member: memberEdge,
       memberVoided,
+      suppressedPartnerEdge,
     },
     excludedEdges,
     memberId,
     heldCoupons,
     excludedCoupons,
     welcomeDiscounts: {
-      [suppressedFriend]: 20,
+      [departedPartnerFriend]: 20,
       [disqualifiedFriend]: 10,
       [retained]: 15,
     },
     outsideSet: [
       pending,
       unsubscribed,
+      departedFriend,
       retainedOutside,
-      suppressedPartner.subscriberId,
       disqualifiedPartner.subscriberId,
+      departedPartner.subscriberId,
     ],
   };
 }
@@ -775,8 +810,8 @@ test('idempotency: two exports of an unchanged database are byte-identical, and 
   await exportWithCommand(f, second);
 
   assert.deepEqual(JSON.parse(printed.stdout), {
-    partners: 3,
-    referrals: 626,
+    partners: 4,
+    referrals: 627,
     coupons: 3,
     welcome_discounts: 3,
   });
@@ -819,7 +854,7 @@ test('idempotency: two exports of an unchanged database are byte-identical, and 
   assert.equal(audits.length, 2);
   for (const audit of audits) {
     assert.equal(audit.actor, actor);
-    assert.equal(audit.detail.referral_count, 626);
+    assert.equal(audit.detail.referral_count, 627);
     assert.equal(audit.detail.welcome_discount_count, 3);
     assert.equal(audit.detail.page_size, 500);
   }
@@ -927,6 +962,7 @@ test('graph completeness with voids: every confirmed partner and member edge in 
       graph.partners.active,
       graph.partners.paused,
       graph.partners.terminated,
+      graph.partners.suppressed,
     ].sort(),
   );
   assert.deepEqual(
@@ -935,8 +971,15 @@ test('graph completeness with voids: every confirmed partner and member edge in 
       [graph.partners.active]: 'active',
       [graph.partners.paused]: 'paused',
       [graph.partners.terminated]: 'terminated',
+      [graph.partners.suppressed]: 'active',
     },
   );
+  for (const excluded of graph.partners.excluded) {
+    assert.equal(
+      partners.some((row) => row.partner_id === excluded),
+      false,
+    );
+  }
   for (const row of partners) {
     assert.equal(row.founding_partner, true);
     assert.equal(row.approved_at, '2026-11-03T09:00:00.000Z');
@@ -971,6 +1014,7 @@ test('graph completeness with voids: every confirmed partner and member edge in 
     graph.exportedEdges.retroactive,
     graph.exportedEdges.ambassador,
     graph.exportedEdges.member,
+    graph.exportedEdges.suppressedPartnerEdge,
   ]) {
     assert.equal(byId.get(id)!.voided, false);
     assert.equal(byId.get(id)!.voided_at, null);
@@ -1006,6 +1050,7 @@ test('graph completeness with voids: every confirmed partner and member edge in 
       ambassador: ['partner', 'link'],
       member: ['member', 'code'],
       memberVoided: ['member', 'link'],
+      suppressedPartnerEdge: ['partner', 'link'],
     },
   );
   assert.equal(
@@ -1065,6 +1110,11 @@ test('coupon and discount fields: held coupons with their expiry, welcome discou
   assert.deepEqual(discount(graph.exportedEdges.partnerLink), [10, expiry]);
   assert.deepEqual(discount(graph.exportedEdges.retroactive), [20, expiry]);
   assert.deepEqual(discount(graph.exportedEdges.ambassador), [15, expiry]);
+  // D-073 Q3: the suppressed partner's friend has the discount on the edge.
+  assert.deepEqual(discount(graph.exportedEdges.suppressedPartnerEdge), [
+    20,
+    expiry,
+  ]);
   // A voided partner edge grants nothing; a member edge never has one.
   assert.deepEqual(discount(graph.exportedEdges.partnerCodeVoided), [
     null,

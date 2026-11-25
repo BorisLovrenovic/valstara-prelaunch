@@ -95,11 +95,12 @@ This is the contract the main platform's affiliate system imports the pre-launch
 
 The attribution hand-over follows the [handoff sequence](#the-handoff-sequence):
 
-1. **Freeze writes** (steps 1–5): signups closed, the verification window run, public writes blocked, maintenance paused and the snapshot taken.
-2. **Export** (step 6): `npm run export:attribution -- --actor=<operator> --output=<new private directory>`, after the handoff export. Two runs of an unchanged database are byte-identical.
-3. **Import** (steps 7–9): customers first, then the attribution export, idempotently, by the keys in step 9.
-4. **Switch `/r/` routing** (step 11): the storefront serves `/r/{CODE}` under the contract below from the moment of the swap.
-5. **Keep this database read-only for 90 days** (step 12, ADR-022) as the record of how every attribution came about, then review it for deletion.
+1. **Sign or reject every unsigned partner** (D-073 Q2, before step 1). Only a partner with a signed contract (`active`, `paused` or `terminated`) is exported, so no partner may be left `approved` or `contract_sent` at the freeze. List them with `npm run admin -- partners list --status approved` and `npm run admin -- partners list --status contract_sent`. Record each signed contract with `partners contract-signed`, which activates the partner, and close each one that will not go ahead with `partners reject` ([Reviewing partners](runbook.md#reviewing-partners-e117-06)). Both lists must be empty before writes are frozen; do not freeze while either holds a partner.
+2. **Freeze writes** (steps 1–5): signups closed, the verification window run, public writes blocked, maintenance paused and the snapshot taken.
+3. **Export** (step 6): `npm run export:attribution -- --actor=<operator> --output=<new private directory>`, after the handoff export. Two runs of an unchanged database are byte-identical.
+4. **Import** (steps 7–9): customers first, then the attribution export, idempotently, by the keys in step 9.
+5. **Switch `/r/` routing** (step 11): the storefront serves `/r/{CODE}` under the contract below from the moment of the swap.
+6. **Keep this database read-only for 90 days** (step 12, ADR-022) as the record of how every attribution came about, then review it for deletion.
 
 ### The `/r/{CODE}` URL contract
 
@@ -189,7 +190,9 @@ The attribution hand-over follows the [handoff sequence](#the-handoff-sequence):
 | `wave_one` | Always `true`: they keep the wave-1 place that came with it |
 | `expires_at` | When it expires |
 
-A `welcome_discount` record is the friend's own entitlement, kept where no exported referral carries it: their partner was erased (D-058), or their partner left the export set (for example, was disqualified). **It carries no partner attribution, referral credit or commission.** A friend's welcome discount appears exactly once, on their partner referral or in this record.
+A `welcome_discount` record is the friend's own entitlement, kept where no exported referral carries it: their partner was erased (D-058), or their partner referral is not exported because the partner was disqualified, left the waitlist, or had their personal data purged (D-073 Q4). **It carries no partner attribution, referral credit or commission.** A friend's welcome discount appears exactly once, on their partner referral or in this record.
+
+**Who is exported.** Partners with a signed contract (`active`, `paused`, `terminated`) whose member record is verified, and the referrals and coupons of people in the customer export set (D-073 Q1, Q2). A contracted partner whose address is suppressed is still exported, with their partner referrals to friends in the set, because the partner contract, not waitlist mail consent, is the basis for the commission attribution (D-073 Q3). A suppressed partner is not in the customer handoff, so their `email_normalised` matches no imported customer; the main platform links them by `partner_id` for commission, and must not treat the partner record as a customer account or a marketing permission. Their member referrals and coupons follow the customer export set and are not exported.
 
 ### Coupons and welcome discounts
 

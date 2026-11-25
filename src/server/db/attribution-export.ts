@@ -20,21 +20,46 @@ function inExportSet(alias: string): string {
     SELECT 1 FROM suppression x WHERE x.email_normalised = ${alias}.email_normalised)`;
 }
 
+/**
+ * A contracted partner (D-073 Q2): active, paused or terminated, personal
+ * data not purged, and the member subscriber verified. Mail suppression does
+ * not remove them (D-073 Q3): the partner contract, not waitlist mail
+ * consent, is the basis for handing over the commission attribution. A
+ * departed, disqualified or erased member record is not `verified`.
+ */
+function contractedPartner(partner: string, member: string): string {
+  return `${partner}.status IN ('active', 'paused', 'terminated')
+    AND ${partner}.personal_data_purged_at IS NULL
+    AND ${member}.status = 'verified'`;
+}
+
 const partnerRows = `
   FROM partner p
   JOIN subscriber s ON s.id = p.subscriber_id
   LEFT JOIN referral_code c ON c.owner_kind = 'partner' AND c.owner_id = p.id
-  WHERE p.status IN ('active', 'paused', 'terminated')
-    AND p.personal_data_purged_at IS NULL
-    AND ${inExportSet('s')}`;
+  WHERE ${contractedPartner('p', 's')}`;
 
-/** A confirmed edge, voided or not, whose two people are both in the set. */
+/**
+ * Whether the confirmed edge `e` from referrer `r` is exported, given that
+ * its referred person is in the set: either both people are in the set
+ * (D-073 Q1), or it is a partner edge of an exported partner whose address
+ * is suppressed (D-073 Q3). A suppressed partner's member edges stay out.
+ */
+function exportedEdge(edge: string, referrer: string): string {
+  return `${edge}.state = 'confirmed' AND (${inExportSet(referrer)}
+    OR (${edge}.partner_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM partner xp
+      WHERE xp.id = ${edge}.partner_id AND xp.subscriber_id = ${referrer}.id
+        AND ${contractedPartner('xp', referrer)})))`;
+}
+
+/** A confirmed edge, voided or not, that `exportedEdge` admits. */
 const referralRows = `
   FROM referral_edge e
   JOIN subscriber r ON r.id = e.referrer_id
   JOIN subscriber d ON d.id = e.referred_id
   LEFT JOIN referral_code c ON c.owner_kind = 'partner' AND c.owner_id = e.partner_id
-  WHERE e.state = 'confirmed' AND ${inExportSet('r')} AND ${inExportSet('d')}`;
+  WHERE ${inExportSet('d')} AND ${exportedEdge('e', 'r')}`;
 
 const couponRows = `
   FROM referral_coupon k
@@ -43,10 +68,12 @@ const couponRows = `
 
 /**
  * A friend in the set whose earned welcome discount no referral record
- * carries: the D-058 entitlement kept after the partner's erasure, or an
- * earned partner edge whose referrer is outside the set (a disqualified,
- * departed or suppressed partner). A friend has at most one edge, so at most
- * one source applies, and the record names no partner, code or edge.
+ * carries (D-073 Q4): the D-058 entitlement kept after the partner's erasure,
+ * or an earned partner edge that is not exported (a disqualified, departed,
+ * erased or purged partner). A suppressed contracted partner's edge is
+ * exported and carries the discount itself (D-073 Q3). A friend has at most
+ * one edge, so at most one source applies, and the record names no partner,
+ * code or edge.
  */
 const welcomeDiscountRows = `
   FROM subscriber s
@@ -57,7 +84,7 @@ const welcomeDiscountRows = `
     FROM referral_edge e
     JOIN subscriber r ON r.id = e.referrer_id
     WHERE e.referred_id = s.id AND ${earnedPartnerPerkEdge}
-      AND NOT (e.state = 'confirmed' AND ${inExportSet('r')})
+      AND NOT (${exportedEdge('e', 'r')})
   ) earned ON true
   WHERE ${inExportSet('s')}
     AND (t.subscriber_id IS NOT NULL OR earned.welcome_discount_pct IS NOT NULL)`;
