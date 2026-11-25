@@ -67,6 +67,10 @@ COPY --chown=node:node --from=build /app/src/content/partner-countries.json ./sr
 # E11.7-11: the welcome email, rendered by the maintenance worker, reads the kit.
 COPY --chown=node:node --from=build /app/src/content/partner-kit.json ./src/content/partner-kit.json
 COPY --chown=node:node --from=build /app/src/content/partner-message-templates.json ./src/content/partner-message-templates.json
+# E11.7-13: the partner digest, rendered by the maintenance worker, reads the
+# founder's note and the survey version its category counts use.
+COPY --chown=node:node --from=build /app/src/content/partner-digest-note.json ./src/content/partner-digest-note.json
+COPY --chown=node:node --from=build /app/src/server/survey/questions.ts ./src/server/survey/questions.ts
 COPY --chown=node:node package.json ./package.json
 
 USER node

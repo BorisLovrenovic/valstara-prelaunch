@@ -4,6 +4,7 @@ import type { ReferralAttributionConfiguration } from '../config.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import type { FlagService } from '../flags/types.ts';
 import { partnerActivationBatchLimit } from '../partner/activation.ts';
+import { partnerDigestBatchLimit } from '../partner/digest.ts';
 import { partnerMilestoneMailBatchLimit } from '../partner/milestone-mail.ts';
 import { partnerWelcomeBatchLimit } from '../partner/welcome.ts';
 import { createReferralAttributionMaintenanceJob } from '../referral/attribution-maintenance.ts';
@@ -35,6 +36,7 @@ export type MaintenanceJobName =
   | 'partner_welcome'
   | 'partner_first_signup'
   | 'partner_invite'
+  | 'partner_digest'
   | 'partner_application_purge'
   | 'email_quota';
 
@@ -67,6 +69,7 @@ export interface VerificationMaintenanceJobs {
   readonly partnerWelcome?: MaintenanceJob;
   readonly partnerFirstSignup?: MaintenanceJob;
   readonly partnerInvite?: MaintenanceJob;
+  readonly partnerDigest?: MaintenanceJob;
   readonly partnerLeaderboard?: MaintenanceJob;
   readonly emailQuota?: VerificationRateJob;
 }
@@ -102,6 +105,7 @@ export function createMaintenanceFailureReporter(
       job === 'giveaway_entry_reconciliation' ||
       job === 'email_reconciliation' ||
       job === 'weekly_campaign' ||
+      job === 'partner_digest' ||
       job === 'leaderboard_snapshot' ||
       job === 'leaderboard_snapshot_purge' ||
       job === 'partner_leaderboard_snapshot'
@@ -275,6 +279,14 @@ export function createVerificationMaintenanceScheduler(
     }
     if (jobs.weeklyCampaign !== undefined) {
       await runJob('weekly_campaign', jobs.weeklyCampaign, 100);
+    }
+    // E11.7-13: after the partner leaderboard refresh earlier in the cycle.
+    if (jobs.partnerDigest !== undefined) {
+      await runJob(
+        'partner_digest',
+        jobs.partnerDigest,
+        partnerDigestBatchLimit,
+      );
     }
 
     const day = now.toISOString().slice(0, 10);

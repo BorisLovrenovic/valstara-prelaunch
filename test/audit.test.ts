@@ -132,6 +132,7 @@ test('the required audit action registry is complete', () => {
     'partner.type_changed',
     'partner.note_replaced',
     'partner.exported',
+    'partner.optional_email_withdrawn',
   ]);
 });
 

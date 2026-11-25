@@ -32,6 +32,10 @@ Broadcasts (Brevo) are composed from a shared layout: the **weekly update** (inc
 
 Both are queued by the maintenance worker in batches of at most 100 and are one email per business key (`docs/modules/email.md#partner-programme-contact-workflow`).
 
+## The partner digest (E11.7-13)
+
+The partner digest is **optional programme mail**, not marketing (D-071): a Brevo broadcast from `mail.valstara.com`, sent only to partners who chose optional partner programme emails in their dashboard, while `partners.enabled`, `partners.digest` and `email.broadcast` are on. Marketing consent is neither required nor checked; dispatch re-checks the partner's choice, their active status, verification and suppression instead. It reports the period that has just ended, monthly on the 1st by default or weekly on Monday by configuration, and carries counts only, the partner's rank and one founder note from a content file. Its unsubscribe turns off only the partner's optional-email choice. The full rules are in `docs/features/partner-programme.md#the-partner-digest` and `docs/modules/email.md#partner-programme-contact-workflow`.
+
 ## Planned: the founder note and the referral reminder (E11.8-03, E11.8-04)
 
 **Founder decisions, 2026-11-24.**

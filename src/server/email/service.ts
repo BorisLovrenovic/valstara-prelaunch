@@ -35,8 +35,26 @@ export interface EmailProvider {
   }): Promise<{ readonly providerMessageId: string }>;
 }
 
+/** What dispatch knows about the recipient when it asks a renderer. */
+export interface DispatchRecipient {
+  readonly status: string;
+  readonly marketing_consent_at: Date | null;
+}
+
 export interface TemplateRenderer {
   readonly kind: 'transactional' | 'broadcast';
+  /**
+   * The renderer's own dispatch consent check, re-run for every send inside
+   * the dispatch transaction. Suppression is always checked first, for every
+   * renderer. Without one, a broadcast requires a verified recipient with
+   * current marketing consent (ADR-027) and a transactional message requires
+   * nothing more (E11.7-13, D-071).
+   */
+  readonly dispatchConsent?: (input: {
+    readonly connection: DatabaseConnection;
+    readonly subscriberId: string;
+    readonly recipient: DispatchRecipient;
+  }) => Promise<boolean>;
   render(input: {
     readonly email: string;
     readonly payload: Readonly<Record<string, unknown>>;
@@ -153,6 +171,21 @@ export async function prepareDispatchMessage(input: {
   }
   if (message.to !== recipient) throw new Error('recipient_mismatch');
   return { message, headers: unsubscribeHeadersForUrl(targets.headerUrl) };
+}
+
+function dispatchConsent(
+  renderer: TemplateRenderer,
+  connection: DatabaseConnection,
+  subscriberId: string,
+  recipient: DispatchRecipient,
+): Promise<boolean> {
+  if (renderer.dispatchConsent !== undefined)
+    return renderer.dispatchConsent({ connection, subscriberId, recipient });
+  return Promise.resolve(
+    renderer.kind === 'transactional' ||
+      (recipient.status === 'verified' &&
+        recipient.marketing_consent_at !== null),
+  );
 }
 
 export function createEmailService(
@@ -326,9 +359,12 @@ export function createEmailService(
           if (
             recipient === null ||
             recipient.suppressed ||
-            (renderer.kind === 'broadcast' &&
-              (recipient.status !== 'verified' ||
-                recipient.marketing_consent_at === null))
+            !(await dispatchConsent(
+              renderer,
+              connection,
+              row.subscriber_id,
+              recipient,
+            ))
           ) {
             await repo.markFailed(row.id, now, 'recipient_ineligible');
             summary.suppressed += 1;

@@ -14,6 +14,9 @@ export const campaignFlagRegistry = Object.freeze({
   // The partner programme incident lever. Off pauses applications and
   // defers activation effects (docs/features/partner-programme.md#feature-flag).
   'partners.enabled': true,
+  // E11.7-13: the partner digest. Off until the founder turns it on; off, no
+  // digest is queued or sent (docs/features/partner-programme.md#feature-flag).
+  'partners.digest': false,
 } as const);
 
 export type FlagKey = keyof typeof campaignFlagRegistry;

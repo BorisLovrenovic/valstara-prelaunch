@@ -7,6 +7,7 @@ import type { DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
 import { createRateLimitBucketRepository } from '../db/rate-limit-bucket.ts';
 import { createVerificationTokenRepository } from '../db/verification-token.ts';
+import { partnerDigestTemplate } from '../partner/config.ts';
 import { createVerificationService } from '../verification/service.ts';
 import {
   deriveEmailToken,
@@ -230,6 +231,25 @@ export function createUnsubscribeService(
               detail: {
                 source_template: bound?.template ?? 'member_status',
                 email_send_id: bound?.email_send_id ?? null,
+              },
+              requestId: input.requestId,
+              subjectId: auth.subscriberId,
+              subjectType: 'subscriber',
+            });
+          } else if (bound?.template === partnerDigestTemplate) {
+            // E11.7-13 (D-071): the digest is optional programme mail, so its
+            // unsubscribe turns off only the partner's optional-email choice.
+            // Marketing consent, the waitlist place and transactional mail
+            // are unchanged. The audit commits with the token consumption.
+            await repository.withdrawPartnerOptionalEmail(auth.subscriberId);
+            await audit.record({
+              action: 'partner.optional_email_withdrawn',
+              actor: input.actor ?? 'subscriber',
+              // The audit redacts any detail key containing "email", so the
+              // bound email_send row's ID is recorded as `send_id`.
+              detail: {
+                source_template: bound.template,
+                send_id: bound.email_send_id,
               },
               requestId: input.requestId,
               subjectId: auth.subscriberId,

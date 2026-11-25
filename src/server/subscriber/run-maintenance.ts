@@ -11,6 +11,7 @@ import {
   getReferralAttributionConfiguration,
   getWeeklySendConfiguration,
   getEmailQuotaConfiguration,
+  getPartnerDigestConfiguration,
 } from '../config.ts';
 import { createMaintenanceHeartbeatRepository } from '../db/maintenance-heartbeat.ts';
 import { createPool } from '../db/pool.ts';
@@ -57,6 +58,7 @@ import {
   createPartnerInviteJob,
 } from '../partner/milestone-mail.ts';
 import { createPartnerWelcomeJob } from '../partner/welcome.ts';
+import { createPartnerDigestJob } from '../partner/digest.ts';
 import { createFlagService } from '../flags/service.ts';
 import { createGiveawayEntryReconciliationJob } from '../giveaway/reconcile.ts';
 import { currentRulesFromFiles } from '../giveaway/current-rules-file.ts';
@@ -256,6 +258,15 @@ const scheduler = createReferralAttributionMaintenanceScheduler(
       clock,
       tokenSecret: resendConfiguration.emailTokenSecret,
       schedule: getWeeklySendConfiguration(),
+    }),
+    partnerDigest: createPartnerDigestJob({
+      database,
+      flags: broadcastFlags,
+      email: createEmailQueue(database, clock),
+      alerts,
+      clock,
+      schedule: getPartnerDigestConfiguration(),
+      tokenSecret: resendConfiguration.emailTokenSecret,
     }),
     emailQuota: createEmailQuotaService(
       database,

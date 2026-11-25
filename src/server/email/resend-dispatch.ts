@@ -9,7 +9,14 @@ import { maintenanceLoopIntervalMs } from '../subscriber/heartbeat-file.ts';
 
 import { createPartnerWelcomeRepository } from '../db/partner-welcome.ts';
 import { dsrRenderers } from '../dsr/templates.ts';
-import { partnerInviteTemplate } from '../partner/config.ts';
+import {
+  partnerDigestTemplate,
+  partnerInviteTemplate,
+} from '../partner/config.ts';
+import {
+  partnerDigestData,
+  partnerDigestRenderer,
+} from '../partner/digest-template.ts';
 import {
   partnerApplicationRenderers,
   partnerInviteRenderer,
@@ -91,6 +98,16 @@ export function createResendDispatcher(
                   config.emailBaseUrl,
                   broadcast.provider.sendingDomain,
                 ),
+              ] as const,
+              // E11.7-13: the partner digest is optional programme mail on
+              // the broadcast domain, with its own dispatch consent check.
+              [
+                partnerDigestTemplate,
+                partnerDigestRenderer({
+                  baseUrl: config.emailBaseUrl,
+                  sendingDomain: broadcast.provider.sendingDomain,
+                  data: partnerDigestData(database),
+                }),
               ] as const,
             ]
           : []),

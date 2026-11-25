@@ -258,6 +258,9 @@ test('production Compose uses the SHA image and hard-disables swap', async () =>
     'NODE_ENV',
     'P1_ALERT_WEBHOOK_TOKEN',
     'P1_ALERT_WEBHOOK_URL',
+    // E11.7-13: the partner digest's schedule, read by the maintenance worker.
+    'PARTNER_DIGEST_CADENCE',
+    'PARTNER_DIGEST_SEND_UTC',
     'REFERRAL_ATTRIBUTION_BASELINE_DAYS',
     'REFERRAL_ATTRIBUTION_COHORT_HOURS',
     'REFERRAL_ATTRIBUTION_DROP_PERCENT',

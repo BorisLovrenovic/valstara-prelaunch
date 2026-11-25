@@ -47,6 +47,8 @@ const optionalKeys = [
   'BREVO_SENDING_DOMAIN',
   'RESEND_WEBHOOK_GAP_MINUTES',
   'WEEKLY_SEND_UTC',
+  'PARTNER_DIGEST_CADENCE',
+  'PARTNER_DIGEST_SEND_UTC',
   'RESEND_TIER',
   'BREVO_TIER',
   'RESEND_DAILY_CAP',
@@ -124,6 +126,7 @@ export function validateConfig(environment: NodeJS.ProcessEnv): AppConfig {
       environment.WEEKLY_SEND_UTC === undefined
         ? null
         : getWeeklySendConfiguration(environment),
+    partnerDigest: getPartnerDigestConfiguration(environment),
     emailQuota: getEmailQuotaConfiguration(environment),
   };
   return Object.freeze(config);
@@ -880,6 +883,7 @@ export interface AppConfig {
     readonly hour: number;
     readonly minute: number;
   } | null;
+  readonly partnerDigest: PartnerDigestConfiguration;
   readonly emailQuota: EmailQuotaConfiguration;
 }
 
@@ -933,6 +937,35 @@ export function getWeeklySendConfiguration(
     isoWeekday: Number(match[1]),
     hour: Number(match[2]),
     minute: Number(match[3]),
+  });
+}
+
+/** E11.7-13: when the partner digest sends, and which period it reports. */
+export interface PartnerDigestConfiguration {
+  readonly cadence: 'monthly' | 'weekly';
+  readonly hour: number;
+  readonly minute: number;
+}
+
+/**
+ * The digest's cadence (`monthly`, the default, or `weekly`) and its UTC send
+ * time (`HH:MM`, default `09:00`). Boot rejects any other value (D-071).
+ */
+export function getPartnerDigestConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): PartnerDigestConfiguration {
+  const cadence =
+    optionalValue(environment, 'PARTNER_DIGEST_CADENCE') ?? 'monthly';
+  if (cadence !== 'monthly' && cadence !== 'weekly')
+    return invalid('PARTNER_DIGEST_CADENCE', 'must be monthly or weekly');
+  const time = optionalValue(environment, 'PARTNER_DIGEST_SEND_UTC') ?? '09:00';
+  const match = /^([01][0-9]|2[0-3]):([0-5][0-9])$/u.exec(time);
+  if (match === null)
+    return invalid('PARTNER_DIGEST_SEND_UTC', 'must be HH:MM in UTC');
+  return Object.freeze({
+    cadence,
+    hour: Number(match[1]),
+    minute: Number(match[2]),
   });
 }
 
