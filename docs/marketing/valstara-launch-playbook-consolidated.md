@@ -449,7 +449,7 @@ It starts reporting real operations, with **fixed definitions that are never cha
 - links from `/guarantee`, `/partners` and the footer;
 - `/trust-ledger` is a permanent URL the storefront keeps.
 
-**It waits on P11:** the "How we count" text, the first entry's founder sections (with the definitions of an evaluated, verified and rejected supplier) and the `/guarantee` link line.
+**P11 is supplied (25 Nov 2026):** the "How we count" text, the first entry's founder sections (with the definitions of an evaluated, verified and rejected supplier) and the `/guarantee` link line are in `docs/prerequisites/p11-trust-ledger-text.md`.
 
 **The founder's monthly work:** about 1–2 hours to fill in the numbers and write the three short sections.
 
@@ -957,7 +957,7 @@ The founder authorised the changes in 11.1 "everywhere in all documents", and th
 | Competitor commission evidence (0.4) | Network listings found | Dated captures of official terms before first public use; re-checked each quarter |
 | GEO prompt set (7.3) | Approach agreed | The set is built; then tracked monthly, indefinitely |
 | The ten buyer questions (9.5) | Starting set agreed | Answers written and approved; added to as new questions surface |
-| The Trust Ledger (3.6) | Defined; ticket E11.8-01 placed | P11 is supplied, E11.8-01 is built, the first entry ships in December 2026; then monthly, indefinitely |
+| The Trust Ledger (3.6) | Defined; ticket E11.8-01 placed; P11 supplied 25 Nov 2026 | E11.8-01 is built, the first entry ships in December 2026; then monthly, indefinitely |
 | Per-platform signup report (0.7) | Ticket E11.8-02 placed | E11.8-02 is built, and the UTM convention is in use on every link we control |
 
 ## 11.4 Still open, and what moved to the to-do list (24 November 2026)
@@ -984,8 +984,8 @@ These are tasks, not decisions. Each is settled when its task is worked on, and 
 - the post-launch partner competition: prizes, bonus threshold, written rules, announcement date (was D5);
 - creator review subscriptions before the store exists: delivery, timing, what the review shows (was D7; goes with the asset kit);
 - trademark clearance for "Valstara" (was D12);
-- the definitions of an evaluated, verified and rejected supplier for the Ledger (was D13, part of P11);
-- every founder input: P10, P5, P6, P7, P11, P12 (the lawyer's review of the privacy notice, the terms and the age change, including Q6), the weekly founder notes, the partner and creator contract template, the giveaway bundle contents and sanctions list, the ten approved buyer answers, the digest's founder note, and the dated competitor-rate captures;
+- ~~the definitions of an evaluated, verified and rejected supplier for the Ledger (was D13, part of P11)~~ supplied with P11 on 25 Nov 2026;
+- every founder input: P10, P5, P6, P7, P12 (the lawyer's review of the privacy notice, the terms and the age change, including Q6), the weekly founder notes, the partner and creator contract template, the giveaway bundle contents and sanctions list, the ten approved buyer answers, the digest's founder note, and the dated competitor-rate captures;
 - every research task: platform giveaway rules, direct-message and link rules, ambassador and campus rules per country, creator targeting, audience research, journalist lists, the GEO prompt set, and Loom's limits.
 
 **Settled, no longer open:** Q1–Q5 (above); where the new tickets go (Epic E11.8); post-launch rates (case-by-case partners plus a separate affiliate system, decided outside this repository); same-network signups (review only); the Discord response time and moderation; the supplier register (none).
