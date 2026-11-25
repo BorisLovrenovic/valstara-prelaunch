@@ -19,6 +19,10 @@ import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { createPriceSite } from '../src/server/prices/site.ts';
 import { committedPriceData, inPool } from './helpers/price-audit.mjs';
 import {
+  partnerAuditStates,
+  runPartnerSeed,
+} from './helpers/partner-audit.mjs';
+import {
   containerOwnerArguments,
   removeOrphanedContainers,
 } from './helpers/container-owner.mjs';
@@ -341,7 +345,13 @@ async function crawl(
   origin,
   path,
   storageMutation,
-  { serverError = false, notFound = notFoundPaths.has(path) } = {},
+  {
+    serverError = false,
+    notFound = notFoundPaths.has(path),
+    // E11.7-15: the asset kit shows only while the partner is active
+    // (E11.7-11); a paused partner's authenticated dashboard has none.
+    partnerKit = true,
+  } = {},
 ) {
   const pageUrl = new URL(`http://valstara.test${path}`);
   const expectedForms = serverError ? 0 : expectedProtectedFormCount(pageUrl);
@@ -691,10 +701,11 @@ async function crawl(
             .count(),
           1,
         );
-        // E11.7-11: the asset kit renders for the authenticated partner.
+        // E11.7-11: the asset kit renders for the authenticated partner
+        // whose link credits signups.
         assert.equal(
           await page.locator('#partner-kit').count(),
-          authenticated ? 1 : 0,
+          authenticated && partnerKit ? 1 : 0,
         );
       } else {
         assert.equal(
@@ -1118,6 +1129,93 @@ test(
       });
     } finally {
       pricePagePaths.clear();
+      await remote.browser.close();
+      await executeFile('docker', ['rm', '--force', browserContainer]).catch(
+        () => {},
+      );
+      if (remote.child.exitCode === null) {
+        const exited = once(remote.child, 'exit');
+        remote.child.kill();
+        await exited;
+      }
+    }
+  },
+);
+
+test(
+  'E11.7-15 crawls every partner programme state of the seeded programme: no cookie, no storage beyond the theme and Turnstile, no third party beyond Turnstile',
+  { timeout: 900_000 },
+  async () => {
+    // The programme the local seed writes (scripts/seed-partner-programme.ts),
+    // crawled as the repository's build serves it: every new route and every
+    // changed surface in each GET state test/helpers/partner-audit.mjs lists
+    // (a POST's page is the browser audit's), each member's and friend's
+    // /me, the verification links, every partner's dashboard and flyer. The
+    // same crawl as every route above.
+    await ensureAppBuild();
+    const remote = await startBrowser();
+    try {
+      await withDatabase(async (_database, databaseUrl) => {
+        const manifest = await runPartnerSeed(
+          databaseUrl,
+          emailTokenSecret,
+          'http://localhost:4321',
+        );
+        const states = partnerAuditStates(manifest).filter(
+          (state) =>
+            state.post === undefined &&
+            state.flags === undefined &&
+            // A terminated partner's link answers exactly as a cancelled one
+            // (E11.7-09, D-063 Q2); the crawl's own invalid-link path covers
+            // that response, and this crawl reads authenticated views only.
+            state.state !== 'partners-dashboard-terminated-standard',
+        );
+        await withServer(databaseUrl, async (origin) => {
+          // `/r/{CODE}` is a redirect, not a page: 302, no store, no cookie.
+          for (const state of states.filter((item) => item.redirectsTo)) {
+            const response = await globalThis.fetch(`${origin}${state.path}`, {
+              redirect: 'manual',
+            });
+            assert.equal(response.status, 302, state.path);
+            assert.equal(
+              response.headers.get('location'),
+              state.redirectsTo,
+              state.path,
+            );
+            assert.equal(response.headers.get('cache-control'), 'no-store');
+            assert.equal(response.headers.get('set-cookie'), null);
+          }
+          // Each path once, with whether its dashboard shows the asset kit.
+          const partnerKit = new Map([
+            ...states.map((state) => [
+              state.redirectsTo ?? state.path,
+              state.partnerKit ?? true,
+            ]),
+            ...manifest.verifyReplays.map((entry) => [entry.path, true]),
+          ]);
+          const paths = [...partnerKit.keys()];
+          assert.ok(paths.length >= 30, `${paths.length} partner paths`);
+          assert.ok(
+            [...partnerKit.values()].includes(false),
+            'a paused dashboard is crawled',
+          );
+          const observed = await inPool(paths, 4, (path) =>
+            crawl(remote.browser, origin, path, undefined, {
+              notFound: false,
+              partnerKit: partnerKit.get(path),
+            }),
+          );
+          assert.equal(observed.length, paths.length);
+          for (const [index, result] of observed.entries())
+            assert.ok(
+              result.offOrigin.every(
+                (url) => new URL(url).hostname === turnstileHost,
+              ),
+              `${paths[index]} made a third-party request beyond Turnstile`,
+            );
+        });
+      });
+    } finally {
       await remote.browser.close();
       await executeFile('docker', ['rm', '--force', browserContainer]).catch(
         () => {},

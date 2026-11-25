@@ -254,6 +254,18 @@ Progress shows on `/me`, on the partner dashboard and in the relevant emails. **
 - Each dashboard GET issues a fresh signed settings token bound to its owner, current dashboard link, disclosure version and the name settings it displayed, with no database write. The native POST accepts it once and saves the change, including the disclosure version when applicable, in the same transaction as marking it consumed. A form issued under earlier wording or whose name settings differ from the current ones returns the existing expired-form response. The token expires with the link, and replacing the link or terminating the partner invalidates it. The dashboard lets partners choose a display name, opt into showing it on the partner-only leaderboard, and opt into optional programme mail. Both choices start off.
 - The usual exact-origin check runs first. With the dashboard's `no-referrer` policy, a native form can send a literal `Origin: null`. D-064 permits that only on `POST /partners/dashboard` with a valid Host and `Sec-Fetch-Site: same-origin`. Settings still require the signed token. Recovery uses an origin-only referrer policy on its separate view to pass the normal origin check and never carries the bearer.
 
+## Local sample data (E11.7-15)
+
+`npm run seed:partners` fills a local database with a sample programme, for development and for the E11.7-15 audit. It is for local use only: it refuses a database host other than this machine, `NODE_ENV=production` and a database it has already seeded. It needs `DATABASE_URL` (the app role, as the app uses) and the local app's own `EMAIL_TOKEN_SECRET`, so the links it prints open; `--json=<file>` also writes them to a new file. The links carry bearer tokens for sample people and are for that machine only.
+
+Every row goes through the domain services the site uses, with their checks, audit records and queued (never dispatched) emails: signup and verification, the application and its confirmation, the founder's review commands, voids and un-voids, the activation, welcome, first-signup and leaderboard jobs, and the dashboard settings. It writes:
+
+- members at 0, 2, 3, 7, 10, 21 and 39 confirmed referrals, with a pending referral, a member whose voids took them below wave 1 and voided their coupon, and a member whose un-void restored it;
+- a partner in each lifecycle status, of each type: an active creator, student ambassador and standard partner, a paused creator, a terminated partner (whose link, issued while active, answers as a cancelled one), and partners approved, contract sent, applied, rejected with the email, and submitted but not confirmed;
+- partner referrals by `/r/{CODE}` link and by typed code, retroactive attribution, welcome discounts of 10%, 15% and 20% and the student ambassador's 15% floor, pending and voided partner referrals, a signup through a paused partner's member code, survey answers, display names and the partner leaderboard.
+
+The first-signup band is narrowed to the first five verified members, so a sample of about 170 people shows members both inside and outside wave 1; the application keeps ADR-025's 1,000. Every timestamp is the time of the run, because the database stamps creation times itself. `test/partner-seed.test.ts` runs the command against a scratch database in CI.
+
 ## Acceptance criteria
 
 - [ ] Nothing counts an unconfirmed signup, anywhere.

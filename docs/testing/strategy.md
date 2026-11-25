@@ -49,6 +49,27 @@ routes the data makes, so a monthly data pull request re-audits its own
 pages. Its evidence, the price contact sheet and the founder's sign-off are
 recorded in [`e11-6-price-pages-audit.md`](e11-6-price-pages-audit.md).
 
+E11.7-15 audits the partner programme over the data the local seed writes
+(`npm run seed:partners`, `scripts/seed-partner-programme.ts`): sample
+partners of every type and status, member and partner referrals with voids,
+the ladder's stages and the welcome discounts, all written through the
+domain services. `test/partner-seed.test.ts` runs the seed command in CI
+against a scratch database and holds its output to the rules the services
+enforce. `test/helpers/partner-audit.mjs` lists every new route and changed
+surface in each state the seeded programme gives it, and three suites read
+that list: the E11-05 privacy crawl (`test/e11-05-page-inventory.test.mjs`),
+axe at every design width in both themes, the copy rules over the rendered
+text, the island check and the new and changed emails' fit at narrow widths
+(`test/e11-7-15-partner-browser.test.mjs`), and the
+contact sheet (`scripts/design/partner-contact-sheet.mjs`).
+`test/e11-7-15-partner-audit.test.ts` holds the cookie inventory to two
+entries and the islands to three, re-runs the reward-gating enumeration over
+the seeded programme, and renders every new and changed email from it
+through the dispatch path under the copy rules
+(`test/helpers/partner-emails.ts`). Each check fails on a planted defect.
+Its evidence, the findings and the founder's sign-off are recorded in
+[`e11-7-partner-programme-audit.md`](e11-7-partner-programme-audit.md).
+
 ## Coverage bars
 
 ≥80% changed code. **≥90% in `subscriber`, `verification`, `referral`, `giveaway`, `email`** — the five modules where a defect is either unrecoverable or discredits the campaign.

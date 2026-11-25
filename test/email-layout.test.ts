@@ -39,6 +39,8 @@ const preheaders: Readonly<Record<string, string>> = {
   partner_welcome: partnerDashboardCopy.welcome.preheader,
   partner_first_signup: partnersCopy.email.firstSignup.preheader,
   partner_invite: partnersCopy.email.invite.preheader,
+  // E11.7-15 (audit finding E1): the digest was missing from the previews.
+  partner_digest: partnersCopy.email.digest.preheader,
   weekly_campaign_update: emailCopy.weekly.preheader,
 };
 
@@ -65,6 +67,8 @@ const mainActions: Readonly<Record<string, string>> = {
   partner_welcome: '/partners/dashboard',
   partner_first_signup: '/partners/apply',
   partner_invite: '/partners/apply',
+  // The digest's button is the dashboard replacement request.
+  partner_digest: '/partners/apply',
   weekly_campaign_update: '/me',
 };
 
@@ -345,8 +349,9 @@ test('E11.5-11 every template carries its hidden preheader from the copy layer',
   // E11.7-05 added the partner application's two emails, and E11.7-06 the
   // "approved" and "rejected" emails. E11.7-09 adds dashboard recovery, and
   // E11.7-11 the partner welcome. E11.7-12 adds the first-signup email and
-  // the auto-invite.
-  assert.equal(new Set(Object.values(preheaders)).size, 18);
+  // the auto-invite. E11.7-15 adds E11.7-13's digest, which the previews
+  // had left out.
+  assert.equal(new Set(Object.values(preheaders)).size, 19);
 });
 
 test('E11.5-11 the layout is at most 600px wide and its one button is at least 44px tall', () => {

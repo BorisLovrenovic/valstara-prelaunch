@@ -329,6 +329,12 @@ function body(
           'font-size': px.small,
           'line-height': px.smallLeading,
           'font-variant-numeric': 'tabular-nums',
+          // A fact may hold an unbroken link or code ("Link:
+          // https://valstara.com/r/{CODE}", E11.7-15 finding E2). It breaks
+          // only where it cannot otherwise fit, so the card never widens past
+          // a narrow screen; every other fact still wraps between words.
+          'overflow-wrap': 'anywhere',
+          'word-break': 'break-word',
           color: light.ink,
         })}"><ul class="v-facts" style="${style({
           margin: 0,
