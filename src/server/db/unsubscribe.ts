@@ -51,6 +51,19 @@ export function createUnsubscribeRepository(connection: DatabaseConnection) {
         })) === 1
       );
     },
+    /**
+     * E11.7-13: an unsubscribe from the partner digest turns off only the
+     * partner's optional programme email choice (D-071).
+     */
+    async withdrawPartnerOptionalEmail(subscriberId: string): Promise<boolean> {
+      return (
+        (await connection.execute({
+          text: `UPDATE partner SET nonessential_email_enabled = false
+          WHERE subscriber_id = $1 AND nonessential_email_enabled`,
+          values: [subscriberId],
+        })) > 0
+      );
+    },
     async leaveWaitlist(subscriberId: string, at: Date): Promise<boolean> {
       return (
         (await connection.execute({

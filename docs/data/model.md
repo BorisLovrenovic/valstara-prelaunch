@@ -318,6 +318,8 @@ E8-03a's producer keys are `welcome:{subscriber_id}`, `milestone:{subscriber_id}
 
 E11.7-12 adds `partner-invite:{subscriber_id}` (the auto-invite, provider `brevo`) and `partner-first-signup:{partner_id}` (provider `resend`), each with the payload `{ status_token_id }`. Each is one email per member or partner, ever; no column or migration is added.
 
+E11.7-13 adds `partner-digest:{YYYY-MM}:{partner_id}` (monthly) and `partner-digest:{YYYY-Www}:{partner_id}` (weekly), the reported period of the partner digest, provider `brevo`. Its payload is `{ period, status_token_id }`; migration 0071 adds the `period` key to the payload check, which accepts only a `YYYY-MM` or `YYYY-Www` label. `expires_at` is the digest's send time plus 24 hours.
+
 E8-07 adds `weekly:{ISO-8601 UTC week}:{subscriber_id}`. Its payload is `{ snapshot_id, status_token_id }`, both UUID references. `expires_at` is the weekly schedule plus 24 hours; dispatch fails an expired row before any provider call. The other templates leave it null.
 
 ## `leaderboard_snapshot`
@@ -332,6 +334,10 @@ One permissioned singleton pointer to the snapshot ID actually loaded by the web
 
 One row per ISO UTC week, keyed by `iso_week` text primary key in `YYYY-Www` form (checked), holding `state` (`started`, `completed`, `skipped`), the fixed `snapshot_id` for that week's send, `recorded_at` and `alerted_at`. It records missed 24-hour windows and deduplicates the P2 alert across maintenance restarts. The snapshot foreign key clears on the 14-day purge while the run record remains. The audience is selected afresh from verified, unsuppressed, currently marketing-consented subscribers at queue time; dispatch independently re-checks it.
 The hourly job also checks up to 12 preceding ISO weeks, back to the first recorded run. If no run exists yet, it uses retained snapshot history to decide whether the previous window was active. Unrecorded expired windows are skipped and alerted; they never queue late mail.
+
+## `partner_digest_run` and `partner_digest_schedule`
+
+E11.7-13's run record for the partner digest, which holds no personal data. `partner_digest_run` has one row per reported period: `period` text primary key (`YYYY-MM` or `YYYY-Www`, checked, and matching `cadence`) · `cadence` (`monthly` · `weekly`) · `window_starts_at`, the scheduled send time · `state` (`started` · `completed` · `skipped`) · `skip_reason` (`missed_window` · `note_missing`), set exactly when skipped · `recorded_at` · `alerted_at`, set only on a skipped row, once, so the P2 is raised once across restarts. A skipped period is never started again. `partner_digest_schedule` is a checked singleton holding the `cadence` and `send_time` in force and `since`, when they took effect; the job writes it on each run while the flags are on, and a changed schedule resets `since`. Earlier windows that opened before `since` were never owed, so a cadence change reports no earlier window of the new cadence as missed. The application role can read and insert both tables and update only the state, reason, times and schedule columns; it cannot delete.
 
 ## `email_seed_test`
 

@@ -107,5 +107,16 @@ export function partnerFirstSignupBusinessKey(partnerId: string): string {
   return `partner-first-signup:${partnerId}`;
 }
 
+// E11.7-13: the partner digest, optional programme mail sent as a Brevo
+// broadcast to partners who chose optional programme email (D-071). One per
+// partner per reported period: `YYYY-MM` monthly, `YYYY-Www` weekly.
+export const partnerDigestTemplate = 'partner_digest';
+export function partnerDigestBusinessKey(
+  period: string,
+  partnerId: string,
+): string {
+  return `partner-digest:${period}:${partnerId}`;
+}
+
 // Increment when the leaderboard name disclosure changes.
 export const displayNameDisclosureVersion = 1;

@@ -49,6 +49,7 @@ export const auditActions = [
   'partner.type_changed',
   'partner.note_replaced',
   'partner.exported',
+  'partner.optional_email_withdrawn',
 ] as const;
 
 export type AuditAction = (typeof auditActions)[number];

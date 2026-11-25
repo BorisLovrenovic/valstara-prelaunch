@@ -83,6 +83,24 @@ export function createPartnerLeaderboardRepository(db: DatabaseConnection) {
       });
     },
 
+    /**
+     * E11.7-13: one partner's cached rank and the snapshot's time, under the
+     * same current eligibility checks as the dashboard (D-066). Null rank when
+     * the partner is unranked or no longer eligible.
+     */
+    readOwnRank(partnerId: string) {
+      return db.readOne<{ as_of: Date; rank: number | null }>({
+        text: `SELECT snap.as_of, (
+          SELECT ranked.rank FROM partner_leaderboard_rank ranked
+          JOIN partner p ON p.id = ranked.partner_id
+          JOIN subscriber s ON s.id = p.subscriber_id
+          WHERE ranked.partner_id = $1 AND ${eligible}
+        ) AS rank
+        FROM partner_leaderboard_snapshot snap WHERE snap.singleton AND snap.as_of IS NOT NULL`,
+        values: [partnerId],
+      });
+    },
+
     readForViewer(viewerId: string) {
       return db.readOne<{ as_of: Date; rows: readonly CurrentRank[] }>({
         text: `SELECT snap.as_of, COALESCE((

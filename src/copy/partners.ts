@@ -176,5 +176,51 @@ export const partnersCopy = {
         'Your private dashboard shows your counts, at the link in your partner welcome email. If you no longer have that link, you can ask for a new one.',
       action: 'Ask for a new dashboard link',
     },
+    // E11.7-13: the partner digest, optional programme mail (D-071). It
+    // reports the period that has just ended, names no one, and carries the
+    // founder's note from src/content/partner-digest-note.json.
+    digest: {
+      subject: (period: string) => `Your Valstara partner digest for ${period}`,
+      preheader:
+        'Your confirmed signups, your rank and the waitlist’s growth, with a note from the founder.',
+      firstLine: (period: string) =>
+        `Here is your Valstara partner digest for ${period}.`,
+      monthLabel: (month: string, year: number) => `${month} ${year}`,
+      weekLabel: (week: number, year: number) => `week ${week} of ${year}`,
+      months: [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ],
+      noteHeading: 'A note from the founder:',
+      confirmedInPeriod: (period: string, count: number) =>
+        `Confirmed signups in ${period}: ${count}`,
+      confirmedTotal: (count: number) => `Confirmed signups in total: ${count}`,
+      rank: (rank: number, asOf: string) =>
+        `Your partner leaderboard rank: ${rank} (as of ${asOf})`,
+      unranked: (asOf: string) =>
+        `You do not have a rank in the partner leaderboard (as of ${asOf}).`,
+      rankUnavailable: 'The partner leaderboard is currently unavailable.',
+      categories: 'Survey categories among your confirmed signups:',
+      category: (label: string, count: number) => `${label}: ${count}`,
+      waitlistInPeriod: (period: string, count: number) =>
+        `People who confirmed their place on the waitlist in ${period}: ${count}`,
+      waitlistTotal: (count: number) =>
+        `People with a confirmed place on the waitlist: ${count}`,
+      dashboard:
+        'Your private dashboard shows your counts, at the link in your partner welcome email. If you no longer have that link, you can ask for a new one.',
+      choice:
+        'You receive this digest because you chose optional partner programme emails. Unsubscribing from it turns off only that choice: your partnership, your waitlist place and your other partner emails are unchanged.',
+      action: 'Ask for a new dashboard link',
+    },
   },
 } as const;

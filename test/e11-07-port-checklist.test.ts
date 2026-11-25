@@ -59,6 +59,9 @@ test('the checklist maps every portable Markdown source to one known storefront 
       'src/content/partner-countries.json',
       // E11.7-11: the partner asset kit's files list (shipped empty) and its
       // message templates; campaign mechanics with no storefront port target.
+      // E11.7-13: the partner digest's founder note, shipped with no text;
+      // partner mail with no storefront port target.
+      'src/content/partner-digest-note.json',
       'src/content/partner-kit.json',
       'src/content/partner-message-templates.json',
       'src/content/partner-programme.json',

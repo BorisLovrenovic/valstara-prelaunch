@@ -132,6 +132,8 @@ test('E1-12 validates and types the complete application environment', () => {
     },
     waitlistLiveAt: null,
     weeklySendUtc: null,
+    // E11.7-13: the partner digest's schedule defaults to monthly at 09:00 UTC.
+    partnerDigest: { cadence: 'monthly', hour: 9, minute: 0 },
     emailQuota: {
       resend: { tier: 'free', cap: 100 },
       brevo: { tier: 'free', cap: 300 },
