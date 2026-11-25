@@ -15,6 +15,7 @@
     "ci:security-red-paths": "node --test test/security-gates.test.mjs",
     "db:migrate": "tsx src/server/db/run-migrations.ts",
     "email:apply-unsubscribe": "tsx scripts/apply-unsubscribe.ts",
+    "export:attribution": "tsx scripts/export-attribution.ts",
     "dev": "astro dev",
     "format": "prettier --check .",
     "fraud:allow-domain": "tsx scripts/allow-domain.ts",
