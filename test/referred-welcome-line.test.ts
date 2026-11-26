@@ -3,8 +3,9 @@
 // through another member's link, one through a partner's code and one
 // directly. The welcome email of the member-referred member alone carries the
 // "a friend invited you" line, in both parts, directly before their own link;
-// the partner-referred member keeps only the partner line; the direct member
-// gets neither; no part of any email carries the referrer; and with
+// the partner-referred member keeps only the partner line, and gets neither
+// line while referral.enabled hides the partner line; the direct member gets
+// neither; no part of any email carries the referrer; and with
 // `email.referred_welcome_line` off the email is exactly as before.
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -210,6 +211,17 @@ test('the friend line reaches the member-referred member only, before their own 
   assert.doesNotMatch(on.direct.text, /You joined through/u);
   assert.deepEqual(on.partnerFriend, off.partnerFriend);
   assert.deepEqual(on.direct, off.direct);
+
+  // With referral.enabled off the partner line is hidden, and the
+  // partner-referred member still does not get the friend line in its place.
+  await flags.set('referral.enabled', false, actor);
+  const partnerReferralOff = await welcome(partnerFriend);
+  await flags.set('referral.enabled', true, actor);
+  for (const part of [partnerReferralOff.text, partnerReferralOff.html]) {
+    assert.ok(!part.includes(line), 'partner-referred, referral off');
+    assert.ok(!part.includes(htmlLine), 'partner-referred, referral off');
+    assert.doesNotMatch(part, /You joined through/u);
+  }
 
   // No part of the member-referred member's email carries the referrer.
   const referrerData = [
