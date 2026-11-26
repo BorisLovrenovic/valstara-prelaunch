@@ -4739,6 +4739,10 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - The claim-to-rules reconciliation (E11-04) passes, and no surface states the old dates
 
 **Tests:** Revision hash and immutability · the archive treatment · the diff-only-dates check · accrual at the boundary · the draw's earliest start · the code-to-rules date test · the claims reconciliation.
+
+**Founder decisions (2026-11-26):**
+1. **The revision's publication date is 2026-11-26, the date it was written: `VAL-GW-LAUNCH-20261126-r1`, `publishedOn` 2026-11-26 (D-079).** It is not re-dated to the merge or deploy date. This follows the three earlier revisions, each dated the day it was built, and holds because the site is not live and `giveaway.open` is off, so no one enters under any revision before it. The revision as built on the branch stands unchanged. *(Accepted under the founder's standing rule for high-confidence recommendations.)*
+
 **Docs:** `docs/features/giveaway.md` · `docs/modules/giveaway.md` · `docs/ops/launch-cutover.md` · plan §2 (P4 dates superseded)
 
 ### E11.8-06 — The waitlist at 13 and over, with an 18+ giveaway box
