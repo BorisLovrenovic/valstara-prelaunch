@@ -236,6 +236,7 @@
   "test/referral-status.test.ts": 2.1,
   "test/referral-void-route.test.ts": 0.5,
   "test/referral-void.test.ts": 6,
+  "test/referred-welcome-line.test.ts": 1.4,
   "test/render-cache.test.ts": 5.5,
   "test/resend-provider.test.ts": 1.2,
   "test/resend-verification.test.ts": 3.6,
