@@ -940,6 +940,9 @@ test('the sitemap index lists every child sitemap, pages.xml keeps the previous 
       // E11.6-13: the monthly price reports' child sitemap
       // (test/seo.test.ts reads it).
       'https://valstara.com/sitemaps/price-index-monthly.xml',
+      // E11.8-01: the Trust Ledger's on-request child sitemap
+      // (test/trust-ledger-rendered.test.mjs reads it).
+      'https://valstara.com/sitemaps/trust-ledger.xml',
     ],
   );
   const pages = await get('/sitemaps/pages.xml');
