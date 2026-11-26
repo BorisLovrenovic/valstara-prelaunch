@@ -4777,6 +4777,10 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - The flag-off path is tested, and the privacy, accessibility, copy and layout checks pass on every signup placement
 
 **Tests:** The age statement on every surface · the giveaway box at accrual · the referral-entry setting, both values · the opt-in wording version · default-unticked boxes · entering from `/me`, with its Turnstile, idempotency and closed-state red paths · earlier members · `/me` entry status · the enable-command refusal · flag off · the privacy, accessibility and layout suites on the form.
+
+**Founder decisions (2026-11-26):**
+1. **With `waitlist.age_13` on, new members who join through a partner or student ambassador application opt into the giveaway from `/me`.** Both applications remain 18+ and keep their existing fields. Confirming the application joins the waitlist and grants no automatic giveaway entry. While entries are open, the verified member can use the `/me` form specified above to tick the separate 18+ box and receive the same entries as any other member who opts in there. Update the application copy for the flag-on path to explain how to enter and state the giveaway's 18+ requirement. This supersedes E11.7-05's D-050 automatic entry and corresponding application copy only with `waitlist.age_13` on. Preserve D-050 with the flag off and preserve earlier members' entries. (Accepted under the founder's standing rule for high-confidence recommendations, D-080 Q1 A.)
+
 **Docs:** `docs/features/signup.md` · `docs/features/giveaway.md` · `docs/features/member-status.md`
 
 ### E11.8-07 — Apply the lawyer's review: privacy, terms and the age change
