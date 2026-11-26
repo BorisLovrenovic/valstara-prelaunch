@@ -38,7 +38,7 @@ SubSlush is **completely separate** from Valstara: no shared emails, no mentions
 - **Founding rate lock (amended 22 Nov 2026):** **one year, not lifetime.** Only partners accepted during the pre-launch campaign get the 10%, and only on their pre-launch referrals, until 1 October 2028.
 - **Contracts for every partner.** Short, plain-English and fair: no small print, readable without a lawyer.
 - **Programme opens now.** Most active recruiting happens April–June 2027. Student ambassadors and seeded creators (recruited directly, under contract) can start immediately.
-- **Positioning (amended 22 Nov 2026):** lead with **"more than triple GameSeal's commission rate"** (GameSeal's standard rate is about 2–3%), then **"double the rate of G2A and Eneba"** (about 5% at most). Compare only with these three, against their standard rates, and only for the pre-launch terms.
+- **Positioning (amended 22 Nov 2026):** lead with **"more than triple GameSeal's commission rate on subscriptions"** (GameSeal pays 3% on games and subscriptions, but 10% on software; scoped 26 Nov 2026), then **"double the rate of G2A and Eneba"** (about 5% at most). Compare only with these three, against their standard rates, and only for the pre-launch terms.
 
 ## Pre-launch partner system (locked 17 Nov 2026)
 

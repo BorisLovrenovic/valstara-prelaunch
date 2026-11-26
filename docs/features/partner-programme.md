@@ -29,7 +29,7 @@ Commission is **shown in copy and never calculated here** (founder, 2026-11-22):
 - the founding rate lock lasts that one year, with no lifetime lock;
 - customers referred after public launch fall under the post-launch rates, agreed separately.
 
-**Positioning (founder, 2026-11-22):** "more than triple GameSeal's commission rate", then "double the rate of G2A and Eneba", each against the programme's standard rate, and only for the pre-launch terms.
+**Positioning (founder, 2026-11-22; amended 2026-11-26):** "more than triple GameSeal's commission rate on subscriptions", then "double the rate of G2A and Eneba", each against the programme's standard rate, and only for the pre-launch terms. The GameSeal line names subscriptions because GameSeal's own affiliate page pays by category (2% gift cards, 3% games and subscriptions, 10% software, read 26 Nov 2026), so an unscoped "more than triple" would be false for software. Founder, 2026-11-26: "we state more than triple game seal's commission rate for subscription products, because we know they have a 3% on subscriptions."
 
 **The epic also replaces the campaign's reward rules for every member** (founder, 2026-11-17). The current "3 confirmed referrals: move up a wave and 15% off" milestone is replaced by a wave-1 rule and a coupon ladder. See "Early access and rewards".
 

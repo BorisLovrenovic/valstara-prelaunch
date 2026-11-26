@@ -190,7 +190,7 @@ test('/partners states the founder’s terms and positioning line, with an apply
     "covered by Valstara's guarantee",
     'there is no lifetime lock',
     'Earnings start with early access in September 2027.',
-    "more than triple GameSeal's commission rate",
+    "more than triple GameSeal's commission rate on subscriptions",
     'double the rate of G2A and Eneba',
   ])
     assert.ok(text.includes(statement), statement);

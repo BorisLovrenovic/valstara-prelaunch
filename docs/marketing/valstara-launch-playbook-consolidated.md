@@ -109,23 +109,23 @@ These are decided or built. A marketing action that contradicts one of them is w
 
 **A post-launch partner competition** runs on the main platform from **1 September 2027 (early access) to 31 December 2027** (founder, 21 Nov 2026). It is ranked on real referred order value after refunds, with prizes for the top 3 and a bonus for everyone who passes a set amount. **Announce it before launch so it motivates partners now.** Its prizes, bonus threshold, written rules and announcement date are a to-do item, settled when that task is worked on (founder, 24 Nov 2026).
 
-**Positioning lines (founder, 21–22 Nov 2026; recorded in the plan for E11.7-05).** Compare only with **GameSeal, G2A and Eneba**:
+**Positioning lines (founder, 21–22 Nov 2026, GameSeal line scoped to subscriptions 26 Nov 2026; recorded in the plan for E11.7-05).** Compare only with **GameSeal, G2A and Eneba**:
 
-- **Lead line:** *"More than triple GameSeal's commission rate."*
+- **Lead line:** *"More than triple GameSeal's commission rate on subscriptions."* Never drop "on subscriptions": GameSeal pays 10% on software, the same as our rate.
 - **Second line:** *"Double the rate of G2A and Eneba."*
 
 They replace "about double what the big marketplaces pay". Use them **only during the pre-launch campaign**, because post-launch terms will be different. Every use is scoped, dated and sourced.
 
-| Competitor | Rate found (checked 21 Nov 2026) | Valstara's 10% is | Evidence |
+| Competitor | Rate found (official pages read 26 Nov 2026; founder captured dated screenshots) | Valstara's 10% is | Evidence |
 |---|---|---|---|
-| **GameSeal** | 2.4% on sales (FlexOffers) · 3% base, "top publishers are eligible for bonus deals" (Webgains). The founder's figure is 2–3% for subscriptions | **More than triple** the base rate (10 ÷ 3 = 3.3×) | Affiliate-network listings, not GameSeal's own terms page |
-| **G2A Goldmine** | 5% per sale (several listings; an older Awin US figure says 4%) | **Double** (not "more than double") | Third-party listings; no 2026-dated official page found |
-| **Eneba** | 2–5% revenue share for standard affiliates (Eneba's own affiliate page) | **Double to five times** | Eneba's affiliate page |
+| **GameSeal** | By category, on approved sales via Impact: 2% gift cards, 3% games and subscriptions, 10% software; 30-day cookie (gameseal.com/affliate-program/). Networks list a flat 2.1–3% | **More than triple** the subscriptions rate (10 ÷ 3 = 3.3×). **Not** more than triple on software (10% = 10%) | GameSeal's own affiliate page |
+| **G2A Goldmine** | 5% of the seller's gross price for Video Gaming and Software, 1% fallback otherwise, €1/€2 for G2A Plus; 24-hour cookie (g2a.com/terms-and-conditions §5.10) | **Double** the top rate (not "more than double") | G2A's binding terms |
+| **Eneba** | "2 - 5% as a revenue share for each brought sale"; 30-day cookie (eneba.com/become-affiliate) | **Double to five times** | Eneba's affiliate page |
 
 Rules for using the line:
 
 1. **Say "commission rate", not "earnings".** Ten percent is a rate. What a partner earns depends on what their audience buys, and "triple the earnings" is not provable.
-2. **Compare with the base or standard rate, and say so.** GameSeal offers bonus deals to top publishers, so an unqualified "more than triple" could be false for some of its affiliates.
+2. **Compare with the base or standard rate, and say so.** GameSeal offers bonus deals to top publishers and pays 10% on software, so an unqualified "more than triple" could be false; the line is scoped to subscriptions (26 Nov 2026).
 3. **State our window beside the comparison.** Ours is 10% for a fixed window (until 1 Oct 2028); competitors' rates run on with no end date. Leaving that out would mislead.
 4. **Capture dated evidence before first use, and re-check it each quarter.** Screenshots of each programme's current terms (ideally the official pages, not network listings), with the date.
 
@@ -876,7 +876,7 @@ Kept, with changes. Hooks that named and attacked competitors were rewritten to 
 
 | Topic | Decision | Where applied |
 |---|---|---|
-| Positioning line | Compare only with GameSeal, G2A and Eneba. Lead with "more than triple GameSeal's commission rate", in pre-launch only | 0.4 |
+| Positioning line | Compare only with GameSeal, G2A and Eneba. Lead with "more than triple GameSeal's commission rate on subscriptions", in pre-launch only | 0.4 |
 | Pre-launch commission | 10% for customers referred during pre-launch, on orders from early access (1 Sep 2027) to 1 Oct 2028. Post-launch referrals earn a new rate | 0.4, 4.4 |
 | Dates | Early access 1 Sep 2027, public launch 1 Oct 2027 (made final on 22 Nov) | 0.2 |
 | Partner competition | 1 Sep – 31 Dec 2027 | 0.4 |
@@ -920,6 +920,7 @@ Kept, with changes. Hooks that named and attacked competitors were rewritten to 
 | **25 Nov:** Umami only | Cloudflare Web Analytics dropped: its beacon is a third-party request. E12-05 keeps it off | 0.7 |
 | **25 Nov:** the lawyer's review | P12 widened to the whole `/privacy` and `/terms` with the age change. Only E11.8-07, after E12, waits on it | 0.3, 4.2 |
 | **25 Nov:** partner announcements | Ticket E11.7-16: one email to every partner, on the digest's audience and opt-out | 0.4 |
+| **26 Nov:** GameSeal line scoped | "More than triple GameSeal's commission rate on subscriptions"; competitors' official terms captured and dated | 0.4 |
 | **24 Nov:** to-do items, not decisions | A partner-wide announcement channel (now E11.7-16); the competition's prizes and rules; creator subscriptions before the store; trademark clearance; supplier-status definitions; every founder input and research task | 11.4 |
 
 ## 11.2 Recorded in the project on 22 November 2026
