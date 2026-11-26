@@ -138,6 +138,7 @@ test('the referral emails state the ladder with its held condition and no retire
     sendingDomain: 'send.valstara.com',
     data: {
       referralStatus: async () => status,
+      memberReferral: async () => false,
       receiptEntries: async () => 1,
       winnerDetails: async () => ({
         deadline: new Date('2027-04-15T09:00:00.000Z'),

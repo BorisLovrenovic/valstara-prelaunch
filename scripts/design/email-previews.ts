@@ -71,6 +71,10 @@ export function emailPreviewRenderers(
             verificationOrderWindow: 'wave-2',
           };
         },
+        // `email.referred_welcome_line` is off by default (E11.8-04).
+        async memberReferral() {
+          return false;
+        },
         async receiptEntries() {
           return 6;
         },

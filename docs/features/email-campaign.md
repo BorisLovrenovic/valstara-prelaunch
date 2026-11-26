@@ -50,11 +50,15 @@ The founder writes to every partner at once through a committed content file in 
 - **One note per run.** When a run's queueing starts, it records the note's SHA-256 (`weekly_campaign_run.note_hash`, which the application cannot change). Dispatch renders only a deployed note with that hash. A note changed, removed or found invalid by a deploy during the send window is left out of the rest of that run, recorded once on the run, with a P3; restoring it does not bring it back. One run never mixes two notes.
 - **Who receives it is unchanged.** Queueing and dispatch keep the E8-07 checks: `email.broadcast`, verified, unsuppressed and marketing-consented, re-checked at dispatch. A member who unsubscribes or is suppressed after queueing gets nothing, note or not.
 
-## Planned: the referral reminder (E11.8-04)
+## The referral reminder (E11.8-04)
 
-**Founder decision, 2026-11-24.**
+**Founder decision, 2026-11-24.** A member who joined through another member's link or code is reminded in the welcome email that they can do the same. The storefront repeats the reminder in a day-7 email after launch, outside this repository.
 
-- **The referral reminder.** A member who joined through another member's link or code gets one line in the welcome email, "You joined because a friend invited you…", naming no one, behind `email.referred_welcome_line`. Partner-referred members keep their partner line.
+- **Feature flag:** `email.referred_welcome_line`, **default off**. Off, the welcome email is exactly what it was before E11.8-04. Rendering reads it for every welcome email, so switching it takes effect without a deploy, including for welcome emails already queued.
+- **Who gets the line.** A member whose referral edge is confirmed, not voided and points to another member, not a partner (no partner on the edge). It reads "You joined because a friend invited you. If you'd like to do the same, here's your own link.", from the copy layer, as its own paragraph in both the HTML and the plain-text part, placed directly before the member's own referral link.
+- **Who does not.** A partner-referred member keeps the existing "You joined through {CODE}" line (E11.7-08) and never also gets this one. A member who joined directly gets neither. A member whose referral is voided, or still unconfirmed, gets no line.
+- **It names no one.** The rendering reads only whether such an edge exists; no name, address, code or other detail of the referrer reaches the email (hard rule 11).
+- **Nothing else changes.** The welcome email keeps its business key, its reference-only payload, its subject, preheader and links, and the dispatch re-checks.
 
 ## The SubSlush announcement
 **Not part of this system (ADR-028).** The founder sends the one announcement to existing SubSlush customers manually. `subslush.com` is not authenticated in Resend or Brevo, no Valstara system sends from it, and the SubSlush list is not loaded into either provider. Recipients who want to join sign up through the normal double opt-in.

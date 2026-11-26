@@ -135,6 +135,8 @@ export const flagAnalysis = Object.freeze({
     'not read by the landing; /trust-ledger and its child sitemap only (404 and an empty urlset while off), a data route checked for accessibility and layout at every width in both themes on the Trust Ledger fixture site by test/trust-ledger-browser.test.mjs (E11.8-01)',
   'email.weekly_note':
     "not read by any page; the maintenance worker's weekly update only (the founder note, E11.8-03)",
+  'email.referred_welcome_line':
+    'not read by any page; the welcome email only (the referral reminder, E11.8-04)',
 });
 
 const on = (value) => (value ? 'on' : 'off');
