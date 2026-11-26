@@ -86,15 +86,15 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 | Prize | **5 × Valstara product bundle, approximate retail value €300 each — €1,500 in total** |
 | Bundle contents | **Not chosen yet — deliberately not a blocker.** The page states the prize by value and promises the products will be listed before the draw. Dummy products are used only in test fixtures; the draw refuses to run until the real contents are listed |
 | Substitution | Bundle first. If a product is unavailable at award time, the winner chooses replacement products so the bundle keeps at least €300 of retail value. If the winner wants no replacement, the promoter pays that product's retail value in cash, as a last resort |
-| Entry period | Opens 00:00 UTC 1 October 2026 (or when the waitlist goes live, if later); closes 23:59:59 UTC 1 March 2027 |
-| Draw date | 1 April 2027 |
+| Entry period | Opens 00:00 UTC 1 October 2026 (or when the waitlist goes live, if later); closes 23:59:59 UTC 31 August 2027 (founder, 2026-11-24, published by E11.8-05; supplied as 1 March 2027) |
+| Draw date | 1 September 2027 (founder, 2026-11-24, published by E11.8-05; supplied as 1 April 2027) |
 | Winner deadlines | Notified within 7 days of the draw; 14 days to reply |
 | Promoter | **3NITY DIGITAL LIMITED**, Business Registration No. 79886556, Unit B, 12/F, Hang Seng Causeway Bay Building, 28 Yee Wo Street, Causeway Bay, Hong Kong |
 | Contacts | support@valstara.com for every enquiry (founder decision 2026-10-01; replaced the subslush.com addresses) |
-| Sanctions list | **Not set yet — deliberately not a blocker.** Configuration that may be empty; add it before the first award (April 2027) |
+| Sanctions list | **Not set yet — deliberately not a blocker.** Configuration that may be empty; add it before the first award (September 2027) |
 
 ### Still to supply (neither is a blocker)
-1. *Before the draw on 1 April 2027:* the bundle contents. The draw refuses to run until they are listed.
+1. *Before the draw on 1 September 2027:* the bundle contents. The draw refuses to run until they are listed.
 2. *Before the first award:* the sanctioned-jurisdiction list, matched to what your payment provider and bank require.
 
 ### How the build confirms it
@@ -130,16 +130,16 @@ Every one of these must pass **SPF, DKIM, and DMARC** or mail lands in spam — 
 | Prize | **5 × Valstara product bundle, approximate retail value €300 each — €1,500 in total** |
 | Bundle contents | **Not chosen yet — deliberately not a blocker.** The page states the prize by value and promises the products will be listed before the draw. Dummy products are used only in test fixtures; the draw refuses to run until the real contents are listed |
 | Substitution | Bundle first. If a product is unavailable at award time, the winner chooses replacement products so the bundle keeps at least €300 of retail value. If the winner wants no replacement, the promoter pays that product's retail value in cash, as a last resort |
-| Entry period | Opens 00:00 UTC 1 October 2026 (or when the waitlist goes live, if later); closes 23:59:59 UTC 1 March 2027 |
-| Draw date | 1 April 2027 |
+| Entry period | Opens 00:00 UTC 1 October 2026 (or when the waitlist goes live, if later); closes 23:59:59 UTC 31 August 2027 (founder, 2026-11-24, published by E11.8-05; supplied as 1 March 2027) |
+| Draw date | 1 September 2027 (founder, 2026-11-24, published by E11.8-05; supplied as 1 April 2027) |
 | Winner deadlines | Notified within 7 days of the draw; 14 days to reply |
 | Promoter | **3NITY DIGITAL LIMITED**, Business Registration No. 79886556, Unit B, 12/F, Hang Seng Causeway Bay Building, 28 Yee Wo Street, Causeway Bay, Hong Kong |
 | Contacts | support@valstara.com for every enquiry (founder decision 2026-10-01; replaced the subslush.com addresses) |
-| Sanctions list | **Not set yet — deliberately not a blocker.** Configuration that may be empty; add it before the first award (April 2027) |
+| Sanctions list | **Not set yet — deliberately not a blocker.** Configuration that may be empty; add it before the first award (September 2027) |
 
 ### Still to supply
 1. **The company's registered name**, exactly as on the Business Registration Certificate.
-2. *(Before the draw on 1 April 2027, not blocking now)* the bundle contents.
+2. *(Before the draw on 1 September 2027, not blocking now)* the bundle contents.
 3. *(Before the first award, not blocking now)* the sanctioned-jurisdiction list, matched to what your payment provider and bank require.
 
 ### How the build confirms it

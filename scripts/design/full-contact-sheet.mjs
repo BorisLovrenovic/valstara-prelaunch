@@ -1393,7 +1393,7 @@ async function seed(database, fixtureUrl) {
     )
   ).token;
 
-  const rulesVersion = 'VAL-GW-LAUNCH-20261009-r1';
+  const rulesVersion = 'VAL-GW-LAUNCH-20261126-r1';
   const task = {
     winner: randomUUID(),
     exporter: randomUUID(),

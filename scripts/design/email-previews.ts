@@ -19,7 +19,7 @@ import type {
 import { createTransactionalRenderers } from '../../src/server/email/transactional-templates.ts';
 import { createWeeklyTemplate } from '../../src/server/email/weekly-template.ts';
 
-export const previewRulesVersion = 'VAL-GW-LAUNCH-20261009-r1';
+export const previewRulesVersion = 'VAL-GW-LAUNCH-20261126-r1';
 const awardId = '11111111-1111-4111-8111-111111111111';
 
 const payloads: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
@@ -80,7 +80,7 @@ export function emailPreviewRenderers(
         },
         async winnerDetails() {
           return {
-            deadline: new Date('2027-04-15T09:00:00.000Z'),
+            deadline: new Date('2027-09-15T09:00:00.000Z'),
             rulesVersion: previewRulesVersion,
           };
         },

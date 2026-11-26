@@ -9,7 +9,9 @@ import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
 import { giveawayCard, renderLanding } from './helpers/landing-render.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const currentVersion = 'VAL-GW-LAUNCH-20261009-r1';
+const currentVersion = 'VAL-GW-LAUNCH-20261126-r1';
+// E11-04's representative correction, superseded by E11.8-05's dates.
+const representativeCorrection = 'VAL-GW-LAUNCH-20261009-r1';
 const rulesDirectory = join(root, 'src/content/giveaway-rules');
 
 before(async () => {
@@ -68,7 +70,7 @@ test('the founder-approved revision changes only the representative sentence and
     'utf8',
   );
   const current = await readFile(
-    join(rulesDirectory, `${currentVersion}.md`),
+    join(rulesDirectory, `${representativeCorrection}.md`),
     'utf8',
   );
   const representativeSentence =
@@ -77,13 +79,98 @@ test('the founder-approved revision changes only the representative sentence and
   assert.doesNotMatch(current, /data-protection representatives/iu);
   const expected = earlier
     .replace(representativeSentence, '')
-    .replace('VAL-GW-LAUNCH-20261001-r1', currentVersion)
+    .replace('VAL-GW-LAUNCH-20261001-r1', representativeCorrection)
     .replace("publishedOn: '2026-10-01'", "publishedOn: '2026-10-09'")
     .replace(
       /sha256: '[a-f0-9]{64}'/u,
       "sha256: 'd35678f459daa99560613337a923b7f2cb5f0347fceae3d77a1ad67bc8b908e4'",
     );
   assert.equal(current, expected);
+});
+
+test('E11.8-05: the current revision changes only the dates and metadata of the revision it copies', async () => {
+  const source = await readFile(
+    join(rulesDirectory, `${representativeCorrection}.md`),
+    'utf8',
+  );
+  const current = await readFile(
+    join(rulesDirectory, `${currentVersion}.md`),
+    'utf8',
+  );
+  const close = [
+    'They close at **23:59:59 UTC on 1 March 2027**.',
+    'They close at **23:59:59 UTC on 31 August 2027**.',
+  ];
+  const draw = [
+    'Winners are drawn on **1 April 2027** by',
+    'Winners are drawn on **1 September 2027** by',
+  ];
+  for (const [before] of [close, draw])
+    assert.equal(source.split(before).length, 2, before);
+  const sourceSha = /^sha256: '([a-f0-9]{64})'$/mu.exec(source)?.[1];
+  assert.ok(sourceSha);
+  const expected = source
+    .replace(
+      `rulesVersion: ${representativeCorrection}`,
+      `rulesVersion: ${currentVersion}`,
+    )
+    .replace("publishedOn: '2026-10-09'", "publishedOn: '2026-11-26'")
+    .replace(
+      `sha256: '${sourceSha}'`,
+      "sha256: '47f6a7662f6884d92498e296adf53aa69a7de4265acec0f47179bad8fbf7f722'",
+    )
+    .replace(close[0], close[1])
+    .replace(draw[0], draw[1]);
+  assert.notEqual(expected, source);
+  assert.equal(current, expected);
+  // The opening sentence is the one the founder kept.
+  assert.ok(
+    current.includes(
+      'Entries open at **00:00 UTC on 1 October 2026**, or when the Valstara waitlist goes live if that is later.',
+    ),
+  );
+});
+
+test('E11.8-05: no current surface states the superseded giveaway dates', async () => {
+  const oldDates =
+    /\b(?:1|2) March 2027\b|\b1 April 2027\b|\b(?:1|2) Mar 2027\b|\b1 Apr 2027\b|2027-03-0[12]|2027-04-01/u;
+  // The copy layer, every content file except the archived revisions, and
+  // the email templates.
+  for (const { path, source } of await customerSources()) {
+    if (
+      path.startsWith(join('src/content/giveaway-rules')) &&
+      !path.endsWith(`${currentVersion}.md`)
+    )
+      continue;
+    assert.doesNotMatch(source, oldDates, path);
+  }
+  // Every built page, except the archived revisions, which keep their text
+  // unchanged under the archived notice.
+  const client = join(root, 'dist/client');
+  const pages = (await readdir(client, { recursive: true })).filter((name) =>
+    name.endsWith('.html'),
+  );
+  const archived = pages.filter(
+    (name) =>
+      name.includes('giveaway/rules/VAL-GW-') && !name.includes(currentVersion),
+  );
+  assert.equal(archived.length, 3, archived.join(', '));
+  let checked = 0;
+  for (const name of pages) {
+    if (archived.includes(name)) continue;
+    const html = await readFile(join(client, name), 'utf8');
+    assert.doesNotMatch(html, oldDates, name);
+    checked += 1;
+  }
+  assert.ok(
+    pages.some((name) => name === join('giveaway/rules/index.html')),
+    'the current rules page is built',
+  );
+  assert.ok(checked > archived.length);
+  const rendered = await renderLanding({
+    flags: [{ key: 'giveaway.open', enabled: true }],
+  });
+  assert.doesNotMatch(rendered.body, oldDates);
 });
 
 test('current giveaway claims match the approved rules and prize limits', async () => {

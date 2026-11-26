@@ -25,6 +25,7 @@ export const enforcedPages = Object.freeze([
   '/giveaway/rules/VAL-GW-LAUNCH-20260925-r1',
   '/giveaway/rules/VAL-GW-LAUNCH-20261001-r1',
   '/giveaway/rules/VAL-GW-LAUNCH-20261009-r1',
+  '/giveaway/rules/VAL-GW-LAUNCH-20261126-r1',
   // E11.5-10: the task pages and the branded error pages.
   '/unsubscribe',
   '/dsr',

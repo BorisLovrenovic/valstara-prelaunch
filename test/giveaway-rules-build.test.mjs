@@ -15,11 +15,26 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const rulesVersion = 'VAL-GW-LAUNCH-20261009-r1';
+const rulesVersion = 'VAL-GW-LAUNCH-20261126-r1';
 const earlierRulesVersions = [
   'VAL-GW-LAUNCH-20260925-r1',
   'VAL-GW-LAUNCH-20261001-r1',
+  'VAL-GW-LAUNCH-20261009-r1',
 ];
+// The two revisions before E11-04's correction still carry the superseded
+// representative sentence, unchanged, as records.
+const representativeRevisions = new Set([
+  'VAL-GW-LAUNCH-20260925-r1',
+  'VAL-GW-LAUNCH-20261001-r1',
+]);
+
+async function recordedSha256(version) {
+  const source = await readFile(
+    join(projectRoot, 'src', 'content', 'giveaway-rules', `${version}.md`),
+    'utf8',
+  );
+  return /^sha256: '([a-f0-9]{64})'$/mu.exec(source)?.[1];
+}
 const contentPath = join(
   'src',
   'content',
@@ -246,11 +261,16 @@ test(
         const article = articlePattern.exec(page);
         assert.ok(article);
         assert.equal(article[1], version);
-        assert.match(article[3], /data-protection representatives/iu);
+        if (representativeRevisions.has(version))
+          assert.match(article[3], /data-protection representatives/iu);
+        else
+          assert.doesNotMatch(article[3], /data-protection representatives/iu);
         assert.equal(
           createHash('sha256').update(article[3]).digest('hex'),
           article[2],
         );
+        // The served hash is still the one recorded when it was published.
+        assert.equal(article[2], await recordedSha256(version));
         assert.match(page, /data-archived-rules-notice/u);
         const notice =
           /<aside\b[^>]*data-archived-rules-notice[^>]*>([\s\S]*?)<\/aside>/u.exec(
@@ -281,6 +301,17 @@ test(
         createHash('sha256').update(currentArticle[3], 'utf8').digest('hex'),
         currentArticle[2],
       );
+      assert.equal(currentArticle[2], await recordedSha256(rulesVersion));
+      // E11.8-05: the current revision states the new dates, not the old.
+      assert.match(
+        currentArticle[3],
+        /They close at <strong>23:59:59 UTC on 31 August 2027<\/strong>\./u,
+      );
+      assert.match(
+        currentArticle[3],
+        /Winners are drawn on <strong>1 September 2027<\/strong> by/u,
+      );
+      assert.doesNotMatch(currentArticle[3], /1 March 2027|1 April 2027/u);
       assert.match(currentArticle[3], /country of residence/u);
       assert.match(currentArticle[3], /don.t need your postal address/u);
       assert.match(currentArticle[3], /No purchase or payment is necessary/u);

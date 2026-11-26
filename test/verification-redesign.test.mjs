@@ -259,6 +259,7 @@ test('verification states, exact figures, native actions and flags render access
       '/giveaway/rules/VAL-GW-LAUNCH-20260925-r1',
       '/giveaway/rules/VAL-GW-LAUNCH-20261001-r1',
       '/giveaway/rules/VAL-GW-LAUNCH-20261009-r1',
+      '/giveaway/rules/VAL-GW-LAUNCH-20261126-r1',
       '/unsubscribe',
       '/dsr',
       '/giveaway/award',

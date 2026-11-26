@@ -17,7 +17,12 @@ export interface CurrentGiveawayRules {
   sha256: string;
 }
 
-export const giveawayEntryPeriodEnd = new Date('2027-03-02T00:00:00.000Z');
+/**
+ * The first instant after entries close: the current rules revision's Section
+ * 4 closes them at 23:59:59 UTC on 31 August 2027 (E11.8-05). A test compares
+ * this with the revision, so the prose and the code cannot drift apart.
+ */
+export const giveawayEntryPeriodEnd = new Date('2027-09-01T00:00:00.000Z');
 
 export interface GiveawayAccrualService {
   accrue(

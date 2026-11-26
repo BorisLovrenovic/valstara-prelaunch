@@ -37,11 +37,14 @@ const secondRules = {
   sha256: 'cd'.repeat(32),
 };
 const fixedTime = new Date('2026-10-01T12:00:00.000Z');
+// E11.8-05: the current revision closes entries at 23:59:59 UTC on
+// 31 August 2027, so this is the first instant that earns nothing.
+const entriesClosed = new Date('2027-09-01T00:00:00.000Z');
 
 test('maintenance reads the published revision and hash used by Astro', async () => {
   assert.deepEqual(await currentRulesFromFiles(), {
-    rulesVersion: 'VAL-GW-LAUNCH-20261009-r1',
-    sha256: 'd35678f459daa99560613337a923b7f2cb5f0347fceae3d77a1ad67bc8b908e4',
+    rulesVersion: 'VAL-GW-LAUNCH-20261126-r1',
+    sha256: '47f6a7662f6884d92498e296adf53aa69a7de4265acec0f47179bad8fbf7f722',
   });
 });
 
@@ -652,18 +655,13 @@ test('reconciliation caps each run and excludes post-close and disqualified peop
     const lateEdgeId = randomUUID();
     await f.owner.execute({
       text: `UPDATE subscriber SET verified_at = $2 WHERE id = $1`,
-      values: [lateEdgeReferred, new Date('2027-03-02T00:00:00.000Z')],
+      values: [lateEdgeReferred, entriesClosed],
     });
     await f.owner.execute({
       text: `INSERT INTO referral_edge
                (id, referrer_id, referred_id, state, reward_state, confirmed_at)
              VALUES ($1, $2, $3, 'confirmed', 'settled', $4)`,
-      values: [
-        lateEdgeId,
-        entitled,
-        lateEdgeReferred,
-        new Date('2027-03-02T00:00:00.000Z'),
-      ],
+      values: [lateEdgeId, entitled, lateEdgeReferred, entriesClosed],
     });
     await f.owner.execute({
       text: `UPDATE subscriber SET verified_at = $2 WHERE id = $1`,
@@ -671,7 +669,7 @@ test('reconciliation caps each run and excludes post-close and disqualified peop
     });
     await f.owner.execute({
       text: `UPDATE subscriber SET verified_at = $2 WHERE id = $1`,
-      values: [late, new Date('2027-03-02T00:00:00.000Z')],
+      values: [late, entriesClosed],
     });
     const flags = createFlagService(f.app, {
       currentRules: async () => firstRules,
@@ -723,6 +721,96 @@ test('reconciliation caps each run and excludes post-close and disqualified peop
       ),
       false,
     );
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('E11.8-05: verification earns entries up to the new close and nothing from it', async () => {
+  const f = await fixture();
+  try {
+    // Opening the flag drains the ledger, so the referrer holds a base entry.
+    const referrer = await subscriber(f.owner, 'verified');
+    const flags = createFlagService(f.app);
+    await flags.set('giveaway.open', true, 'e11-8-05-test');
+    async function referredPerson(): Promise<{
+      id: string;
+      edgeId: string;
+      token: string;
+    }> {
+      const id = await subscriber(f.owner, 'pending');
+      const edgeId = randomUUID();
+      const tokenId = randomUUID();
+      const token = deriveEmailToken(tokenId, process.env.EMAIL_TOKEN_SECRET!);
+      await f.owner.execute({
+        text: `INSERT INTO referral_edge (id, referrer_id, referred_id, state, reward_state)
+               VALUES ($1, $2, $3, 'attributed', 'none')`,
+        values: [edgeId, referrer, id],
+      });
+      await f.owner.execute({
+        text: `INSERT INTO verification_token
+                 (id, subscriber_id, token_hash, purpose, expires_at)
+               VALUES ($1, $2, $3, 'verify', $4)`,
+        values: [
+          tokenId,
+          id,
+          createHash('sha256').update(token).digest(),
+          new Date('2027-09-02T00:00:00.000Z'),
+        ],
+      });
+      return { id, edgeId, token };
+    }
+    const verifyAt = (at: Date) =>
+      createVerificationCompletionService(f.app, {
+        clock: () => at,
+        giveaway: { flags, currentRules: () => firstRules },
+      });
+
+    // The last instant inside 23:59:59 UTC on 31 August 2027.
+    const inside = await referredPerson();
+    assert.equal(
+      (await verifyAt(new Date('2027-08-31T23:59:59.999Z'))(inside.token))
+        .outcome,
+      'verified',
+    );
+    assert.deepEqual(
+      (await entries(f.owner, inside.id)).map((entry) => entry.method),
+      ['base'],
+    );
+    assert.deepEqual(
+      (await entries(f.owner, referrer)).map((entry) => entry.source_edge_id),
+      [null, inside.edgeId],
+    );
+
+    // 00:00 UTC on 1 September 2027: verification and the referral both
+    // complete, and neither earns an entry.
+    const after = await referredPerson();
+    assert.equal(
+      (await verifyAt(entriesClosed)(after.token)).outcome,
+      'verified',
+    );
+    const edge = await f.owner.readOne<{ state: string }>({
+      text: 'SELECT state FROM referral_edge WHERE id = $1',
+      values: [after.edgeId],
+    });
+    assert.equal(edge?.state, 'confirmed');
+    assert.equal((await entries(f.owner, after.id)).length, 0);
+    assert.deepEqual(
+      (await entries(f.owner, referrer)).map((entry) => entry.source_edge_id),
+      [null, inside.edgeId],
+    );
+
+    // Reconciliation restores nothing for them either.
+    assert.deepEqual(
+      await createGiveawayEntryReconciliationJob(
+        f.app,
+        flags,
+        async () => firstRules,
+      ).run(10),
+      { checked: 0, accrued: 0 },
+    );
+    assert.equal((await entries(f.owner, after.id)).length, 0);
+    assert.equal((await entries(f.owner, referrer)).length, 2);
   } finally {
     await f.dispose();
   }
