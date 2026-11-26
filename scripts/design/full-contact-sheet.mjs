@@ -132,7 +132,7 @@ export const flagAnalysis = Object.freeze({
   'partners.announcements':
     'not read by any page; the founder command and the partner announcement email only (E11.7-16)',
   'trust_ledger.page':
-    'not read by the landing; /trust-ledger and its child sitemap only (404 and an empty urlset while off), a data route captured on the Trust Ledger fixture site by test/trust-ledger-browser.test.mjs (E11.8-01)',
+    'not read by the landing; /trust-ledger and its child sitemap only (404 and an empty urlset while off), a data route checked for accessibility and layout at every width in both themes on the Trust Ledger fixture site by test/trust-ledger-browser.test.mjs (E11.8-01)',
 });
 
 const on = (value) => (value ? 'on' : 'off');
