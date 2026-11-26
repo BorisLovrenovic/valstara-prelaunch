@@ -155,4 +155,10 @@ export const adminRouteRegistry = defineAdminRouteRegistry([
     pathname: '/api/admin/trust-ledger/waitlist',
     methods: [{ method: 'GET', audit: 'required' }],
   },
+  // E11.8-02: the per-platform signup report; every run is audited.
+  {
+    source: 'src/pages/api/admin/reports/sources.ts',
+    pathname: '/api/admin/reports/sources',
+    methods: [{ method: 'GET', audit: 'required' }],
+  },
 ]);

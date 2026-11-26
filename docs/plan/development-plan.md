@@ -4669,6 +4669,11 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - No analytics event changes, and no public response carries any of it
 
 **Tests:** Reconciliation against seeded data · the unlisted-value red path · normalisation · the no-UTM split · range bounds · authentication and audit · the convention file's validation.
+
+**Founder decisions (2026-11-26):**
+1. **An absent or empty UTM value prints as `(not set)`; `other` stays for unlisted or malformed values.** For a signup that carries UTM values, a source, medium or campaign that is missing, or empty after trimming, is counted under `(not set)`; a present value off the convention list, or a campaign not matching `^[a-z0-9-]{1,64}$`, is counted under `other`. Neither label prints visitor text. Signups with no UTM values at all stay split into `referral link or code` and `none`. `(not set)` is a fixed report label beside `other`, `none` and `referral link or code` (`docs/features/analytics.md`, the per-platform signup report). *(Accepted under the founder's standing rule for high-confidence recommendations.)*
+2. **"Verified signups" counts the signups whose status is `verified` when the report runs.** It uses the one counted status (`countedSubscriberStatus`, standing rule 2), as the Trust Ledger's `verified_total` does (`docs/features/trust-ledger.md`). A member who verified and has since left the waitlist, bounced or been disqualified counts as a signup but not as a verified signup; `verified_at` is not read for this count. *(Accepted under the founder's standing rule for high-confidence recommendations.)*
+
 **Docs:** `docs/features/analytics.md` · `docs/features/admin.md` · `docs/data/model.md` · `docs/legal/compliance.md`
 
 ### E11.8-03 — The founder note in the weekly update

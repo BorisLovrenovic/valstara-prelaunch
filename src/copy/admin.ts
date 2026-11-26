@@ -70,4 +70,17 @@ export const adminCopy = {
     actor: 'A human actor is required.',
     unavailable: 'The Trust Ledger figures are temporarily unavailable.',
   },
+  // E11.8-02: the per-platform signup report.
+  sourceReport: {
+    query:
+      'Name the range as from=YYYY-MM-DD and to=YYYY-MM-DD, each once, and nothing else.',
+    range:
+      'The range must run from a real calendar date to the same date or a later one.',
+    tooManyRows:
+      'That range holds more rows than one report prints. Choose a shorter range.',
+    actor: 'A human actor is required.',
+    unavailable: 'The source report is temporarily unavailable.',
+    retention:
+      'UTM values are kept for 12 months, so this report covers only signups whose values are still held. Erased members and pending erasures are not counted.',
+  },
 } as const;

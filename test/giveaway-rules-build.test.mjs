@@ -48,6 +48,8 @@ async function buildFixture(changeContent) {
       'config/valstara-prices.json',
       // E11.7-05: the partner application's code blocklist.
       'config/partner-code-blocklist.json',
+      // E11.8-02: the source report's UTM convention.
+      'config/utm-convention.json',
       'data/price-index',
       'packages/price-index/src/publish',
       'packages/price-index/src/schema',

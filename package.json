@@ -6,7 +6,8 @@
   "scripts": {
     "admin": "node ./src/server/admin/cli.ts",
     "build": "astro build",
-    "check": "npm run price-index -- validate && npm run lint && npm run format && npm run typecheck && npm run security && node scripts/ci/app-build.mjs",
+    "check": "npm run price-index -- validate && tsx scripts/ci/utm-convention-check.ts && npm run lint && npm run format && npm run typecheck && npm run security && node scripts/ci/app-build.mjs",
+    "report:sources": "node ./src/server/admin/cli.ts report sources",
     "prebuild": "tsx scripts/ci/provider-showcase-check.ts && tsx scripts/ci/partner-kit-check.ts && tsx scripts/ci/partner-announcements-check.ts && tsx scripts/ci/trust-ledger-check.ts && tsx scripts/ci/seo-build-check.ts --sitemap",
     "postbuild": "tsx scripts/ci/seo-build-check.ts --check",
     "backup:drill": "sh infra/backups/restore-drill.sh",

@@ -25,6 +25,12 @@ export interface AdminCommandIo {
   write(line: string): void;
   /** Write a streamed response chunk and wait for the output to accept it. */
   writeChunk(text: string): void | Promise<void>;
+  /**
+   * Write a line beside the output, not in it: standard error at the
+   * terminal, so a redirected CSV stays a CSV (E11.8-02). Without it, the
+   * line is written with `write`.
+   */
+  notice?(line: string): void;
 }
 
 export interface AdminCommandEnvironment {
@@ -59,6 +65,11 @@ export interface AdminCommand {
     body: Record<string, unknown>,
     args: readonly string[],
   ): Promise<readonly string[]>;
+  /** Lines written with `notice` after the output (E11.8-02). */
+  notices?(
+    body: Record<string, unknown>,
+    args: readonly string[],
+  ): readonly string[];
 }
 
 export type AdminCommandSet = Readonly<Record<string, AdminCommand>>;
@@ -453,10 +464,131 @@ const partnerCommands: Readonly<Record<string, AdminCommand>> = {
   },
 };
 
+// E11.8-02: the per-platform signup report. The server prints only labels
+// and counts (a value off the convention is `other`), and this command prints
+// what it returns: a table, or with --csv a CSV on standard output, for the
+// founder to redirect (`npm run --silent report:sources -- --from … --to …
+// --csv > sources.csv`), with the retention note on standard error.
+const sourceReportColumns = [
+  ['signups', 'signups'],
+  ['verified_signups', 'verified'],
+  ['confirmed_referrals', 'confirmed referrals'],
+  ['first_survey_completions', 'first surveys'],
+] as const;
+
+function sourceReportLines(body: Record<string, unknown>): {
+  utm: string[][];
+  withoutUtm: string[][];
+  totals: string[];
+} {
+  const countsOf = (row: Record<string, unknown>) =>
+    sourceReportColumns.map(([key]) => String(row[key]));
+  const list = (value: unknown) =>
+    (Array.isArray(value) ? value : []).map((entry) => record(entry));
+  return {
+    utm: list(body.rows).map((row) => [
+      String(row.source),
+      String(row.medium),
+      String(row.campaign),
+      ...countsOf(row),
+    ]),
+    withoutUtm: list(body.without_utm).map((row) => [
+      String(row.bucket),
+      '',
+      '',
+      ...countsOf(row),
+    ]),
+    totals: countsOf(record(body.totals)),
+  };
+}
+
+function csvField(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+function aligned(rows: readonly (readonly string[])[]): string[] {
+  const widths = rows[0]?.map((_, column) =>
+    Math.max(...rows.map((row) => (row[column] ?? '').length)),
+  );
+  return rows.map((row) =>
+    row
+      .map((cell, column) => cell.padEnd(widths?.[column] ?? 0))
+      .join('  ')
+      .trimEnd(),
+  );
+}
+
+const reportCommands: Readonly<Record<string, AdminCommand>> = {
+  'report sources': {
+    usage: 'report sources --from YYYY-MM-DD --to YYYY-MM-DD [--csv]',
+    build(args) {
+      const { positional, values } = readOptions(
+        args,
+        ['--from', '--to'],
+        ['--csv'],
+      );
+      if (positional.length !== 0) throw usageError('Unexpected argument.');
+      const from = values['--from'];
+      const to = values['--to'];
+      // The server checks that each is a real date; a value of the wrong
+      // shape is refused here, before a code is asked for.
+      const day = /^\d{4}-\d{2}-\d{2}$/u;
+      if (
+        from === undefined ||
+        to === undefined ||
+        !day.test(from) ||
+        !day.test(to)
+      ) {
+        throw usageError('Name the range: --from YYYY-MM-DD --to YYYY-MM-DD.');
+      }
+      return {
+        method: 'GET',
+        path: '/api/admin/reports/sources',
+        query: { from, to },
+      };
+    },
+    async complete(body, args) {
+      const { utm, withoutUtm, totals } = sourceReportLines(body);
+      if (args.includes('--csv')) {
+        return [
+          [
+            'source',
+            'medium',
+            'campaign',
+            ...sourceReportColumns.map(([key]) => key),
+          ],
+          ...utm,
+          ...withoutUtm,
+        ].map((row) => row.map(csvField).join(','));
+      }
+      const header = sourceReportColumns.map(([, label]) => label);
+      return [
+        `Signups created ${String(body.from)} to ${String(body.to)} (UTC days), counted at ${String(body.counted_at)}.`,
+        '',
+        ...aligned([['source', 'medium', 'campaign', ...header], ...utm]),
+        '',
+        'Without UTM values:',
+        ...aligned([
+          ['', ...header],
+          ...withoutUtm.map((row) => [row[0] ?? '', ...row.slice(3)]),
+          ['total, all signups', ...totals],
+        ]),
+        '',
+        `${String(body.row_count)} rows.`,
+        String(body.retention),
+      ];
+    },
+    notices(body, args) {
+      return args.includes('--csv') ? [String(body.retention)] : [];
+    },
+  },
+};
+
 export const adminCommands: AdminCommandSet = {
   'referrals void': referralVoidCommand('void'),
   'referrals unvoid': referralVoidCommand('unvoid'),
   ...partnerCommands,
+  ...reportCommands,
 };
 
 function record(value: unknown): Record<string, unknown> {
@@ -609,6 +741,10 @@ export async function runAdminCommand(
       ? (command.describe?.(body) ?? [])
       : await command.complete(body, commandArgs);
   for (const line of lines) io.write(line);
+  for (const line of command.notices?.(body, commandArgs) ?? []) {
+    if (io.notice === undefined) io.write(line);
+    else io.notice(line);
+  }
 }
 
 /** Prompts on stderr; reads lines when piped, or raw keys without echo. */
@@ -669,6 +805,9 @@ function createProcessIo(): AdminCommandIo & { close(): void } {
     },
     write(line) {
       process.stdout.write(`${line}\n`);
+    },
+    notice(line) {
+      process.stderr.write(`${line}\n`);
     },
     writeChunk(text) {
       return new Promise<void>((resolve, reject) => {

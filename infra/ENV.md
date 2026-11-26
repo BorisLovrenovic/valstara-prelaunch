@@ -480,3 +480,8 @@ E11.8-01: `npm run trust-ledger -- draft --month YYYY-MM`
 and adds none. It is the one founder command that writes a file: the new
 Trust Ledger entry in `src/content/trust-ledger/`, holding counts only, never
 a credential or the code.
+
+E11.8-02: `npm run report:sources -- --from YYYY-MM-DD --to YYYY-MM-DD [--csv]`
+is the admin command line's `report sources` command, and reads the same two
+variables and adds none. The UTM convention it reports against is a committed
+file, `config/utm-convention.json`, not configuration from the environment.
