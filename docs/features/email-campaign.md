@@ -40,11 +40,20 @@ The partner digest is **optional programme mail**, not marketing (D-071): a Brev
 
 The founder writes to every partner at once through a committed content file in `src/content/partner-announcements/` and the command `partners announce --id <id> [--dry-run]`, behind `partners.announcements`. An announcement is **optional programme mail like the digest**, not marketing: a Brevo broadcast from `mail.valstara.com` to exactly the digest's audience, with the same dispatch re-checks and the same unsubscribe, which turns off only the partner's optional-email choice. One email per partner per announcement, and every run is audited. A file is validated at build (a subject of at most 80 characters, at most 300 words, at most three links to the site's own pages, no image, HTML or merge field, the copy rules) and never changes once published. Contractual notices go through the contract route instead. The full rules are in `docs/features/partner-programme.md#partner-announcements` and `docs/modules/email.md#partner-programme-contact-workflow`.
 
-## Planned: the founder note and the referral reminder (E11.8-03, E11.8-04)
+## The founder note (E11.8-03)
 
-**Founder decisions, 2026-11-24.**
+**Founder decision, 2026-11-24.** The founder's own words reach members only as a short note in the weekly update, written in a content file and shipped by deploy. No Brevo-editor campaign is sent to members.
 
-- **The founder note.** The founder's own words reach members only as a short note in the weekly update: one content file per ISO week, at most 120 words and one own-origin link, shipped by deploy, behind `email.weekly_note`. The E8-07 consent and suppression re-checks still apply at dispatch. No Brevo-editor campaign is sent to members.
+- **Feature flag:** `email.weekly_note`, **default off**. Off, no weekly run records a note and the weekly update is exactly what it was before E11.8-03. Dispatch reads it for every message: while it is off, messages carry no note, and switched back on within the same run, later messages carry the run's recorded note again.
+- **The file.** One file per ISO-8601 week, `src/content/weekly-notes/YYYY-Www.md`, named for the week of its send. Plain prose of at most 120 words, in paragraphs, with at most one link, written as a site path (`[the Trust Ledger](/trust-ledger)`) so it is always on the site's own origin. No image, no HTML, no merge field and no personalisation of any kind, and no written web or email address, which mail clients would turn into a link. The copy rules and the forbidden-copy list apply. A file that breaks a rule fails the build (`scripts/ci/weekly-notes-check.ts`, before every build), and every read re-validates it.
+- **The send.** When the flag is on and a note exists for the run's ISO week, every message of that run carries it in both the HTML and the plain-text part, through the shared layout, after the top-10 block and before the status link, headed "A note from the founder:". Its link is a text link. A week without a note sends the unchanged update, and a note for any other week is never used. The subject and preheader do not change.
+- **One note per run.** When a run's queueing starts, it records the note's SHA-256 (`weekly_campaign_run.note_hash`, which the application cannot change). Dispatch renders only a deployed note with that hash. A note changed, removed or found invalid by a deploy during the send window is left out of the rest of that run, recorded once on the run, with a P3; restoring it does not bring it back. One run never mixes two notes.
+- **Who receives it is unchanged.** Queueing and dispatch keep the E8-07 checks: `email.broadcast`, verified, unsuppressed and marketing-consented, re-checked at dispatch. A member who unsubscribes or is suppressed after queueing gets nothing, note or not.
+
+## Planned: the referral reminder (E11.8-04)
+
+**Founder decision, 2026-11-24.**
+
 - **The referral reminder.** A member who joined through another member's link or code gets one line in the welcome email, "You joined because a friend invited you…", naming no one, behind `email.referred_welcome_line`. Partner-referred members keep their partner line.
 
 ## The SubSlush announcement

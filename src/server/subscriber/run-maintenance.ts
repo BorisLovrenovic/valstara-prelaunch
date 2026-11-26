@@ -71,6 +71,7 @@ import {
   runSharedSnapshotRefresh,
 } from '../leaderboard/persisted.ts';
 import { createWeeklyCampaignJob } from '../email/weekly-campaign.ts';
+import { createWeeklyNoteService } from '../email/weekly-note.ts';
 import { createEmailQueue } from '../email/queue.ts';
 import { createEmailQuotaService } from '../email/quota.ts';
 import { createRecordedPurgeJob } from './purge-run.ts';
@@ -258,6 +259,11 @@ const scheduler = createReferralAttributionMaintenanceScheduler(
       clock,
       tokenSecret: resendConfiguration.emailTokenSecret,
       schedule: getWeeklySendConfiguration(),
+      note: createWeeklyNoteService({
+        database,
+        clock,
+        isEnabled: () => broadcastFlags.isEnabled('email.weekly_note'),
+      }),
     }),
     partnerDigest: createPartnerDigestJob({
       database,
@@ -355,6 +361,8 @@ const running = [
       {
         provider: brevoProvider,
         isEnabled: () => broadcastFlags.isEnabled('email.broadcast'),
+        isWeeklyNoteEnabled: () =>
+          broadcastFlags.isEnabled('email.weekly_note'),
       },
     ),
     alerts,

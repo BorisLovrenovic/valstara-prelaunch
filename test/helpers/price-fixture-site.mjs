@@ -54,6 +54,8 @@ const buildInputs = [
   'scripts/ci/partner-announcements-check.ts',
   // E11.8-01: the Trust Ledger entries check runs before the build.
   'scripts/ci/trust-ledger-check.ts',
+  // E11.8-03: the weekly notes check runs before the build.
+  'scripts/ci/weekly-notes-check.ts',
   'scripts/forbidden-copy.json',
   'config',
   'packages/price-index/src/publish',

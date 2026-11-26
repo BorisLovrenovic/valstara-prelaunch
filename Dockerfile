@@ -25,6 +25,9 @@ COPY scripts/ci/partner-kit-check.ts ./scripts/ci/partner-kit-check.ts
 COPY scripts/ci/partner-announcements-check.ts ./scripts/ci/partner-announcements-check.ts
 # E11.8-01: the Trust Ledger entries check runs before the build too.
 COPY scripts/ci/trust-ledger-check.ts ./scripts/ci/trust-ledger-check.ts
+# E11.8-03: every founder note for the weekly update is validated before the
+# build, with the forbidden-copy list.
+COPY scripts/ci/weekly-notes-check.ts ./scripts/ci/weekly-notes-check.ts
 COPY scripts/forbidden-copy.json ./scripts/forbidden-copy.json
 # E11.6-10: the price pages bundle the price data and the price-index
 # package's two site-importable parts (ADR-033); scripts/ci/app-build.mjs
@@ -81,6 +84,9 @@ COPY --chown=node:node --from=build /app/src/server/survey/questions.ts ./src/se
 # E11.7-16: the founder command (the app) and the renderer (the maintenance
 # worker) read the partner announcements validated at build.
 COPY --chown=node:node --from=build /app/src/content/partner-announcements ./src/content/partner-announcements
+# E11.8-03: the weekly run and the weekly update's renderer (the maintenance
+# worker) read the founder notes validated at build.
+COPY --chown=node:node --from=build /app/src/content/weekly-notes ./src/content/weekly-notes
 # E11.7-15 (D-074): the partner digest formats its rank line's snapshot time
 # with the public leaderboard's formatter.
 COPY --chown=node:node --from=build /app/src/islands/leaderboard.ts ./src/islands/leaderboard.ts

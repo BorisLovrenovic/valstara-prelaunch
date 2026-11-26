@@ -8,9 +8,12 @@ export function createWeeklyCampaignRepository(db: DatabaseConnection) {
       state: string;
       snapshot_id: string | null;
       alerted_at: Date | null;
+      note_hash: string | null;
+      note_left_out_at: Date | null;
     } | null> {
       return db.readOne({
-        text: 'SELECT state, snapshot_id, alerted_at FROM weekly_campaign_run WHERE iso_week = $1',
+        text: `SELECT state, snapshot_id, alerted_at, note_hash, note_left_out_at
+          FROM weekly_campaign_run WHERE iso_week = $1`,
         values: [isoWeek],
       });
     },
@@ -24,12 +27,31 @@ export function createWeeklyCampaignRepository(db: DatabaseConnection) {
         text: 'SELECT as_of FROM leaderboard_snapshot ORDER BY as_of, id',
       });
     },
-    async start(isoWeek: string, snapshotId: string, now: Date): Promise<void> {
+    async start(
+      isoWeek: string,
+      snapshotId: string,
+      now: Date,
+      noteHash: string | null = null,
+    ): Promise<void> {
       await db.execute({
-        text: `INSERT INTO weekly_campaign_run (iso_week, state, snapshot_id, recorded_at)
-          VALUES ($1, 'started', $2, $3) ON CONFLICT (iso_week) DO NOTHING`,
-        values: [isoWeek, snapshotId, now],
+        text: `INSERT INTO weekly_campaign_run (iso_week, state, snapshot_id, recorded_at, note_hash)
+          VALUES ($1, 'started', $2, $3, $4) ON CONFLICT (iso_week) DO NOTHING`,
+        values: [isoWeek, snapshotId, now, noteHash],
       });
+    },
+    /**
+     * E11.8-03: leaves the run's note out of the rest of the run. True only
+     * for the one call that recorded it.
+     */
+    async leaveNoteOut(isoWeek: string, now: Date): Promise<boolean> {
+      return (
+        (await db.execute({
+          text: `UPDATE weekly_campaign_run SET note_left_out_at = $2
+          WHERE iso_week = $1 AND note_hash IS NOT NULL
+            AND note_left_out_at IS NULL`,
+          values: [isoWeek, now],
+        })) > 0
+      );
     },
     async skip(isoWeek: string, now: Date): Promise<boolean> {
       return (

@@ -290,5 +290,6 @@
   "test/verification-redesign.test.mjs": 83.8,
   "test/verification.test.ts": 6.5,
   "test/verify-final-design-rendered.test.mjs": 147.8,
-  "test/weekly-campaign.test.ts": 2.6
+  "test/weekly-campaign.test.ts": 2.6,
+  "test/weekly-note.test.ts": 2.9
 }
