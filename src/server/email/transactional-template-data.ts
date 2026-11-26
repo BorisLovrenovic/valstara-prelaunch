@@ -28,6 +28,11 @@ export function createTransactionalTemplateData(
         return status;
       return { ...status, partnerWelcomePerk: undefined };
     },
+    async memberReferral(statusTokenId) {
+      // Off, nothing more is read and the welcome email is unchanged.
+      if (!(await flags.isEnabled('email.referred_welcome_line'))) return false;
+      return repository.memberReferred(await subject(statusTokenId));
+    },
     async receiptEntries(statusTokenId, rulesVersion) {
       return repository.receiptEntries(
         await subject(statusTokenId),

@@ -31,6 +31,9 @@ const renderers = createTransactionalRenderers({
     async referralStatus() {
       return referralStatus;
     },
+    async memberReferral() {
+      return false;
+    },
     async receiptEntries() {
       return 6;
     },
@@ -353,4 +356,60 @@ test('E8-03 rendered subjects and bodies contain no forbidden copy', async () =>
       );
     }
   }
+});
+
+test('E11.8-04 the friend line leads the referral link for a member-referred member, and yields to the partner line', async () => {
+  const render = (status: ReferralStatus, memberReferral: boolean) =>
+    createTransactionalRenderers({
+      baseUrl,
+      sendingDomain: 'send.valstara.com',
+      data: {
+        referralStatus: async () => status,
+        memberReferral: async () => memberReferral,
+        receiptEntries: async () => 6,
+        winnerDetails: async () => ({ deadline, rulesVersion }),
+      },
+    })
+      .get('welcome')!
+      .render({
+        email: 'reader@example.test',
+        payload: { status_token_id: 'status-id' },
+        token,
+        unsubscribePageUrl: `${baseUrl}/unsubscribe?t=unsubscribe-signature`,
+      });
+  const line = emailCopy.welcome.referredByMember;
+  assert.equal(
+    line,
+    "You joined because a friend invited you. If you'd like to do the same, here's your own link.",
+  );
+  const referralLine = `${emailCopy.referral}: ${referralStatus.referralLink}`;
+
+  const friend = await render(referralStatus, true);
+  const lines = friend.text.split('\n\n');
+  assert.equal(lines.filter((entry) => entry === line).length, 1);
+  assert.equal(lines[lines.indexOf(line) + 1], referralLine);
+  assert.ok(
+    friend.html?.includes(
+      `<p>${line.replaceAll("'", '&#39;')}</p></td></tr><tr><td class="v-text v-link"`,
+    ),
+  );
+  assert.ok(
+    friend.html!.indexOf(line.replaceAll("'", '&#39;')) <
+      friend.html!.indexOf(`<a href="${referralStatus.referralLink}">`),
+  );
+
+  const plain = await render(referralStatus, false);
+  assert.equal(friend.text.replace(`${line}\n\n`, ''), plain.text);
+  assert.ok(!plain.text.includes(line));
+
+  // A partner perk wins: the partner line only, never both.
+  const partnerStatus: ReferralStatus = {
+    ...referralStatus,
+    partnerWelcomePerk: { code: 'MAYA', discount: 15 },
+  };
+  const partner = await render(partnerStatus, true);
+  assert.ok(!partner.text.includes(line));
+  assert.ok(!partner.html?.includes(line.replaceAll("'", '&#39;')));
+  assert.ok(partner.text.includes('You joined through MAYA'));
+  assert.deepEqual(partner, await render(partnerStatus, false));
 });

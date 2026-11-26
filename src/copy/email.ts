@@ -41,6 +41,12 @@ export const emailCopy = {
     preheader: 'Your status link, referral link and current details.',
     firstLine: 'Your place on the Valstara waitlist is confirmed.',
     body: 'Your current details are below. They may change as referrals verify.',
+    /**
+     * E11.8-04: placed directly before the member's own referral link, for a
+     * member another member referred. It names no one.
+     */
+    referredByMember:
+      "You joined because a friend invited you. If you'd like to do the same, here's your own link.",
   },
   milestone: {
     subject: 'Your Valstara referral rewards',

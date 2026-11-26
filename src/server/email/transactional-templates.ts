@@ -12,6 +12,11 @@ import type { TemplateRenderer } from './service.ts';
 
 export interface TransactionalTemplateData {
   referralStatus(statusTokenId: string): Promise<ReferralStatus>;
+  /**
+   * E11.8-04: whether another member, not a partner, referred the member,
+   * while `email.referred_welcome_line` is on; false while it is off.
+   */
+  memberReferral(statusTokenId: string): Promise<boolean>;
   receiptEntries(statusTokenId: string, rulesVersion: string): Promise<number>;
   winnerDetails(
     awardId: string,
@@ -142,11 +147,17 @@ export function createTransactionalRenderers(
     kind: 'transactional',
     async render({ email, payload, token, unsubscribePageUrl }) {
       const statusTokenId = reference(payload, 'status_token_id');
-      const [status, statusToken] = await Promise.all([
+      const [status, statusToken, memberReferral] = await Promise.all([
         dependencies.data.referralStatus(statusTokenId),
         token(statusTokenId),
+        dependencies.data.memberReferral(statusTokenId),
       ]);
       const perk = presentPartnerWelcomePerk(status.partnerWelcomePerk);
+      // A partner-referred member keeps only the partner line (E11.8-04).
+      const referralLead =
+        memberReferral && perk === null
+          ? { lead: emailCopy.welcome.referredByMember }
+          : {};
       return render(
         {
           subject: emailCopy.welcome.subject,
@@ -162,7 +173,10 @@ export function createTransactionalRenderers(
           facts: referralFacts(status),
           links: [
             link(emailCopy.status, statusLink(base.origin, statusToken)),
-            link(emailCopy.referral, status.referralLink),
+            {
+              ...link(emailCopy.referral, status.referralLink),
+              ...referralLead,
+            },
             link(emailCopy.trust, new URL('/legit', base.origin).toString()),
           ],
         },

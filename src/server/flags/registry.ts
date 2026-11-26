@@ -30,6 +30,10 @@ export const campaignFlagRegistry = Object.freeze({
   // turns it on; off, no run records a note and the weekly update is exactly
   // as before (docs/features/email-campaign.md#the-founder-note-e118-03).
   'email.weekly_note': false,
+  // E11.8-04: the "a friend invited you" line in the welcome email. Off until
+  // the founder turns it on; off, the welcome email is exactly as before
+  // (docs/features/email-campaign.md#the-referral-reminder-e118-04).
+  'email.referred_welcome_line': false,
 } as const);
 
 export type FlagKey = keyof typeof campaignFlagRegistry;

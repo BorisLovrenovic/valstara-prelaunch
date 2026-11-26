@@ -10,6 +10,15 @@ export interface EmailLink {
   readonly url: string;
 }
 
+/** A text link after the main action, optionally led by its own paragraph. */
+export interface EmailTextLink extends EmailLink {
+  /**
+   * A paragraph placed directly before this link, in both parts: the
+   * referral reminder before the member's own link (E11.8-04).
+   */
+  readonly lead?: string;
+}
+
 export interface EmailDocument {
   readonly subject: string;
   /** Inbox preview text; hidden in the body and absent from the plain text. */
@@ -25,7 +34,7 @@ export interface EmailDocument {
     readonly links: readonly EmailLink[];
   };
   /** The first link is the message's main action and renders as its button. */
-  readonly links: readonly [EmailLink, ...EmailLink[]];
+  readonly links: readonly [EmailLink, ...EmailTextLink[]];
 }
 
 interface EmailPalette {
@@ -350,11 +359,11 @@ function body(
         })}">${document.facts
           .map((fact) => `<li>${escapeHtml(fact)}</li>`)
           .join('')}</ul></td></tr>`;
-  const textLinks = (list: readonly EmailLink[]) =>
+  const textLinks = (list: readonly EmailTextLink[]) =>
     list
       .map(
-        ({ label, url }) =>
-          `<tr><td class="v-text v-link" style="${style({ padding: `0 0 ${px.space1}px` })};${prose}"><a href="${escapeHtml(url)}">${escapeHtml(label)}</a></td></tr>`,
+        ({ label, url, lead }) =>
+          `${lead === undefined ? '' : `<tr><td class="v-text" style="${prose}"><p>${escapeHtml(lead)}</p></td></tr>`}<tr><td class="v-text v-link" style="${style({ padding: `0 0 ${px.space1}px` })};${prose}"><a href="${escapeHtml(url)}">${escapeHtml(label)}</a></td></tr>`,
       )
       .join('');
   const links = textLinks(secondary);
@@ -424,12 +433,17 @@ export function renderEmailDocument(input: {
 }): Message {
   const { document, unsubscribePageUrl } = input;
   const theme = input.theme ?? emailTheme();
+  const [action, ...secondary] = document.links;
   const lines = [
     ...document.paragraphs,
     ...(document.facts ?? []),
     ...(document.note?.paragraphs ?? []),
     ...(document.note?.links ?? []).map(({ label, url }) => `${label}: ${url}`),
-    ...document.links.map(({ label, url }) => `${label}: ${url}`),
+    `${action.label}: ${action.url}`,
+    ...secondary.flatMap(({ label, url, lead }) => [
+      ...(lead === undefined ? [] : [lead]),
+      `${label}: ${url}`,
+    ]),
     emailCopy.footer.legalLine,
     emailCopy.footer.supportEmail,
     `${emailCopy.unsubscribe}: ${unsubscribePageUrl}`,

@@ -10,6 +10,23 @@ export function createEmailTemplateRepository(database: DatabaseConnection) {
       });
       return row?.subscriber_id ?? null;
     },
+    /**
+     * Whether the subscriber's confirmed, non-voided referral edge points to
+     * another member and not to a partner (E11.8-04). Only the answer leaves
+     * the query: no identifier, code or other detail of the referrer.
+     */
+    async memberReferred(subscriberId: string): Promise<boolean> {
+      const row = await database.readOne<{ referred: boolean }>({
+        text: `SELECT EXISTS (
+            SELECT 1 FROM referral_edge
+            WHERE referred_id = $1 AND state = 'confirmed'
+              AND voided_at IS NULL AND partner_id IS NULL
+              AND referrer_id IS NOT NULL AND referrer_id <> referred_id
+          ) AS referred`,
+        values: [subscriberId],
+      });
+      return row?.referred === true;
+    },
     async receiptEntries(
       subscriberId: string,
       rulesVersion: string,
