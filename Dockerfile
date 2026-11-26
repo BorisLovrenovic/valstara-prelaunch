@@ -28,8 +28,9 @@ COPY scripts/ci/trust-ledger-check.ts ./scripts/ci/trust-ledger-check.ts
 COPY scripts/forbidden-copy.json ./scripts/forbidden-copy.json
 # E11.6-10: the price pages bundle the price data and the price-index
 # package's two site-importable parts (ADR-033); scripts/ci/app-build.mjs
-# lists the same inputs. E11.6-11 adds the Valstara prices.
-COPY config/catalogue.json config/markets.json config/valstara-prices.json config/partner-code-blocklist.json ./config/
+# lists the same inputs. E11.6-11 adds the Valstara prices, and E11.8-02 the
+# UTM convention the source report bundles.
+COPY config/catalogue.json config/markets.json config/valstara-prices.json config/partner-code-blocklist.json config/utm-convention.json ./config/
 COPY data/price-index ./data/price-index
 COPY packages/price-index/src/publish ./packages/price-index/src/publish
 COPY packages/price-index/src/schema ./packages/price-index/src/schema

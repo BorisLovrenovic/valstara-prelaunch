@@ -30,7 +30,7 @@ The waitlist row.
 | `status` | text not null | `pending` · `verified` · `expired` · `unsubscribed` · `bounced` · `disqualified` · `erasure_pending` · `erased` |
 | `category_preference` | text[] | From the survey. Carried into the handoff |
 | `source` | text | Bucketed acquisition source |
-| `utm` | jsonb | `source`, `medium`, `campaign`, `content`, `term`; null when none. Captured server-side with the signed referral field; each value is trimmed, control-character-free and capped at 128 characters, with the serialized object capped at 512 bytes. Analytics-only |
+| `utm` | jsonb | `source`, `medium`, `campaign`, `content`, `term`; null when none. Captured server-side with the signed referral field; each value is trimmed, control-character-free and capped at 128 characters, with the serialized object capped at 512 bytes. Analytics-only: no event carries a raw value. E11.8-02's founder report reads `source`, `medium` and `campaign` and prints only values on `config/utm-convention.json` (a campaign matching `^[a-z0-9-]{1,64}$`), counting every other value as `other` (`docs/features/analytics.md#the-per-platform-signup-report-e118-02`) |
 | `referral_code` | text unique **nullable** | **Null until verification.** The code is generated when a subscriber verifies, never for a `pending` row — so it cannot be `NOT NULL` (ADR-011, `docs/modules/referral.md`). Founder-authorised 2026-08-26, resolving the E1-03/E4-01 conflict; see E1-03's acceptance criteria. Every write is mirrored into the shared `referral_code` registry in the same transaction (E11.7-01) |
 | `referred_by_id` | uuid null → `subscriber(id)` | Set once at signup; **never reassigned** |
 | `referral_tier` | int not null default 0 | **Derived** from settled milestones. Since E11.7-03 retired the milestone tiers, none is settled, so it is 0 |
@@ -54,7 +54,9 @@ Indexes: `email_normalised` (unique) · `referral_code` (unique) ·
 `referred_by_id` · `(status, created_at)` ·
 `(status, confirmed_referrals desc)` for the leaderboard snapshot ·
 `signup_ip_prefix_hash` partial where not null · functional
-`split_part(email_normalised, '@', 1)` for bounded duplicate-identity evidence.
+`split_part(email_normalised, '@', 1)` for bounded duplicate-identity evidence ·
+`created_at` (migration 0054), which bounds the attribution-health window and
+E11.8-02's per-platform report by signup date.
 
 **`referral_tier`, `confirmed_referrals`, `access_window` and `referral_coupon` are derived.** `referral_edge`, `milestone_award` and `verification_order_window` are the record. One recompute (`src/server/referral/rewards.ts`) rewrites them from the confirmed, non-voided edges inside every confirmation, void and un-void transaction, and the daily repair job runs the same recompute idempotently and alerts on any non-zero correction (`docs/architecture/fallbacks.md`).
 

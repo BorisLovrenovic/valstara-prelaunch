@@ -1,0 +1,17 @@
+{
+  "utm_source": [
+    "tiktok",
+    "instagram",
+    "youtube",
+    "x",
+    "reddit",
+    "telegram",
+    "discord",
+    "linkedin",
+    "facebook",
+    "threads",
+    "newsletter",
+    "press"
+  ],
+  "utm_medium": ["social", "email", "referral", "paid"]
+}

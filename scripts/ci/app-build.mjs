@@ -40,6 +40,8 @@ export const inputPaths = [
   'config/valstara-prices.json',
   // E11.7-05: the partner application checks codes against the blocklist.
   'config/partner-code-blocklist.json',
+  // E11.8-02: the source report bundles the UTM convention.
+  'config/utm-convention.json',
   // E11.6-13: the monthly reports.
   'data/price-index/monthly',
   'packages/price-index/src/publish',

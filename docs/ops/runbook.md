@@ -271,6 +271,30 @@ npm run trust-ledger -- draft --month 2026-12
 
 ---
 
+## Reading signups per platform (E11.8-02)
+
+```sh
+npm run report:sources -- --from 2026-12-01 --to 2026-12-31
+npm run --silent report:sources -- --from 2026-12-01 --to 2026-12-31 --csv > sources.csv
+```
+
+- The command asks for the authenticator code and prints, for the signups
+  created in those UTC days, signups, verified signups, confirmed referrals and
+  first survey completions per source, medium and campaign
+  (`docs/features/analytics.md#the-per-platform-signup-report-e118-02`). Each
+  run is audited as `report.sources_counted`.
+- **A platform shows as `other`:** its `utm_source` is not on
+  `config/utm-convention.json`. Add it there (lower case) through an ordinary
+  pull request; the stored values are re-read on the next run, so past signups
+  move to the new row. A campaign shows as `other` when it is not lower-case
+  letters, digits and hyphens: fix the link, not the report.
+- **"That range holds more rows than one report prints":** choose a shorter
+  range (at most 2,000 rows).
+- UTM values are kept 12 months, so the report covers only signups whose
+  values are still held.
+
+---
+
 ## "The site is up but signups fail"
 
 Almost always PostgreSQL. Check the health endpoint, the container, and memory headroom. **An OOM kill that recurs is a capacity signal, not a restart loop to tolerate** — the box runs with hard limits and no swap deliberately, so contention fails loudly.
