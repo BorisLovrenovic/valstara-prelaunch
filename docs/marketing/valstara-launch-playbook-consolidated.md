@@ -346,19 +346,37 @@ Nobody follows an account that advertises a waitlist ten times a day.
 
 The prize draw runs **on the site, under its published rules**.
 
-**Decided (founder, 21 Nov 2026):** no separate tag-to-enter or follow-to-enter giveaways on Instagram or TikTok during the campaign. Each would need its own rules, would carry the per-country promotion-law exposure the global draw was designed to limit, and attracts sweepstakes hunters who never buy. When a social post promotes the site's giveaway, it states that **the promotion is not sponsored, endorsed or administered by Instagram, Meta or TikTok**, and links to the rules.
+**Decided (founder, 21 Nov 2026):** no separate tag-to-enter or follow-to-enter giveaways on Instagram or TikTok during the campaign. Each would need its own rules, would carry the per-country promotion-law exposure the global draw was designed to limit, and attracts sweepstakes hunters who never buy. When a social post promotes the site's giveaway, it states that **the promotion is not sponsored, endorsed or administered by, or associated with, the platform it is posted on** (Instagram and Meta, TikTok, and so on; see below), and links to the rules.
 
-**Task: research each platform's own rules before the first giveaway post** (founder, 21 Nov 2026). A disclaimer is not the whole answer. Each platform has its own rules for posts that promote or mention a giveaway, **even one run off-platform on our own site**: what must be stated, whether linking out is allowed, how branded content must be labelled, and whether a promotion needs the platform's approval or a paid-partnership label. Before any post or partner template mentions the giveaway, check and record for each platform:
+**Each platform's rules, checked 26 Nov 2026 (VAL-13).** The founder asked for this check on 21 Nov 2026: a disclaimer is not the whole answer, and each platform has its own rules for posts that mention a giveaway, **even one run on our own site**. Two research reports were compared, and the founder read Meta's live policy in a browser. "Official" means the platform's own page; "third-party" means the point was not confirmed on an official page.
 
-- Instagram and Facebook (Meta's promotion guidelines);
-- TikTok;
-- YouTube;
-- X;
-- Reddit, per subreddit;
-- Discord;
-- Telegram.
+| Platform | What applies to us | Source (read 26 Nov 2026) | Status |
+|---|---|---|---|
+| **Facebook** | Announcing a promotion from a Page, group or Event requires: official rules; entrants **release and hold Meta harmless**; entrants **acknowledge it is not sponsored, endorsed, administered by or associated with Meta**; it must not "require or incentivize participants to share, repost, tag others, or in any other way publicize your promotion"; we say we (not Meta) collect the data. No approval needed for organic posts. Our own post needs no paid-partnership label | facebook.com/policies_center/pages_groups_events, §7 Promotions and §8 Data Collection | Official, read by the founder |
+| **Instagram** | The same release and non-affiliation, naming Instagram; we run the promotion at our own risk; no inaccurate tagging. No label on our own posts | help.instagram.com/179379842258600 (Promotion Guidelines) | Official page, wording from its search excerpt |
+| **Meta, creators** | Anyone paid, gifted or on commission uses the **Paid partnership** label and tags Valstara (affiliate links count as an exchange of value) | Meta Branded Content Policies | Official, from search excerpts |
+| **YouTube** | Applies to contests that "use YouTube". The rules must: link the **YouTube Community Guidelines** and say non-complying entries are disqualified; state that **YouTube is not a sponsor** and **release YouTube**; include a privacy notice; be **free to enter**. No rewards for likes, views or subscribes; no contests run through ad units. Our own channel needs no paid-promotion box; creators tick it | support.google.com/youtube/answer/1620498 (contests) · /answer/154235 (paid promotion) | Official |
+| **Reddit** | Clear rules in or linked from the post; entrants **release Reddit**; state it is **not sponsored by, endorsed by or associated with Reddit**; never target minors or support subreddits; no asking for upvotes. Paid entry would be a "lottery" (banned without permission). Reddit Ads list contests and sweepstakes for Sales pre-approval. **Subreddits:** many ban giveaways or outside links, or need mod approval first: read the rules and message the mods before posting | support.reddithelp.com/hc/en-us/articles/22755369815700 · business.reddithelp.com (gambling and gaming policy) | Official; subreddit practice is common practice, not policy. Whether a "Brand Affiliate" tag exists is disputed between the reports |
+| **TikTok** | No required release wording. Our own posts turn on **Disclose commercial content → Your brand** ("Promotional content"). Creators choose **Branded content** ("Paid partnership"); affiliate links and codes count. Gambling marketing banned (a free draw is not gambling). TikTok Shop bans sweepstakes; an archived branded-content page lists "Sweepstakes and giveaways" as restricted in the US and Canada | support.tiktok.com (promoting a brand) · ads.tiktok.com (content disclosure, branded content) | Official for disclosure; branded-content giveaway status **unclear**: check before paying a creator to mention the giveaway |
+| **X** | No required release wording. Rules: no multiple accounts, no duplicate posts, relevant hashtags. Creators: one report says the native **Paid Partnership** toggle (since March 2026) is required and text alone is not enough; the other says **#ad** | help.x.com/en/rules-and-policies/x-contest-rules · /paid-partnerships-policy | Contest page official; paid-partnership rule **third-party only** (help.x.com blocks tools) |
+| **Discord** | No promotion policy. No rewards for server joins or invites; no spam or mass DMs; a free draw is not gambling. No label tool: creators disclose in text | discord.com/guidelines · discord.com/safety/platform-manipulation-policy-explainer · /gambling-policy-explainer | Official, from search excerpts |
+| **Telegram** | No required wording for channel posts; we alone are responsible for the law. Telegram Ads ban gambling and lotteries, and possibly prize-draw ads: don't advertise the giveaway with Telegram Ads | telegram.org/tos · ads.telegram.org/guidelines | Official |
 
-Record the date and the source for each. The partner kit's giveaway wording must follow the strictest of them.
+**What this means for us (founder, 26 Nov 2026):**
+
+1. **The rules page must carry the platform clauses.** Meta, YouTube and Reddit require them in the official rules, and the current rules have none. They ship in **E11.8-07's rules revision**: a final "Social media platforms" section (non-affiliation naming all seven platforms, a release of each, Valstara as the one collecting data, the YouTube Community Guidelines link) and a sharing paragraph in section 3. **Until E11.8-07 is merged, no Facebook, Instagram, YouTube or Reddit post mentions the giveaway.** TikTok, X, Discord and Telegram posts may mention it now, with the disclaimer and the rules link.
+2. **Referral entries are not a Meta incentive to share** (founder's reading of Meta §7). A referral entry is earned when a real person joins and verifies through a member's personal link or code, wherever the member chose to pass it on. We never tell anyone to share, tag, follow or like on a social platform, and the rules say that anyone who shares on a platform follows that platform's rules. No post or template says "share on Instagram for an entry".
+3. **No engagement-for-entries anywhere:** no entries for likes, follows, shares, tags, reposts, subscribes, upvotes or server invites. This also covers the 21 Nov decision.
+4. **The post disclaimer names the platform it is posted on**, for example: *"This giveaway is not sponsored, endorsed or administered by, or associated with, Instagram or Meta. 18+. No purchase necessary. Rules: valstara.com/giveaway/rules"*.
+5. **No paid ads for the giveaway** on YouTube, Reddit or Telegram, and none on Meta or TikTok without re-checking their ad policies first.
+
+**The partner kit's giveaway wording follows the strictest platform**, and so waits for E11.8-07 like the Meta posts do. When it is added, every template that mentions the giveaway:
+
+- carries the full disclaimer (*"not sponsored, endorsed or administered by, or associated with, Meta, Instagram, YouTube, TikTok, X, Reddit, Discord or Telegram"*), "18+", "No purchase necessary" and the rules link;
+- never asks the reader to share, tag, follow or like anything;
+- tells the partner to use each platform's own disclosure tool **and** to write "Ad" in the text: Meta's Paid partnership label, TikTok's Branded content setting, YouTube's paid promotion box, X's Paid Partnership toggle, and plain text on Reddit, Discord and Telegram.
+
+**Re-check before first use, then each quarter while the giveaway runs.** The open points: X's paid-partnership policy, TikTok's branded-content status for giveaways, and Reddit's Brand Affiliate tag.
 
 ## 3.5 Telegram and Discord
 
@@ -920,6 +938,7 @@ Kept, with changes. Hooks that named and attacked competitors were rewritten to 
 | **25 Nov:** Umami only | Cloudflare Web Analytics dropped: its beacon is a third-party request. E12-05 keeps it off | 0.7 |
 | **25 Nov:** the lawyer's review | P12 widened to the whole `/privacy` and `/terms` with the age change. Only E11.8-07, after E12, waits on it | 0.3, 4.2 |
 | **25 Nov:** partner announcements | Ticket E11.7-16: one email to every partner, on the digest's audience and opt-out | 0.4 |
+| **26 Nov:** platform giveaway rules | Meta, YouTube and Reddit need release and non-affiliation clauses in the rules (E11.8-07); no Meta, YouTube or Reddit giveaway post until then; referral entries are not an incentive to share | 3.4 |
 | **26 Nov:** GameSeal line scoped | "More than triple GameSeal's commission rate on subscriptions"; competitors' official terms captured and dated | 0.4 |
 | **24 Nov:** to-do items, not decisions | A partner-wide announcement channel (now E11.7-16); the competition's prizes and rules; creator subscriptions before the store; trademark clearance; supplier-status definitions; every founder input and research task | 11.4 |
 
