@@ -49,13 +49,30 @@ test('the checklist maps every portable Markdown source to one known storefront 
       file.slice(announcementFolder.length),
       /^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u,
     );
+  // E11.8-01: the Trust Ledger's entries are data files that port with
+  // `/trust-ledger` and its "How we count" (its checklist row), every one
+  // kept unedited. Every file there is an entry.
+  const trustLedgerFolder = 'src/content/trust-ledger/';
+  for (const file of allContentFiles.filter((path) =>
+    path.startsWith(trustLedgerFolder),
+  ))
+    assert.match(
+      file.slice(trustLedgerFolder.length),
+      /^[0-9]{4}-(?:0[1-9]|1[0-2])\.json$/u,
+    );
+  assert.match(
+    checklist,
+    /`src\/content\/trust-ledger\/` port with `\/trust-ledger`/u,
+  );
   const markdownFiles = allContentFiles
     .filter(
       (file) => file.endsWith('.md') && !file.startsWith(announcementFolder),
     )
     .sort();
   assert.deepEqual(
-    allContentFiles.filter((file) => !file.endsWith('.md')),
+    allContentFiles.filter(
+      (file) => !file.endsWith('.md') && !file.startsWith(trustLedgerFolder),
+    ),
     [
       'src/content/giveaway-award-catalog.json',
       // E11.5-11p (founder-authorised 2026-11-09, additive): the final call
@@ -102,6 +119,8 @@ test('the checklist maps every portable Markdown source to one known storefront 
     '/privacy/storage',
     // E11.6-13: the price index's methodology.
     '/price-index',
+    // E11.8-01: the Trust Ledger's "How we count".
+    '/trust-ledger',
     '/giveaway/rules',
     ...rulesFiles.map(
       (file) => `/giveaway/rules/${file.split('/').at(-1)?.slice(0, -3)}`,

@@ -52,6 +52,8 @@ const buildInputs = [
   'scripts/ci/partner-kit-check.ts',
   // E11.7-16: the partner announcements check runs before the build.
   'scripts/ci/partner-announcements-check.ts',
+  // E11.8-01: the Trust Ledger entries check runs before the build.
+  'scripts/ci/trust-ledger-check.ts',
   'scripts/forbidden-copy.json',
   'config',
   'packages/price-index/src/publish',

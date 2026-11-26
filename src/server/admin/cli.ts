@@ -44,12 +44,24 @@ type AdminRequest =
       readonly query?: Readonly<Record<string, string>>;
     };
 
-interface AdminCommand {
+export interface AdminCommand {
   readonly usage: string;
   build(args: readonly string[]): AdminRequest;
   /** Lines for a JSON response; a command without it streams the body. */
   describe?(body: Record<string, unknown>): readonly string[];
+  /**
+   * Refuses before anything is asked for or sent (E11.8-01). Used by a
+   * command set outside this file; this command line never needs it.
+   */
+  preflight?(args: readonly string[]): Promise<void>;
+  /** Acts on a JSON response and returns its lines, in place of describe. */
+  complete?(
+    body: Record<string, unknown>,
+    args: readonly string[],
+  ): Promise<readonly string[]>;
 }
+
+export type AdminCommandSet = Readonly<Record<string, AdminCommand>>;
 
 export class AdminCommandError extends Error {
   public constructor(message: string) {
@@ -58,10 +70,13 @@ export class AdminCommandError extends Error {
   }
 }
 
-function usageText(): string {
+function usageText(
+  commands: AdminCommandSet = adminCommands,
+  invocation = 'npm run admin -- <command>',
+): string {
   return [
-    'Usage: npm run admin -- <command>',
-    ...Object.values(adminCommands).map((command) => `  ${command.usage}`),
+    `Usage: ${invocation}`,
+    ...Object.values(commands).map((command) => `  ${command.usage}`),
     '',
     'The secret key is read from ADMIN_CREDENTIAL or asked for without echo.',
     'The authenticator code is asked for on every run.',
@@ -438,7 +453,7 @@ const partnerCommands: Readonly<Record<string, AdminCommand>> = {
   },
 };
 
-export const adminCommands: Readonly<Record<string, AdminCommand>> = {
+export const adminCommands: AdminCommandSet = {
   'referrals void': referralVoidCommand('void'),
   'referrals unvoid': referralVoidCommand('unvoid'),
   ...partnerCommands,
@@ -479,17 +494,35 @@ export function adminApiOrigin(environment: AdminCommandEnvironment): URL {
   return origin;
 }
 
+/** How a command set outside this file names itself in its usage text. */
+export interface AdminCommandLine {
+  readonly commands: AdminCommandSet;
+  readonly invocation: string;
+}
+
+const adminCommandLine: AdminCommandLine = {
+  commands: adminCommands,
+  invocation: 'npm run admin -- <command>',
+};
+
 export async function runAdminCommand(
   args: readonly string[],
   environment: AdminCommandEnvironment,
   io: AdminCommandIo,
   request: typeof fetch = fetch,
+  commandLine: AdminCommandLine = adminCommandLine,
 ): Promise<void> {
   const name = args.slice(0, 2).join(' ');
-  const command = adminCommands[name];
-  if (command === undefined) throw usageError('Unknown command.');
-  const adminRequest = command.build(args.slice(2));
+  const command = commandLine.commands[name];
+  if (command === undefined) {
+    throw new AdminCommandError(
+      `Unknown command.\n${usageText(commandLine.commands, commandLine.invocation)}`,
+    );
+  }
+  const commandArgs = args.slice(2);
+  const adminRequest = command.build(commandArgs);
   const origin = adminApiOrigin(environment);
+  await command.preflight?.(commandArgs);
 
   const credential =
     environment.ADMIN_CREDENTIAL ??
@@ -533,7 +566,11 @@ export async function runAdminCommand(
     throw new AdminCommandError('The admin API could not be reached.');
   }
 
-  if (command.describe === undefined && response.ok) {
+  if (
+    command.describe === undefined &&
+    command.complete === undefined &&
+    response.ok
+  ) {
     // A streamed export: written as it arrives, never buffered whole and
     // never written to disk by this command.
     if (response.body === null) {
@@ -567,7 +604,11 @@ export async function runAdminCommand(
       )}`,
     );
   }
-  for (const line of command.describe?.(body) ?? []) io.write(line);
+  const lines =
+    command.complete === undefined
+      ? (command.describe?.(body) ?? [])
+      : await command.complete(body, commandArgs);
+  for (const line of lines) io.write(line);
 }
 
 /** Prompts on stderr; reads lines when piped, or raw keys without echo. */
@@ -644,16 +685,22 @@ function createProcessIo(): AdminCommandIo & { close(): void } {
   };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+/** Runs one command from `argv` against the process's terminal. */
+export async function runAdminCommandLine(
+  argv: readonly string[],
+  commandLine: AdminCommandLine = adminCommandLine,
+): Promise<void> {
   const io = createProcessIo();
   try {
     await runAdminCommand(
-      process.argv.slice(2),
+      argv,
       {
         ADMIN_API_ORIGIN: process.env.ADMIN_API_ORIGIN,
         ADMIN_CREDENTIAL: process.env.ADMIN_CREDENTIAL,
       },
       io,
+      fetch,
+      commandLine,
     );
   } catch (error) {
     process.stderr.write(
@@ -663,4 +710,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   } finally {
     io.close();
   }
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await runAdminCommandLine(process.argv.slice(2));
 }

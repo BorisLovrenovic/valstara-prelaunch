@@ -32,6 +32,8 @@ const expectedTargets = new Map([
   ['VAL-GW-LAUNCH-20260925-r1.md', '/giveaway/rules'],
   // E11.6-13: the price index's methodology.
   ['price-index-methodology.md', '/price-index'],
+  // E11.8-01: the Trust Ledger's "How we count".
+  ['trust-ledger-how-we-count.md', '/trust-ledger'],
 ]);
 
 async function markdownFiles(directory) {
@@ -125,11 +127,13 @@ test('content collection schemas require a port target in their own route set', 
     'legal',
     'priceIndex',
     'trust',
+    'trustLedger',
   ]);
   for (const [collection, valid, invalid] of [
     [collections.trust, '/legit', '/privacy'],
     [collections.legal, '/privacy', '/about'],
     [collections.priceIndex, '/price-index', '/prices'],
+    [collections.trustLedger, '/trust-ledger', '/legit'],
   ]) {
     const metadata =
       collection === collections.legal

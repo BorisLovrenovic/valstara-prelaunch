@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
@@ -24,6 +25,12 @@ const permanentFooterUrls = [
   '/terms',
   '/privacy',
 ];
+// E11.8-01: the footer links the Trust Ledger after Guarantee exactly once an
+// entry is committed (D-076 Q1); the repository commits none before
+// December 2026.
+const trustLedgerPublished = (
+  await readdir(new URL('../src/content/trust-ledger/', import.meta.url))
+).some((name) => name.endsWith('.json'));
 // E11.5-03: the footer's two columns and contact, in DOM order, after the
 // footer wordmark.
 const footerUrls = [
@@ -31,6 +38,7 @@ const footerUrls = [
   '/about',
   '/legit',
   '/guarantee',
+  ...(trustLedgerPublished ? ['/trust-ledger'] : []),
   // E11.6-12 (D5): the price index.
   '/prices',
   '/terms',
@@ -282,7 +290,16 @@ test('the footer is a midnight band with Company and Legal columns, contact and 
     }
 
     for (const [heading, links] of [
-      ['Company', ['About', 'Legit', 'Guarantee', 'Price index']],
+      [
+        'Company',
+        [
+          'About',
+          'Legit',
+          'Guarantee',
+          ...(trustLedgerPublished ? ['Trust Ledger'] : []),
+          'Price index',
+        ],
+      ],
       ['Legal', ['Terms', 'Privacy', 'Storage inventory', 'Giveaway rules']],
     ]) {
       const list = footer.getByRole('list', { name: heading });

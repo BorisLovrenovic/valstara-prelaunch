@@ -17,7 +17,12 @@ const root = fileURLToPath(new URL('../..', import.meta.url));
 // E11.6-12: `/prices` and the hubs are price routes too: their content and
 // whether they exist come from the price data. E11.6-13: so are
 // `/price-index`, whose reports and Dataset data come from it, and the
-// monthly reports, one per report file.
+// monthly reports, one per report file. E11.8-01: `/trust-ledger` is one too:
+// it has a page only once a Trust Ledger entry is committed, which the
+// repository does not before December 2026, so it is crawled, checked for
+// accessibility and layout on the Trust Ledger fixture site
+// (test/helpers/trust-ledger-fixture-site.mjs,
+// test/trust-ledger-browser.test.mjs).
 export const dataRouteFiles = new Map([
   ['price-index/[month].astro', '/price-index/[month]'],
   ['price-index/index.astro', '/price-index'],
@@ -25,6 +30,7 @@ export const dataRouteFiles = new Map([
   ['prices/index.astro', '/prices'],
   ['prices/[service]/index.astro', '/prices/[service]'],
   ['prices/countries/[country].astro', '/prices/countries/[country]'],
+  ['trust-ledger.astro', '/trust-ledger'],
 ]);
 
 export async function sourcePagePaths() {

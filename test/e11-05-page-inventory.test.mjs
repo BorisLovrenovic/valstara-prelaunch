@@ -1012,6 +1012,9 @@ test(
     // E11.6-13: and `/price-index`, each monthly report, and a month with no
     // report.
     const inventory = await sourcePagePaths();
+    // E11.8-01: `/trust-ledger` is a data route too, crawled with the same
+    // rules on the Trust Ledger fixture site by
+    // test/trust-ledger-browser.test.mjs.
     assert.deepEqual(inventory.dataRoutes, [
       '/price-index/[month]',
       '/price-index',
@@ -1019,6 +1022,7 @@ test(
       '/prices/[service]',
       '/prices/countries/[country]',
       '/prices',
+      '/trust-ledger',
     ]);
     const { root: fixtureRoot } = await priceFixtureSite();
     const site = createPriceSite(await priceFixtureInputs());

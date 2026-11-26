@@ -40,6 +40,22 @@ const priceIndex = defineCollection({
   }),
 });
 
+// E11.8-01: the Trust Ledger's "How we count", P11 Part 1 as written. Its
+// entries are data files in src/content/trust-ledger/, bundled and validated
+// by src/server/trust-ledger/bundled.ts, not a collection: none is committed
+// before December 2026, and an empty collection warns on every read.
+const trustLedger = defineCollection({
+  loader: glob({
+    base: './src/content',
+    pattern: 'trust-ledger-how-we-count.md',
+  }),
+  schema: z.object({
+    portTarget: z.enum(['/trust-ledger']),
+    title: z.string().min(1),
+    description: z.string().min(1),
+  }),
+});
+
 const giveawayRules = defineCollection({
   loader: glob({
     base: './src/content/giveaway-rules',
@@ -48,4 +64,10 @@ const giveawayRules = defineCollection({
   schema: giveawayRulesSchema,
 });
 
-export const collections = { trust, legal, priceIndex, giveawayRules };
+export const collections = {
+  trust,
+  legal,
+  priceIndex,
+  trustLedger,
+  giveawayRules,
+};

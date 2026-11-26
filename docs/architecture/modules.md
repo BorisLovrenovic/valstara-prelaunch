@@ -69,9 +69,10 @@ valstara-prelaunch/
       email/                       service + providers/{resend,brevo}
       flags/  audit/  analytics/  turnstile/  ratelimit/  admin-auth/  content/
       admin/cli.ts                 the founder command line: an HTTP client of /api/admin/* that never opens the database (E11.7-02)
+      trust-ledger/                the Trust Ledger: entry schema, bundled entries, page view, waitlist figures, and cli.ts, the draft command, the one founder command that writes a file (E11.8-01)
       config.ts                    validated env; fails fast at boot
     copy/                          interface strings
-    content/                       trust + legal prose as Markdown (ADR-017)
+    content/                       trust + legal prose as Markdown (ADR-017); the Trust Ledger's monthly entries as data files in trust-ledger/ (E11.8-01)
     styles/
       tokens.css                   ★ the portable token file — no framework coupling
       motion.css                   the motion utilities, page transitions and smooth scrolling (E11.5-11i); waitlist presentation, not ported verbatim
@@ -119,6 +120,7 @@ valstara-prelaunch/
 | **ratelimit** | Per-IP-prefix and per-identity windows | Backed by the database; batch-capped cleanup |
 | **verification-rate** | Rolling verification-rate calculation, provider breakdown and collapse alert | Runs hourly; reports P1 only after the configured cohort is large enough |
 | **admin-auth** | Single-operator bearer credential, TOTP verification, actor propagation and admin-route registry | Stateless and fail-closed over every `/api/admin/*` route; no user, password, session or permission system |
+| **trust-ledger** (`server/trust-ledger/`, E11.8-01) | The Trust Ledger: the entry schema and the entries bundled at build, the page's view and flag rule, and the founder's waitlist figures, one aggregate read of `subscriber` and `referral_edge` through `server/db/trust-ledger.ts` | Owns no table. Counts only, and every read of the figures is audited; a published entry never changes (CI) |
 | **content** | Loads Markdown collections, validates frontmatter; derives a page's contents list from the heading anchors already in its rendered content (`server/content/contents.ts`, E11.5-09) | Trust and legal prose only. No interface strings |
 
 ### Provider modules — the vendor SDK boundary

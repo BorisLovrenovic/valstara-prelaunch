@@ -10,8 +10,9 @@ const projectRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
 // Everything `npm run build` reads from the repository, including the SEO
 // check that runs before and after it. Git-ignored output it regenerates
-// itself (public/images/og/) is not an input.
-const inputPaths = [
+// itself (public/images/og/) is not an input. Exported for the Trust Ledger
+// fixture site (E11.8-01), which copies exactly these inputs.
+export const inputPaths = [
   'src',
   'public',
   'astro.config.mjs',
@@ -25,6 +26,8 @@ const inputPaths = [
   // E11.7-16: the partner announcements check runs before the build, with the
   // forbidden-copy list.
   'scripts/ci/partner-announcements-check.ts',
+  // E11.8-01: the Trust Ledger entries check runs before the build.
+  'scripts/ci/trust-ledger-check.ts',
   'scripts/forbidden-copy.json',
   // E11.6-10: the price pages bundle the price data and the price-index
   // package's two site-importable parts (ADR-033).

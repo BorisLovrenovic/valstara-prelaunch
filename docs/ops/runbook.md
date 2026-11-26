@@ -241,6 +241,36 @@ npm run admin -- partners announce --id 2026-12-01-programme-news
 
 ---
 
+## Publishing a Trust Ledger entry (E11.8-01)
+
+Once a month, about 1–2 hours of the founder's time
+(`docs/features/trust-ledger.md#the-monthly-entry`):
+
+```sh
+npm run trust-ledger -- draft --month 2026-12
+```
+
+- **Draft** in the month after the one reported, against the production admin
+  API. The command asks for the authenticator code, reads the month's waitlist
+  counts (audited as `trust_ledger.waitlist_counted`) and writes
+  `src/content/trust-ledger/YYYY-MM.json` with every other section empty. It
+  refuses a month that already has an entry, and never overwrites one.
+- **Complete** every other section in the file, check the figures, and run
+  `npm run build` (or `npx tsx scripts/ci/trust-ledger-check.ts`), which names
+  any section still empty or inconsistent. Merge and deploy through an
+  ordinary pull request. **A published entry never changes:** CI refuses an
+  edit or deletion, so a mistake is corrected, dated, in the next entry.
+- **A changed definition** in `src/content/trust-ledger-how-we-count.md` ships
+  only with the new entry, whose `howWeCountChanges` section says what changed
+  and why.
+- **A serious wrong figure in a published entry:** set `trust_ledger.page` off
+  ([Setting a campaign flag](#setting-a-campaign-flag)). The page answers 404
+  within five seconds. The links on `/guarantee`, `/partners` and the footer
+  stay until a deploy, leading to the 404; ship the correcting entry, then set
+  the flag back on.
+
+---
+
 ## "The site is up but signups fail"
 
 Almost always PostgreSQL. Check the health endpoint, the container, and memory headroom. **An OOM kill that recurs is a capacity signal, not a restart loop to tolerate** — the box runs with hard limits and no swap deliberately, so contention fails loudly.

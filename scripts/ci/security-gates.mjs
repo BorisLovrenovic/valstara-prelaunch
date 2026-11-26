@@ -10,6 +10,7 @@ import {
 import { scanMotionProperties as scanMotionSource } from './motion-properties.mjs';
 import { scanPartnerAnnouncementsAppendOnly } from './partner-announcements-append-only.mjs';
 import { scanPriceIndexAppendOnly } from './price-index-append-only.mjs';
+import { scanTrustLedgerAppendOnly } from './trust-ledger-append-only.mjs';
 import { scanPriceIndexEvasion } from './price-index-evasion-scan.mjs';
 import { scanPriceIndexFloats } from './price-index-float-scan.mjs';
 import { scanPriceIndexIsolation } from './price-index-isolation.mjs';
@@ -777,6 +778,9 @@ export async function runSecurityGates(
       root: projectRoot,
       base: options.base,
     }),
+    // E11.8-01: a published Trust Ledger entry never changes, and "How we
+    // count" changes only with a new entry that announces it.
+    scanTrustLedgerAppendOnly({ root: projectRoot, base: options.base }),
   ]);
   return scans.flat();
 }

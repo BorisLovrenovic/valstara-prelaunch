@@ -1,0 +1,38 @@
+{
+  "month": "2027-01",
+  "introduction": [
+    "Synthetic test entry: it proves the ordering, the archive and the optional sections. It is never published."
+  ],
+  "waitlist": {
+    "countedOn": "2027-02-01",
+    "total": 2500,
+    "newThisMonth": 1213,
+    "joinedThroughReferral": 0
+  },
+  "buildProgress": [
+    { "item": "Synthetic build item one", "status": "in progress" },
+    { "item": "Synthetic build item two", "status": "next" }
+  ],
+  "supplyReadiness": {
+    "note": [],
+    "total": { "evaluated": 1210, "verified": 30, "rejected": 1180 },
+    "thisMonth": { "evaluated": 3, "verified": 3, "rejected": 0 },
+    "launchProducts": 34,
+    "launchProductsWithVerifiedSupply": 32
+  },
+  "partnerProgramme": { "applicationsReceived": 9, "approved": 4, "active": 2 },
+  "policyChanges": { "none": "Synthetic: no policy changed this month." },
+  "corrections": {
+    "items": [
+      {
+        "date": "2027-01-14",
+        "text": "synthetic correction to an earlier figure."
+      }
+    ]
+  },
+  "launchStatus": ["Synthetic launch status."],
+  "whatWentWrong": ["Synthetic: what went wrong."],
+  "whatWeChanged": ["Synthetic: what we changed."],
+  "focusForNextMonth": ["Synthetic focus item."],
+  "howWeCountChanges": ["Synthetic: how we count changed, and why."]
+}

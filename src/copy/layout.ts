@@ -27,6 +27,13 @@ export const layoutCopy = {
     { group: 'legal', href: '/privacy/storage', label: 'Storage inventory' },
     { group: 'legal', href: '/giveaway/rules', label: 'Giveaway rules' },
   ],
+  // E11.8-01: shown after Guarantee only once a Trust Ledger entry is
+  // committed (it follows the committed entries, not the flag).
+  trustLedgerFooterLink: {
+    group: 'company',
+    href: '/trust-ledger',
+    label: 'Trust Ledger',
+  },
   contactHeading: 'Contact',
   supportEmail: 'support@valstara.com',
   // identity-guidelines §3.4, the legal footer. LOCKED wording.

@@ -83,6 +83,8 @@ const pageBindings: Record<string, string> = {
   // from the same view model.
   '/price-index': 'entry.data',
   '/price-index/[month]': 'view.meta',
+  // E11.8-01: the Trust Ledger, from its "How we count" content file.
+  '/trust-ledger': 'entry.data',
 };
 
 // The page files whose routes are expanded from data rather than the file
@@ -151,6 +153,16 @@ export async function collectSeoPages(
     title: frontmatterField(methodologySource, 'title'),
     description: frontmatterField(methodologySource, 'description'),
   });
+  // E11.8-01: the Trust Ledger's metadata is its "How we count" content
+  // file's frontmatter, whether or not an entry is committed yet.
+  const trustLedgerSource = await readFile(
+    join(root, 'src/content/trust-ledger-how-we-count.md'),
+    'utf8',
+  );
+  const trustLedger = page('/trust-ledger', {
+    title: frontmatterField(trustLedgerSource, 'title'),
+    description: frontmatterField(trustLedgerSource, 'description'),
+  });
   const trust = await Promise.all(
     trustPaths.map(async (name) => {
       const source = await readFile(
@@ -185,6 +197,7 @@ export async function collectSeoPages(
   const pages: PageMetadata[] = [
     page('/', landingCopy.meta),
     ...trust,
+    trustLedger,
     methodology,
     page('/terms', legalPageCopy.terms),
     page('/privacy', legalPageCopy.privacy),

@@ -474,3 +474,9 @@ every run.
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `ADMIN_API_ORIGIN` | Optional bare origin of the admin API; defaults to `https://valstara.com`. Plain HTTP is accepted only for `localhost` or a loopback IP |
 | `ADMIN_CREDENTIAL` | Optional. The same operator bearer credential the app boots with; when unset, the command asks for it without echo                      |
+
+E11.8-01: `npm run trust-ledger -- draft --month YYYY-MM`
+(`src/server/trust-ledger/cli.ts`) reads the same two variables, the same way,
+and adds none. It is the one founder command that writes a file: the new
+Trust Ledger entry in `src/content/trust-ledger/`, holding counts only, never
+a credential or the code.

@@ -30,6 +30,8 @@ The founder-approved page copy and claim-by-claim source notes are in `docs/prer
 
 `/guarantee` and `/about` are prerendered. `/legit` remains server-rendered and always shows the original Reviews paragraph and plain profile link. It emits no Trustpilot script. The shared trust-page layout has only the first-party page-view emitter; the light and dark palettes follow the visitor's colour-scheme preference through `src/styles/tokens.css`.
 
+**The Trust Ledger links (E11.8-01, founder decision D-076 Q1).** Once a Trust Ledger entry is committed, `/guarantee` carries P11 Part 3's line, "We publish our real numbers every month, the bad ones included, in the Trust Ledger.", in its side card beside the content, never in `src/content/guarantee.md`; `/partners` carries the same line in its side card; and the site footer links "Trust Ledger" after "Guarantee". **The links follow the committed entries, not the `trust_ledger.page` flag**, because the pages that carry them are prerendered and cannot follow a runtime flag. They are rendered at build, and no page changes its rendering mode. With no entry committed, as before December 2026, no link renders anywhere. If the flag is switched off in an incident, the links stay and lead to `404` until a deploy removes them (`docs/features/trust-ledger.md#feature-flag`).
+
 ## Edge cases and error states
 Content file missing or failing frontmatter validation → **the build fails.** A trust page that 404s in production is worse than a slow build. A claim that cannot be substantiated → it does not ship; `docs/brand/copy-rules.md` governs. Content changed after the storefront port has begun → **reconcile in this repository first**, then re-port, and record the checkpoint.
 

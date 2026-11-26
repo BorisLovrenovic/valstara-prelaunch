@@ -189,7 +189,10 @@ test('sitemap routes reconcile with page files and include only the current rule
       file.endsWith('/404.astro') ||
       file.endsWith('/500.astro') ||
       // The price routes have their own child sitemaps (E11.6-10, E11.6-12).
-      file.startsWith('src/pages/prices/')
+      file.startsWith('src/pages/prices/') ||
+      // E11.8-01: the Trust Ledger follows its flag, so it is listed only by
+      // its own child sitemap, served on request.
+      file === 'src/pages/trust-ledger.astro'
     )
       continue;
     if (file.includes('[')) continue;
@@ -225,6 +228,8 @@ test('sitemap routes reconcile with page files and include only the current rule
   );
   assert.ok(!routes.includes('/me'));
   assert.ok(!routes.includes('/verify'));
+  assert.ok(pageFiles.includes('src/pages/trust-ledger.astro'));
+  assert.ok(!routes.includes('/trust-ledger'));
   assert.ok(pageFiles.includes('src/pages/partners/dashboard.astro'));
   assert.ok(!routes.includes('/partners/dashboard'));
   // E11.7-11: the print flyer is private too.
@@ -617,6 +622,8 @@ test('the committed /sitemap.xml is an index over pages.xml and the price sitema
       'https://valstara.com/sitemaps/prices-market-hubs.xml',
       // E11.6-13: the monthly reports.
       'https://valstara.com/sitemaps/price-index-monthly.xml',
+      // E11.8-01: the Trust Ledger's, served on request.
+      'https://valstara.com/sitemaps/trust-ledger.xml',
     ],
   );
   assert.deepEqual(Object.values(childSitemaps), [
@@ -626,6 +633,7 @@ test('the committed /sitemap.xml is an index over pages.xml and the price sitema
     '/sitemaps/prices-service-hubs.xml',
     '/sitemaps/prices-market-hubs.xml',
     '/sitemaps/price-index-monthly.xml',
+    '/sitemaps/trust-ledger.xml',
   ]);
 });
 

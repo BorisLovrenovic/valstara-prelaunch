@@ -63,4 +63,11 @@ export const adminCopy = {
       `Nothing was queued: these flags are off: ${flags.join(', ')}.`,
     unavailable: 'The announcement command is temporarily unavailable.',
   },
+  // E11.8-01: the Trust Ledger's waitlist figures.
+  trustLedgerFigures: {
+    query: 'Name one month as month=YYYY-MM, and nothing else.',
+    futureMonth: 'That month has not begun, so it has no figures yet.',
+    actor: 'A human actor is required.',
+    unavailable: 'The Trust Ledger figures are temporarily unavailable.',
+  },
 } as const;

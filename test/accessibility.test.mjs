@@ -350,6 +350,10 @@ test('every built page has zero WCAG 2.2 AA violations in both themes', async ()
     '/privacy',
     '/privacy/storage',
     '/terms',
+    // E11.8-01: answers the 404 page here, with no Trust Ledger entry
+    // committed; its own page is checked on the Trust Ledger fixture site by
+    // test/trust-ledger-browser.test.mjs.
+    '/trust-ledger',
     '/unsubscribe',
     '/verify',
   ]);

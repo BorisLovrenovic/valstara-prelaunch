@@ -134,6 +134,7 @@ test('the required audit action registry is complete', () => {
     'partner.exported',
     'partner.optional_email_withdrawn',
     'partner.announcement_run',
+    'trust_ledger.waitlist_counted',
   ]);
 });
 

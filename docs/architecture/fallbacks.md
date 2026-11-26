@@ -120,6 +120,16 @@ Everything else announces itself. These two look exactly like ordinary underperf
 | A published page loses all its publishable data, or its service or market leaves the configuration | The build's generation rule | **The page never answers 404.** Its ledger URL renders "temporarily unavailable" with no price and `noindex`, and leaves the sitemap until data returns or the founder retires it with `price-index retire-url`, after which it answers `301` to the recorded hub (D2, E11.6-12) for as long as it generates no page; if its data returns, its page is served again (D-037 Q2). A hub with no live page left answers 404, because it lists nothing | The page's heading and an honest unavailable note, and the waitlist form | — |
 | A price data file is invalid at build | The prebuild sitemap step validates every file the pages read | **The build fails and nothing is deployed**; the last good build keeps serving | The last deployed prices | — (CI red) |
 
+## The Trust Ledger (E11.8-01)
+
+| Failure | Detection | Fallback | Visitor sees | Alert |
+|---|---|---|---|---|
+| **A wrong figure in a published entry** | Founder review, a report | The entry is never edited: the next entry corrects it, dated. For a serious error, **flag `trust_ledger.page` off**: `/trust-ledger` answers `404` and `/sitemaps/trust-ledger.xml` lists nothing within the flag cache's five seconds, without a deploy. The links on `/guarantee`, `/partners` and the footer follow the committed entries, not the flag, so they stay and lead to `404` until a deploy removes them (founder decision D-076 Q1) | The branded 404 page | None (founder action) |
+| The flag lookup fails | The flag service's read | The code default, off: the page answers `404` and its sitemap lists nothing; a failure hides the page, never shows it | The branded 404 page | Existing database alerts |
+| An entry file breaks its schema, its name or the copy rules | The prebuild check (`scripts/ci/trust-ledger-check.ts`), and the bundled ledger's own validation when the prerendered pages render | **The build fails and nothing is deployed**; the last good build keeps serving | The last deployed Ledger | — (CI red) |
+| No entry is committed yet (before December 2026) | The bundled ledger is empty | `/trust-ledger` answers `404` even with the flag on, the sitemap lists nothing, and no link renders, so no empty page is ever shown | Nothing links the page | None |
+| The waitlist figures cannot be read | The admin route's database call | `503 unavailable` (or `500 internal`) with a message from the copy layer; nothing is audited or written, and the draft command reports the error and writes no file | — (founder command) | None (the founder sees the error) |
+
 ## Chaos drills
 
 Executed and recorded before the campaign opens (E11). **A drill that does not behave as this matrix claims is a blocking finding — fix the system or fix the matrix, never neither.** E11-02 local results: [chaos report](../testing/e11-02-chaos-report.md) and [machine-readable timings](../testing/e11-02-results.json).
