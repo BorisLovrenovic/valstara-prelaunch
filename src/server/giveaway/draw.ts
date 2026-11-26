@@ -26,6 +26,7 @@ import {
 import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 
 import { giveawayEntryPeriodEnd } from './accrue.ts';
+import { giveawayBoxPolicy } from './age-policy.ts';
 import {
   deriveDrawSeed,
   fetchVerifiedBeacon,
@@ -172,6 +173,9 @@ export function createDrawService(
             periodStart,
             giveawayEntryPeriodEnd,
             1,
+            // E11.8-06: the same box rule reconciliation applies, so a
+            // member who still needs the box is not an unreconciled entry.
+            await giveawayBoxPolicy(flags, await currentRulesFromFiles()),
           )
         ).length > 0
       ) {

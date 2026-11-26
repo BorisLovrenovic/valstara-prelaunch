@@ -3,6 +3,8 @@ import type { DatabaseConnection } from './pool.ts';
 export interface MarketingPreferenceRow {
   readonly marketing_consent_at: Date | null;
   readonly status: string;
+  /** E11.8-06: the age policy the member joined under. */
+  readonly admission_age_policy: '18_plus' | '13_plus' | null;
 }
 
 export interface MarketingRepository {
@@ -21,9 +23,11 @@ export function createMarketingRepository(
     findPreference(subscriberId, lock = false) {
       return database.readOne<MarketingPreferenceRow>({
         text: lock
-          ? `SELECT status, marketing_consent_at
-             FROM (SELECT status, marketing_consent_at FROM subscriber WHERE id = $1 FOR UPDATE) AS locked`
-          : 'SELECT status, marketing_consent_at FROM subscriber WHERE id = $1',
+          ? `SELECT status, marketing_consent_at, admission_age_policy
+             FROM (SELECT status, marketing_consent_at, admission_age_policy
+                   FROM subscriber WHERE id = $1 FOR UPDATE) AS locked`
+          : `SELECT status, marketing_consent_at, admission_age_policy
+             FROM subscriber WHERE id = $1`,
         values: [subscriberId],
       });
     },

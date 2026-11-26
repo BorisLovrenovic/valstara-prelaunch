@@ -136,6 +136,7 @@ test('the required audit action registry is complete', () => {
     'partner.announcement_run',
     'trust_ledger.waitlist_counted',
     'report.sources_counted',
+    'giveaway.opted_in',
   ]);
 });
 

@@ -80,6 +80,11 @@ export const partnersCopy = {
       waitlist: 'Confirming your application also joins the Valstara waitlist.',
       waitlistAndGiveaway:
         'Confirming your application also joins the Valstara waitlist and enters you in the giveaway.',
+      // E11.8-06 (D-080): while the waitlist is open at 13, confirming joins
+      // the waitlist only; the member enters the giveaway from /me with the
+      // separate 18+ box. Draft wording; E11.8-07 replaces it with P12's.
+      waitlistThenGiveaway:
+        'Confirming your application also joins the Valstara waitlist. It does not enter you in the giveaway, which is for people aged 18 and over: once you have confirmed, you can enter it from your status page.',
     },
     ageStatement: signupFormCopy.ageStatement,
     freeEntryDisclosure: signupFormCopy.freeEntryDisclosure,

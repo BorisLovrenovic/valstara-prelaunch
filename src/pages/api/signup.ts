@@ -3,7 +3,10 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
 import { setTimeout as systemSleep } from 'node:timers/promises';
 
-import { marketingOptInWordingByVersion } from '../../copy/marketing.ts';
+import {
+  marketingOptInVersionsByAgePolicy,
+  marketingOptInWordingByVersion,
+} from '../../copy/marketing.ts';
 import { sourceBucket } from '../../server/analytics/funnel.ts';
 import { createAnalyticsService } from '../../server/analytics/service.ts';
 import { signupCopy } from '../../copy/signup.ts';
@@ -12,6 +15,11 @@ import { DatabaseUnavailableError } from '../../server/db/errors.ts';
 import { createFraudFlagRepository } from '../../server/db/fraud-flag.ts';
 import { createPool, type DatabasePool } from '../../server/db/pool.ts';
 import { getFlagService } from '../../server/flags/app-service.ts';
+import {
+  currentAgePolicy,
+  isAgePolicy,
+  type AgePolicy,
+} from '../../server/giveaway/age-policy.ts';
 import {
   createFraudService,
   type FraudService,
@@ -74,6 +82,11 @@ const errorMessages: Record<SignupErrorCode, string> = {
 export interface SignupRouteDependencies {
   readonly onRejected?: (reason: SignupErrorCode) => void;
   readonly isSignupEnabled: () => Promise<boolean>;
+  /**
+   * E11.8-06: the age policy in force (`waitlist.age_13`). Absent, the 18+
+   * policy, which is the flag's fail-safe default.
+   */
+  readonly currentAgePolicy?: () => Promise<AgePolicy>;
   readonly verifyTurnstile: (token: string) => Promise<TurnstileOutcome>;
   readonly consumeIpRateLimit: (
     prefixHash: string,
@@ -164,6 +177,13 @@ function errorResponse(
 interface ValidBody {
   readonly email: string;
   readonly marketingOptInVersion: string | null;
+  /**
+   * The age policy the form was rendered under (E11.8-06, D-083). The 13+
+   * form carries it as `age_policy`; a form without the field is the 18+
+   * form every flag-off page renders.
+   */
+  readonly formAgePolicy: AgePolicy;
+  readonly giveawayOptIn: boolean;
 }
 
 function validateBody(formData: FormData): ValidBody | null {
@@ -185,9 +205,33 @@ function validateBody(formData: FormData): ValidBody | null {
     return null;
   }
 
+  const agePolicy = formData.get('age_policy');
+  if (agePolicy !== null && !isAgePolicy(agePolicy)) return null;
+  const giveawayOptIn = formData.get('giveaway_opt_in');
+  if (giveawayOptIn !== null && giveawayOptIn !== 'yes') return null;
+
   // The raw email keeps its exact form for normalisation (which rejects
   // surrounding whitespace as a malformed address → invalid_email).
-  return { email: rawEmail, marketingOptInVersion: marketingOptIn };
+  return {
+    email: rawEmail,
+    marketingOptInVersion: marketingOptIn,
+    formAgePolicy: agePolicy ?? '18_plus',
+    giveawayOptIn: giveawayOptIn === 'yes',
+  };
+}
+
+/**
+ * Whether a body rendered under the current age policy carries only that
+ * form's choices: a marketing version shown under the policy (retained
+ * versions included), and the giveaway box only on the 13+ form.
+ */
+function fitsAgePolicy(body: ValidBody, policy: AgePolicy): boolean {
+  const versions: readonly string[] = marketingOptInVersionsByAgePolicy[policy];
+  return (
+    (body.marketingOptInVersion === null ||
+      versions.includes(body.marketingOptInVersion)) &&
+    (!body.giveawayOptIn || policy === '13_plus')
+  );
 }
 
 export function createSignupRoute(
@@ -277,6 +321,30 @@ export function createSignupRoute(
     if (body === null) {
       return rejected('invalid_input');
     }
+
+    // 4. E11.8-06 (D-083): a form rendered under the other age policy, in
+    // either direction, never joins. The visitor loads the current form and
+    // its age statement and boxes. Nothing has touched the subscriber yet, so
+    // the answer is the same whatever the address.
+    let agePolicy: AgePolicy;
+    try {
+      agePolicy = (await dependencies.currentAgePolicy?.()) ?? '18_plus';
+    } catch (error) {
+      return dependencyRejection(error);
+    }
+    if (body.formAgePolicy !== agePolicy) {
+      try {
+        dependencies.onRejected?.('invalid_input');
+      } catch {
+        /* Analytics is best-effort. */
+      }
+      return jsonResponse(signupErrorCatalogue.invalid_input, {
+        error: { code: 'invalid_input', message: signupCopy.formChanged },
+      });
+    }
+    if (!fitsAgePolicy(body, agePolicy)) {
+      return rejected('invalid_input');
+    }
     // Bad attribution is deliberately equivalent to no attribution; it never
     // costs the underlying signup.
     const rawReferralCapture = formData.get('referral_capture');
@@ -292,7 +360,7 @@ export function createSignupRoute(
     // a useful timing signal.
     const membershipWorkStartedAt = monotonicClock();
 
-    // 4. Normalise + blocklist/MX screen + upsert + referral attribution +
+    // 5. Normalise + blocklist/MX screen + upsert + referral attribution +
     // fraud signals + queue the verification mail (in the module).
     let outcome: SignupOutcome;
     try {
@@ -303,6 +371,8 @@ export function createSignupRoute(
         referralMethod: referral.method,
         hadSignedReferral: referralCapture?.ref != null,
         signupIpPrefixHash: prefixHash,
+        agePolicy,
+        giveawayOptIn: body.giveawayOptIn,
         utm: referralCapture?.utm ?? null,
         verificationUrl: (token) => {
           const verificationUrl = new URL('/verify', request.url);
@@ -321,7 +391,7 @@ export function createSignupRoute(
       return rejected('blocked_domain');
     }
 
-    // 5. Flag the row for review when the challenge timed out — the subscriber
+    // 6. Flag the row for review when the challenge timed out — the subscriber
     // now exists (created, or an existing pending row). Best-effort: the row is
     // already committed and safe, so a failed flag write never turns a real
     // signup into an error (fallbacks.md — "a signup that reached PostgreSQL is
@@ -363,6 +433,7 @@ function defaultDependencies(): SignupRouteDependencies {
         .catch(() => {});
     },
     isSignupEnabled: () => getFlagService().isEnabled('signup.enabled'),
+    currentAgePolicy: () => currentAgePolicy(getFlagService()),
     // Server-side verification lives in the turnstile module, the only consumer
     // of the secret. The raw client address is not forwarded to the provider —
     // it stays in the truncate-then-hash rate-limit path (standing rule 9).

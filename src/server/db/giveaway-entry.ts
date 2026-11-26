@@ -1,17 +1,72 @@
+import type {
+  AgePolicy,
+  GiveawayBoxFacts,
+  GiveawayBoxPolicy,
+  GiveawayOptInSource,
+} from '../giveaway/age-policy.ts';
+
 import type { DatabaseConnection } from './pool.ts';
 
+/**
+ * The E11.8-06 box rule as SQL, for reconciliation: the same rule live
+ * accrual applies in TypeScript (`src/server/giveaway/age-policy.ts`), and a
+ * test holds the two to the same answer for every combination. `everyone` and
+ * `withoutBox` are the bound parameters for `boxRequiredForEveryone` and
+ * `referralEntryWithoutGiveawayBox`.
+ */
+export function holdsOwnEntriesSql(member: string, everyone: string): string {
+  return `(${member}.giveaway_opt_in_at IS NOT NULL OR (NOT ${everyone} AND ${member}.admission_age_policy = '18_plus'))`;
+}
+
+export function referralEarnsEntrySql(
+  referred: string,
+  edge: string,
+  everyone: string,
+  withoutBox: string,
+): string {
+  return `(${withoutBox} OR (NOT ${everyone} AND ${referred}.admission_age_policy = '18_plus') OR (${referred}.giveaway_opt_in_at IS NOT NULL AND (${referred}.giveaway_opt_in_source = 'signup' OR ${referred}.giveaway_opt_in_at <= ${edge}.confirmed_at)))`;
+}
+
+interface BoxFactRow {
+  admission_age_policy: AgePolicy | null;
+  giveaway_opt_in_at: Date | null;
+  giveaway_opt_in_source: GiveawayOptInSource | null;
+}
+
+function boxFacts(row: BoxFactRow): GiveawayBoxFacts {
+  return {
+    admissionAgePolicy: row.admission_age_policy,
+    giveawayOptInAt: row.giveaway_opt_in_at,
+    giveawayOptInSource: row.giveaway_opt_in_source,
+  };
+}
+
 export interface GiveawayEntryRepository {
-  lockSubscriber(subscriberId: string): Promise<{
-    status: string;
-    giveawayRulesVersion: string | null;
-    verifiedAt: Date | null;
-  } | null>;
+  lockSubscriber(subscriberId: string): Promise<
+    | ({
+        status: string;
+        giveawayRulesVersion: string | null;
+        verifiedAt: Date | null;
+      } & GiveawayBoxFacts)
+    | null
+  >;
   confirmedEdgeBelongsTo(
     sourceEdgeId: string,
     referrerId: string,
     periodStart: Date,
     periodEnd: Date,
   ): Promise<boolean>;
+  /**
+   * A confirmed, non-voided edge of this referrer inside the period, with
+   * its confirmation time and the referred member's box facts; null when the
+   * edge is not one, or its referred member's row is gone.
+   */
+  confirmedEdgeFacts(
+    sourceEdgeId: string,
+    referrerId: string,
+    periodStart: Date,
+    periodEnd: Date,
+  ): Promise<{ confirmedAt: Date; referred: GiveawayBoxFacts } | null>;
   insertEntry(input: {
     id: string;
     subscriberId: string;
@@ -31,10 +86,16 @@ export interface GiveawayEntryRepository {
   confirmedEdgeFor(
     referredId: string,
   ): Promise<{ id: string; referrerId: string } | null>;
+  /**
+   * Entitlements with no ledger row yet, chosen by the box rule. Without a
+   * policy, the rule is the flag-off one under rules that permit entry by
+   * verification: only members admitted under the 13+ policy need the box.
+   */
   missingEntitlements(
     start: Date,
     end: Date,
     limit: number,
+    policy?: GiveawayBoxPolicy,
   ): Promise<
     readonly {
       subscriberId: string;
@@ -49,13 +110,17 @@ export function createGiveawayEntryRepository(
 ): GiveawayEntryRepository {
   return {
     async lockSubscriber(subscriberId) {
-      const row = await database.readOne<{
-        status: string;
-        giveaway_rules_version: string | null;
-        verified_at: Date | null;
-      }>({
-        text: `SELECT status, giveaway_rules_version, verified_at FROM subscriber
-               WHERE id = $1 FOR UPDATE`,
+      const row = await database.readOne<
+        {
+          status: string;
+          giveaway_rules_version: string | null;
+          verified_at: Date | null;
+        } & BoxFactRow
+      >({
+        text: `SELECT status, giveaway_rules_version, verified_at,
+                      admission_age_policy, giveaway_opt_in_at,
+                      giveaway_opt_in_source
+               FROM subscriber WHERE id = $1 FOR UPDATE`,
         values: [subscriberId],
       });
       return row === null
@@ -64,6 +129,7 @@ export function createGiveawayEntryRepository(
             status: row.status,
             giveawayRulesVersion: row.giveaway_rules_version,
             verifiedAt: row.verified_at,
+            ...boxFacts(row),
           };
     },
     async confirmedEdgeBelongsTo(
@@ -82,6 +148,22 @@ export function createGiveawayEntryRepository(
         values: [sourceEdgeId, referrerId, periodStart, periodEnd],
       });
       return row?.present ?? false;
+    },
+    async confirmedEdgeFacts(sourceEdgeId, referrerId, periodStart, periodEnd) {
+      const row = await database.readOne<{ confirmed_at: Date } & BoxFactRow>({
+        text: `SELECT e.confirmed_at, referred.admission_age_policy,
+                        referred.giveaway_opt_in_at,
+                        referred.giveaway_opt_in_source
+                 FROM referral_edge e
+                 JOIN subscriber referred ON referred.id = e.referred_id
+                 WHERE e.id = $1 AND e.referrer_id = $2
+                   AND e.state = 'confirmed' AND e.voided_at IS NULL
+                   AND e.confirmed_at >= $3 AND e.confirmed_at < $4`,
+        values: [sourceEdgeId, referrerId, periodStart, periodEnd],
+      });
+      return row === null
+        ? null
+        : { confirmedAt: row.confirmed_at, referred: boxFacts(row) };
     },
     insertEntry(input) {
       return database.execute({
@@ -127,7 +209,15 @@ export function createGiveawayEntryRepository(
       });
       return row === null ? null : { id: row.id, referrerId: row.referrer_id };
     },
-    async missingEntitlements(start, end, limit) {
+    async missingEntitlements(
+      start,
+      end,
+      limit,
+      policy = {
+        boxRequiredForEveryone: false,
+        referralEntryWithoutGiveawayBox: false,
+      },
+    ) {
       const rows = await database.list<{
         subscriber_id: string;
         method: 'base' | 'referral';
@@ -140,6 +230,7 @@ export function createGiveawayEntryRepository(
           FROM subscriber s
           WHERE s.status = 'verified' AND s.verified_at >= $1
             AND s.verified_at < $2
+            AND ${holdsOwnEntriesSql('s', '$3::boolean')}
             AND NOT EXISTS (
               SELECT 1 FROM giveaway_entry ge
               WHERE ge.subscriber_id = s.id AND ge.method = 'base'
@@ -155,13 +246,20 @@ export function createGiveawayEntryRepository(
             AND e.confirmed_at < $2 AND s.status = 'verified'
             AND s.verified_at >= $1 AND s.verified_at < $2
             AND referred.verified_at >= $1 AND referred.verified_at < $2
+            AND ${holdsOwnEntriesSql('s', '$3::boolean')}
+            AND ${referralEarnsEntrySql('referred', 'e', '$3::boolean', '$4::boolean')}
             AND NOT EXISTS (
               SELECT 1 FROM giveaway_entry ge
               WHERE ge.subscriber_id = e.referrer_id AND ge.method = 'referral'
                 AND ge.source_edge_id = e.id
             )
         ) entitled ORDER BY earned_at, subscriber_id, method, source_edge_id`,
-          values: [start, end],
+          values: [
+            start,
+            end,
+            policy.boxRequiredForEveryone,
+            policy.referralEntryWithoutGiveawayBox,
+          ],
         },
         limit,
       );

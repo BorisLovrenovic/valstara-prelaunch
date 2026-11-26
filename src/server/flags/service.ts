@@ -1,4 +1,5 @@
 import { createAuditService, type AuditService } from '../audit/service.ts';
+import type { AuditDetailValue } from '../audit/types.ts';
 import {
   ConfigurationError,
   getEmailQuotaConfiguration,
@@ -11,6 +12,10 @@ import {
 } from '../db/campaign-flags.ts';
 import type { DatabasePool } from '../db/pool.ts';
 import { withTransaction } from '../db/transaction.ts';
+import {
+  waitlistAgeSettings,
+  type WaitlistAgeSettings,
+} from '../giveaway/age-policy.ts';
 import { currentRulesFromFiles } from '../giveaway/current-rules-file.ts';
 import { createGiveawayEntryReconciliationJob } from '../giveaway/reconcile.ts';
 import type { CurrentGiveawayRules } from '../giveaway/accrue.ts';
@@ -50,6 +55,8 @@ export function createFlagService(
     periodStart?: Date;
     emailQuota?: EmailQuotaConfiguration;
     onGiveawayEntry?: (method: 'base' | 'referral') => void;
+    /** E11.8-06: the shipped settings unless a test supplies its own. */
+    waitlistAgeSettings?: WaitlistAgeSettings;
   } = {},
 ): FlagService {
   const service = createFlagServiceWithDependencies(
@@ -63,25 +70,50 @@ export function createFlagService(
       });
     },
   );
+  async function refuseEnable(
+    key: FlagKey,
+    actor: string,
+    detail: Readonly<Record<string, AuditDetailValue>>,
+  ): Promise<void> {
+    if (actor.trim() === '')
+      throw new TypeError('A campaign flag change requires an actor.');
+    await withTransaction(database, async (connection) => {
+      await createAuditService(connection).record({
+        action: 'flag.enable_refused',
+        actor,
+        detail,
+        subjectId: key,
+        subjectType: 'campaign_flag',
+      });
+    });
+  }
+
   return {
     ...service,
     async set(key, enabled, actor) {
+      // E11.8-06: the waitlist opens to 13–17-year-olds only once E11.8-07
+      // has applied the lawyer's reviewed wording (P12) and recorded it in
+      // the server setting. Switching it off is always allowed.
+      if (
+        key === 'waitlist.age_13' &&
+        enabled &&
+        !(giveaway.waitlistAgeSettings ?? waitlistAgeSettings)
+          .reviewedWordingInPlace
+      ) {
+        await refuseEnable(key, actor, {
+          reason: 'reviewed_wording_not_in_place',
+        });
+        throw new Error('waitlist_age_13_requires_reviewed_wording');
+      }
       if (key === 'giveaway.open' && enabled) {
         const quota = giveaway.emailQuota ?? getEmailQuotaConfiguration();
         const freeProviders = (['resend', 'brevo'] as const).filter(
           (provider) => quota[provider].tier !== 'paid',
         );
         if (freeProviders.length > 0) {
-          if (actor.trim() === '')
-            throw new TypeError('A campaign flag change requires an actor.');
-          await withTransaction(database, async (connection) => {
-            await createAuditService(connection).record({
-              action: 'flag.enable_refused',
-              actor,
-              detail: { reason: 'email_free_tier', providers: freeProviders },
-              subjectId: key,
-              subjectType: 'campaign_flag',
-            });
+          await refuseEnable(key, actor, {
+            reason: 'email_free_tier',
+            providers: freeProviders,
           });
           throw new Error('giveaway_open_requires_paid_email_tiers');
         }

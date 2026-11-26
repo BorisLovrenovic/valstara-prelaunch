@@ -72,6 +72,7 @@ const signupEnabled = enabled('signup.enabled');
 // config/valstara-prices.json holds.
 const valstaraEnabled = enabled('prices.valstara_comparison');
 const giveawayEnabled = enabled('giveaway.open');
+const ageThirteen = enabled('waitlist.age_13');
 const signedReferralCapture = landingReferralField(
   createReferralCaptureService(getConfig().referralSigningSecret),
   Astro.url,
@@ -469,6 +470,7 @@ const lastCrumb = view === null ? -1 : view.breadcrumbs.length - 1;
               <SignupForm
                 signedReferralCapture={signedReferralCapture}
                 giveawayEnabled={giveawayEnabled}
+                ageThirteen={ageThirteen}
               />
             ) : (
               <div class="price-cta__paused" role="status">

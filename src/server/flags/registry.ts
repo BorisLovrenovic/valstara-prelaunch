@@ -34,6 +34,11 @@ export const campaignFlagRegistry = Object.freeze({
   // the founder turns it on; off, the welcome email is exactly as before
   // (docs/features/email-campaign.md#the-referral-reminder-e118-04).
   'email.referred_welcome_line': false,
+  // E11.8-06: the waitlist at 13 and over, with an 18+ giveaway box. Off, the
+  // site says "Open to people aged 18 and over" and entries accrue as before.
+  // The enable command refuses until E11.8-07 records the lawyer's reviewed
+  // wording (docs/features/signup.md#the-waitlist-at-13-and-over-e118-06).
+  'waitlist.age_13': false,
 } as const);
 
 export type FlagKey = keyof typeof campaignFlagRegistry;

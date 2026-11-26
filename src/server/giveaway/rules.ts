@@ -18,6 +18,10 @@ export const giveawayRulesSchema = z.object({
     z.array(z.string().min(1)).min(1),
   ]),
   sha256: z.string().regex(/^[a-f0-9]{64}$/u),
+  // E11.8-06: true on a revision that makes the 18+ giveaway box the way to
+  // enter (E11.8-07 publishes the first). Absent on every earlier revision,
+  // which permit entry by verification alone.
+  entryRequiresGiveawayBox: z.boolean().optional(),
 });
 
 export type GiveawayRulesData = z.infer<typeof giveawayRulesSchema>;
@@ -32,6 +36,8 @@ export interface RulesRevision {
   revision: number;
   prizeCount: number;
   prizeApproxRetailValueEur: number;
+  /** Present only on a revision that makes the 18+ box the way to enter. */
+  entryRequiresGiveawayBox?: true;
 }
 
 export function compareRulesRevisions(
@@ -211,6 +217,9 @@ export function validateRulesRevision(input: {
     revision: data.revision,
     prizeCount: data.prizeCount,
     prizeApproxRetailValueEur: data.prizeApproxRetailValueEur,
+    ...(data.entryRequiresGiveawayBox === true
+      ? { entryRequiresGiveawayBox: true as const }
+      : {}),
   };
 }
 

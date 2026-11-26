@@ -1,10 +1,15 @@
-import { marketingOptInCopy } from './marketing.ts';
+import { marketingOptInCopy, marketingOptInSixteenCopy } from './marketing.ts';
+import { signupFormCopy } from './signup.ts';
 
 export const memberStatusCopy = {
   authenticated: {
     body: 'This private page shows the waitlist details attached to this link.',
     confirmedReferrals: 'Confirmed referrals',
     entries: 'Giveaway entries',
+    // E11.8-06: a member who needs the 18+ box and has not ticked it holds
+    // no entries, and the status card says so.
+    giveaway: 'Giveaway',
+    notEntered: 'Not entered',
     heading: 'Your waitlist status',
     rank: 'Your rank',
     rankUnavailable: 'Not currently ranked',
@@ -58,6 +63,42 @@ export const memberStatusCopy = {
     rateLimited: 'Too many attempts — try again in a few minutes.',
     unavailable:
       'We could not save that preference right now. Please try again later.',
+    javaScriptRequired:
+      'JavaScript is required to complete the security check.',
+    // E11.8-06: while `waitlist.age_13` is on, a new grant needs the 16+
+    // affirmation, and records the 16+ wording version. Draft wording;
+    // E11.8-07 replaces it with P12's reviewed wording.
+    sixteen: {
+      wording: marketingOptInSixteenCopy.wording,
+      affirmation: "I'm 16 or over",
+      required: 'Confirm you are 16 or over to turn on marketing email.',
+    },
+    // E11.8-06 (D-082): a member admitted under the 13+ policy cannot turn
+    // marketing email on while the waitlist is 18 and over; turning it off
+    // stays available.
+    grantPaused: 'Marketing email cannot be turned on right now.',
+  },
+  // E11.8-06: entering the giveaway later from /me, with the same 18+ box as
+  // the signup form. Draft wording; E11.8-07 replaces it with P12's.
+  giveaway: {
+    heading: 'The giveaway',
+    body: 'You are not entered in the giveaway. The giveaway is for people aged 18 and over.',
+    bodyHeld:
+      'You keep the entries you hold. To earn new entries, tick the box below. The giveaway is for people aged 18 and over.',
+    optIn: signupFormCopy.ageThirteen.giveawayOptIn,
+    submit: 'Enter the giveaway',
+    saved: 'You are entered in the giveaway.',
+    rulesLink: signupFormCopy.giveawayRulesLink,
+    rulesLinkEnd: signupFormCopy.giveawayRulesLinkEnd,
+    freeEntry: signupFormCopy.freeEntryDisclosure,
+    closed: 'Giveaway entries have closed.',
+    paused:
+      'Entering the giveaway is unavailable right now. Please try again later.',
+    invalidInput: 'Tick the box to enter the giveaway.',
+    challengeFailed:
+      'That security check did not go through. Please try again.',
+    rateLimited: 'Too many attempts — try again in a few minutes.',
+    unavailable: 'We could not save that right now. Please try again later.',
     javaScriptRequired:
       'JavaScript is required to complete the security check.',
   },

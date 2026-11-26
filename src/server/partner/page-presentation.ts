@@ -74,6 +74,54 @@ const paused: PartnerApplyView = {
  * `email` query value. Only a well-formed address is used, as typed; anything
  * else leaves the field empty. It fills nothing else and is never stored.
  */
+/**
+ * The application form's line about joining (D-050, as amended by E11.8-06's
+ * decisions 1 and 8). Confirming enters the giveaway automatically only while
+ * the waitlist is 18 and over and the published rules permit entry by
+ * verification; while it is open at 13, the line says how to enter from
+ * `/me`; under rules that make the box the way to enter, the line is the
+ * waitlist-only one. Every claim matches the rules page.
+ */
+export interface PartnerMembershipLine {
+  readonly line: string;
+  /** "Open to people aged 18 and over.", the 18+ waitlist's statement. */
+  readonly ageStatement: boolean;
+  /** "No purchase necessary." and the giveaway rules link. */
+  readonly giveawayDisclosure: boolean;
+}
+
+export function partnerMembershipLine(input: {
+  readonly ageThirteen: boolean;
+  readonly giveawayOpen: boolean;
+  readonly rulesRequireBox: boolean;
+}): PartnerMembershipLine {
+  const membership = partnersCopy.apply.membership;
+  if (input.ageThirteen) {
+    return input.giveawayOpen
+      ? {
+          line: membership.waitlistThenGiveaway,
+          ageStatement: false,
+          giveawayDisclosure: true,
+        }
+      : {
+          line: membership.waitlist,
+          ageStatement: false,
+          giveawayDisclosure: false,
+        };
+  }
+  return input.giveawayOpen && !input.rulesRequireBox
+    ? {
+        line: membership.waitlistAndGiveaway,
+        ageStatement: true,
+        giveawayDisclosure: true,
+      }
+    : {
+        line: membership.waitlist,
+        ageStatement: true,
+        giveawayDisclosure: false,
+      };
+}
+
 export function partnerApplyPrefillEmail(value: string | null): string {
   if (value === null) return '';
   const email = value.trim();

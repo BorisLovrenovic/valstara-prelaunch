@@ -26,5 +26,15 @@ export async function currentRulesFromFiles(
   if (rulesVersion !== name.slice(0, -3) || sha256 === undefined) {
     throw new Error('The published giveaway rules metadata is invalid.');
   }
-  return { rulesVersion, sha256 };
+  // E11.8-06: a revision that makes the 18+ box the way to enter says so in
+  // its frontmatter (E11.8-07 publishes the first). Absent, the rules permit
+  // entry by verification alone.
+  const frontmatter = source.match(/^---\n([\s\S]*?)\n---/u)?.[1] ?? '';
+  const boxLine = frontmatter.match(/^entryRequiresGiveawayBox: (.+)$/mu)?.[1];
+  if (boxLine !== undefined && boxLine !== 'true' && boxLine !== 'false') {
+    throw new Error('The published giveaway rules box setting is invalid.');
+  }
+  return boxLine === 'true'
+    ? { rulesVersion, sha256, entryRequiresGiveawayBox: true }
+    : { rulesVersion, sha256 };
 }

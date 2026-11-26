@@ -1,4 +1,4 @@
-import { marketingOptInCopy } from './marketing.ts';
+import { marketingOptInCopy, marketingOptInSixteenCopy } from './marketing.ts';
 
 export const signupCopy = {
   // Identical accepted copy for unknown, pending, and verified addresses: no
@@ -18,6 +18,10 @@ export const signupCopy = {
     `Too many attempts — try again in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`,
   unavailable: "We can't take signups right now — try again in a few minutes.",
   internal: 'Something went wrong — please try again in a few minutes.',
+  // E11.8-06 (D-083): the form was rendered under the other age policy, so
+  // the visitor loads the current form, with its age statement and boxes.
+  formChanged:
+    'This form has changed since you opened it. Reload the page to see the current form, then join again.',
 } as const;
 
 /**
@@ -41,6 +45,14 @@ export const signupFormCopy = {
   referralLabel: 'Referral code',
   marketing: marketingOptInCopy,
   ageStatement: 'Open to people aged 18 and over.',
+  // E11.8-06: the form while `waitlist.age_13` is on. Draft wording; E11.8-07
+  // replaces it with P12's reviewed wording.
+  ageThirteen: {
+    ageStatement: 'Open to people aged 13 and over.',
+    giveawayAgeStatement: 'The giveaway is for people aged 18 and over.',
+    marketing: marketingOptInSixteenCopy,
+    giveawayOptIn: "I'm 18 or over, enter me in the giveaway",
+  },
   freeEntryDisclosure: 'No purchase necessary.',
   // The link is the sentence; its full stop sits after it (E11.5-11c).
   giveawayRulesLink: 'See the giveaway rules',
