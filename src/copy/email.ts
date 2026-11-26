@@ -77,5 +77,9 @@ export const emailCopy = {
     empty: 'No confirmed referrals are on the leaderboard yet.',
     entry: (rank: number, handle: string, count: number) =>
       `${rank}. ${handle}: ${count} confirmed ${count === 1 ? 'referral' : 'referrals'}`,
+    // E11.8-03: the heading above the founder's note, as in the partner
+    // digest. The note itself is the founder's own words, from
+    // src/content/weekly-notes/.
+    noteHeading: 'A note from the founder:',
   },
 } as const;

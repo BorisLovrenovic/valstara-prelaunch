@@ -27,6 +27,7 @@ import { createResendProvider } from './providers/resend.ts';
 import type { BrevoContactProvider } from './providers/brevo.ts';
 import { createTransactionalTemplateData } from './transactional-template-data.ts';
 import { createTransactionalRenderers } from './transactional-templates.ts';
+import { createWeeklyNoteService } from './weekly-note.ts';
 import { createWeeklyTemplate } from './weekly-template.ts';
 import {
   createEmailService,
@@ -46,6 +47,8 @@ export function createResendDispatcher(
   broadcast?: {
     readonly provider: BrevoContactProvider | null;
     readonly isEnabled: () => Promise<boolean>;
+    /** `email.weekly_note` (E11.8-03); absent, no weekly note is sent. */
+    readonly isWeeklyNoteEnabled?: () => Promise<boolean>;
   },
 ) {
   return createEmailService(database, {
@@ -91,6 +94,12 @@ export function createResendDispatcher(
                       createRankingIntegrityService(database),
                       clock,
                     ).byId(id),
+                  note: createWeeklyNoteService({
+                    database,
+                    clock,
+                    isEnabled:
+                      broadcast.isWeeklyNoteEnabled ?? (async () => false),
+                  }),
                 }),
               ] as const,
               // E11.7-12: the auto-invite is a marketing broadcast.

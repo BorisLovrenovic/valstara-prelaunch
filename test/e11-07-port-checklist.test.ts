@@ -49,6 +49,21 @@ test('the checklist maps every portable Markdown source to one known storefront 
       file.slice(announcementFolder.length),
       /^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u,
     );
+  // E11.8-03: the founder's notes in the weekly update are sent by email
+  // and never rendered as a page, so they have no storefront port target.
+  // Every file there is a note.
+  const weeklyNoteFolder = 'src/content/weekly-notes/';
+  for (const file of allContentFiles.filter((path) =>
+    path.startsWith(weeklyNoteFolder),
+  ))
+    assert.match(
+      file.slice(weeklyNoteFolder.length),
+      /^[0-9]{4}-W(?:0[1-9]|[1-4][0-9]|5[0-3])\.md$/u,
+    );
+  assert.match(
+    checklist,
+    /Markdown files in `src\/content\/weekly-notes\/` \(E11\.8-03\)/u,
+  );
   // E11.8-01: the Trust Ledger's entries are data files that port with
   // `/trust-ledger` and its "How we count" (its checklist row), every one
   // kept unedited. Every file there is an entry.
@@ -66,7 +81,10 @@ test('the checklist maps every portable Markdown source to one known storefront 
   );
   const markdownFiles = allContentFiles
     .filter(
-      (file) => file.endsWith('.md') && !file.startsWith(announcementFolder),
+      (file) =>
+        file.endsWith('.md') &&
+        !file.startsWith(announcementFolder) &&
+        !file.startsWith(weeklyNoteFolder),
     )
     .sort();
   assert.deepEqual(

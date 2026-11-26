@@ -239,6 +239,26 @@ npm run admin -- partners announce --id 2026-12-01-programme-news
   twice. A refusal names its cause: an unknown id, a broken file, or the flags
   that are off.
 
+### The founder note in the weekly update (E11.8-03)
+
+- **Write the note** as `src/content/weekly-notes/YYYY-Www.md`, named for the
+  ISO-8601 week of the Tuesday send it belongs to (for example `2026-W50.md`
+  for the update sent on Tuesday 8 December 2026). Plain prose only: at most
+  120 words and at most one link, written as a site path such as
+  `/trust-ledger`. No image, HTML, merge field or greeting by name: every
+  member receives the same words. The build fails on a file that breaks a rule
+  and names the rule. Merge and **deploy it before the send time** through an
+  ordinary pull request. A note for any other week is never used, so a late
+  note waits for its own week or is renamed.
+- **Turn `email.weekly_note` on** once (with `email.broadcast`). A run started
+  while it is off carries no note, even if it is switched on later that week.
+- **Do not edit a note during its send window** (from the send time until 24
+  hours after). A run uses only the note it recorded when it started; if a
+  deploy changes or removes that note mid-run, the rest of the run goes out
+  without it and a `weekly_note_left_out` P3 log line names the week and the
+  reason (`changed`, `missing` or `invalid`). Nothing is re-sent. Correct the
+  note for next week instead.
+
 ---
 
 ## Publishing a Trust Ledger entry (E11.8-01)

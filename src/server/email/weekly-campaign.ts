@@ -11,6 +11,7 @@ import type { AlertTransport } from '../verification-rate/p1-webhook.ts';
 import type { SharedLeaderboardSnapshot } from '../leaderboard/persisted.ts';
 
 import type { QueueEmailInput } from './service.ts';
+import type { WeeklyNoteService } from './weekly-note.ts';
 import { createEmailRepository } from '../db/email.ts';
 
 const dayMs = 24 * 60 * 60 * 1_000;
@@ -80,6 +81,11 @@ export interface WeeklyCampaignDependencies {
   readonly clock: () => Date;
   readonly tokenSecret: string;
   readonly schedule: WeeklySendSchedule;
+  /**
+   * E11.8-03: the founder note's hash, recorded when a run starts. Without
+   * it, no run records a note.
+   */
+  readonly note?: Pick<WeeklyNoteService, 'atRunStart'>;
 }
 
 export function createWeeklyCampaignJob(
@@ -160,6 +166,8 @@ export function createWeeklyCampaignJob(
       }
       if (run?.state === 'completed') return { queued: 0, state: 'completed' };
       if (run === null) {
+        const noteHash =
+          (await dependencies.note?.atRunStart(window.isoWeek)) ?? null;
         await withLeaderboardPublicationLock(database, async (connection) => {
           const snapshot =
             (await dependencies.snapshot.served(connection)) ??
@@ -169,6 +177,7 @@ export function createWeeklyCampaignJob(
             window.isoWeek,
             snapshot.id,
             now,
+            noteHash,
           );
         });
         run = await repository.run(window.isoWeek);
@@ -213,6 +222,10 @@ export function createWeeklyCampaignJob(
                   payload: {
                     snapshot_id: run.snapshot_id!,
                     status_token_id: status.id,
+                    // E11.8-03: the run's week, only when it recorded a note.
+                    ...(run.note_hash === null
+                      ? {}
+                      : { period: window.isoWeek }),
                   },
                   expiresAt: window.endsAt,
                 },

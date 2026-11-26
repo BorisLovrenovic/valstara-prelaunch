@@ -28,6 +28,8 @@ export const inputPaths = [
   'scripts/ci/partner-announcements-check.ts',
   // E11.8-01: the Trust Ledger entries check runs before the build.
   'scripts/ci/trust-ledger-check.ts',
+  // E11.8-03: the weekly notes check runs before the build.
+  'scripts/ci/weekly-notes-check.ts',
   'scripts/forbidden-copy.json',
   // E11.6-10: the price pages bundle the price data and the price-index
   // package's two site-importable parts (ADR-033).

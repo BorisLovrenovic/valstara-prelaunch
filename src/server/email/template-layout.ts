@@ -16,6 +16,14 @@ export interface EmailDocument {
   readonly preheader: string;
   readonly paragraphs: readonly string[];
   readonly facts?: readonly string[];
+  /**
+   * A closing section after the facts, with its own text links: the founder
+   * note in the weekly update (E11.8-03). Absent, the message is unchanged.
+   */
+  readonly note?: {
+    readonly paragraphs: readonly string[];
+    readonly links: readonly EmailLink[];
+  };
   /** The first link is the message's main action and renders as its button. */
   readonly links: readonly [EmailLink, ...EmailLink[]];
 }
@@ -342,12 +350,20 @@ function body(
         })}">${document.facts
           .map((fact) => `<li>${escapeHtml(fact)}</li>`)
           .join('')}</ul></td></tr>`;
-  const links = secondary
-    .map(
-      ({ label, url }) =>
-        `<tr><td class="v-text v-link" style="${style({ padding: `0 0 ${px.space1}px` })};${prose}"><a href="${escapeHtml(url)}">${escapeHtml(label)}</a></td></tr>`,
-    )
-    .join('');
+  const textLinks = (list: readonly EmailLink[]) =>
+    list
+      .map(
+        ({ label, url }) =>
+          `<tr><td class="v-text v-link" style="${style({ padding: `0 0 ${px.space1}px` })};${prose}"><a href="${escapeHtml(url)}">${escapeHtml(label)}</a></td></tr>`,
+      )
+      .join('');
+  const links = textLinks(secondary);
+  const note =
+    document.note === undefined
+      ? ''
+      : `<tr><td class="v-text" style="${prose}">${document.note.paragraphs
+          .map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`)
+          .join('')}</td></tr>${textLinks(document.note.links)}`;
   const footerLine = style({ padding: `0 0 ${px.space1}px` });
   const footer = `<tr><td class="v-muted" style="${style({
     padding: `${px.space3}px ${px.space3}px 0`,
@@ -389,6 +405,7 @@ function body(
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">',
     paragraphs,
     facts,
+    note,
     button(action, theme),
     links,
     '</table></td></tr>',
@@ -410,6 +427,8 @@ export function renderEmailDocument(input: {
   const lines = [
     ...document.paragraphs,
     ...(document.facts ?? []),
+    ...(document.note?.paragraphs ?? []),
+    ...(document.note?.links ?? []).map(({ label, url }) => `${label}: ${url}`),
     ...document.links.map(({ label, url }) => `${label}: ${url}`),
     emailCopy.footer.legalLine,
     emailCopy.footer.supportEmail,

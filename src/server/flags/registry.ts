@@ -26,6 +26,10 @@ export const campaignFlagRegistry = Object.freeze({
   // answers 404 and /sitemaps/trust-ledger.xml lists nothing
   // (docs/features/trust-ledger.md#feature-flag).
   'trust_ledger.page': false,
+  // E11.8-03: the founder note in the weekly update. Off until the founder
+  // turns it on; off, no run records a note and the weekly update is exactly
+  // as before (docs/features/email-campaign.md#the-founder-note-e118-03).
+  'email.weekly_note': false,
 } as const);
 
 export type FlagKey = keyof typeof campaignFlagRegistry;

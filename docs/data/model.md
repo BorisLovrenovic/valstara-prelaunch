@@ -324,7 +324,7 @@ E11.7-13 adds `partner-digest:{YYYY-MM}:{partner_id}` (monthly) and `partner-dig
 
 E11.7-16 adds `partner-announcement:{announcement_id}:{partner_id}`, provider `brevo`: one partner announcement per partner, ever. Its payload is `{ announcement_id, status_token_id }`; migration 0072 adds the `announcement_id` key to the payload check, which accepts only a reference in the content-file form `YYYY-MM-DD-<slug>` of at most 80 characters, never copy. The subject and text stay in the committed content file and are read at dispatch. `expires_at` is null. No table is added.
 
-E8-07 adds `weekly:{ISO-8601 UTC week}:{subscriber_id}`. Its payload is `{ snapshot_id, status_token_id }`, both UUID references. `expires_at` is the weekly schedule plus 24 hours; dispatch fails an expired row before any provider call. The other templates leave it null.
+E8-07 adds `weekly:{ISO-8601 UTC week}:{subscriber_id}`. Its payload is `{ snapshot_id, status_token_id }`, both UUID references; when the week's run recorded a founder note (E11.8-03), it also carries `period`, the run's `YYYY-Www`, through the key migration 0071 added, so the renderer can find the run's recorded note hash. `expires_at` is the weekly schedule plus 24 hours; dispatch fails an expired row before any provider call. The other templates leave it null.
 
 ## `leaderboard_snapshot`
 
@@ -336,7 +336,7 @@ One permissioned singleton pointer to the snapshot ID actually loaded by the web
 
 ## `weekly_campaign_run`
 
-One row per ISO UTC week, keyed by `iso_week` text primary key in `YYYY-Www` form (checked), holding `state` (`started`, `completed`, `skipped`), the fixed `snapshot_id` for that week's send, `recorded_at` and `alerted_at`. It records missed 24-hour windows and deduplicates the P2 alert across maintenance restarts. The snapshot foreign key clears on the 14-day purge while the run record remains. The audience is selected afresh from verified, unsuppressed, currently marketing-consented subscribers at queue time; dispatch independently re-checks it.
+One row per ISO UTC week, keyed by `iso_week` text primary key in `YYYY-Www` form (checked), holding `state` (`started`, `completed`, `skipped`), the fixed `snapshot_id` for that week's send, `recorded_at` and `alerted_at`. E11.8-03 (migration 0073) adds `note_hash`, the SHA-256 (64 lowercase hex, checked) of the founder note deployed for the week when the run started while `email.weekly_note` was on, null otherwise; the application can insert it with the run but never update it. `note_left_out_at` is set once, when dispatch finds that note changed, removed or invalid mid-run, and a check requires a `note_hash` for it; it is the only new column the application can update. Neither holds personal data. It records missed 24-hour windows and deduplicates the P2 alert across maintenance restarts. The snapshot foreign key clears on the 14-day purge while the run record remains. The audience is selected afresh from verified, unsuppressed, currently marketing-consented subscribers at queue time; dispatch independently re-checks it.
 The hourly job also checks up to 12 preceding ISO weeks, back to the first recorded run. If no run exists yet, it uses retained snapshot history to decide whether the previous window was active. Unrecorded expired windows are skipped and alerted; they never queue late mail.
 
 ## `partner_digest_run` and `partner_digest_schedule`
