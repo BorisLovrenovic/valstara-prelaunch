@@ -305,6 +305,37 @@ test('schema validation red paths: every broken entry is refused with its reason
   assert.deepEqual(trustLedgerEntryProblems(await fixtureEntry('2027-01')), []);
 });
 
+test("from 2027-01 an entry must give the month's supplier figures; before then it may leave them null", async () => {
+  // Green path: P11 Part 2's December 2026 entry gives totals only.
+  const december = await fixtureEntry('2026-12');
+  assert.equal(
+    (december.supplyReadiness as { thisMonth: unknown }).thisMonth,
+    null,
+  );
+  assert.deepEqual(trustLedgerEntryProblems(december), []);
+
+  // Red path: January 2027, and any later month, with thisMonth null.
+  const january = await fixtureEntry('2027-01');
+  assert.deepEqual(trustLedgerEntryProblems(january), []);
+  const later = clone(january);
+  later.month = '2027-06';
+  setPath(later, 'waitlist.countedOn', '2027-07-01');
+  assert.deepEqual(trustLedgerEntryProblems(later), []);
+  for (const entry of [january, later]) {
+    const refused = clone(entry);
+    setPath(refused, 'supplyReadiness.thisMonth', null);
+    assert.deepEqual(trustLedgerEntryProblems(refused), [
+      "supplyReadiness.thisMonth: From 2027-01, supplyReadiness.thisMonth must give the month's own supplier figures (evaluated, verified and rejected), not null.",
+    ]);
+  }
+
+  // The boundary: the same January entry dated December 2026 may leave it null.
+  const beforeJanuary = clone(january);
+  beforeJanuary.month = '2026-12';
+  setPath(beforeJanuary, 'supplyReadiness.thisMonth', null);
+  assert.deepEqual(trustLedgerEntryProblems(beforeJanuary), []);
+});
+
 test('the schema cannot represent a supplier name, revenue, margin or person', async () => {
   // Planted fields: each is refused, at the top and inside every section.
   const valid = await fixtureEntry('2026-12');

@@ -21,6 +21,9 @@ export const trustLedgerTextLimits = Object.freeze({
   paragraphs: 12,
 });
 
+/** The first month whose entry must give the month's own supplier figures. */
+export const trustLedgerMonthlySupplierFiguresFrom = '2027-01';
+
 /** The three build-progress states (P11 Part 1: done, in progress or next). */
 export const buildProgressStatuses = ['done', 'in progress', 'next'] as const;
 
@@ -120,7 +123,7 @@ export const trustLedgerEntrySchema = z
         note: z.array(paragraph).max(trustLedgerTextLimits.paragraphs),
         total: supplierCounts,
         // From January 2027, each entry also gives the month's own figures
-        // (P11 Part 2); null before then.
+        // (P11 Part 2); null is allowed only before then (refined below).
         thisMonth: supplierCounts.nullable(),
         launchProducts: count,
         launchProductsWithVerifiedSupply: count,
@@ -155,6 +158,19 @@ export const trustLedgerEntrySchema = z
   .refine(
     ({ month, waitlist }) => waitlist.countedOn.slice(0, 7) >= month,
     'The waitlist figures are counted on or after the first day of their month.',
+  )
+  // D-077 Q3: P11 Part 2 promises "From January 2027, each entry also gives
+  // that month's figures", so from 2027-01 the month's supplier figures are
+  // required. `trust-ledger draft` writes null, so a 2027 draft fails here
+  // until the founder completes it.
+  .refine(
+    ({ month, supplyReadiness }) =>
+      month < trustLedgerMonthlySupplierFiguresFrom ||
+      supplyReadiness.thisMonth !== null,
+    {
+      path: ['supplyReadiness', 'thisMonth'],
+      message: `From ${trustLedgerMonthlySupplierFiguresFrom}, supplyReadiness.thisMonth must give the month's own supplier figures (evaluated, verified and rejected), not null.`,
+    },
   );
 
 export type TrustLedgerEntry = z.infer<typeof trustLedgerEntrySchema>;
