@@ -810,6 +810,24 @@ test('normalisation: values are trimmed and lower-cased before they are compared
       ...counts(1, 1, 0, 0),
     },
   ]);
+  // A value empty after trimming is (not set), never other (D-078).
+  await signup({
+    at: '2027-07-02T10:00:00.000Z',
+    utm: { source: '', medium: '   ', campaign: '\t\n' },
+  });
+  const blank = await service().report({
+    from: '2027-07-02',
+    to: '2027-07-02',
+    actor: 'founder:test',
+  });
+  assert.deepEqual(blank.rows, [
+    {
+      source: '(not set)',
+      medium: '(not set)',
+      campaign: '(not set)',
+      ...counts(1, 1, 0, 0),
+    },
+  ]);
 });
 
 test('the no-UTM split: a valid signed ref is "referral link or code", anything else is "none", and the two add up exactly', async () => {
