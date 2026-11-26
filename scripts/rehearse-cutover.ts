@@ -17,7 +17,9 @@ import { deriveEmailToken } from '../src/server/verification/token-derivation.ts
 
 const execFile = promisify(execFileCallback);
 const HOUR_MS = 60 * 60 * 1_000;
-const clockStart = new Date('2027-03-15T10:00:00.000Z');
+// Cutover follows the published draw, which opens on 1 September 2027
+// (E11.8-05).
+const clockStart = new Date('2027-09-15T10:00:00.000Z');
 const actor = 'e11-07-rehearsal-operator';
 const applicationRolePassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
@@ -232,7 +234,7 @@ try {
   });
   await owner.execute({
     text: `UPDATE giveaway_draw SET snapshot_committed_at=$2,
-      entry_snapshot_hash=$3,prize_count=1,rules_version='VAL-GW-LAUNCH-20261009-r1',
+      entry_snapshot_hash=$3,prize_count=1,rules_version='VAL-GW-LAUNCH-20261126-r1',
       rules_sha256=$3,drand_chain_hash=$3,drand_chain_info='{}'::jsonb,
       target_round=1,target_round_at=$4 WHERE id=$1`,
     values: [drawId, snapshotAt, Buffer.alloc(32), targetAt],

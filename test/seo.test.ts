@@ -203,7 +203,7 @@ test('sitemap routes reconcile with page files and include only the current rule
     eligiblePaths.push(eligiblePath);
     assert.ok(routes.includes(eligiblePath), file);
   }
-  const currentVersion = 'VAL-GW-LAUNCH-20261009-r1';
+  const currentVersion = 'VAL-GW-LAUNCH-20261126-r1';
   assert.ok(revisions.includes(currentVersion));
   eligiblePaths.push(`/giveaway/rules/${currentVersion}`);
   assert.ok(routes.includes(`/giveaway/rules/${currentVersion}`));

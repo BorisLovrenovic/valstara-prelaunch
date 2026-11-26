@@ -42,7 +42,11 @@ import { currentRulesFromFiles } from './current-rules-file.ts';
 import { createGiveawayEntryReconciliationJob } from './reconcile.ts';
 
 const retryMaximumMilliseconds = 60 * 60 * 1_000;
-const publishedDrawStart = new Date('2027-04-01T00:00:00.000Z');
+/**
+ * The draw's earliest start: the current rules revision draws winners on
+ * 1 September 2027 (E11.8-05). A test compares this with the revision.
+ */
+export const publishedDrawStart = new Date('2027-09-01T00:00:00.000Z');
 
 export class DrawRefusedError extends Error {
   public constructor(message: string) {

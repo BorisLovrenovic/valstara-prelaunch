@@ -18,7 +18,7 @@ const words = (value: string): number => value.trim().split(/\s+/u).length;
 test('landing marketing copy stays inside its heading, line, card and FAQ budgets', () => {
   const rulesSource = readFileSync(
     new URL(
-      '../src/content/giveaway-rules/VAL-GW-LAUNCH-20261009-r1.md',
+      '../src/content/giveaway-rules/VAL-GW-LAUNCH-20261126-r1.md',
       import.meta.url,
     ),
     'utf8',

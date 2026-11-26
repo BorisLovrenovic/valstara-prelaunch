@@ -51,7 +51,7 @@ const playwrightImage =
   'mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e';
 const themes = ['light', 'dark'];
 const tolerance = 1;
-const rulesPath = 'src/content/giveaway-rules/VAL-GW-LAUNCH-20261009-r1.md';
+const rulesPath = 'src/content/giveaway-rules/VAL-GW-LAUNCH-20261126-r1.md';
 const configPath = 'src/server/referral/config.ts';
 const canvas = JSON.parse(
   await readFile(

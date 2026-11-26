@@ -47,7 +47,7 @@ These are decided or built. A marketing action that contradicts one of them is w
 | **1 Oct 2026, or the day the waitlist goes live if later** | Giveaway entries open (in practice, at go-live) |
 | April–June 2027 | Most active partner recruiting. Partner email ramps up from about April |
 | July–August 2027 | Latest useful window for creator content (it must land before early access) |
-| **31 Aug 2027, 23:59:59 UTC** | Giveaway entries close (decided 24 Nov 2026; the current rules still say 1 Mar 2027 until E11.8-05 publishes the new revision) |
+| **31 Aug 2027, 23:59:59 UTC** | Giveaway entries close (decided 24 Nov 2026; published in rules revision `VAL-GW-LAUNCH-20261126-r1`, E11.8-05) |
 | **1 Sep 2027** | Giveaway draw. **Early access** opens on the main platform for wave 1. First real orders. Pre-launch partner commission starts, and the post-launch partner competition opens |
 | **1 Oct 2027** | **Public launch.** Main student-ambassador push in the first weeks of the academic year |
 | 31 Dec 2027 | Post-launch partner competition closes |

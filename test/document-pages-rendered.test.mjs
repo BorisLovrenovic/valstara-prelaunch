@@ -34,8 +34,9 @@ const rulesVersions = [
   'VAL-GW-LAUNCH-20260925-r1',
   'VAL-GW-LAUNCH-20261001-r1',
   'VAL-GW-LAUNCH-20261009-r1',
+  'VAL-GW-LAUNCH-20261126-r1',
 ];
-const currentRulesVersion = 'VAL-GW-LAUNCH-20261009-r1';
+const currentRulesVersion = 'VAL-GW-LAUNCH-20261126-r1';
 const trustRoutes = ['/legit', '/guarantee', '/about'];
 const legalRoutes = ['/terms', '/privacy', '/privacy/storage'];
 const rulesRoutes = [

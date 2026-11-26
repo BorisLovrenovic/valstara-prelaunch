@@ -187,7 +187,7 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 165 | E11.8-02 | The per-platform signup report | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | done | auto |
 | 166 | E11.8-03 | The founder note in the weekly update | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | done | auto |
 | 167 | E11.8-04 | The referral reminder in the welcome email | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | done | auto |
-| 168 | E11.8-05 | The giveaway rules revision with the new dates | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
+| 168 | E11.8-05 | The giveaway rules revision with the new dates | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | done | auto |
 | 169 | E11.8-06 | The waitlist at 13 and over, with an 18+ giveaway box | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
 | 170 | E11.8-08 | Perplexity Pro leaves the launch list | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
 | 171 | GATE-8 | QA gate 8 — E11.6 + E11.7 + E11.8 | E11.6 + E11.7 + E11.8 | todo | auto |

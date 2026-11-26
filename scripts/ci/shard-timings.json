@@ -82,6 +82,7 @@
   "test/giveaway-entry.test.ts": 6.1,
   "test/giveaway-maintenance-startup.test.ts": 2.7,
   "test/giveaway-rules-build.test.mjs": 11.4,
+  "test/giveaway-rules-dates.test.ts": 1.2,
   "test/giveaway-rules-history.test.mjs": 0.2,
   "test/giveaway-rules.test.ts": 0.5,
   "test/handoff.test.ts": 19.7,

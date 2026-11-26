@@ -184,7 +184,7 @@ test(
       );
       const rulesPath = join(
         root,
-        'src/content/giveaway-rules/VAL-GW-LAUNCH-20261009-r1.md',
+        'src/content/giveaway-rules/VAL-GW-LAUNCH-20261126-r1.md',
       );
       const rules = await readFile(rulesPath, 'utf8');
       const revisedRules = rules

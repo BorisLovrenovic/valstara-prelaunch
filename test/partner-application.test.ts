@@ -55,8 +55,8 @@ const applicationRolePassword =
 const DAY_MS = 24 * 60 * 60 * 1_000;
 const submittedAt = new Date('2026-11-22T10:00:00.000Z');
 const giveawayRules = {
-  rulesVersion: 'VAL-GW-LAUNCH-20261009-r1',
-  sha256: 'd35678f459daa99560613337a923b7f2cb5f0347fceae3d77a1ad67bc8b908e4',
+  rulesVersion: 'VAL-GW-LAUNCH-20261126-r1',
+  sha256: '47f6a7662f6884d92498e296adf53aa69a7de4265acec0f47179bad8fbf7f722',
 };
 
 interface Fixture {
