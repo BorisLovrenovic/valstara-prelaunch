@@ -23,8 +23,9 @@ import { inputDigest, inputPaths } from '../../scripts/ci/app-build.mjs';
 // its links and its sitemap are proven on a copy of the build inputs
 // (scripts/ci/app-build.mjs inputPaths) with the test fixtures in
 // src/content/trust-ledger/: P11 Part 2 word for word as 2026-12.json, and a
-// synthetic 2027-01.json for the ordering and archive. The repository's own
-// files are never touched. The build is keyed by the repository's build
+// synthetic 2027-01.json for the ordering and archive. Called with no months,
+// it builds the site with no entry committed, for the no-entry case once the
+// repository commits its own. The repository's own files are never touched. The build is keyed by the repository's build
 // inputs and the fixture files, so the test files that need it share one
 // build in a run. Exports only: node --test runs every file under test/,
 // helpers included.
@@ -61,14 +62,18 @@ export async function trustLedgerFixtureEntries() {
 }
 
 /**
- * The root of a built copy of the site with the fixture entries committed.
- * Built once per distinct set of inputs; a later call reuses it.
+ * The root of a built copy of the site with exactly the fixture entries of
+ * `months` committed (every fixture by default, none with `[]`). Built once
+ * per distinct set of inputs; a later call reuses it.
  */
-export async function trustLedgerFixtureSite() {
+export async function trustLedgerFixtureSite(
+  months = trustLedgerFixtureMonths,
+) {
   const hash = createHash('sha256')
     .update(await inputDigest(projectRoot, process.env))
-    .update(await readFile(fileURLToPath(import.meta.url)));
-  for (const month of trustLedgerFixtureMonths) {
+    .update(await readFile(fileURLToPath(import.meta.url)))
+    .update(`${months.length}\0`);
+  for (const month of months) {
     hash
       .update(`${month}\0`)
       .update(
@@ -103,12 +108,12 @@ export async function trustLedgerFixtureSite() {
     await mkdir(dirname(join(root, file)), { recursive: true });
     await copyFile(join(projectRoot, file), join(root, file));
   }
-  // Exactly the fixture entries, whatever the repository commits.
+  // Exactly the fixture entries of `months`, whatever the repository commits.
   const entryDirectory = join(root, 'src/content/trust-ledger');
   await mkdir(entryDirectory, { recursive: true });
   for (const name of await readdir(entryDirectory))
     if (name.endsWith('.json')) await rm(join(entryDirectory, name));
-  for (const month of trustLedgerFixtureMonths)
+  for (const month of months)
     await copyFile(
       join(trustLedgerFixtureDirectory, `${month}.json`),
       join(entryDirectory, `${month}.json`),

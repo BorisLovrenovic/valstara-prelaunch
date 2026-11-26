@@ -610,12 +610,22 @@ test('flag off: the page is hidden and the sitemap lists nothing; with no entry 
     ),
     false,
   );
-  // This ticket commits no entry (D-076 Q2): the repository's own ledger is
-  // empty, so no link renders and the page answers 404 until December.
-  const committed = (await readdir('src/content/trust-ledger')).filter(
-    (name) => !name.startsWith('.'),
+  // The repository's own ledger follows its committed entries: none before
+  // December 2026 (D-076 Q2), when the page stays hidden even with the flag
+  // on; once one is committed, it is published and shows only with the flag.
+  const committed: Record<string, unknown> = {};
+  for (const name of await readdir('src/content/trust-ledger'))
+    if (!name.startsWith('.'))
+      committed[name] = JSON.parse(
+        await readFile(join('src/content/trust-ledger', name), 'utf8'),
+      );
+  const repositoryLedger = createTrustLedger(committed);
+  assert.equal(repositoryLedger.published, Object.keys(committed).length > 0);
+  assert.equal(
+    trustLedgerVisible(flagsWith(true), repositoryLedger),
+    repositoryLedger.published,
   );
-  assert.deepEqual(committed, []);
+  assert.equal(trustLedgerVisible(flagsWith(false), repositoryLedger), false);
 });
 
 // ── The draft ───────────────────────────────────────────────────────────────

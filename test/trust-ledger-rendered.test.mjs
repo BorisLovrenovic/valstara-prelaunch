@@ -5,6 +5,7 @@ import {
   cp,
   mkdtemp,
   readFile,
+  readdir,
   rm,
   symlink,
   writeFile,
@@ -31,9 +32,10 @@ import {
 } from './helpers/trust-ledger-fixture-site.mjs';
 
 // E11.8-01: `/trust-ledger`, `/sitemaps/trust-ledger.xml` and the three links,
-// served by the real built app (D-076 Q1 and Q2). The repository's own build
-// commits no entry; the fixture site commits P11 Part 2 word for word and a
-// synthetic later month. The amended flag-off criterion: with the flag off the
+// served by the real built app (D-076 Q1 and Q2). The no-entry build is the
+// repository's own while it commits no entry, and a fixture build with no
+// entry once it commits one, so the first entry needs no test edit; the
+// fixture site commits P11 Part 2 word for word and a synthetic later month. The amended flag-off criterion: with the flag off the
 // page answers 404 and the child sitemap lists nothing; with no entry
 // committed no link renders anywhere; links render only with an entry
 // committed; and with an entry committed and the flag off the page still
@@ -56,7 +58,7 @@ let databaseName;
 let databaseUrl;
 let database;
 let admin;
-let repository;
+let noEntry;
 let fixture;
 
 function serverEnvironment(label) {
@@ -103,9 +105,15 @@ before(async () => {
     },
   );
   database = new Pool({ connectionString: databaseUrl });
-  repository = await startAppServer({
-    ...serverEnvironment('Trust Ledger repository build'),
-    cwd: projectRoot,
+  // The repository commits no entry before December 2026 (D-076 Q2).
+  const repositoryCommitsEntry = (
+    await readdir(join(projectRoot, 'src/content/trust-ledger'))
+  ).some((name) => name.endsWith('.json'));
+  noEntry = await startAppServer({
+    ...serverEnvironment('Trust Ledger build with no entry'),
+    cwd: repositoryCommitsEntry
+      ? (await trustLedgerFixtureSite([])).root
+      : projectRoot,
   });
   fixture = await startAppServer({
     ...serverEnvironment('Trust Ledger fixture build'),
@@ -114,7 +122,7 @@ before(async () => {
 });
 
 after(async () => {
-  await repository?.stop();
+  await noEntry?.stop();
   await fixture?.stop();
   await database?.end();
   if (admin !== undefined) {
@@ -186,7 +194,7 @@ function article(html) {
 
 test('flag off: /trust-ledger answers 404 and its child sitemap lists nothing, with or without an entry committed', async () => {
   await setFlag(false);
-  for (const server of [repository, fixture]) {
+  for (const server of [noEntry, fixture]) {
     const page = await get(server, '/trust-ledger');
     assert.equal(page.status, 404);
     assert.doesNotMatch(page.body, /data-trust-ledger-entry/u);
@@ -202,23 +210,23 @@ test('flag off: /trust-ledger answers 404 and its child sitemap lists nothing, w
 });
 
 test('with no entry committed, no link to the Trust Ledger renders anywhere, and the page answers 404 even with the flag on', async () => {
-  // Every page of the inventory, plus the branded 404, on the repository's
-  // build, which commits no entry (D-076 Q2).
+  // Every page of the inventory, plus the branded 404, on a build that
+  // commits no entry.
   for (const path of [...routes, '/not-a-page']) {
-    const page = await get(repository, path);
+    const page = await get(noEntry, path);
     assert.doesNotMatch(page.body, ledgerLink, `${path} links the Ledger`);
     assert.doesNotMatch(page.body, /data-trust-ledger-link/u, path);
   }
   await setFlag(true);
   try {
-    assert.equal((await get(repository, '/trust-ledger')).status, 404);
+    assert.equal((await get(noEntry, '/trust-ledger')).status, 404);
     assert.equal(
-      (await get(repository, '/sitemaps/trust-ledger.xml')).body,
+      (await get(noEntry, '/sitemaps/trust-ledger.xml')).body,
       emptyUrlset,
     );
     // The flag does not bring a link: the links follow committed entries.
     for (const path of ['/', '/guarantee', '/partners', '/about'])
-      assert.doesNotMatch((await get(repository, path)).body, ledgerLink);
+      assert.doesNotMatch((await get(noEntry, path)).body, ledgerLink);
   } finally {
     await setFlag(false);
   }

@@ -74,7 +74,7 @@ One data file per month, `src/content/trust-ledger/YYYY-MM.json`, validated at b
 
 **A published entry never changes.** CI's append-only check (`scripts/ci/trust-ledger-append-only.mjs`, in `npm run security`) fails a pull request that edits or deletes an entry present at its merge base, byte for byte, as the giveaway rules revisions and partner announcements are guarded. **"How we count"** is the content file `src/content/trust-ledger-how-we-count.md`, P11 Part 1 as written; the same check fails a change to it unless the branch also adds an entry whose `howWeCountChanges` announces it. An entry that breaks its schema, its file name or the copy rules fails the build: `scripts/ci/trust-ledger-check.ts` runs before every build, and the site's bundled ledger (`src/server/trust-ledger/bundled.ts`) validates every entry again when the prerendered pages render.
 
-**This ticket committed no entry** (D-076 Q2): December's waitlist figures exist only on the production database in December, and a committed entry never changes. P11 Part 2 is a test fixture (`test/fixtures/trust-ledger/2026-12.json`) that proves the schema holds it word for word and the page renders it.
+**This ticket committed no entry** (D-076 Q2): December's waitlist figures exist only on the production database in December, and a committed entry never changes. P11 Part 2 is a test fixture (`test/fixtures/trust-ledger/2026-12.json`) that proves the schema holds it word for word and the page renders it. The tests follow the repository's committed entries: the no-entry case is proven on the repository's own build while it commits none, and on a fixture build with no entry once it commits one, so the December entry needs no test edit.
 
 ## The waitlist figures
 
