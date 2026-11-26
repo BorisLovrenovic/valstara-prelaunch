@@ -4636,6 +4636,11 @@ Also the "approved" and "rejected" emails, and a database check that only the do
    - with no entry committed, `/trust-ledger` answers `404` even with the flag on, and no link renders (decision 1), so no empty page is ever shown;
    - record the December steps for the founder in `docs/features/trust-ledger.md` and `docs/ops/launch-cutover.md`: run `trust-ledger draft --month 2026-12`, paste in Part 2, confirm P11's three checks (go-live date, partner counts, giveaway line), merge, then turn `trust_ledger.page` on.
 
+**Founder decisions (2026-11-26):**
+3. **The page title is "The Trust Ledger" and its meta description is "We publish our real numbers every month, the bad ones included." (D-077 Q1, option A, accepted under the founder's standing rule for high-confidence recommendations).** Both are the founder's words (the 2026-11-22 name decision in `docs/features/trust-ledger.md`, and P11 Part 3), kept in the "How we count" content file's frontmatter as built.
+4. **`/partners` carries P11 Part 3's line, as written, as its link to the Ledger (D-077 Q2, option A, accepted under the founder's standing rule for high-confidence recommendations).** The same sentence sits in the side card on `/guarantee` and `/partners`, rendered only once an entry is committed (decision 1); no partner-specific line is written.
+5. **An entry for 2027-01 or later must give that month's supplier figures (D-077 Q3, option B).** P11 Part 2 promises "From January 2027, each entry also gives that month's figures", so the entry schema refuses an entry whose month is `2027-01` or later while `supplyReadiness.thisMonth` is `null`, with a readable message; an entry before `2027-01` may leave it `null`. `trust-ledger draft` keeps writing `null`, so a 2027 draft fails the schema until the founder completes it. Tested with a red path (a `2027-01` entry with `thisMonth: null` is refused) and a green path (the Part 2 `2026-12` fixture with `null` passes).
+
 **Docs:** `docs/features/trust-ledger.md` · `docs/brand/copy-rules.md#claims-that-must-stay-true` · `docs/features/trust-pages.md` · `docs/ops/launch-cutover.md`
 
 ### E11.8-02 — The per-platform signup report
