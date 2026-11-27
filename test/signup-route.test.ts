@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   marketingOptInCopy,
+  marketingOptInVersionsByAgePolicy,
   marketingOptInWordingByVersion,
 } from '../src/copy/marketing.ts';
 
@@ -116,13 +117,19 @@ test('a form left open across a marketing copy version change keeps its shown ve
     string,
     string
   >;
+  // v2 is the 16+ wording of the 13+ form (E11.8-06), so the next 18+
+  // wording is simulated under an unused version.
+  const adultVersions = marketingOptInVersionsByAgePolicy[
+    '18_plus'
+  ] as unknown as string[];
   const originalVersion = copy.version;
   const originalWording = copy.wording;
   try {
-    // A cached form still submits v1 after a deployment starts rendering v2.
-    wordingByVersion.v2 = 'New marketing opt-in wording.';
-    copy.version = 'v2';
-    copy.wording = wordingByVersion.v2;
+    // A cached form still submits v1 after a deployment starts rendering v9.
+    wordingByVersion.v9 = 'New marketing opt-in wording.';
+    adultVersions.push('v9');
+    copy.version = 'v9';
+    copy.wording = wordingByVersion.v9;
     const unticked = await route(routeContext(makeRequest()));
     const ticked = await route(
       routeContext(
@@ -147,11 +154,12 @@ test('a form left open across a marketing copy version change keeps its shown ve
     );
     assert.equal(current.status, 200);
     assert.deepEqual(await current.json(), untickedBody);
-    assert.deepEqual(received, [null, originalVersion, 'v2']);
+    assert.deepEqual(received, [null, originalVersion, 'v9']);
   } finally {
     copy.version = originalVersion;
     copy.wording = originalWording;
-    delete wordingByVersion.v2;
+    adultVersions.splice(adultVersions.indexOf('v9'), 1);
+    delete wordingByVersion.v9;
   }
 });
 

@@ -211,6 +211,10 @@ test('the current published revision cannot start a draw while its bundle is una
     await writeFile(
       join(directory, `${version}.md`),
       `---\nrulesVersion: ${version}\n` +
+        `publishedOn: '2027-04-01'\nrevision: 2\nportTarget: /giveaway/rules\n` +
+        `title: Rules\ndescription: Rules.\nversionLabel: 'Rules version:'\n` +
+        `earlierVersionsNote: Earlier.\nprizeApproxRetailValueEur: 300\n` +
+        `conservativeUsdPerEur: 2\n` +
         `sha256: '${'ab'.repeat(32)}'\nprizeCount: 5\nbundleContents:\n` +
         `  - Product A\n\n  # both products are confirmed\n  - Product B\n---\n`,
     );
