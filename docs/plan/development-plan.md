@@ -4839,6 +4839,10 @@ Also the "approved" and "rejected" emails, and a database check that only the do
 - `price-index validate` passes with Perplexity `planned`, and its published URLs still resolve
 
 **Tests:** The showcase validation and the rendered banner count · the claims audit, with a planted withdrawn provider · the catalogue geometry and layout suites · `price-index validate` and a Perplexity price page.
+
+**Founder decisions (2026-11-27):**
+1. **Keep Perplexity Pro eligible for list-price publication through the existing publish gate (D-086 Q1, option A).** Remove it from the launch showcase, mark it `planned` in `config/catalogue.json`, and keep tracking it in the price index. The 25 November instruction to keep its pages applies to pages that qualify under E11.6-10. The committed data has no publishable Perplexity prices or ledger URLs, so this ticket leaves production price records, ledger entries and report rows untouched. With `prices.pages` on, an unlisted service–market pair without publishable data returns 404. When verified list prices pass the existing gate, the normal publication workflow generates the page and records its URL. Previously published URLs follow the existing ledger rules. For the price-page acceptance criteria and Tests line, run `price-index validate` with Perplexity `planned` and use isolated Perplexity data to cover both the empty, unlisted 404 and a successful render with verified local list prices and no Valstara price. *(Founder decision, accepted under the founder's standing rule for high-confidence recommendations.)*
+
 **Docs:** `docs/prerequisites/p8-provider-list.md` · `docs/prerequisites/founder-prerequisites.md` (P8) · ADR-032 (a dated note) · `docs/features/price-index.md` · `docs/marketing/valstara-launch-playbook-consolidated.md` (0.1, the launch providers)
 
 ## Epic E12 — Production bring-up
