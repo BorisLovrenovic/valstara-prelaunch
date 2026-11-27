@@ -12,7 +12,7 @@ Tickets E11.5-11i to E11.5-11t build from this snapshot. `docs/plan/development-
 | `project/*.dc.html` | The 48 boards and the building blocks they import (`Header`, `Hero`, `Rewards`, `Footer`, `Verify`, `Me`, `Leaderboard`, `Doc`, `Task`) |
 | `project/valstara.css` | The one shared stylesheet, with every token under its name |
 | `project/icons.svg` | The icon sprite the boards reference |
-| `project/logos/` | The 34 provider logos. They are byte-identical to `public/images/providers/` |
+| `project/logos/` | The 34 provider logos in the pinned snapshot. This includes the withdrawn Perplexity logo (`perplexity.svg`). The other 33 logos are byte-identical to their counterparts in `public/images/providers/` |
 | `renders/*.png` | A 1× render of each board in its default state (light theme, annotations off), named after the board file. Boards 3, 10 and 11 are the dark frames. A board whose frames run past its canvas box renders larger than the box |
 | `SHA256SUMS` | The hash of every file above, as saved |
 
