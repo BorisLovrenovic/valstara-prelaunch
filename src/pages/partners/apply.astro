@@ -11,8 +11,9 @@ import TaskNotice from '../../layouts/task-notice.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { partnersCopy } from '../../copy/partners.ts';
 import { verificationCopy } from '../../copy/verification.ts';
-import { getConfig } from '../../server/config.ts';
+import { getConfig, getGiveawayEntryPeriodStart } from '../../server/config.ts';
 import { getFlagService } from '../../server/flags/app-service.ts';
+import { giveawayEntriesOpen } from '../../server/giveaway/member-entry.ts';
 import type { PartnerApplicationOutcome } from '../../server/partner/application.ts';
 import {
   dashboardRecoveryPath,
@@ -26,9 +27,11 @@ import {
   emptyPartnerApplicationValues,
   partnerCountries,
 } from '../../server/partner/fields.ts';
+import { currentRules } from '../../server/giveaway/rules-catalog.ts';
 import {
   partnerApplyPrefillEmail,
   partnerApplyView,
+  partnerMembershipLine,
 } from '../../server/partner/page-presentation.ts';
 import {
   runPartnerApplication,
@@ -56,7 +59,7 @@ const pageCopy = recovery ? recoveryCopy : copy;
 const fields = copy.fields;
 const tokenParameter = Astro.url.searchParams.get('token');
 const flags = getFlagService();
-const isOn = (key: 'partners.enabled' | 'giveaway.open') =>
+const isOn = (key: 'partners.enabled' | 'giveaway.open' | 'waitlist.age_13') =>
   flags.isEnabled(key).catch(() => false);
 
 let application: PartnerApplicationOutcome | null = null;
@@ -113,10 +116,18 @@ const view = partnerApplyView({
 });
 Astro.response.status = recoveryView?.status ?? view.status;
 const confirmToken = postedToken ?? tokenParameter ?? '';
+const showMembership = !recovery && view.form === 'application';
 const giveawayOpen =
-  !recovery && view.form === 'application'
-    ? await isOn('giveaway.open')
-    : false;
+  showMembership &&
+  (await isOn('giveaway.open')) &&
+  giveawayEntriesOpen(new Date(), getGiveawayEntryPeriodStart());
+// E11.8-06 (decisions 1 and 8): what confirming does for the giveaway
+// follows the age flag and the published rules in force.
+const membership = partnerMembershipLine({
+  ageThirteen: showMembership && (await isOn('waitlist.age_13')),
+  giveawayOpen,
+  rulesRequireBox: currentRules().entryRequiresGiveawayBox === true,
+});
 const values = view.values;
 const errors = view.errors;
 const errorId = (field: string) =>
@@ -559,11 +570,9 @@ const outcome = Astro.request.method === 'POST';
               </div>
             </div>
             <p class="partner-apply__membership" data-partner-membership>
-              {giveawayOpen
-                ? copy.membership.waitlistAndGiveaway
-                : copy.membership.waitlist}{' '}
-              {copy.ageStatement}
-              {giveawayOpen && (
+              {membership.line}
+              {membership.ageStatement && <> {copy.ageStatement}</>}
+              {membership.giveawayDisclosure && (
                 <>
                   {' '}
                   {copy.freeEntryDisclosure}{' '}

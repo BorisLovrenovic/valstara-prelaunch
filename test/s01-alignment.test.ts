@@ -400,7 +400,9 @@ test('marketing route grants and withdraws consent without changing waitlist or 
       tokenValue('valid-status-token'),
       new Date('2026-10-25T00:00:00.000Z'),
     );
-    const flags = { isEnabled: async () => true };
+    const flags = {
+      isEnabled: async (key: string) => key !== 'waitlist.age_13',
+    };
     const withdrawalSources: string[] = [];
     const service = createMarketingService(f.app, {
       flags,
@@ -504,7 +506,7 @@ test('marketing route treats tampered and expired tokens identically, protects T
       verificationTime,
     );
     const service = createMarketingService(f.app, {
-      flags: { isEnabled: async () => true },
+      flags: { isEnabled: async (key: string) => key !== 'waitlist.age_13' },
       clock: () => verificationTime,
     });
     const route = createMarketingRoute({
@@ -572,7 +574,7 @@ test('marketing route applies database-backed limits and flags a recognised subs
       new Date('2026-10-25T00:00:00.000Z'),
     );
     const service = createMarketingService(f.app, {
-      flags: { isEnabled: async () => true },
+      flags: { isEnabled: async (key: string) => key !== 'waitlist.age_13' },
       clock: () => verificationTime,
     });
     const route = createMarketingRoute({
@@ -628,7 +630,7 @@ test('a consent audit failure rolls back a member preference change', async () =
     const route = createMarketingRoute({
       verifyTurnstile: async () => 'verified',
       change: createMarketingService(f.app, {
-        flags: { isEnabled: async () => true },
+        flags: { isEnabled: async (key: string) => key !== 'waitlist.age_13' },
         clock: () => verificationTime,
       }).change,
       ipPrefixPepper: 's01-rollback-pepper',

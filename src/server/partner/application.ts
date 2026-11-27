@@ -7,6 +7,7 @@ import { createSubscriberRepository } from '../db/subscriber.ts';
 import { withTransaction } from '../db/transaction.ts';
 import { createEmailQueue } from '../email/queue.ts';
 import type { FraudScreenFlag, ScreenResult } from '../fraud/service.ts';
+import type { AgePolicy } from '../giveaway/age-policy.ts';
 import type {
   PartnerCodeCheck,
   PartnerCodeRefusalReason,
@@ -76,6 +77,12 @@ export interface PartnerSubmitDependencies {
     prefixHash: Buffer,
   ) => Promise<boolean>;
   readonly flagChallengeTimeout?: (subscriberId: string) => Promise<void>;
+  /**
+   * E11.8-06: the age policy in force, recorded on a member the application
+   * creates (founder decision 2, D-081). Absent, the 18+ policy, which is the
+   * flag's fail-safe default.
+   */
+  readonly agePolicy?: () => Promise<AgePolicy>;
 }
 
 interface StoredApplication {
@@ -121,6 +128,7 @@ export function createPartnerSubmitService(
       return { kind: 'accepted', subscriberId: null };
     }
 
+    const admissionAgePolicy = (await dependencies.agePolicy?.()) ?? '18_plus';
     const stored = await withTransaction(
       database,
       async (connection): Promise<StoredApplication | null> => {
@@ -136,6 +144,8 @@ export function createPartnerSubmitService(
           signupIpPrefixHash: input.signupIpPrefixHash,
           utm: null,
           signupHadRef: false,
+          admissionAgePolicy,
+          giveawayOptIn: false,
         });
         const createdSubscriber = inserted === 1;
         const subscriberId = createdSubscriber

@@ -137,7 +137,7 @@ async function createDatabaseFixture(): Promise<DatabaseFixture> {
   };
 }
 
-test('the code registry declares exactly the fifteen documented keys and defaults', async () => {
+test('the code registry declares exactly the sixteen documented keys and defaults', async () => {
   const featureIndex = await readFile(
     new URL('../docs/features/README.md', import.meta.url),
     'utf8',
@@ -147,7 +147,7 @@ test('the code registry declares exactly the fifteen documented keys and default
     ([, key, state]) => [key, state === 'on'] as const,
   );
 
-  assert.equal(campaignFlagKeys.length, 15);
+  assert.equal(campaignFlagKeys.length, 16);
   assert.equal(
     Object.values(campaignFlagRegistry).every(
       (value) => typeof value === 'boolean',

@@ -109,7 +109,7 @@ test('each entry opens the page it says it covers, with a unique, filename-safe 
   assert.ok(!routes.includes('/not-a-page'));
 });
 
-test('the landing page is captured in every combination of the four flags it reads', () => {
+test('the landing page is captured in every combination of the five flags it reads', () => {
   // Every registered flag is analysed, and the landing variants are exactly
   // the flags the analysis names as landing variants.
   assert.deepEqual(
@@ -123,6 +123,7 @@ test('the landing page is captured in every combination of the four flags it rea
       .sort(),
     [...landingFlags].sort(),
   );
+  assert.ok(landingFlags.includes('waitlist.age_13'));
   const landing = manifest.filter((entry) => entry.kind === 'landing-flag');
   assert.equal(landing.length, 2 ** landingFlags.length);
   const combinations = new Set(

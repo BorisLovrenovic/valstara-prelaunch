@@ -382,6 +382,10 @@ test('E7-05 refuses a draw when the current rules list a placeholder bundle item
       await writeFile(
         join(directory, `${version}.md`),
         `---\nrulesVersion: ${version}\n` +
+          `publishedOn: '2027-04-01'\nrevision: 2\nportTarget: /giveaway/rules\n` +
+          `title: Rules\ndescription: Rules.\nversionLabel: 'Rules version:'\n` +
+          `earlierVersionsNote: Earlier.\nprizeApproxRetailValueEur: 300\n` +
+          `conservativeUsdPerEur: 2\n` +
           `sha256: '${'ab'.repeat(32)}'\nprizeCount: 2\n` +
           `bundleContents:${contents}\n---\n`,
       );

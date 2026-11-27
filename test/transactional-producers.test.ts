@@ -11,6 +11,7 @@ import { prepareDispatchMessage } from '../src/server/email/service.ts';
 import { createTransactionalTemplateData } from '../src/server/email/transactional-template-data.ts';
 import { createTransactionalRenderers } from '../src/server/email/transactional-templates.ts';
 import { createFlagService as createBaseFlagService } from '../src/server/flags/service.ts';
+import type { FlagKey } from '../src/server/flags/registry.ts';
 import { createGiveawayAccrualService } from '../src/server/giveaway/accrue.ts';
 import { createReferralService } from '../src/server/referral/service.ts';
 import { presentReferralStatus } from '../src/server/referral/status-presentation.ts';
@@ -322,7 +323,9 @@ test('first entry per rules version queues one receipt and the flag-off path que
   try {
     const id = await subscriber(f.owner);
     let enabled = false;
-    const flags = { isEnabled: async () => enabled };
+    const flags = {
+      isEnabled: async (key: FlagKey) => key === 'giveaway.open' && enabled,
+    };
     const accrue = (current: typeof rules) =>
       createGiveawayAccrualService(f.app, flags, () => current, now, clock);
     assert.equal(await accrue(rules).accrue(id, 'base'), false);
@@ -412,7 +415,9 @@ test('queue failure rolls back the status token but commits verification, tier a
     for (let index = 0; index < 3; index += 1)
       await confirmedEdge(f.owner, referrerId);
 
-    const flags = { isEnabled: async () => true };
+    const flags = {
+      isEnabled: async (key: FlagKey) => key === 'giveaway.open',
+    };
     const accrual = createGiveawayAccrualService(
       f.app,
       flags,

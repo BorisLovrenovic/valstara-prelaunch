@@ -22,6 +22,18 @@ const responseFields = new Set([
   'rank',
 ]);
 const delegatedDsrRoutes = new Set(['dsr/delete.ts', 'dsr/export.ts']);
+// A public route whose handler lives in a server module, because the route
+// file imports astro:content and so cannot load under test (E11.8-06). The
+// module's response shapes get the same inspection as an inline handler's.
+const delegatedRouteModules = new Map([
+  [
+    'me/giveaway.ts',
+    {
+      factory: 'createGiveawayEntryRoute',
+      module: 'src/server/giveaway/member-entry-http.ts',
+    },
+  ],
+]);
 const httpMethods = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 
 function exportedMethods(source) {
@@ -316,7 +328,32 @@ test('E11-05 generates the registered API inventory and rejects personal fields 
       );
       continue;
     }
-    const shapes = responseObjectFields(source, path);
+    const delegated = delegatedRouteModules.get(path);
+    let shapes;
+    if (delegated) {
+      assert.match(
+        text,
+        new RegExp(`\\b${delegated.factory}\\(`, 'u'),
+        `${path} must delegate to ${delegated.module}`,
+      );
+      assert.doesNotMatch(
+        text,
+        /\b(?:Response\.json|JSON\.stringify|new Response)\b/u,
+        `${path} builds a response outside its inspected module`,
+      );
+      const moduleText = await readFile(`${root}/${delegated.module}`, 'utf8');
+      shapes = responseObjectFields(
+        ts.createSourceFile(
+          delegated.module,
+          moduleText,
+          ts.ScriptTarget.Latest,
+          true,
+        ),
+        delegated.module,
+      );
+    } else {
+      shapes = responseObjectFields(source, path);
+    }
     assert.ok(shapes.length > 0, `${path} has no inspectable response shape`);
     for (const fields of shapes) {
       for (const field of fields) {

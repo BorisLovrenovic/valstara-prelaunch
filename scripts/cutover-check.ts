@@ -177,6 +177,7 @@ export async function checkCutover(
     '/api/leaderboard',
     '/api/me/leave',
     '/api/me/marketing',
+    '/api/me/giveaway',
     '/api/dsr/export',
     '/api/dsr/delete',
     '/api/webhooks/resend',

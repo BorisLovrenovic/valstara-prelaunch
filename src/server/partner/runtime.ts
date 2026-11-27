@@ -5,6 +5,7 @@ import { createFraudFlagRepository } from '../db/fraud-flag.ts';
 import { createPool, type DatabasePool } from '../db/pool.ts';
 import { getFlagService } from '../flags/app-service.ts';
 import { createFraudService } from '../fraud/service.ts';
+import { currentAgePolicy } from '../giveaway/age-policy.ts';
 import { currentRules } from '../giveaway/rules-catalog.ts';
 import { createPartnerCodeRules } from '../referral/partner-code.ts';
 import { consumeRateLimit } from '../ratelimit/consume.ts';
@@ -95,6 +96,7 @@ export function runPartnerApplication(
       ),
     checkCode: (requested) => createPartnerCodeRules(pool).check(requested),
     submit: createPartnerSubmitService(pool, {
+      agePolicy: () => currentAgePolicy(getFlagService()),
       screenEmailDomain: (domain) => fraud.screen({ domain }),
       raiseFraudFlag: (subscriberId, kind, detail) =>
         fraud.raise(subscriberId, kind, detail),

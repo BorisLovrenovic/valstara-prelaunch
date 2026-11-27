@@ -7,15 +7,33 @@ import Input from '../components/input.astro';
 import TextLink from '../components/text-link.astro';
 import { landingCopy } from '../copy/landing.ts';
 import { signupCopy, signupFormCopy } from '../copy/signup.ts';
-import { getConfig } from '../server/config.ts';
+import { getConfig, getGiveawayEntryPeriodStart } from '../server/config.ts';
+import { giveawayEntriesOpen } from '../server/giveaway/member-entry.ts';
 
 interface Props {
   signedReferralCapture: string | null;
   referralPrefill?: string | undefined;
   giveawayEnabled: boolean;
+  /** `waitlist.age_13` (E11.8-06): the 13+ form, with the 18+ giveaway box. */
+  ageThirteen: boolean;
 }
 
-const { signedReferralCapture, giveawayEnabled, referralPrefill } = Astro.props;
+const { signedReferralCapture, giveawayEnabled, referralPrefill, ageThirteen } =
+  Astro.props;
+
+// E11.8-06: the 13+ form says "13 and over", says the giveaway is for people
+// aged 18 and over wherever it mentions the giveaway, shows the 16+ marketing
+// wording, and adds the separate, unticked 18+ giveaway box while entries are
+// open. It carries the policy it was rendered under, so a submission after
+// the flag changes asks for the current form (D-083). Off, the form is
+// exactly the 18+ form it was.
+const ageForm = ageThirteen ? signupFormCopy.ageThirteen : null;
+const ageStatement = ageForm?.ageStatement ?? signupFormCopy.ageStatement;
+const marketingCopy = ageForm?.marketing ?? signupFormCopy.marketing;
+const offerGiveawayBox =
+  ageForm !== null &&
+  giveawayEnabled &&
+  giveawayEntriesOpen(new Date(), getGiveawayEntryPeriodStart());
 
 // The public Turnstile site key is rendered into the page so the widget can
 // mount client-side (ADR-006). It is public, not a secret — a temporary
@@ -100,10 +118,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         ></span><span data-submit-label>{landingCopy.form.submit}</span></Button
       >
       <p class="signup-age" data-enter="fade" style="--enter-index: 3">
-        {signupFormCopy.ageStatement}{
+        {ageStatement}{
           giveawayEnabled && (
             <>
               {' '}
+              {ageForm !== null && <>{ageForm.giveawayAgeStatement} </>}
               {signupFormCopy.freeEntryDisclosure}{' '}
               <TextLink href="/giveaway/rules">
                 {signupFormCopy.giveawayRulesLink}
@@ -143,16 +162,36 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
           </div>
         )
       }
-      <div class="signup-consent" data-enter="fade" style="--enter-index: 3">
+      <div
+        class:list={[
+          'signup-consent',
+          offerGiveawayBox && 'signup-consent--giveaway',
+        ]}
+        data-enter="fade"
+        style="--enter-index: 3"
+      >
         <Checkbox
           id="signup-marketing"
           class="signup-marketing"
           name="marketing_opt_in"
-          value={signupFormCopy.marketing.version}
+          value={marketingCopy.version}
           optional
         >
-          {signupFormCopy.marketing.wording}
+          {marketingCopy.wording}
         </Checkbox>
+        {
+          ageForm !== null && offerGiveawayBox && (
+            <Checkbox
+              id="signup-giveaway"
+              class="signup-giveaway"
+              name="giveaway_opt_in"
+              value="yes"
+              optional
+            >
+              {ageForm.giveawayOptIn}
+            </Checkbox>
+          )
+        }
       </div>
 
       {
@@ -196,6 +235,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
             type="hidden"
             value={signedReferralCapture}
           />
+        )
+      }
+      {
+        ageForm !== null && (
+          <input name="age_policy" type="hidden" value="13_plus" />
         )
       }
       <input name="turnstile_token" type="hidden" />
@@ -303,10 +347,11 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
         <Icon name="alert-circle" size="base" /><span data-message></span>
       </p>
       <p class="signup-age">
-        {signupFormCopy.ageStatement}{
+        {ageStatement}{
           giveawayEnabled && (
             <>
               {' '}
+              {ageForm !== null && <>{ageForm.giveawayAgeStatement} </>}
               {signupFormCopy.freeEntryDisclosure}{' '}
               <TextLink href="/giveaway/rules">
                 {signupFormCopy.giveawayRulesLink}
@@ -1546,6 +1591,19 @@ const turnstileSiteKey = getConfig().turnstileSiteKey;
   valstara-signup-form .signup-consent {
     grid-area: consent;
     margin-block-start: var(--space-2);
+  }
+
+  /* E11.8-06: the 13+ form's two independent boxes, one above the other. */
+  valstara-signup-form .signup-consent--giveaway {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1-5);
+  }
+
+  /* A box whose label fits one line still holds its whole 44px target, which
+     reaches past the drawn box by the target offset. */
+  valstara-signup-form .signup-consent--giveaway > .checkbox {
+    min-block-size: calc(var(--check-size) - var(--check-target-offset));
   }
 
   valstara-signup-form .signup-referral {

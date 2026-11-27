@@ -5,19 +5,29 @@ import { verificationCopy } from '../copy/verification.ts';
 import Accordion from '../components/accordion.astro';
 import Button from '../components/button.astro';
 import Card from '../components/card.astro';
+import Checkbox from '../components/checkbox.astro';
 import Container from '../components/container.astro';
 import Icon from '../components/icon.astro';
+import TextLink from '../components/text-link.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getConfig } from '../server/config.ts';
 import { createPool } from '../server/db/pool.ts';
 import { createUnsubscribeRepository } from '../server/db/unsubscribe.ts';
 import { getFlagService } from '../server/flags/app-service.ts';
+import {
+  createGiveawayMemberEntryService,
+  type GiveawayMemberEntryView,
+} from '../server/giveaway/member-entry.ts';
+import { currentRules } from '../server/giveaway/rules-catalog.ts';
 import { accessWindows, couponLadder } from '../server/referral/config.ts';
 import { createReferralService } from '../server/referral/service.ts';
 import { presentReferralStatus } from '../server/referral/status-presentation.ts';
 import { verificationReferralFigures } from '../server/referral/verification-presentation.ts';
 import { dsrCopy } from '../copy/dsr.ts';
-import { createMarketingService } from '../server/subscriber/marketing.ts';
+import {
+  createMarketingService,
+  type MarketingGrantRequirement,
+} from '../server/subscriber/marketing.ts';
 import type { ReferralStatus } from '../server/referral/status.ts';
 import { hashedIpPrefix } from '../server/ratelimit/ip-prefix.ts';
 import { currentSurveyVersion } from '../server/survey/questions.ts';
@@ -38,6 +48,11 @@ let replacementRequested = false;
 let challengeFailed = false;
 let surveyEnabled = false;
 let marketingEnabled = false;
+let marketingGrant: MarketingGrantRequirement = 'none';
+let giveawayView: GiveawayMemberEntryView = {
+  notEntered: false,
+  offerBox: false,
+};
 let leftWaitlist = false;
 const token = Astro.url.searchParams.get('t') ?? '';
 
@@ -92,12 +107,23 @@ if (Astro.request.method === 'POST') {
       } else if (subject?.status !== 'verified') {
         authentication = { kind: 'rejected' };
       } else {
-        [dashboardStatus, surveyEnabled, marketingEnabled] = await Promise.all([
+        const marketing = createMarketingService(database, { flags });
+        [
+          dashboardStatus,
+          surveyEnabled,
+          marketingEnabled,
+          marketingGrant,
+          giveawayView,
+        ] = await Promise.all([
           createReferralService(database).status(authentication.subscriberId),
           flags.isEnabled('survey.enabled'),
-          createMarketingService(database, { flags }).preference(
-            authentication.subscriberId,
-          ),
+          marketing.preference(authentication.subscriberId),
+          marketing.grantRequirement(authentication.subscriberId),
+          // E11.8-06: the member's real giveaway status and the /me box.
+          createGiveawayMemberEntryService(database, {
+            flags,
+            currentRules,
+          }).view(authentication.subscriberId),
         ]);
       }
     }
@@ -115,17 +141,26 @@ const dashboardFields =
     ? null
     : new Map(dashboardView.fields.map((field) => [field.key, field]));
 type DashboardField = NonNullable<typeof dashboardView>['fields'][number];
+// E11.8-06: a member who needs the 18+ box and holds no entries is shown as
+// not entered, never as holding entries; a member who holds entries sees
+// their count, whatever the box says.
+const heldEntries = dashboardStatus?.giveawayEntries ?? 0;
+const showNotEntered = heldEntries === 0 && giveawayView.notEntered;
 const factKeys: readonly DashboardField['key'][] = [
   'subscriberStatus',
   'accessWindow',
   'ownRank',
   'confirmedReferrals',
   'earlyAccess',
-  ...(dashboardStatus !== null && dashboardStatus.giveawayEntries > 0
-    ? (['giveawayEntries'] as const)
-    : []),
+  ...(heldEntries > 0 || showNotEntered ? (['giveawayEntries'] as const) : []),
 ];
-const facts = factKeys.flatMap((key) => dashboardFields?.get(key) ?? []);
+const facts = factKeys.flatMap((key): DashboardField[] => {
+  const field = dashboardFields?.get(key);
+  if (field === undefined) return [];
+  return field.key === 'giveawayEntries' && showNotEntered
+    ? [{ ...field, value: memberStatusCopy.authenticated.notEntered }]
+    : [field];
+});
 const ladderFigures =
   dashboardStatus === null
     ? null
@@ -142,7 +177,16 @@ const waveBars = accessWindows.map(
 const mutedValue = (field: DashboardField) =>
   (field.key === 'ownRank' && dashboardStatus?.ownRank === null) ||
   (field.key === 'accessWindow' && accessWindow === null) ||
-  (field.key === 'earlyAccess' && !dashboardView?.earlyAccess.inWaveOne);
+  (field.key === 'earlyAccess' && !dashboardView?.earlyAccess.inWaveOne) ||
+  (field.key === 'giveawayEntries' && showNotEntered);
+// E11.8-06: the marketing switch's wording, and what turning it on asks.
+const marketingWording =
+  marketingGrant === 'sixteen_affirmation'
+    ? memberStatusCopy.marketing.sixteen.wording
+    : memberStatusCopy.marketing.wording;
+const marketingGrantPaused = !marketingEnabled && marketingGrant === 'paused';
+const marketingNeedsAffirmation =
+  !marketingEnabled && marketingGrant === 'sixteen_affirmation';
 // The link wraps after the origin and keeps its code in one unit, so it
 // never truncates, as on /verify (E11.5-11r decision 2).
 const referralUrl =
@@ -440,6 +484,95 @@ const meterSegments =
               <h2 class="member-card-title" id="member-preferences-title">
                 {memberStatusCopy.preferences.heading}
               </h2>
+              {!giveawayView.offerBox && heldEntries > 0 && (
+                <div
+                  class="member-notice member-pref__notice member-result"
+                  data-giveaway-saved
+                  tabindex="-1"
+                >
+                  <Icon
+                    name="check-circle"
+                    size="base"
+                    class="member-result__icon member-result__icon--success"
+                  />
+                  <p
+                    aria-live="polite"
+                    data-saved-message={memberStatusCopy.giveaway.saved}
+                  />
+                </div>
+              )}
+              {giveawayView.offerBox && (
+                <form
+                  action="/api/me/giveaway"
+                  class="member-pref member-giveaway"
+                  data-giveaway-form
+                  data-unavailable-message={
+                    memberStatusCopy.giveaway.unavailable
+                  }
+                  method="post"
+                >
+                  {/* E11.8-06: the same 18+ box as the 13+ signup form, for a
+                      member who needs it and has not ticked it, while
+                      entries are open. Entering changes nothing else. */}
+                  <h3>{memberStatusCopy.giveaway.heading}</h3>
+                  <p class="member-giveaway__body">
+                    {heldEntries > 0
+                      ? memberStatusCopy.giveaway.bodyHeld
+                      : memberStatusCopy.giveaway.body}
+                  </p>
+                  <div class="member-giveaway__controls">
+                    <Checkbox
+                      id="member-giveaway"
+                      name="giveaway_opt_in"
+                      value="yes"
+                      required
+                    >
+                      {memberStatusCopy.giveaway.optIn}
+                    </Checkbox>
+                    <p class="member-giveaway__rules">
+                      {memberStatusCopy.giveaway.freeEntry}{' '}
+                      <TextLink href="/giveaway/rules">
+                        {memberStatusCopy.giveaway.rulesLink}
+                      </TextLink>
+                      {memberStatusCopy.giveaway.rulesLinkEnd}
+                    </p>
+                    <Button
+                      class="member-keep"
+                      type="submit"
+                      variant="secondary"
+                    >
+                      {memberStatusCopy.giveaway.submit}
+                    </Button>
+                  </div>
+                  <input name="t" type="hidden" value={token} />
+                  <noscript>
+                    <div class="member-notice member-notice--info member-pref__notice">
+                      <Icon name="info" size="base" />
+                      <p>{memberStatusCopy.giveaway.javaScriptRequired}</p>
+                    </div>
+                  </noscript>
+                  <div
+                    class="member-notice member-pref__notice member-result"
+                    data-giveaway-result
+                    tabindex="-1"
+                  >
+                    <Icon
+                      name="alert-circle"
+                      size="base"
+                      class="member-result__icon member-result__icon--error"
+                    />
+                    <p aria-live="polite" data-giveaway-status />
+                  </div>
+                  <div
+                    id="member-giveaway-challenge"
+                    class="cf-turnstile"
+                    data-sitekey={config.turnstileSiteKey}
+                    data-size="compact"
+                    data-appearance="interaction-only"
+                    data-response-field-name="turnstile_token"
+                  />
+                </form>
+              )}
               <form
                 action="/api/me/marketing"
                 class="member-pref member-marketing"
@@ -452,51 +585,73 @@ const meterSegments =
               >
                 <h3>{memberStatusCopy.marketing.heading}</h3>
                 <div class="member-pref-switch">
-                  <p>{memberStatusCopy.marketing.wording}</p>
-                  <div class="member-switch-row">
-                    {/* Still the submit button posting the existing route;
+                  <p>{marketingWording}</p>
+                  {!marketingGrantPaused && (
+                    <div class="member-switch-row">
+                      {/* Still the submit button posting the existing route;
                         drawn as the component library's switch. Its name is
                         the action, and only the current one is ever in the
                         page (E11.5-11r decision 4). */}
-                    <button
-                      class="member-switch"
-                      data-marketing-switch
-                      data-switch-state={marketingEnabled ? 'on' : 'off'}
-                      name="marketing"
-                      role="switch"
-                      aria-checked={marketingEnabled ? 'true' : 'false'}
-                      type="submit"
-                      value={marketingEnabled ? 'off' : 'on'}
-                    >
-                      <span class="member-switch__track">
-                        <span class="member-switch__knob">
-                          <Icon name="check" size="sm" />
+                      <button
+                        class="member-switch"
+                        data-marketing-switch
+                        data-switch-state={marketingEnabled ? 'on' : 'off'}
+                        name="marketing"
+                        role="switch"
+                        aria-checked={marketingEnabled ? 'true' : 'false'}
+                        type="submit"
+                        value={marketingEnabled ? 'off' : 'on'}
+                      >
+                        <span class="member-switch__track">
+                          <span class="member-switch__knob">
+                            <Icon name="check" size="sm" />
+                          </span>
+                        </span>
+                        <span class="member-switch__label">
+                          {marketingEnabled
+                            ? memberStatusCopy.marketing.turnOff
+                            : memberStatusCopy.marketing.turnOn}
+                        </span>
+                      </button>
+                      <span
+                        class="member-switch__words"
+                        aria-hidden="true"
+                        data-marketing-words
+                        data-next-word={
+                          marketingEnabled
+                            ? memberStatusCopy.marketing.disabled
+                            : memberStatusCopy.marketing.enabled
+                        }
+                      >
+                        <span class="member-switch__word" data-marketing-state>
+                          {marketingEnabled
+                            ? memberStatusCopy.marketing.enabled
+                            : memberStatusCopy.marketing.disabled}
                         </span>
                       </span>
-                      <span class="member-switch__label">
-                        {marketingEnabled
-                          ? memberStatusCopy.marketing.turnOff
-                          : memberStatusCopy.marketing.turnOn}
-                      </span>
-                    </button>
-                    <span
-                      class="member-switch__words"
-                      aria-hidden="true"
-                      data-marketing-words
-                      data-next-word={
-                        marketingEnabled
-                          ? memberStatusCopy.marketing.disabled
-                          : memberStatusCopy.marketing.enabled
-                      }
-                    >
-                      <span class="member-switch__word" data-marketing-state>
-                        {marketingEnabled
-                          ? memberStatusCopy.marketing.enabled
-                          : memberStatusCopy.marketing.disabled}
-                      </span>
-                    </span>
-                  </div>
+                    </div>
+                  )}
                 </div>
+                {/* E11.8-06 (D-082): while the waitlist is open at 13, a new
+                    grant needs the 16+ affirmation; while it is 18 and over
+                    again, a member admitted at 13 cannot turn it on. */}
+                {marketingNeedsAffirmation && (
+                  <div class="member-marketing__age">
+                    <Checkbox
+                      id="member-marketing-age"
+                      name="marketing_age_affirmed"
+                      value="yes"
+                      required
+                    >
+                      {memberStatusCopy.marketing.sixteen.affirmation}
+                    </Checkbox>
+                  </div>
+                )}
+                {marketingGrantPaused && (
+                  <p class="member-marketing__paused" data-marketing-paused>
+                    {memberStatusCopy.marketing.grantPaused}
+                  </p>
+                )}
                 <input name="t" type="hidden" value={token} />
                 <noscript>
                   <div class="member-notice member-notice--info member-pref__notice">
@@ -1006,6 +1161,68 @@ const meterSegments =
       // A Turnstile token is single-use, so the next attempt needs a new one.
       globalThis.turnstile?.reset?.();
       pending = false;
+    });
+  }
+
+  // Reload the authenticated count and form after an accepted response.
+  const giveawaySavedFragment = '#giveaway-saved';
+  if (globalThis.location.hash === giveawaySavedFragment) {
+    const url = new URL(document.URL);
+    url.hash = '';
+    globalThis.history.replaceState(globalThis.history.state, '', url);
+    const notice = document.querySelector('[data-giveaway-saved]');
+    const message = notice?.querySelector('[data-saved-message]');
+    if (notice instanceof HTMLElement && message instanceof HTMLElement) {
+      notice.dataset.result = 'success';
+      message.textContent = message.dataset.savedMessage ?? '';
+      notice.focus();
+    }
+  }
+  const giveawayForm = document.querySelector('[data-giveaway-form]');
+  if (giveawayForm instanceof HTMLFormElement) {
+    giveawayForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submit = giveawayForm.querySelector('[type="submit"]');
+      const result = giveawayForm.querySelector('[data-giveaway-result]');
+      const status = giveawayForm.querySelector('[data-giveaway-status]');
+      if (
+        !(submit instanceof HTMLButtonElement) ||
+        !(result instanceof HTMLElement) ||
+        !(status instanceof HTMLElement)
+      )
+        return;
+      submit.disabled = true;
+      result.dataset.result = '';
+      let message = giveawayForm.dataset.unavailableMessage ?? '';
+      try {
+        const response = await fetch(giveawayForm.action, {
+          body: new FormData(giveawayForm),
+          method: 'POST',
+        });
+        if (response.ok) {
+          globalThis.history.replaceState(
+            globalThis.history.state,
+            '',
+            giveawaySavedFragment,
+          );
+          globalThis.location.reload();
+          return;
+        }
+        const payload = await response.json();
+        if (typeof payload.error?.message === 'string')
+          message = payload.error.message;
+      } catch {
+        // The unavailable message stands.
+      }
+      status.textContent = message;
+      result.dataset.result = 'error';
+      submit.disabled = false;
+      result.focus();
+      const challenge = giveawayForm.elements.namedItem('turnstile_token');
+      if (challenge instanceof HTMLInputElement) {
+        challenge.value = '';
+        globalThis.turnstile?.reset?.('#member-giveaway-challenge');
+      }
     });
   }
 
@@ -1675,10 +1892,57 @@ const meterSegments =
     border-block-start: var(--border-thin) solid var(--line);
   }
 
-  .member-marketing h3 {
+  .member-marketing h3,
+  .member-giveaway h3 {
     font-size: var(--step-1);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-1);
+  }
+
+  /* E11.8-06: the giveaway box, and the marketing switch's 16+ affirmation
+     and paused note, in the preferences card's type. */
+  .member-giveaway__body,
+  .member-giveaway__rules,
+  .member-marketing__paused {
+    color: var(--ink-600);
+    font-size: var(--step-1);
+    line-height: var(--leading-1);
+    text-wrap: pretty;
+  }
+
+  .member-giveaway__body {
+    margin-block-start: var(--space-1-5);
+  }
+
+  .member-giveaway__controls {
+    display: grid;
+    gap: var(--space-2);
+    justify-items: start;
+    margin-block-start: var(--space-2);
+  }
+
+  @media (width < 48rem) {
+    .member-giveaway__rules :global(.text-link) {
+      display: inline-flex;
+      align-items: center;
+      min-block-size: var(--tap-min);
+    }
+  }
+
+  .member-giveaway > .cf-turnstile {
+    margin-block-start: var(--space-2);
+  }
+
+  .member-marketing__age,
+  .member-marketing__paused {
+    margin-block-start: var(--space-2);
+  }
+
+  /* A box whose label fits one line still holds its whole 44px target, which
+     reaches past the drawn box by the target offset. */
+  .member-giveaway__controls > :global(.checkbox),
+  .member-marketing__age > :global(.checkbox) {
+    min-block-size: calc(var(--check-size) - var(--check-target-offset));
   }
 
   .member-pref-switch {

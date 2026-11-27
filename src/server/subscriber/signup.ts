@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { DatabasePool } from '../db/pool.ts';
+import type { AgePolicy } from '../giveaway/age-policy.ts';
 import type { UtmParameters } from '../referral/capture.ts';
 import type { AttributeResult } from '../referral/service.ts';
 import type { FraudScreenFlag, ScreenResult } from '../fraud/service.ts';
@@ -61,6 +62,13 @@ export interface SignupInput {
   readonly utm?: UtmParameters | null;
   readonly signupIpPrefixHash?: Buffer | null;
   readonly verificationUrl: (token: string) => string;
+  /**
+   * E11.8-06: the age policy in force, which the route has already matched
+   * against the form's (D-083). A new row joins under it. Default 18+.
+   */
+  readonly agePolicy?: AgePolicy;
+  /** The separate 18+ giveaway box was ticked (13+ form only). */
+  readonly giveawayOptIn?: boolean;
 }
 
 export interface SignupServiceDependencies {
@@ -98,6 +106,8 @@ async function upsertSubscriber(
   utm: UtmParameters | null,
   signupHadRef: boolean,
   signupIpPrefixHash: Buffer | null,
+  agePolicy: AgePolicy,
+  giveawayOptIn: boolean,
 ): Promise<SignupSubscriber> {
   return withTransaction(database, async (connection) => {
     const repository = createSubscriberRepository(connection);
@@ -111,6 +121,8 @@ async function upsertSubscriber(
       signupHadRef,
       signupIpPrefixHash,
       utm,
+      admissionAgePolicy: agePolicy,
+      giveawayOptIn,
     });
 
     if (inserted === 1) {
@@ -124,11 +136,24 @@ async function upsertSubscriber(
       throw new Error('Conflicting subscriber row could not be read back.');
     }
 
-    if (existing.status === 'pending' && marketingOptInVersion !== null) {
+    // A pending row admitted under the 13+ policy takes no new marketing
+    // opt-in from an 18+ form after `waitlist.age_13` is switched off: the
+    // pending consent it holds, if any, stays as it is and is promoted at
+    // verification as usual (founder decisions 3 and 7, D-082/D-084).
+    const marketingPaused =
+      existing.admissionAgePolicy === '13_plus' && agePolicy === '18_plus';
+    if (
+      existing.status === 'pending' &&
+      marketingOptInVersion !== null &&
+      !marketingPaused
+    ) {
       await repository.setPendingMarketingOptIn(
         existing.id,
         marketingOptInVersion,
       );
+    }
+    if (existing.status === 'pending' && giveawayOptIn) {
+      await repository.setPendingGiveawayOptIn(existing.id);
     }
     return { created: false, id: existing.id, status: existing.status };
   });
@@ -171,6 +196,9 @@ export function createSignupService(
       input.utm ?? null,
       hasValidRef,
       input.signupIpPrefixHash ?? null,
+      input.agePolicy ?? '18_plus',
+      (input.agePolicy ?? '18_plus') === '13_plus' &&
+        input.giveawayOptIn === true,
     );
     if (subscriber.created) {
       try {

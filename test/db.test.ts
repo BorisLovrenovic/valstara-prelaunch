@@ -308,6 +308,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
       '0071-partner-digest.sql',
       '0072-partner-announcement.sql',
       '0073-weekly-note.sql',
+      '0074-waitlist-age-policy.sql',
+      '0075-require-waitlist-admission-policy.sql',
     ]);
     assert.deepEqual(repeatedRun, []);
     assert.deepEqual(
@@ -386,6 +388,8 @@ test('migrations run once, record checksums, and reproduce the initial schema wi
         '0071-partner-digest.sql',
         '0072-partner-announcement.sql',
         '0073-weekly-note.sql',
+        '0074-waitlist-age-policy.sql',
+        '0075-require-waitlist-admission-policy.sql',
       ],
     );
     assert.deepEqual(giveawayRulesVersionColumn, {
@@ -542,7 +546,7 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
           100,
         );
 
-        assert.equal(appliedCount, 73);
+        assert.equal(appliedCount, 75);
         assert.deepEqual(
           ledger.map((row) => row.filename),
           [
@@ -619,6 +623,8 @@ test('the migration runner is idempotent across a seeded range of repeat counts'
             '0071-partner-digest.sql',
             '0072-partner-announcement.sql',
             '0073-weekly-note.sql',
+            '0074-waitlist-age-policy.sql',
+            '0075-require-waitlist-admission-policy.sql',
           ],
         );
       } finally {

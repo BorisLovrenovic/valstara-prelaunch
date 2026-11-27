@@ -8,6 +8,7 @@ import {
 } from '../email/producers.ts';
 import type { FlagService } from '../flags/types.ts';
 import type { CurrentGiveawayRules } from '../giveaway/accrue.ts';
+import type { WaitlistAgeSettings } from '../giveaway/age-policy.ts';
 import type { AccessWindowBand } from '../referral/config.ts';
 import { completeVerificationInTransaction } from '../verification/complete.ts';
 import { createVerificationService } from '../verification/service.ts';
@@ -43,6 +44,8 @@ export interface PartnerConfirmationDependencies {
   readonly giveaway?: {
     flags: Pick<FlagService, 'isEnabled'>;
     currentRules: () => CurrentGiveawayRules;
+    /** E11.8-06: the shipped settings unless a test supplies its own. */
+    settings?: WaitlistAgeSettings;
   };
 }
 

@@ -94,9 +94,11 @@ export function createMarketingRoute(
 
     const marketing = formData.get('marketing');
     const token = formData.get('t');
+    const ageAffirmation = formData.get('marketing_age_affirmed');
     if (
       (marketing !== 'on' && marketing !== 'off') ||
-      typeof token !== 'string'
+      typeof token !== 'string' ||
+      (ageAffirmation !== null && ageAffirmation !== 'yes')
     ) {
       return errorResponse('invalid_input');
     }
@@ -110,8 +112,25 @@ export function createMarketingRoute(
         marketing,
         token,
         version: marketingOptInCopy.version,
+        ageAffirmed: ageAffirmation === 'yes',
       });
       if (outcome === 'rate_limited') return errorResponse('rate_limited');
+      if (outcome === 'affirmation_required') {
+        return jsonResponse(400, {
+          error: {
+            code: 'invalid_input',
+            message: memberStatusCopy.marketing.sixteen.required,
+          },
+        });
+      }
+      if (outcome === 'grant_paused') {
+        return jsonResponse(503, {
+          error: {
+            code: 'unavailable',
+            message: memberStatusCopy.marketing.grantPaused,
+          },
+        });
+      }
       if (outcome === 'disabled') {
         return jsonResponse(503, {
           error: {

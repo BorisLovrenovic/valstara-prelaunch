@@ -108,9 +108,13 @@ cards, with no confirmation step and no plea.
 3. **Act** — re-answer the survey, switch marketing email on or off (ADR-027; switching off never affects the waitlist place or giveaway entries), or unsubscribe.
 4. **Refresh** — an expired link offers a Turnstile-protected, one-click re-send to the address it was issued for. E6-04 verifies the challenge server-side before recovery work and queues the `status_link` send request; E8-01/E8-03 own provider dispatch and the status-link template.
 
-## Planned: entering the giveaway from `/me` (E11.8-06)
+## Giveaway entry and marketing after the age policy change (E11.8-06)
 
-**Founder decision, 2026-11-24.** Once the waitlist opens to people aged 13 and over, giveaway entry needs an 18+ box. A member who skipped it at signup sees the same box on `/me`, as a Turnstile-protected form posting `POST /api/me/giveaway` on the `POST /api/me/marketing` pattern. It only enters: the member gets their base entry and one per confirmed referral they hold, and nothing else changes. It is audited, idempotent, and hidden and refused once entries close. Behind `waitlist.age_13`, default off.
+The status card shows the actual non-voided entry count, including entries held before the age policy changed. With the giveaway on, a member who needs the box, has yet to tick it and has no entries sees “Not entered”. This status follows the recorded admission policy and published rules during rollback.
+
+While `waitlist.age_13` is on and entries are open, a verified member who still needs the box can tick it on `/me`, including after the flag is re-enabled. The form posts to `POST /api/me/giveaway` with the signed status link. The server verifies Turnstile first and rate-limits the action. One audited transaction records the 18+ affirmation and grants the eligible base entry and all eligible confirmed-referral entries, using the rules version and hash in force at opt-in. A repeat leaves member state as it was. Waitlist status, marketing consent and referral records are independent of the action. The page reloads the authenticated entry count and form after acceptance. On a submission error, the form refreshes its Turnstile challenge for the next attempt. When entries close, the form is hidden and the route refuses.
+
+While `waitlist.age_13` is on, a new marketing grant requires the unticked 16+ affirmation and records wording `v2`. The server checks the affirmation. After rollback, it pauses new grants for members admitted under the 13+ policy. Existing preferences can still be withdrawn, and members admitted under the 18+ policy use the legacy wording for new grants.
 
 ## Edge cases and error states
 Token expired → a re-request page, never an error page. Token tampered → **the same re-request page**; the failure must not distinguish a forged token from an expired one. The recovery submission also returns the same acknowledgement whether the expired token was recognised or not. Link forwarded to someone else → they see the original subscriber's status. **This is an accepted risk, stated plainly**: possession of the bearer link is the authentication boundary; the alternative is a password on a waitlist, which costs more conversion than the exposure is worth, and the page carries nothing more sensitive than the subscriber's waitlist status. Marketing switched off → broadcasts stop at the next dispatch; the waitlist place, referrals, wave and entries are untouched.
@@ -124,7 +128,8 @@ Token expired → a re-request page, never an error page. Token tampered → **t
 - [ ] The flag-off path leaves the equivalent information in email — tested
 - [ ] The `/me`, welcome-email and milestone-email referral sections render from `ReferralService.status`; E8-03 asserts cross-surface parity
 - [ ] The marketing on/off control is Turnstile-protected, audited, and **changes nothing but marketing consent** (S-01, ADR-027)
-- [ ] No country or eligibility field is shown — the giveaway has no location-based eligibility (ADR-026)
+- [ ] The giveaway form appears only for members who still need the 18+ box when the flag is on and entries are open, and submission is Turnstile-protected, rate-limited, audited and idempotent
+- [ ] No country field is shown. The giveaway has no location-based eligibility (ADR-026)
 - [ ] Own rank is computed server-side for the authenticated bearer through `ReferralService.status` and remains available independently of `leaderboard.public`
 
 ## Telemetry

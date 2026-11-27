@@ -110,6 +110,7 @@
   "test/helpers/price-index-sources.ts": 0.3,
   "test/helpers/structured-data.mjs": 0.2,
   "test/helpers/trust-ledger-fixture-site.mjs": 0.2,
+  "test/helpers/waitlist-age-fixture.ts": 0.7,
   "test/interface-primitives.test.mjs": 32.6,
   "test/ip-velocity.test.ts": 1.2,
   "test/ladder-copy-surfaces.test.mjs": 4.3,
@@ -137,6 +138,8 @@
   "test/listen-port.test.mjs": 1.9,
   "test/literal-values.test.mjs": 0.3,
   "test/maintenance-heartbeat.test.ts": 2.5,
+  "test/me-giveaway.test.ts": 13.2,
+  "test/me-marketing-age.test.ts": 3.8,
   "test/member-leaderboard-copy.test.ts": 0.3,
   "test/member-leaderboard-final-design-rendered.test.mjs": 187.7,
   "test/member-leaderboard-redesign.test.mjs": 109.5,
@@ -292,6 +295,11 @@
   "test/verification-redesign.test.mjs": 83.8,
   "test/verification.test.ts": 6.5,
   "test/verify-final-design-rendered.test.mjs": 147.8,
+  "test/waitlist-age-accrual.test.ts": 16.5,
+  "test/waitlist-age-browser.test.mjs": 28.9,
+  "test/waitlist-age-policy.test.ts": 2.4,
+  "test/waitlist-age-rendered.test.mjs": 59.5,
+  "test/waitlist-age-signup.test.ts": 6.0,
   "test/weekly-campaign.test.ts": 2.6,
   "test/weekly-note.test.ts": 2.9
 }

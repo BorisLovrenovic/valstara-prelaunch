@@ -44,6 +44,7 @@ const enabled = (key: keyof typeof campaignFlagRegistry) =>
 const signupEnabled = enabled('signup.enabled');
 const referralEnabled = enabled('referral.enabled');
 const giveawayEnabled = enabled('giveaway.open');
+const ageThirteen = enabled('waitlist.age_13');
 const leaderboardEnabled = enabled('leaderboard.public');
 const rules = giveawayEnabled ? currentRules() : null;
 const providers = providerData as Provider[];
@@ -142,6 +143,7 @@ Astro.response.headers.set('X-Valstara-Flag-Generation', flagGeneration);
                   signedReferralCapture={signedReferralCapture}
                   referralPrefill={prefill}
                   giveawayEnabled={giveawayEnabled}
+                  ageThirteen={ageThirteen}
                 >
                   <ul class="landing-facts" slot="facts">
                     {landingCopy.hero.facts.map((fact) => (

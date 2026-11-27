@@ -20,6 +20,7 @@ import {
   createGiveawayAccrualServiceInTransaction,
   type CurrentGiveawayRules,
 } from '../giveaway/accrue.ts';
+import type { WaitlistAgeSettings } from '../giveaway/age-policy.ts';
 import type { FlagService } from '../flags/types.ts';
 import type { UtmParameters } from '../referral/capture.ts';
 
@@ -54,6 +55,8 @@ export interface VerificationCompletionDependencies {
   readonly giveaway?: {
     flags: Pick<FlagService, 'isEnabled'>;
     currentRules: () => CurrentGiveawayRules;
+    /** E11.8-06: the shipped settings unless a test supplies its own. */
+    settings?: WaitlistAgeSettings;
   };
   /** Test-only fault injection that proves the whole completion rolls back. */
   readonly afterStep?: (step: VerificationCompletionStep) => Promise<void>;
@@ -169,6 +172,7 @@ export async function completeVerificationInTransaction(
       dependencies.giveaway.currentRules,
       undefined,
       producers.receipt,
+      dependencies.giveaway.settings,
     ).accrueForVerification(subscriberId);
   }
   if (fresh) {

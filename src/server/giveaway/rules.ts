@@ -18,6 +18,10 @@ export const giveawayRulesSchema = z.object({
     z.array(z.string().min(1)).min(1),
   ]),
   sha256: z.string().regex(/^[a-f0-9]{64}$/u),
+  // E11.8-06: true on a revision that makes the 18+ giveaway box the way to
+  // enter (E11.8-07 publishes the first). Absent on every earlier revision,
+  // which permit entry by verification alone.
+  entryRequiresGiveawayBox: z.boolean().optional(),
 });
 
 export type GiveawayRulesData = z.infer<typeof giveawayRulesSchema>;
@@ -32,6 +36,8 @@ export interface RulesRevision {
   revision: number;
   prizeCount: number;
   prizeApproxRetailValueEur: number;
+  /** Present only on a revision that makes the 18+ box the way to enter. */
+  entryRequiresGiveawayBox?: true;
 }
 
 export function compareRulesRevisions(
@@ -129,14 +135,9 @@ function validateSections(body: string): void {
   }
 }
 
-export function validateRulesRevision(input: {
-  filePath: string;
-  data: unknown;
-  body: string;
-  renderedHtml: string;
-}): RulesRevision {
-  const data = giveawayRulesSchema.parse(input.data);
-  if (input.filePath.split('/').at(-1) !== `${data.rulesVersion}.md`) {
+export function validateRulesMetadata(filePath: string, input: unknown) {
+  const data = giveawayRulesSchema.parse(input);
+  if (filePath.split('/').at(-1) !== `${data.rulesVersion}.md`) {
     throw new Error('Giveaway rules filename must equal rulesVersion.');
   }
   const versionSuffix = `${data.publishedOn.replaceAll('-', '')}-r${data.revision}`;
@@ -145,6 +146,26 @@ export function validateRulesRevision(input: {
       'Giveaway rules version must match publication date and revision.',
     );
   }
+  return data;
+}
+
+export function rulesEntryStamp(data: GiveawayRulesData) {
+  return {
+    rulesVersion: data.rulesVersion,
+    sha256: data.sha256,
+    ...(data.entryRequiresGiveawayBox === true
+      ? { entryRequiresGiveawayBox: true as const }
+      : {}),
+  };
+}
+
+export function validateRulesRevision(input: {
+  filePath: string;
+  data: unknown;
+  body: string;
+  renderedHtml: string;
+}): RulesRevision {
+  const data = validateRulesMetadata(input.filePath, input.data);
   if (
     /\[(?:todo|tbd|placeholder|set by)[^\]]*\]|\b(?:todo|tbd|placeholder|lorem ipsum|dummy product)\b/iu.test(
       input.body,
@@ -202,8 +223,7 @@ export function validateRulesRevision(input: {
     );
   }
   return {
-    rulesVersion: data.rulesVersion,
-    sha256: actualHash,
+    ...rulesEntryStamp(data),
     html,
     title: data.title,
     description: data.description,
@@ -214,11 +234,18 @@ export function validateRulesRevision(input: {
   };
 }
 
-export function validateRulesCatalog(revisions: RulesRevision[]): {
-  current: RulesRevision;
-  byVersion: ReadonlyMap<string, RulesRevision>;
+export function validateRulesCatalog<
+  Revision extends Pick<
+    RulesRevision,
+    'rulesVersion' | 'publishedOn' | 'revision'
+  >,
+>(
+  revisions: Revision[],
+): {
+  current: Revision;
+  byVersion: ReadonlyMap<string, Revision>;
 } {
-  const byVersion = new Map<string, RulesRevision>();
+  const byVersion = new Map<string, Revision>();
   for (const revision of revisions) {
     if (byVersion.has(revision.rulesVersion)) {
       throw new Error('Giveaway rules versions must be unique.');

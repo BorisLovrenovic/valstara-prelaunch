@@ -10,11 +10,24 @@ import {
 } from '../email/producers.ts';
 import type { FlagService } from '../flags/types.ts';
 
+import {
+  giveawayBoxPolicy,
+  holdsOwnEntries,
+  referralEarnsEntry,
+  waitlistAgeSettings,
+  type WaitlistAgeSettings,
+} from './age-policy.ts';
 import { createGiveawayEligibilityService } from './eligibility.ts';
 
 export interface CurrentGiveawayRules {
   rulesVersion: string;
   sha256: string;
+  /**
+   * The revision makes the 18+ box the way to enter (E11.8-06). Present only
+   * on a revision that says so, which E11.8-07 publishes; absent, the rules
+   * permit entry by verification alone.
+   */
+  entryRequiresGiveawayBox?: true;
 }
 
 /**
@@ -43,6 +56,7 @@ export function createGiveawayAccrualService(
   clock: () => Date = () => new Date(),
   receiptEmail?: TransactionalEmailProducers['receipt'],
   onEntry?: (method: 'base' | 'referral') => void,
+  settings: WaitlistAgeSettings = waitlistAgeSettings,
 ): GiveawayAccrualService {
   const receipt =
     receiptEmail ?? createTransactionalEmailProducers(database, clock).receipt;
@@ -55,6 +69,7 @@ export function createGiveawayAccrualService(
           currentRules,
           periodStart,
           receipt,
+          settings,
         ).accrue(subscriberId, method, sourceEdgeId),
       );
       if (inserted) {
@@ -74,6 +89,7 @@ export function createGiveawayAccrualService(
           currentRules,
           periodStart,
           receipt,
+          settings,
         ).accrueForVerification(referredId),
       );
       for (const method of methods) {
@@ -99,6 +115,7 @@ export function createGiveawayAccrualServiceInTransaction(
     subscriberId: string,
     rulesVersion: string,
   ) => Promise<boolean>,
+  settings: WaitlistAgeSettings = waitlistAgeSettings,
 ): GiveawayAccrualService {
   const repository = createGiveawayEntryRepository(database);
   const eligibility = createGiveawayEligibilityService(database, flags);
@@ -123,18 +140,27 @@ export function createGiveawayAccrualServiceInTransaction(
       subscriber.verifiedAt >= giveawayEntryPeriodEnd
     )
       return false;
-    if (
-      sourceEdgeId !== undefined &&
-      !(await repository.confirmedEdgeBelongsTo(
+    const rules = currentRules();
+    // E11.8-06: with `waitlist.age_13` on, or under rules that make the box
+    // the way to enter, or for a member admitted under the 13+ policy, a
+    // member's own entries need the 18+ box, and a referral earns its
+    // referrer an entry only as the referral-entry setting allows.
+    const boxPolicy = await giveawayBoxPolicy(flags, rules, settings);
+    if (!holdsOwnEntries(subscriber, boxPolicy)) return false;
+    if (sourceEdgeId !== undefined) {
+      const edge = await repository.confirmedEdgeFacts(
         sourceEdgeId,
         subscriberId,
         periodStart,
         giveawayEntryPeriodEnd,
-      ))
-    )
-      return false;
+      );
+      if (
+        edge === null ||
+        !referralEarnsEntry(edge.referred, edge.confirmedAt, boxPolicy)
+      )
+        return false;
+    }
 
-    const rules = currentRules();
     if (!/^[a-f0-9]{64}$/u.test(rules.sha256)) {
       throw new Error('The current giveaway rules hash is invalid.');
     }

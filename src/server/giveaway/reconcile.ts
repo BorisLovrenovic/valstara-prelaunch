@@ -11,6 +11,11 @@ import {
   giveawayEntryPeriodEnd,
   type CurrentGiveawayRules,
 } from './accrue.ts';
+import {
+  giveawayBoxPolicy,
+  waitlistAgeSettings,
+  type WaitlistAgeSettings,
+} from './age-policy.ts';
 
 export const giveawayReconciliationMaximumLimit = 1_000;
 
@@ -21,6 +26,7 @@ export function createGiveawayEntryReconciliationJob(
   periodStart: Date | null = getGiveawayEntryPeriodStart(),
   clock: () => Date = () => new Date(),
   onEntry?: (method: 'base' | 'referral') => void,
+  settings: WaitlistAgeSettings = waitlistAgeSettings,
 ): { run(limit: number): Promise<{ checked: number; accrued: number }> } {
   const receipt = createTransactionalEmailProducers(database, clock).receipt;
   return {
@@ -43,22 +49,30 @@ export function createGiveawayEntryReconciliationJob(
             'is required while giveaway.open is on',
           );
         }
-        const candidates = enabled
-          ? await createGiveawayEntryRepository(connection).missingEntitlements(
-              periodStart!,
-              giveawayEntryPeriodEnd,
-              limit,
-            )
-          : [];
-        const rules = candidates.length > 0 ? await currentRules() : null;
+        // E11.8-06: candidates are chosen by the same box rule accrual
+        // applies, so a member who still needs the box is never a candidate
+        // and cannot hold up the batch behind them.
+        const rules = enabled ? await currentRules() : null;
+        const candidates =
+          rules !== null
+            ? await createGiveawayEntryRepository(
+                connection,
+              ).missingEntitlements(
+                periodStart!,
+                giveawayEntryPeriodEnd,
+                limit,
+                await giveawayBoxPolicy(flags, rules, settings),
+              )
+            : [];
         let accrued = 0;
-        if (rules !== null) {
+        if (rules !== null && candidates.length > 0) {
           const service = createGiveawayAccrualServiceInTransaction(
             connection,
             flags,
             () => rules,
             periodStart,
             receipt,
+            settings,
           );
           for (const candidate of candidates) {
             if (

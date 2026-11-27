@@ -89,7 +89,7 @@ const localEnvironment = Object.freeze({
 // ---------------------------------------------------------------------------
 // The flags.
 //
-// The landing page reads four campaign flags (src/pages/index.astro), and
+// The landing page reads five campaign flags (src/pages/index.astro), and
 // each changes what it renders, independently of the others:
 // - signup.enabled: the signup form card, or the paused panel in its place
 //   (and, with it, the mobile sticky bar);
@@ -97,16 +97,16 @@ const localEnvironment = Object.freeze({
 // - giveaway.open: the giveaway reward card, and the form's giveaway
 //   microline and consent wording (SignupForm's giveawayEnabled);
 // - leaderboard.public: the leaderboard link in the rewards footer, which
-//   also keeps that row when referral is off.
-// So the landing is captured in all sixteen combinations. The other three
-// are not landing variants: survey.enabled is read only by /verify and /me,
-// member.dashboard only by /me and its routes, and email.broadcast only by
-// the server's email jobs. They are captured where they change a page.
+//   also keeps that row when referral is off;
+// - waitlist.age_13: the joining age, marketing wording, and giveaway box.
+// The landing is captured in all thirty-two combinations. The remaining
+// flags are covered where they change a page or affect a server process.
 export const landingFlags = Object.freeze([
   'signup.enabled',
   'referral.enabled',
   'giveaway.open',
   'leaderboard.public',
+  'waitlist.age_13',
 ]);
 export const flagAnalysis = Object.freeze({
   'signup.enabled':
@@ -117,6 +117,8 @@ export const flagAnalysis = Object.freeze({
     'landing variant: the giveaway reward card, the form microline and consent wording; also /giveaway/award',
   'leaderboard.public':
     'landing variant: the leaderboard link in the rewards footer; also /leaderboard (paused)',
+  'waitlist.age_13':
+    'landing variant: the joining age, 16+ marketing wording and the separate 18+ giveaway box; also price signup, /me and /partners/apply',
   'survey.enabled': 'not read by the landing; /verify and /me (the survey)',
   'member.dashboard':
     'not read by the landing; /me (the dashboard is unavailable)',
@@ -518,29 +520,31 @@ function landingEntries() {
     for (const referral of [true, false])
       for (const giveaway of [true, false])
         for (const leaderboard of [true, false])
-          entries.push({
-            label: `landing-signup-${on(signup)}-referral-${on(referral)}-giveaway-${on(giveaway)}-leaderboard-${on(leaderboard)}`,
-            kind: 'landing-flag',
-            covers: '/',
-            path: '/',
-            flags: {
-              'signup.enabled': signup,
-              'referral.enabled': referral,
-              'giveaway.open': giveaway,
-              'leaderboard.public': leaderboard,
-            },
-            turnstile: 'success',
-            run: signup
-              ? async (page) => {
-                  await page.evaluate(() =>
-                    globalThis.customElements.whenDefined(
-                      'valstara-signup-form',
-                    ),
-                  );
-                }
-              : undefined,
-            record: signup && referral && giveaway && leaderboard,
-          });
+          for (const age13 of [false, true])
+            entries.push({
+              label: `landing-signup-${on(signup)}-referral-${on(referral)}-giveaway-${on(giveaway)}-leaderboard-${on(leaderboard)}${age13 ? '-age-13' : ''}`,
+              kind: 'landing-flag',
+              covers: '/',
+              path: '/',
+              flags: {
+                'signup.enabled': signup,
+                'referral.enabled': referral,
+                'giveaway.open': giveaway,
+                'leaderboard.public': leaderboard,
+                'waitlist.age_13': age13,
+              },
+              turnstile: 'success',
+              run: signup
+                ? async (page) => {
+                    await page.evaluate(() =>
+                      globalThis.customElements.whenDefined(
+                        'valstara-signup-form',
+                      ),
+                    );
+                  }
+                : undefined,
+              record: signup && referral && giveaway && leaderboard && !age13,
+            });
   return entries;
 }
 
