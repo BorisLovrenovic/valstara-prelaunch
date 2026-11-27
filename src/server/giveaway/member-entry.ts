@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { createAnalyticsService } from '../analytics/service.ts';
 import { createAuditService } from '../audit/service.ts';
 import { getGiveawayEntryPeriodStart } from '../config.ts';
 import { createFraudFlagRepository } from '../db/fraud-flag.ts';
@@ -29,6 +30,11 @@ export const giveawayEntryStrictIpLimit = 2;
 export const giveawayEntrySubscriberLimit = 5;
 /** Maximum confirmed edges read at once while recording a member's entry. */
 export const memberEntryReferralLimit = 1_000;
+/**
+ * Maximum `giveaway_entered` events of one `/me` entry with the collector at
+ * once (standing rule 12). The rest wait as a count, never as queued requests.
+ */
+export const memberEntryCollectorConcurrency = 4;
 
 /** Entries are open from the period start until the close (E11.8-05). */
 export function giveawayEntriesOpen(
@@ -77,7 +83,12 @@ export interface GiveawayMemberEntryDependencies {
     subscriberId: string,
     rulesVersion: string,
   ) => Promise<boolean>;
-  readonly onEntry?: (method: 'base' | 'referral') => void;
+  /**
+   * Reports one committed entry after the transaction. A returned promise
+   * holds that event's collector slot until it settles; `false` or a
+   * rejection drops the events not yet sent (analytics loss is free).
+   */
+  readonly onEntry?: (method: 'base' | 'referral') => unknown;
 }
 
 export interface GiveawayMemberEntryService {
@@ -249,16 +260,64 @@ export function createGiveawayMemberEntryService(
         }
         return 'accepted' as const;
       });
-      for (const method of ['base', 'referral'] as const) {
-        for (let index = 0; index < entered[method]; index += 1) {
-          try {
-            dependencies.onEntry?.(method);
-          } catch {
-            /* The committed entry is authoritative. */
-          }
-        }
-      }
+      if (dependencies.onEntry !== undefined)
+        reportEntries(dependencies.onEntry, entered);
       return outcome;
     },
+  };
+}
+
+/**
+ * Reports a committed entry's events without delaying the response: at most
+ * `memberEntryCollectorConcurrency` at once, the rest held as two counts. The
+ * first failed or timed-out event drops the rest, so a stalled collector
+ * holds only the calls already in flight. The ledger is authoritative.
+ */
+function reportEntries(
+  onEntry: (method: 'base' | 'referral') => unknown,
+  entered: { base: number; referral: number },
+): void {
+  let { base, referral } = entered;
+  let stopped = false;
+  const report = async (): Promise<void> => {
+    while (!stopped && base + referral > 0) {
+      const method = base > 0 ? 'base' : 'referral';
+      if (method === 'base') base -= 1;
+      else referral -= 1;
+      try {
+        if ((await onEntry(method)) === false) stopped = true;
+      } catch {
+        stopped = true;
+      }
+    }
+  };
+  for (let slot = 0; slot < memberEntryCollectorConcurrency; slot += 1) {
+    void report();
+  }
+}
+
+/**
+ * The route's `onEntry`: one `giveaway_entered` event through the analytics
+ * service, settling when its collector call does (bounded by the service's
+ * own timeout). `false` means the call failed, timed out or was refused.
+ */
+export function createMemberEntryAnalytics(
+  send: typeof fetch = fetch,
+): (method: 'base' | 'referral') => Promise<boolean> {
+  return async (method) => {
+    let delivered: Promise<boolean> = Promise.resolve(true);
+    await createAnalyticsService({
+      send: (url, init) => {
+        const request = send(url, init);
+        delivered = request.then(
+          (response) => response.ok,
+          () => false,
+        );
+        return request;
+      },
+    }).track('giveaway_entered', { method });
+    // track() starts its call in a microtask queued before it returned, so
+    // the call, if any, has begun here; none means nothing is in flight.
+    return delivered;
   };
 }

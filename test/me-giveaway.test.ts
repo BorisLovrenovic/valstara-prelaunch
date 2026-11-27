@@ -7,9 +7,11 @@ import type { DatabasePool } from '../src/server/db/pool.ts';
 import type { FlagService } from '../src/server/flags/types.ts';
 import {
   createGiveawayMemberEntryService,
+  createMemberEntryAnalytics,
   giveawayEntryIpLimit,
   giveawayEntryStrictIpLimit,
   giveawayEntrySubscriberLimit,
+  memberEntryCollectorConcurrency,
   memberEntryReferralLimit,
   type GiveawayMemberEntryInput,
 } from '../src/server/giveaway/member-entry.ts';
@@ -279,7 +281,7 @@ test('concurrent first submissions record the box once and grant each entry once
   }
 });
 
-test('a successful entry credits referrals beyond the batch cap with the opt-in rules stamp', async () => {
+test('a successful entry credits referrals beyond the batch cap with the opt-in rules stamp, and a stalled collector holds only a capped number of its events', async () => {
   const f = await ageFixture('e11-8-06-me-referral-batches');
   try {
     const flags = await flagsOn(f);
@@ -331,15 +333,63 @@ test('a successful entry credits referrals beyond the batch cap with the opt-in 
       },
     ];
 
+    // The route's analytics wiring against a collector that answers
+    // only when the test settles a call. Nothing settles until the ledger is
+    // checked, so the collector is stalled while the entry commits.
+    const calls: { method: unknown; settle: (ok: boolean) => void }[] = [];
+    let inFlight = 0;
+    let mostInFlight = 0;
+    const collector = ((_url: unknown, init?: RequestInit) => {
+      inFlight += 1;
+      mostInFlight = Math.max(mostInFlight, inFlight);
+      return new Promise<Response>((resolve, reject) => {
+        calls.push({
+          method: (
+            JSON.parse(String(init?.body)) as {
+              payload: { data: { method: unknown } };
+            }
+          ).payload.data.method,
+          settle: (ok) => {
+            inFlight -= 1;
+            if (ok) resolve(new Response('{}'));
+            else reject(new Error('collector timed out'));
+          },
+        });
+      });
+    }) as typeof fetch;
+    const settled = () => new Promise((resolve) => setImmediate(resolve));
+
     let reads = 0;
     const entry = createGiveawayMemberEntryService(f.app, {
       flags,
       clock: () => laterTime,
       currentRules: () => (++reads === 1 ? legacyRules : boxRules),
+      onEntry: createMemberEntryAnalytics(collector),
     });
     assert.equal(await entry.enter(input(token)), 'accepted');
+    await settled();
     assert.deepEqual(await countStamps(), expected);
     assert.equal(reads, 1);
+    assert.equal(calls.length, memberEntryCollectorConcurrency);
+    assert.equal(inFlight, memberEntryCollectorConcurrency);
+    // Each answered call frees one slot for the next event, base first.
+    const answered = 600;
+    for (let index = 0; calls.length < answered; index += 1) {
+      calls[index].settle(true);
+      await settled();
+    }
+    assert.equal(mostInFlight, memberEntryCollectorConcurrency);
+    assert.deepEqual(
+      [calls[0].method, ...new Set(calls.slice(1).map((call) => call.method))],
+      ['base', 'referral'],
+    );
+    // A failed call drops the events not yet sent; the open calls end alone.
+    const open = calls.filter((_, index) => index >= answered - inFlight);
+    open[0].settle(false);
+    for (const call of open.slice(1)) call.settle(true);
+    await settled();
+    assert.equal(calls.length, answered);
+    assert.equal(inFlight, 0);
     const job = createGiveawayEntryReconciliationJob(
       f.app,
       flags,
