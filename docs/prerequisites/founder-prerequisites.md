@@ -252,7 +252,7 @@ E8-04 builds the weekly seed harness and proves it against simulated mailboxes. 
 
 ## P8 — Launch provider list and logo files
 
-- **Status:** ✅ **Supplied 2026-10-25.** The list is in `docs/prerequisites/p8-provider-list.md`: 34 providers confirmed across AI tools, Streaming and subscriptions, Software and In-game currency, all with a logo. Gift cards, game keys and game top-ups are not advertised pre-launch.
+- **Status:** ✅ **Supplied 2026-10-25.** The list is in `docs/prerequisites/p8-provider-list.md`. It records the original 34 confirmations and the founder's 2026-11-25 withdrawal of Perplexity Pro. The current list has 33 providers across AI tools, Streaming and subscriptions, Software and In-game currency, all with a logo. Gift cards, game keys and game top-ups are not advertised pre-launch.
 - **Nature:** Founder input (founder-authorised 2026-10-19)
 - **Gates:** nothing any more; E11.5-04 can start.
 - **Deadline:** Done.
@@ -276,7 +276,7 @@ For each provider you want shown, supply:
 4. **The official SVG logo** from the provider's published brand or press resources, plus a version for dark backgrounds where the provider publishes one, and its source URL when available. The founder-supplied source/date exception applies where no URL exists; AION2 alone may use WebP.
 5. **Its brand colour**, as a hex value from the same brand resources or derived by the recorded P8 rule.
 
-The 2026-10-25 P8 list confirms all 34 providers across four categories; categories with no confirmed providers are left out.
+The showcase uses current P8 confirmations across the four categories. The claims audit excludes withdrawn entries.
 
 ### How the build confirms it
 E11.5-04 validates `src/content/provider-showcase.json` at build time. A missing field, a missing or oversized logo, an unknown category or an entry without your confirmation fails the build. Logos are served from valstara.com itself, never fetched from the provider, so the no-third-party-request gate still holds. The optimised assets live in `public/images/providers/`; only AION2 is WebP.

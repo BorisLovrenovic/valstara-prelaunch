@@ -20,6 +20,8 @@ The logo source is an official URL when supplied. Where the founder has no URL, 
 
 **E11.5-11p addition, 2026-11-09.** The landing page's final call to action shows three logo-only banners, as the final-design canvas draws them: ChatGPT, Netflix and Microsoft 365, named in `src/content/landing-final.json` and checked against the showcase by the prebuild check. Each is the catalogue composition (brand colour, tonal shape and ring) with only the logo on its chip: no name, no category, no price, discount, count or date. The three sit in an `aria-hidden` visual, so their logos carry empty alt text, and none is focusable. They show from 48rem and are hidden on phones. No new mark or asset is added, and no third-party host is contacted.
 
+**E11.8-08 amendment (founder, 2026-11-25, D-087 recorded 2026-11-27).** The showcase uses current P8 confirmations. The founder withdrew Perplexity Pro, leaving 33 providers and 17 wordmarks. P8 keeps the original confirmation and records the withdrawal. The served logo is removed. The six compositions continue to cycle in catalogue order across category boundaries.
+
 ## Consequences
 
 The build validates every record and asset. A catalogue or asset change must update P8's source record and its confirmation before it can be shown. E11.5-05 composes the showcase into the landing page. No third-party logo host is contacted by a rendered page.

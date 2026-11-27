@@ -118,7 +118,7 @@ test('rail renders real logos, categories, alt text and only same-origin request
   const requests = [];
   page.on('request', (request) => requests.push(request.url()));
   await page.goto(origin);
-  assert.equal(await page.locator('[data-provider-banner]').count(), 34);
+  assert.equal(await page.locator('[data-provider-banner]').count(), 33);
   assert.deepEqual(
     // E11.5-11d (founder-authorised 2026-10-28): group labels are <h3>, under
     // the section's "What you'll find" <h2>.
@@ -194,7 +194,7 @@ test('rail renders real logos, categories, alt text and only same-origin request
         })),
       };
     });
-  assert.equal(tones.banners.length, 34);
+  assert.equal(tones.banners.length, 33);
   assert.equal(new Set(Object.values(tones.tokens)).size, 3);
   for (const [index, banner] of tones.banners.entries()) {
     const provider = providers.find((entry) => entry.name === banner.name);

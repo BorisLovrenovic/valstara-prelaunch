@@ -315,13 +315,17 @@ async function p8Providers() {
       category = heading[1];
       continue;
     }
-    const row = /^\| ([^|]+?) \| `([^`]+)` \| `(#[0-9a-f]{6})` \|/u.exec(line);
+    const row =
+      /^\| ([^|]+?) \| `([^`]+)` \| `(#[0-9a-f]{6})` \| [\d,]+ \|(?:\s*([^|]*?)\s*\|)?$/u.exec(
+        line,
+      );
     if (row && category)
       providers.push({
         name: row[1],
         category,
         logo: `/images/providers/${row[2]}`,
         brandColor: row[3],
+        withdrawal: row[4] || null,
       });
   }
   return { record, providers };
@@ -338,20 +342,28 @@ function showcaseDrift(p8, showcase) {
   };
 }
 
-test('E11.5-12: every showcase entry matches its P8 confirmation, and the landing page shows exactly those providers', async () => {
-  const { record, providers: p8 } = await p8Providers();
+test('every showcase entry matches a current P8 confirmation and the landing page shows exactly those providers', async () => {
+  const { record, providers } = await p8Providers();
+  const p8 = providers.filter(({ withdrawal }) => withdrawal === null);
+  const withdrawn = providers.filter(({ withdrawal }) => withdrawal !== null);
   const showcase = JSON.parse(
     await readFile(join(root, 'src/content/provider-showcase.json'), 'utf8'),
   );
-  assert.equal(p8.length, 34, 'the P8 record lists 34 providers');
+  assert.equal(p8.length, 33, 'the P8 record lists 33 current providers');
+  assert.deepEqual(
+    withdrawn.map(({ name, withdrawal }) => [name, withdrawal]),
+    [['Perplexity', 'Withdrawn 2026-11-25 (founder)']],
+  );
   assert.match(
     record,
     /Every provider below is confirmed for the launch catalogue by \*\*Boris Lovrenovic, 2026-10-25\*\*/u,
   );
-  assert.deepEqual(showcaseDrift(p8, showcase), {
-    unconfirmed: [],
-    missing: [],
-  });
+  const auditShowcase = (entries) =>
+    assert.deepEqual(showcaseDrift(p8, entries), {
+      unconfirmed: [],
+      missing: [],
+    });
+  auditShowcase(showcase);
   assert.deepEqual(
     showcase.map(({ name }) => name),
     p8.map(({ name }) => name),
@@ -381,6 +393,11 @@ test('E11.5-12: every showcase entry matches its P8 confirmation, and the landin
   assert.deepEqual(
     showcaseDrift(p8, showcase.slice(1)).missing.map(({ name }) => name),
     [showcase[0].name],
+  );
+  assert.throws(
+    () => auditShowcase([...showcase, ...withdrawn]),
+    { name: 'AssertionError', message: /Perplexity/u },
+    'the audit rejects a planted provider matching a withdrawn P8 row',
   );
 
   const { body } = await renderLanding();

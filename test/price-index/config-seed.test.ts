@@ -105,6 +105,11 @@ test('config/catalogue.json tracks exactly the founder’s products and monthly 
   );
 
   for (const service of services) {
+    assert.equal(
+      service.status,
+      service.service_id === 'perplexity' ? 'planned' : 'launch',
+      service.service_id,
+    );
     for (const plan of service.plans) {
       // No student plans and no family plans (founder, 2026-11-17), each at
       // the monthly price the source shows.

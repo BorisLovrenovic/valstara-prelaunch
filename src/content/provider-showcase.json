@@ -28,21 +28,6 @@
     }
   },
   {
-    "name": "Perplexity",
-    "category": "ai",
-    "logo": "/images/providers/perplexity.svg",
-    "wordmarkHeight": 22,
-    "brandColor": "#13343b",
-    "confirmation": {
-      "name": "Boris Lovrenovic",
-      "date": "2026-10-25"
-    },
-    "source": {
-      "kind": "founder-supplied",
-      "date": "2026-10-25"
-    }
-  },
-  {
     "name": "Cursor",
     "category": "ai",
     "logo": "/images/providers/cursor.svg",

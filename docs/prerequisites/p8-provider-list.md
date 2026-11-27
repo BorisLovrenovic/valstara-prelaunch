@@ -1,6 +1,6 @@
 # P8 — Launch provider list and logo files
 
-> **Status:** supplied by the founder on 2026-10-25. **All 34 providers are ready for E11.5-04.** This is the source record E11.5-04 builds `src/content/provider-showcase.json` from. The requirement itself is P8 in `docs/plan/development-plan.md` §2 and `docs/prerequisites/founder-prerequisites.md#p8`.
+> **Status:** the founder confirmed 34 providers on 2026-10-25 and withdrew Perplexity Pro on 2026-11-25. The current launch list has **33 providers**. This is the source record for `src/content/provider-showcase.json`. The requirement itself is P8 in `docs/plan/development-plan.md` §2 and `docs/prerequisites/founder-prerequisites.md#p8`.
 >
 > The logo files are in `docs/prerequisites/p8-logos/`, byte-identical to the files the founder supplied, renamed to the slugs below. All are SVG except AION2, a WebP by founder exception (see [Founder decisions on four logos](#founder-decisions-on-four-logos-2026-10-25)). They are source files, not site assets. E11.5-04 optimises them into `public/images/providers/` and enforces the 12 KB limit there.
 
@@ -33,15 +33,15 @@ Category tokens are the survey v2 tokens from E11.5-02 (ADR-031). Sizes are of t
 
 ### AI tools — `ai`
 
-| Display name | Slug and logo file | Brand colour | Size (bytes) |
-|---|---|---|---|
-| ChatGPT | `chatgpt.svg` | `#000000` | 1,739 |
-| Gemini | `gemini.svg` | `#3186ff` | 8,712 |
-| Perplexity | `perplexity.svg` | `#13343b` | 4,476 |
-| Cursor | `cursor.svg` | `#26241e` | 6,200 |
-| Bolt.new | `bolt-new.svg` | `#000000` | 3,868 |
-| Lovable | `lovable.svg` | `#18181b` | 5,289 |
-| n8n | `n8n.svg` | `#ea4b71` | 2,911 |
+| Display name | Slug and logo file | Brand colour | Size (bytes) | Withdrawal |
+|---|---|---|---|---|
+| ChatGPT | `chatgpt.svg` | `#000000` | 1,739 | |
+| Gemini | `gemini.svg` | `#3186ff` | 8,712 | |
+| Perplexity | `perplexity.svg` | `#13343b` | 4,476 | Withdrawn 2026-11-25 (founder) |
+| Cursor | `cursor.svg` | `#26241e` | 6,200 | |
+| Bolt.new | `bolt-new.svg` | `#000000` | 3,868 | |
+| Lovable | `lovable.svg` | `#18181b` | 5,289 | |
+| n8n | `n8n.svg` | `#ea4b71` | 2,911 | |
 
 ### Streaming and subscriptions — `subscriptions`
 
