@@ -189,7 +189,7 @@ Gates 1 to 6 are recorded `done` because every later epic has merged and no epic
 | 167 | E11.8-04 | The referral reminder in the welcome email | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | done | auto |
 | 168 | E11.8-05 | The giveaway rules revision with the new dates | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | done | auto |
 | 169 | E11.8-06 | The waitlist at 13 and over, with an 18+ giveaway box | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | done | auto |
-| 170 | E11.8-08 | Perplexity Pro leaves the launch list | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | todo | auto |
+| 170 | E11.8-08 | Perplexity Pro leaves the launch list | Epic E11.8 — The Trust Ledger, reporting and pre-launch revisions | done | auto |
 | 171 | GATE-8 | QA gate 8 — E11.6 + E11.7 + E11.8 | E11.6 + E11.7 + E11.8 | todo | auto |
 | 172 | E12-01 | Provision the host and run the production stack on it | Epic E12 — Production bring-up | todo | manual |
 | 173 | E12-02 | Deploy from GHCR against the real host, with the migration audit | Epic E12 — Production bring-up | todo | manual |
