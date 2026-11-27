@@ -27,7 +27,7 @@ The waitlist row.
 | `email_normalised` | text **unique**; null only when erased | Lowercased, `+tag` stripped, dots removed for Gmail-family domains. **The uniqueness key** |
 | `email_domain` | text; null only when erased | Denormalised for blocklist and analytics queries |
 | `signup_had_ref` | boolean, default false; null when erased | Whether the initial signup carried a valid signed ref; supports later anonymous source classification even while attribution is flag-off, and is cleared on erasure |
-| `admission_age_policy` | text, default `18_plus` | `18_plus` or `13_plus`, recorded when the subscriber row is created, including through an application. Earlier rows default to `18_plus`. Write-once by trigger and cleared on erasure. Preserves the giveaway box requirement and the marketing grant pause for 13+ members across rollback |
+| `admission_age_policy` | text, default `18_plus` | Required on every non-erased row as either `18_plus` or `13_plus`, recorded at creation including through an application. Earlier rows default to `18_plus`. Write-once by trigger and required to be null on erasure. Preserves the giveaway box requirement and the marketing grant pause for 13+ members across rollback |
 | `status` | text not null | `pending` · `verified` · `expired` · `unsubscribed` · `bounced` · `disqualified` · `erasure_pending` · `erased` |
 | `category_preference` | text[] | From the survey. Carried into the handoff |
 | `source` | text | Bucketed acquisition source |

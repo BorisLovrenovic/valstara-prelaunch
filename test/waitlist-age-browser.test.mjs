@@ -18,6 +18,7 @@ import {
   settlePage,
 } from '../scripts/design/layout-checks.mjs';
 import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import { memberStatusCopy } from '../src/copy/member-status.ts';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 import {
   containerOwnerArguments,
@@ -49,6 +50,19 @@ const adminUrl =
 const appPassword =
   process.env.VALSTARA_APP_DB_PASSWORD ?? 'valstara-app-local-only';
 const turnstileHost = 'challenges.cloudflare.com';
+const siteverifyStub = `data:text/javascript,${encodeURIComponent(`
+  import { mock } from 'node:test';
+  mock.timers.enable({ apis: ['Date'], now: new Date('2026-11-27T00:00:00.000Z') });
+  const fetch = globalThis.fetch;
+  globalThis.fetch = (input, init) => {
+    if (String(input) !== 'https://${turnstileHost}/turnstile/v0/siteverify')
+      return fetch(input, init);
+    const token = new URLSearchParams(init.body).get('response');
+    return Promise.resolve(Response.json(token === 'browser-challenge-1' ||
+      token === 'browser-challenge-2' ? { success: true } :
+      { success: false, 'error-codes': ['invalid-input-response'] }));
+  };
+`)}`;
 
 let browser;
 let browserServer;
@@ -174,6 +188,7 @@ before(async () => {
   server = await startAppServer({
     label: 'E11.8-06 browser checks',
     cwd: root,
+    nodeArguments: ['--import', siteverifyStub],
     env: (port) => ({
       ADMIN_CREDENTIAL: 'age13-browser-admin-credential-32-chars',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
@@ -378,4 +393,109 @@ test('layout: the final-design checks pass on every placement and /me with the f
       }
     }
   assert.deepEqual(found, [], `layout issues: ${JSON.stringify(found)}`);
+});
+
+async function openGiveawayForm(context) {
+  await context.route(`https://${turnstileHost}/**`, (route) =>
+    route.fulfill({
+      contentType: 'text/javascript',
+      body: `
+        const widgets = document.querySelectorAll('[data-giveaway-form] .cf-turnstile, [data-marketing-form] .cf-turnstile');
+        for (const widget of widgets) {
+          const token = document.createElement('input');
+          token.type = 'hidden';
+          token.name = 'turnstile_token';
+          token.value = 'browser-challenge-1';
+          widget.append(token);
+        }
+        window.turnstile = {
+          reset(selector) {
+            const widget = selector ? document.querySelector(selector) : widgets[0];
+            widget.querySelector('[name="turnstile_token"]').value = 'browser-challenge-2';
+          },
+        };
+      `,
+    }),
+  );
+  const page = await context.newPage();
+  await page.goto(`${origin}${checkedPaths[2]}`, { waitUntil: 'load' });
+  const form = page.locator('[data-giveaway-form]');
+  await form.locator('[name="turnstile_token"]').waitFor({ state: 'attached' });
+  await form.locator('label').click();
+  return { page, form };
+}
+
+test('a retry after a downstream error sends a fresh token from the giveaway widget', async () => {
+  const context = await browser.newContext(atRestContext);
+  try {
+    const { page, form } = await openGiveawayForm(context);
+    const sentTokens = [];
+    await page.route('**/api/me/giveaway', (route) => {
+      sentTokens.push(
+        route
+          .request()
+          .postData()
+          ?.match(/browser-challenge-\d/u)?.[0],
+      );
+      return route.fulfill({
+        status: 503,
+        json: {
+          error: {
+            code: 'unavailable',
+            message: memberStatusCopy.giveaway.unavailable,
+          },
+        },
+      });
+    });
+    const submit = form.getByRole('button', {
+      name: memberStatusCopy.giveaway.submit,
+    });
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const responded = page.waitForResponse('**/api/me/giveaway');
+      await submit.click();
+      assert.equal((await responded).status(), 503);
+      await form
+        .locator('[data-giveaway-result][data-result="error"]')
+        .waitFor();
+    }
+    assert.deepEqual(sentTokens, [
+      'browser-challenge-1',
+      'browser-challenge-2',
+    ]);
+    assert.equal(
+      await page
+        .locator('[data-marketing-form] [name="turnstile_token"]')
+        .inputValue(),
+      'browser-challenge-1',
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test('after entering, /me refreshes the authenticated count and removes the form', async () => {
+  const context = await browser.newContext(atRestContext);
+  try {
+    const { page, form } = await openGiveawayForm(context);
+    const fact = page.locator('[data-member-field="giveawayEntries"] dd');
+    assert.equal(
+      (await fact.textContent()).trim(),
+      memberStatusCopy.authenticated.notEntered,
+    );
+    const responded = page.waitForResponse('**/api/me/giveaway');
+    await form
+      .getByRole('button', { name: memberStatusCopy.giveaway.submit })
+      .click();
+    assert.equal((await responded).status(), 200);
+    await form.waitFor({ state: 'detached', timeout: 5_000 });
+    assert.equal((await fact.textContent()).trim(), '1');
+    const saved = page.getByText(memberStatusCopy.giveaway.saved, {
+      exact: true,
+    });
+    await saved.waitFor();
+    assert.equal(await saved.isVisible(), true);
+    assert.equal(new URL(page.url()).hash, '');
+  } finally {
+    await context.close();
+  }
 });

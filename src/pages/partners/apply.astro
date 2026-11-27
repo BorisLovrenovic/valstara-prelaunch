@@ -11,8 +11,9 @@ import TaskNotice from '../../layouts/task-notice.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { partnersCopy } from '../../copy/partners.ts';
 import { verificationCopy } from '../../copy/verification.ts';
-import { getConfig } from '../../server/config.ts';
+import { getConfig, getGiveawayEntryPeriodStart } from '../../server/config.ts';
 import { getFlagService } from '../../server/flags/app-service.ts';
+import { giveawayEntriesOpen } from '../../server/giveaway/member-entry.ts';
 import type { PartnerApplicationOutcome } from '../../server/partner/application.ts';
 import {
   dashboardRecoveryPath,
@@ -115,17 +116,15 @@ const view = partnerApplyView({
 });
 Astro.response.status = recoveryView?.status ?? view.status;
 const confirmToken = postedToken ?? tokenParameter ?? '';
+const showMembership = !recovery && view.form === 'application';
 const giveawayOpen =
-  !recovery && view.form === 'application'
-    ? await isOn('giveaway.open')
-    : false;
+  showMembership &&
+  (await isOn('giveaway.open')) &&
+  giveawayEntriesOpen(new Date(), getGiveawayEntryPeriodStart());
 // E11.8-06 (decisions 1 and 8): what confirming does for the giveaway
 // follows the age flag and the published rules in force.
 const membership = partnerMembershipLine({
-  ageThirteen:
-    !recovery && view.form === 'application'
-      ? await isOn('waitlist.age_13')
-      : false,
+  ageThirteen: showMembership && (await isOn('waitlist.age_13')),
   giveawayOpen,
   rulesRequireBox: currentRules().entryRequiresGiveawayBox === true,
 });

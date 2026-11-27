@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import { createFraudFlagRepository } from '../src/server/db/fraud-flag.ts';
@@ -7,6 +10,7 @@ import type { DatabasePool } from '../src/server/db/pool.ts';
 import type { FlagService } from '../src/server/flags/types.ts';
 import type { CurrentGiveawayRules } from '../src/server/giveaway/accrue.ts';
 import type { WaitlistAgeSettings } from '../src/server/giveaway/age-policy.ts';
+import { currentRulesFromFiles } from '../src/server/giveaway/current-rules-file.ts';
 import { createGiveawayMemberEntryService } from '../src/server/giveaway/member-entry.ts';
 import { createGiveawayEntryReconciliationJob } from '../src/server/giveaway/reconcile.ts';
 import {
@@ -717,6 +721,70 @@ test('off-flag applications follow published rules and applicants who still need
     } finally {
       await f.dispose();
     }
+  }
+});
+
+test('reconciliation applies the box rule from a parsed published revision after rollback', async () => {
+  const directory = await mkdtemp(
+    join(tmpdir(), 'valstara-reconciliation-rules-'),
+  );
+  const f = await ageFixture('e11-8-06-parsed-rules');
+  try {
+    const { rulesVersion, sha256 } = await currentRulesFromFiles();
+    const name = `${rulesVersion}.md`;
+    const source = await readFile(
+      new URL(`../src/content/giveaway-rules/${name}`, import.meta.url),
+      'utf8',
+    );
+    await writeFile(
+      join(directory, name),
+      source.replace(
+        /^---\n/u,
+        '$&"entryRequiresGiveawayBox": true # required to enter\n',
+      ),
+    );
+    const flags = await openGiveaway(f, false);
+    const referrer = await insertMember(f.owner, { optIn: 'signup' });
+    const optedIn = await insertMember(f.owner, { optIn: 'signup' });
+    const skipped = await insertMember(f.owner);
+    const eligibleEdge = await insertEdge(
+      f.owner,
+      referrer,
+      optedIn,
+      verifyTime,
+    );
+    await insertEdge(f.owner, referrer, skipped, verifyTime);
+
+    const job = createGiveawayEntryReconciliationJob(
+      f.app,
+      flags.service,
+      () => currentRulesFromFiles(directory),
+      undefined,
+      () => laterTime,
+    );
+    assert.deepEqual(await job.run(10), { checked: 3, accrued: 3 });
+    assert.deepEqual(await entriesOf(f.owner, skipped), []);
+    assert.deepEqual(await entriesOf(f.owner, referrer), [
+      { method: 'base', source_edge_id: null, rules_version: rulesVersion },
+      {
+        method: 'referral',
+        source_edge_id: eligibleEdge,
+        rules_version: rulesVersion,
+      },
+    ]);
+    assert.deepEqual(await currentRulesFromFiles(directory), {
+      rulesVersion,
+      sha256,
+      entryRequiresGiveawayBox: true,
+    });
+    await writeFile(
+      join(directory, name),
+      source.replace(/^---\n/u, '$&"entryRequiresGiveawayBox": "true"\n'),
+    );
+    await assert.rejects(() => job.run(10), /entryRequiresGiveawayBox/u);
+  } finally {
+    await f.dispose();
+    await rm(directory, { recursive: true, force: true });
   }
 });
 

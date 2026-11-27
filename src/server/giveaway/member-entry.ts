@@ -27,11 +27,7 @@ export const giveawayEntryWindowMs = 15 * 60 * 1_000;
 export const giveawayEntryIpLimit = 5;
 export const giveawayEntryStrictIpLimit = 2;
 export const giveawayEntrySubscriberLimit = 5;
-/**
- * Referral entries granted in the entering request. A member with more
- * confirmed referrals receives the rest from the hourly reconciliation, which
- * applies the same rule (E7-03).
- */
+/** Maximum confirmed edges read at once while recording a member's entry. */
 export const memberEntryReferralLimit = 1_000;
 
 /** Entries are open from the period start until the close (E11.8-05). */
@@ -150,14 +146,14 @@ export function createGiveawayMemberEntryService(
       ) {
         return 'disabled';
       }
-      if (!giveawayEntriesOpen(now, periodStart)) {
+      if (periodStart === null || !giveawayEntriesOpen(now, periodStart)) {
         return now.getTime() >= giveawayEntryPeriodEnd.getTime()
           ? 'closed'
           : 'disabled';
       }
       if (input.ipPrefixHash === '') return 'rate_limited';
 
-      const entered: ('base' | 'referral')[] = [];
+      const entered = { base: 0, referral: 0 };
       const outcome = await withTransaction(database, async (connection) => {
         const windowThreshold = new Date(now.getTime() - giveawayEntryWindowMs);
         const limits = createRateLimitBucketRepository(connection);
@@ -197,7 +193,9 @@ export function createGiveawayMemberEntryService(
 
         const optIns = createGiveawayOptInRepository(connection);
         const state = await optIns.state(subscriberId, true);
-        if (state?.status !== 'verified') return 'accepted' as const;
+        // A repeat, including a signup tick, has no member-side effects.
+        if (state?.status !== 'verified' || state.giveawayOptInAt !== null)
+          return 'accepted' as const;
 
         if (input.challengeTimedOut) {
           await createFraudFlagRepository(
@@ -207,9 +205,7 @@ export function createGiveawayMemberEntryService(
             subscriberId,
           });
         }
-        // A repeat, or a member who ticked the box at signup: nothing changes.
-        if (state.giveawayOptInAt !== null) return 'accepted' as const;
-
+        const rules = dependencies.currentRules();
         if ((await optIns.recordMemberStatusOptIn(subscriberId, now)) !== 1) {
           throw new Error('The giveaway opt-in was not recorded.');
         }
@@ -221,35 +217,45 @@ export function createGiveawayMemberEntryService(
           subjectType: 'subscriber',
         });
 
-        // Exactly the entries a tick at signup would have earned, through
-        // the same accrual: the base entry, then one per confirmed referral.
+        // Keep the rules and flags checked for this opt-in for every page.
+        // Referral confirmation takes the same referrer lock as state() above.
         const accrual = createGiveawayAccrualServiceInTransaction(
           connection,
-          flags,
-          dependencies.currentRules,
+          {
+            isEnabled: async (key) =>
+              key === 'giveaway.open' || key === 'waitlist.age_13',
+          },
+          () => rules,
           periodStart,
           receipt,
           settings,
         );
-        if (await accrual.accrue(subscriberId, 'base')) entered.push('base');
-        if (periodStart !== null) {
-          for (const edgeId of await optIns.confirmedEdgesAsReferrer(
+        if (await accrual.accrue(subscriberId, 'base')) entered.base = 1;
+        let afterEdgeId: string | null = null;
+        for (;;) {
+          const page = await optIns.confirmedEdgesAsReferrer(
             subscriberId,
             periodStart,
             giveawayEntryPeriodEnd,
             memberEntryReferralLimit,
-          )) {
+            afterEdgeId,
+          );
+          for (const edgeId of page) {
             if (await accrual.accrue(subscriberId, 'referral', edgeId))
-              entered.push('referral');
+              entered.referral += 1;
           }
+          if (page.length < memberEntryReferralLimit) break;
+          afterEdgeId = page[page.length - 1];
         }
         return 'accepted' as const;
       });
-      for (const method of entered) {
-        try {
-          dependencies.onEntry?.(method);
-        } catch {
-          /* The committed entry is authoritative. */
+      for (const method of ['base', 'referral'] as const) {
+        for (let index = 0; index < entered[method]; index += 1) {
+          try {
+            dependencies.onEntry?.(method);
+          } catch {
+            /* The committed entry is authoritative. */
+          }
         }
       }
       return outcome;

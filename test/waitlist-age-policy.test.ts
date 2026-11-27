@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 
 import {
@@ -340,6 +341,16 @@ test('the enable command refuses waitlist.age_13 while the reviewed-wording sett
 test('the database rejects a tick without a signup, rewrites of the box or the admission policy, and clears both on erasure', async () => {
   const f = await ageFixture('e11-8-06-constraints');
   try {
+    await assert.rejects(
+      f.app.execute({
+        text: `INSERT INTO subscriber
+                (id, email, email_normalised, email_domain, status, admission_age_policy)
+               VALUES ($1, 'null-policy@example.test', 'null-policy@example.test',
+                       'example.test', 'pending', NULL)`,
+        values: [randomUUID()],
+      }),
+      { code: '23514', constraint: 'subscriber_admission_age_policy_shape' },
+    );
     const id = await insertMember(f.owner, { status: 'pending' });
     const row = async () =>
       f.owner.readOne<{

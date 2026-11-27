@@ -1,40 +1,25 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { parseFrontmatter } from 'astro/markdown';
 
 import type { CurrentGiveawayRules } from './accrue.ts';
+import {
+  rulesEntryStamp,
+  validateRulesCatalog,
+  validateRulesMetadata,
+} from './rules.ts';
 
-/** The maintenance process reads the same checked-in revisions Astro builds. */
+/** Use Astro's frontmatter parser and the rules catalog's metadata checks. */
 export async function currentRulesFromFiles(
   directory = resolve(process.cwd(), 'src/content/giveaway-rules'),
 ): Promise<CurrentGiveawayRules> {
-  const names = (await readdir(directory))
-    .filter((name) => /^VAL-GW-[A-Z0-9]+-\d{8}-r[1-9]\d*\.md$/u.test(name))
-    .sort((left, right) => {
-      const leftParts = left.match(/-(\d{8})-r(\d+)\.md$/u);
-      const rightParts = right.match(/-(\d{8})-r(\d+)\.md$/u);
-      if (leftParts === null || rightParts === null) return 0;
-      return (
-        leftParts[1].localeCompare(rightParts[1]) ||
-        Number(leftParts[2]) - Number(rightParts[2])
-      );
-    });
-  const name = names.at(-1);
-  if (name === undefined) throw new Error('No published giveaway rules exist.');
-  const source = await readFile(join(directory, name), 'utf8');
-  const rulesVersion = source.match(/^rulesVersion: (.+)$/mu)?.[1];
-  const sha256 = source.match(/^sha256: ['"]?([a-f0-9]{64})['"]?$/mu)?.[1];
-  if (rulesVersion !== name.slice(0, -3) || sha256 === undefined) {
-    throw new Error('The published giveaway rules metadata is invalid.');
+  const revisions = [];
+  for (const name of await readdir(directory)) {
+    if (!name.endsWith('.md')) continue;
+    const source = await readFile(join(directory, name), 'utf8');
+    revisions.push(
+      validateRulesMetadata(name, parseFrontmatter(source).frontmatter),
+    );
   }
-  // E11.8-06: a revision that makes the 18+ box the way to enter says so in
-  // its frontmatter (E11.8-07 publishes the first). Absent, the rules permit
-  // entry by verification alone.
-  const frontmatter = source.match(/^---\n([\s\S]*?)\n---/u)?.[1] ?? '';
-  const boxLine = frontmatter.match(/^entryRequiresGiveawayBox: (.+)$/mu)?.[1];
-  if (boxLine !== undefined && boxLine !== 'true' && boxLine !== 'false') {
-    throw new Error('The published giveaway rules box setting is invalid.');
-  }
-  return boxLine === 'true'
-    ? { rulesVersion, sha256, entryRequiresGiveawayBox: true }
-    : { rulesVersion, sha256 };
+  return rulesEntryStamp(validateRulesCatalog(revisions).current);
 }

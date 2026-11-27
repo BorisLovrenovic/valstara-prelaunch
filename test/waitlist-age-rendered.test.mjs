@@ -277,6 +277,35 @@ test('flag off: /me states the real entry status, offers no box, and pauses new 
   assert.doesNotMatch(earlier, /name="marketing_age_affirmed"/u);
 });
 
+test('partner and ambassador application copy offers only a waitlist join before the giveaway entry period', async () => {
+  const clock = `data:text/javascript,${encodeURIComponent(`
+    import { mock } from 'node:test';
+    mock.timers.enable({ apis: ['Date'], now: new Date('2026-11-26T23:59:59.999Z') });
+  `)}`;
+  for (const ageThirteen of [false, true]) {
+    await setFlags({ 'giveaway.open': true, 'waitlist.age_13': ageThirteen });
+    const beforeEntries = await startAppServer({
+      ...appOptions,
+      label: 'E11.8-06 before entries open',
+      nodeArguments: ['--import', clock],
+      env: (port) => ({
+        ...appOptions.env(port),
+        WAITLIST_LIVE_AT: '2026-11-27T00:00:00.000Z',
+      }),
+    });
+    try {
+      const html = await page('/partners/apply', beforeEntries);
+      assert.equal(
+        membership(html),
+        `${partnersCopy.apply.membership.waitlist}${ageThirteen ? '' : ` ${partnersCopy.apply.ageStatement}`}`,
+      );
+      assert.match(html, /name="age_confirmed"/u);
+    } finally {
+      await beforeEntries.stop();
+    }
+  }
+});
+
 test('flag off: an application promises only a waitlist join when the published rules require the box', async () => {
   await setFlags({ 'giveaway.open': true, 'waitlist.age_13': false });
   const root = await mkdtemp(join(tmpdir(), 'valstara-age-rules-'));
@@ -300,7 +329,10 @@ test('flag off: an application promises only a waitlist join when the published 
     assert.doesNotMatch(source, /^entryRequiresGiveawayBox:/mu);
     await writeFile(
       revision,
-      source.replace(/^---\n/u, '$&entryRequiresGiveawayBox: true\n'),
+      source.replace(
+        /^---\n/u,
+        '$&"entryRequiresGiveawayBox": true # required to enter\n',
+      ),
     );
     await execFileAsync('npm', ['run', 'build'], {
       cwd: root,

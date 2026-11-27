@@ -22,13 +22,14 @@ export interface GiveawayOptInRepository {
   recordMemberStatusOptIn(subscriberId: string, now: Date): Promise<number>;
   /**
    * The member's confirmed, non-voided referrals inside the entry period, as
-   * referrer, oldest first, at most `limit`.
+   * referrer, in ID order, at most `limit` after the previous page's last ID.
    */
   confirmedEdgesAsReferrer(
     referrerId: string,
     periodStart: Date,
     periodEnd: Date,
     limit: number,
+    afterEdgeId: string | null,
   ): Promise<readonly string[]>;
 }
 
@@ -69,15 +70,22 @@ export function createGiveawayOptInRepository(
         values: [subscriberId, now],
       });
     },
-    async confirmedEdgesAsReferrer(referrerId, periodStart, periodEnd, limit) {
+    async confirmedEdgesAsReferrer(
+      referrerId,
+      periodStart,
+      periodEnd,
+      limit,
+      afterEdgeId,
+    ) {
       const rows = await database.list<{ id: string }>(
         {
           text: `SELECT id::text FROM referral_edge
                  WHERE referrer_id = $1 AND state = 'confirmed'
                    AND voided_at IS NULL
                    AND confirmed_at >= $2 AND confirmed_at < $3
-                 ORDER BY confirmed_at, id`,
-          values: [referrerId, periodStart, periodEnd],
+                   AND ($4::uuid IS NULL OR id > $4)
+                 ORDER BY id`,
+          values: [referrerId, periodStart, periodEnd, afterEdgeId],
         },
         limit,
       );

@@ -8,12 +8,17 @@ import type { FlagService } from '../src/server/flags/types.ts';
 import {
   createGiveawayMemberEntryService,
   giveawayEntryIpLimit,
+  giveawayEntryStrictIpLimit,
+  giveawayEntrySubscriberLimit,
+  memberEntryReferralLimit,
   type GiveawayMemberEntryInput,
 } from '../src/server/giveaway/member-entry.ts';
+import { createGiveawayEntryReconciliationJob } from '../src/server/giveaway/reconcile.ts';
 import { createVerificationCompletionService } from '../src/server/verification/complete.ts';
 
 import {
   ageFixture,
+  boxRules,
   entriesClosed,
   entriesOf,
   insertEdge,
@@ -21,6 +26,7 @@ import {
   insertToken,
   laterTime,
   legacyRules,
+  signupTime,
   testSettings,
   verifyTime,
   type AgeFixture,
@@ -268,6 +274,130 @@ test('concurrent first submissions record the box once and grant each entry once
     assert.deepEqual(results, ['accepted', 'accepted', 'accepted', 'accepted']);
     assert.deepEqual(shape(await entriesOf(f.owner, member)), ['base']);
     assert.equal((await optInAudits(f.owner, member)).length, 1);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('a successful entry credits referrals beyond the batch cap with the opt-in rules stamp', async () => {
+  const f = await ageFixture('e11-8-06-me-referral-batches');
+  try {
+    const flags = await flagsOn(f);
+    const member = await insertMember(f.owner, { admission: '13_plus' });
+    const token = await insertToken(f.owner, member, 'status');
+    const referrals = memberEntryReferralLimit + 1;
+    const seeded = await f.owner.readOne<{ count: number }>({
+      text: `WITH referred AS (
+               INSERT INTO subscriber (id, email, email_normalised, email_domain,
+                 status, referred_by_id, created_at, verified_at, admission_age_policy,
+                 giveaway_opt_in_at, giveaway_opt_in_source)
+               SELECT gen_random_uuid(), email, email, 'example.test', 'verified', $1,
+                 $2, $3, '13_plus', $2, 'signup'
+               FROM (SELECT 'bulk-' || n || '@example.test' AS email
+                     FROM generate_series(1, $4::int) n) addresses
+               RETURNING id
+             ), edges AS (
+               INSERT INTO referral_edge (id, referrer_id, referred_id, state,
+                 reward_state, confirmed_at)
+               SELECT gen_random_uuid(), $1, id, 'confirmed', 'none', $3 FROM referred
+               RETURNING id
+             ) SELECT count(*)::int AS count FROM edges`,
+      values: [member, signupTime, verifyTime, referrals],
+    });
+    assert.equal(seeded?.count, referrals);
+    const countStamps = () =>
+      f.owner.list(
+        {
+          text: `SELECT method, rules_version, encode(rules_sha256, 'hex') AS sha256,
+                    count(*)::int AS count
+             FROM giveaway_entry WHERE subscriber_id = $1
+             GROUP BY method, rules_version, rules_sha256 ORDER BY method, rules_version`,
+          values: [member],
+        },
+        10,
+      );
+    const expected = [
+      {
+        method: 'base',
+        rules_version: legacyRules.rulesVersion,
+        sha256: legacyRules.sha256,
+        count: 1,
+      },
+      {
+        method: 'referral',
+        rules_version: legacyRules.rulesVersion,
+        sha256: legacyRules.sha256,
+        count: referrals,
+      },
+    ];
+
+    let reads = 0;
+    const entry = createGiveawayMemberEntryService(f.app, {
+      flags,
+      clock: () => laterTime,
+      currentRules: () => (++reads === 1 ? legacyRules : boxRules),
+    });
+    assert.equal(await entry.enter(input(token)), 'accepted');
+    assert.deepEqual(await countStamps(), expected);
+    assert.equal(reads, 1);
+    const job = createGiveawayEntryReconciliationJob(
+      f.app,
+      flags,
+      async () => boxRules,
+      undefined,
+      () => laterTime,
+    );
+    await job.run(1_000);
+    await job.run(1_000);
+    assert.deepEqual(await countStamps(), expected);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('a challenge-timeout replay leaves member state alone and still consumes both rate limits', async () => {
+  const f = await ageFixture('e11-8-06-me-timeout-replay');
+  try {
+    const flags = await flagsOn(f);
+    const member = await insertMember(f.owner, { admission: '13_plus' });
+    const token = await insertToken(f.owner, member, 'status');
+    const entry = service(f, flags);
+    assert.equal(await entry.enter(input(token)), 'accepted');
+    const before = await entriesOf(f.owner, member);
+    const timeout = (prefix: string) =>
+      entry.enter({
+        ...input(token, prefix),
+        challengeTimedOut: true,
+      });
+    for (let attempt = 0; attempt < giveawayEntryStrictIpLimit; attempt += 1)
+      assert.equal(await timeout('strict'), 'accepted');
+    assert.equal(await timeout('strict'), 'rate_limited');
+    for (
+      let attempt = 1 + giveawayEntryStrictIpLimit;
+      attempt < giveawayEntrySubscriberLimit;
+      attempt += 1
+    )
+      assert.equal(await timeout(`strict-${attempt}`), 'accepted');
+    assert.equal(await timeout('strict-new-prefix'), 'rate_limited');
+    assert.deepEqual(await entriesOf(f.owner, member), before);
+    assert.equal((await optInAudits(f.owner, member)).length, 1);
+    const fraudFlag = (subscriberId: string) =>
+      f.owner.readOne({
+        text: `SELECT kind FROM fraud_flag WHERE subscriber_id = $1 AND kind = 'challenge_timeout'`,
+        values: [subscriberId],
+      });
+    assert.equal(await fraudFlag(member), null);
+
+    const newMember = await insertMember(f.owner, { admission: '13_plus' });
+    const newToken = await insertToken(f.owner, newMember, 'status');
+    assert.equal(
+      await entry.enter({
+        ...input(newToken, 'first-timeout'),
+        challengeTimedOut: true,
+      }),
+      'accepted',
+    );
+    assert.deepEqual(await fraudFlag(newMember), { kind: 'challenge_timeout' });
   } finally {
     await f.dispose();
   }
