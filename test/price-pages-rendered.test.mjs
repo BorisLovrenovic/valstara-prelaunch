@@ -74,10 +74,10 @@ let databaseName;
 let admin;
 let server;
 
-async function startServer() {
+async function startServer(root = fixtureRoot) {
   return startAppServer({
     label: 'Price-page rendered test',
-    cwd: fixtureRoot,
+    cwd: root,
     env: () => ({
       ADMIN_CREDENTIAL: 'price-pages-admin-credential-32-chars',
       ADMIN_TOTP_SECRET: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
@@ -96,9 +96,9 @@ async function startServer() {
   });
 }
 
-async function get(path) {
+async function get(path, target = server) {
   const response = await globalThis.fetch(
-    `http://127.0.0.1:${server.port}${path}`,
+    `http://127.0.0.1:${target.port}${path}`,
     { redirect: 'manual', signal: globalThis.AbortSignal.timeout(10_000) },
   );
   return {
@@ -199,6 +199,86 @@ function rows(html) {
 
 const signedFieldPattern =
   /name="referral_capture"\s+type="hidden"\s+value="([^"]+)"/u;
+
+test('planned Perplexity Pro answers 404 without publishable data and serves verified local list prices where they qualify', async () => {
+  const production = JSON.parse(
+    await readFile(join(projectRoot, 'config/catalogue.json'), 'utf8'),
+  );
+  const perplexity = production.services.find(
+    ({ service_id }) => service_id === 'perplexity',
+  );
+  assert.equal(perplexity?.status, 'planned');
+  const publishedPath = '/prices/perplexity/sweden';
+  const { root } = await priceFixtureSite({
+    'catalogue.json': {
+      services: [...inputs.catalogue.services, perplexity],
+    },
+    'latest.json': {
+      ...inputs.latest,
+      records: [
+        ...inputs.latest.records,
+        {
+          market: 'SE',
+          service_id: 'perplexity',
+          plan_id: 'pro',
+          billing_period: 'month',
+          price_local: '259.00',
+          price_source_text: null,
+          currency: 'SEK',
+          price_usd_source: null,
+          source: 'manual',
+          source_url: 'https://www.perplexity.ai/',
+          observed_at: null,
+          source_verified_at: '2026-11-28',
+          status: 'manual_override',
+          missing_reason: null,
+          notes: null,
+        },
+      ],
+    },
+    'published-urls.json': {
+      urls: [
+        ...inputs.ledger.urls,
+        {
+          path: publishedPath,
+          service_id: 'perplexity',
+          market: 'SE',
+          service_name: 'Perplexity',
+          market_name: 'Sweden',
+          first_published_on: '2026-12-01',
+        },
+      ],
+    },
+  });
+  const fixture = await startServer(root);
+  try {
+    const empty = await get('/prices/perplexity/france', fixture);
+    assert.equal(empty.status, 404);
+    assert.match(empty.body, /data-task-state="not-found"/u);
+    assert.doesNotMatch(empty.body, /data-price-page|data-price-amount/u);
+
+    const priced = await get(publishedPath, fixture);
+    assert.equal(priced.status, 200);
+    assert.match(priced.body, /data-price-page="generated"/u);
+    assert.match(visibleText(priced.body), /Perplexity price in Sweden/u);
+    assert.deepEqual(rows(priced.body), [
+      {
+        plan: 'pro',
+        period: 'month',
+        amount: '259.00',
+        currency: 'SEK',
+        shown: '259.00 SEK',
+        verifiedOn: '2026-11-28',
+      },
+    ]);
+    assert.doesNotMatch(
+      priced.body,
+      /data-valstara-comparison|data-valstara-amount|The Valstara price/u,
+    );
+  } finally {
+    await fixture.stop();
+  }
+});
 
 test('the fixture dataset generates eight pages and leaves four ledger URLs unavailable', () => {
   assert.deepEqual(

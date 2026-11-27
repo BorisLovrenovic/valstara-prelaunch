@@ -1771,7 +1771,7 @@ test('E11.5-12: text on midnight bands and provider banners clears AA contrast a
             readCatalogue.has(name.slice(0, 40)),
             `${colorScheme} ${width}px: ${name} banner read`,
           );
-        assert.equal(providers.length, 34);
+        assert.equal(providers.length, 33);
         const where = `${colorScheme} ${width}px`;
         const results = [...read.values()];
         // The final call to action's banners are logo-only, with no text.

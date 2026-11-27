@@ -12,8 +12,8 @@
 //   node test/fixtures/final-ui/measure-catalogue-geometry.mjs
 //
 // writes test/fixtures/final-ui/catalogue-geometry.json. The snapshot is
-// pinned (docs/design/final-ui/SHA256SUMS), so the output only changes when
-// the founder re-pins the canvas.
+// pinned (docs/design/final-ui/SHA256SUMS). E11.8-08 measures it with the
+// withdrawn Perplexity banner removed.
 import { execFile, spawn } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -58,6 +58,7 @@ async function canvasMarkup(dark) {
   const catalogue = groups
     .map(([category, providers]) => {
       const banners = providers
+        .filter(([name]) => name !== 'Perplexity')
         .map(([name, file, colour, kind, ratio, height]) => {
           const light = luminance(colour);
           const white = 1.05 / (light + 0.05) >= (light + 0.05) / 0.055;

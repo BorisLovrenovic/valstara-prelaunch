@@ -107,16 +107,19 @@ export async function priceFixtureInputs() {
  * The root of a built copy of the site over the fixture dataset. Built once
  * per distinct set of inputs; a later call with the same inputs reuses it.
  */
-export async function priceFixtureSite() {
+export async function priceFixtureSite(overrides = {}) {
   // This module's own source is part of the key: a change to what the copy
   // takes from the repository must rebuild, never reuse an older tree.
   const hash = createHash('sha256')
     .update(await inputDigest(projectRoot, process.env))
     .update(await readFile(fileURLToPath(import.meta.url)));
+  const contents = new Map();
   for (const name of Object.keys(priceFixtureFiles).sort()) {
-    hash
-      .update(`${name}\0`)
-      .update(await readFile(join(priceFixtureDirectory, name)));
+    const content = Object.hasOwn(overrides, name)
+      ? JSON.stringify(overrides[name])
+      : await readFile(join(priceFixtureDirectory, name));
+    contents.set(name, content);
+    hash.update(`${name}\0`).update(content);
   }
   const root = join(
     tmpdir(),
@@ -148,7 +151,7 @@ export async function priceFixtureSite() {
   }
   for (const [name, target] of Object.entries(priceFixtureFiles)) {
     await mkdir(dirname(join(root, target)), { recursive: true });
-    await copyFile(join(priceFixtureDirectory, name), join(root, target));
+    await writeFile(join(root, target), contents.get(name));
   }
   await symlink(join(projectRoot, 'node_modules'), join(root, 'node_modules'));
   try {

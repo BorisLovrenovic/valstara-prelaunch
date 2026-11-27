@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -11,10 +11,16 @@ const entries: unknown = JSON.parse(
 const valid = entries as Record<string, unknown>[];
 const clone = () => structuredClone(valid);
 
-test('P8 showcase validates all 34 confirmed providers and same-origin assets', async () => {
+test('P8 showcase validates all 33 current providers and same-origin assets', async () => {
   const providers = await validateProviderShowcase(entries);
-  assert.equal(providers.length, 34);
-  assert.equal(new Set(providers.map((provider) => provider.name)).size, 34);
+  assert.equal(providers.length, 33);
+  assert.equal(new Set(providers.map((provider) => provider.name)).size, 33);
+  assert.ok(providers.every(({ name }) => !/perplexity/iu.test(name)));
+  assert.ok(
+    (await readdir('public/images/providers')).every(
+      (file) => !/perplexity/iu.test(file),
+    ),
+  );
   assert.deepEqual(
     [...new Set(providers.map((provider) => provider.category))],
     ['ai', 'subscriptions', 'software', 'in_game_currency'],
@@ -119,7 +125,7 @@ test('chipTone accepts only "dark", and only CyberGhost carries it', async () =>
   }
 });
 
-test('wordmarkHeight is a positive whole pixel count on exactly the 18 founder-listed wordmarks', async () => {
+test('wordmarkHeight is a positive whole pixel count on exactly the 17 remaining founder-listed wordmarks', async () => {
   // Founder decision 2026-11-08 (E11.5-11n): the canvas's optical heights.
   assert.deepEqual(
     Object.fromEntries(
@@ -128,7 +134,6 @@ test('wordmarkHeight is a positive whole pixel count on exactly the 18 founder-l
         .map((entry) => [entry.name, entry.wordmarkHeight]),
     ),
     {
-      Perplexity: 22,
       Cursor: 18,
       'Bolt.new': 18,
       Lovable: 16,

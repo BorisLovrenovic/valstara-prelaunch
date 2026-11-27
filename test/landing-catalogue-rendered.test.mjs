@@ -532,8 +532,8 @@ test('every banner uses its real logo, its data brand colour, its computed label
       assert.equal(banner.ringName, bannerShapes[index % 6], label);
       assert.equal(banner.layersHidden, true, label);
     }
-    // 18 wordmarks and 16 icon marks, as the data file marks them.
-    assert.equal(banners.filter((banner) => banner.wordmark).length, 18);
+    // 17 wordmarks and 16 icon marks on the current launch list.
+    assert.equal(banners.filter((banner) => banner.wordmark).length, 17);
     assert.equal(banners.filter((banner) => !banner.wordmark).length, 16);
     assert.deepEqual(
       banners
@@ -569,6 +569,13 @@ test('catalogue and step geometry matches the canvas at 1440, 1024, 768, 390 and
       const label = `${width} ${colorScheme}`;
       assert.equal(result.scrollWidth, result.viewport, `${label} overflow`);
       const built = result.catalogue;
+      const banners = bannersOf(built);
+      assert.equal(banners.length, 33, `${label} catalogue banner count`);
+      assert.equal(built.groups[0].banners.length, 6, `${label} AI tools`);
+      assert.ok(
+        banners.every((banner) => !/perplexity/iu.test(banner.name)),
+        `${label} excludes Perplexity`,
+      );
       nearBox(built.head, frame.catalogue.head, `${label} heading block`);
       nearBox(built.heading, frame.catalogue.heading, `${label} H2`);
       nearBox(built.line, frame.catalogue.line, `${label} supporting line`);

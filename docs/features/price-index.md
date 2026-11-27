@@ -78,6 +78,8 @@ Each service has a `service_id` (slug), display name, category (`ai`, `streaming
 
 **No student plans, and no plan not listed here.** Where the mapping of a product or plan to the source's names is uncertain, E11.6-01 lists it in its findings for the founder to confirm. Nothing is guessed.
 
+**Perplexity Pro (E11.8-08, D-086, 2026-11-27).** The catalogue tracks it as `planned` after its withdrawal from the launch list on 25 November. Verified local list prices remain eligible under the existing publish gate. With `prices.pages` on, an unlisted market without publishable data answers 404. When qualifying data arrives, the usual publication workflow generates the page and records the URL in the ledger. The ledger's rules for previously published URLs still apply.
+
 **Adding or removing a service or plan is a data change, never a code change.** Every layer reads the catalogue: matching, merge, coverage, the change log, reports and pages. Every E11.6 ticket that consumes the catalogue tests both an addition and a removal against its own layer.
 
 - **Added:** the new combinations appear as `missing` until data arrives. No page exists for them until a plan passes the publish gate.

@@ -381,7 +381,7 @@
       "name": "Perplexity",
       "category": "ai",
       "website_url": "https://www.perplexity.ai/",
-      "status": "launch",
+      "status": "planned",
       "plans": [
         {
           "plan_id": "pro",
