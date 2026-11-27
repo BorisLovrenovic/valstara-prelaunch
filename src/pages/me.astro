@@ -1884,6 +1884,14 @@ const meterSegments =
     margin-block-start: var(--space-2);
   }
 
+  @media (width < 48rem) {
+    .member-giveaway__rules :global(.text-link) {
+      display: inline-flex;
+      align-items: center;
+      min-block-size: var(--tap-min);
+    }
+  }
+
   .member-giveaway > .cf-turnstile {
     margin-block-start: var(--space-2);
   }

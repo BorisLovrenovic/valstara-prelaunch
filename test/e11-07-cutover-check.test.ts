@@ -144,6 +144,7 @@ test('local cutover fixture proves retained, redirect, 410 and one-click routes'
     assert.ok(
       result.checked.includes('/giveaway/rules/VAL-GW-LAUNCH-20261126-r1'),
     );
+    assert.ok(result.checked.includes('/api/me/giveaway'));
     assert.equal(state.applications, 1);
     assert.equal(state.attempts, 2);
   });

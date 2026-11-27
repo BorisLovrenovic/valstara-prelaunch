@@ -27,6 +27,7 @@ The waitlist row.
 | `email_normalised` | text **unique**; null only when erased | Lowercased, `+tag` stripped, dots removed for Gmail-family domains. **The uniqueness key** |
 | `email_domain` | text; null only when erased | Denormalised for blocklist and analytics queries |
 | `signup_had_ref` | boolean, default false; null when erased | Whether the initial signup carried a valid signed ref; supports later anonymous source classification even while attribution is flag-off, and is cleared on erasure |
+| `admission_age_policy` | text, default `18_plus` | `18_plus` or `13_plus`, recorded when the subscriber row is created, including through an application. Earlier rows default to `18_plus`. Write-once by trigger and cleared on erasure. Preserves the giveaway box requirement and the marketing grant pause for 13+ members across rollback |
 | `status` | text not null | `pending` · `verified` · `expired` · `unsubscribed` · `bounced` · `disqualified` · `erasure_pending` · `erased` |
 | `category_preference` | text[] | From the survey. Carried into the handoff |
 | `source` | text | Bucketed acquisition source |
@@ -39,11 +40,13 @@ The waitlist row.
 | `verification_order_window` | text null | `wave-1`…`wave-4`. **The window the subscriber's verification order gave them**, from ADR-025's bands, written once at verification (E11.7-03, founder D1). `wave-1` is the first-1,000 place, which no void removes. Write-once by trigger, cleared by the same trigger on erasure. Backfilled by migration 0061 from the earliest recorded promotion's starting window, or else the access window then held |
 | `subslush_customer` | boolean not null default false | Provenance. Becomes the `subslush-legacy` group at handoff |
 | `giveaway_rules_version` | text | **The global rules version in force when the subscriber first became a giveaway entrant** (E7-03, on first accrual). Written once and never overwritten while active; nulled on erasure. Null until first accrual. Distinct from `giveaway_entry.rules_version`, which stamps each accrual |
+| `giveaway_opt_in_at` | timestamptz null | Time the separate 18+ giveaway box was recorded. Must be at or after subscriber creation. Opt-in on `/me` requires a verification timestamp |
+| `giveaway_opt_in_source` | text null | `signup` or `member_status`. The source and timestamp are both null or both set, are write-once by trigger once set, and clear on erasure |
 | `marketing_consent_at` | timestamptz null | **When the current marketing consent took effect** — at verification for a signup opt-in, or immediately for an opt-in from `/me`. Null means no marketing consent (ADR-027) |
 | `marketing_consent_version` | text null | The version of the opt-in wording the person agreed to |
 | `marketing_consent_source` | text null | `signup` · `member_status`. `marketing_consent_at`, `_version` and `_source` are all null or all set (check constraint) |
 | `marketing_opt_in_pending` | boolean not null default false | The box was ticked at signup and is waiting for verification. **No marketing consent exists until verification confirms it** |
-| `marketing_opt_in_pending_version` | text null | The wording version shown at the latest ticked signup while the row is pending. Non-null exactly when `marketing_opt_in_pending` is true; copied to `marketing_consent_version` at verification, then cleared (S-01 founder amendment, 2026-09-25) |
+| `marketing_opt_in_pending_version` | text null | The valid wording version saved while the row is pending, including `v2` for the draft 16+ opt-in. After rollback, a fresh 18+ form leaves pending consent on a 13+ record intact (D-084). Non-null exactly when `marketing_opt_in_pending` is true. Copied to `marketing_consent_version` at verification, then cleared |
 | `signup_ip_prefix_hash` | bytea | See *IP handling*. Purged at 90 days |
 | `verified_at` `unsubscribed_at` `expired_at` `disqualified_at` | timestamptz | |
 | `disqualification_previous_status` | text null | Status restored only by reversing the flag that disqualified the subscriber |
@@ -403,6 +406,8 @@ E8-06 adds `email_webhook_event`, whose sole column is an opaque idempotency key
 **Append-only, enforced by database permissions** — the application role holds `INSERT` and `SELECT` only. Records: disqualifications, flag decisions, exports, draw execution, flag changes, DSR requests and their fulfilment, and the handoff freeze. **`detail` never contains a token, a secret or a full IP address**; a redaction test asserts this over every call site.
 
 E6-06 also records `consent.marketing_withdrawn` or `subscriber.unsubscribed` with the originating `email_send` ID and server-resolved template for email links, or source `member_status` for the `/me` leave action. Token consumption, preference or suppression write, an explicit leave's `status = 'unsubscribed'` and `unsubscribed_at` stamp, and the audit insert share one transaction.
+
+E11.8-06 records `giveaway.opted_in` for a member's first `/me` entry action, with source `member_status`. The opt-in, audit and eligible entry writes commit together.
 
 ## `rate_limit_bucket`
 

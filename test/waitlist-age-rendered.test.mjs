@@ -1,18 +1,31 @@
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test, { after, before } from 'node:test';
 
 import { Pool } from 'pg';
 
-import { ensureAppBuild } from '../scripts/ci/app-build.mjs';
+import { ensureAppBuild, inputPaths } from '../scripts/ci/app-build.mjs';
 import { marketingOptInWordingByVersion } from '../src/copy/marketing.ts';
 import { memberStatusCopy } from '../src/copy/member-status.ts';
 import { partnersCopy } from '../src/copy/partners.ts';
 import { signupFormCopy } from '../src/copy/signup.ts';
 import { flagCacheTtlMilliseconds } from '../src/server/flags/service.ts';
+import { currentRulesFromFiles } from '../src/server/giveaway/current-rules-file.ts';
 import { deriveEmailToken } from '../src/server/verification/token-derivation.ts';
 import { startAppServer } from './helpers/listen-port.mjs';
 
@@ -37,6 +50,7 @@ let admin;
 let database;
 let databaseName;
 let server;
+let appOptions;
 const members = {};
 const tokens = {};
 
@@ -100,7 +114,7 @@ before(async () => {
   await member('skipped', '13_plus', false, 0);
   await member('earlier', '18_plus', false, 1);
   await member('ticked', '13_plus', true, 1);
-  server = await startAppServer({
+  appOptions = {
     label: 'E11.8-06 rendered',
     cwd: projectRoot,
     env: (port) => ({
@@ -124,7 +138,8 @@ before(async () => {
       TURNSTILE_SECRET_KEY: 'age13-rendered-turnstile-secret',
       HOST: '127.0.0.1',
     }),
-  });
+  };
+  server = await startAppServer(appOptions);
 });
 
 after(async () => {
@@ -153,9 +168,9 @@ async function setFlags(values) {
   );
 }
 
-async function page(path) {
+async function page(path, app = server) {
   const response = await globalThis.fetch(
-    `http://127.0.0.1:${server.port}${path}`,
+    `http://127.0.0.1:${app.port}${path}`,
     { signal: globalThis.AbortSignal.timeout(15_000) },
   );
   assert.equal(response.status, 200, path);
@@ -254,9 +269,58 @@ test('flag off: /me states the real entry status, offers no box, and pauses new 
   assert.ok(decode(skipped).includes(memberStatusCopy.marketing.grantPaused));
   const earlier = await page(`/me?t=${encodeURIComponent(tokens.earlier)}`);
   assert.equal(fact(earlier), '1');
-  assert.doesNotMatch(earlier, /<form\b[^>]*data-giveaway-form|<p\b[^>]*data-marketing-paused/u);
+  assert.doesNotMatch(
+    earlier,
+    /<form\b[^>]*data-giveaway-form|<p\b[^>]*data-marketing-paused/u,
+  );
   assert.match(earlier, /<button\b[^>]*data-marketing-switch/u);
   assert.doesNotMatch(earlier, /name="marketing_age_affirmed"/u);
+});
+
+test('flag off: an application promises only a waitlist join when the published rules require the box', async () => {
+  await setFlags({ 'giveaway.open': true, 'waitlist.age_13': false });
+  const root = await mkdtemp(join(tmpdir(), 'valstara-age-rules-'));
+  let fixtureServer;
+  try {
+    for (const path of inputPaths) {
+      const target = join(root, path);
+      await mkdir(dirname(target), { recursive: true });
+      await cp(join(projectRoot, path), target, { recursive: true });
+    }
+    await symlink(
+      join(projectRoot, 'node_modules'),
+      join(root, 'node_modules'),
+    );
+    // Set the metadata only on the isolated build. The article and its hash
+    // remain intact, and E11.8-07 owns the reviewed rules revision.
+    const rulesDirectory = join(root, 'src/content/giveaway-rules');
+    const { rulesVersion } = await currentRulesFromFiles(rulesDirectory);
+    const revision = join(rulesDirectory, `${rulesVersion}.md`);
+    const source = await readFile(revision, 'utf8');
+    assert.doesNotMatch(source, /^entryRequiresGiveawayBox:/mu);
+    await writeFile(
+      revision,
+      source.replace(/^---\n/u, '$&entryRequiresGiveawayBox: true\n'),
+    );
+    await execFileAsync('npm', ['run', 'build'], {
+      cwd: root,
+      env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
+    });
+    fixtureServer = await startAppServer({
+      ...appOptions,
+      label: 'E11.8-06 box-required rules',
+      cwd: root,
+    });
+    const html = await page('/partners/apply', fixtureServer);
+    assert.equal(
+      membership(html),
+      `${partnersCopy.apply.membership.waitlist} ${partnersCopy.apply.ageStatement}`,
+    );
+    assert.match(html, /name="age_confirmed"/u);
+  } finally {
+    await fixtureServer?.stop();
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('flag on: every signup placement says 13 and over, says the giveaway is 18 and over, and carries both unticked boxes and its policy', async () => {

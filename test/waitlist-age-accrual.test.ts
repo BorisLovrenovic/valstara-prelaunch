@@ -631,7 +631,7 @@ test('with the flag on, an application joins the waitlist with no automatic entr
   }
 });
 
-test('with the flag off, an application follows the published rules: legacy entry where they permit it, waitlist only where they require the box (decision 8)', async () => {
+test('off-flag applications follow published rules and applicants who still need the box can enter after re-enable (decision 8)', async () => {
   for (const rules of [legacyRules, boxRules]) {
     const f = await ageFixture('e11-8-06-application-off');
     try {
@@ -645,16 +645,30 @@ test('with the flag off, an application follows the published rules: legacy entr
         values: [id],
       });
       assert.equal(status?.status, 'verified');
+      const referred = await pending(f.owner, {
+        admission: '18_plus',
+        optIn: 'signup',
+      });
+      await insertEdge(f.owner, id, referred.id);
+      assert.equal(
+        (await verifier(f, flags.service, { rules })(referred.token)).outcome,
+        'verified',
+      );
       const permitted = rules.entryRequiresGiveawayBox !== true;
       assert.deepEqual(
         methods(await entriesOf(f.owner, id)),
-        permitted ? ['base'] : [],
+        permitted ? ['base', 'referral'] : [],
       );
-      // Reconciliation under the same rules agrees.
+      // Make the live entries missing in this fixture so reconciliation has
+      // to apply the same rule to both methods.
+      await f.owner.execute({
+        text: 'DELETE FROM giveaway_entry WHERE subscriber_id = $1',
+        values: [id],
+      });
       await reconciliation(f, flags.service, { rules }).run(1_000);
       assert.deepEqual(
         methods(await entriesOf(f.owner, id)),
-        permitted ? ['base'] : [],
+        permitted ? ['base', 'referral'] : [],
       );
       // An applicant admitted at 13 who is confirmed after rollback holds
       // nothing, under either rules state.
@@ -665,6 +679,41 @@ test('with the flag off, an application follows the published rules: legacy entr
       assert.equal(await admissionOf(f.owner, admitted13), '13_plus');
       await reconciliation(f, flags.service, { rules }).run(1_000);
       assert.deepEqual(await entriesOf(f.owner, admitted13), []);
+
+      const entry = createGiveawayMemberEntryService(f.app, {
+        flags: flags.service,
+        currentRules: () => rules,
+        clock: () => laterTime,
+      });
+      const applicantsWhoNeedTheBox = permitted
+        ? [admitted13]
+        : [admitted13, id];
+      for (const applicant of applicantsWhoNeedTheBox) {
+        assert.deepEqual(await entry.view(applicant), {
+          notEntered: true,
+          offerBox: false,
+        });
+      }
+      await flags.age(true);
+      for (const [index, applicant] of applicantsWhoNeedTheBox.entries()) {
+        assert.deepEqual(await entry.view(applicant), {
+          notEntered: true,
+          offerBox: true,
+        });
+        const statusToken = await insertToken(f.owner, applicant, 'status');
+        assert.equal(
+          await entry.enter({
+            challengeTimedOut: false,
+            ipPrefixHash: `application-rollback-${index}`,
+            token: statusToken,
+          }),
+          'accepted',
+        );
+        assert.deepEqual(
+          methods(await entriesOf(f.owner, applicant)),
+          applicant === id ? ['base', 'referral'] : ['base'],
+        );
+      }
     } finally {
       await f.dispose();
     }

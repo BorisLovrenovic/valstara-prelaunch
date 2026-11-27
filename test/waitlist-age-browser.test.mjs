@@ -360,6 +360,15 @@ test('layout: the final-design checks pass on every placement and /me with the f
             timeout: 60_000,
           });
           assert.equal(response?.status(), 200, path);
+          if (path.startsWith('/me')) {
+            assert.equal(
+              await page
+                .locator('[data-giveaway-form] a[href="/giveaway/rules"]')
+                .isVisible(),
+              true,
+              `the /me giveaway rules link is visible at ${width}px in ${colorScheme}`,
+            );
+          }
           const issues = await checkPageLayout(page);
           if (issues.length > 0)
             found.push({ path, width, colorScheme, issues });

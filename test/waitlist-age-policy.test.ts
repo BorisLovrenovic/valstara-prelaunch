@@ -8,7 +8,6 @@ import {
 import { withTransaction } from '../src/server/db/transaction.ts';
 import { runFlagCommand } from '../src/server/flags/cli.ts';
 import { campaignFlagRegistry } from '../src/server/flags/registry.ts';
-import { createFlagService } from '../src/server/flags/service.ts';
 import {
   agePolicyFor,
   giveawayBoxPolicy,
@@ -289,7 +288,7 @@ test('the enable command refuses waitlist.age_13 while the reviewed-wording sett
       ),
       /waitlist_age_13_requires_reviewed_wording/u,
     );
-    assert.deepEqual(lines, []);
+    assert.equal(lines.length, 0);
     assert.equal(await shipped.isEnabled('waitlist.age_13'), false);
     const stored = await f.owner.readOne<{ count: string }>({
       text: `SELECT count(*)::text FROM campaign_flag WHERE key = 'waitlist.age_13'`,
